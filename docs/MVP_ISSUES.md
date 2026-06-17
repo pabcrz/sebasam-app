@@ -48,12 +48,14 @@ Empezar por el **Issue 1: Endurecimiento del setup del proyecto y revisión de d
 **Objetivo:** Establecer login con Supabase Auth y manejo de sesión server-side para usuarios administradores.
 
 **Criterios de aceptación:**
-- [ ] Existe un flujo de login para administradores.
-- [ ] Las rutas/actions protegidas pueden leer la sesión del lado del servidor.
-- [ ] Los usuarios no autenticados son redirigidos fuera de las pantallas operativas protegidas.
-- [ ] Los helpers de autenticación no consultan tablas operativas de negocio directamente mediante clientes Supabase.
+- [x] Existe un flujo de login para administradores.
+- [x] Las rutas/actions protegidas pueden leer la sesión del lado del servidor.
+- [x] Los usuarios no autenticados son redirigidos fuera de las pantallas operativas protegidas.
+- [x] Los helpers de autenticación no consultan tablas operativas de negocio directamente mediante clientes Supabase.
 
 **Dependencias/notas:** Depende del Issue 2 si los registros de sesión necesitan vínculo con perfiles.
+
+**Nota de verificación:** Verificado en la rama `feature/3-auth-admin-session`: existe `/admin/login` con username/password; el servidor transforma el username a email interno `@sebasam.local` para Supabase Auth, `/admin` queda protegido por server layout y proxy, los helpers `getCurrentUser`/`requireUser` leen la sesión server-side sin consultar tablas operativas mediante Supabase, y las actions/queries operativas existentes exigen sesión antes de usar Prisma. `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
 
 ### Issue 4: `UserProfile` y bootstrap de roles
 

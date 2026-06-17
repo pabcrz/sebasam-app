@@ -1,9 +1,12 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth/session";
 import { quoteInputSchema } from "./schemas";
 
 export async function createQuote(input: unknown) {
+  await requireUser();
+
   const data = quoteInputSchema.parse(input);
   const items = data.items.map((item, index) => {
     const totalCents = Math.round(item.quantity * item.unitPriceCents);
