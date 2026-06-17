@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  COORDINATOR
+  WORKER
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum QuoteItemType {
+  SERVICE
+  MATERIAL
+  LABOR
+  EQUIPMENT
+  OTHER
+}
+
+enum WorkOrderStatus {
+  PLANNED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  ACCEPTED
+  DONE
+  CANCELLED
+}
+
+model UserProfile {
+  id          String   @id @db.Uuid
+  email       String   @unique
+  displayName String
+  role        UserRole @default(WORKER)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments      WorkAssignment[]
+  executionRecords ExecutionRecord[]
+}
+
+model Customer {
+  id        String         @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  status    CustomerStatus @default(ACTIVE)
+  notes     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  quotes Quote[]
+}
+
+model Quote {
+  id             String      @id @default(cuid())
+  customerId     String
+  number         String      @unique
+  status         QuoteStatus @default(DRAFT)
+  title          String
+  description    String?
+  subtotalCents  Int         @default(0)
+  taxCents       Int         @default(0)
+  totalCents     Int         @default(0)
+  approvedAt     DateTime?
+  administrative Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  customer  Customer    @relation(fields: [customerId], references: [id])
+  items     QuoteItem[]
+  workOrder WorkOrder?
+}
+
+model QuoteItem {
+  id          String        @id @default(cuid())
+  quoteId     String
+  type        QuoteItemType
+  description String
+  quantity    Decimal       @db.Decimal(10, 2)
+  unitPriceCents Int
+  totalCents  Int
+  sortOrder   Int           @default(0)
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+}
+
+model WorkOrder {
+  id          String          @id @default(cuid())
+  quoteId     String          @unique
+  number      String          @unique
+  status      WorkOrderStatus @default(PLANNED)
+  scheduledFor DateTime?
+  siteAddress String?
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  quote            Quote             @relation(fields: [quoteId], references: [id])
+  assignments      WorkAssignment[]
+  executionRecords ExecutionRecord[]
+}
+
+model WorkAssignment {
+  id          String           @id @default(cuid())
+  workOrderId String
+  workerId    String
+  status      AssignmentStatus @default(ASSIGNED)
+  assignedAt  DateTime         @default(now())
+  notes       String?
+
+  workOrder WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  worker    UserProfile @relation(fields: [workerId], references: [id])
+
+  @@unique([workOrderId, workerId])
+}
+
+model ExecutionRecord {
+  id          String   @id @default(cuid())
+  workOrderId String
+  workerId    String?
+  summary     String
+  happenedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  workOrder WorkOrder    @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  worker    UserProfile? @relation(fields: [workerId], references: [id])
+}

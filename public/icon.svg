@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">SEBASAM Operations icon</title>
+  <rect width="512" height="512" rx="112" fill="#0f766e" />
+  <path fill="#ccfbf1" d="M128 146h256v52H128zM128 230h256v52H128zM128 314h164v52H128z" />
+  <circle cx="368" cy="340" r="36" fill="#f8fafc" />
+</svg>
