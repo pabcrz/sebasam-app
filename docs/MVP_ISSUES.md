@@ -101,12 +101,14 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 **Objetivo:** Crear cotizaciones en borrador con líneas de detalle y totales confiables.
 
 **Criterios de aceptación:**
-- [ ] Los administradores pueden crear una cotización borrador para un cliente.
-- [ ] Las cotizaciones soportan ítems con cantidad, precio unitario y subtotal.
-- [ ] Los totales se calculan consistentemente en el servidor.
-- [ ] La validación con Zod protege las entradas de cotización e ítems.
+- [x] Los administradores pueden crear una cotización borrador para un cliente.
+- [x] Las cotizaciones soportan ítems con cantidad, precio unitario y subtotal.
+- [x] Los totales se calculan consistentemente en el servidor.
+- [x] La validación con Zod protege las entradas de cotización e ítems.
 
 **Dependencias/notas:** Depende del Issue 5.
+
+**Nota de verificación:** Verificado en la rama `feature/6-quote-draft`: existe `/admin/quotes` con formulario funcional para crear cotizaciones `DRAFT` para clientes existentes usando hasta 5 ítems simples; `createQuote` y `createQuoteFromForm` validan con Zod y calculan subtotales/totales en centavos del lado servidor; el listado de cotizaciones incluye cliente e ítems ordenados. `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
 
 ### Issue 7: Aprobar cotización y crear `WorkOrder` transaccionalmente
 

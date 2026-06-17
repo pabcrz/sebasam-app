@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -13,6 +14,14 @@ export default function AdminHomePage() {
         <p className="mt-4 max-w-2xl leading-7 text-neutral-600">
           This screen verifies the server-side session boundary for admin operations. Role and profile bootstrap checks are intentionally left for Issue 4.
         </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/admin/customers" className="border px-4 py-2 font-medium">
+            Manage customers
+          </Link>
+          <Link href="/admin/quotes" className="border px-4 py-2 font-medium">
+            Manage quotes
+          </Link>
+        </div>
       </div>
     </section>
   );
