@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SEBASAM Operations App
 
-## Getting Started
+New clean operational app for SEBASAM quotes, work orders, assignments, and execution records. The MVP target is an installable Android Chrome PWA, not an APK.
 
-First, run the development server:
+## Quick path
+
+1. Copy `.env.example` to `.env` and fill Supabase values.
+2. Install dependencies with `pnpm install`.
+3. Generate Prisma Client with `pnpm prisma:generate`.
+4. Run locally with `pnpm dev`.
+
+## Architecture rules
+
+| Topic | Rule |
+|-------|------|
+| Stack | Next.js App Router, TypeScript strict, Tailwind, Prisma, Supabase Postgres/Auth/Storage, pnpm. |
+| Data access | Use Prisma for operational business data. Do not query the same business tables through Supabase client helpers. |
+| Auth | Use Supabase Auth for sessions. Store app roles and profile data in `UserProfile`. |
+| Quotes and work orders | Every `WorkOrder` starts from one approved `Quote`. For urgent work, create and approve an administrative quote first. |
+| Deploy discipline | `build` runs `prisma generate && next build`. Migrations are never hidden inside `next build`. |
+| Repository | Keep this repository private. |
+| Branching | Follow the pragmatic Gitflow in `docs/GITFLOW.md`. |
+
+## Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | Supabase pooled Postgres URL for runtime. |
+| `DIRECT_URL` | Supabase direct Postgres URL for Prisma CLI migrations. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Browser-safe Supabase project URL. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser-safe Supabase anonymous key. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional server-only key. Never expose it as `NEXT_PUBLIC_*`. |
+
+## Commands
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
 pnpm dev
-# or
-bun dev
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm prisma:generate
+pnpm db:migrate:dev
+pnpm db:migrate:deploy
+pnpm db:seed
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deploy pipeline
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Set `DATABASE_URL`, `DIRECT_URL`, and Supabase public env vars in the deploy environment.
+2. Run `pnpm db:migrate:deploy` as an explicit release step.
+3. Run `pnpm build` to generate Prisma Client and build Next.js.
+4. Start with `pnpm start` or the hosting platform equivalent.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## What not to do
 
-## Learn More
+- Do not commit `package-lock.json`; this project uses pnpm.
+- Do not rename env vars away from `.env.example` without updating Prisma and Supabase helpers.
+- Do not run `prisma migrate dev` in production.
+- Do not add migrations to `next build`.
+- Do not recreate the legacy schema wholesale.
+- Do not implement the tokenized customer portal in the initial MVP.
 
-To learn more about Next.js, take a look at the following resources:
+## Reference
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+See:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `docs/ARCHITECTURE.md` for the domain and layering rules.
+- `docs/GITFLOW.md` for branch and PR workflow.
+- `docs/AI_WORKFLOW.md` for AI assistant workflow, branch scope, commit discipline, and handoff rules.
+- `docs/MVP_ISSUES.md` for the reviewable MVP issue backlog draft.
