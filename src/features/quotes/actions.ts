@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Prisma, QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { quoteFormInputSchema, quoteInputSchema } from "./schemas";
@@ -56,6 +57,10 @@ function createQuoteNumber() {
   return `Q-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
 
+function createWorkOrderNumber() {
+  return `WO-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+}
+
 export async function createQuote(input: unknown) {
   await requireOperationalRole();
 
@@ -100,4 +105,65 @@ export async function createQuoteFromForm(formData: FormData) {
   await createQuote(parsed.data);
   revalidatePath(quotesPath);
   redirect(`${quotesPath}?created=1`);
+}
+
+export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
+  await requireOperationalRole();
+
+  return prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({
+      where: { id: quoteId },
+      include: { workOrder: true },
+    });
+
+    if (!quote) {
+      throw new Error("Quote not found.");
+    }
+
+    if (quote.status !== QuoteStatus.DRAFT) {
+      throw new Error("Only draft quotes can be approved.");
+    }
+
+    if (quote.workOrder) {
+      throw new Error("This quote already has a work order.");
+    }
+
+    const approvedAt = new Date();
+    const updatedQuote = await tx.quote.updateMany({
+      where: { id: quote.id, status: QuoteStatus.DRAFT },
+      data: { status: QuoteStatus.APPROVED, approvedAt },
+    });
+
+    if (updatedQuote.count !== 1) {
+      throw new Error("Quote approval state changed. Reload and try again.");
+    }
+
+    return tx.workOrder.create({
+      data: {
+        quoteId: quote.id,
+        number: createWorkOrderNumber(),
+      },
+    });
+  });
+}
+
+export async function approveQuoteAndCreateWorkOrderFromForm(formData: FormData) {
+  const quoteId = formData.get("quoteId");
+
+  if (typeof quoteId !== "string" || quoteId.trim() === "") {
+    redirect(`${quotesPath}?error=invalid-approval`);
+  }
+
+  try {
+    await approveQuoteAndCreateWorkOrder(quoteId);
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      redirect(`${quotesPath}?error=duplicate-work-order`);
+    }
+
+    redirect(`${quotesPath}?error=approval-failed`);
+  }
+
+  revalidatePath(quotesPath);
+  redirect(`${quotesPath}?approved=1`);
 }

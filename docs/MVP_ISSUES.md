@@ -115,12 +115,16 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 **Objetivo:** Convertir una cotización aprobada en una orden de trabajo sin romper la regla de dominio.
 
 **Criterios de aceptación:**
-- [ ] Una cotización solo puede aprobarse desde un estado borrador permitido.
-- [ ] Cada nuevo `WorkOrder` referencia exactamente una `Quote` aprobada.
-- [ ] La aprobación de la cotización y la creación del work order ocurren en una única transacción.
-- [ ] Se previenen work orders duplicados para la misma cotización aprobada.
+- [x] Una cotización solo puede aprobarse desde un estado borrador permitido.
+- [x] Cada nuevo `WorkOrder` referencia exactamente una `Quote` aprobada.
+- [x] La aprobación de la cotización y la creación del work order ocurren en una única transacción.
+- [x] Se previenen work orders duplicados para la misma cotización aprobada.
 
 **Dependencias/notas:** Depende del Issue 6. Este issue refuerza la separación central entre `Quote` y `WorkOrder`.
+
+**Nota de verificación:** Verificado en la rama `feature/7-approve-quote-workorder`: existe `approveQuoteAndCreateWorkOrder` para aprobar solo cotizaciones `DRAFT`; la aprobación y creación de `WorkOrder` ocurren dentro de una transacción Prisma; `WorkOrder.quoteId` único previene duplicados y la UI de `/admin/quotes` permite aprobar borradores y muestra el work order vinculado. `pnpm lint`, `pnpm typecheck`, `pnpm build` y una lectura Prisma ligera de la relación cotización/work order ejecutan correctamente.
+
+**Follow-up UI:** La acción de aprobar cotización debería usar un modal de confirmación cuando se implemente la capa visual real con Radix/Figma.
 
 ### Issue 8: Asignación de `WorkOrder` y registros de ejecución
 

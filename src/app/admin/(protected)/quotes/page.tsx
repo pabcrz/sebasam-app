@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { QuoteItemType } from "@prisma/client";
-import { createQuoteFromForm } from "@/features/quotes/actions";
+import { approveQuoteAndCreateWorkOrderFromForm, createQuoteFromForm } from "@/features/quotes/actions";
 import { listQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
 
@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 
 type QuotesPageProps = {
   searchParams: Promise<{
+    approved?: string;
     created?: string;
     error?: string;
   }>;
@@ -38,9 +39,25 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
           Create draft quotes for existing customers with server-calculated item subtotals and totals.
         </p>
         {params.created ? <p className="mt-4 text-sm">Draft quote created.</p> : null}
+        {params.approved ? <p className="mt-4 text-sm">Quote approved and work order created.</p> : null}
         {params.error === "invalid" ? (
           <p className="mt-4 text-sm" role="alert">
             Check the quote details and include at least one complete item row.
+          </p>
+        ) : null}
+        {params.error === "invalid-approval" ? (
+          <p className="mt-4 text-sm" role="alert">
+            Select a valid quote before approving.
+          </p>
+        ) : null}
+        {params.error === "duplicate-work-order" ? (
+          <p className="mt-4 text-sm" role="alert">
+            This quote already has a work order.
+          </p>
+        ) : null}
+        {params.error === "approval-failed" ? (
+          <p className="mt-4 text-sm" role="alert">
+            The quote could not be approved. Reload and confirm it is still a draft.
           </p>
         ) : null}
       </div>
@@ -133,8 +150,10 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 <th className="py-3 pr-4">Customer</th>
                 <th className="py-3 pr-4">Title</th>
                 <th className="py-3 pr-4">Status</th>
+                <th className="py-3 pr-4">Work order</th>
                 <th className="py-3 pr-4">Items</th>
                 <th className="py-3 pr-4">Total</th>
+                <th className="py-3 pr-4">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -145,6 +164,15 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                   <td className="py-3 pr-4">{quote.title}</td>
                   <td className="py-3 pr-4">{quote.status}</td>
                   <td className="py-3 pr-4">
+                    {quote.workOrder ? (
+                      <span>
+                        {quote.workOrder.number} — {quote.workOrder.status}
+                      </span>
+                    ) : (
+                      <span>None</span>
+                    )}
+                  </td>
+                  <td className="py-3 pr-4">
                     <ul className="grid gap-1">
                       {quote.items.map((item) => (
                         <li key={item.id}>
@@ -154,11 +182,23 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                     </ul>
                   </td>
                   <td className="py-3 pr-4 font-medium">{formatCents(quote.totalCents)}</td>
+                  <td className="py-3 pr-4">
+                    {quote.status === "DRAFT" && !quote.workOrder ? (
+                      <form action={approveQuoteAndCreateWorkOrderFromForm}>
+                        <input type="hidden" name="quoteId" value={quote.id} />
+                        <button type="submit" className="border px-3 py-2 font-medium">
+                          Approve and create work order
+                        </button>
+                      </form>
+                    ) : (
+                      <span>No action</span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {quotes.length === 0 ? (
                 <tr>
-                  <td className="py-6" colSpan={6}>
+                  <td className="py-6" colSpan={8}>
                     No quotes found.
                   </td>
                 </tr>

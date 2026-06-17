@@ -8,6 +8,7 @@ export async function listQuotes() {
     include: {
       customer: true,
       items: { orderBy: { sortOrder: "asc" } },
+      workOrder: true,
     },
     orderBy: { createdAt: "desc" },
   });
