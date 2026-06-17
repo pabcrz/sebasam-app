@@ -29,6 +29,15 @@ internal email derived from the visible username, but authorization always check
 profile role. Access roles are `ADMIN`, `ADMIN_ASSISTANT`, and `WORKER`; worker labor
 classification is stored separately as nullable `workerKind` (`MASTER` or `HELPER`).
 
+Internal staff passwords are controlled by admins, not public sign-up. Use server-only service
+role tooling for Auth user creation/reset until the future admin screen exists.
+
+## UI source of truth
+
+Figma is the source of truth for final screens and components. Technical issues may add neutral
+functional UI only. Future UI implementation should use Radix primitives for behavior/accessibility
+and Tailwind wrappers that encode the Figma design system.
+
 ## MVP boundaries
 
 The initial target is an installable PWA for Android Chrome. APK packaging and tokenized customer portals are intentionally out of scope.

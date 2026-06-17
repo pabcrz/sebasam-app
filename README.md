@@ -43,7 +43,37 @@ pnpm db:migrate:dev
 pnpm db:migrate:deploy
 pnpm db:seed
 pnpm bootstrap:admin-profile
+pnpm auth:set-password
 ```
+
+## Internal Auth users
+
+SEBASAM uses username-style login for staff, while Supabase Auth still stores email-based
+identities internally. The visible username `pablo` maps to `pablo@sebasam.local`.
+
+For the MVP, staff accounts are controlled internally. Do not enable public sign-up.
+
+Create a new internal Auth user or reset an existing user's password with the local/admin script:
+
+```bash
+AUTH_USERNAME="pablo" \
+AUTH_PASSWORD="temporary-password" \
+SUPABASE_SERVICE_ROLE_KEY="<server-only-service-role-key>" \
+pnpm auth:set-password
+```
+
+If the Auth user already exists, pass its UUID to reset the password:
+
+```bash
+AUTH_USERNAME="pablo" \
+AUTH_PASSWORD="new-temporary-password" \
+AUTH_USER_ID="<supabase-auth-user-uuid>" \
+SUPABASE_SERVICE_ROLE_KEY="<server-only-service-role-key>" \
+pnpm auth:set-password
+```
+
+The service role key is server-only. Never commit it, never expose it to browser code, and never
+prefix it with `NEXT_PUBLIC_`.
 
 ## Admin profile bootstrap
 
@@ -65,6 +95,9 @@ pnpm bootstrap:admin-profile
 The bootstrap script does not create Supabase Auth users and does not need a service role key.
 It only upserts `UserProfile` for an existing Auth user id. `BOOTSTRAP_ROLE` accepts `ADMIN`
 or `ADMIN_ASSISTANT`.
+
+Future admin password management can become an app screen, but it must use Radix primitives and
+Tailwind wrappers derived from the Figma design system instead of invented visual styling.
 
 ## Deploy pipeline
 

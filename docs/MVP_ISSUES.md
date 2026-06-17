@@ -13,6 +13,17 @@ Este documento es un borrador revisable de planificación. Todavía no reemplaza
 
 Empezar por el **Issue 1: Endurecimiento del setup del proyecto y revisión de documentación de despliegue**. Reduce riesgo de configuración antes de que el esquema, la autenticación y el despliegue dependan de las mismas suposiciones de entorno.
 
+## Follow-up de autenticación antes del Issue 5
+
+Antes de avanzar con clientes, validar el acceso real de Pablo como admin interno:
+
+- [x] `SUPABASE_SERVICE_ROLE_KEY` está disponible solo en entorno local/admin, nunca en frontend.
+- [x] `pnpm auth:set-password` puede crear o resetear la contraseña de `pablo@sebasam.local` sin correo real.
+- [x] `UserProfile` de Pablo existe con `role = ADMIN`.
+- [x] Pablo puede autenticarse con username `pablo` y contraseña temporal; queda pendiente solo una prueba manual en `/admin/login` desde navegador.
+
+La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de clientes; cuando se implemente debe usar Radix para comportamiento/accesibilidad y wrappers Tailwind derivados de Figma, sin inventar línea visual.
+
 ## Issues
 
 ### Issue 1: Endurecimiento del setup del proyecto y revisión de documentación de despliegue
