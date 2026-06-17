@@ -1,11 +1,11 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth/session";
+import { requireOperationalRole } from "@/lib/auth/session";
 import { customerInputSchema } from "./schemas";
 
 export async function createCustomer(input: unknown) {
-  await requireUser();
+  await requireOperationalRole();
 
   const data = customerInputSchema.parse(input);
 

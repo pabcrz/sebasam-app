@@ -1,8 +1,8 @@
 import { logoutAdmin } from "@/features/auth/actions";
-import { requireUser } from "@/lib/auth/session";
+import { requireProfileForPage } from "@/lib/auth/session";
 
 export default async function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const user = await requireUser();
+  const { profile } = await requireProfileForPage();
 
   return (
     <main className="min-h-dvh">
@@ -10,7 +10,9 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em]">SEBASAM Operations</p>
-            <p className="mt-1 text-sm text-neutral-600">Signed in as {user.email}</p>
+            <p className="mt-1 text-sm text-neutral-600">
+              Signed in as {profile.displayName} ({profile.role})
+            </p>
           </div>
           <form action={logoutAdmin}>
             <button

@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth/session";
+import { requireOperationalRole } from "@/lib/auth/session";
 
 export async function listWorkOrders() {
-  await requireUser();
+  await requireOperationalRole();
 
   return prisma.workOrder.findMany({
     include: {

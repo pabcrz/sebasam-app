@@ -10,8 +10,13 @@ datasource db {
 
 enum UserRole {
   ADMIN
-  COORDINATOR
+  ADMIN_ASSISTANT
   WORKER
+}
+
+enum WorkerKind {
+  MASTER
+  HELPER
 }
 
 enum CustomerStatus {
@@ -51,13 +56,15 @@ enum AssignmentStatus {
 }
 
 model UserProfile {
-  id          String   @id @db.Uuid
-  email       String   @unique
+  id          String      @id @db.Uuid
+  username    String      @unique
+  email       String      @unique
   displayName String
-  role        UserRole @default(WORKER)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  role        UserRole    @default(WORKER)
+  workerKind  WorkerKind?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   assignments      WorkAssignment[]
   executionRecords ExecutionRecord[]

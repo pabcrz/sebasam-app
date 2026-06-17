@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth/session";
+import { requireOperationalRole } from "@/lib/auth/session";
 
 export async function listCustomers() {
-  await requireUser();
+  await requireOperationalRole();
 
   return prisma.customer.findMany({
     orderBy: { name: "asc" },

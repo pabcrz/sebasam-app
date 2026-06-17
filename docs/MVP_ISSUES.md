@@ -62,12 +62,14 @@ Empezar por el **Issue 1: Endurecimiento del setup del proyecto y revisión de d
 **Objetivo:** Guardar roles de la app y datos de perfil operativo en `UserProfile`.
 
 **Criterios de aceptación:**
-- [ ] `UserProfile` está vinculado con la identidad de Supabase Auth.
-- [ ] Al menos un perfil administrador puede inicializarse de forma segura.
-- [ ] Las actions protegidas pueden validar roles mediante Prisma.
-- [ ] La falta de perfil tiene un error claro o un camino explícito de setup.
+- [x] `UserProfile` está vinculado con la identidad de Supabase Auth.
+- [x] Al menos un perfil administrador puede inicializarse de forma segura.
+- [x] Las actions protegidas pueden validar roles mediante Prisma.
+- [x] La falta de perfil tiene un error claro o un camino explícito de setup.
 
 **Dependencias/notas:** Depende de los Issues 2 y 3.
+
+**Nota de verificación:** Verificado en la rama `feature/4-userprofile-role-bootstrap`: `UserProfile.id` sigue siendo el UUID de Supabase Auth, se agregó `username` único, `UserRole` separa `ADMIN`, `ADMIN_ASSISTANT` y `WORKER`, y `WorkerKind` separa clasificación laboral. Las actions/queries operativas usan helpers Prisma de perfil/rol, `/admin/setup-required` cubre perfiles faltantes, y `pnpm bootstrap:admin-profile` permite inicializar un perfil admin para un Auth user existente. `pnpm prisma migrate dev`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
 
 ### Issue 5: Alta, búsqueda y edición básica de clientes
 
