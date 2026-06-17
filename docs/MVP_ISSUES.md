@@ -87,12 +87,14 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 **Objetivo:** Agregar el flujo mínimo de gestión de clientes necesario antes de cotizaciones.
 
 **Criterios de aceptación:**
-- [ ] Los administradores pueden crear clientes.
-- [ ] Los administradores pueden buscar clientes por identificadores útiles.
-- [ ] Los administradores pueden editar datos básicos de clientes.
-- [ ] La validación de entrada evita registros de cliente inválidos.
+- [x] Los administradores pueden crear clientes.
+- [x] Los administradores pueden buscar clientes por identificadores útiles.
+- [x] Los administradores pueden editar datos básicos de clientes.
+- [x] La validación de entrada evita registros de cliente inválidos.
 
 **Dependencias/notas:** Depende del Issue 4.
+
+**Nota de verificación:** Verificado en la rama `feature/5-customer-basics`: existe `/admin/customers` para alta y búsqueda por nombre, email, teléfono, dirección o notas; existe `/admin/customers/[id]/edit` para editar datos básicos y estado; las queries/actions operativas usan `requireOperationalRole` y Prisma; la validación Zod normaliza campos opcionales vacíos y rechaza registros inválidos. `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
 
 ### Issue 6: Creación de cotización borrador con ítems, totales y validación Zod
 
