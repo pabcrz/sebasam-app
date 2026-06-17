@@ -34,12 +34,14 @@ Empezar por el **Issue 1: Endurecimiento del setup del proyecto y revisión de d
 **Objetivo:** Crear el primer esquema operativo sobre Supabase Postgres usando Prisma.
 
 **Criterios de aceptación:**
-- [ ] Las cadenas de conexión del proyecto Supabase están configuradas mediante `DATABASE_URL` y `DIRECT_URL`.
-- [ ] Prisma tiene una migración inicial para las entidades centrales del MVP.
-- [ ] El flujo de migraciones usa `prisma migrate dev` en local y `prisma migrate deploy` para releases.
-- [ ] La generación de Prisma Client funciona después de aplicar la migración.
+- [x] Las cadenas de conexión del proyecto Supabase están configuradas mediante `DATABASE_URL` y `DIRECT_URL`.
+- [x] Prisma tiene una migración inicial para las entidades centrales del MVP.
+- [x] El flujo de migraciones usa `prisma migrate dev` en local y `prisma migrate deploy` para releases.
+- [x] La generación de Prisma Client funciona después de aplicar la migración.
 
 **Dependencias/notas:** Depende del Issue 1.
+
+**Nota de verificación:** Verificado en la rama `feature/2-supabase-first-migration`: `.env` contiene `DATABASE_URL` y `DIRECT_URL` para Supabase sin valores plantilla; `pnpm prisma migrate reset --force --skip-seed` aplicó `20260617000000_init`; `pnpm prisma:generate`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
 
 ### Issue 3: Login con Auth y base de sesión admin
 

@@ -129,7 +129,7 @@ model WorkOrder {
 model WorkAssignment {
   id          String           @id @default(cuid())
   workOrderId String
-  workerId    String
+  workerId    String           @db.Uuid
   status      AssignmentStatus @default(ASSIGNED)
   assignedAt  DateTime         @default(now())
   notes       String?
@@ -143,7 +143,7 @@ model WorkAssignment {
 model ExecutionRecord {
   id          String   @id @default(cuid())
   workOrderId String
-  workerId    String?
+  workerId    String?  @db.Uuid
   summary     String
   happenedAt  DateTime @default(now())
   createdAt   DateTime @default(now())
