@@ -20,12 +20,14 @@ Empezar por el **Issue 1: Endurecimiento del setup del proyecto y revisión de d
 **Objetivo:** Confirmar que el entorno local y el flujo de despliegue están listos para desarrollar el MVP.
 
 **Criterios de aceptación:**
-- [ ] `.env.example` coincide con las variables documentadas en `README.md`.
-- [ ] `pnpm install`, `pnpm lint`, `pnpm typecheck` y `pnpm build` están documentados y verificados.
-- [ ] Los comandos de Prisma para generar cliente, crear migraciones de desarrollo y aplicar migraciones de despliegue están documentados.
-- [ ] Las notas de configuración de Vercel/Supabase son suficientemente claras para que una persona nueva pueda preparar el entorno.
+- [x] `.env.example` coincide con las variables documentadas en `README.md`.
+- [x] `pnpm install`, `pnpm lint`, `pnpm typecheck` y `pnpm build` están documentados y verificados.
+- [x] Los comandos de Prisma para generar cliente, crear migraciones de desarrollo y aplicar migraciones de despliegue están documentados.
+- [x] Las notas de configuración de Vercel/Supabase son suficientemente claras para que una persona nueva pueda preparar el entorno.
 
 **Dependencias/notas:** Hacer antes del trabajo de base de datos y autenticación.
+
+**Nota de verificación:** Verificado en la rama `feature/1-setup-hardening`: `.env.example` coincide con las variables documentadas en `README.md`; los comandos `pnpm install`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente; los comandos de Prisma `pnpm prisma:generate`, `pnpm db:migrate:dev` y `pnpm db:migrate:deploy` están documentados; las notas de Vercel/Supabase cubren las variables requeridas y el paso explícito de `pnpm db:migrate:deploy` antes del build.
 
 ### Issue 2: Proyecto Supabase y primera migración Prisma
 
