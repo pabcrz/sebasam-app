@@ -2,9 +2,12 @@
 
 import { QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { requireOperationalRole } from "@/lib/auth/session";
 import { executionRecordInputSchema, workOrderInputSchema } from "./schemas";
 
 export async function createWorkOrder(input: unknown) {
+  await requireOperationalRole();
+
   const data = workOrderInputSchema.parse(input);
   const quote = await prisma.quote.findUniqueOrThrow({ where: { id: data.quoteId } });
 
@@ -24,6 +27,8 @@ export async function createWorkOrder(input: unknown) {
 }
 
 export async function recordExecution(input: unknown) {
+  await requireOperationalRole();
+
   const data = executionRecordInputSchema.parse(input);
 
   return prisma.executionRecord.create({

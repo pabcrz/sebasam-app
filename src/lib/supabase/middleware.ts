@@ -1,6 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
+const protectedAdminPrefix = "/admin";
+const loginPath = "/admin/login";
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -23,7 +26,27 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const isProtectedAdminRoute =
+    request.nextUrl.pathname === protectedAdminPrefix ||
+    (request.nextUrl.pathname.startsWith(`${protectedAdminPrefix}/`) &&
+      request.nextUrl.pathname !== loginPath);
+
+  if (isProtectedAdminRoute && !user) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = loginPath;
+    redirectUrl.search = "";
+
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+
+    return redirectResponse;
+  }
 
   return response;
 }

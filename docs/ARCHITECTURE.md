@@ -22,6 +22,22 @@ Feature folders group input schemas, server actions, and read queries:
 
 Shared infrastructure stays in `src/lib`, currently Prisma and Supabase helpers.
 
+## Auth and app roles
+
+Supabase Auth identity is linked to `UserProfile.id` by the Auth user UUID. Login uses the
+internal email derived from the visible username, but authorization always checks the Prisma
+profile role. Access roles are `ADMIN`, `ADMIN_ASSISTANT`, and `WORKER`; worker labor
+classification is stored separately as nullable `workerKind` (`MASTER` or `HELPER`).
+
+Internal staff passwords are controlled by admins, not public sign-up. Use server-only service
+role tooling for Auth user creation/reset until the future admin screen exists.
+
+## UI source of truth
+
+Figma is the source of truth for final screens and components. Technical issues may add neutral
+functional UI only. Future UI implementation should use Radix primitives for behavior/accessibility
+and Tailwind wrappers that encode the Figma design system.
+
 ## MVP boundaries
 
 The initial target is an installable PWA for Android Chrome. APK packaging and tokenized customer portals are intentionally out of scope.

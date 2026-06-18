@@ -26,7 +26,7 @@ New clean operational app for SEBASAM quotes, work orders, assignments, and exec
 | Variable | Purpose |
 |----------|---------|
 | `DATABASE_URL` | Supabase pooled Postgres URL for runtime. |
-| `DIRECT_URL` | Supabase direct Postgres URL for Prisma CLI migrations. |
+| `DIRECT_URL` | Supabase non-transaction URL for Prisma CLI migrations: Direct connection preferred, Session pooler accepted when Direct is unreachable. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Browser-safe Supabase project URL. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser-safe Supabase anonymous key. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional server-only key. Never expose it as `NEXT_PUBLIC_*`. |
@@ -42,7 +42,62 @@ pnpm prisma:generate
 pnpm db:migrate:dev
 pnpm db:migrate:deploy
 pnpm db:seed
+pnpm bootstrap:admin-profile
+pnpm auth:set-password
 ```
+
+## Internal Auth users
+
+SEBASAM uses username-style login for staff, while Supabase Auth still stores email-based
+identities internally. The visible username `pablo` maps to `pablo@sebasam.local`.
+
+For the MVP, staff accounts are controlled internally. Do not enable public sign-up.
+
+Create a new internal Auth user or reset an existing user's password with the local/admin script:
+
+```bash
+AUTH_USERNAME="pablo" \
+AUTH_PASSWORD="temporary-password" \
+SUPABASE_SERVICE_ROLE_KEY="<server-only-service-role-key>" \
+pnpm auth:set-password
+```
+
+If the Auth user already exists, pass its UUID to reset the password:
+
+```bash
+AUTH_USERNAME="pablo" \
+AUTH_PASSWORD="new-temporary-password" \
+AUTH_USER_ID="<supabase-auth-user-uuid>" \
+SUPABASE_SERVICE_ROLE_KEY="<server-only-service-role-key>" \
+pnpm auth:set-password
+```
+
+The service role key is server-only. Never commit it, never expose it to browser code, and never
+prefix it with `NEXT_PUBLIC_`.
+
+## Admin profile bootstrap
+
+Supabase Auth owns identity and sessions. Create the Auth user manually in Supabase first,
+using the internal email that matches the visible login username, for example
+`sebas@sebasam.local` for username `sebas`.
+
+Then create or update the matching app profile with Prisma:
+
+```bash
+BOOTSTRAP_AUTH_USER_ID="<supabase-auth-user-uuid>" \
+BOOTSTRAP_USERNAME="sebas" \
+BOOTSTRAP_EMAIL="sebas@sebasam.local" \
+BOOTSTRAP_DISPLAY_NAME="Sebas" \
+BOOTSTRAP_ROLE="ADMIN" \
+pnpm bootstrap:admin-profile
+```
+
+The bootstrap script does not create Supabase Auth users and does not need a service role key.
+It only upserts `UserProfile` for an existing Auth user id. `BOOTSTRAP_ROLE` accepts `ADMIN`
+or `ADMIN_ASSISTANT`.
+
+Future admin password management can become an app screen, but it must use Radix primitives and
+Tailwind wrappers derived from the Figma design system instead of invented visual styling.
 
 ## Deploy pipeline
 

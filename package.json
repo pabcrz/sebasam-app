@@ -8,10 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test:vehicle": "tsx scripts/verify-vehicle-rules.ts",
     "prisma:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "bootstrap:admin-profile": "tsx scripts/bootstrap-admin-profile.ts",
+    "auth:set-password": "tsx scripts/set-auth-password.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",

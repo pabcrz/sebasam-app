@@ -26,6 +26,7 @@ This is the canonical workflow for AI assistants working in this private reposit
 - Do not modify files, dependencies, formatting, generated artifacts, or docs outside the issue scope unless required.
 - If an out-of-scope change is required, document why in the PR or handoff summary.
 - If implementation reveals extra work, create or request a follow-up issue instead of silently bundling it.
+- Do not invent final visual design. Use neutral functional UI unless the task explicitly provides Figma screens/components or design-system instructions.
 - Keep the repository private.
 - Never commit secrets.
 - Never commit `.env`.
