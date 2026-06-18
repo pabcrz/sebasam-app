@@ -81,16 +81,35 @@ model Customer {
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
-  quotes Quote[]
+  quotes   Quote[]
+  vehicles Vehicle[]
+}
+
+model Vehicle {
+  id         String   @id @default(cuid())
+  customerId String
+  brand      String
+  model      String
+  year       Int?
+  color      String?
+  plate      String   @unique
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  quotes   Quote[]
 }
 
 model Quote {
   id             String      @id @default(cuid())
   customerId     String
+  vehicleId      String?
   number         String      @unique
   status         QuoteStatus @default(DRAFT)
   title          String
   description    String?
+  vehicleSnapshot Json?
   subtotalCents  Int         @default(0)
   taxCents       Int         @default(0)
   totalCents     Int         @default(0)
@@ -100,6 +119,7 @@ model Quote {
   updatedAt      DateTime    @updatedAt
 
   customer  Customer    @relation(fields: [customerId], references: [id])
+  vehicle   Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   items     QuoteItem[]
   workOrder WorkOrder?
 }

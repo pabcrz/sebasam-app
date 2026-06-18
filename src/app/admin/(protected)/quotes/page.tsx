@@ -19,11 +19,31 @@ type QuotesPageProps = {
 const itemTypes = Object.values(QuoteItemType);
 const itemRows = Array.from({ length: 5 }, (_, index) => index);
 
+type VehicleSnapshotView = {
+  plate?: unknown;
+  brand?: unknown;
+  model?: unknown;
+};
+
 function formatCents(cents: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "MXN",
   }).format(cents / 100);
+}
+
+function formatSnapshotVehicle(snapshot: unknown) {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    return "No vehicle";
+  }
+
+  const vehicle = snapshot as VehicleSnapshotView;
+  const plate = typeof vehicle.plate === "string" ? vehicle.plate : "No plate";
+  const brand = typeof vehicle.brand === "string" ? vehicle.brand : "";
+  const model = typeof vehicle.model === "string" ? vehicle.model : "";
+  const description = [brand, model].filter(Boolean).join(" ");
+
+  return description ? `${plate} — ${description}` : plate;
 }
 
 export default async function QuotesPage({ searchParams }: QuotesPageProps) {
@@ -85,6 +105,31 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
           <span>Description</span>
           <textarea name="description" className="border px-3 py-2" rows={3} />
         </label>
+        <fieldset className="grid gap-3 border p-4">
+          <legend className="px-1 text-sm font-medium">Vehicle</legend>
+          <div className="grid gap-3 md:grid-cols-[160px_1fr_1fr_140px_120px]">
+            <label className="grid gap-2">
+              <span>Plates</span>
+              <input name="plate" required className="border px-3 py-2" />
+            </label>
+            <label className="grid gap-2">
+              <span>Brand</span>
+              <input name="brand" required className="border px-3 py-2" />
+            </label>
+            <label className="grid gap-2">
+              <span>Model</span>
+              <input name="model" required className="border px-3 py-2" />
+            </label>
+            <label className="grid gap-2">
+              <span>Color</span>
+              <input name="color" className="border px-3 py-2" />
+            </label>
+            <label className="grid gap-2">
+              <span>Year</span>
+              <input name="year" type="number" min="1900" max={new Date().getFullYear() + 1} className="border px-3 py-2" />
+            </label>
+          </div>
+        </fieldset>
         <label className="flex items-center gap-2">
           <input name="administrative" type="checkbox" />
           <span>Administrative quote</span>
@@ -148,6 +193,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
               <tr className="border-b">
                 <th className="py-3 pr-4">Number</th>
                 <th className="py-3 pr-4">Customer</th>
+                <th className="py-3 pr-4">Vehicle</th>
                 <th className="py-3 pr-4">Title</th>
                 <th className="py-3 pr-4">Status</th>
                 <th className="py-3 pr-4">Work order</th>
@@ -161,6 +207,11 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 <tr key={quote.id} className="border-b align-top">
                   <td className="py-3 pr-4 font-medium">{quote.number}</td>
                   <td className="py-3 pr-4">{quote.customer.name}</td>
+                  <td className="py-3 pr-4">
+                    {quote.vehicle
+                      ? `${quote.vehicle.plate} — ${quote.vehicle.brand} ${quote.vehicle.model}`
+                      : formatSnapshotVehicle(quote.vehicleSnapshot)}
+                  </td>
                   <td className="py-3 pr-4">{quote.title}</td>
                   <td className="py-3 pr-4">{quote.status}</td>
                   <td className="py-3 pr-4">
@@ -198,7 +249,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
               ))}
               {quotes.length === 0 ? (
                 <tr>
-                  <td className="py-6" colSpan={8}>
+                  <td className="py-6" colSpan={9}>
                     No quotes found.
                   </td>
                 </tr>

@@ -96,6 +96,22 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Nota de verificación:** Verificado en la rama `feature/5-customer-basics`: existe `/admin/customers` para alta y búsqueda por nombre, email, teléfono, dirección o notas; existe `/admin/customers/[id]/edit` para editar datos básicos y estado; las queries/actions operativas usan `requireOperationalRole` y Prisma; la validación Zod normaliza campos opcionales vacíos y rechaza registros inválidos. `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
 
+### Issue 5.1: Entidad de Vehículo y vinculación en Cotizaciones
+
+**Objetivo:** Agregar una entidad explícita de vehículo vinculada al cliente y congelar sus datos dentro de cada cotización para preservar el contexto histórico del trabajo.
+
+**Criterios de aceptación:**
+- [x] Existe `Vehicle` como entidad operativa vinculada a `Customer`.
+- [x] `Quote` puede referenciar opcionalmente un `Vehicle` y guarda `vehicleSnapshot` con placa, marca, modelo, color y año al momento de creación.
+- [x] La creación de cotizaciones permite capturar placa, marca, modelo, color y año en línea, sin obligar al admin a registrar primero el vehículo en otra pantalla.
+- [x] La creación de cotizaciones ejecuta un flujo `findOrCreateVehicle`: reutiliza el vehículo del cliente cuando la placa ya existe y crea uno nuevo cuando no existe.
+- [x] El listado de cotizaciones muestra el vehículo asociado o el snapshot histórico disponible.
+- [x] `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+
+**Dependencias/notas:** Depende de los Issues 5, 6 y 7. Mantener la UI neutral y funcional hasta que Figma defina la línea visual final.
+
+**Nota de verificación:** Verificado en la rama `feature/5-1-customer-vehicles`: Prisma agrega `Vehicle` vinculado a `Customer`, `Quote.vehicleId` opcional con `onDelete: SetNull` y `vehicleSnapshot` JSON; la creación de cotizaciones captura vehículo en línea y ejecuta `findOrCreateVehicle` dentro de la transacción antes de guardar la cotización; el listado de cotizaciones muestra vehículo vinculado o snapshot histórico. `pnpm prisma migrate dev --name add_customer_vehicles`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+
 ### Issue 6: Creación de cotización borrador con ítems, totales y validación Zod
 
 **Objetivo:** Crear cotizaciones en borrador con líneas de detalle y totales confiables.

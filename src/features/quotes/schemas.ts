@@ -1,5 +1,6 @@
 import { QuoteItemType } from "@prisma/client";
 import { z } from "zod";
+import { vehicleInputSchema } from "@/features/vehicles/schemas";
 
 const optionalTrimmedString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -36,6 +37,7 @@ export const quoteItemInputSchema = z.object({
 
 export const quoteInputSchema = z.object({
   customerId: z.string().min(1),
+  vehicle: vehicleInputSchema.omit({ customerId: true, notes: true }),
   title: z.string().trim().min(1, "Quote title is required").max(160),
   description: optionalTrimmedString,
   administrative: z.boolean().default(false),

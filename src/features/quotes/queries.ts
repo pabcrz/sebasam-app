@@ -7,6 +7,7 @@ export async function listQuotes() {
   return prisma.quote.findMany({
     include: {
       customer: true,
+      vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
       workOrder: true,
     },

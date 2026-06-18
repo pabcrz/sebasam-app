@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { Prisma, QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
+import { findOrCreateVehicle } from "@/features/vehicles/actions";
+import { createVehicleSnapshot } from "@/features/vehicles/schemas";
 import { quoteFormInputSchema, quoteInputSchema } from "./schemas";
 
 const quotesPath = "/admin/quotes";
@@ -38,6 +40,13 @@ function quoteFormDataToInput(formData: FormData) {
 
   return {
     customerId: formData.get("customerId"),
+    vehicle: {
+      plate: formData.get("plate"),
+      brand: formData.get("brand"),
+      model: formData.get("model"),
+      color: formData.get("color"),
+      year: formData.get("year"),
+    },
     title: formData.get("title"),
     description: formData.get("description"),
     administrative: formData.get("administrative") === "on",
@@ -77,19 +86,30 @@ export async function createQuote(input: unknown) {
   });
   const subtotalCents = items.reduce((total, item) => total + item.totalCents, 0);
 
-  return prisma.quote.create({
-    data: {
+  return prisma.$transaction(async (tx) => {
+    const vehicleInput = {
+      ...data.vehicle,
       customerId: data.customerId,
-      number: createQuoteNumber(),
-      status: "DRAFT",
-      title: data.title,
-      description: nullableOptional(data.description),
-      administrative: data.administrative,
-      subtotalCents,
-      taxCents: 0,
-      totalCents: subtotalCents,
-      items: { create: items },
-    },
+    };
+    const vehicle = await findOrCreateVehicle(tx, vehicleInput);
+    const vehicleSnapshot = createVehicleSnapshot(vehicleInput);
+
+    return tx.quote.create({
+      data: {
+        customerId: data.customerId,
+        vehicleId: vehicle.id,
+        vehicleSnapshot,
+        number: createQuoteNumber(),
+        status: "DRAFT",
+        title: data.title,
+        description: nullableOptional(data.description),
+        administrative: data.administrative,
+        subtotalCents,
+        taxCents: 0,
+        totalCents: subtotalCents,
+        items: { create: items },
+      },
+    });
   });
 }
 
