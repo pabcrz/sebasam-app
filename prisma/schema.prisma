@@ -88,17 +88,19 @@ model Customer {
 model Vehicle {
   id         String   @id @default(cuid())
   customerId String
-  brand      String
+  brand      String?
   model      String
   year       Int?
   color      String?
-  plate      String   @unique
+  plate      String?
   notes      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   quotes   Quote[]
+
+  @@unique([customerId, plate])
 }
 
 model Quote {

@@ -112,6 +112,22 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Nota de verificación:** Verificado en la rama `feature/5-1-customer-vehicles`: Prisma agrega `Vehicle` vinculado a `Customer`, `Quote.vehicleId` opcional con `onDelete: SetNull` y `vehicleSnapshot` JSON; la creación de cotizaciones captura vehículo en línea y ejecuta `findOrCreateVehicle` dentro de la transacción antes de guardar la cotización; el listado de cotizaciones muestra vehículo vinculado o snapshot histórico. `pnpm prisma migrate dev --name add_customer_vehicles`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
 
+### Issue 5.2: Placas opcionales en cotización
+
+**Objetivo:** Permitir cotizar cuando todavía no se conocen las placas del vehículo, conservando el modelo como dato mínimo.
+
+**Criterios de aceptación:**
+- [x] `Vehicle.plate` es opcional y no obliga a capturar placas falsas.
+- [x] `Vehicle.brand` es opcional porque en algunas cotizaciones solo se conoce el modelo.
+- [x] La creación de cotizaciones sigue requiriendo modelo del vehículo.
+- [x] Si hay placas, el sistema reutiliza el vehículo por cliente y placa normalizada.
+- [x] Si no hay placas, el sistema crea un vehículo nuevo sin deduplicar por marca/modelo/color.
+- [x] El snapshot de la cotización conserva placa y marca como valores opcionales.
+
+**Dependencias/notas:** Depende del Issue 5.1. Las placas podrán actualizarse después durante el reporte de trabajo del maestro.
+
+**Nota de verificación:** Verificado en la rama `feature/5-2-optional-vehicle-plates`: Prisma elimina la unicidad global de placas y permite `plate`/`brand` nulos; la validación permite placas y marca vacías, pero mantiene `model` requerido; `findOrCreateVehicle` reutiliza solo por `customerId + plate` cuando hay placa y crea un vehículo nuevo cuando no la hay. `pnpm prisma migrate dev`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+
 ### Issue 6: Creación de cotización borrador con ítems, totales y validación Zod
 
 **Objetivo:** Crear cotizaciones en borrador con líneas de detalle y totales confiables.
@@ -189,3 +205,15 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 - [ ] Una rama de release puede promoverse a `main` mediante PR.
 
 **Dependencias/notas:** Depende del Issue 2 y debería verificarse antes del primer release listo para producción.
+
+### Issue 12: Localización del sistema a español de México
+
+**Objetivo:** Asegurar que toda la experiencia operativa visible para usuarios de SEBASAM use español de México consistente.
+
+**Criterios de aceptación:**
+- [ ] Las pantallas administrativas usan español de México en títulos, etiquetas, botones, mensajes de error y estados visibles.
+- [ ] Los textos operativos evitan anglicismos innecesarios cuando exista una opción natural en español de México.
+- [ ] Los mensajes de validación mostrados al usuario están localizados.
+- [ ] Los identificadores técnicos, nombres de archivos, código y migraciones permanecen en inglés salvo que el contexto del proyecto indique lo contrario.
+
+**Dependencias/notas:** Puede hacerse por etapas mientras se tocan pantallas existentes, pero antes del primer release de producción debe revisarse de punta a punta.

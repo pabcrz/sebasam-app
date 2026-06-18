@@ -5,19 +5,26 @@ const optionalTrimmedString = z.preprocess(
   z.string().trim().optional(),
 );
 
+function optionalTrimmedStringWithMax(max: number) {
+  return z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().trim().max(max).optional(),
+  );
+}
+
 export const vehicleInputSchema = z.object({
   customerId: z.string().min(1),
-  plate: z.string().trim().min(1, "Vehicle plate is required").max(40),
-  brand: z.string().trim().min(1, "Vehicle brand is required").max(80),
-  model: z.string().trim().min(1, "Vehicle model is required").max(80),
+  plate: optionalTrimmedStringWithMax(40),
+  brand: optionalTrimmedStringWithMax(80),
+  model: z.string().trim().min(1, "El modelo del vehículo es obligatorio").max(80),
   color: optionalTrimmedString,
   year: z.preprocess(
     (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
     z.coerce
       .number()
-      .int("Vehicle year must be a whole number")
-      .min(1900, "Vehicle year must be 1900 or later")
-      .max(new Date().getFullYear() + 1, "Vehicle year cannot be more than one year in the future")
+      .int("El año del vehículo debe ser un número entero")
+      .min(1900, "El año del vehículo debe ser 1900 o posterior")
+      .max(new Date().getFullYear() + 1, "El año del vehículo no puede ser mayor al próximo año")
       .optional(),
   ),
   notes: optionalTrimmedString,
@@ -26,21 +33,23 @@ export const vehicleInputSchema = z.object({
 export type VehicleInput = z.infer<typeof vehicleInputSchema>;
 
 export type VehicleSnapshot = {
-  plate: string;
-  brand: string;
+  plate: string | null;
+  brand: string | null;
   model: string;
   color: string | null;
   year: number | null;
 };
 
-export function normalizeVehiclePlate(plate: string) {
-  return plate.trim().toUpperCase();
+export function normalizeVehiclePlate(plate: string | null | undefined) {
+  const normalizedPlate = plate?.trim().toUpperCase();
+
+  return normalizedPlate || null;
 }
 
 export function createVehicleSnapshot(input: VehicleInput): VehicleSnapshot {
   return {
     plate: normalizeVehiclePlate(input.plate),
-    brand: input.brand.trim(),
+    brand: input.brand?.trim() ?? null,
     model: input.model.trim(),
     color: input.color ?? null,
     year: input.year ?? null,

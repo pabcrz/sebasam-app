@@ -7,22 +7,46 @@ export async function findOrCreateVehicle(tx: VehicleTransactionClient, input: V
   const data = vehicleInputSchema.parse(input);
   const plate = normalizeVehiclePlate(data.plate);
 
-  const existingVehicle = await tx.vehicle.findUnique({
-    where: { plate },
-  });
+  const existingVehicle = plate
+    ? await tx.vehicle.findFirst({
+        where: {
+          customerId: data.customerId,
+          plate,
+        },
+      })
+    : null;
 
   if (existingVehicle) {
-    if (existingVehicle.customerId !== data.customerId) {
-      throw new Error("Vehicle plate is already registered to another customer.");
+    const updateData: Prisma.VehicleUpdateInput = {
+      model: data.model,
+    };
+
+    if (data.brand !== undefined) {
+      updateData.brand = data.brand;
     }
 
-    if (existingVehicle.brand !== data.brand || existingVehicle.model !== data.model) {
+    if (data.color !== undefined) {
+      updateData.color = data.color;
+    }
+
+    if (data.year !== undefined) {
+      updateData.year = data.year;
+    }
+
+    if (data.notes !== undefined) {
+      updateData.notes = data.notes;
+    }
+
+    if (
+      existingVehicle.model !== data.model ||
+      (data.brand !== undefined && existingVehicle.brand !== data.brand) ||
+      (data.color !== undefined && existingVehicle.color !== data.color) ||
+      (data.year !== undefined && existingVehicle.year !== data.year) ||
+      (data.notes !== undefined && existingVehicle.notes !== data.notes)
+    ) {
       return tx.vehicle.update({
         where: { id: existingVehicle.id },
-        data: {
-          brand: data.brand,
-          model: data.model,
-        },
+        data: updateData,
       });
     }
 
@@ -33,7 +57,7 @@ export async function findOrCreateVehicle(tx: VehicleTransactionClient, input: V
     data: {
       customerId: data.customerId,
       plate,
-      brand: data.brand,
+      brand: data.brand ?? null,
       model: data.model,
       color: data.color ?? null,
       year: data.year ?? null,
