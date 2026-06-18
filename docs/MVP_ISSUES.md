@@ -158,6 +158,24 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Follow-up UI:** La acción de aprobar cotización debería usar un modal de confirmación cuando se implemente la capa visual real con Radix/Figma.
 
+### Issue 7.5: Base de componentes UI con Figma + Radix
+
+**Objetivo:** Establecer la capa base de componentes de interfaz tokenizada desde Figma, usando Radix como fundamento de accesibilidad y envolviéndolo en `src/components/ui` para que las pantallas no importen Radix directamente.
+
+**Criterios de aceptación:**
+- [x] Los tokens globales de color, radio, sombra, fondo suave, texto secundario, borde y estados se agregan a `src/app/globals.css` a partir de `DESIGN.md`.
+- [x] Se instalan únicamente las dependencias de Radix que se usan: `@radix-ui/react-slot`, `@radix-ui/react-label`, `@radix-ui/react-checkbox`, `@radix-ui/react-select` y `@radix-ui/react-dialog`, más `clsx` para composición de clases.
+- [x] Existen wrappers en `src/components/ui` para `Button`, `Label`, `Input`, `Textarea`, `Checkbox`, `Select`, `Dialog` (con `ConfirmDialog`), `Card`, `Badge`, `Table`, `Spinner` y `Skeleton`.
+- [x] Cada wrapper que corresponde a un primitivo real de Radix lo usa por debajo (`Slot`, `Label`, `Checkbox`, `Select`, `Dialog`).
+- [x] `src/components/ui/index.ts` exporta todos los componentes base de forma ordenada.
+- [x] La pantalla `/admin/quotes` consume los wrappers en lugar de elementos HTML crudos, preservando comportamiento, validación y copia en español de México.
+- [x] `DESIGN.md` o `docs/MVP_ISSUES.md` documenta que las pantallas futuras deben usar wrappers de `src/components/ui` y no importar Radix directamente.
+- [x] `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente después de los cambios.
+
+**Dependencias/notas:** Depende del Issue 7. Debe completarse antes de aplicar la línea visual de Figma a pantallas adicionales. No implementa el Issue 8 ni cambia reglas de negocio.
+
+**Nota de verificación:** Verificado en la rama `feature/7-5-ui-foundation-radix`: se instalaron las dependencias de Radix usadas; los tokens de `DESIGN.md` se reflejan en `src/app/globals.css`; los wrappers de `src/components/ui` usan Radix donde aplica; `/admin/quotes` consume los wrappers sin alterar la lógica de cotizaciones; y `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+
 ### Issue 8: Asignación de `WorkOrder` y registros de ejecución
 
 **Objetivo:** Asignar trabajo y registrar progreso de ejecución para operaciones de campo.

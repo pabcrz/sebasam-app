@@ -27,6 +27,7 @@
 | `--color-bg-soft` | `#F3F6FA` | Fondo de pantalla en light. |
 | `--color-border-light` | `#D7E0EA` | Bordes sutiles en light. |
 | `--color-text-muted` | `#64748B` / `#6B7789` | Texto secundario, placeholders. |
+| `--color-text-muted-fg` | `#475569` | Texto pequeño sobre superficies suaves cuando se necesita contraste AA. |
 
 Gradiente de marca: `linear-gradient(180deg, #004AAD 0%, #001024 100%)`.
 
@@ -97,7 +98,9 @@ Implementar como wrappers Tailwind sobre comportamiento nativo o Radix cuando se
 
 ### Wrappers sobre Radix
 
-Estos componentes viven bajo `components/ui` y nunca exponen Radix directamente a las pantallas.
+Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directamente a las pantallas.
+
+> **Regla del proyecto:** todas las pantallas deben consumir wrappers desde `src/components/ui`. No importar Radix directamente en pantallas, páginas o componentes de dominio; si un primitivo de Radix no está envuelto aún, crear el wrapper en `src/components/ui` antes de usarlo.
 
 | Componente | Uso típico |
 |---|---|
