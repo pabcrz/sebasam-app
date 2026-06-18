@@ -1,6 +1,41 @@
 # SEBASAM Operations App
 
-New clean operational app for SEBASAM quotes, work orders, assignments, and execution records. The MVP target is an installable Android Chrome PWA, not an APK.
+Aplicación operativa limpia para SEBASAM: cotizaciones, órdenes de trabajo, asignaciones y registro de ejecución. El objetivo del MVP es una PWA instalable en Android Chrome, no un APK.
+
+## Resumen del proyecto
+
+| Aspecto | Detalle |
+|---|---|
+| Propósito | Reemplazar búsquedas en archivos/PDF por una web app mobile-first donde los datos operativos vivan en base de datos. |
+| Alcance MVP (actual) | Login admin, clientes, vehículos, cotizaciones en borrador, aprobación → orden de trabajo, PWA foundation. |
+| Fuente de verdad visual | Figma — ver [`DESIGN.md`](./DESIGN.md). |
+| Fuente de verdad de dominio | `prisma/schema.prisma`, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) y este README. |
+| Modelo de dominio | `Quote` y `WorkOrder` separados; cada orden de trabajo nace de una cotización aprobada, incluso para trabajo administrativo urgente. Esto difiere del repo hermano `sebasam`, donde `Cotización` es la entidad central que cambia de fase por estado. |
+| Estado actual | Issues 1–7, 5.1 y 5.2 de [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) completados; Issues 8–12 pendientes. Ver [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md). |
+
+## Documentos del proyecto
+
+- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — reglas de arquitectura, capas y dominio.
+- [`docs/GITFLOW.md`](./docs/GITFLOW.md) — flujo de ramas y PRs.
+- [`docs/AI_WORKFLOW.md`](./docs/AI_WORKFLOW.md) — protocolo de trabajo con asistentes de IA.
+- [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) — borrador de backlog del MVP (solo lectura; no mover ni renombrar).
+- [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md) — comparación del estado actual contra los requisitos del MVP de los repos fuente.
+- [`DESIGN.md`](./DESIGN.md) — sistema de diseño, tokens y componentes basado en Figma.
+
+## Estado de implementación (resumen)
+
+- [x] Setup del proyecto, Prisma + Supabase, login, sesión admin, perfiles/roles.
+- [x] CRUD básico de clientes con búsqueda.
+- [x] Entidad `Vehicle` vinculada a cliente; placas opcionales; snapshot en cotización.
+- [x] Crear cotización borrador con ítems, totales calculados en servidor y validación Zod.
+- [x] Aprobar cotización y crear `WorkOrder` transaccionalmente.
+- [ ] Asignar `WorkOrder` y registrar ejecución.
+- [ ] Finalizar `WorkOrder` y generar PDF/salida final.
+- [ ] Verificar instalabilidad PWA.
+- [ ] Pipeline de despliegue en Vercel.
+- [ ] Localización completa a español de México.
+
+---
 
 ## Quick path
 
@@ -123,3 +158,5 @@ See:
 - `docs/GITFLOW.md` for branch and PR workflow.
 - `docs/AI_WORKFLOW.md` for AI assistant workflow, branch scope, commit discipline, and handoff rules.
 - `docs/MVP_ISSUES.md` for the reviewable MVP issue backlog draft.
+- `docs/MVP_STATUS.md` for the current gap analysis against the source MVP docs.
+- `DESIGN.md` for the Figma-based design system.
