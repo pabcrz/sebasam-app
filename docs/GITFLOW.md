@@ -21,6 +21,9 @@ This repository uses a pragmatic Gitflow model for a small MVP team. The goal is
 - Keep PRs focused on one work unit.
 - Use work-unit commits: code, tests, and docs for the same deliverable stay together.
 - Keep PRs reviewable; split large changes before they become hard to review.
+- Include `Closes #N` in the PR description, where `N` is the issue number.
+- Add exactly one `type:*` label to each PR.
+- Use conventional commits.
 - Keep this repository private.
 
 ## MVP happy path
