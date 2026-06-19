@@ -10,6 +10,8 @@ Aplicación operativa limpia para SEBASAM: cotizaciones, órdenes de trabajo, as
 | Alcance MVP (actual) | Login admin, clientes, vehículos, cotizaciones en borrador, aprobación → orden de trabajo, PWA foundation. |
 | Fuente de verdad visual | Figma — ver [`DESIGN.md`](./DESIGN.md). |
 | Fuente de verdad de dominio | `prisma/schema.prisma`, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) y este README. |
+| Hosting objetivo | Landing pública en `sebasam.com`; app operativa independiente en `app.sebasam.com`. |
+| Rutas objetivo | `/` es el hub role-aware post-login; `/login` es el único login; `/admin` desaparece como namespace. Ver [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md#hosting-and-route-model). |
 | Modelo de dominio | `Quote` y `WorkOrder` separados; cada orden de trabajo nace de una cotización aprobada, incluso para trabajo administrativo urgente. Esto difiere del repo hermano `sebasam`, donde `Cotización` es la entidad central que cambia de fase por estado. |
 | Estado actual | Issues 1–7, 5.1 y 5.2 de [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) completados; Issues 8–12 pendientes. Ver [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md). |
 

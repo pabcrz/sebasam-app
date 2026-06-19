@@ -32,6 +32,38 @@ classification is stored separately as nullable `workerKind` (`MASTER` or `HELPE
 Internal staff passwords are controlled by admins, not public sign-up. Use server-only service
 role tooling for Auth user creation/reset until the future admin screen exists.
 
+## Hosting and route model
+
+`sebasam.com` belongs to the public landing project. This operational app runs on
+`app.sebasam.com` as a separate deployment, without a Next.js `basePath` or shared subpath
+proxy.
+
+The app uses one login and role-aware routing. The root `/` is the post-login hub; it renders
+or redirects based on `UserProfile.role`. The `/admin` namespace is intentionally avoided:
+administrative features use semantic routes, and access is enforced by role guards in the
+server layer instead of by URL prefix.
+
+Target route map:
+
+| Route | Role | Purpose |
+|---|---|---|
+| `/` | `ADMIN`, `ADMIN_ASSISTANT`, `WORKER` | Role-aware home hub after login. |
+| `/login` | Public | Single staff login. |
+| `/cotizacion` | `ADMIN`, `ADMIN_ASSISTANT` | Quote list and creation. |
+| `/cotizacion/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Quote detail and editing. |
+| `/cliente` | `ADMIN`, `ADMIN_ASSISTANT` | Customer list and creation. |
+| `/cliente/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Customer detail and editing. |
+| `/trabajador` | `ADMIN`, `ADMIN_ASSISTANT` | Workshop team management. |
+| `/trabajador/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Worker detail. |
+| `/nomina` | `ADMIN`, `ADMIN_ASSISTANT` | Weekly payroll. |
+| `/mis-trabajos` | `WORKER` | Assigned work for the signed-in worker. |
+| `/mi-nomina` | `WORKER` | Own estimated payroll. |
+| `/trabajo/[id]` | Role-scoped | Work detail with role-specific visibility. |
+| `/c/[token]` | Public customer token | Future tokenized customer portal. |
+
+Route slugs use singular Spanish without accents (`cotizacion`, `nomina`) to keep URLs stable
+and ASCII-only.
+
 ## UI source of truth
 
 Figma is the source of truth for final screens and components. Technical issues may add neutral
