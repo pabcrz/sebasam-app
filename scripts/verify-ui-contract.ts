@@ -15,8 +15,14 @@ function assertNoRadix(source: string, context: string) {
 function checkQuotesPage() {
   const pagePath = "src/app/admin/(protected)/quotes/page.tsx";
   const pageSource = readFileSync(pagePath, "utf8");
+  const builderPath = "src/features/quotes/components/quote-builder.tsx";
+  const builderSource = readFileSync(builderPath, "utf8");
+  const approvalFormPath = "src/features/quotes/components/quote-approval-form.tsx";
+  const approvalFormSource = readFileSync(approvalFormPath, "utf8");
 
   assertNoRadix(pageSource, "Quotes page");
+  assertNoRadix(builderSource, "Quote builder");
+  assertNoRadix(approvalFormSource, "Quote approval form");
 
   // Server-action wiring must remain intact.
   assertIncludes(
@@ -30,7 +36,7 @@ function checkQuotesPage() {
     "Approval form must wire to approveQuoteAndCreateWorkOrderFromForm server action",
   );
   assertIncludes(
-    pageSource,
+    approvalFormSource,
     '<input type="hidden" name="quoteId"',
     "Approval form must carry hidden quoteId field",
   );
@@ -54,7 +60,11 @@ function checkQuotesPage() {
   ];
 
   for (const pattern of requiredFieldPatterns) {
-    assertIncludes(pageSource, pattern, `Missing required form field pattern: ${pattern}`);
+    assertIncludes(
+      pattern === 'name="quoteId"' ? approvalFormSource : builderSource,
+      pattern,
+      `Missing required form field pattern: ${pattern}`,
+    );
   }
 
   // Heading hierarchy must not collapse to all h3.
@@ -63,18 +73,18 @@ function checkQuotesPage() {
 
   // User-facing copy must stay in Mexican Spanish.
   const spanishLabels = [
-    "Cotizaciones en borrador",
-    "Crear cotización en borrador",
-    "Cotizaciones recientes",
-    "Partidas",
-    "Cliente",
-    "Título",
-    "Descripción",
-    "Aprobar y crear orden de trabajo",
+    { label: "Cotizaciones en borrador", source: pageSource },
+    { label: "Crear cotización en borrador", source: builderSource },
+    { label: "Cotizaciones recientes", source: pageSource },
+    { label: "Partidas", source: builderSource },
+    { label: "Cliente", source: builderSource },
+    { label: "Título", source: builderSource },
+    { label: "Descripción", source: builderSource },
+    { label: "Aprobar y crear orden de trabajo", source: approvalFormSource },
   ];
 
-  for (const label of spanishLabels) {
-    assertIncludes(pageSource, label, `Expected Spanish copy missing: ${label}`);
+  for (const { label, source } of spanishLabels) {
+    assertIncludes(source, label, `Expected Spanish copy missing: ${label}`);
   }
 }
 
