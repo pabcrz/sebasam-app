@@ -74,7 +74,7 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 | Funcionalidad | Estado | Evidencia |
 |---|---|---|
 | Folio único por cotización | **Completo** | `Quote.number` con `@unique`. |
-| Estados usados en MVP: `BORRADOR`, `ENVIADA`, `ACEPTADA`, `DECLINADA`, `CANCELADA`, `ESPERA`, `EN_PROCESO` | **Parcial** | Estados existentes (`DRAFT`, `SENT`, `APPROVED`, `CANCELLED`), pero `SENT` no se usa aún. `ESPERA` es un estado operativo de la orden de trabajo entre la aceptación/autorización y el inicio real del trabajo. |
+| Estados objetivo del MVP: `BORRADOR`, `ENVIADA`, `ACEPTADA`, `DECLINADA`, `CANCELADA`, `ESPERA`, `EN_PROCESO` | **Parcial** | Estados existentes (`DRAFT`, `SENT`, `APPROVED`, `CANCELLED`), pero `SENT` no se usa aún. `ESPERA` es un estado operativo pendiente para separar aceptación/autorización del inicio real del trabajo. |
 | Cálculo centralizado de subtotal, IVA y total | **Parcial** | Subtotal/total en servidor; IVA no calculado. |
 | `saldoPendiente = total - totalAbonado` | **Falta** | No hay pagos ni ledger. |
 | Vigencia obligatoria en cotización | **Falta** | Debe calcularse por defecto a 7 días y mostrarse al cliente junto con una nota por volatilidad de precios de materiales. |

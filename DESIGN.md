@@ -203,7 +203,7 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 
 ## Flujo de cotización y estados
 
-Diagrama completo del flujo operativo, desde el login hasta el impacto en ledger y nómina:
+Diagrama del flujo operativo objetivo, desde el login hasta el impacto en ledger y nómina. Varias transiciones siguen pendientes de implementación y están detalladas en `docs/MVP_ISSUES.md`.
 
 ```mermaid
 flowchart LR
@@ -229,20 +229,20 @@ flowchart LR
 |---|---|---|
 | `BORRADOR` | Cotización en construcción | Admin / asistente |
 | `ENVIADA` | Cotización compartida al cliente | Admin al generar link/PDF |
-| `ACEPTADA` | Cliente aceptó todo, o admin autorizó una aceptación externa | Cliente vía link con token, o Admin con nota obligatoria |
+| `ACEPTADA` | Cliente aceptó todo, o admin autorizó una aceptación externa | Objetivo: cliente vía link con token, o Admin con nota obligatoria |
 | `DECLINADA` | Cliente declinó todo | Cliente vía link con token |
 | `CANCELADA` | Admin cancela antes o después de enviar | Admin |
-| `ESPERA` | Cotización/orden aceptada, a la espera de espacio del taller y disponibilidad de maestro | Sistema al aceptar o autorizar |
-| `EN_PROCESO` | WorkOrder activa con empleados asignados | Admin al confirmar espacio y maestro |
+| `ESPERA` | Cotización/orden aceptada, a la espera de espacio del taller y disponibilidad de maestro | Objetivo pendiente: sistema al aceptar o autorizar |
+| `EN_PROCESO` | WorkOrder activa con empleados asignados | Objetivo pendiente: Admin al confirmar espacio y maestro |
 | `AJUSTE_FINAL` | Extras o ajustes antes de cerrar | Admin / empleado autorizado |
 
 ### Reglas de diseño por estado
 
 - `ENVIADA` se dispara al compartir URL pública o PDF.
 - El cliente acepta o declina **todo/nada** mediante link con token expirable.
-- Si el cliente aceptó por fuera del link (p. ej. teléfono), el admin puede marcar la cotización como autorizada con una nota obligatoria de canal/motivo; usa el mismo registro de cotización/alcance.
-- Tras `ACEPTADA`, la orden entra en `ESPERA` hasta que el admin confirme espacio del taller y disponibilidad de maestro.
-- La transición de `ESPERA` a `EN_PROCESO` ocurre al confirmar espacio y maestro; en ese punto se asignan empleados.
+- Objetivo pendiente: si el cliente aceptó por fuera del link (p. ej. teléfono), el admin puede marcar la cotización como autorizada con una nota obligatoria de canal/motivo; usa el mismo registro de cotización/alcance.
+- Objetivo pendiente: tras `ACEPTADA`, la orden entra en `ESPERA` hasta que el admin confirme espacio del taller y disponibilidad de maestro.
+- Objetivo pendiente: la transición de `ESPERA` a `EN_PROCESO` ocurre al confirmar espacio y maestro; en ese punto se asignan empleados.
 - `FACTURADA` no implica pagada; siempre se muestra el estado financiero aparte.
 - El empleado **no ve** pagos, saldos, métodos de pago, factura ni ledger.
 

@@ -7,15 +7,15 @@ Aplicación operativa limpia para SEBASAM: cotizaciones, órdenes de trabajo, as
 | Aspecto | Detalle |
 |---|---|
 | Propósito | Reemplazar búsquedas en archivos/PDF por una web app mobile-first donde los datos operativos vivan en base de datos. |
-| Alcance MVP (actual) | Login admin, clientes, vehículos, cotizaciones en borrador, envío → aceptación/autorización → ESPERA → orden de trabajo, PWA foundation. |
+| Alcance implementado | Login admin, clientes, vehículos, cotizaciones en borrador, aprobación administrativa → orden de trabajo, PWA foundation. |
 | Referencia visual | Figma — ver [`DESIGN.md`](./DESIGN.md). |
 | Referencia de dominio | `prisma/schema.prisma`, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) y este README. |
-| Modelo de dominio | `Quote` y `WorkOrder` separados; cada orden de trabajo nace de una cotización aceptada o autorizada administrativamente, pasa por `ESPERA` antes de `EN_PROCESO`, incluso para trabajo administrativo urgente. |
+| Modelo operativo objetivo | `Quote` y `WorkOrder` separados; el flujo pendiente debe soportar aceptación/autorización, `ESPERA` antes de `EN_PROCESO` y trabajo urgente mediante autorización administrativa auditada. |
 | Estado actual | Issues 1–7, 5.1 y 5.2 de [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) completados; Issues 8–12 pendientes. Ver [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md). |
 
 ## Flujo operativo 🔄
 
-El flujo principal va del login hasta el impacto en cuenta del cliente y nómina. Cada cotización es **todo/nada**: el cliente acepta o declina el conjunto completo. Si el cliente acepta por fuera del link (p. ej. teléfono), el admin puede autorizar la cotización con una nota obligatoria; la evidencia inicial es opcional. La aceptación o autorización no inicia el trabajo inmediatamente: la orden pasa a `ESPERA` hasta confirmar espacio del taller y disponibilidad de maestro.
+Flujo operativo objetivo del MVP pendiente. Cada cotización debe ser **todo/nada**: el cliente acepta o declina el conjunto completo. Si el cliente acepta por fuera del link (p. ej. teléfono), el admin debe poder autorizar la cotización con una nota obligatoria; la evidencia inicial es opcional. La aceptación o autorización no debe iniciar el trabajo inmediatamente: la orden debe pasar a `ESPERA` hasta confirmar espacio del taller y disponibilidad de maestro.
 
 ```mermaid
 flowchart LR
@@ -39,10 +39,10 @@ flowchart LR
 
 | ID | Regla | Detalle |
 |---|---|---|
-| R1 | Estados de cotización | `BORRADOR` → `ENVIADA` → `ACEPTADA` / `DECLINADA`; el admin puede `CANCELADA` en cualquier momento permitido. Tras `ACEPTADA`, la orden pasa a `ESPERA` antes de `EN_PROCESO`. |
+| R1 | Estados de cotización objetivo | `BORRADOR` → `ENVIADA` → `ACEPTADA` / `DECLINADA`; el admin puede `CANCELADA` en cualquier momento permitido. Tras `ACEPTADA`, la orden debe pasar a `ESPERA` antes de `EN_PROCESO`. |
 | R2 | Todo o nada | El cliente acepta o declina la cotización completa; no puede aceptar ítems parciales. |
 | R3 | Token expirable | El link de cliente lleva token con vigencia; expirado → no se procesa la respuesta. |
-| R4 | Aceptación/autorización → WorkOrder | Toda orden de trabajo nace de una cotización aceptada o autorizada administrativamente; se crea en `ESPERA` y pasa a `EN_PROCESO` al confirmar espacio y maestro. |
+| R4 | Aceptación/autorización → WorkOrder | Regla objetivo: toda orden de trabajo debe nacer de una cotización aceptada o autorizada administrativamente; debe crearse en `ESPERA` y pasar a `EN_PROCESO` al confirmar espacio y maestro. |
 | R5 | Asignación controlada | Se asigna 1 maestro + N ayudantes; el empleado solo ve estado operativo y su trabajo. |
 | R6 | Reporte de ejecución | El empleado registra avance empatado contra la cotización aceptada o autorizada administrativamente. |
 | R7 | Extras controlados | Los extras son posibles, pero requieren registro, control y quedan vinculados a la orden. |
@@ -50,7 +50,7 @@ flowchart LR
 | R9 | Cobros, ajustes y adeudo | Se registran pagos con método, ajustes y saldo pendiente. |
 | R10 | Ledger del cliente | Cada movimiento de pago o adeudo impacta el estado de cuenta del cliente. |
 | R11 | Nómina semanal | La ejecución registrada alimenta el cálculo de nómina semanal. |
-| R12 | Autorización administrativa | Si el cliente aceptó por fuera del link (p. ej. teléfono), el admin marca la cotización como autorizada con una nota obligatoria de canal/motivo. No es un flujo separado: usa el mismo registro de cotización/alcance. |
+| R12 | Autorización administrativa | Regla objetivo: si el cliente aceptó por fuera del link (p. ej. teléfono), el admin debe marcar la cotización como autorizada con una nota obligatoria de canal/motivo. No es un flujo separado: usa el mismo registro de cotización/alcance. |
 | R13 | Evidencia inicial | La evidencia inicial es opcional tanto en el borrador como en la autorización administrativa. |
 
 ## Modelo de datos operativo 🗂️
@@ -64,7 +64,7 @@ Este es el modelo de dominio que soporta el flujo. Las primeras entidades existe
 | `Vehicle` | Unidad del cliente | Pertenece a `Customer`; referenciado por `Quote` | ✅ Implementado |
 | `Quote` | Cotización comercial | Tiene `QuoteItem`s; origen de `WorkOrder` | ✅ Implementado |
 | `QuoteItem` | Línea de cotización: material, mano de obra, servicio externo, etc. | Pertenece a `Quote` | ✅ Implementado |
-| `WorkOrder` | Orden de trabajo operativa | Nace de `Quote` aceptada o autorizada administrativamente; tiene assignments y execution records | ✅ Implementado |
+| `WorkOrder` | Orden de trabajo operativa | Implementado como orden vinculada a `Quote`; el flujo `ESPERA` y autorización administrativa auditada siguen pendientes | ✅ Implementado parcial |
 | `WorkAssignment` | Asignación de empleado a orden | Vincula `UserProfile` y `WorkOrder` | ✅ Implementado |
 | `ExecutionRecord` | Registro de ejecución/reporte | Vincula `WorkOrder` y `UserProfile` opcional | ✅ Implementado |
 | `Payment` | Cobro registrado por el admin | Pendiente: vincular `Quote` / `WorkOrder` y `Customer` | 🎯 Objetivo |
@@ -109,7 +109,7 @@ Este es el modelo de dominio que soporta el flujo. Las primeras entidades existe
 | Stack | Next.js App Router, TypeScript strict, Tailwind, Prisma, Supabase Postgres/Auth/Storage, pnpm. |
 | Acceso a datos | Usar Prisma para datos operativos de negocio. No consultar las mismas tablas de negocio mediante helpers de Supabase client. |
 | Auth | Usar Supabase Auth para sesiones. Guardar roles de app y datos de perfil en `UserProfile`. |
-| Cotizaciones y órdenes | Toda `WorkOrder` nace de una `Quote` aceptada o autorizada administrativamente; pasa por `ESPERA` antes de `EN_PROCESO`. Para trabajo urgente, crear y autorizar primero una cotización administrativa con nota de canal/motivo. |
+| Cotizaciones y órdenes | Estado actual: `WorkOrder` nace de `Quote` aprobada. Objetivo pendiente: soportar autorización administrativa auditada y `ESPERA` antes de `EN_PROCESO`. |
 | Disciplina de deploy | `build` ejecuta `prisma generate && next build`. Las migraciones nunca se esconden dentro de `next build`. |
 | Repositorio | Mantener este repositorio privado. |
 | Ramas | Seguir el Gitflow pragmático de `docs/GITFLOW.md`. |
