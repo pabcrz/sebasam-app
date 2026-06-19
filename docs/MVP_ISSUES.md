@@ -194,6 +194,25 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Nota de verificación:** Verificado en la rama `feature/7-6-mobile-first-figma-modes`: `DESIGN.md` incluye contrato de modo claro/oscuro; `next-themes` maneja el tema con `class` en `<html>` e interruptor accesible en español; el shell admin usa navegación inferior en móvil y encabezado deep navy con iconos de `lucide-react`; las pantallas operativas usan wrappers de `src/components/ui` y copia en español de México; no se importa Radix directamente en las páginas; `pnpm test:ui`, `pnpm test:ui-contract`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
 
+### Issue 7.7: Rediseño mobile-first del flujo de cotización
+
+**Objetivo:** Reemplazar el formulario funcional de cotización por un flujo mobile-first alineado a Figma, sin cambiar las reglas de negocio ni los contratos de server actions.
+
+**Criterios de aceptación:**
+- [x] `/admin/quotes` permite crear cotizaciones mediante un flujo por pasos: cliente/unidad, partidas, notas, resumen y preview/envío.
+- [x] Los nombres de campos y contratos de `createQuoteFromForm` se preservan para cliente, vehículo, título, descripción, bandera administrativa e ítems.
+- [x] La aprobación conserva `approveQuoteAndCreateWorkOrderFromForm`, `quoteId` oculto y prevención de doble envío mediante confirmación.
+- [x] Las validaciones del builder bloquean avanzar con partidas incompletas o inválidas antes de llegar a pasos ocultos.
+- [x] Los totales visibles en cliente son solo preview; el cálculo autoritativo sigue ocurriendo en servidor.
+- [x] La vista móvil usa cards y acciones táctiles; la vista de escritorio conserva una tabla alineada al diseño visual actual.
+- [x] La copia visible usa español de México; los identificadores técnicos permanecen en inglés.
+- [x] No se implementa el Issue 8 ni se agregan reglas de asignación/ejecución de work orders.
+- [x] `pnpm test:ui-contract`, `pnpm test:ui`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+
+**Dependencias/notas:** Depende de los Issues 7.5 y 7.6. El cambio se dividió en PRs encadenados por presupuesto de revisión: helpers/contract guard, formulario de aprobación y builder principal. El slice del builder tiene `size:exception` aprobado porque concentra estado del stepper, validación, tests y wiring de página en una unidad cohesiva.
+
+**Nota de verificación:** Preparado en PRs encadenados #27, #28 y #29 vinculados al Issue GitHub #26. La re-revisión fresca pasó; el bloqueo inicial de tests se corrigió siguiendo el patrón existente de fallback de Radix Select en jsdom. Verificación final: `pnpm test:ui-contract`, `pnpm test:ui` (49 tests), `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+
 ### Issue 8: Asignación de `WorkOrder` y registros de ejecución
 
 **Objetivo:** Asignar trabajo y registrar progreso de ejecución para operaciones de campo.
