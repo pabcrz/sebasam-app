@@ -46,6 +46,10 @@
   --color-status-info-bg: rgba(0, 74, 173, 0.12);
   --color-status-info-border: rgba(0, 74, 173, 0.35);
 
+  /* Gradients */
+  --gradient-primary: linear-gradient(90deg, #004aad 0%, #001024 100%);
+  --gradient-primary-hover: linear-gradient(90deg, #003e91 0%, #001024 100%);
+
   /* Spacing */
   --space-xs: 4px;
   --space-sm: 8px;
@@ -150,6 +154,10 @@
   --color-status-warning-fg: var(--color-status-warning-fg);
   --color-status-danger-fg: var(--color-status-danger-fg);
   --color-status-info-fg: var(--color-status-info-fg);
+
+  /* Gradients */
+  --gradient-primary: var(--gradient-primary);
+  --gradient-primary-hover: var(--gradient-primary-hover);
 
   /* Spacing */
   --spacing-xs: var(--space-xs);

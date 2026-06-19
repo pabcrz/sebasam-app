@@ -20,7 +20,7 @@ const baseClasses =
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] shadow-sm",
+    "bg-[image:var(--gradient-primary)] text-white shadow-sm hover:bg-[image:var(--gradient-primary-hover)]",
   secondary: "bg-[var(--color-blue-tint)] text-[var(--color-text-main)] hover:bg-[#d9e7f7] dark:hover:bg-[#00366b]",
   outline:
     "border border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]",

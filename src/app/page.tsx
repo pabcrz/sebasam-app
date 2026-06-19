@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
@@ -22,12 +23,9 @@ export default function Home() {
             Esta app parte de un límite de dominio estricto: cada orden de trabajo nace de una cotización aprobada, incluyendo las cotizaciones administrativas urgentes.
           </p>
           <div className="mt-8">
-            <Link
-              href="/admin"
-              className="inline-flex min-h-[var(--tap-min-height)] items-center justify-center gap-2 rounded-md bg-[var(--color-primary)] px-6 py-3 text-lg font-medium text-white shadow-sm transition-colors hover:bg-[var(--color-primary-hover)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
-            >
-              Ir al panel administrativo
-            </Link>
+            <Button asChild variant="primary" size="lg">
+              <Link href="/admin">Ir al panel administrativo</Link>
+            </Button>
           </div>
         </div>
 

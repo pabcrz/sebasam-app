@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Button } from "./button";
@@ -42,5 +44,21 @@ describe("Button", () => {
     expect(consoleError).not.toHaveBeenCalled();
 
     consoleError.mockRestore();
+  });
+
+  it("uses the official primary gradient so primary does not regress to flat blue", () => {
+    render(<Button variant="primary">Guardar</Button>);
+
+    const button = screen.getByRole("button", { name: "Guardar" });
+    expect(button.className).toContain("bg-[image:var(--gradient-primary)]");
+    expect(button.className).toContain("hover:bg-[image:var(--gradient-primary-hover)]");
+    expect(button.className).not.toContain("bg-[var(--color-primary)]");
+  });
+
+  it("keeps the primary gradient token aligned with the Figma contract", () => {
+    const globalsCss = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(globalsCss).toContain("--gradient-primary: linear-gradient(90deg, #004aad 0%, #001024 100%)");
+    expect(globalsCss).toContain("--gradient-primary-hover: linear-gradient(90deg, #003e91 0%, #001024 100%)");
   });
 });

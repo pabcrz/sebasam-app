@@ -29,8 +29,10 @@
 | `--color-border-light` | `#D7E0EA` | Bordes sutiles en light. |
 | `--color-text-muted` | `#64748B` / `#6B7789` | Texto secundario, placeholders. |
 | `--color-text-muted-fg` | `#475569` | Texto pequeño sobre superficies suaves cuando se necesita contraste AA. |
+| `--gradient-primary` | `linear-gradient(90deg, #004AAD 0%, #001024 100%)` | Fondo oficial de botones primarios y acentos de marca. |
+| `--gradient-primary-hover` | `linear-gradient(90deg, #003E91 0%, #001024 100%)` | Estado hover del gradiente primario. |
 
-Gradiente de marca: `linear-gradient(180deg, #004AAD 0%, #001024 100%)`.
+El gradiente primario es el patrón oficial para acciones primarias y acentos de marca; reemplaza el azul plano en botones `primary` y en heroes de documentos públicos. La base primaria sigue siendo `#004AAD` y el deep navy `#001024`.
 
 ### Modo claro y modo oscuro
 
@@ -110,7 +112,7 @@ Implementar como wrappers Tailwind sobre comportamiento nativo o Radix cuando se
 
 | Componente | Notas de implementación |
 |---|---|
-| `Button` | Variantes: `primary`, `secondary`, `outline`, `ghost`, `danger`. Estados: `default`, `hover`, `disabled`, `loading`. Altura mínima 44px. |
+| `Button` | Variantes: `primary`, `secondary`, `outline`, `ghost`, `danger`. Estados: `default`, `hover`, `disabled`, `loading`. Altura mínima 44px; la variante compacta (`h-9 / 36px`) solo se usa en contextos restringidos. El `primary` usa el gradiente de marca oficial. |
 | `Input` | Label + input + helper + error. Bordes `#D7E0EA`, radio 10px, altura 44–48px. |
 | `Textarea` | Mismo sistema que input; altura flexible. |
 | `Checkbox` | Checkbox nativo estilizado o Radix Checkbox; label alineada. |
