@@ -7,15 +7,17 @@ Aplicación operativa limpia para SEBASAM: cotizaciones, órdenes de trabajo, as
 | Aspecto | Detalle |
 |---|---|
 | Propósito | Reemplazar búsquedas en archivos/PDF por una web app mobile-first donde los datos operativos vivan en base de datos. |
-| Alcance implementado | Login admin, clientes, vehículos, cotizaciones en borrador, aprobación administrativa → orden de trabajo, PWA foundation. |
+| Alcance implementado | Login admin, clientes, vehículos, cotizaciones en borrador, aprobación → orden de trabajo, PWA foundation. |
 | Referencia visual | Figma — ver [`DESIGN.md`](./DESIGN.md). |
 | Referencia de dominio | `prisma/schema.prisma`, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) y este README. |
+| Hosting objetivo | Landing pública en `sebasam.com`; app operativa independiente en `app.sebasam.com`. |
+| Rutas objetivo | `/` es el hub role-aware post-login; `/login` es el único login; evitamos el namespace `/admin`. Ver [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md#hosting-y-modelo-de-rutas). |
 | Modelo operativo objetivo | `Quote` y `WorkOrder` separados; el flujo pendiente debe soportar aceptación/autorización, `ESPERA` antes de `EN_PROCESO` y trabajo urgente mediante autorización administrativa auditada. |
 | Estado actual | Issues 1–7, 5.1 y 5.2 de [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) completados; Issues 8–12 pendientes. Ver [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md). |
 
 ## Flujo operativo 🔄
 
-Flujo operativo objetivo del MVP pendiente. Cada cotización debe ser **todo/nada**: el cliente acepta o declina el conjunto completo. Si el cliente acepta por fuera del link (p. ej. teléfono), el admin debe poder autorizar la cotización con una nota obligatoria; la evidencia inicial es opcional. La aceptación o autorización no debe iniciar el trabajo inmediatamente: la orden debe pasar a `ESPERA` hasta confirmar espacio del taller y disponibilidad de maestro.
+Flujo operativo objetivo del MVP. Cada cotización debe ser **todo/nada**: el cliente acepta o declina el conjunto completo. Si el cliente acepta por fuera del link (p. ej. teléfono), el admin debe poder autorizar la cotización con una nota obligatoria; la evidencia inicial es opcional. La aceptación o autorización no debe iniciar el trabajo inmediatamente: la orden debe pasar a `ESPERA` hasta confirmar espacio del taller y disponibilidad de maestro.
 
 ```mermaid
 flowchart LR
@@ -110,6 +112,7 @@ Este es el modelo de dominio que soporta el flujo. Las primeras entidades existe
 | Acceso a datos | Usar Prisma para datos operativos de negocio. No consultar las mismas tablas de negocio mediante helpers de Supabase client. |
 | Auth | Usar Supabase Auth para sesiones. Guardar roles de app y datos de perfil en `UserProfile`. |
 | Cotizaciones y órdenes | Estado actual: `WorkOrder` nace de `Quote` aprobada. Objetivo pendiente: soportar autorización administrativa auditada y `ESPERA` antes de `EN_PROCESO`. |
+| Rutas y roles | `/` es el hub role-aware post-login; `/login` es el único login; evitamos el namespace `/admin`. Ver [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md#hosting-y-modelo-de-rutas). |
 | Disciplina de deploy | `build` ejecuta `prisma generate && next build`. Las migraciones nunca se esconden dentro de `next build`. |
 | Repositorio | Mantener este repositorio privado. |
 | Ramas | Seguir el Gitflow pragmático de `docs/GITFLOW.md`. |
