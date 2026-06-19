@@ -128,41 +128,43 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const [customers, quotes] = await Promise.all([listCustomers(), listQuotes()]);
 
   return (
-    <section className="mx-auto grid w-full max-w-6xl gap-8 px-[var(--space-md)] py-10">
+    <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <Card>
         <CardHeader>
           <CardDescription>Gestión de cotizaciones</CardDescription>
           <CardTitle as="h1">Cotizaciones en borrador</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="max-w-2xl leading-7 text-[var(--color-text-muted)]">
+          <p className="max-w-2xl text-sm leading-6 text-[var(--color-text-muted)] md:text-base md:leading-7">
             Crea cotizaciones en borrador para clientes existentes con subtotales y totales calculados en el servidor.
           </p>
           {params.created ? (
-            <p className="mt-4 text-sm text-[var(--color-status-success-fg)]">Cotización en borrador creada.</p>
+            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]">
+              Cotización en borrador creada.
+            </p>
           ) : null}
           {params.approved ? (
-            <p className="mt-4 text-sm text-[var(--color-status-success-fg)]">
+            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]">
               Cotización aprobada y orden de trabajo creada.
             </p>
           ) : null}
           {params.error === "invalid" ? (
-            <p className="mt-4 text-sm text-[var(--color-status-danger-fg)]" role="alert">
+            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
               Revisa los datos de la cotización e incluye al menos una partida completa.
             </p>
           ) : null}
           {params.error === "invalid-approval" ? (
-            <p className="mt-4 text-sm text-[var(--color-status-danger-fg)]" role="alert">
+            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
               Selecciona una cotización válida antes de aprobar.
             </p>
           ) : null}
           {params.error === "duplicate-work-order" ? (
-            <p className="mt-4 text-sm text-[var(--color-status-danger-fg)]" role="alert">
+            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
               Esta cotización ya tiene una orden de trabajo.
             </p>
           ) : null}
           {params.error === "approval-failed" ? (
-            <p className="mt-4 text-sm text-[var(--color-status-danger-fg)]" role="alert">
+            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
               No se pudo aprobar la cotización. Recarga y confirma que siga en borrador.
             </p>
           ) : null}
@@ -192,14 +194,14 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="title">Título</Label>
-              <Input id="title" name="title" required />
+              <Input id="title" name="title" placeholder="Ej. Servicio general" required />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Descripción</Label>
               <Textarea id="description" name="description" rows={3} />
             </div>
             <fieldset className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-              <legend className="px-1 text-sm font-medium">Vehículo</legend>
+              <legend className="px-1 text-sm font-medium text-[var(--color-text-main)]">Vehículo</legend>
               <div className="grid gap-3 md:grid-cols-[160px_1fr_1fr_140px_120px]">
                 <div className="grid gap-2">
                   <Label htmlFor="plate">Placas (opcional)</Label>
@@ -232,13 +234,13 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
             <Checkbox name="administrative" label="Cotización administrativa" />
 
             <div className="grid gap-3">
-              <h3 className="font-semibold">Partidas</h3>
+              <h3 className="font-semibold text-[var(--color-text-main)]">Partidas</h3>
               {itemRows.map((index) => (
                 <fieldset
                   key={index}
                   className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4"
                 >
-                  <legend className="px-1 text-sm font-medium">Partida {index + 1}</legend>
+                  <legend className="px-1 text-sm font-medium text-[var(--color-text-main)]">Partida {index + 1}</legend>
                   <div className="grid gap-3 md:grid-cols-[160px_1fr_120px_160px]">
                     <div className="grid gap-2">
                       <Label htmlFor={`items-${index}-type`}>Tipo</Label>
@@ -296,75 +298,135 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
           <CardTitle as="h2">Cotizaciones recientes</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Número</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Vehículo</TableHead>
-                <TableHead>Título</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Orden de trabajo</TableHead>
-                <TableHead>Partidas</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {quotes.map((quote) => (
-                <TableRow key={quote.id}>
-                  <TableCell className="font-medium">{quote.number}</TableCell>
-                  <TableCell>{quote.customer.name}</TableCell>
-                  <TableCell>
-                    {quote.vehicle ? formatVehicle(quote.vehicle) : formatSnapshotVehicle(quote.vehicleSnapshot)}
-                  </TableCell>
-                  <TableCell>{quote.title}</TableCell>
-                  <TableCell>
-                    <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {quote.workOrder ? (
-                      <Badge variant={workOrderStatusBadgeVariant[quote.workOrder.status]}>
-                        {quote.workOrder.number} — {workOrderStatusLabels[quote.workOrder.status]}
-                      </Badge>
-                    ) : (
-                      <span className="text-sm text-[var(--color-text-muted)]">Ninguna</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <ul className="grid gap-1">
-                      {quote.items.map((item) => (
-                        <li key={item.id}>
-                          {item.description} — {Number(item.quantity).toFixed(2)} ×{" "}
-                          {formatCents(item.unitPriceCents)} = {formatCents(item.totalCents)}
-                        </li>
-                      ))}
-                    </ul>
-                  </TableCell>
-                  <TableCell className="font-medium">{formatCents(quote.totalCents)}</TableCell>
-                  <TableCell>
-                    {quote.status === "DRAFT" && !quote.workOrder ? (
-                      <form action={approveQuoteAndCreateWorkOrderFromForm}>
-                        <input type="hidden" name="quoteId" value={quote.id} />
-                        <Button type="submit" variant="outline">
-                          Aprobar y crear orden de trabajo
-                        </Button>
-                      </form>
-                    ) : (
-                      <span className="text-sm text-[var(--color-text-muted)]">Sin acción</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {quotes.length === 0 ? (
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={9} className="py-6 text-[var(--color-text-muted)]">
-                    No se encontraron cotizaciones.
-                  </TableCell>
+                  <TableHead>Número</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Vehículo</TableHead>
+                  <TableHead>Título</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Orden de trabajo</TableHead>
+                  <TableHead>Partidas</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {quotes.map((quote) => (
+                  <TableRow key={quote.id}>
+                    <TableCell className="font-medium">{quote.number}</TableCell>
+                    <TableCell>{quote.customer.name}</TableCell>
+                    <TableCell>
+                      {quote.vehicle ? formatVehicle(quote.vehicle) : formatSnapshotVehicle(quote.vehicleSnapshot)}
+                    </TableCell>
+                    <TableCell>{quote.title}</TableCell>
+                    <TableCell>
+                      <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {quote.workOrder ? (
+                        <Badge variant={workOrderStatusBadgeVariant[quote.workOrder.status]}>
+                          {quote.workOrder.number} — {workOrderStatusLabels[quote.workOrder.status]}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-[var(--color-text-muted)]">Ninguna</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <ul className="grid gap-1">
+                        {quote.items.map((item) => (
+                          <li key={item.id}>
+                            {item.description} — {Number(item.quantity).toFixed(2)} ×{" "}
+                            {formatCents(item.unitPriceCents)} = {formatCents(item.totalCents)}
+                          </li>
+                        ))}
+                      </ul>
+                    </TableCell>
+                    <TableCell className="font-medium">{formatCents(quote.totalCents)}</TableCell>
+                    <TableCell>
+                      {quote.status === "DRAFT" && !quote.workOrder ? (
+                        <form action={approveQuoteAndCreateWorkOrderFromForm}>
+                          <input type="hidden" name="quoteId" value={quote.id} />
+                          <Button type="submit" variant="outline">
+                            Aprobar y crear orden de trabajo
+                          </Button>
+                        </form>
+                      ) : (
+                        <span className="text-sm text-[var(--color-text-muted)]">Sin acción</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {quotes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-6 text-[var(--color-text-muted)]">
+                      No se encontraron cotizaciones.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="grid gap-3 md:hidden">
+            {quotes.map((quote) => (
+              <div
+                key={quote.id}
+                className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-[var(--color-text-main)]">{quote.number}</p>
+                    <p className="text-sm text-[var(--color-text-muted)]">{quote.customer.name}</p>
+                  </div>
+                  <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
+                </div>
+                <p className="mt-2 text-sm text-[var(--color-text-main)]">{quote.title}</p>
+                <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                  {quote.vehicle ? formatVehicle(quote.vehicle) : formatSnapshotVehicle(quote.vehicleSnapshot)}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {quote.workOrder ? (
+                    <Badge variant={workOrderStatusBadgeVariant[quote.workOrder.status]}>
+                      {quote.workOrder.number} — {workOrderStatusLabels[quote.workOrder.status]}
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-[var(--color-text-muted)]">Sin orden de trabajo</span>
+                  )}
+                </div>
+                <div className="mt-3 border-t border-[var(--color-border-light)] pt-3">
+                  <p className="text-sm font-medium text-[var(--color-text-main)]">
+                    Total: {formatCents(quote.totalCents)}
+                  </p>
+                  <ul className="mt-2 grid gap-1 text-sm text-[var(--color-text-muted)]">
+                    {quote.items.map((item) => (
+                      <li key={item.id}>
+                        {item.description} — {Number(item.quantity).toFixed(2)} ×{" "}
+                        {formatCents(item.unitPriceCents)} = {formatCents(item.totalCents)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {quote.status === "DRAFT" && !quote.workOrder ? (
+                  <form action={approveQuoteAndCreateWorkOrderFromForm} className="mt-4">
+                    <input type="hidden" name="quoteId" value={quote.id} />
+                    <Button type="submit" variant="primary" className="w-full">
+                      Aprobar y crear orden de trabajo
+                    </Button>
+                  </form>
+                ) : null}
+              </div>
+            ))}
+            {quotes.length === 0 ? (
+              <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">
+                No se encontraron cotizaciones.
+              </p>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
     </section>

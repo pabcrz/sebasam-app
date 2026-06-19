@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { PwaRegister } from "./pwa-register";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,12 +16,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "SEBASAM Operations",
-    template: "%s | SEBASAM Operations",
+    default: "Operaciones SEBASAM",
+    template: "%s | Operaciones SEBASAM",
   },
-  description: "Operational app for SEBASAM quotes, work orders, and field execution.",
+  description: "Aplicación operativa de SEBASAM para cotizaciones, órdenes de trabajo y ejecución de campo.",
   manifest: "/manifest.webmanifest",
-  applicationName: "SEBASAM Operations",
+  applicationName: "Operaciones SEBASAM",
   appleWebApp: {
     capable: true,
     title: "SEBASAM",
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f766e",
+  themeColor: "#004AAD",
 };
 
 export default function RootLayout({
@@ -42,12 +43,15 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="es"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <PwaRegister />
-        {children}
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          <PwaRegister />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

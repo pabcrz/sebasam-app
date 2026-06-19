@@ -16,15 +16,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const baseClasses =
-  "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[rgba(30,77,140,0.18)] disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
     "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] shadow-sm",
-  secondary: "bg-[var(--color-blue-tint)] text-[var(--color-navy-900)] hover:bg-[#d9e7f7]",
+  secondary: "bg-[var(--color-blue-tint)] text-[var(--color-text-main)] hover:bg-[#d9e7f7] dark:hover:bg-[#00366b]",
   outline:
-    "border border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-navy-900)] hover:bg-[var(--color-bg-soft)]",
-  ghost: "text-[var(--color-navy-900)] hover:bg-[var(--color-bg-soft)]",
+    "border border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]",
+  ghost: "text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]",
   danger: "bg-[var(--color-status-danger)] text-white hover:bg-[#dc2626] shadow-sm",
 };
 
@@ -50,6 +50,20 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const Comp = asChild ? Slot : "button";
+
+    if (asChild) {
+      return (
+        <Comp
+          className={clsx(baseClasses, variantClasses[variant], sizeClasses[size], className)}
+          ref={ref}
+          aria-disabled={disabled || loading || undefined}
+          {...props}
+        >
+          {children}
+        </Comp>
+      );
+    }
+
     return (
       <Comp
         className={clsx(baseClasses, variantClasses[variant], sizeClasses[size], className)}

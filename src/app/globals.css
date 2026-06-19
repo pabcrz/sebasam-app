@@ -12,6 +12,7 @@
   --color-navy-900: #001024;
   --color-white: #ffffff;
   --color-blue-tint: #e6f1fb;
+  --color-on-navy-tint: #e6f1fb;
 
   /* Surfaces */
   --color-bg-soft: #f3f6fa;
@@ -29,7 +30,7 @@
   --color-status-danger: #ef4444;
   --color-status-info: #004aad;
 
-  /* Status foreground: WCAG AA on white for small text */
+  /* Status foreground: WCAG AA on surface for small text */
   --color-status-success-fg: #15803d;
   --color-status-warning-fg: #92400e;
   --color-status-danger-fg: #b91c1c;
@@ -64,8 +65,46 @@
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.05);
   --shadow-focus: 0 0 0 3px rgba(30, 77, 140, 0.18);
 
+  /* Focus ring */
+  --color-focus-ring: rgba(30, 77, 140, 0.18);
+
   /* Touch */
   --tap-min-height: 44px;
+}
+
+.dark {
+  --background: #001024;
+  --foreground: #ffffff;
+
+  /* Surfaces */
+  --color-bg-soft: #001024;
+  --color-surface: #001b3f;
+  --color-border-light: #002b68;
+  --color-blue-tint: #002b68;
+
+  /* Text */
+  --color-text-main: #ffffff;
+  --color-text-muted: #94a3b8;
+  --color-text-muted-fg: #cbd5e1;
+
+  /* Status foreground: brighter for dark navy surfaces */
+  --color-status-success-fg: #4ade80;
+  --color-status-warning-fg: #fcd34d;
+  --color-status-danger-fg: #fca5a5;
+  --color-status-info-fg: #93c5fd;
+
+  /* Status pastel backgrounds / borders: slightly stronger on dark */
+  --color-status-success-bg: rgba(74, 222, 128, 0.14);
+  --color-status-success-border: rgba(74, 222, 128, 0.4);
+  --color-status-warning-bg: rgba(252, 211, 77, 0.14);
+  --color-status-warning-border: rgba(252, 211, 77, 0.4);
+  --color-status-danger-bg: rgba(252, 165, 165, 0.14);
+  --color-status-danger-border: rgba(252, 165, 165, 0.4);
+  --color-status-info-bg: rgba(147, 197, 253, 0.14);
+  --color-status-info-border: rgba(147, 197, 253, 0.4);
+
+  /* Focus ring: stronger on deep navy surfaces so keyboard focus remains visible */
+  --color-focus-ring: rgba(147, 197, 253, 0.45);
 }
 
 @theme inline {
@@ -82,6 +121,7 @@
   --color-navy-900: var(--color-navy-900);
   --color-white: var(--color-white);
   --color-blue-tint: var(--color-blue-tint);
+  --color-on-navy-tint: var(--color-on-navy-tint);
 
   /* Surfaces */
   --color-bg-soft: var(--color-bg-soft);

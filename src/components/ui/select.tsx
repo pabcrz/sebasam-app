@@ -18,7 +18,7 @@ export const SelectTrigger = React.forwardRef<
     <SelectPrimitive.Trigger
       ref={ref}
       className={clsx(
-        "flex h-[var(--tap-min-height)] w-full items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 py-2 text-base text-[var(--color-navy-900)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[rgba(30,77,140,0.18)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        "flex h-[var(--tap-min-height)] w-full items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 py-2 text-base text-[var(--color-text-main)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
         className,
       )}
       {...props}
@@ -75,7 +75,7 @@ export const SelectItem = React.forwardRef<
     <SelectPrimitive.Item
       ref={ref}
       className={clsx(
-        "relative flex w-full cursor-default select-none items-center rounded-[var(--radius-sm)] py-2 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-[var(--color-bg-soft)] focus:text-[var(--color-navy-900)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex w-full cursor-default select-none items-center rounded-[var(--radius-sm)] py-2 pl-8 pr-2 text-sm text-[var(--color-text-main)] outline-none transition-colors focus:bg-[var(--color-bg-soft)] focus:text-[var(--color-text-main)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}
       {...props}

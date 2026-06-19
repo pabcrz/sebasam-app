@@ -11,6 +11,21 @@ if (typeof globalThis.ResizeObserver === "undefined") {
     ResizeObserverStub as unknown as typeof ResizeObserver;
 }
 
+if (typeof window !== "undefined" && !window.matchMedia) {
+  window.matchMedia = function matchMedia(query: string) {
+    return {
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+      addListener: () => {},
+      removeListener: () => {},
+    } as unknown as MediaQueryList;
+  };
+}
+
 const elementPrototype = typeof Element !== "undefined" ? Element.prototype : null;
 
 if (elementPrototype) {

@@ -12,7 +12,7 @@ export const Label = React.forwardRef<React.ElementRef<typeof LabelPrimitive.Roo
       <LabelPrimitive.Root
         ref={ref}
         className={clsx(
-          "text-sm font-medium leading-none text-[var(--color-navy-900)] peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
+          "text-sm font-medium leading-none text-[var(--color-text-main)] peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
           className,
         )}
         {...props}

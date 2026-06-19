@@ -24,12 +24,35 @@
 | `--color-navy-900` | `#001024` | Fondo deep navy, texto principal en light. |
 | `--color-white` | `#FFFFFF` | Surface light, texto sobre fondos oscuros. |
 | `--color-blue-tint` | `#E6F1FB` | Banners informativos, estados suaves, fondo de servicio en documento público. |
+| `--color-on-navy-tint` | `#E6F1FB` | Texto/acento claro sobre superficies navy fijas en ambos modos. |
 | `--color-bg-soft` | `#F3F6FA` | Fondo de pantalla en light. |
 | `--color-border-light` | `#D7E0EA` | Bordes sutiles en light. |
 | `--color-text-muted` | `#64748B` / `#6B7789` | Texto secundario, placeholders. |
 | `--color-text-muted-fg` | `#475569` | Texto pequeño sobre superficies suaves cuando se necesita contraste AA. |
 
 Gradiente de marca: `linear-gradient(180deg, #004AAD 0%, #001024 100%)`.
+
+### Modo claro y modo oscuro
+
+El producto soporta ambos modos. Los tokens semánticos (`--color-background`, `--color-foreground`, `--color-surface`, `--color-text-main`, etc.) cambian de valor según la clase `light`/`dark` en `<html>`. El modo por defecto es **claro**.
+
+| Token semántico | Modo claro | Modo oscuro | Uso |
+|---|---|---|---|
+| `--color-background` | `#F3F6FA` | `#001024` | Fondo de pantalla general. |
+| `--color-foreground` | `#001024` | `#FFFFFF` | Texto principal sobre fondo base. |
+| `--color-surface` | `#FFFFFF` | `#001B3F` | Tarjetas, paneles, inputs, diálogos. |
+| `--color-bg-soft` | `#F3F6FA` | `#001024` | Fondos suaves, hover de filas. |
+| `--color-border-light` | `#D7E0EA` | `#002B68` | Bordes y separadores sutiles. |
+| `--color-blue-tint` | `#E6F1FB` | `#002B68` | Fondos de estado suave y botones secundarios. |
+| `--color-text-main` | `#001024` | `#FFFFFF` | Títulos, labels, texto de alto énfasis. |
+| `--color-text-muted` | `#64748B` | `#94A3B8` | Texto secundario, placeholders. |
+| `--color-text-muted-fg` | `#475569` | `#CBD5E1` | Texto pequeño sobre superficies suaves. |
+
+Reglas de contraste:
+- En modo claro el texto oscuro (`#001024`) se usa sobre superficies blancas o azul-tinte.
+- En modo oscuro el texto principal es blanco (`#FFFFFF`) y el texto secundario es gris azulado claro (`#94A3B8`).
+- Los acentos semánticos mantienen su color base, pero en modo oscuro se prefiere la versión más luminosa para primer plano cuando el badge descansa sobre superficie navy (p. ej. verde `#4ADE80`, amarillo `#FCD34D`, rojo `#FCA5A5`, azul `#93C5FD`).
+- Los estados de foco (`--shadow-focus`) se mantienen con el azul semitransparente para ambos modos.
 
 ### Acentos semánticos (estados / pagos)
 

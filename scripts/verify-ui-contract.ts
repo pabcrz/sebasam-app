@@ -1,73 +1,164 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const pagePath = "src/app/admin/(protected)/quotes/page.tsx";
-const pageSource = readFileSync(pagePath, "utf8");
-
-function assertIncludes(substring: string, message: string) {
-  assert(pageSource.includes(substring), message);
+function assertIncludes(source: string, substring: string, message: string) {
+  assert(source.includes(substring), message);
 }
 
-// Wrappers must hide Radix from page code.
-assert(
-  !pageSource.includes("@radix-ui"),
-  "Page must import controlled wrappers from @/components/ui, not Radix directly",
-);
-
-// Server-action wiring must remain intact.
-assertIncludes(
-  "createQuoteFromForm",
-  "Create form must wire to createQuoteFromForm server action",
-);
-assertIncludes(
-  "approveQuoteAndCreateWorkOrderFromForm",
-  "Approval form must wire to approveQuoteAndCreateWorkOrderFromForm server action",
-);
-assertIncludes(
-  '<input type="hidden" name="quoteId"',
-  "Approval form must carry hidden quoteId field",
-);
-
-// Required form field names must survive wrapper refactors.
-const requiredFieldPatterns = [
-  'name="customerId"',
-  'name="title"',
-  'name="description"',
-  'name="plate"',
-  'name="brand"',
-  'name="model"',
-  'name="color"',
-  'name="year"',
-  'name="administrative"',
-  "items.${index}.type",
-  "items.${index}.description",
-  "items.${index}.quantity",
-  "items.${index}.unitPrice",
-  'name="quoteId"',
-];
-
-for (const pattern of requiredFieldPatterns) {
-  assertIncludes(pattern, `Missing required form field pattern: ${pattern}`);
+function assertNoRadix(source: string, context: string) {
+  assert(
+    !source.includes("@radix-ui"),
+    `${context} must import controlled wrappers from @/components/ui, not Radix directly`,
+  );
 }
 
-// Heading hierarchy must not collapse to all h3.
-assertIncludes('as="h1"', "Page must render a real h1 via CardTitle");
-assertIncludes('as="h2"', "Section headings must be h2");
+function checkQuotesPage() {
+  const pagePath = "src/app/admin/(protected)/quotes/page.tsx";
+  const pageSource = readFileSync(pagePath, "utf8");
 
-// User-facing copy must stay in Mexican Spanish.
-const spanishLabels = [
-  "Cotizaciones en borrador",
-  "Crear cotización en borrador",
-  "Cotizaciones recientes",
-  "Partidas",
-  "Cliente",
-  "Título",
-  "Descripción",
-  "Aprobar y crear orden de trabajo",
-];
+  assertNoRadix(pageSource, "Quotes page");
 
-for (const label of spanishLabels) {
-  assertIncludes(label, `Expected Spanish copy missing: ${label}`);
+  // Server-action wiring must remain intact.
+  assertIncludes(
+    pageSource,
+    "createQuoteFromForm",
+    "Create form must wire to createQuoteFromForm server action",
+  );
+  assertIncludes(
+    pageSource,
+    "approveQuoteAndCreateWorkOrderFromForm",
+    "Approval form must wire to approveQuoteAndCreateWorkOrderFromForm server action",
+  );
+  assertIncludes(
+    pageSource,
+    '<input type="hidden" name="quoteId"',
+    "Approval form must carry hidden quoteId field",
+  );
+
+  // Required form field names must survive wrapper refactors.
+  const requiredFieldPatterns = [
+    'name="customerId"',
+    'name="title"',
+    'name="description"',
+    'name="plate"',
+    'name="brand"',
+    'name="model"',
+    'name="color"',
+    'name="year"',
+    'name="administrative"',
+    "items.${index}.type",
+    "items.${index}.description",
+    "items.${index}.quantity",
+    "items.${index}.unitPrice",
+    'name="quoteId"',
+  ];
+
+  for (const pattern of requiredFieldPatterns) {
+    assertIncludes(pageSource, pattern, `Missing required form field pattern: ${pattern}`);
+  }
+
+  // Heading hierarchy must not collapse to all h3.
+  assertIncludes(pageSource, 'as="h1"', "Page must render a real h1 via CardTitle");
+  assertIncludes(pageSource, 'as="h2"', "Section headings must be h2");
+
+  // User-facing copy must stay in Mexican Spanish.
+  const spanishLabels = [
+    "Cotizaciones en borrador",
+    "Crear cotización en borrador",
+    "Cotizaciones recientes",
+    "Partidas",
+    "Cliente",
+    "Título",
+    "Descripción",
+    "Aprobar y crear orden de trabajo",
+  ];
+
+  for (const label of spanishLabels) {
+    assertIncludes(pageSource, label, `Expected Spanish copy missing: ${label}`);
+  }
 }
 
-console.log("UI contract verified for /admin/quotes.");
+function checkCustomerPages() {
+  const createPageSource = readFileSync(
+    "src/app/admin/(protected)/customers/page.tsx",
+    "utf8",
+  );
+  const editPageSource = readFileSync(
+    "src/app/admin/(protected)/customers/[id]/edit/page.tsx",
+    "utf8",
+  );
+  const createFormSource = readFileSync(
+    "src/features/customers/components/customer-create-form.tsx",
+    "utf8",
+  );
+  const editFormSource = readFileSync(
+    "src/features/customers/components/customer-edit-form.tsx",
+    "utf8",
+  );
+
+  assertNoRadix(createPageSource, "Customer create page");
+  assertNoRadix(editPageSource, "Customer edit page");
+
+  // Server-action wiring must remain intact.
+  assertIncludes(
+    createPageSource,
+    "createCustomerFromForm",
+    "Customer create page must import createCustomerFromForm server action",
+  );
+  assertIncludes(
+    createPageSource,
+    "<CustomerCreateForm",
+    "Customer create page must render CustomerCreateForm",
+  );
+  assertIncludes(
+    createPageSource,
+    "action={createCustomerFromForm}",
+    "Customer create form must wire to createCustomerFromForm server action",
+  );
+
+  assertIncludes(
+    editPageSource,
+    "updateCustomerBasicsFromForm",
+    "Customer edit page must import updateCustomerBasicsFromForm server action",
+  );
+  assertIncludes(
+    editPageSource,
+    "<CustomerEditForm",
+    "Customer edit page must render CustomerEditForm",
+  );
+
+  // Required create form field names must survive wrapper refactors.
+  for (const field of ["name", "email", "phone", "address", "notes"]) {
+    assertIncludes(
+      createFormSource,
+      `name="${field}"`,
+      `Customer create form must expose field: ${field}`,
+    );
+  }
+
+  // Required edit form field names must survive wrapper refactors.
+  assertIncludes(
+    editFormSource,
+    'name="customerId"',
+    "Customer edit form must carry hidden customerId field",
+  );
+  for (const field of ["name", "email", "phone", "address", "notes"]) {
+    assertIncludes(
+      editFormSource,
+      `name="${field}"`,
+      `Customer edit form must expose field: ${field}`,
+    );
+  }
+
+  // Status must be a Radix Select wrapper that still serializes name="status".
+  assertIncludes(
+    editFormSource,
+    '<Select name="status"',
+    "Customer edit form must use a Select wrapper named status",
+  );
+}
+
+checkQuotesPage();
+checkCustomerPages();
+
+console.log("UI contract verified for /admin/quotes and /admin/customers.");

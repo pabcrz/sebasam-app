@@ -33,9 +33,9 @@ type CardTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
 export const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
   ({ as: Tag = "h3", className, ...props }, ref) => {
     return (
-      <Tag
+        <Tag
         ref={ref}
-        className={clsx("text-lg font-semibold leading-tight text-[var(--color-navy-900)]", className)}
+        className={clsx("text-lg font-semibold leading-tight text-[var(--color-text-main)]", className)}
         {...props}
       />
     );

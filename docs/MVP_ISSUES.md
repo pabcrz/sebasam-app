@@ -176,6 +176,24 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Nota de verificación:** Verificado en la rama `feature/7-5-ui-foundation-radix`: se instalaron las dependencias de Radix usadas; los tokens de `DESIGN.md` se reflejan en `src/app/globals.css`; los wrappers de `src/components/ui` usan Radix donde aplica; `/admin/quotes` consume los wrappers sin alterar la lógica de cotizaciones; y `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
 
+### Issue 7.6: Pantallas mobile-first con modo claro/oscuro Figma
+
+**Objetivo:** Aplicar la línea visual de Figma a las pantallas operativas protegidas, priorizando móvil y soportando modo claro y oscuro sin romper comportamiento de negocio.
+
+**Criterios de aceptación:**
+- [x] `docs/MVP_ISSUES.md` registra el issue en español de México con criterios y nota de verificación.
+- [x] `DESIGN.md` documenta el contrato de tema claro/oscuro: fondos con tinte azul en claro, superficies deep navy en oscuro, acentos azules y texto accesible en ambos modos.
+- [x] El soporte de tema usa una solución compatible con Next.js que evite saltos de hidratación; el modo por defecto es claro y existe un interruptor visible en el shell admin.
+- [x] El shell de rutas protegidas `/admin/*` es mobile-first: navegación inferior amigable para móvil, encabezado deep navy, iconografía consistente y áreas de toque ≥ 44 px.
+- [x] Las pantallas `/admin`, `/admin/login`, `/admin/customers`, `/admin/customers/[id]/edit` y `/admin/quotes` usan tarjetas, listas y espaciado responsive; ya no lucen como formularios de escritorio neutros.
+- [x] `/admin/quotes` conserva su comportamiento y campo de formulario; no se rediseña el constructor de cotizaciones más allá del ajuste visual general.
+- [x] Los textos visibles de las pantallas tocadas usan español de México; los identificadores técnicos, nombres de archivo y código permanecen en inglés.
+- [x] `pnpm test:ui`, `pnpm test:ui-contract`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+
+**Dependencias/notas:** Depende del Issue 7.5. No implementa el Issue 8 ni cambia reglas de negocio.
+
+**Nota de verificación:** Verificado en la rama `feature/7-6-mobile-first-figma-modes`: `DESIGN.md` incluye contrato de modo claro/oscuro; `next-themes` maneja el tema con `class` en `<html>` e interruptor accesible en español; el shell admin usa navegación inferior en móvil y encabezado deep navy con iconos de `lucide-react`; las pantallas operativas usan wrappers de `src/components/ui` y copia en español de México; no se importa Radix directamente en las páginas; `pnpm test:ui`, `pnpm test:ui-contract`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+
 ### Issue 8: Asignación de `WorkOrder` y registros de ejecución
 
 **Objetivo:** Asignar trabajo y registrar progreso de ejecución para operaciones de campo.

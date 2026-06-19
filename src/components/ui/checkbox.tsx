@@ -21,7 +21,7 @@ export const Checkbox = React.forwardRef<
         ref={ref}
         id={checkboxId}
         className={clsx(
-          "peer flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[rgba(30,77,140,0.18)] disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-[var(--color-primary)] data-[state=checked]:bg-[var(--color-primary)]",
+          "peer flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-[var(--color-primary)] data-[state=checked]:bg-[var(--color-primary)]",
         )}
         {...props}
       >
@@ -32,7 +32,7 @@ export const Checkbox = React.forwardRef<
       {label ? (
         <label
           htmlFor={checkboxId}
-          className="cursor-pointer text-sm font-medium text-[var(--color-navy-900)] peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+          className="cursor-pointer text-sm font-medium text-[var(--color-text-main)] peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
         >
           {label}
         </label>
