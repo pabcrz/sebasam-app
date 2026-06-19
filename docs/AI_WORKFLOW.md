@@ -19,6 +19,9 @@ This is the canonical workflow for AI assistants working in this private reposit
 | Bugfix branches | Use `bugfix/<issue>-short-name` when issue-backed. |
 | PR scope | One branch/PR targets one issue or one clearly reviewable slice of one issue. |
 | Target branch | Feature and non-production bugfix PRs target `develop`. Release/hotfix flow follows `docs/GITFLOW.md`. |
+| Issue linkage | Every PR must link an approved GitHub issue with `Closes #<number>` unless the maintainer explicitly says the change is local-only and will not open a PR. |
+| PR type label | Every PR must have exactly one `type:*` label. Create the missing label before opening PRs if the repo workflow requires it. |
+| Chained PRs | When a change exceeds the 400-line review budget, split it into stacked PRs or record an explicit `size:exception` from the maintainer. |
 
 ## Change discipline
 

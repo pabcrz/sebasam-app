@@ -98,7 +98,7 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 ### Issue 5.1: Entidad de Vehículo y vinculación en Cotizaciones
 
-**Objetivo:** Agregar una entidad explícita de vehículo vinculada al cliente y congelar sus datos dentro de cada cotización para preservar el contexto histórico del trabajo.
+**Objetivo:** Agregar una entidad explícita de vehículo vinculada al cliente y congelar sus datos dentro de cada cotización para preservar el contexto del trabajo.
 
 **Criterios de aceptación:**
 - [x] Existe `Vehicle` como entidad operativa vinculada a `Customer`.
@@ -110,7 +110,7 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Dependencias/notas:** Depende de los Issues 5, 6 y 7. Mantener la UI neutral y funcional hasta que Figma defina la línea visual final.
 
-**Nota de verificación:** Verificado en la rama `feature/5-1-customer-vehicles`: Prisma agrega `Vehicle` vinculado a `Customer`, `Quote.vehicleId` opcional con `onDelete: SetNull` y `vehicleSnapshot` JSON; la creación de cotizaciones captura vehículo en línea y ejecuta `findOrCreateVehicle` dentro de la transacción antes de guardar la cotización; el listado de cotizaciones muestra vehículo vinculado o snapshot histórico. `pnpm prisma migrate dev --name add_customer_vehicles`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+**Nota de verificación:** Verificado en la rama `feature/5-1-customer-vehicles`: Prisma agrega `Vehicle` vinculado a `Customer`, `Quote.vehicleId` opcional con `onDelete: SetNull` y `vehicleSnapshot` JSON; la creación de cotizaciones captura vehículo en línea y ejecuta `findOrCreateVehicle` dentro de la transacción antes de guardar la cotización; el listado de cotizaciones muestra vehículo vinculado o snapshot del vehículo. `pnpm prisma migrate dev --name add_customer_vehicles`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
 
 ### Issue 5.2: Placas opcionales en cotización
 
@@ -194,25 +194,120 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Nota de verificación:** Verificado en la rama `feature/7-6-mobile-first-figma-modes`: `DESIGN.md` incluye contrato de modo claro/oscuro; `next-themes` maneja el tema con `class` en `<html>` e interruptor accesible en español; el shell admin usa navegación inferior en móvil y encabezado deep navy con iconos de `lucide-react`; las pantallas operativas usan wrappers de `src/components/ui` y copia en español de México; no se importa Radix directamente en las páginas; `pnpm test:ui`, `pnpm test:ui-contract`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
 
-### Issue 8: Asignación de `WorkOrder` y registros de ejecución
+### Issue 7.7: Rediseño mobile-first del flujo de cotización
 
-**Objetivo:** Asignar trabajo y registrar progreso de ejecución para operaciones de campo.
+**Objetivo:** Reemplazar el formulario funcional de cotización por un flujo mobile-first alineado a Figma, sin cambiar las reglas de negocio ni los contratos de server actions.
 
 **Criterios de aceptación:**
-- [ ] Los administradores pueden asignar un work order a trabajadores o usuarios responsables.
-- [ ] Se pueden agregar registros de ejecución con fecha, notas y detalles relevantes para el estado.
-- [ ] El estado del work order refleja la asignación y el progreso de ejecución.
+- [x] `/admin/quotes` permite crear cotizaciones mediante un flujo por pasos: cliente/unidad, partidas, notas, resumen y preview/envío.
+- [x] Los nombres de campos y contratos de `createQuoteFromForm` se preservan para cliente, vehículo, título, descripción, bandera administrativa e ítems.
+- [x] La aprobación conserva `approveQuoteAndCreateWorkOrderFromForm`, `quoteId` oculto y prevención de doble envío mediante confirmación.
+- [x] Las validaciones del builder bloquean avanzar con partidas incompletas o inválidas antes de llegar a pasos ocultos.
+- [x] Los totales visibles en cliente son solo preview; el cálculo autoritativo sigue ocurriendo en servidor.
+- [x] La vista móvil usa cards y acciones táctiles; la vista de escritorio conserva una tabla alineada al diseño visual actual.
+- [x] La copia visible usa español de México; los identificadores técnicos permanecen en inglés.
+- [x] No se implementa el Issue 8 ni se agregan reglas de asignación/ejecución de work orders.
+- [x] `pnpm test:ui-contract`, `pnpm test:ui`, `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+
+**Dependencias/notas:** Depende de los Issues 7.5 y 7.6. El cambio se dividió en PRs encadenados por presupuesto de revisión: helpers/contract guard, formulario de aprobación y builder principal. El slice del builder tiene `size:exception` aprobado porque concentra estado del stepper, validación, tests y wiring de página en una unidad cohesiva.
+
+**Nota de verificación:** Preparado en PRs encadenados #27, #28 y #29 vinculados al Issue GitHub #26. La re-revisión fresca pasó; el bloqueo inicial de tests se corrigió siguiendo el patrón existente de fallback de Radix Select en jsdom. Verificación final: `pnpm test:ui-contract`, `pnpm test:ui` (49 tests), `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+
+### Issue 7.8: IVA y vigencia comercial en cotizaciones
+
+**Objetivo:** Agregar IVA 16 % activado por defecto y vigencia comercial de 7 días para que la cotización tenga reglas comerciales claras antes de compartirse.
+
+**Criterios de aceptación:**
+- [ ] Las cotizaciones calculan IVA 16 % por defecto en servidor.
+- [ ] La UI permite desactivar IVA con un interruptor explícito cuando aplique.
+- [ ] Los totales muestran subtotal, IVA y total de forma clara.
+- [ ] La cotización guarda o calcula una vigencia de 7 días.
+- [ ] La salida al cliente muestra una nota de vigencia sujeta a cambios imprevistos en precios de materiales.
+
+**Dependencias/notas:** Depende del Issue 7.7. Debe resolverse antes de compartir cotizaciones con clientes.
+
+### Issue 7.9: Edición de cotizaciones en borrador
+
+**Objetivo:** Permitir completar, corregir o eliminar cotizaciones antes de enviarlas al cliente.
+
+**Criterios de aceptación:**
+- [ ] Solo las cotizaciones en `BORRADOR` pueden editarse libremente.
+- [ ] Se pueden editar cliente/unidad, notas, partidas, cantidades y precios antes del envío.
+- [ ] Los totales se recalculan en servidor después de guardar cambios.
+- [ ] Se puede eliminar o cancelar un borrador sin afectar cotizaciones enviadas o aceptadas.
+- [ ] La UI comunica claramente cuándo una cotización ya no es editable como borrador.
+
+**Dependencias/notas:** Depende del Issue 7.8 para preservar el cálculo completo de totales.
+
+### Issue 7.10: Filtros operativos en cotizaciones y clientes
+
+**Objetivo:** Agregar filtros y búsqueda consistentes para que la operación encuentre información sin depender del orden cronológico.
+
+**Criterios de aceptación:**
+- [ ] Cotizaciones pueden filtrarse por estado, cliente, folio, placa y rango de fechas.
+- [ ] Clientes pueden buscarse o filtrarse por nombre, teléfono, email, dirección y placas relacionadas cuando estén disponibles.
+- [ ] Los filtros funcionan bien en móvil y escritorio.
+- [ ] El estado vacío explica cómo limpiar filtros o crear nuevos registros.
+- [ ] La lógica de filtros queda preparada para extenderse a trabajos, pagos y nómina.
+
+**Dependencias/notas:** Puede hacerse después del Issue 7.7 y antes del flujo público de cotización.
+
+### Issue 7.11: Compartir cotización con link tokenizado
+
+**Objetivo:** Permitir que una cotización lista se comparta con el cliente mediante un link seguro, expirable y de solo lectura.
+
+**Criterios de aceptación:**
+- [ ] Solo cotizaciones válidas y completas pueden compartirse.
+- [ ] Al compartir, la cotización cambia a `ENVIADA` (`SENT`) o estado equivalente.
+- [ ] El sistema genera un token persistido o firmado, revocable y con expiración.
+- [ ] Existe una ruta pública de solo lectura para revisar folio, cliente, vehículo, partidas, montos, vigencia y estado.
+- [ ] El sistema maneja token inválido, revocado o expirado con mensajes claros.
+
+**Dependencias/notas:** Depende de los Issues 7.8 y 7.9. No inicia trabajo ni asigna maestro.
+
+### Issue 7.12: Aceptación o declinación de cotización por cliente
+
+**Objetivo:** Registrar la decisión del cliente o la autorización administrativa sobre una cotización compartida bajo una regla todo/nada.
+
+**Criterios de aceptación:**
+- [ ] El cliente puede aceptar o declinar la cotización completa desde el link público.
+- [ ] No existe aceptación parcial de partidas en el MVP.
+- [ ] La aceptación por cliente cambia la cotización a `ACEPTADA` (`APPROVED`) o estado equivalente.
+- [ ] La declinación cambia la cotización a `DECLINADA` o estado equivalente acordado.
+- [ ] Si el cliente aceptó por fuera del link (p. ej. teléfono, WhatsApp o presencial), el admin puede marcar la cotización como autorizada. No es un flujo aparte: usa el mismo registro de cotización/alcance.
+- [ ] La autorización administrativa requiere una nota obligatoria con canal/motivo (p. ej. "autorización por teléfono") y queda auditada.
+- [ ] La evidencia inicial en la autorización administrativa es opcional.
+- [ ] Tanto la aceptación del cliente como la autorización administrativa mueven la cotización a `ACEPTADA` y habilitan el paso a `ESPERA`.
+- [ ] La decisión queda registrada con fecha, origen y estado resultante.
+- [ ] Una cotización expirada no puede aceptarse sin intervención administrativa.
+
+**Dependencias/notas:** Depende del Issue 7.11. La aceptación o autorización administrativa habilita el estado `ESPERA` y el inicio de trabajo del Issue 8.
+
+### Issue 8: Asignación de `WorkOrder` y registros de ejecución
+
+**Objetivo:** Iniciar el trabajo de una cotización aceptada o autorizada administrativamente, pasando por `ESPERA`, asignar maestro/ayudantes y registrar progreso de ejecución para operaciones de campo.
+
+**Criterios de aceptación:**
+- [ ] Tras la aceptación del cliente o la autorización administrativa, la cotización/orden pasa a `ESPERA`.
+- [ ] Solo una cotización en `ESPERA` puede pasar a `EN_PROCESO` o generar/activar su `WorkOrder` operativo.
+- [ ] La transición de `ESPERA` a `EN_PROCESO` requiere confirmar espacio del taller y disponibilidad de maestro.
+- [ ] Los administradores pueden asignar 1 Maestro obligatorio y N Ayudantes opcionales.
+- [ ] Se pueden agregar registros de ejecución con fecha, notas, avance y detalles relevantes para el estado.
+- [ ] Los registros de ejecución se empatan contra la cotización y el `WorkOrder` correcto.
+- [ ] Los extras quedan identificados como adicionales y sujetos a control administrativo.
+- [ ] El estado del work order refleja asignación, progreso y bloqueo de cambios inseguros.
 - [ ] Los registros quedan vinculados al `WorkOrder` correcto.
 
-**Dependencias/notas:** Depende del Issue 7.
+**Dependencias/notas:** Depende del Issue 7.12. La asignación de maestro/ayudantes no pertenece al borrador de cotización; ocurre al pasar de `ESPERA` a `EN_PROCESO`, una vez confirmados espacio del taller y disponibilidad de maestro.
 
 ### Issue 9: Finalizar `WorkOrder` y generar PDF/salida final de orden
 
-**Objetivo:** Cerrar trabajo completado y generar la salida final operativa o visible para el cliente.
+**Objetivo:** Cerrar trabajo completado y generar la salida final operativa del trabajo, separada del cierre comercial inicial de la cotización.
 
 **Criterios de aceptación:**
 - [ ] Un work order solo puede finalizarse desde un estado permitido.
 - [ ] La salida final incluye cliente, cotización aprobada, work order, ítems, totales y resumen de ejecución.
+- [ ] La salida final distingue el alcance cotizado de extras autorizados durante la ejecución.
 - [ ] La salida final puede generarse como PDF o en el formato de documento de orden acordado.
 - [ ] Los work orders finalizados quedan protegidos contra ediciones inseguras.
 
@@ -248,6 +343,7 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Criterios de aceptación:**
 - [ ] Las pantallas administrativas usan español de México en títulos, etiquetas, botones, mensajes de error y estados visibles.
+- [ ] Todos los módulos operativos visibles al usuario usan español de México: cotizaciones, clientes, trabajos, cobros, estado de cuenta y nómina cuando existan.
 - [ ] Los textos operativos evitan anglicismos innecesarios cuando exista una opción natural en español de México.
 - [ ] Los mensajes de validación mostrados al usuario están localizados.
 - [ ] Los identificadores técnicos, nombres de archivos, código y migraciones permanecen en inglés salvo que el contexto del proyecto indique lo contrario.

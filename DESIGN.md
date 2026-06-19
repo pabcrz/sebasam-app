@@ -1,6 +1,6 @@
 # SEBASAM — Sistema de diseño (Figma)
 
-> Fuente de verdad visual: Figma `b3TlGONh5fTCNUilSHf75b`.
+> Referencia visual: Figma `b3TlGONh5fTCNUilSHf75b`.
 > Este documento traduce la línea visual de Figma a un contrato actionable para implementación en Next.js + Tailwind + Radix.
 
 ## Resumen
@@ -141,7 +141,7 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 
 | Componente | Responsabilidad |
 |---|---|
-| `QuoteOperationalBadge` | Mapea `EstadoCotizacion` a etapa humana: Pendiente / Aprobada / En proceso / Ajuste final / Cancelada. |
+| `QuoteOperationalBadge` | Mapea `EstadoCotizacion` a etapa humana: Pendiente / Aceptada / Espera / En proceso / Ajuste final / Cancelada. |
 | `QuoteFinancialBadges` | Muestra estado de pago + factura. Solo Admin y Cliente. |
 | `QuoteCard` | Resumen compacto de cotización para listados. |
 | `QuoteTableRow` | Fila de tabla en dashboard admin. |
@@ -203,14 +203,50 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 
 ## Flujo de cotización y estados
 
+Diagrama del flujo operativo objetivo, desde el login hasta el impacto en ledger y nómina. Varias transiciones siguen pendientes de implementación y están detalladas en `docs/MVP_ISSUES.md`.
+
+```mermaid
+flowchart LR
+    A[Login] --> B[Cotización<br>BORRADOR]
+    B --> C[Armar ítems + vehículo<br>+ evidencia inicial opcional]
+    C --> D[Compartir:<br>ENVIADA]
+    D --> E{Cliente responde<br>todo/nada}
+    E -->|Acepta| F[ACEPTADA]
+    E -->|Declina| G[DECLINADA]
+    F --> H[WorkOrder<br>ESPERA]
+    H --> I[Confirmar espacio + maestro<br>EN_PROCESO]
+    I --> J[Asignar empleados]
+    J --> K[Reportar ejecución<br>+ extras controlados]
+    K --> L[Trabajo terminado]
+    L --> M[Registrar cobros<br>ajustes, adeudo]
+    M --> N[Ledger cliente]
+    M --> O[Nómina semanal]
 ```
-BORRADOR → ENVIADA → APROBADA → EN_PROCESO → AJUSTE_FINAL → cierre/pago/factura
-```
+
+### Estados operativos
+
+| Estado | Significado | Quién lo dispara |
+|---|---|---|
+| `BORRADOR` | Cotización en construcción | Admin / asistente |
+| `ENVIADA` | Cotización compartida al cliente | Admin al generar link/PDF |
+| `ACEPTADA` | Cliente aceptó todo, o admin autorizó una aceptación externa | Objetivo: cliente vía link con token, o Admin con nota obligatoria |
+| `DECLINADA` | Cliente declinó todo | Cliente vía link con token |
+| `CANCELADA` | Admin cancela antes o después de enviar | Admin |
+| `ESPERA` | Cotización/orden aceptada, a la espera de espacio del taller y disponibilidad de maestro | Objetivo pendiente: sistema al aceptar o autorizar |
+| `EN_PROCESO` | WorkOrder activa con empleados asignados | Objetivo pendiente: Admin al confirmar espacio y maestro |
+| `AJUSTE_FINAL` | Extras o ajustes antes de cerrar | Admin / empleado autorizado |
+
+### Reglas de diseño por estado
 
 - `ENVIADA` se dispara al compartir URL pública o PDF.
 - El cliente acepta o declina **todo/nada** mediante link con token expirable.
+- Objetivo pendiente: si el cliente aceptó por fuera del link (p. ej. teléfono), el admin puede marcar la cotización como autorizada con una nota obligatoria de canal/motivo; usa el mismo registro de cotización/alcance.
+- Objetivo pendiente: tras `ACEPTADA`, la orden entra en `ESPERA` hasta que el admin confirme espacio del taller y disponibilidad de maestro.
+- Objetivo pendiente: la transición de `ESPERA` a `EN_PROCESO` ocurre al confirmar espacio y maestro; en ese punto se asignan empleados.
 - `FACTURADA` no implica pagada; siempre se muestra el estado financiero aparte.
 - El empleado **no ve** pagos, saldos, métodos de pago, factura ni ledger.
+
+Las reglas de negocio completas viven en [`README.md`](./README.md#reglas-de-negocio-).
 
 ### Indicadores separados
 

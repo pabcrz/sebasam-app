@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { QuoteItemType, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import {
   createQuoteFromForm,
   approveQuoteAndCreateWorkOrderFromForm,
@@ -8,28 +8,21 @@ import { listQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
 import {
   Badge,
-  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  Checkbox,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-  Textarea,
 } from "@/components/ui";
+import { QuoteBuilder } from "@/features/quotes/components/quote-builder";
+import { QuoteApprovalForm } from "@/features/quotes/components/quote-approval-form";
+import { formatCents, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 
 export const metadata: Metadata = {
   title: "Cotizaciones",
@@ -41,17 +34,6 @@ type QuotesPageProps = {
     created?: string;
     error?: string;
   }>;
-};
-
-const itemTypes = Object.values(QuoteItemType);
-const itemRows = Array.from({ length: 5 }, (_, index) => index);
-
-const itemTypeLabels: Record<QuoteItemType, string> = {
-  SERVICE: "Servicio",
-  MATERIAL: "Material",
-  LABOR: "Mano de obra",
-  EQUIPMENT: "Equipo",
-  OTHER: "Otro",
 };
 
 const quoteStatusLabels: Record<QuoteStatus, string> = {
@@ -88,40 +70,6 @@ const workOrderStatusBadgeVariant: Record<
   COMPLETED: "success",
   CANCELLED: "danger",
 };
-
-type VehicleSnapshotView = {
-  plate?: unknown;
-  brand?: unknown;
-  model?: unknown;
-};
-
-function formatCents(cents: number) {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-  }).format(cents / 100);
-}
-
-function formatSnapshotVehicle(snapshot: unknown) {
-  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
-    return "Sin vehículo";
-  }
-
-  const vehicle = snapshot as VehicleSnapshotView;
-  const plate = typeof vehicle.plate === "string" && vehicle.plate.trim() !== "" ? vehicle.plate : "Sin placas";
-  const brand = typeof vehicle.brand === "string" ? vehicle.brand : "";
-  const model = typeof vehicle.model === "string" ? vehicle.model : "";
-  const description = [brand, model].filter(Boolean).join(" ");
-
-  return description ? `${plate} — ${description}` : plate;
-}
-
-function formatVehicle(vehicle: { plate: string | null; brand: string | null; model: string }) {
-  const plate = vehicle.plate?.trim() || "Sin placas";
-  const description = [vehicle.brand, vehicle.model].filter(Boolean).join(" ");
-
-  return description ? `${plate} — ${description}` : plate;
-}
 
 export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const params = await searchParams;
@@ -171,127 +119,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Crear cotización en borrador</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={createQuoteFromForm} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="customerId">Cliente</Label>
-              <Select name="customerId" required>
-                <SelectTrigger id="customerId">
-                  <SelectValue placeholder="Selecciona un cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="title">Título</Label>
-              <Input id="title" name="title" placeholder="Ej. Servicio general" required />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Descripción</Label>
-              <Textarea id="description" name="description" rows={3} />
-            </div>
-            <fieldset className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-              <legend className="px-1 text-sm font-medium text-[var(--color-text-main)]">Vehículo</legend>
-              <div className="grid gap-3 md:grid-cols-[160px_1fr_1fr_140px_120px]">
-                <div className="grid gap-2">
-                  <Label htmlFor="plate">Placas (opcional)</Label>
-                  <Input id="plate" name="plate" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="brand">Marca (opcional)</Label>
-                  <Input id="brand" name="brand" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="model">Modelo</Label>
-                  <Input id="model" name="model" required />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="color">Color</Label>
-                  <Input id="color" name="color" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="year">Año</Label>
-                  <Input
-                    id="year"
-                    name="year"
-                    type="number"
-                    min="1900"
-                    max={new Date().getFullYear() + 1}
-                  />
-                </div>
-              </div>
-            </fieldset>
-            <Checkbox name="administrative" label="Cotización administrativa" />
-
-            <div className="grid gap-3">
-              <h3 className="font-semibold text-[var(--color-text-main)]">Partidas</h3>
-              {itemRows.map((index) => (
-                <fieldset
-                  key={index}
-                  className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4"
-                >
-                  <legend className="px-1 text-sm font-medium text-[var(--color-text-main)]">Partida {index + 1}</legend>
-                  <div className="grid gap-3 md:grid-cols-[160px_1fr_120px_160px]">
-                    <div className="grid gap-2">
-                      <Label htmlFor={`items-${index}-type`}>Tipo</Label>
-                      <Select name={`items.${index}.type`} defaultValue="SERVICE">
-                        <SelectTrigger id={`items-${index}-type`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {itemTypes.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {itemTypeLabels[type]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor={`items-${index}-description`}>Descripción</Label>
-                      <Input id={`items-${index}-description`} name={`items.${index}.description`} />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor={`items-${index}-quantity`}>Cantidad</Label>
-                      <Input
-                        id={`items-${index}-quantity`}
-                        name={`items.${index}.quantity`}
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor={`items-${index}-unitPrice`}>Precio unitario</Label>
-                      <Input
-                        id={`items-${index}-unitPrice`}
-                        name={`items.${index}.unitPrice`}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
-                </fieldset>
-              ))}
-            </div>
-
-            <Button type="submit" variant="primary">
-              Crear cotización en borrador
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <QuoteBuilder customers={customers} createAction={createQuoteFromForm} />
 
       <Card>
         <CardHeader>
@@ -320,11 +148,15 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                     <TableCell className="font-medium">{quote.number}</TableCell>
                     <TableCell>{quote.customer.name}</TableCell>
                     <TableCell>
-                      {quote.vehicle ? formatVehicle(quote.vehicle) : formatSnapshotVehicle(quote.vehicleSnapshot)}
+                      {quote.vehicle
+                        ? formatVehicle(quote.vehicle)
+                        : formatSnapshotVehicle(quote.vehicleSnapshot)}
                     </TableCell>
                     <TableCell>{quote.title}</TableCell>
                     <TableCell>
-                      <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
+                      <Badge variant={quoteStatusBadgeVariant[quote.status]}>
+                        {quoteStatusLabels[quote.status]}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {quote.workOrder ? (
@@ -348,12 +180,11 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                     <TableCell className="font-medium">{formatCents(quote.totalCents)}</TableCell>
                     <TableCell>
                       {quote.status === "DRAFT" && !quote.workOrder ? (
-                        <form action={approveQuoteAndCreateWorkOrderFromForm}>
-                          <input type="hidden" name="quoteId" value={quote.id} />
-                          <Button type="submit" variant="outline">
-                            Aprobar y crear orden de trabajo
-                          </Button>
-                        </form>
+                        <QuoteApprovalForm
+                          action={approveQuoteAndCreateWorkOrderFromForm}
+                          quoteId={quote.id}
+                          quoteNumber={quote.number}
+                        />
                       ) : (
                         <span className="text-sm text-[var(--color-text-muted)]">Sin acción</span>
                       )}
@@ -362,7 +193,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 ))}
                 {quotes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-6 text-[var(--color-text-muted)]">
+                    <TableCell colSpan={9} className="py-6 text-center text-[var(--color-text-muted)]">
                       No se encontraron cotizaciones.
                     </TableCell>
                   </TableRow>
@@ -379,16 +210,18 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-[var(--color-text-main)]">{quote.number}</p>
-                    <p className="text-sm text-[var(--color-text-muted)]">{quote.customer.name}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-[var(--color-text-main)]">{quote.number}</p>
+                    <p className="truncate text-sm text-[var(--color-text-muted)]">{quote.customer.name}</p>
                   </div>
                   <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
                 </div>
-                <p className="mt-2 text-sm text-[var(--color-text-main)]">{quote.title}</p>
+
+                <p className="mt-2 text-sm font-medium text-[var(--color-text-main)]">{quote.title}</p>
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                   {quote.vehicle ? formatVehicle(quote.vehicle) : formatSnapshotVehicle(quote.vehicleSnapshot)}
                 </p>
+
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {quote.workOrder ? (
                     <Badge variant={workOrderStatusBadgeVariant[quote.workOrder.status]}>
@@ -398,8 +231,9 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                     <span className="text-xs text-[var(--color-text-muted)]">Sin orden de trabajo</span>
                   )}
                 </div>
+
                 <div className="mt-3 border-t border-[var(--color-border-light)] pt-3">
-                  <p className="text-sm font-medium text-[var(--color-text-main)]">
+                  <p className="text-sm font-semibold text-[var(--color-primary)]">
                     Total: {formatCents(quote.totalCents)}
                   </p>
                   <ul className="mt-2 grid gap-1 text-sm text-[var(--color-text-muted)]">
@@ -411,13 +245,15 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                     ))}
                   </ul>
                 </div>
+
                 {quote.status === "DRAFT" && !quote.workOrder ? (
-                  <form action={approveQuoteAndCreateWorkOrderFromForm} className="mt-4">
-                    <input type="hidden" name="quoteId" value={quote.id} />
-                    <Button type="submit" variant="primary" className="w-full">
-                      Aprobar y crear orden de trabajo
-                    </Button>
-                  </form>
+                  <div className="mt-4">
+                    <QuoteApprovalForm
+                      action={approveQuoteAndCreateWorkOrderFromForm}
+                      quoteId={quote.id}
+                      quoteNumber={quote.number}
+                    />
+                  </div>
                 ) : null}
               </div>
             ))}
