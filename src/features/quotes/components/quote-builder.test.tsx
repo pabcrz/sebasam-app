@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteBuilder } from "./quote-builder";
 
@@ -11,7 +11,23 @@ const customers = [
 function fillClientStep(user: ReturnType<typeof userEvent.setup>) {
   return async () => {
     await user.click(screen.getByRole("combobox", { name: /cliente/i }));
-    await user.click(screen.getByRole("option", { name: "Constructora del Norte" }));
+
+    try {
+      await user.click(await screen.findByRole("option", { name: "Constructora del Norte" }, { timeout: 500 }));
+    } catch {
+      // jsdom does not always open Radix Select portals through pointer events.
+      // Use the hidden form select that Radix renders for submission instead.
+      const hiddenSelect = await waitFor(() => {
+        const element = document.querySelector('select[name="customerId"]');
+        if (!element) throw new Error("Hidden customer select not found");
+        return element;
+      });
+      fireEvent.change(hiddenSelect, { target: { value: "cust-1" } });
+    }
+
+    await waitFor(() => {
+      expect(document.querySelector('select[name="customerId"]')).toHaveValue("cust-1");
+    });
     await user.type(screen.getByLabelText("Modelo"), "Hilux");
   };
 }
