@@ -1,43 +1,52 @@
-# SEBASAM Operations Architecture
+# Arquitectura de operaciones SEBASAM
 
-This app is the clean operational core for SEBASAM. It manages customers, quotes, work orders, worker assignments, and execution records without carrying legacy schema or workflow debt.
+Esta app es el núcleo operativo limpio de SEBASAM: clientes, cotizaciones, órdenes de trabajo, asignaciones y registros de ejecución.
 
-## Core rules
+## Reglas de arquitectura
 
-| Area | Rule |
-|------|------|
-| Business data | Prisma is the only data-access layer for operational records. Do not mix Supabase client queries with Prisma for the same tables. |
-| Auth | Supabase Auth owns identity. App roles live in `UserProfile`. |
-| Quote to work order | A `WorkOrder` must reference exactly one approved `Quote`. Urgent or already-done work still starts from an administrative approved quote. |
-| Database URLs | Runtime uses `DATABASE_URL` with the pooled Supabase URL. Migrations use `DIRECT_URL`. |
-| Deployment | `next build` may generate Prisma Client, but migrations run only through `db:migrate:deploy`. |
+| Área | Regla |
+|---|---|
+| Datos de negocio | Prisma es la única capa de acceso a datos operativos. No mezclar consultas de Supabase client con Prisma para las mismas tablas. |
+| Auth | Supabase Auth es dueño de la identidad. Los roles de la app viven en `UserProfile`. |
+| Cotización → orden de trabajo | Una `WorkOrder` debe referenciar exactamente una `Quote` aprobada. El trabajo urgente o ya realizado también parte de una cotización administrativa aprobada. |
+| URLs de base de datos | Runtime usa `DATABASE_URL` con el pooler de Supabase. Las migraciones usan `DIRECT_URL`. |
+| Despliegue | `next build` puede generar Prisma Client, pero las migraciones corren solo a través de `db:migrate:deploy`. |
 
-## Feature layout
+## Organización de features
 
-Feature folders group input schemas, server actions, and read queries:
+Las carpetas de feature agrupan schemas de entrada, server actions y queries de lectura:
 
 - `src/features/customers`
 - `src/features/quotes`
 - `src/features/work-orders`
 
-Shared infrastructure stays in `src/lib`, currently Prisma and Supabase helpers.
+La infraestructura compartida vive en `src/lib`: actualmente helpers de Prisma y Supabase.
 
-## Auth and app roles
+## Auth y roles de la app
 
-Supabase Auth identity is linked to `UserProfile.id` by the Auth user UUID. Login uses the
-internal email derived from the visible username, but authorization always checks the Prisma
-profile role. Access roles are `ADMIN`, `ADMIN_ASSISTANT`, and `WORKER`; worker labor
-classification is stored separately as nullable `workerKind` (`MASTER` or `HELPER`).
+La identidad de Supabase se vincula con `UserProfile.id` mediante el UUID de usuario de Auth. El login usa el email interno derivado del username visible, pero la autorización siempre revisa el rol del perfil de Prisma. Los roles de acceso son `ADMIN`, `ADMIN_ASSISTANT` y `WORKER`; la clasificación laboral del empleado se guarda por separado como `workerKind` nullable (`MASTER` o `HELPER`).
 
-Internal staff passwords are controlled by admins, not public sign-up. Use server-only service
-role tooling for Auth user creation/reset until the future admin screen exists.
+Las contraseñas del staff interno las controlan los admins, no el sign-up público. Usar herramientas server-only con service role para crear o resetear usuarios de Auth hasta que exista la pantalla de admin correspondiente.
 
-## UI source of truth
+## Referencia de UI
 
-Figma is the source of truth for final screens and components. Technical issues may add neutral
-functional UI only. Future UI implementation should use Radix primitives for behavior/accessibility
-and Tailwind wrappers that encode the Figma design system.
+Figma define las pantallas y componentes finales. Los issues técnicos pueden agregar UI neutral funcional. La implementación futura debe usar primitivas de Radix para comportamiento y accesibilidad, envueltas en Tailwind que codifique el sistema de diseño de Figma.
 
-## MVP boundaries
+## Modelo de dominio
 
-The initial target is an installable PWA for Android Chrome. APK packaging and tokenized customer portals are intentionally out of scope.
+El dominio separa claramente **cotización comercial** (`Quote`) de **orden de trabajo operativa** (`WorkOrder`).
+
+| Entidad | Responsabilidad | Relación principal |
+|---|---|---|
+| `UserProfile` | Usuario interno con rol y clasificación laboral | `WorkAssignment`, `ExecutionRecord` |
+| `Customer` | Cliente del taller | `Quote`, `Vehicle` |
+| `Vehicle` | Unidad vinculada al cliente | `Customer`, `Quote` |
+| `Quote` | Propuesta comercial con ítems y totales | `Customer`, `Vehicle`, `QuoteItem`, `WorkOrder` |
+| `QuoteItem` | Línea de cotización con tipo, cantidad y precio | `Quote` |
+| `WorkOrder` | Orden de trabajo que nace de una cotización aprobada | `Quote`, `WorkAssignment`, `ExecutionRecord` |
+| `WorkAssignment` | Asignación de empleado a orden de trabajo | `WorkOrder`, `UserProfile` |
+| `ExecutionRecord` | Reporte de ejecución realizado | `WorkOrder`, `UserProfile` |
+
+## Límites del MVP
+
+El objetivo inicial es una PWA instalable en Android Chrome. El empaquetado como APK y los portales de clientes tokenizados están fuera del alcance inmediato.

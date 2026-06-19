@@ -1,6 +1,6 @@
 # SEBASAM — Sistema de diseño (Figma)
 
-> Fuente de verdad visual: Figma `b3TlGONh5fTCNUilSHf75b`.
+> Referencia visual: Figma `b3TlGONh5fTCNUilSHf75b`.
 > Este documento traduce la línea visual de Figma a un contrato actionable para implementación en Next.js + Tailwind + Radix.
 
 ## Resumen
@@ -203,14 +203,45 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 
 ## Flujo de cotización y estados
 
+Diagrama completo del flujo operativo, desde el login hasta el impacto en ledger y nómina:
+
+```mermaid
+flowchart LR
+    A[Login] --> B[Cotización<br>BORRADOR]
+    B --> C[Armar ítems + vehículo<br>+ evidencia inicial]
+    C --> D[Compartir:<br>ENVIADA]
+    D --> E{¿Cliente?<br>todo/nada}
+    E -->|Acepta| F[APROBADA]
+    E -->|Declina| G[Rechazada/<br>Cancelada]
+    F --> H[WorkOrder<br>EN_PROCESO]
+    H --> I[Asignar empleados]
+    I --> J[Reportar ejecución<br>+ extras controlados]
+    J --> K[Trabajo terminado]
+    K --> L[Registrar cobros<br>ajustes, adeudo]
+    L --> M[Ledger cliente]
+    L --> N[Nómina semanal]
 ```
-BORRADOR → ENVIADA → APROBADA → EN_PROCESO → AJUSTE_FINAL → cierre/pago/factura
-```
+
+### Estados operativos
+
+| Estado | Significado | Quién lo dispara |
+|---|---|---|
+| `BORRADOR` | Cotización en construcción | Admin / asistente |
+| `ENVIADA` | Cotización compartida al cliente | Admin al generar link/PDF |
+| `APROBADA` | Cliente aceptó todo | Cliente vía link con token |
+| `RECHAZADA` | Cliente declinó todo | Cliente vía link con token |
+| `CANCELADA` | Admin cancela antes o después de enviar | Admin |
+| `EN_PROCESO` | WorkOrder activa con empleados asignados | Sistema al aprobar |
+| `AJUSTE_FINAL` | Extras o ajustes antes de cerrar | Admin / empleado autorizado |
+
+### Reglas de diseño por estado
 
 - `ENVIADA` se dispara al compartir URL pública o PDF.
 - El cliente acepta o declina **todo/nada** mediante link con token expirable.
 - `FACTURADA` no implica pagada; siempre se muestra el estado financiero aparte.
 - El empleado **no ve** pagos, saldos, métodos de pago, factura ni ledger.
+
+Las reglas de negocio completas viven en [`README.md`](./README.md#reglas-de-negocio-).
 
 ### Indicadores separados
 

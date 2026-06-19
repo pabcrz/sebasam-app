@@ -1,31 +1,27 @@
 # Estado del MVP en `sebasam-app`
 
-> Comparación del estado actual del proyecto contra los documentos fuente del repo hermano `sebasam`:
-> - [`sebasam/MVP.md`](https://github.com/gentleman-programming/sebasam/blob/main/MVP.md)
-> - [`sebasam/MVP_COTIZACIONES_CHECKLIST.md`](https://github.com/gentleman-programming/sebasam/blob/main/MVP_COTIZACIONES_CHECKLIST.md)
+Resumen del estado actual del proyecto y las brechas que faltan cerrar antes del release de producción.
 
 ## Veredicto general
 
 **El MVP de cotizador interno está ~55 % completo.**
 
-Las bases de arquitectura, autenticación, clientes, vehículos y creación de cotizaciones en borrador están funcionales. Faltan los elementos visibles de cierre de venta: **PDF**, **URL pública / portal cliente** y el flujo de **compartir/enviar**. También hay brechas en IVA, vigencia, edición de borradores, filtros de listado y localización completa al español de México.
+Las bases de arquitectura, autenticación, clientes, vehículos y creación de cotizaciones en borrador están funcionales. Faltan elementos visibles para cerrar la venta: **PDF o vista pública**, **link tokenizado para cliente**, **vigencia**, **compartir/enviar** y **respuesta del cliente**. También hay brechas en IVA, edición de borradores, filtros de listados y localización completa al español de México.
 
-## Hallazgo importante entre fuentes
+> Alcance: el portal cliente tokenizado y la página `/pago` están fuera del MVP inmediato según `docs/MVP_ISSUES.md`.
 
-`MVP.md` posterga explícitamente el **portal cliente tokenizado** y la **página `/pago`** a la siguiente fase. En cambio, `MVP_COTIZACIONES_CHECKLIST.md` incluye "compartir por URL pública", "cambiar estado a ENVIADA al compartir" y "generar PDF" como parte del MVP de cotizaciones compartibles. Este informe marca esos ítems según el checklist, pero se señala la tensión de alcance.
-
-## Comparativa por área
+## Estado por área
 
 ### 1) Autenticación y navegación
 
-| Requisito fuente | Estado | Evidencia |
+| Funcionalidad | Estado | Evidencia |
 |---|---|---|
 | Login admin | **Completo** | `/admin/login` con username/password; sesión server-side (`src/lib/auth/session.ts`). |
 | Dashboard con módulos mínimos (Clientes, Cotizaciones) | **Parcial** | `src/app/admin/(protected)/page.tsx` enlaza solo clientes y cotizaciones; no hay inventario ni pagos. |
 
 ### 2) Clientes
 
-| Requisito fuente | Estado | Evidencia |
+| Funcionalidad | Estado | Evidencia |
 |---|---|---|
 | Alta/edición rápida | **Completo** | `src/features/customers/actions.ts`, `/admin/customers`, `/admin/customers/[id]/edit`. |
 | Búsqueda usable desde móvil | **Completo** | `listCustomers` busca por nombre, email, teléfono, dirección y notas (`src/features/customers/queries.ts`). |
@@ -33,23 +29,23 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 
 ### 3) Cotizaciones
 
-| Requisito fuente | Estado | Evidencia |
+| Funcionalidad | Estado | Evidencia |
 |---|---|---|
 | Crear cotización en `BORRADOR` | **Completo** | `createQuote` / `createQuoteFromForm` crean `DRAFT` (`src/features/quotes/actions.ts`). |
 | Capturar cliente | **Completo** | Select de clientes en `/admin/quotes`. |
 | Capturar datos de vehículo (unidad/modelo + placas) | **Completo** | Formulario de vehículo con placas opcionales y modelo requerido; `findOrCreateVehicle` reutiliza por cliente+placa (`src/features/vehicles/actions.ts`). |
 | Notas opcionales | **Completo** | Campo `description` en cotización. |
-| Asignación: 1 Maestro obligatorio + N Ayudantes opcionales | **Falta** | El formulario de cotización no asigna trabajadores; `WorkAssignment` existe en schema pero no se crea desde la UI. |
-| Ítems tipo `MATERIAL`, `MANO_OBRA`, `SERVICIO_EXTERNO` | **Parcial** | Schema tiene `SERVICE`, `MATERIAL`, `LABOR`, `EQUIPMENT`, `OTHER`; los labels en UI se traducen, pero no coinciden 1:1 con los tipos fuente. |
+| Asignación: 1 Maestro obligatorio + N Ayudantes opcionales | **Falta** | La asignación inicia cuando el cliente acepta la cotización y el trabajo entra en operación; `WorkAssignment` existe en schema pero no se crea desde la UI. |
+| Ítems tipo `MATERIAL`, `MANO_OBRA`, `SERVICIO_EXTERNO` | **Parcial** | Schema tiene `SERVICE`, `MATERIAL`, `LABOR`, `EQUIPMENT`, `OTHER`; los labels en UI se traducen, pero no coinciden 1:1 con los tipos esperados. |
 | Cantidad, descripción, precio final, importe | **Completo** | `QuoteItem` con `quantity`, `description`, `unitPriceCents`, `totalCents`. |
-| Totales: `subtotal`, `iva`, `total` persistidos | **Parcial** | Campos existen, pero `taxCents` siempre es `0` y no hay toggle de IVA ni tasa del 16 %. |
-| Opción "Con IVA" default ON al 16 % | **Falta** | No hay campo ni cálculo de IVA. |
+| Totales: `subtotal`, `iva`, `total` persistidos | **Parcial** | Campos existen, pero `taxCents` siempre es `0`; falta IVA 16 % activado por defecto y opción para desactivarlo cuando aplique. |
+| Opción "Con IVA" default ON al 16 % | **Falta** | Debe activarse por defecto y permitir quitar IVA con un interruptor explícito. |
 | Listado: buscar por folio/cliente/placas | **Parcial** | Tabla de cotizaciones existe, pero sin búsqueda ni filtros. |
 | Filtros por estado de cotización | **Falta** | No hay filtros en el listado. |
 
 ### 4) PDF y salida final
 
-| Requisito fuente | Estado | Evidencia |
+| Funcionalidad | Estado | Evidencia |
 |---|---|---|
 | Botón "Generar PDF" desde cotización | **Falta** | No existe generación de PDF. |
 | PDF generado desde BD | **Falta** | — |
@@ -58,30 +54,30 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 
 ### 5) Página pública fija "Datos de pago" (`/pago`)
 
-| Requisito fuente | Estado | Evidencia |
+| Funcionalidad | Estado | Evidencia |
 |---|---|---|
 | Mostrar CLABE(s) y banco(s) | **Falta** | No existe la ruta. |
 | Acciones "Copiar CLABE", "Abrir WhatsApp", "Llamar" | **Falta** | — |
 
-### 6) URL pública para cliente (del checklist)
+### 6) URL pública para cliente
 
-| Requisito fuente | Estado | Evidencia |
+| Funcionalidad | Estado | Evidencia |
 |---|---|---|
 | Token firmado o persistido/revocable | **Falta** | No existe tokenización de cliente. |
 | Ruta pública por token | **Falta** | No existe `/c/[token]` ni similar. |
-| Vista de solo lectura con folio, cliente, ítems, montos, vigencia, estado | **Falta** | — |
+| Vista de solo lectura con folio, cliente, ítems, montos, vigencia, estado | **Falta** | La vigencia comercial definida es de 7 días, con nota por cambios imprevistos en precios de materiales. |
 | Manejo de token inválido/expirado | **Falta** | — |
 | Cambiar estado a `ENVIADA` al compartir | **Falta** | — |
 
-### 7) Backend y datos (checklist)
+### 7) Backend y datos
 
-| Requisito fuente | Estado | Evidencia |
+| Funcionalidad | Estado | Evidencia |
 |---|---|---|
 | Folio único por cotización | **Completo** | `Quote.number` con `@unique`. |
 | Estados usados en MVP: `BORRADOR`, `ENVIADA`, `APROBADA`, `CANCELADA` | **Parcial** | Estados existentes (`DRAFT`, `SENT`, `APPROVED`, `CANCELLED`), pero `SENT` no se usa aún. |
 | Cálculo centralizado de subtotal, IVA y total | **Parcial** | Subtotal/total en servidor; IVA no calculado. |
 | `saldoPendiente = total - totalAbonado` | **Falta** | No hay pagos ni ledger. |
-| Vigencia obligatoria en cotización | **Falta** | No existe campo de vigencia. |
+| Vigencia obligatoria en cotización | **Falta** | Debe calcularse por defecto a 7 días y mostrarse al cliente junto con una nota por volatilidad de precios de materiales. |
 | Acciones de servidor: crear, actualizar, cambiar estado, link público, PDF | **Parcial** | Existe crear y aprobar (`approveQuoteAndCreateWorkOrder`); faltan actualizar, cambiar estado independiente, link público y PDF. |
 | Guardar ítems en `ItemCotizacion` con tipo correcto | **Completo** | `QuoteItem` con `type` del enum `QuoteItemType`. |
 | Recalcular montos al guardar ítems | **Completo** | `calculateItemTotalCents` y reducción en `createQuote`. |
@@ -89,18 +85,18 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 
 ### 8) Validaciones y QA
 
-| Requisito fuente | Estado | Evidencia |
+| Funcionalidad | Estado | Evidencia |
 |---|---|---|
 | Validar formulario con Zod | **Completo** | `quoteFormInputSchema`, `quoteItemInputSchema`, `vehicleInputSchema`, etc. |
 | Prohibir cantidad o precio negativo | **Completo** | `quantity` positiva; `unitPriceCents` no negativa. |
 | Requerir al menos 1 ítem para compartir/generar PDF | **Necesita verificación** | Se requiere ≥1 ítem para crear cotización, pero no se puede probar el caso compartir/PDF porque esas funciones no existen. |
 | QA funcional: crear, compartir en incógnito, generar PDF, comparar montos | **Falta** | — |
 
-### 9) Otros requisitos del MVP.md fuente
+### 9) Otros requisitos fuera del MVP inmediato
 
-| Requisito | Estado | Notas |
+| Funcionalidad | Estado | Notas |
 |---|---|---|
-| Inventario | **Fuera del MVP** | No implementado; acorde a `MVP.md`. |
+| Inventario | **Fuera del MVP** | No implementado; acorde a `docs/MVP_ISSUES.md`. |
 | Empleados, trabajos realizados y nómina | **Fuera del MVP** | Schema tiene `UserProfile`, `WorkAssignment`, `ExecutionRecord`, `NominaSemanal`; UI pendiente. |
 | Cuentas de empleados (adeudos/abonos) | **Fuera del MVP** | No implementado. |
 | Evidencias (fotos/timeline) | **Fuera del MVP** | No implementado. |
@@ -126,20 +122,35 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 
 ## Principales brechas
 
-1. **Cierre de venta no existe**: no hay PDF, URL pública, botón "Compartir" ni transición a `ENVIADA`.
-2. **IVA y vigencia**: faltan en el modelo y en la UI; el source las considera obligatorias para cotizaciones comerciales.
-3. **Asignación de trabajadores**: el schema la soporta, pero la cotización no captura maestro/ayudantes.
-4. **Edición de borradores**: solo se pueden crear y aprobar; no editar ni eliminar.
-5. **Filtros y búsqueda en listados**: clientes tienen búsqueda; cotizaciones solo listado crono.
-6. **Localización**: pantallas admin mezclan inglés y español; el source espera español de México para todo texto visible.
-7. **Modelo de dominio divergente**: este proyecto separa `Quote`/`WorkOrder`; el source trata a la cotización como entidad central que cambia de fase. La UI debe reflejar los estados de negocio del source (`BORRADOR`, `ENVIADA`, `APROBADA`, `EN_PROCESO`, `AJUSTE_FINAL`, etc.) aunque el schema los tenga divididos.
+1. **Cierre de venta**: falta el flujo para compartir la cotización, mostrarla al cliente y registrar aceptación o declinación todo/nada.
+2. **IVA y vigencia**: falta IVA 16 % activado por defecto, interruptor para quitarlo cuando aplique y vigencia comercial de 7 días.
+3. **Asignación de trabajadores**: debe ocurrir cuando la cotización aceptada inicia trabajo, no durante el borrador.
+4. **Edición de borradores**: faltan opciones para editar, completar o eliminar cotizaciones antes de enviarlas.
+5. **Filtros y búsqueda en listados**: todos los módulos operativos necesitan filtros; cotizaciones y clientes son prioridad.
+6. **Localización**: todo texto operativo visible al usuario debe estar en español de México.
+7. **Modelo de dominio**: la separación `Quote`/`WorkOrder` es correcta; la UI debe traducirla a estados de negocio claros para el usuario.
+
+### Decisiones para cerrar brechas
+
+| Brecha | Decisión | Impacto en implementación |
+|---|---|---|
+| Cierre de venta | Significa compartir la cotización y capturar aceptación/declinación del cliente. | Crear link tokenizado, vista pública, estado `ENVIADA` y acciones de respuesta todo/nada. |
+| IVA | IVA 16 % activado por defecto. | Agregar cálculo centralizado, persistencia y switch "Con IVA". |
+| Excepción de IVA | Debe poder desactivarse manualmente. | El switch debe dejar rastro claro en UI y totales. |
+| Vigencia | 7 días por defecto. | Agregar `validUntil` o equivalente y mostrarlo en cotización/PDF/vista pública. |
+| Volatilidad de materiales | La vigencia queda sujeta a cambios imprevistos de precios. | Mostrar nota comercial en salida al cliente. |
+| Maestro y ayudantes | Se asignan al empezar el trabajo después de aceptación. | Mover asignación al flujo `ACEPTADA` → `EN_PROCESO`. |
+| Filtros | Todo listado operativo debe tener filtros. | Priorizar cotizaciones y clientes; extender a trabajos, pagos y nómina cuando existan. |
+| Idioma | Todo lo operativo visible debe estar en español. | Barrido de UI, mensajes, estados, botones y validaciones visibles. |
 
 ## Recomendación de orden para cerrar brechas
 
-1. Agregar toggle de IVA y campo de vigencia en cotización.
+1. Agregar IVA 16 % por defecto, interruptor "Con IVA" y vigencia de 7 días.
 2. Habilitar edición de cotizaciones en borrador.
-3. Implementar asignación de maestro/ayudantes al aprobar (o al crear orden de trabajo).
+3. Agregar filtros a cotizaciones y clientes.
 4. Generar vista pública de cotización + token expirable (`/c/[token]`).
 5. Al compartir, cambiar estado a `SENT` y mostrar PDF/URL.
-6. Crear página fija `/pago` con CLABEs, QR y acciones.
-7. Localizar toda la UI visible al español de México.
+6. Capturar aceptación o declinación todo/nada del cliente.
+7. Si el cliente acepta, iniciar trabajo (`EN_PROCESO`) y asignar maestro/ayudantes.
+8. Crear página fija `/pago` con CLABEs, QR y acciones.
+9. Localizar toda la UI visible al español de México.

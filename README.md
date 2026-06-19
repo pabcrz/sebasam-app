@@ -8,10 +8,65 @@ Aplicación operativa limpia para SEBASAM: cotizaciones, órdenes de trabajo, as
 |---|---|
 | Propósito | Reemplazar búsquedas en archivos/PDF por una web app mobile-first donde los datos operativos vivan en base de datos. |
 | Alcance MVP (actual) | Login admin, clientes, vehículos, cotizaciones en borrador, aprobación → orden de trabajo, PWA foundation. |
-| Fuente de verdad visual | Figma — ver [`DESIGN.md`](./DESIGN.md). |
-| Fuente de verdad de dominio | `prisma/schema.prisma`, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) y este README. |
-| Modelo de dominio | `Quote` y `WorkOrder` separados; cada orden de trabajo nace de una cotización aprobada, incluso para trabajo administrativo urgente. Esto difiere del repo hermano `sebasam`, donde `Cotización` es la entidad central que cambia de fase por estado. |
+| Referencia visual | Figma — ver [`DESIGN.md`](./DESIGN.md). |
+| Referencia de dominio | `prisma/schema.prisma`, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) y este README. |
+| Modelo de dominio | `Quote` y `WorkOrder` separados; cada orden de trabajo nace de una cotización aprobada, incluso para trabajo administrativo urgente. |
 | Estado actual | Issues 1–7, 5.1 y 5.2 de [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) completados; Issues 8–12 pendientes. Ver [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md). |
+
+## Flujo operativo 🔄
+
+El flujo principal va del login hasta el impacto en cuenta del cliente y nómina. Cada cotización es **todo/nada**: el cliente acepta o declina el conjunto completo.
+
+```mermaid
+flowchart LR
+    A[Login] --> B[Cotización<br>BORRADOR]
+    B --> C[Armar ítems + vehículo<br>+ evidencia inicial]
+    C --> D[Compartir:<br>ENVIADA]
+    D --> E{¿Cliente?<br>todo/nada}
+    E -->|Acepta| F[APROBADA]
+    E -->|Declina| G[Rechazada/<br>Cancelada]
+    F --> H[WorkOrder<br>EN_PROCESO]
+    H --> I[Asignar empleados]
+    I --> J[Reportar ejecución<br>+ extras controlados]
+    J --> K[Trabajo terminado]
+    K --> L[Registrar cobros<br>ajustes, adeudo]
+    L --> M[Ledger cliente]
+    L --> N[Nómina semanal]
+```
+
+## Reglas de negocio 📋
+
+| ID | Regla | Detalle |
+|---|---|---|
+| R1 | Estados de cotización | `BORRADOR` → `ENVIADA` → `APROBADA` / `RECHAZADA` / `CANCELADA`. |
+| R2 | Todo o nada | El cliente acepta o declina la cotización completa; no puede aceptar ítems parciales. |
+| R3 | Token expirable | El link de cliente lleva token con vigencia; expirado → no se procesa la respuesta. |
+| R4 | Aprobación → WorkOrder | Toda orden de trabajo nace de una cotización aprobada. |
+| R5 | Asignación controlada | Se asigna 1 maestro + N ayudantes; el empleado solo ve estado operativo y su trabajo. |
+| R6 | Reporte de ejecución | El empleado registra avance empatado contra la cotización aprobada. |
+| R7 | Extras controlados | Los extras son posibles, pero requieren registro, control y quedan vinculados a la orden. |
+| R8 | Fin de trabajo | El trabajo termina cuando la ejecución cubre el alcance aprobado + extras autorizados. |
+| R9 | Cobros, ajustes y adeudo | Se registran pagos con método, ajustes y saldo pendiente. |
+| R10 | Ledger del cliente | Cada movimiento de pago o adeudo impacta el estado de cuenta del cliente. |
+| R11 | Nómina semanal | La ejecución registrada alimenta el cálculo de nómina semanal. |
+
+## Modelo de datos operativo 🗂️
+
+Este es el modelo de dominio que soporta el flujo. Las primeras entidades existen en `prisma/schema.prisma`; las últimas tres son el objetivo para pagos, ledger y nómina.
+
+| Entidad | Rol | Relación clave | Estado en schema |
+|---|---|---|---|
+| `UserProfile` | Usuarios internos: admin, asistente, empleado | Tiene `assignments` y `executionRecords` | ✅ Implementado |
+| `Customer` | Cliente del taller | Tiene `quotes` y `vehicles` | ✅ Implementado |
+| `Vehicle` | Unidad del cliente | Pertenece a `Customer`; referenciado por `Quote` | ✅ Implementado |
+| `Quote` | Cotización comercial | Tiene `QuoteItem`s; origen de `WorkOrder` | ✅ Implementado |
+| `QuoteItem` | Línea de cotización: material, mano de obra, servicio externo, etc. | Pertenece a `Quote` | ✅ Implementado |
+| `WorkOrder` | Orden de trabajo operativa | Nace de `Quote` aprobada; tiene assignments y execution records | ✅ Implementado |
+| `WorkAssignment` | Asignación de empleado a orden | Vincula `UserProfile` y `WorkOrder` | ✅ Implementado |
+| `ExecutionRecord` | Registro de ejecución/reporte | Vincula `WorkOrder` y `UserProfile` opcional | ✅ Implementado |
+| `Payment` | Cobro registrado por el admin | Pendiente: vincular `Quote` / `WorkOrder` y `Customer` | 🎯 Objetivo |
+| `LedgerEntry` | Movimiento de estado de cuenta del cliente | Pendiente: refleja pagos, ajustes y adeudos | 🎯 Objetivo |
+| `WeeklyPayroll` | Nómina semanal calculada | Pendiente: deriva de `ExecutionRecord` y `WorkAssignment` | 🎯 Objetivo |
 
 ## Documentos del proyecto
 
@@ -19,7 +74,7 @@ Aplicación operativa limpia para SEBASAM: cotizaciones, órdenes de trabajo, as
 - [`docs/GITFLOW.md`](./docs/GITFLOW.md) — flujo de ramas y PRs.
 - [`docs/AI_WORKFLOW.md`](./docs/AI_WORKFLOW.md) — protocolo de trabajo con asistentes de IA.
 - [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) — borrador de backlog del MVP (solo lectura; no mover ni renombrar).
-- [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md) — comparación del estado actual contra los requisitos del MVP de los repos fuente.
+- [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md) — estado actual del MVP y brechas pendientes.
 - [`DESIGN.md`](./DESIGN.md) — sistema de diseño, tokens y componentes basado en Figma.
 
 ## Estado de implementación (resumen)
@@ -37,24 +92,24 @@ Aplicación operativa limpia para SEBASAM: cotizaciones, órdenes de trabajo, as
 
 ---
 
-## Quick path
+## Ruta rápida ⚡
 
-1. Copy `.env.example` to `.env` and fill Supabase values.
-2. Install dependencies with `pnpm install`.
-3. Generate Prisma Client with `pnpm prisma:generate`.
-4. Run locally with `pnpm dev`.
+1. Copiar `.env.example` a `.env` y completar los valores de Supabase.
+2. Instalar dependencias con `pnpm install`.
+3. Generar Prisma Client con `pnpm prisma:generate`.
+4. Correr localmente con `pnpm dev`.
 
-## Architecture rules
+## Reglas de arquitectura 🏗️
 
-| Topic | Rule |
-|-------|------|
+| Tema | Regla |
+|---|---|
 | Stack | Next.js App Router, TypeScript strict, Tailwind, Prisma, Supabase Postgres/Auth/Storage, pnpm. |
-| Data access | Use Prisma for operational business data. Do not query the same business tables through Supabase client helpers. |
-| Auth | Use Supabase Auth for sessions. Store app roles and profile data in `UserProfile`. |
-| Quotes and work orders | Every `WorkOrder` starts from one approved `Quote`. For urgent work, create and approve an administrative quote first. |
-| Deploy discipline | `build` runs `prisma generate && next build`. Migrations are never hidden inside `next build`. |
-| Repository | Keep this repository private. |
-| Branching | Follow the pragmatic Gitflow in `docs/GITFLOW.md`. |
+| Acceso a datos | Usar Prisma para datos operativos de negocio. No consultar las mismas tablas de negocio mediante helpers de Supabase client. |
+| Auth | Usar Supabase Auth para sesiones. Guardar roles de app y datos de perfil en `UserProfile`. |
+| Cotizaciones y órdenes | Toda `WorkOrder` nace de una `Quote` aprobada. Para trabajo urgente, crear y aprobar primero una cotización administrativa. |
+| Disciplina de deploy | `build` ejecuta `prisma generate && next build`. Las migraciones nunca se esconden dentro de `next build`. |
+| Repositorio | Mantener este repositorio privado. |
+| Ramas | Seguir el Gitflow pragmático de `docs/GITFLOW.md`. |
 
 ## Environment variables
 
@@ -147,7 +202,7 @@ Tailwind wrappers derived from the Figma design system instead of invented visua
 - Do not rename env vars away from `.env.example` without updating Prisma and Supabase helpers.
 - Do not run `prisma migrate dev` in production.
 - Do not add migrations to `next build`.
-- Do not recreate the legacy schema wholesale.
+- Do not import the schema from the other repository wholesale.
 - Do not implement the tokenized customer portal in the initial MVP.
 
 ## Reference
