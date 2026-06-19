@@ -267,24 +267,30 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 ### Issue 7.12: Aceptación o declinación de cotización por cliente
 
-**Objetivo:** Registrar la decisión del cliente sobre una cotización compartida bajo una regla todo/nada.
+**Objetivo:** Registrar la decisión del cliente o la autorización administrativa sobre una cotización compartida bajo una regla todo/nada.
 
 **Criterios de aceptación:**
 - [ ] El cliente puede aceptar o declinar la cotización completa desde el link público.
 - [ ] No existe aceptación parcial de partidas en el MVP.
-- [ ] La aceptación cambia la cotización a `ACEPTADA` (`APPROVED`) o estado equivalente.
-- [ ] La declinación cambia la cotización a `DECLINADA`/`CANCELADA` o estado equivalente acordado.
+- [ ] La aceptación por cliente cambia la cotización a `ACEPTADA` (`APPROVED`) o estado equivalente.
+- [ ] La declinación cambia la cotización a `DECLINADA` o estado equivalente acordado.
+- [ ] Si el cliente aceptó por fuera del link (p. ej. teléfono, WhatsApp o presencial), el admin puede marcar la cotización como autorizada. No es un flujo aparte: usa el mismo registro de cotización/alcance.
+- [ ] La autorización administrativa requiere una nota obligatoria con canal/motivo (p. ej. "autorización por teléfono") y queda auditada.
+- [ ] La evidencia inicial en la autorización administrativa es opcional.
+- [ ] Tanto la aceptación del cliente como la autorización administrativa mueven la cotización a `ACEPTADA` y habilitan el paso a `ESPERA`.
 - [ ] La decisión queda registrada con fecha, origen y estado resultante.
 - [ ] Una cotización expirada no puede aceptarse sin intervención administrativa.
 
-**Dependencias/notas:** Depende del Issue 7.11. La aceptación habilita el inicio de trabajo del Issue 8.
+**Dependencias/notas:** Depende del Issue 7.11. La aceptación o autorización administrativa habilita el estado `ESPERA` y el inicio de trabajo del Issue 8.
 
 ### Issue 8: Asignación de `WorkOrder` y registros de ejecución
 
-**Objetivo:** Iniciar el trabajo de una cotización aceptada, asignar maestro/ayudantes y registrar progreso de ejecución para operaciones de campo.
+**Objetivo:** Iniciar el trabajo de una cotización aceptada o autorizada administrativamente, pasando por `ESPERA`, asignar maestro/ayudantes y registrar progreso de ejecución para operaciones de campo.
 
 **Criterios de aceptación:**
-- [ ] Solo una cotización aceptada puede entrar en modo trabajo (`EN_PROCESO`) o generar/activar su `WorkOrder` operativo.
+- [ ] Tras la aceptación del cliente o la autorización administrativa, la cotización/orden pasa a `ESPERA`.
+- [ ] Solo una cotización en `ESPERA` puede pasar a `EN_PROCESO` o generar/activar su `WorkOrder` operativo.
+- [ ] La transición de `ESPERA` a `EN_PROCESO` requiere confirmar espacio del taller y disponibilidad de maestro.
 - [ ] Los administradores pueden asignar 1 Maestro obligatorio y N Ayudantes opcionales.
 - [ ] Se pueden agregar registros de ejecución con fecha, notas, avance y detalles relevantes para el estado.
 - [ ] Los registros de ejecución se empatan contra la cotización y el `WorkOrder` correcto.
@@ -292,7 +298,7 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 - [ ] El estado del work order refleja asignación, progreso y bloqueo de cambios inseguros.
 - [ ] Los registros quedan vinculados al `WorkOrder` correcto.
 
-**Dependencias/notas:** Depende del Issue 7.12. La asignación de maestro/ayudantes no pertenece al borrador de cotización; inicia cuando el cliente acepta y el trabajo entra en operación.
+**Dependencias/notas:** Depende del Issue 7.12. La asignación de maestro/ayudantes no pertenece al borrador de cotización; ocurre al pasar de `ESPERA` a `EN_PROCESO`, una vez confirmados espacio del taller y disponibilidad de maestro.
 
 ### Issue 9: Finalizar `WorkOrder` y generar PDF/salida final de orden
 

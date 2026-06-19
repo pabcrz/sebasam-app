@@ -35,7 +35,7 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 | Capturar cliente | **Completo** | Select de clientes en `/admin/quotes`. |
 | Capturar datos de vehículo (unidad/modelo + placas) | **Completo** | Formulario de vehículo con placas opcionales y modelo requerido; `findOrCreateVehicle` reutiliza por cliente+placa (`src/features/vehicles/actions.ts`). |
 | Notas opcionales | **Completo** | Campo `description` en cotización. |
-| Asignación: 1 Maestro obligatorio + N Ayudantes opcionales | **Falta** | La asignación inicia cuando el cliente acepta la cotización y el trabajo entra en operación; `WorkAssignment` existe en schema pero no se crea desde la UI. |
+| Asignación: 1 Maestro obligatorio + N Ayudantes opcionales | **Falta** | La asignación ocurre al pasar de `ESPERA` a `EN_PROCESO`, una vez confirmados espacio del taller y disponibilidad de maestro; `WorkAssignment` existe en schema pero no se crea desde la UI. |
 | Ítems tipo `MATERIAL`, `MANO_OBRA`, `SERVICIO_EXTERNO` | **Parcial** | Schema tiene `SERVICE`, `MATERIAL`, `LABOR`, `EQUIPMENT`, `OTHER`; los labels en UI se traducen, pero no coinciden 1:1 con los tipos esperados. |
 | Cantidad, descripción, precio final, importe | **Completo** | `QuoteItem` con `quantity`, `description`, `unitPriceCents`, `totalCents`. |
 | Totales: `subtotal`, `iva`, `total` persistidos | **Parcial** | Campos existen, pero `taxCents` siempre es `0`; falta IVA 16 % activado por defecto y opción para desactivarlo cuando aplique. |
@@ -74,7 +74,7 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 | Funcionalidad | Estado | Evidencia |
 |---|---|---|
 | Folio único por cotización | **Completo** | `Quote.number` con `@unique`. |
-| Estados usados en MVP: `BORRADOR`, `ENVIADA`, `APROBADA`, `CANCELADA` | **Parcial** | Estados existentes (`DRAFT`, `SENT`, `APPROVED`, `CANCELLED`), pero `SENT` no se usa aún. |
+| Estados usados en MVP: `BORRADOR`, `ENVIADA`, `ACEPTADA`, `DECLINADA`, `CANCELADA`, `ESPERA`, `EN_PROCESO` | **Parcial** | Estados existentes (`DRAFT`, `SENT`, `APPROVED`, `CANCELLED`), pero `SENT` no se usa aún. `ESPERA` es un estado operativo de la orden de trabajo entre la aceptación/autorización y el inicio real del trabajo. |
 | Cálculo centralizado de subtotal, IVA y total | **Parcial** | Subtotal/total en servidor; IVA no calculado. |
 | `saldoPendiente = total - totalAbonado` | **Falta** | No hay pagos ni ledger. |
 | Vigencia obligatoria en cotización | **Falta** | Debe calcularse por defecto a 7 días y mostrarse al cliente junto con una nota por volatilidad de precios de materiales. |
@@ -139,7 +139,7 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 | Excepción de IVA | Debe poder desactivarse manualmente. | El switch debe dejar rastro claro en UI y totales. |
 | Vigencia | 7 días por defecto. | Agregar `validUntil` o equivalente y mostrarlo en cotización/PDF/vista pública. |
 | Volatilidad de materiales | La vigencia queda sujeta a cambios imprevistos de precios. | Mostrar nota comercial en salida al cliente. |
-| Maestro y ayudantes | Se asignan al empezar el trabajo después de aceptación. | Mover asignación al flujo `ACEPTADA` → `EN_PROCESO`. |
+| Maestro y ayudantes | Se asignan al pasar de `ESPERA` a `EN_PROCESO`, después de confirmar espacio del taller y disponibilidad de maestro. | Mover asignación al flujo `ESPERA` → `EN_PROCESO`. |
 | Filtros | Todo listado operativo debe tener filtros. | Priorizar cotizaciones y clientes; extender a trabajos, pagos y nómina cuando existan. |
 | Idioma | Todo lo operativo visible debe estar en español. | Barrido de UI, mensajes, estados, botones y validaciones visibles. |
 
@@ -150,7 +150,7 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 3. Agregar filtros a cotizaciones y clientes.
 4. Generar vista pública de cotización + token expirable (`/c/[token]`).
 5. Al compartir, cambiar estado a `SENT` y mostrar PDF/URL.
-6. Capturar aceptación o declinación todo/nada del cliente.
-7. Si el cliente acepta, iniciar trabajo (`EN_PROCESO`) y asignar maestro/ayudantes.
+6. Capturar aceptación o declinación todo/nada del cliente; permitir autorización administrativa con nota obligatoria cuando el cliente aceptó por fuera del link.
+7. Tras la aceptación o autorización, mover la orden a `ESPERA`; al confirmar espacio y maestro, pasar a `EN_PROCESO` y asignar maestro/ayudantes.
 8. Crear página fija `/pago` con CLABEs, QR y acciones.
 9. Localizar toda la UI visible al español de México.

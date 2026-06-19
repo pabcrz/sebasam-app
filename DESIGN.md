@@ -141,7 +141,7 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 
 | Componente | Responsabilidad |
 |---|---|
-| `QuoteOperationalBadge` | Mapea `EstadoCotizacion` a etapa humana: Pendiente / Aprobada / En proceso / Ajuste final / Cancelada. |
+| `QuoteOperationalBadge` | Mapea `EstadoCotizacion` a etapa humana: Pendiente / Aceptada / Espera / En proceso / Ajuste final / Cancelada. |
 | `QuoteFinancialBadges` | Muestra estado de pago + factura. Solo Admin y Cliente. |
 | `QuoteCard` | Resumen compacto de cotización para listados. |
 | `QuoteTableRow` | Fila de tabla en dashboard admin. |
@@ -208,18 +208,19 @@ Diagrama completo del flujo operativo, desde el login hasta el impacto en ledger
 ```mermaid
 flowchart LR
     A[Login] --> B[Cotización<br>BORRADOR]
-    B --> C[Armar ítems + vehículo<br>+ evidencia inicial]
+    B --> C[Armar ítems + vehículo<br>+ evidencia inicial opcional]
     C --> D[Compartir:<br>ENVIADA]
-    D --> E{¿Cliente?<br>todo/nada}
-    E -->|Acepta| F[APROBADA]
-    E -->|Declina| G[Rechazada/<br>Cancelada]
-    F --> H[WorkOrder<br>EN_PROCESO]
-    H --> I[Asignar empleados]
-    I --> J[Reportar ejecución<br>+ extras controlados]
-    J --> K[Trabajo terminado]
-    K --> L[Registrar cobros<br>ajustes, adeudo]
-    L --> M[Ledger cliente]
-    L --> N[Nómina semanal]
+    D --> E{Cliente responde<br>todo/nada}
+    E -->|Acepta| F[ACEPTADA]
+    E -->|Declina| G[DECLINADA]
+    F --> H[WorkOrder<br>ESPERA]
+    H --> I[Confirmar espacio + maestro<br>EN_PROCESO]
+    I --> J[Asignar empleados]
+    J --> K[Reportar ejecución<br>+ extras controlados]
+    K --> L[Trabajo terminado]
+    L --> M[Registrar cobros<br>ajustes, adeudo]
+    M --> N[Ledger cliente]
+    M --> O[Nómina semanal]
 ```
 
 ### Estados operativos
@@ -228,16 +229,20 @@ flowchart LR
 |---|---|---|
 | `BORRADOR` | Cotización en construcción | Admin / asistente |
 | `ENVIADA` | Cotización compartida al cliente | Admin al generar link/PDF |
-| `APROBADA` | Cliente aceptó todo | Cliente vía link con token |
-| `RECHAZADA` | Cliente declinó todo | Cliente vía link con token |
+| `ACEPTADA` | Cliente aceptó todo, o admin autorizó una aceptación externa | Cliente vía link con token, o Admin con nota obligatoria |
+| `DECLINADA` | Cliente declinó todo | Cliente vía link con token |
 | `CANCELADA` | Admin cancela antes o después de enviar | Admin |
-| `EN_PROCESO` | WorkOrder activa con empleados asignados | Sistema al aprobar |
+| `ESPERA` | Cotización/orden aceptada, a la espera de espacio del taller y disponibilidad de maestro | Sistema al aceptar o autorizar |
+| `EN_PROCESO` | WorkOrder activa con empleados asignados | Admin al confirmar espacio y maestro |
 | `AJUSTE_FINAL` | Extras o ajustes antes de cerrar | Admin / empleado autorizado |
 
 ### Reglas de diseño por estado
 
 - `ENVIADA` se dispara al compartir URL pública o PDF.
 - El cliente acepta o declina **todo/nada** mediante link con token expirable.
+- Si el cliente aceptó por fuera del link (p. ej. teléfono), el admin puede marcar la cotización como autorizada con una nota obligatoria de canal/motivo; usa el mismo registro de cotización/alcance.
+- Tras `ACEPTADA`, la orden entra en `ESPERA` hasta que el admin confirme espacio del taller y disponibilidad de maestro.
+- La transición de `ESPERA` a `EN_PROCESO` ocurre al confirmar espacio y maestro; en ese punto se asignan empleados.
 - `FACTURADA` no implica pagada; siempre se muestra el estado financiero aparte.
 - El empleado **no ve** pagos, saldos, métodos de pago, factura ni ledger.
 

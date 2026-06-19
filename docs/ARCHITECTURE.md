@@ -8,7 +8,7 @@ Esta app es el núcleo operativo limpio de SEBASAM: clientes, cotizaciones, órd
 |---|---|
 | Datos de negocio | Prisma es la única capa de acceso a datos operativos. No mezclar consultas de Supabase client con Prisma para las mismas tablas. |
 | Auth | Supabase Auth es dueño de la identidad. Los roles de la app viven en `UserProfile`. |
-| Cotización → orden de trabajo | Una `WorkOrder` debe referenciar exactamente una `Quote` aprobada. El trabajo urgente o ya realizado también parte de una cotización administrativa aprobada. |
+| Cotización → orden de trabajo | Una `WorkOrder` debe referenciar exactamente una `Quote` aceptada o autorizada administrativamente. Tras la aceptación o autorización, la orden pasa por `ESPERA` antes de `EN_PROCESO`. El trabajo urgente o ya realizado también parte de una cotización administrativa autorizada con nota de canal/motivo. |
 | URLs de base de datos | Runtime usa `DATABASE_URL` con el pooler de Supabase. Las migraciones usan `DIRECT_URL`. |
 | Despliegue | `next build` puede generar Prisma Client, pero las migraciones corren solo a través de `db:migrate:deploy`. |
 
@@ -43,9 +43,11 @@ El dominio separa claramente **cotización comercial** (`Quote`) de **orden de t
 | `Vehicle` | Unidad vinculada al cliente | `Customer`, `Quote` |
 | `Quote` | Propuesta comercial con ítems y totales | `Customer`, `Vehicle`, `QuoteItem`, `WorkOrder` |
 | `QuoteItem` | Línea de cotización con tipo, cantidad y precio | `Quote` |
-| `WorkOrder` | Orden de trabajo que nace de una cotización aprobada | `Quote`, `WorkAssignment`, `ExecutionRecord` |
+| `WorkOrder` | Orden de trabajo que nace de una cotización aceptada o autorizada administrativamente | `Quote`, `WorkAssignment`, `ExecutionRecord` |
 | `WorkAssignment` | Asignación de empleado a orden de trabajo | `WorkOrder`, `UserProfile` |
 | `ExecutionRecord` | Reporte de ejecución realizado | `WorkOrder`, `UserProfile` |
+
+La autorización administrativa no crea un flujo paralelo: usa el mismo registro de cotización/alcance, lo marca como aceptado y exige una nota con canal y motivo (p. ej. "autorización por teléfono"). La evidencia inicial es opcional. Tras la aceptación o autorización, la orden pasa por `ESPERA` hasta que se confirme espacio del taller y disponibilidad de maestro.
 
 ## Límites del MVP
 
