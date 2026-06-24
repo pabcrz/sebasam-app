@@ -45,7 +45,7 @@ const steps: Step[] = ["client", "items", "notes", "summary", "preview"];
 
 const stepLabels: Record<Step, string> = {
   client: "Cliente / Unidad",
-  items: "Partidas",
+  items: "Conceptos",
   notes: "Notas",
   summary: "Resumen",
   preview: "Enviar",
@@ -94,33 +94,33 @@ function validateItemValue(item: ItemFormValue, index: number): string | null {
   }
 
   if (description === "") {
-    return `La partida ${index + 1} necesita una descripción.`;
+    return `El concepto ${index + 1} necesita una descripción.`;
   }
 
   if (description.length > 240) {
-    return `La descripción de la partida ${index + 1} es muy larga.`;
+    return `La descripción del concepto ${index + 1} es muy larga.`;
   }
 
   if (quantity === "") {
-    return `La partida ${index + 1} necesita una cantidad.`;
+    return `El concepto ${index + 1} necesita una cantidad.`;
   }
 
   const quantityNum = Number(quantity);
   if (!Number.isFinite(quantityNum) || quantityNum <= 0 || quantityNum > 999_999.99) {
-    return `La cantidad de la partida ${index + 1} debe ser mayor a 0.`;
+    return `La cantidad del concepto ${index + 1} debe ser mayor a 0.`;
   }
 
   if (Number(quantityNum.toFixed(2)) !== quantityNum) {
-    return `La cantidad de la partida ${index + 1} admite hasta 2 decimales.`;
+    return `La cantidad del concepto ${index + 1} admite hasta 2 decimales.`;
   }
 
   if (unitPrice === "") {
-    return `La partida ${index + 1} necesita un precio unitario.`;
+    return `El concepto ${index + 1} necesita un precio unitario.`;
   }
 
   const unitPriceNum = Number(unitPrice);
   if (!Number.isFinite(unitPriceNum) || unitPriceNum < 0) {
-    return `El precio unitario de la partida ${index + 1} no puede ser negativo.`;
+    return `El precio unitario del concepto ${index + 1} no puede ser negativo.`;
   }
 
   return null;
@@ -158,7 +158,7 @@ function getStepError(step: Step, state: {
       .find(Boolean);
     if (rowError) return rowError;
 
-    return state.items.some(isItemComplete) ? null : "Ingresa al menos una partida completa.";
+    return state.items.some(isItemComplete) ? null : "Ingresa al menos un concepto completo.";
   }
 
   if (step === "notes") {
@@ -327,10 +327,10 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
             </div>
           </section>
 
-          {/* Step 2: Partidas */}
+          {/* Step 2: Conceptos */}
           <section hidden={step !== "items"} className="grid gap-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-[var(--color-text-main)]">Partidas</h3>
+              <h3 className="font-semibold text-[var(--color-text-main)]">Conceptos</h3>
               <Badge variant="info">{completeItems.length} de {items.length}</Badge>
             </div>
 
@@ -340,7 +340,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
                 className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-[var(--color-text-main)]">Partida {index + 1}</span>
+                  <span className="text-sm font-medium text-[var(--color-text-main)]">Concepto {index + 1}</span>
                   <Select
                     value={item.type}
                     onValueChange={(value) => updateItem(index, { type: value as QuoteItemType })}
@@ -445,9 +445,9 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
             </div>
 
             <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-              <h3 className="font-semibold text-[var(--color-text-main)]">Partidas</h3>
+              <h3 className="font-semibold text-[var(--color-text-main)]">Conceptos</h3>
               {completeItems.length === 0 ? (
-                <p className="text-sm text-[var(--color-text-muted)]">Sin partidas.</p>
+                <p className="text-sm text-[var(--color-text-muted)]">Sin conceptos.</p>
               ) : (
                 <ul className="grid gap-2">
                   {completeItems.map((item, index) => (

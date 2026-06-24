@@ -98,7 +98,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
           ) : null}
           {params.error === "invalid" ? (
             <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
-              Revisa los datos de la cotización e incluye al menos una partida completa.
+              Revisa los datos de la cotización e incluye al menos un concepto completo.
             </p>
           ) : null}
           {params.error === "invalid-approval" ? (
@@ -137,7 +137,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                   <TableHead>Título</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Orden de trabajo</TableHead>
-                  <TableHead>Partidas</TableHead>
+                  <TableHead>Conceptos</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
