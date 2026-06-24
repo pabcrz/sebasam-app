@@ -213,7 +213,7 @@ describe("QuoteBuilder", () => {
     await user.type(unitPriceInput, "100");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/partida 2 necesita una descripción/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/concepto 2 necesita una descripción/i);
   });
 
   it("blocks advancing when a row has too many decimal places in quantity", async () => {
@@ -246,7 +246,7 @@ describe("QuoteBuilder", () => {
     await user.type(descriptionInput, "Solo descripción");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/partida 1 necesita una cantidad/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/concepto 1 necesita una cantidad/i);
   });
 
   it("prevents submission from hidden steps", async () => {

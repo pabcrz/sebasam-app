@@ -76,7 +76,7 @@ function checkQuotesPage() {
     { label: "Cotizaciones en borrador", source: pageSource },
     { label: "Crear cotización en borrador", source: builderSource },
     { label: "Cotizaciones recientes", source: pageSource },
-    { label: "Partidas", source: builderSource },
+    { label: "Conceptos", source: builderSource },
     { label: "Cliente", source: builderSource },
     { label: "Título", source: builderSource },
     { label: "Descripción", source: builderSource },
