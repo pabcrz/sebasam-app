@@ -7,7 +7,7 @@ Aplicación operativa limpia para SEBASAM: cotizaciones, órdenes de trabajo, as
 | Aspecto | Detalle |
 |---|---|
 | Propósito | Reemplazar búsquedas en archivos/PDF por una web app mobile-first donde los datos operativos vivan en base de datos. |
-| Alcance implementado | Login admin, clientes, vehículos, cotizaciones en borrador, aprobación → orden de trabajo, PWA foundation. |
+| Alcance implementado | Login admin, clientes, vehículos, cotizaciones en borrador, aprobación → orden de trabajo, `PaymentRequest`/`CustomerFiscalProfile`, PWA foundation. |
 | Referencia visual | Figma — ver [`DESIGN.md`](./DESIGN.md). |
 | Referencia de dominio | `prisma/schema.prisma`, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) y este README. |
 | Hosting objetivo | Landing pública en `sebasam.com`; app operativa independiente en `app.sebasam.com`. |
@@ -58,6 +58,7 @@ flowchart LR
 | R15 | Flujo de pago independiente | Los datos de pago se muestran en un flujo separado de la aceptación de la cotización. |
 | R16 | Datos fiscales antes del pago | Si la cotización requiere factura, el sistema solicita o confirma los datos fiscales del cliente antes de mostrar los datos de pago. |
 | R17 | Construcción por secciones desde el inicio | La experiencia de autor parte de una cotización con secciones. La acción principal es **Agregar sección**; dentro de cada sección se agregan conceptos con **Agregar concepto**. Los subtotales y el total se calculan automáticamente. Las acciones del cliente son **Autorizar sección** y **Autorizar cotización completa**. La agrupación retrospectiva de conceptos queda fuera del MVP inmediato. |
+| R18 | Página pública de datos de pago | El cliente accede a los datos de pago mediante `/datos-de-pago/[token]` vinculado a un `PaymentRequest`. Si requiere factura, captura o confirma datos fiscales antes de ver los datos de pago. El comprobante se envía por WhatsApp; no hay upload ni storage en el MVP. |
 
 > **Terminología:** en la UI del cotizador cada línea se presenta como un **concepto** (acción **Agregar concepto**). En el modelo de dominio esa línea sigue siendo `QuoteItem`. Los tipos de concepto incluyen mano de obra, material, refacción, servicio externo y otro.
 
@@ -97,6 +98,8 @@ Este es el modelo de dominio que soporta el flujo. Las primeras entidades existe
 - [x] Crear cotización borrador con ítems, totales calculados en servidor y validación Zod.
 - [x] Aprobar cotización y crear `WorkOrder` transaccionalmente.
 - [ ] Asignar `WorkOrder` y registrar ejecución.
+- [x] Backend de `PaymentRequest` y `CustomerFiscalProfile` (Issue GitHub #41).
+- [ ] Página pública `/datos-de-pago/[token]` para datos de pago y captura fiscal (Issue GitHub #42).
 - [ ] Flujo de pago independiente, autorización parcial por secciones y datos fiscales previos (Issue GitHub #37).
 - [ ] Finalizar `WorkOrder` y generar PDF/salida final.
 - [ ] Verificar instalabilidad PWA.

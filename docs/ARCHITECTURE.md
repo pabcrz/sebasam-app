@@ -52,6 +52,7 @@ Mapa de rutas objetivo:
 | `/mi-nomina` | `WORKER` | Estimación de nómina propia. |
 | `/trabajo/[id]` | Según rol | Detalle del trabajo con visibilidad específica por rol. |
 | `/c/[token]` | Token de cliente público | Futuro portal tokenizado para clientes. |
+| `/datos-de-pago/[token]` | Token de cliente público | Página de datos de pago vinculada a un `PaymentRequest`. |
 
 Los slugs de ruta usan español singular sin acentos (`cotizacion`, `nomina`) para mantener las URLs estables y ASCII-only.
 
@@ -89,6 +90,17 @@ El flujo de pago es independiente de la aceptación de la cotización:
 - Si la cotización requiere factura, el sistema solicita los datos fiscales faltantes o confirma los datos fiscales existentes del cliente antes de mostrar los datos de pago.
 
 La distinción operativa `ACEPTADA` → `ESPERA` → `EN_PROGRESO` se preserva: una vez autorizadas las secciones necesarias, la orden de trabajo sigue pasando por `ESPERA` hasta confirmar espacio del taller y disponibilidad de maestro.
+
+## Página pública de datos de pago
+
+La ruta `/datos-de-pago/[token]` es el destino público de un `PaymentRequest`. El token se resuelve server-side y la página guía al cliente por uno de dos caminos:
+
+1. **No requiere factura**: se muestran directamente los datos de pago y un botón/contacto de WhatsApp para enviar el comprobante.
+2. **Requiere factura**: se capturan o confirman los datos fiscales, se guardan en `CustomerFiscalProfile` y se almacena un `fiscalSnapshot` en `PaymentRequest`; luego se muestran los datos de pago.
+
+El comprobante se envía por WhatsApp en el MVP; no hay upload ni storage de archivos. Los estados `EXPIRED` y `CANCELLED` se manejan con mensajes de error claros; un token inexistente se trata como inválido.
+
+Esta página está desacoplada de la aceptación de la cotización: el cliente puede recibir los datos de pago sin haber aceptado previamente el link de cotización, dependiendo de cómo se genere el `PaymentRequest`.
 
 ## Límites del MVP
 
