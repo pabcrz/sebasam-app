@@ -119,6 +119,7 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 | Issue 10 — Verificación de instalabilidad PWA | **Falta** |
 | Issue 11 — Pipeline de despliegue en Vercel | **Falta** |
 | Issue 12 — Localización a español de México | **Parcial** |
+| Issue GitHub #37 — Flujo de pago y autorización parcial de cotizaciones | **Pendiente** |
 
 ## Principales brechas
 
@@ -141,6 +142,8 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 | Volatilidad de materiales | La vigencia queda sujeta a cambios imprevistos de precios. | Mostrar nota comercial en salida al cliente. |
 | Maestro y ayudantes | Se asignan al pasar de `ESPERA` a `EN_PROCESO`, después de confirmar espacio del taller y disponibilidad de maestro. | Mover asignación al flujo `ESPERA` → `EN_PROCESO`. |
 | Filtros | Todo listado operativo debe tener filtros. | Priorizar cotizaciones y clientes; extender a trabajos, pagos y nómina cuando existan. |
+| Autorización parcial | Las cotizaciones se dividen en secciones con subtotal propio; el cliente puede autorizar secciones individuales sin autorizar la cotización completa. | Agregar `QuoteSection` al modelo; registrar autorización por sección sin crear cotizaciones separadas. |
+| Flujo de pago | Los datos de pago son independientes de la aceptación de la cotización. | Mostrar datos de pago directamente si no se requiere factura; solicitar/confirmar datos fiscales antes si se requiere factura. |
 | Idioma | Todo lo operativo visible debe estar en español. | Barrido de UI, mensajes, estados, botones y validaciones visibles. |
 
 ## Recomendación de orden para cerrar brechas
