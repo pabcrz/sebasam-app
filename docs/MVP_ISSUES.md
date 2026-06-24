@@ -350,6 +350,26 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Dependencias/notas:** Puede hacerse por etapas mientras se tocan pantallas existentes, pero antes del primer release de producción debe revisarse de punta a punta.
 
+### Issue GitHub #42: Página pública de datos de pago (`/datos-de-pago/[token]`)
+
+**Objetivo:** Implementar la página pública donde el cliente accede a los datos de pago de una `PaymentRequest` mediante un token seguro, con opción de capturar o confirmar datos fiscales cuando se requiera factura.
+
+**Criterios de aceptación:**
+- [ ] La ruta pública `/datos-de-pago/[token]` resuelve el `PaymentRequest` por su token.
+- [ ] Muestra estados de error claros para token inválido, expirado o cancelado.
+- [ ] El cliente puede decidir si requiere factura; la decisión se registra en `PaymentRequest.requiresInvoice`.
+- [ ] Si no requiere factura: muestra directamente los datos de pago y el botón/contacto de WhatsApp para enviar el comprobante.
+- [ ] Si requiere factura: muestra formulario para capturar o confirmar datos fiscales (razón social, RFC, código postal, domicilio, email, teléfono); guarda o actualiza `CustomerFiscalProfile` y almacena un `fiscalSnapshot` en `PaymentRequest`.
+- [ ] Tras capturar datos fiscales, muestra los datos de pago y el contacto de WhatsApp para enviar el comprobante.
+- [ ] El comprobante se envía por WhatsApp; no se implementa upload ni storage de archivos en el MVP.
+- [ ] La UI sigue la línea visual de Figma: header con gradiente SEBASAM, layout desktop+mobile, cards de transferencia/contacto/nota y footer oscuro.
+- [ ] Los componentes necesarios se reutilizan o crean en `src/components/ui` y `src/features/payment-requests`.
+- [ ] `pnpm lint`, `pnpm typecheck` y `pnpm build` ejecutan correctamente.
+
+**Dependencias/notas:** Depende del Issue GitHub #41 (`PaymentRequest`, `CustomerFiscalProfile` y domain/actions ya integrados en `develop`). El backend puede requerir extender `CustomerFiscalProfile` para régimen fiscal, uso CFDI y tipo de persona (física/moral) durante o antes de este issue. Prepara terreno para el Issue GitHub #43 (vista pública de cotización/documento compartido y flujo de aceptación).
+
+**Fuera de alcance:** Subida de comprobante de pago, conciliación automática de pagos, facturación SAT automática, edición admin de datos bancarios desde esta pantalla.
+
 ### Issue GitHub #37: Flujo de pago y autorización parcial de cotizaciones
 
 **Objetivo:** Separar el flujo de datos de pago de la aceptación de cotización, permitir autorización parcial por secciones sin perder la distinción operativa entre aceptada, espera y en progreso.

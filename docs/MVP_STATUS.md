@@ -6,9 +6,9 @@ Resumen del estado actual del proyecto y las brechas que faltan cerrar antes del
 
 **El MVP de cotizador interno está ~55 % completo.**
 
-Las bases de arquitectura, autenticación, clientes, vehículos y creación de cotizaciones en borrador están funcionales. Faltan elementos visibles para cerrar la venta: **PDF o vista pública**, **link tokenizado para cliente**, **vigencia**, **compartir/enviar** y **respuesta del cliente**. También hay brechas en IVA, edición de borradores, filtros de listados y localización completa al español de México.
+Las bases de arquitectura, autenticación, clientes, vehículos y creación de cotizaciones en borrador están funcionales. El Issue GitHub #41 (`PaymentRequest`, `CustomerFiscalProfile` y domain/actions) ya está integrado en `develop`. El siguiente paso visible para el cliente es el Issue GitHub #42: la página pública `/datos-de-pago/[token]`. Faltan elementos para cerrar la venta: **PDF o vista pública de cotización**, **link tokenizado para cliente**, **vigencia**, **compartir/enviar** y **respuesta del cliente**. También hay brechas en IVA, edición de borradores, filtros de listados y localización completa al español de México.
 
-> Alcance: el portal cliente tokenizado y la página `/pago` están fuera del MVP inmediato según `docs/MVP_ISSUES.md`.
+> Alcance: el portal cliente tokenizado genérico y la página `/pago` fija están fuera del MVP inmediato según `docs/MVP_ISSUES.md`; la página `/datos-de-pago/[token]` sí es parte del flujo de pago del MVP.
 
 ## Estado por área
 
@@ -52,12 +52,22 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 | Formato renovado: 1 hoja limpia, sin CLABEs | **Falta** | — |
 | URL + QR a página de datos de pago | **Falta** | No existe `/pago` ni QR. |
 
-### 5) Página pública fija "Datos de pago" (`/pago`)
+### 5) Página pública de datos de pago (`/datos-de-pago/[token]`)
 
 | Funcionalidad | Estado | Evidencia |
 |---|---|---|
-| Mostrar CLABE(s) y banco(s) | **Falta** | No existe la ruta. |
-| Acciones "Copiar CLABE", "Abrir WhatsApp", "Llamar" | **Falta** | — |
+| Resolver `PaymentRequest` por token | **Falta** | Dominio listo en `src/features/payment-requests/domain.ts`; falta la página pública. |
+| Mostrar datos de pago y contacto WhatsApp | **Falta** | — |
+| Capturar/confirmar datos fiscales antes de mostrar pago | **Falta** | `CustomerFiscalProfile` y `fiscalSnapshot` existen; falta UI. |
+| Estados inválido/expirado/cancelado | **Falta** | — |
+| Header gradiente, cards y layout Figma desktop+mobile | **Falta** | — |
+
+### 5a) Página pública fija "Datos de pago" (`/pago`)
+
+| Funcionalidad | Estado | Evidencia |
+|---|---|---|
+| Mostrar CLABE(s) y banco(s) | **Fuera del MVP** | Reemplazada por `/datos-de-pago/[token]`. |
+| Acciones "Copiar CLABE", "Abrir WhatsApp", "Llamar" | **Fuera del MVP** | El contacto WhatsApp se incluye en `/datos-de-pago/[token]`. |
 
 ### 6) URL pública para cliente
 
@@ -120,6 +130,8 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 | Issue 11 — Pipeline de despliegue en Vercel | **Falta** |
 | Issue 12 — Localización a español de México | **Parcial** |
 | Issue GitHub #37 — Flujo de pago y autorización parcial de cotizaciones | **Pendiente** |
+| Issue GitHub #41 — `PaymentRequest`, `CustomerFiscalProfile` y acciones de servidor | **Completo** |
+| Issue GitHub #42 — Página pública `/datos-de-pago/[token]` | **Siguiente paso** |
 
 ## Principales brechas
 
@@ -148,12 +160,14 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 
 ## Recomendación de orden para cerrar brechas
 
-1. Agregar IVA 16 % por defecto, interruptor "Con IVA" y vigencia de 7 días.
-2. Habilitar edición de cotizaciones en borrador.
-3. Agregar filtros a cotizaciones y clientes.
-4. Generar vista pública de cotización + token expirable (`/c/[token]`).
-5. Al compartir, cambiar estado a `SENT` y mostrar PDF/URL.
-6. Capturar aceptación o declinación todo/nada del cliente; permitir autorización administrativa con nota obligatoria cuando el cliente aceptó por fuera del link.
-7. Tras la aceptación o autorización, mover la orden a `ESPERA`; al confirmar espacio y maestro, pasar a `EN_PROCESO` y asignar maestro/ayudantes.
-8. Crear página fija `/pago` con CLABEs, QR y acciones.
+1. Implementar Issue GitHub #42: página pública `/datos-de-pago/[token]` con captura/confirmación de datos fiscales y contacto WhatsApp.
+2. Agregar IVA 16 % por defecto, interruptor "Con IVA" y vigencia de 7 días.
+3. Habilitar edición de cotizaciones en borrador.
+4. Agregar filtros a cotizaciones y clientes.
+5. Generar vista pública de cotización + token expirable (`/c/[token]`).
+6. Al compartir, cambiar estado a `SENT` y mostrar PDF/URL.
+7. Capturar aceptación o declinación todo/nada del cliente; permitir autorización administrativa con nota obligatoria cuando el cliente aceptó por fuera del link.
+8. Tras la aceptación o autorización, mover la orden a `ESPERA`; al confirmar espacio y maestro, pasar a `EN_PROCESO` y asignar maestro/ayudantes.
 9. Localizar toda la UI visible al español de México.
+
+> Nota: la página fija `/pago` queda fuera del MVP inmediato; el flujo de pago se cubre con `/datos-de-pago/[token]`.
