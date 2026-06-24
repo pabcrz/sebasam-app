@@ -12,12 +12,16 @@ import {
   PaymentRequestCancelledError,
   PaymentRequestExpiredError,
   PaymentRequestNotFoundError,
+  savePaymentRequestFiscalData,
+  setPaymentRequestInvoicePreference,
 } from "./domain";
 
 let testCustomerId = "";
+let testFiscalProfileId = "";
 const createdPaymentRequestIds: string[] = [];
 const createdWorkOrderIds: string[] = [];
 const createdQuoteIds: string[] = [];
+const createdFiscalProfileIds: string[] = [];
 
 async function createTestCustomer() {
   const customer = await prisma.customer.create({
@@ -72,6 +76,20 @@ async function cleanup() {
     createdQuoteIds.length = 0;
   }
 
+  if (createdFiscalProfileIds.length > 0) {
+    await prisma.customerFiscalProfile.deleteMany({
+      where: { id: { in: createdFiscalProfileIds } },
+    });
+    createdFiscalProfileIds.length = 0;
+  }
+
+  if (testFiscalProfileId) {
+    await prisma.customerFiscalProfile.deleteMany({
+      where: { id: testFiscalProfileId },
+    });
+    testFiscalProfileId = "";
+  }
+
   if (testCustomerId) {
     await prisma.customer.delete({ where: { id: testCustomerId } }).catch(() => {});
     testCustomerId = "";
@@ -105,6 +123,16 @@ describe("createPaymentRequestForQuote", () => {
     expect(request.status).toBe(PaymentRequestStatus.PENDING);
     expect(request.token).toHaveLength(64);
     expect(request.expiresAt.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it("sets FISCAL_DATA_REQUIRED when invoice is required at creation", async () => {
+    const quote = await createTestQuote(testCustomerId);
+
+    const request = await createPaymentRequestForQuote(quote.id, true);
+    createdPaymentRequestIds.push(request.id);
+
+    expect(request.status).toBe(PaymentRequestStatus.FISCAL_DATA_REQUIRED);
+    expect(request.requiresInvoice).toBe(true);
   });
 
   it("prevents duplicate active requests for the same quote", async () => {
@@ -199,6 +227,34 @@ describe("getPaymentRequestByToken", () => {
   });
 });
 
+describe("setPaymentRequestInvoicePreference", () => {
+  it("transitions to FISCAL_DATA_REQUIRED when invoice is required", async () => {
+    const quote = await createTestQuote(testCustomerId);
+    const request = await createPaymentRequestForQuote(quote.id);
+    createdPaymentRequestIds.push(request.id);
+
+    const updated = await setPaymentRequestInvoicePreference(request.token, {
+      requiresInvoice: true,
+    });
+
+    expect(updated.requiresInvoice).toBe(true);
+    expect(updated.status).toBe(PaymentRequestStatus.FISCAL_DATA_REQUIRED);
+  });
+
+  it("transitions to READY_TO_PAY when invoice is not required", async () => {
+    const quote = await createTestQuote(testCustomerId);
+    const request = await createPaymentRequestForQuote(quote.id, true);
+    createdPaymentRequestIds.push(request.id);
+
+    const updated = await setPaymentRequestInvoicePreference(request.token, {
+      requiresInvoice: false,
+    });
+
+    expect(updated.requiresInvoice).toBe(false);
+    expect(updated.status).toBe(PaymentRequestStatus.READY_TO_PAY);
+  });
+});
+
 describe("database constraints", () => {
   it("rejects a customer-only payment request at the database level", async () => {
     await expect(
@@ -212,4 +268,71 @@ describe("database constraints", () => {
       }),
     ).rejects.toThrow(/violates check constraint/);
   });
+});
+
+describe("savePaymentRequestFiscalData", () => {
+  it(
+    "creates a customer fiscal profile and snapshots data into the request",
+    async () => {
+    const quote = await createTestQuote(testCustomerId);
+    const request = await createPaymentRequestForQuote(quote.id, true);
+    createdPaymentRequestIds.push(request.id);
+
+    const fiscalData = {
+      businessName: "Test Business S.A. de C.V.",
+      taxId: "TEST123456789",
+      zipCode: "01000",
+      address: "Test Address 123",
+      email: "test@example.com",
+      phone: "5551234567",
+    };
+
+    const updated = await savePaymentRequestFiscalData(request.token, fiscalData);
+
+    expect(updated.customerFiscalProfile).not.toBeNull();
+    expect(updated.customerFiscalProfile?.businessName).toBe(fiscalData.businessName);
+    expect(updated.customerFiscalProfile?.taxId).toBe(fiscalData.taxId);
+    expect(updated.fiscalSnapshot).toMatchObject({
+      businessName: fiscalData.businessName,
+      taxId: fiscalData.taxId,
+      zipCode: fiscalData.zipCode,
+      address: fiscalData.address,
+      email: fiscalData.email,
+      phone: fiscalData.phone,
+    });
+    expect(updated.status).toBe(PaymentRequestStatus.READY_TO_PAY);
+
+    if (updated.customerFiscalProfile) {
+      createdFiscalProfileIds.push(updated.customerFiscalProfile.id);
+    }
+  }, 10000);
+
+  it("reuses an existing fiscal profile for the same customer and taxId", async () => {
+    const quote = await createTestQuote(testCustomerId);
+    const request = await createPaymentRequestForQuote(quote.id, true);
+    createdPaymentRequestIds.push(request.id);
+
+    const fiscalData = {
+      businessName: "First Name",
+      taxId: "REUSE123",
+    };
+
+    const first = await savePaymentRequestFiscalData(request.token, fiscalData);
+    if (first.customerFiscalProfile) {
+      createdFiscalProfileIds.push(first.customerFiscalProfile.id);
+    }
+
+    await cancelPaymentRequest(request.id);
+
+    const secondRequest = await createPaymentRequestForQuote(quote.id, true);
+    createdPaymentRequestIds.push(secondRequest.id);
+
+    const second = await savePaymentRequestFiscalData(secondRequest.token, {
+      ...fiscalData,
+      businessName: "Updated Name",
+    });
+
+    expect(second.customerFiscalProfile?.id).toBe(first.customerFiscalProfile?.id);
+    expect(second.customerFiscalProfile?.businessName).toBe("Updated Name");
+  }, 10000);
 });

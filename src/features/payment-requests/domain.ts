@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { PaymentRequestStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { fiscalDataInputSchema, invoicePreferenceSchema } from "./schemas";
 
 const ACTIVE_STATUSES: PaymentRequestStatus[] = [
   PaymentRequestStatus.PENDING,
@@ -59,6 +60,17 @@ export function createToken(): string {
 
 export function createExpirationDate(reference = new Date()): Date {
   return new Date(reference.getTime() + DEFAULT_TOKEN_TTL_MS);
+}
+
+function deriveStatusAfterInvoiceChange(
+  requiresInvoice: boolean,
+  hasFiscalSnapshot: boolean,
+): PaymentRequestStatus {
+  if (requiresInvoice && !hasFiscalSnapshot) {
+    return PaymentRequestStatus.FISCAL_DATA_REQUIRED;
+  }
+
+  return PaymentRequestStatus.READY_TO_PAY;
 }
 
 type TransactionClient = Prisma.TransactionClient;
@@ -122,7 +134,10 @@ async function assertNoActiveRequest(
   }
 }
 
-export async function createPaymentRequestForQuote(quoteId: string) {
+export async function createPaymentRequestForQuote(
+  quoteId: string,
+  requiresInvoice = false,
+) {
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({
       where: { id: quoteId },
@@ -135,19 +150,27 @@ export async function createPaymentRequestForQuote(quoteId: string) {
 
     await assertNoActiveRequest(tx, { quoteId: quote.id });
 
+    const initialStatus = requiresInvoice
+      ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
+      : PaymentRequestStatus.PENDING;
+
     return tx.paymentRequest.create({
       data: {
         token: createToken(),
-        status: PaymentRequestStatus.PENDING,
+        status: initialStatus,
         customerId: quote.customerId,
         quoteId: quote.id,
+        requiresInvoice,
         expiresAt: createExpirationDate(),
       },
     });
   });
 }
 
-export async function createPaymentRequestForWorkOrder(workOrderId: string) {
+export async function createPaymentRequestForWorkOrder(
+  workOrderId: string,
+  requiresInvoice = false,
+) {
   return prisma.$transaction(async (tx) => {
     const workOrder = await tx.workOrder.findUnique({
       where: { id: workOrderId },
@@ -164,13 +187,100 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
 
     await assertNoActiveRequest(tx, { workOrderId: workOrder.id });
 
+    const initialStatus = requiresInvoice
+      ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
+      : PaymentRequestStatus.PENDING;
+
     return tx.paymentRequest.create({
       data: {
         token: createToken(),
-        status: PaymentRequestStatus.PENDING,
+        status: initialStatus,
         customerId: workOrder.quote.customerId,
         workOrderId: workOrder.id,
+        requiresInvoice,
         expiresAt: createExpirationDate(),
+      },
+    });
+  });
+}
+
+export async function setPaymentRequestInvoicePreference(token: string, input: unknown) {
+  const data = invoicePreferenceSchema.parse(input);
+  const request = await getPaymentRequestByToken(token);
+
+  if (request.status === PaymentRequestStatus.CANCELLED) {
+    throw new PaymentRequestCancelledError();
+  }
+
+  const hasFiscalSnapshot = request.fiscalSnapshot !== null;
+  const nextStatus = deriveStatusAfterInvoiceChange(data.requiresInvoice, hasFiscalSnapshot);
+
+  return prisma.paymentRequest.update({
+    where: { id: request.id },
+    data: {
+      requiresInvoice: data.requiresInvoice,
+      status: nextStatus,
+    },
+  });
+}
+
+export async function savePaymentRequestFiscalData(token: string, input: unknown) {
+  const data = fiscalDataInputSchema.parse(input);
+  const request = await getPaymentRequestByToken(token);
+
+  if (request.status === PaymentRequestStatus.CANCELLED) {
+    throw new PaymentRequestCancelledError();
+  }
+
+  if (!request.customer) {
+    throw new PaymentRequestOperationError("Payment request has no associated customer.");
+  }
+
+  const fiscalSnapshot = {
+    businessName: data.businessName,
+    taxId: data.taxId,
+    zipCode: data.zipCode ?? null,
+    address: data.address ?? null,
+    email: data.email ?? null,
+    phone: data.phone ?? null,
+    capturedAt: new Date().toISOString(),
+  };
+
+  return prisma.$transaction(async (tx) => {
+    const profile = await tx.customerFiscalProfile.upsert({
+      where: { customerId_taxId: { customerId: request.customerId, taxId: data.taxId } },
+      update: {
+        businessName: data.businessName,
+        zipCode: data.zipCode ?? null,
+        address: data.address ?? null,
+        email: data.email ?? null,
+        phone: data.phone ?? null,
+      },
+      create: {
+        customerId: request.customerId,
+        businessName: data.businessName,
+        taxId: data.taxId,
+        zipCode: data.zipCode ?? null,
+        address: data.address ?? null,
+        email: data.email ?? null,
+        phone: data.phone ?? null,
+      },
+    });
+
+    const nextStatus = request.requiresInvoice
+      ? PaymentRequestStatus.READY_TO_PAY
+      : request.status;
+
+    return tx.paymentRequest.update({
+      where: { id: request.id },
+      data: {
+        customerFiscalProfileId: profile.id,
+        fiscalSnapshot,
+        status: nextStatus,
+      },
+      include: {
+        customer: true,
+        customerFiscalProfile: true,
       },
     });
   });
