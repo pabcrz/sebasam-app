@@ -8,7 +8,7 @@ Esta app es el núcleo operativo limpio de SEBASAM: clientes, cotizaciones, órd
 |---|---|
 | Datos de negocio | Prisma es la única capa de acceso a datos operativos. No mezclar consultas de Supabase client con Prisma para las mismas tablas. |
 | Auth | Supabase Auth es dueño de la identidad. Los roles de la app viven en `UserProfile`. |
-| Cotización → orden de trabajo | Estado actual: una `WorkOrder` referencia una `Quote` aprobada. Objetivo pendiente: soportar autorización administrativa auditada y estado `ESPERA` antes de `EN_PROCESO`. |
+| Cotización → orden de trabajo | Estado actual: una `WorkOrder` referencia una `Quote` aprobada. Objetivo pendiente: soportar autorización administrativa auditada, autorización parcial por secciones y estado `ESPERA` antes de `EN_PROCESO`. |
 | URLs de base de datos | Runtime usa `DATABASE_URL` con el pooler de Supabase. Las migraciones usan `DIRECT_URL`. |
 | Despliegue | `next build` puede generar Prisma Client, pero las migraciones corren solo a través de `db:migrate:deploy`. |
 | Rutas y roles | `/` es el hub role-aware post-login; `/login` es el único login; evitamos el namespace `/admin`. Ver [Hosting y modelo de rutas](#hosting-y-modelo-de-rutas). |
@@ -68,13 +68,27 @@ El dominio separa claramente **cotización comercial** (`Quote`) de **orden de t
 | `UserProfile` | Usuario interno con rol y clasificación laboral | `WorkAssignment`, `ExecutionRecord` |
 | `Customer` | Cliente del taller | `Quote`, `Vehicle` |
 | `Vehicle` | Unidad vinculada al cliente | `Customer`, `Quote` |
-| `Quote` | Propuesta comercial con ítems y totales | `Customer`, `Vehicle`, `QuoteItem`, `WorkOrder` |
-| `QuoteItem` | Línea de cotización con tipo, cantidad y precio | `Quote` |
+| `Quote` | Propuesta comercial con ítems, secciones y totales | `Customer`, `Vehicle`, `QuoteSection`, `QuoteItem`, `WorkOrder` |
+| `QuoteSection` | Grupo de conceptos dentro de una cotización con subtotal propio | `Quote`, `QuoteItem` |
+| `QuoteItem` | Línea de cotización con tipo, cantidad y precio | `QuoteSection`, `Quote` |
 | `WorkOrder` | Orden de trabajo vinculada a una cotización; debe evolucionar para soportar autorización administrativa y `ESPERA` | `Quote`, `WorkAssignment`, `ExecutionRecord` |
 | `WorkAssignment` | Asignación de empleado a orden de trabajo | `WorkOrder`, `UserProfile` |
 | `ExecutionRecord` | Reporte de ejecución realizado | `WorkOrder`, `UserProfile` |
 
 Regla objetivo pendiente: la autorización administrativa no debe crear un flujo paralelo; debe usar el mismo registro de cotización/alcance, marcarlo como aceptado y exigir una nota con canal y motivo (p. ej. "autorización por teléfono"). La evidencia inicial es opcional. Tras la aceptación o autorización, la orden debe pasar por `ESPERA` hasta que se confirme espacio del taller y disponibilidad de maestro.
+
+## Autorización parcial y flujo de pago
+
+Una cotización se construye por secciones desde el inicio. La acción principal del cotizador es **Agregar sección**; dentro de cada sección, el usuario agrega conceptos con **Agregar concepto**. Los subtotales por sección y el total de la cotización se calculan automáticamente. El cliente puede autorizar secciones individuales con **Autorizar sección** o la cotización completa con **Autorizar cotización completa**. Las secciones autorizadas no se modelan como cotizaciones separadas; persisten dentro de la misma cotización con su propio estado de autorización. La agrupación retrospectiva de conceptos no es parte del flujo principal del MVP.
+
+> **Terminología:** en la interfaz del cotizador cada línea se presenta como un **concepto** (acción **Agregar concepto**). En el modelo de dominio esa línea sigue siendo `QuoteItem`. Los tipos de concepto incluyen mano de obra, material, refacción, servicio externo y otro.
+
+El flujo de pago es independiente de la aceptación de la cotización:
+
+- Si la cotización no requiere factura, los datos de pago se muestran directamente.
+- Si la cotización requiere factura, el sistema solicita los datos fiscales faltantes o confirma los datos fiscales existentes del cliente antes de mostrar los datos de pago.
+
+La distinción operativa `ACEPTADA` → `ESPERA` → `EN_PROGRESO` se preserva: una vez autorizadas las secciones necesarias, la orden de trabajo sigue pasando por `ESPERA` hasta confirmar espacio del taller y disponibilidad de maestro.
 
 ## Límites del MVP
 

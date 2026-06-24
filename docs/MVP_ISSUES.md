@@ -199,10 +199,10 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 **Objetivo:** Reemplazar el formulario funcional de cotización por un flujo mobile-first alineado a Figma, sin cambiar las reglas de negocio ni los contratos de server actions.
 
 **Criterios de aceptación:**
-- [x] `/admin/quotes` permite crear cotizaciones mediante un flujo por pasos: cliente/unidad, partidas, notas, resumen y preview/envío.
+- [x] `/admin/quotes` permite crear cotizaciones mediante un flujo por pasos: cliente/unidad, conceptos, notas, resumen y preview/envío.
 - [x] Los nombres de campos y contratos de `createQuoteFromForm` se preservan para cliente, vehículo, título, descripción, bandera administrativa e ítems.
 - [x] La aprobación conserva `approveQuoteAndCreateWorkOrderFromForm`, `quoteId` oculto y prevención de doble envío mediante confirmación.
-- [x] Las validaciones del builder bloquean avanzar con partidas incompletas o inválidas antes de llegar a pasos ocultos.
+- [x] Las validaciones del builder bloquean avanzar con conceptos incompletos o inválidos antes de llegar a pasos ocultos.
 - [x] Los totales visibles en cliente son solo preview; el cálculo autoritativo sigue ocurriendo en servidor.
 - [x] La vista móvil usa cards y acciones táctiles; la vista de escritorio conserva una tabla alineada al diseño visual actual.
 - [x] La copia visible usa español de México; los identificadores técnicos permanecen en inglés.
@@ -232,7 +232,7 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Criterios de aceptación:**
 - [ ] Solo las cotizaciones en `BORRADOR` pueden editarse libremente.
-- [ ] Se pueden editar cliente/unidad, notas, partidas, cantidades y precios antes del envío.
+- [ ] Se pueden editar cliente/unidad, notas, conceptos, cantidades y precios antes del envío.
 - [ ] Los totales se recalculan en servidor después de guardar cambios.
 - [ ] Se puede eliminar o cancelar un borrador sin afectar cotizaciones enviadas o aceptadas.
 - [ ] La UI comunica claramente cuándo una cotización ya no es editable como borrador.
@@ -260,7 +260,7 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 - [ ] Solo cotizaciones válidas y completas pueden compartirse.
 - [ ] Al compartir, la cotización cambia a `ENVIADA` (`SENT`) o estado equivalente.
 - [ ] El sistema genera un token persistido o firmado, revocable y con expiración.
-- [ ] Existe una ruta pública de solo lectura para revisar folio, cliente, vehículo, partidas, montos, vigencia y estado.
+- [ ] Existe una ruta pública de solo lectura para revisar folio, cliente, vehículo, conceptos, montos, vigencia y estado.
 - [ ] El sistema maneja token inválido, revocado o expirado con mensajes claros.
 
 **Dependencias/notas:** Depende de los Issues 7.8 y 7.9. No inicia trabajo ni asigna maestro.
@@ -271,7 +271,7 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Criterios de aceptación:**
 - [ ] El cliente puede aceptar o declinar la cotización completa desde el link público.
-- [ ] No existe aceptación parcial de partidas en el MVP.
+- [ ] Antes del Issue GitHub #37, la aceptación del link público es completa; la autorización parcial se habilita después mediante secciones controladas.
 - [ ] La aceptación por cliente cambia la cotización a `ACEPTADA` (`APPROVED`) o estado equivalente.
 - [ ] La declinación cambia la cotización a `DECLINADA` o estado equivalente acordado.
 - [ ] Si el cliente aceptó por fuera del link (p. ej. teléfono, WhatsApp o presencial), el admin puede marcar la cotización como autorizada. No es un flujo aparte: usa el mismo registro de cotización/alcance.
@@ -349,3 +349,19 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 - [ ] Los identificadores técnicos, nombres de archivos, código y migraciones permanecen en inglés salvo que el contexto del proyecto indique lo contrario.
 
 **Dependencias/notas:** Puede hacerse por etapas mientras se tocan pantallas existentes, pero antes del primer release de producción debe revisarse de punta a punta.
+
+### Issue GitHub #37: Flujo de pago y autorización parcial de cotizaciones
+
+**Objetivo:** Separar el flujo de datos de pago de la aceptación de cotización, permitir autorización parcial por secciones sin perder la distinción operativa entre aceptada, espera y en progreso.
+
+**Criterios de aceptación:**
+- [ ] El flujo de datos de pago es independiente de la aceptación de la cotización.
+- [ ] Si la cotización no requiere factura, los datos de pago se muestran directamente al cliente.
+- [ ] Si la cotización requiere factura, se solicitan los datos fiscales faltantes del cliente o se confirman los existentes antes de mostrar los datos de pago.
+- [ ] El modelo de cotización soporta secciones o grupos de conceptos; cada sección tiene su propio subtotal y la cotización conserva un total final único.
+- [ ] La experiencia de autor del cotizador se construye por secciones desde el inicio: la acción principal es **Agregar sección**, y dentro de cada sección se agregan conceptos con **Agregar concepto**. Los subtotales por sección y el total de la cotización se calculan automáticamente. Las acciones visibles para el cliente son **Autorizar sección** y **Autorizar cotización completa**. La agrupación retrospectiva de conceptos queda fuera del flujo principal del MVP y podría considerarse como una acción avanzada posterior.
+- [ ] El cliente puede autorizar una o más secciones sin autorizar la cotización completa.
+- [ ] Las secciones autorizadas no se modelan como cotizaciones separadas por defecto; se mantiene una sola cotización cliente con autorización a nivel sección.
+- [ ] Se preserva la distinción operativa existente: una vez autorizada toda la cotización o las secciones necesarias, la orden sigue pasando por `ACEPTADA` → `ESPERA` → `EN_PROGRESO`.
+
+**Dependencias/notas:** Depende de los Issues 7.11 y 7.12 (compartir y aceptación/declinación). Reemplaza la regla de aceptación todo/nada por autorización parcial controlada. El detalle de secciones debe reflejarse en `docs/ARCHITECTURE.md` y en el modelo de dominio del README.

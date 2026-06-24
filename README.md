@@ -12,20 +12,20 @@ Aplicación operativa limpia para SEBASAM: cotizaciones, órdenes de trabajo, as
 | Referencia de dominio | `prisma/schema.prisma`, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) y este README. |
 | Hosting objetivo | Landing pública en `sebasam.com`; app operativa independiente en `app.sebasam.com`. |
 | Rutas objetivo | `/` es el hub role-aware post-login; `/login` es el único login; evitamos el namespace `/admin`. Ver [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md#hosting-y-modelo-de-rutas). |
-| Modelo operativo objetivo | `Quote` y `WorkOrder` separados; el flujo pendiente debe soportar aceptación/autorización, `ESPERA` antes de `EN_PROCESO` y trabajo urgente mediante autorización administrativa auditada. |
-| Estado actual | Issues 1–7, 5.1 y 5.2 de [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) completados; Issues 8–12 pendientes. Ver [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md). |
+| Modelo operativo objetivo | `Quote` y `WorkOrder` separados; el flujo pendiente debe soportar aceptación/autorización, autorización parcial por secciones, flujo de pago independiente, `ESPERA` antes de `EN_PROCESO` y trabajo urgente mediante autorización administrativa auditada. |
+| Estado actual | Issues 1–7, 5.1 y 5.2 de [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) completados; Issues 8–12 y el Issue GitHub #37 pendientes. Ver [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md). |
 
 ## Flujo operativo 🔄
 
-Flujo operativo objetivo del MVP. Cada cotización debe ser **todo/nada**: el cliente acepta o declina el conjunto completo. Si el cliente acepta por fuera del link (p. ej. teléfono), el admin debe poder autorizar la cotización con una nota obligatoria; la evidencia inicial es opcional. La aceptación o autorización no debe iniciar el trabajo inmediatamente: la orden debe pasar a `ESPERA` hasta confirmar espacio del taller y disponibilidad de maestro.
+Flujo operativo objetivo del MVP. La cotización se agrupa en secciones; el cliente puede autorizar una o más secciones sin autorizar la cotización completa. Si el cliente acepta por fuera del link (p. ej. teléfono), el admin debe poder autorizar la cotización con una nota obligatoria; la evidencia inicial es opcional. La aceptación o autorización no debe iniciar el trabajo inmediatamente: la orden debe pasar a `ESPERA` hasta confirmar espacio del taller y disponibilidad de maestro. Los datos de pago se muestran en un flujo independiente; si se requiere factura, se solicitan o confirman los datos fiscales antes de mostrar los datos de pago.
 
 ```mermaid
 flowchart LR
     A[Login] --> B[Cotización<br>BORRADOR]
-    B --> C[Armar ítems + vehículo<br>+ evidencia inicial opcional]
+    B --> C[Armar secciones + ítems + vehículo<br>+ evidencia inicial opcional]
     C --> D[Compartir:<br>ENVIADA]
-    D --> E{Cliente responde<br>todo/nada}
-    E -->|Acepta| F[ACEPTADA]
+    D --> E{Cliente autoriza<br>secciones}
+    E -->|Autoriza todo o parcial| F[ACEPTADA]
     E -->|Declina| G[DECLINADA]
     F --> H[WorkOrder<br>ESPERA]
     H --> I[Confirmar espacio + maestro<br>EN_PROCESO]
@@ -42,7 +42,7 @@ flowchart LR
 | ID | Regla | Detalle |
 |---|---|---|
 | R1 | Estados de cotización objetivo | `BORRADOR` → `ENVIADA` → `ACEPTADA` / `DECLINADA`; el admin puede `CANCELADA` en cualquier momento permitido. Tras `ACEPTADA`, la orden debe pasar a `ESPERA` antes de `EN_PROCESO`. |
-| R2 | Todo o nada | El cliente acepta o declina la cotización completa; no puede aceptar ítems parciales. |
+| R2 | Autorización por secciones | La cotización puede dividirse en secciones con subtotal propio. El cliente puede autorizar una o más secciones sin autorizar la cotización completa; las secciones no se modelan como cotizaciones separadas. |
 | R3 | Token expirable | El link de cliente lleva token con vigencia; expirado → no se procesa la respuesta. |
 | R4 | Aceptación/autorización → WorkOrder | Regla objetivo: toda orden de trabajo debe nacer de una cotización aceptada o autorizada administrativamente; debe crearse en `ESPERA` y pasar a `EN_PROCESO` al confirmar espacio y maestro. |
 | R5 | Asignación controlada | Se asigna 1 maestro + N ayudantes; el empleado solo ve estado operativo y su trabajo. |
@@ -54,6 +54,12 @@ flowchart LR
 | R11 | Nómina semanal | La ejecución registrada alimenta el cálculo de nómina semanal. |
 | R12 | Autorización administrativa | Regla objetivo: si el cliente aceptó por fuera del link (p. ej. teléfono), el admin debe marcar la cotización como autorizada con una nota obligatoria de canal/motivo. No es un flujo separado: usa el mismo registro de cotización/alcance. |
 | R13 | Evidencia inicial | La evidencia inicial es opcional tanto en el borrador como en la autorización administrativa. |
+| R14 | Total único por cotización | Aunque las secciones tienen subtotales propios, la cotización expone un único total final. |
+| R15 | Flujo de pago independiente | Los datos de pago se muestran en un flujo separado de la aceptación de la cotización. |
+| R16 | Datos fiscales antes del pago | Si la cotización requiere factura, el sistema solicita o confirma los datos fiscales del cliente antes de mostrar los datos de pago. |
+| R17 | Construcción por secciones desde el inicio | La experiencia de autor parte de una cotización con secciones. La acción principal es **Agregar sección**; dentro de cada sección se agregan conceptos con **Agregar concepto**. Los subtotales y el total se calculan automáticamente. Las acciones del cliente son **Autorizar sección** y **Autorizar cotización completa**. La agrupación retrospectiva de conceptos queda fuera del MVP inmediato. |
+
+> **Terminología:** en la UI del cotizador cada línea se presenta como un **concepto** (acción **Agregar concepto**). En el modelo de dominio esa línea sigue siendo `QuoteItem`. Los tipos de concepto incluyen mano de obra, material, refacción, servicio externo y otro.
 
 ## Modelo de datos operativo 🗂️
 
@@ -64,8 +70,9 @@ Este es el modelo de dominio que soporta el flujo. Las primeras entidades existe
 | `UserProfile` | Usuarios internos: admin, asistente, empleado | Tiene `assignments` y `executionRecords` | ✅ Implementado |
 | `Customer` | Cliente del taller | Tiene `quotes` y `vehicles` | ✅ Implementado |
 | `Vehicle` | Unidad del cliente | Pertenece a `Customer`; referenciado por `Quote` | ✅ Implementado |
-| `Quote` | Cotización comercial | Tiene `QuoteItem`s; origen de `WorkOrder` | ✅ Implementado |
-| `QuoteItem` | Línea de cotización: material, mano de obra, servicio externo, etc. | Pertenece a `Quote` | ✅ Implementado |
+| `Quote` | Cotización comercial | Tiene `QuoteSection`s y `QuoteItem`s; origen de `WorkOrder` | ✅ Implementado |
+| `QuoteSection` | Sección de cotización con subtotal propio | Pertenece a `Quote`; agrupa `QuoteItem`s | 🎯 Objetivo |
+| `QuoteItem` | Concepto de cotización en UI (`QuoteItem`): material, mano de obra, refacción, servicio externo, etc. | Pertenece a `QuoteSection` y `Quote` | ✅ Implementado |
 | `WorkOrder` | Orden de trabajo operativa | Implementado como orden vinculada a `Quote`; el flujo `ESPERA` y autorización administrativa auditada siguen pendientes | ✅ Implementado parcial |
 | `WorkAssignment` | Asignación de empleado a orden | Vincula `UserProfile` y `WorkOrder` | ✅ Implementado |
 | `ExecutionRecord` | Registro de ejecución/reporte | Vincula `WorkOrder` y `UserProfile` opcional | ✅ Implementado |
@@ -90,6 +97,7 @@ Este es el modelo de dominio que soporta el flujo. Las primeras entidades existe
 - [x] Crear cotización borrador con ítems, totales calculados en servidor y validación Zod.
 - [x] Aprobar cotización y crear `WorkOrder` transaccionalmente.
 - [ ] Asignar `WorkOrder` y registrar ejecución.
+- [ ] Flujo de pago independiente, autorización parcial por secciones y datos fiscales previos (Issue GitHub #37).
 - [ ] Finalizar `WorkOrder` y generar PDF/salida final.
 - [ ] Verificar instalabilidad PWA.
 - [ ] Pipeline de despliegue en Vercel.
