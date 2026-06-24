@@ -55,6 +55,15 @@ enum AssignmentStatus {
   CANCELLED
 }
 
+enum PaymentRequestStatus {
+  PENDING
+  VIEWED
+  FISCAL_DATA_REQUIRED
+  READY_TO_PAY
+  EXPIRED
+  CANCELLED
+}
+
 model UserProfile {
   id          String      @id @db.Uuid
   username    String      @unique
@@ -81,8 +90,10 @@ model Customer {
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
-  quotes   Quote[]
-  vehicles Vehicle[]
+  quotes          Quote[]
+  vehicles        Vehicle[]
+  fiscalProfiles  CustomerFiscalProfile[]
+  paymentRequests PaymentRequest[]
 }
 
 model Vehicle {
@@ -104,55 +115,57 @@ model Vehicle {
 }
 
 model Quote {
-  id             String      @id @default(cuid())
-  customerId     String
-  vehicleId      String?
-  number         String      @unique
-  status         QuoteStatus @default(DRAFT)
-  title          String
-  description    String?
+  id              String      @id @default(cuid())
+  customerId      String
+  vehicleId       String?
+  number          String      @unique
+  status          QuoteStatus @default(DRAFT)
+  title           String
+  description     String?
   vehicleSnapshot Json?
-  subtotalCents  Int         @default(0)
-  taxCents       Int         @default(0)
-  totalCents     Int         @default(0)
-  approvedAt     DateTime?
-  administrative Boolean     @default(false)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  subtotalCents   Int         @default(0)
+  taxCents        Int         @default(0)
+  totalCents      Int         @default(0)
+  approvedAt      DateTime?
+  administrative  Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
-  customer  Customer    @relation(fields: [customerId], references: [id])
-  vehicle   Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  items     QuoteItem[]
-  workOrder WorkOrder?
+  customer        Customer         @relation(fields: [customerId], references: [id])
+  vehicle         Vehicle?         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  items           QuoteItem[]
+  workOrder       WorkOrder?
+  paymentRequests PaymentRequest[]
 }
 
 model QuoteItem {
-  id          String        @id @default(cuid())
-  quoteId     String
-  type        QuoteItemType
-  description String
-  quantity    Decimal       @db.Decimal(10, 2)
+  id             String        @id @default(cuid())
+  quoteId        String
+  type           QuoteItemType
+  description    String
+  quantity       Decimal       @db.Decimal(10, 2)
   unitPriceCents Int
-  totalCents  Int
-  sortOrder   Int           @default(0)
+  totalCents     Int
+  sortOrder      Int           @default(0)
 
   quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 }
 
 model WorkOrder {
-  id          String          @id @default(cuid())
-  quoteId     String          @unique
-  number      String          @unique
-  status      WorkOrderStatus @default(PLANNED)
+  id           String          @id @default(cuid())
+  quoteId      String          @unique
+  number       String          @unique
+  status       WorkOrderStatus @default(PLANNED)
   scheduledFor DateTime?
-  siteAddress String?
-  notes       String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  siteAddress  String?
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   quote            Quote             @relation(fields: [quoteId], references: [id])
   assignments      WorkAssignment[]
   executionRecords ExecutionRecord[]
+  paymentRequests  PaymentRequest[]
 }
 
 model WorkAssignment {
@@ -179,4 +192,50 @@ model ExecutionRecord {
 
   workOrder WorkOrder    @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   worker    UserProfile? @relation(fields: [workerId], references: [id])
+}
+
+model CustomerFiscalProfile {
+  id           String   @id @default(cuid())
+  customerId   String
+  businessName String
+  taxId        String
+  zipCode      String?
+  address      String?
+  email        String?
+  phone        String?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  paymentRequests PaymentRequest[]
+
+  @@unique([customerId, taxId])
+  @@index([customerId])
+}
+
+model PaymentRequest {
+  id                      String               @id @default(cuid())
+  token                   String               @unique
+  status                  PaymentRequestStatus @default(PENDING)
+  customerId              String
+  quoteId                 String?
+  workOrderId             String?
+  requiresInvoice         Boolean              @default(false)
+  customerFiscalProfileId String?
+  fiscalSnapshot          Json?
+  expiresAt               DateTime
+  viewedAt                DateTime?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+
+  customer              Customer               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  quote                 Quote?                 @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  workOrder             WorkOrder?             @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  customerFiscalProfile CustomerFiscalProfile? @relation(fields: [customerFiscalProfileId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([quoteId])
+  @@index([workOrderId])
+  @@index([token])
 }
