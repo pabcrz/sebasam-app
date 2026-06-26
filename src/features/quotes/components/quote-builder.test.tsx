@@ -8,6 +8,19 @@ const customers = [
   { id: "cust-2", name: "Taller Hermanos Pérez" },
 ];
 
+const draftQuote = {
+  id: "quote-1",
+  customerId: "cust-2",
+  vehicle: { plate: "XYZ123", brand: "Ford", model: "Ranger", color: "Negro", year: 2021 },
+  vehicleSnapshot: { plate: "XYZ123", brand: "Ford", model: "Ranger", color: "Negro", year: 2021 },
+  title: "Mantenimiento",
+  description: "Cambio de frenos",
+  administrative: true,
+  taxEnabled: false,
+  validUntil: new Date("2026-07-03T12:00:00.000Z"),
+  items: [{ type: "MATERIAL" as const, description: "Pastillas de freno", quantity: 2, unitPriceCents: 120000 }],
+};
+
 function fillClientStep(user: ReturnType<typeof userEvent.setup>) {
   return async () => {
     await user.click(screen.getByRole("combobox", { name: /cliente/i }));
@@ -309,5 +322,28 @@ describe("QuoteBuilder", () => {
 
     expect(screen.getByTestId("quote-validity")).toHaveTextContent(/vigente hasta/i);
     expect(screen.getByTestId("quote-validity")).toHaveTextContent(/cambios imprevistos/i);
+  });
+});
+
+describe("QuoteBuilder edit mode", () => {
+  it("renders with existing quote data", () => {
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} mode="edit" quote={draftQuote} />);
+
+    expect(screen.getByRole("heading", { name: "Editar cotización en borrador" })).toBeInTheDocument();
+    expect(document.querySelector('input[name="quoteId"]')).toHaveValue("quote-1");
+    expect(screen.getByLabelText("Modelo")).toHaveValue("Ranger");
+    expect(screen.getByLabelText("Título")).toHaveValue("Mantenimiento");
+  });
+
+  it("keeps the original validity date in preview", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} mode="edit" quote={draftQuote} />);
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByTestId("quote-validity")).toHaveTextContent("3 de julio de 2026");
   });
 });

@@ -19,12 +19,18 @@ function checkQuotesPage() {
   const builderSource = readFileSync(builderPath, "utf8");
   const approvalFormPath = "src/features/quotes/components/quote-approval-form.tsx";
   const approvalFormSource = readFileSync(approvalFormPath, "utf8");
+  const cancelFormPath = "src/features/quotes/components/quote-cancel-form.tsx";
+  const cancelFormSource = readFileSync(cancelFormPath, "utf8");
+  const editPagePath = "src/app/admin/(protected)/quotes/[id]/edit/page.tsx";
+  const editPageSource = readFileSync(editPagePath, "utf8");
   const paymentLinkDialogPath = "src/features/payment-requests/components/payment-request-link-dialog.tsx";
   const paymentLinkDialogSource = readFileSync(paymentLinkDialogPath, "utf8");
 
   assertNoRadix(pageSource, "Quotes page");
   assertNoRadix(builderSource, "Quote builder");
   assertNoRadix(approvalFormSource, "Quote approval form");
+  assertNoRadix(cancelFormSource, "Quote cancel form");
+  assertNoRadix(editPageSource, "Quote edit page");
 
   // Server-action wiring must remain intact.
   assertIncludes(
@@ -48,9 +54,24 @@ function checkQuotesPage() {
     "Quotes page must render PaymentRequestLinkDialog",
   );
   assertIncludes(
+    pageSource,
+    "cancelDraftQuoteFromForm",
+    "Quotes page must wire cancel-draft server action",
+  );
+  assertIncludes(
+    editPageSource,
+    "updateDraftQuoteFromForm",
+    "Quote edit page must wire update-draft server action",
+  );
+  assertIncludes(
     approvalFormSource,
     '<input type="hidden" name="quoteId"',
     "Approval form must carry hidden quoteId field",
+  );
+  assertIncludes(
+    cancelFormSource,
+    '<input type="hidden" name="quoteId"',
+    "Cancel form must carry hidden quoteId field",
   );
 
   // Required form field names must survive wrapper refactors.
@@ -87,6 +108,9 @@ function checkQuotesPage() {
   const spanishLabels = [
     { label: "Cotizaciones en borrador", source: pageSource },
     { label: "Crear cotización en borrador", source: builderSource },
+    { label: "Editar cotización en borrador", source: builderSource },
+    { label: "Guardar cambios", source: builderSource },
+    { label: "Cancelar cotización", source: cancelFormSource },
     { label: "Cotizaciones recientes", source: pageSource },
     { label: "Conceptos", source: builderSource },
     { label: "Cliente", source: builderSource },
