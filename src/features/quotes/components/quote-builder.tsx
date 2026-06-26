@@ -28,9 +28,24 @@ type CustomerOption = {
   name: string;
 };
 
+type QuoteForEdit = {
+  id: string;
+  customerId: string;
+  vehicle: { plate: string | null; brand: string | null; model: string; color: string | null; year: number | null } | null;
+  vehicleSnapshot: unknown;
+  title: string;
+  description: string | null;
+  administrative: boolean;
+  taxEnabled: boolean;
+  validUntil: Date;
+  items: { type: QuoteItemType; description: string; quantity: number | { toNumber(): number }; unitPriceCents: number }[];
+};
+
 type QuoteBuilderProps = {
   customers: CustomerOption[];
   createAction: (formData: FormData) => void | Promise<void>;
+  mode?: "create" | "edit";
+  quote?: QuoteForEdit;
 };
 
 type Step = "client" | "items" | "notes" | "summary" | "preview";
@@ -171,30 +186,57 @@ function getStepError(step: Step, state: {
   return null;
 }
 
-export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
+function initialItems(quote?: QuoteForEdit): ItemFormValue[] {
+  if (!quote) {
+    return Array.from({ length: 5 }, () => ({ ...emptyItem }));
+  }
+
+  const base = quote.items.map((item) => {
+    const quantity = typeof item.quantity === "number" ? item.quantity : item.quantity.toNumber();
+
+    return {
+      type: item.type,
+      description: item.description,
+      quantity: quantity.toFixed(2),
+      unitPrice: (item.unitPriceCents / 100).toFixed(2),
+    };
+  });
+
+  while (base.length < 5) {
+    base.push({ ...emptyItem });
+  }
+
+  return base;
+}
+
+function initialVehicle(quote?: QuoteForEdit) {
+  const source = quote?.vehicle ?? (quote?.vehicleSnapshot as QuoteForEdit["vehicle"]);
+  return {
+    plate: source?.plate ?? "",
+    brand: source?.brand ?? "",
+    model: source?.model ?? "",
+    color: source?.color ?? "",
+    year: source?.year?.toString() ?? "",
+  };
+}
+
+export function QuoteBuilder({ customers, createAction, mode = "create", quote }: QuoteBuilderProps) {
+  const isEdit = mode === "edit";
   const [step, setStep] = React.useState<Step>("client");
   const [stepError, setStepError] = React.useState<string | null>(null);
-  const [customerId, setCustomerId] = React.useState("");
-  const [vehicle, setVehicle] = React.useState({
-    plate: "",
-    brand: "",
-    model: "",
-    color: "",
-    year: "",
-  });
-  const [title, setTitle] = React.useState("");
-  const [description, setDescription] = React.useState("");
-  const [administrative, setAdministrative] = React.useState(false);
-  const [taxEnabled, setTaxEnabled] = React.useState(true);
-  const [items, setItems] = React.useState<ItemFormValue[]>(() =>
-    Array.from({ length: 5 }, () => ({ ...emptyItem })),
-  );
+  const [customerId, setCustomerId] = React.useState(quote?.customerId ?? "");
+  const [vehicle, setVehicle] = React.useState(initialVehicle(quote));
+  const [title, setTitle] = React.useState(quote?.title ?? "");
+  const [description, setDescription] = React.useState(quote?.description ?? "");
+  const [administrative, setAdministrative] = React.useState(quote?.administrative ?? false);
+  const [taxEnabled, setTaxEnabled] = React.useState(quote?.taxEnabled ?? true);
+  const [items, setItems] = React.useState<ItemFormValue[]>(() => initialItems(quote));
 
   const currentStepIndex = steps.indexOf(step);
   const { subtotalCents, taxCents, totalCents } = calculateTotals(items, taxEnabled);
   const selectedCustomer = customers.find((customer) => customer.id === customerId);
   const completeItems = items.filter(isItemComplete);
-  const validUntil = createQuoteValidUntil();
+  const validUntil = isEdit && quote ? quote.validUntil : createQuoteValidUntil();
 
   function updateItem(index: number, patch: Partial<ItemFormValue>) {
     setItems((prev) => {
@@ -232,8 +274,12 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle as="h2">Crear cotización en borrador</CardTitle>
-        <CardDescription>Flujo paso a paso para armar una cotización desde el celular.</CardDescription>
+        <CardTitle as="h2">{isEdit ? "Editar cotización en borrador" : "Crear cotización en borrador"}</CardTitle>
+        <CardDescription>
+          {isEdit
+            ? "Actualiza los datos de la cotización antes de aprobarla."
+            : "Flujo paso a paso para armar una cotización desde el celular."}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -247,6 +293,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
             }
           }}
         >
+          {isEdit && quote ? <input type="hidden" name="quoteId" value={quote.id} /> : null}
           <Stepper steps={steps} current={step} onChange={setStep} />
 
           {stepError ? (
@@ -517,7 +564,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
 
             {step === "preview" ? (
               <Button type="submit" variant="primary" className="min-w-[140px]">
-                Crear cotización
+                {isEdit ? "Guardar cambios" : "Crear cotización"}
               </Button>
             ) : (
               <Button type="button" variant="primary" onClick={goToNext} className="min-w-[140px]">

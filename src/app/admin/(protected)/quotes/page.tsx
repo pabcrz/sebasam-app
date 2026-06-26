@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import {
   createQuoteFromForm,
+  cancelDraftQuoteFromForm,
   approveQuoteAndCreateWorkOrderFromForm,
 } from "@/features/quotes/actions";
 import { listQuotes } from "@/features/quotes/queries";
@@ -9,6 +11,7 @@ import { listCustomers } from "@/features/customers/queries";
 import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
 import {
   Badge,
+  Button,
   Card,
   CardContent,
   CardDescription,
@@ -23,6 +26,7 @@ import {
 } from "@/components/ui";
 import { QuoteBuilder } from "@/features/quotes/components/quote-builder";
 import { QuoteApprovalForm } from "@/features/quotes/components/quote-approval-form";
+import { QuoteCancelForm } from "@/features/quotes/components/quote-cancel-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 
@@ -34,6 +38,8 @@ type QuotesPageProps = {
   searchParams: Promise<{
     approved?: string;
     created?: string;
+    updated?: string;
+    cancelled?: string;
     error?: string;
   }>;
 };
@@ -98,6 +104,16 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
               Cotización aprobada y orden de trabajo creada.
             </p>
           ) : null}
+          {params.updated ? (
+            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]">
+              Cotización en borrador actualizada.
+            </p>
+          ) : null}
+          {params.cancelled ? (
+            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]">
+              Cotización cancelada.
+            </p>
+          ) : null}
           {params.error === "invalid" ? (
             <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
               Revisa los datos de la cotización e incluye al menos un concepto completo.
@@ -116,6 +132,11 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
           {params.error === "approval-failed" ? (
             <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
               No se pudo aprobar la cotización. Recarga y confirma que siga en borrador.
+            </p>
+          ) : null}
+          {params.error === "not-draft" ? (
+            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
+              La cotización ya no está en borrador. No se puede editar ni cancelar.
             </p>
           ) : null}
         </CardContent>
@@ -187,20 +208,32 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                     <TableCell className="font-medium">{formatCents(quote.totalCents)}</TableCell>
                     <TableCell>{quote.validUntil ? formatDate(quote.validUntil) : "—"}</TableCell>
                     <TableCell>
-                      {quote.status === "DRAFT" && !quote.workOrder ? (
-                        <QuoteApprovalForm
-                          action={approveQuoteAndCreateWorkOrderFromForm}
-                          quoteId={quote.id}
-                          quoteNumber={quote.number}
-                        />
-                      ) : quote.status === "SENT" || quote.status === "APPROVED" ? (
-                        <PaymentRequestLinkDialog
-                          action={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
-                          quoteNumber={quote.number}
-                        />
-                      ) : (
-                        <span className="text-sm text-[var(--color-text-muted)]">Sin acción</span>
-                      )}
+                      <div className="grid gap-2">
+                        {quote.status === "DRAFT" && !quote.workOrder ? (
+                          <>
+                            <Button asChild variant="outline" className="w-full">
+                              <Link href={`/admin/quotes/${quote.id}/edit`}>Editar</Link>
+                            </Button>
+                            <QuoteApprovalForm
+                              action={approveQuoteAndCreateWorkOrderFromForm}
+                              quoteId={quote.id}
+                              quoteNumber={quote.number}
+                            />
+                            <QuoteCancelForm
+                              action={cancelDraftQuoteFromForm}
+                              quoteId={quote.id}
+                              quoteNumber={quote.number}
+                            />
+                          </>
+                        ) : quote.status === "SENT" || quote.status === "APPROVED" ? (
+                          <PaymentRequestLinkDialog
+                            action={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
+                            quoteNumber={quote.number}
+                          />
+                        ) : (
+                          <span className="text-sm text-[var(--color-text-muted)]">Sin acción</span>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -269,9 +302,17 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 </div>
 
                 {quote.status === "DRAFT" && !quote.workOrder ? (
-                  <div className="mt-4">
+                  <div className="mt-4 grid gap-2">
+                    <Button asChild variant="outline" className="w-full">
+                      <Link href={`/admin/quotes/${quote.id}/edit`}>Editar</Link>
+                    </Button>
                     <QuoteApprovalForm
                       action={approveQuoteAndCreateWorkOrderFromForm}
+                      quoteId={quote.id}
+                      quoteNumber={quote.number}
+                    />
+                    <QuoteCancelForm
+                      action={cancelDraftQuoteFromForm}
                       quoteId={quote.id}
                       quoteNumber={quote.number}
                     />
