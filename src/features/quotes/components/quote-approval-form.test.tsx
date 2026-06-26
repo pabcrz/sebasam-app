@@ -10,7 +10,9 @@ describe("QuoteApprovalForm", () => {
 
     await user.click(screen.getByRole("button", { name: /aprobar y crear orden de trabajo/i }));
 
-    expect(screen.getByRole("dialog")).toHaveTextContent(/aprobar cotización/i);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent(/aprobar cotización/i);
+    expect(dialog).toHaveClass("w-[calc(100vw_-_2rem)]", "max-w-lg", "overflow-y-auto");
     expect(screen.getByRole("button", { name: /aprobar y crear orden/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /cancelar/i })).toBeInTheDocument();
   });
