@@ -102,12 +102,13 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 | Requerir al menos 1 ítem para compartir/generar PDF | **Necesita verificación** | Se requiere ≥1 ítem para crear cotización, pero no se puede probar el caso compartir/PDF porque esas funciones no existen. |
 | QA funcional: crear, compartir en incógnito, generar PDF, comparar montos | **Falta** | — |
 
-### 9) Otros requisitos fuera del MVP inmediato
+### 9) Alcance de trabajadores y requisitos fuera del MVP inmediato
 
 | Funcionalidad | Estado | Notas |
 |---|---|---|
 | Inventario | **Fuera del MVP** | No implementado; acorde a `docs/MVP_ISSUES.md`. |
-| Empleados, trabajos realizados y nómina | **Fuera del MVP** | Schema tiene `UserProfile`, `WorkAssignment`, `ExecutionRecord`, `NominaSemanal`; UI pendiente. |
+| Registros admin-led de trabajadores, asignaciones y ejecución | **En dominio / UI pendiente** | Schema tiene `UserProfile`, `WorkAssignment`, `ExecutionRecord`. El MVP inmediato requiere que el admin asigne maestro/ayudantes y registre ejecución desde el panel admin para accountability, nómina y cuenta del cliente. Ver GitHub #65. |
+| Login/app de trabajador (`/mis-trabajos`, `/mi-nomina`) | **Fuera del MVP** | El trabajador no tiene sesión propia en el MVP inmediato; se revisa para post-MVP. |
 | Cuentas de empleados (adeudos/abonos) | **Fuera del MVP** | No implementado. |
 | Evidencias (fotos/timeline) | **Fuera del MVP** | No implementado. |
 
@@ -124,7 +125,7 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 | Issue 5.2 — Placas opcionales en cotización | **Completo** |
 | Issue 6 — Creación de cotización borrador con ítems | **Completo** |
 | Issue 7 — Aprobar cotización y crear `WorkOrder` | **Completo** |
-| Issue 8 — Asignación de `WorkOrder` y registros de ejecución | **Falta** |
+| Issue 8 — Asignación administrativa de `WorkOrder` y registros de ejecución | **Falta** |
 | Issue 9 — Finalizar `WorkOrder` y generar PDF/salida final | **Falta** |
 | Issue 10 — Verificación de instalabilidad PWA | **Falta** |
 | Issue 11 — Pipeline de despliegue en Vercel | **Falta** |
@@ -137,7 +138,7 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 
 1. **Cierre de venta**: falta el flujo para compartir la cotización, mostrarla al cliente y registrar aceptación o declinación todo/nada.
 2. **IVA y vigencia**: falta IVA 16 % activado por defecto, interruptor para quitarlo cuando aplique y vigencia comercial de 7 días.
-3. **Asignación de trabajadores**: debe ocurrir cuando la cotización aceptada inicia trabajo, no durante el borrador.
+3. **Asignación de trabajadores**: debe ocurrir cuando la cotización aceptada inicia trabajo, no durante el borrador. En el MVP inmediato el admin asigna maestro/ayudantes y registra ejecución desde el panel admin; el trabajador no tiene login/app propio. Ver GitHub #65.
 4. **Edición de borradores**: faltan opciones para editar, completar o eliminar cotizaciones antes de enviarlas.
 5. **Filtros y búsqueda en listados**: todos los módulos operativos necesitan filtros; cotizaciones y clientes son prioridad.
 6. **Localización**: todo texto operativo visible al usuario debe estar en español de México.
@@ -152,7 +153,7 @@ Las bases de arquitectura, autenticación, clientes, vehículos y creación de c
 | Excepción de IVA | Debe poder desactivarse manualmente. | El switch debe dejar rastro claro en UI y totales. |
 | Vigencia | 7 días por defecto. | Agregar `validUntil` o equivalente y mostrarlo en cotización/PDF/vista pública. |
 | Volatilidad de materiales | La vigencia queda sujeta a cambios imprevistos de precios. | Mostrar nota comercial en salida al cliente. |
-| Maestro y ayudantes | Se asignan al pasar de `ESPERA` a `EN_PROCESO`, después de confirmar espacio del taller y disponibilidad de maestro. | Mover asignación al flujo `ESPERA` → `EN_PROCESO`. |
+| Maestro y ayudantes | Se asignan al pasar de `ESPERA` a `EN_PROCESO`, después de confirmar espacio del taller y disponibilidad de maestro. El registro es admin-led en el MVP inmediato. | Mover asignación al flujo `ESPERA` → `EN_PROCESO`; el admin captura asignación y ejecución, no el trabajador. |
 | Filtros | Todo listado operativo debe tener filtros. | Priorizar cotizaciones y clientes; extender a trabajos, pagos y nómina cuando existan. |
 | Autorización parcial | Las cotizaciones se dividen en secciones con subtotal propio; el cliente puede autorizar secciones individuales sin autorizar la cotización completa. | Agregar `QuoteSection` al modelo; registrar autorización por sección sin crear cotizaciones separadas. |
 | Flujo de pago | Los datos de pago son independientes de la aceptación de la cotización. | Mostrar datos de pago directamente si no se requiere factura; solicitar/confirmar datos fiscales antes si se requiere factura. |

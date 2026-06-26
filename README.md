@@ -7,7 +7,7 @@ Aplicación operativa limpia para SEBASAM: cotizaciones, órdenes de trabajo, as
 | Aspecto | Detalle |
 |---|---|
 | Propósito | Reemplazar búsquedas en archivos/PDF por una web app mobile-first donde los datos operativos vivan en base de datos. |
-| Alcance implementado | Login admin, clientes, vehículos, cotizaciones en borrador, aprobación → orden de trabajo, `PaymentRequest`/`CustomerFiscalProfile`, PWA foundation. |
+| Alcance implementado | Login admin, clientes, vehículos, cotizaciones en borrador, aprobación → orden de trabajo, `PaymentRequest`/`CustomerFiscalProfile`, PWA foundation. El acceso inmediato es **admin-led**: los trabajadores se gestionan como registros operativos desde el panel admin; no tienen login ni app propia en el MVP inmediato. |
 | Referencia visual | Figma — ver [`DESIGN.md`](./DESIGN.md). |
 | Referencia de dominio | `prisma/schema.prisma`, [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) y este README. |
 | Hosting objetivo | Landing pública en `sebasam.com`; app operativa independiente en `app.sebasam.com`. |
@@ -29,8 +29,8 @@ flowchart LR
     E -->|Declina| G[DECLINADA]
     F --> H[WorkOrder<br>ESPERA]
     H --> I[Confirmar espacio + maestro<br>EN_PROCESO]
-    I --> J[Asignar empleados]
-    J --> K[Reportar ejecución<br>+ extras controlados]
+    I --> J[Asignar maestro/ayudantes<br>desde admin]
+    J --> K[Admin registra ejecución<br>+ extras controlados]
     K --> L[Trabajo terminado]
     L --> M[Registrar cobros<br>ajustes, adeudo]
     M --> N[Ledger cliente]
@@ -45,8 +45,8 @@ flowchart LR
 | R2 | Autorización por secciones | La cotización puede dividirse en secciones con subtotal propio. El cliente puede autorizar una o más secciones sin autorizar la cotización completa; las secciones no se modelan como cotizaciones separadas. |
 | R3 | Token expirable | El link de cliente lleva token con vigencia; expirado → no se procesa la respuesta. |
 | R4 | Aceptación/autorización → WorkOrder | Regla objetivo: toda orden de trabajo debe nacer de una cotización aceptada o autorizada administrativamente; debe crearse en `ESPERA` y pasar a `EN_PROCESO` al confirmar espacio y maestro. |
-| R5 | Asignación controlada | Se asigna 1 maestro + N ayudantes; el empleado solo ve estado operativo y su trabajo. |
-| R6 | Reporte de ejecución | El empleado registra avance empatado contra la cotización aceptada o autorizada administrativamente. |
+| R5 | Asignación controlada | Se asigna 1 maestro + N ayudantes desde el panel admin. En el MVP inmediato el registro es administrativo; el trabajador no tiene login/app propio. |
+| R6 | Reporte de ejecución | El admin registra avance de ejecución empatado contra la cotización aceptada o autorizada administrativamente. Los registros se vinculan al trabajador para trazabilidad, nómina y cuenta del cliente. |
 | R7 | Extras controlados | Los extras son posibles, pero requieren registro, control y quedan vinculados a la orden. |
 | R8 | Fin de trabajo | El trabajo termina cuando la ejecución cubre el alcance aprobado + extras autorizados. |
 | R9 | Cobros, ajustes y adeudo | Se registran pagos con método, ajustes y saldo pendiente. |
@@ -75,8 +75,8 @@ Este es el modelo de dominio que soporta el flujo. Las primeras entidades existe
 | `QuoteSection` | Sección de cotización con subtotal propio | Pertenece a `Quote`; agrupa `QuoteItem`s | 🎯 Objetivo |
 | `QuoteItem` | Concepto de cotización en UI (`QuoteItem`): material, mano de obra, refacción, servicio externo, etc. | Pertenece a `QuoteSection` y `Quote` | ✅ Implementado |
 | `WorkOrder` | Orden de trabajo operativa | Implementado como orden vinculada a `Quote`; el flujo `ESPERA` y autorización administrativa auditada siguen pendientes | ✅ Implementado parcial |
-| `WorkAssignment` | Asignación de empleado a orden | Vincula `UserProfile` y `WorkOrder` | ✅ Implementado |
-| `ExecutionRecord` | Registro de ejecución/reporte | Vincula `WorkOrder` y `UserProfile` opcional | ✅ Implementado |
+| `WorkAssignment` | Asignación administrativa de empleado a orden | Vincula `UserProfile` y `WorkOrder`; el admin asigna maestro/ayudantes para accountability y cálculo de nómina | ✅ Implementado |
+| `ExecutionRecord` | Registro administrativo de ejecución/reporte | Vincula `WorkOrder` y `UserProfile` opcional; el admin captura quién hizo el trabajo, cuándo y qué se ejecutó | ✅ Implementado |
 | `Payment` | Cobro registrado por el admin | Pendiente: vincular `Quote` / `WorkOrder` y `Customer` | 🎯 Objetivo |
 | `LedgerEntry` | Movimiento de estado de cuenta del cliente | Pendiente: refleja pagos, ajustes y adeudos | 🎯 Objetivo |
 | `WeeklyPayroll` | Nómina semanal calculada | Pendiente: deriva de `ExecutionRecord` y `WorkAssignment` | 🎯 Objetivo |
@@ -97,7 +97,7 @@ Este es el modelo de dominio que soporta el flujo. Las primeras entidades existe
 - [x] Entidad `Vehicle` vinculada a cliente; placas opcionales; snapshot en cotización.
 - [x] Crear cotización borrador con ítems, totales calculados en servidor y validación Zod.
 - [x] Aprobar cotización y crear `WorkOrder` transaccionalmente.
-- [ ] Asignar `WorkOrder` y registrar ejecución.
+- [ ] Asignar `WorkOrder` y registrar ejecución desde el panel admin (admin-led; sin app de trabajador en el MVP inmediato).
 - [x] Backend de `PaymentRequest` y `CustomerFiscalProfile` (Issue GitHub #41).
 - [ ] Página pública `/datos-de-pago/[token]` para datos de pago y captura fiscal (Issue GitHub #42).
 - [ ] Flujo de pago independiente, autorización parcial por secciones y datos fiscales previos (Issue GitHub #37).
@@ -105,6 +105,7 @@ Este es el modelo de dominio que soporta el flujo. Las primeras entidades existe
 - [ ] Verificar instalabilidad PWA.
 - [ ] Pipeline de despliegue en Vercel.
 - [ ] Localización completa a español de México.
+- [ ] Login/app de trabajador (`/mis-trabajos`, `/mi-nomina`) — post-MVP; ver GitHub #65.
 
 ---
 
@@ -221,6 +222,7 @@ Tailwind wrappers derived from the Figma design system instead of invented visua
 - Do not add migrations to `next build`.
 - Do not import the schema from the other repository wholesale.
 - Do not implement the tokenized customer portal in the initial MVP.
+- Do not build a worker login or self-service app in the immediate MVP; worker records remain admin-managed. Ver GitHub #65.
 
 ## Reference
 
