@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { QuoteStatus } from "@prisma/client";
-import { updateDraftQuote, updateDraftQuoteFromForm } from "./actions";
+import { cancelDraftQuote, cancelDraftQuoteFromForm, updateDraftQuote, updateDraftQuoteFromForm } from "./actions";
 import { prisma } from "@/lib/prisma";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { redirect } from "next/navigation";
@@ -22,13 +22,18 @@ class MockFormData {
 }
 
 type MockTx = {
-  quote: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  quote: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   quoteItem: { deleteMany: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   const tx: MockTx = {
-    quote: { findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, items: [] }), update: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200 }) },
+    quote: {
+      findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, items: [] }),
+      update: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200 }),
+      findUniqueOrThrow: vi.fn(),
+      updateMany: vi.fn(),
+    },
     quoteItem: { deleteMany: vi.fn() },
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
@@ -106,5 +111,66 @@ describe("updateDraftQuoteFromForm", () => {
     mockTx(QuoteStatus.SENT);
     await updateDraftQuoteFromForm("quote-1", buildFormData() as unknown as FormData);
     expect(redirect).toHaveBeenCalledWith("/admin/quotes/quote-1/edit?error=not-draft");
+  });
+});
+
+describe("cancelDraftQuote", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("cancels a DRAFT quote without deleting it", async () => {
+    const tx = mockTx();
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+    tx.quote.findUniqueOrThrow.mockResolvedValue({ id: "quote-1", status: QuoteStatus.CANCELLED });
+
+    const result = await cancelDraftQuote("quote-1");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "quote-1", status: QuoteStatus.DRAFT },
+      data: { status: QuoteStatus.CANCELLED },
+    });
+    expect(result.status).toBe(QuoteStatus.CANCELLED);
+  });
+
+  it("throws when the quote is not found", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue(null);
+    await expect(cancelDraftQuote("quote-1")).rejects.toThrow("Quote not found.");
+  });
+
+  it("throws when the quote is not in DRAFT status", async () => {
+    mockTx(QuoteStatus.APPROVED);
+    await expect(cancelDraftQuote("quote-1")).rejects.toThrow("Only draft quotes can be cancelled.");
+  });
+});
+
+describe("cancelDraftQuoteFromForm", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("cancels a draft quote from form data and redirects", async () => {
+    const tx = mockTx();
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+    tx.quote.findUniqueOrThrow.mockResolvedValue({ id: "quote-1", status: QuoteStatus.CANCELLED });
+
+    const formData = new MockFormData();
+    formData.set("quoteId", "quote-1");
+
+    await cancelDraftQuoteFromForm(formData as unknown as FormData);
+
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?cancelled=1");
+  });
+
+  it("redirects with invalid-cancellation when quoteId is missing", async () => {
+    await cancelDraftQuoteFromForm(new MockFormData() as unknown as FormData);
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid-cancellation");
+  });
+
+  it("redirects with not-draft error when quote is no longer draft", async () => {
+    mockTx(QuoteStatus.SENT);
+    const formData = new MockFormData();
+    formData.set("quoteId", "quote-1");
+
+    await cancelDraftQuoteFromForm(formData as unknown as FormData);
+
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=not-draft");
   });
 });

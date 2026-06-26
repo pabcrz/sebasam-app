@@ -216,6 +216,56 @@ export async function updateDraftQuoteFromForm(quoteId: string, formData: FormDa
   redirect(`${quotesPath}?updated=1`);
 }
 
+export async function cancelDraftQuote(quoteId: string) {
+  await requireOperationalRole();
+
+  return prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({ where: { id: quoteId } });
+
+    if (!quote) {
+      throw new Error("Quote not found.");
+    }
+
+    if (quote.status !== QuoteStatus.DRAFT) {
+      throw new Error("Only draft quotes can be cancelled.");
+    }
+
+    const updated = await tx.quote.updateMany({
+      where: { id: quoteId, status: QuoteStatus.DRAFT },
+      data: { status: QuoteStatus.CANCELLED },
+    });
+
+    if (updated.count !== 1) {
+      throw new Error("Quote cancellation state changed. Reload and try again.");
+    }
+
+    return tx.quote.findUniqueOrThrow({ where: { id: quoteId } });
+  });
+}
+
+export async function cancelDraftQuoteFromForm(formData: FormData) {
+  await requireOperationalRole();
+
+  const quoteId = formData.get("quoteId");
+
+  if (typeof quoteId !== "string" || quoteId.trim() === "") {
+    redirect(`${quotesPath}?error=invalid-cancellation`);
+  }
+
+  try {
+    await cancelDraftQuote(quoteId);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Only draft quotes can be cancelled.") {
+      redirect(`${quotesPath}?error=not-draft`);
+    }
+
+    redirect(`${quotesPath}?error=cancellation-failed`);
+  }
+
+  revalidatePath(quotesPath);
+  redirect(`${quotesPath}?cancelled=1`);
+}
+
 export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
   await requireOperationalRole();
 
