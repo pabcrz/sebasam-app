@@ -185,6 +185,55 @@ function checkCustomerPages() {
   );
 }
 
+function checkLoginPage() {
+  const loginSource = readFileSync("src/app/admin/login/page.tsx", "utf8");
+
+  assertNoRadix(loginSource, "Login page");
+
+  // Form wiring must remain intact.
+  assertIncludes(loginSource, 'action={loginAdmin}', "Login form must wire to loginAdmin server action");
+  assertIncludes(loginSource, 'name="username"', "Login form must expose username field");
+  assertIncludes(loginSource, 'name="password"', "Login form must expose password field");
+  assertIncludes(loginSource, 'type="submit"', "Login form must have a submit button");
+
+  // Main owns the layout width; the card must fill that available space instead of re-capping itself.
+  assertIncludes(loginSource, 'className="w-full"', "Login card must fill the constrained main width");
+
+  // User-facing copy must stay in Mexican Spanish.
+  const spanishLabels = [
+    "Iniciar sesión",
+    "Usuario",
+    "Contraseña",
+    "Ingresar",
+    "El usuario o la contraseña son incorrectos.",
+    "Ingresa tu usuario y contraseña.",
+  ];
+
+  for (const label of spanishLabels) {
+    assertIncludes(loginSource, label, `Expected Spanish copy missing: ${label}`);
+  }
+}
+
+function checkRootPage() {
+  const rootSource = readFileSync("src/app/page.tsx", "utf8");
+
+  // Root must be an operational entry point, not a generic landing page.
+  assertIncludes(rootSource, "getCurrentUser", "Root page must read the current session");
+  assertIncludes(rootSource, "redirect", "Root page must redirect based on session");
+  assertIncludes(
+    rootSource,
+    "getRootRedirectPath",
+    "Root page must resolve redirect path through auth helper",
+  );
+
+  const rootRedirectSource = readFileSync("src/lib/auth/root-redirect.ts", "utf8");
+  assertIncludes(
+    rootRedirectSource,
+    'user ? "/admin" : "/admin/login"',
+    "Root redirect must send authenticated users to /admin and anonymous users to /admin/login",
+  );
+}
+
 function checkPublicPaymentPage() {
   const pageSource = readFileSync("src/app/datos-de-pago/[token]/page.tsx", "utf8");
   const shellSource = readFileSync("src/features/public-payment/components/public-payment-shell.tsx", "utf8");
@@ -254,8 +303,10 @@ function checkPublicPaymentPage() {
 
 checkQuotesPage();
 checkCustomerPages();
+checkLoginPage();
+checkRootPage();
 checkPublicPaymentPage();
 
 console.log(
-  "UI contract verified for /admin/quotes, /admin/customers, /datos-de-pago/[token] and payment-request link generation.",
+  "UI contract verified for /, /admin/login, /admin/quotes, /admin/customers, /datos-de-pago/[token] and payment-request link generation.",
 );
