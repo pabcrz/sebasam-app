@@ -5,7 +5,7 @@
 
 ## Resumen
 
-- Producto: sistema de gestión para taller (cotizaciones, órdenes de trabajo, clientes, pagos, nómina, inventario).
+- Producto: sistema de gestión para taller (cotizaciones, órdenes de trabajo, clientes, pagos, nómina, inventario). El acceso inmediato es admin-led: el admin gestiona trabajadores, asignaciones y ejecución desde el panel principal.
 - Prioridad: **web mobile-first**; el uso principal es en celular.
 - Tema: **Light por defecto** para operación y documentos; superficies **deep navy** para shell del dashboard, hero y estados de énfasis.
 - Tipografía base: **Inter**; monoespaciado para folios, montos y datos de pago: **DM Mono**.
@@ -215,8 +215,8 @@ flowchart LR
     E -->|Declina| G[DECLINADA]
     F --> H[WorkOrder<br>ESPERA]
     H --> I[Confirmar espacio + maestro<br>EN_PROCESO]
-    I --> J[Asignar empleados]
-    J --> K[Reportar ejecución<br>+ extras controlados]
+    I --> J[Asignar maestro/ayudantes<br>desde admin]
+    J --> K[Admin registra ejecución<br>+ extras controlados]
     K --> L[Trabajo terminado]
     L --> M[Registrar cobros<br>ajustes, adeudo]
     M --> N[Ledger cliente]
@@ -233,8 +233,8 @@ flowchart LR
 | `DECLINADA` | Cliente declinó todo | Cliente vía link con token |
 | `CANCELADA` | Admin cancela antes o después de enviar | Admin |
 | `ESPERA` | Cotización/orden aceptada, a la espera de espacio del taller y disponibilidad de maestro | Objetivo pendiente: sistema al aceptar o autorizar |
-| `EN_PROCESO` | WorkOrder activa con empleados asignados | Objetivo pendiente: Admin al confirmar espacio y maestro |
-| `AJUSTE_FINAL` | Extras o ajustes antes de cerrar | Admin / empleado autorizado |
+| `EN_PROCESO` | WorkOrder activa con empleados asignados | Admin al confirmar espacio y maestro |
+| `AJUSTE_FINAL` | Extras o ajustes antes de cerrar | Admin |
 
 ### Reglas de diseño por estado
 
@@ -242,15 +242,15 @@ flowchart LR
 - El cliente acepta o declina **todo/nada** mediante link con token expirable.
 - Objetivo pendiente: si el cliente aceptó por fuera del link (p. ej. teléfono), el admin puede marcar la cotización como autorizada con una nota obligatoria de canal/motivo; usa el mismo registro de cotización/alcance.
 - Objetivo pendiente: tras `ACEPTADA`, la orden entra en `ESPERA` hasta que el admin confirme espacio del taller y disponibilidad de maestro.
-- Objetivo pendiente: la transición de `ESPERA` a `EN_PROCESO` ocurre al confirmar espacio y maestro; en ese punto se asignan empleados.
+- La transición de `ESPERA` a `EN_PROCESO` ocurre al confirmar espacio y maestro; en ese punto el admin asigna empleados y registra ejecución.
 - `FACTURADA` no implica pagada; siempre se muestra el estado financiero aparte.
-- El empleado **no ve** pagos, saldos, métodos de pago, factura ni ledger.
+- En el MVP inmediato el empleado **no tiene login/app propio**; el admin gestiona asignación y ejecución. El self-service del trabajador (`/mis-trabajos`, `/mi-nomina`) es post-MVP. Ver GitHub #65.
 
 Las reglas de negocio completas viven en [`README.md`](./README.md#reglas-de-negocio-).
 
 ### Indicadores separados
 
-1. **Operativo** (`QuoteOperationalBadge`): visible para Admin, Cliente y Empleado.
+1. **Operativo** (`QuoteOperationalBadge`): visible para Admin y Cliente. En el MVP inmediato el empleado no accede a la app; el admin gestiona la vista operativa.
 2. **Financiero / Documento** (`QuoteFinancialBadges`): solo Admin y Cliente.
 
 ## Pantallas por rol
@@ -263,8 +263,8 @@ Las reglas de negocio completas viven en [`README.md`](./README.md#reglas-de-neg
 - Detalle de cotización (tabs: Resumen / Historial / Costos).
 - Órdenes de trabajo: asignación, ejecución, cierre.
 - Clientes: alta, búsqueda, edición, historial.
+- Trabajadores: alta, asignación a órdenes, registro de ejecución, nómina (admin-led en el MVP inmediato).
 - Pagos / ledger / caja (post-MVP inmediato).
-- Trabajadores y nómina (post-MVP inmediato).
 
 ### Cliente (portal público tokenizado)
 
@@ -274,12 +274,13 @@ Las reglas de negocio completas viven en [`README.md`](./README.md#reglas-de-neg
 - Ver datos de pago fijos.
 - **Fuera del MVP inmediato** según `docs/MVP_ISSUES.md`.
 
-### Empleado
+### Empleado (post-MVP inmediato)
 
 - Ver órdenes asignadas.
 - Reportar ejecución y evidencia.
 - Ver solo estado operativo y lo que impacta su nómina.
 - **No ve** caja, pagos, saldos, métodos de pago, factura ni ledger.
+- **Fuera del MVP inmediato** según `docs/MVP_ISSUES.md` y GitHub #65; en el MVP el admin captura asignación y ejecución.
 
 ## Documento público de cotización
 

@@ -283,22 +283,25 @@ La pantalla futura de gestión de contraseñas queda fuera del MVP inmediato de 
 
 **Dependencias/notas:** Depende del Issue 7.11. La aceptación o autorización administrativa habilita el estado `ESPERA` y el inicio de trabajo del Issue 8.
 
-### Issue 8: Asignación de `WorkOrder` y registros de ejecución
+### Issue 8: Asignación administrativa de `WorkOrder` y registros de ejecución
 
-**Objetivo:** Iniciar el trabajo de una cotización aceptada o autorizada administrativamente, pasando por `ESPERA`, asignar maestro/ayudantes y registrar progreso de ejecución para operaciones de campo.
+**Objetivo:** Iniciar el trabajo de una cotización aceptada o autorizada administrativamente, pasando por `ESPERA`, asignar maestro/ayudantes y registrar progreso de ejecución desde el panel admin para operaciones de campo.
+
+> **Nota de alcance (GitHub #65):** en el MVP inmediato el registro de trabajadores, asignaciones y ejecución es **admin-led**. El admin asigna maestro/ayudantes, captura quién realizó el trabajo y registra avances/extras para accountability, nómina y cuenta del cliente. El trabajador no inicia sesión ni usa una app propia (`/mis-trabajos`, `/mi-nomina`) en el MVP inmediato; ese self-service queda para post-MVP. El libro físico del taller puede coexistir durante la adopción temprana.
 
 **Criterios de aceptación:**
 - [ ] Tras la aceptación del cliente o la autorización administrativa, la cotización/orden pasa a `ESPERA`.
 - [ ] Solo una cotización en `ESPERA` puede pasar a `EN_PROCESO` o generar/activar su `WorkOrder` operativo.
 - [ ] La transición de `ESPERA` a `EN_PROCESO` requiere confirmar espacio del taller y disponibilidad de maestro.
 - [ ] Los administradores pueden asignar 1 Maestro obligatorio y N Ayudantes opcionales.
-- [ ] Se pueden agregar registros de ejecución con fecha, notas, avance y detalles relevantes para el estado.
+- [ ] Se pueden agregar registros de ejecución con fecha, notas, avance, trabajador vinculado y detalles relevantes para el estado.
 - [ ] Los registros de ejecución se empatan contra la cotización y el `WorkOrder` correcto.
 - [ ] Los extras quedan identificados como adicionales y sujetos a control administrativo.
 - [ ] El estado del work order refleja asignación, progreso y bloqueo de cambios inseguros.
 - [ ] Los registros quedan vinculados al `WorkOrder` correcto.
+- [ ] No se implementa login ni app de trabajador; el registro es capturado por el admin.
 
-**Dependencias/notas:** Depende del Issue 7.12. La asignación de maestro/ayudantes no pertenece al borrador de cotización; ocurre al pasar de `ESPERA` a `EN_PROCESO`, una vez confirmados espacio del taller y disponibilidad de maestro.
+**Dependencias/notas:** Depende del Issue 7.12. La asignación de maestro/ayudantes no pertenece al borrador de cotización; ocurre al pasar de `ESPERA` a `EN_PROCESO`, una vez confirmados espacio del taller y disponibilidad de maestro. En el MVP inmediato el admin es quien captura asignación y ejecución; el self-service del trabajador es post-MVP. Ver GitHub #65.
 
 ### Issue 9: Finalizar `WorkOrder` y generar PDF/salida final de orden
 

@@ -27,6 +27,8 @@ La infraestructura compartida vive en `src/lib`: actualmente helpers de Prisma y
 
 La identidad de Supabase se vincula con `UserProfile.id` mediante el UUID de usuario de Auth. El login usa el email interno derivado del username visible, pero la autorización siempre revisa el rol del perfil de Prisma. Los roles de acceso son `ADMIN`, `ADMIN_ASSISTANT` y `WORKER`; la clasificación laboral del empleado se guarda por separado como `workerKind` nullable (`MASTER` o `HELPER`).
 
+En el MVP inmediato el acceso a la app es **admin-led**: solo `ADMIN` y `ADMIN_ASSISTANT` inician sesión. El rol `WORKER` y la clasificación `workerKind` se usan para modelar empleados como registros operativos (asignaciones, ejecución, nómina, cuenta del cliente), no para login propio. El login/app del trabajador (`/mis-trabajos`, `/mi-nomina`) queda para post-MVP. Ver GitHub #65.
+
 Las contraseñas del staff interno las controlan los admins, no el sign-up público. Usar herramientas server-only con service role para crear o resetear usuarios de Auth hasta que exista la pantalla de admin correspondiente.
 
 ## Hosting y modelo de rutas
@@ -39,20 +41,25 @@ Mapa de rutas objetivo:
 
 | Ruta | Rol | Propósito |
 |---|---|---|
-| `/` | `ADMIN`, `ADMIN_ASSISTANT`, `WORKER` | Hub role-aware después del login. |
-| `/login` | Público | Login único del staff. |
+| `/` | `ADMIN`, `ADMIN_ASSISTANT` | Hub post-login para usuarios administrativos. |
+| `/login` | Público | Login único del staff admin. |
 | `/cotizacion` | `ADMIN`, `ADMIN_ASSISTANT` | Lista y creación de cotizaciones. |
 | `/cotizacion/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Detalle y edición de cotización. |
 | `/cliente` | `ADMIN`, `ADMIN_ASSISTANT` | Lista y creación de clientes. |
 | `/cliente/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Detalle y edición de cliente. |
-| `/trabajador` | `ADMIN`, `ADMIN_ASSISTANT` | Gestión del equipo del taller. |
+| `/trabajador` | `ADMIN`, `ADMIN_ASSISTANT` | Gestión del equipo del taller (registros admin-led). |
 | `/trabajador/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Detalle del trabajador. |
-| `/nomina` | `ADMIN`, `ADMIN_ASSISTANT` | Nómina semanal. |
+| `/nomina` | `ADMIN`, `ADMIN_ASSISTANT` | Nómina semanal calculada desde registros admin. |
+| `/trabajo/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Detalle del trabajo con gestión de asignación y ejecución. |
+| `/datos-de-pago/[token]` | Token de cliente público | Página pública MVP de datos de pago vinculada a un `PaymentRequest`. |
+
+Rutas post-MVP (fuera del MVP inmediato):
+
+| Ruta | Rol | Propósito |
+|---|---|---|
 | `/mis-trabajos` | `WORKER` | Trabajos asignados al trabajador logueado. |
 | `/mi-nomina` | `WORKER` | Estimación de nómina propia. |
-| `/trabajo/[id]` | Según rol | Detalle del trabajo con visibilidad específica por rol. |
 | `/c/[token]` | Token de cliente público | Futuro portal tokenizado para clientes. |
-| `/datos-de-pago/[token]` | Token de cliente público | Página de datos de pago vinculada a un `PaymentRequest`. |
 
 Los slugs de ruta usan español singular sin acentos (`cotizacion`, `nomina`) para mantener las URLs estables y ASCII-only.
 
@@ -66,15 +73,15 @@ El dominio separa claramente **cotización comercial** (`Quote`) de **orden de t
 
 | Entidad | Responsabilidad | Relación principal |
 |---|---|---|
-| `UserProfile` | Usuario interno con rol y clasificación laboral | `WorkAssignment`, `ExecutionRecord` |
+| `UserProfile` | Usuario interno con rol y clasificación laboral. En el MVP inmediato solo `ADMIN`/`ADMIN_ASSISTANT` inician sesión; `WORKER` modela registros operativos admin-led. | `WorkAssignment`, `ExecutionRecord` |
 | `Customer` | Cliente del taller | `Quote`, `Vehicle` |
 | `Vehicle` | Unidad vinculada al cliente | `Customer`, `Quote` |
 | `Quote` | Propuesta comercial con ítems, secciones y totales | `Customer`, `Vehicle`, `QuoteSection`, `QuoteItem`, `WorkOrder` |
 | `QuoteSection` | Grupo de conceptos dentro de una cotización con subtotal propio | `Quote`, `QuoteItem` |
 | `QuoteItem` | Línea de cotización con tipo, cantidad y precio | `QuoteSection`, `Quote` |
 | `WorkOrder` | Orden de trabajo vinculada a una cotización; debe evolucionar para soportar autorización administrativa y `ESPERA` | `Quote`, `WorkAssignment`, `ExecutionRecord` |
-| `WorkAssignment` | Asignación de empleado a orden de trabajo | `WorkOrder`, `UserProfile` |
-| `ExecutionRecord` | Reporte de ejecución realizado | `WorkOrder`, `UserProfile` |
+| `WorkAssignment` | Asignación administrativa de empleado a orden de trabajo | `WorkOrder`, `UserProfile` |
+| `ExecutionRecord` | Registro administrativo de ejecución realizado | `WorkOrder`, `UserProfile` |
 
 Regla objetivo pendiente: la autorización administrativa no debe crear un flujo paralelo; debe usar el mismo registro de cotización/alcance, marcarlo como aceptado y exigir una nota con canal y motivo (p. ej. "autorización por teléfono"). La evidencia inicial es opcional. Tras la aceptación o autorización, la orden debe pasar por `ESPERA` hasta que se confirme espacio del taller y disponibilidad de maestro.
 
@@ -104,4 +111,6 @@ Esta página está desacoplada de la aceptación de la cotización: el cliente p
 
 ## Límites del MVP
 
-El objetivo inicial es una PWA instalable en Android Chrome. El empaquetado como APK y los portales de clientes tokenizados están fuera del alcance inmediato.
+El objetivo inicial es una PWA instalable en Android Chrome, operada por admin/asistente. El empaquetado como APK, los portales de clientes tokenizados y el login/app de trabajador (`/mis-trabajos`, `/mi-nomina`) están fuera del alcance inmediato.
+
+> **Nota de alcance (GitHub #65):** los trabajadores NO se eliminan del dominio. El MVP inmediato los mantiene como registros admin-managed: el admin asigna maestro/ayudantes, registra quién ejecutó el trabajo y alimenta nómina/cuenta del cliente. El self-service del trabajador queda para post-MVP.
