@@ -5,6 +5,12 @@ export function formatCents(cents: number) {
   }).format(cents / 100);
 }
 
+export function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("es-MX", {
+    dateStyle: "long",
+  }).format(date);
+}
+
 type VehicleSnapshotView = {
   plate?: unknown;
   brand?: unknown;

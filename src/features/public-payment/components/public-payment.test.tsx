@@ -26,7 +26,15 @@ function createMockRequest(overrides: { status?: PaymentRequestStatus; requiresI
     createdAt: new Date(),
     updatedAt: new Date(),
     customer: { id: "customer-123", name: "Test Customer" },
-    quote: { id: "quote-123", number: "Q-001", totalCents: 400000 },
+    quote: {
+      id: "quote-123",
+      number: "Q-001",
+      subtotalCents: 344828,
+      taxCents: 55172,
+      totalCents: 400000,
+      taxEnabled: true,
+      validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    },
     workOrder: null,
     customerFiscalProfile: null,
   };

@@ -131,6 +131,8 @@ model Quote {
   subtotalCents   Int         @default(0)
   taxCents        Int         @default(0)
   totalCents      Int         @default(0)
+  taxEnabled      Boolean     @default(true)
+  validUntil      DateTime    @default(dbgenerated("CURRENT_TIMESTAMP + INTERVAL '7 days'"))
   approvedAt      DateTime?
   administrative  Boolean     @default(false)
   createdAt       DateTime    @default(now())

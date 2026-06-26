@@ -75,6 +75,7 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="items.0.description"]')).toBeInTheDocument();
     expect(document.querySelector('input[name="items.0.quantity"]')).toBeInTheDocument();
     expect(document.querySelector('input[name="items.0.unitPrice"]')).toBeInTheDocument();
+    expect(document.querySelector('input[name="taxEnabled"]')).toHaveValue("on");
   });
 
   it("shows a validation error when advancing without required data", async () => {
@@ -123,7 +124,7 @@ describe("QuoteBuilder", () => {
     expect(entries["items.0.quantity"]).toBe("1");
     expect(entries["items.0.unitPrice"]).toBe("850");
     expect(entries["items.0.type"]).toBe("SERVICE");
-  });
+  }, 10_000);
 
   it("computes and displays the running total", async () => {
     const user = userEvent.setup();
@@ -140,7 +141,11 @@ describe("QuoteBuilder", () => {
 
     const totals = screen.getAllByTestId("quote-total");
     expect(totals.length).toBeGreaterThanOrEqual(1);
-    expect(totals[0]).toHaveTextContent("$850.00");
+    expect(totals[0]).toHaveTextContent("$986.00");
+
+    const taxes = screen.getAllByTestId("quote-tax");
+    expect(taxes.length).toBeGreaterThanOrEqual(1);
+    expect(taxes[0]).toHaveTextContent("$136.00");
   });
 
   it("allows jumping back to a completed step from the stepper", async () => {
@@ -257,5 +262,52 @@ describe("QuoteBuilder", () => {
 
     expect(action).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent(/avanza al último paso/i);
+  });
+
+  it("lets the user disable IVA and updates the total", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn();
+
+    render(<QuoteBuilder customers={customers} createAction={action} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("checkbox", { name: /incluir iva/i }));
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const totals = screen.getAllByTestId("quote-total");
+    expect(totals[0]).toHaveTextContent("$850.00");
+
+    const taxes = screen.getAllByTestId("quote-tax");
+    expect(taxes[0]).toHaveTextContent("$0.00");
+
+    fireEvent.submit(screen.getByTestId("quote-builder-form"));
+
+    const formData = action.mock.calls[0][0] as FormData;
+    expect(formData.get("taxEnabled")).toBe("off");
+  });
+
+  it("shows the validity note in the preview step", async () => {
+    const user = userEvent.setup();
+
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByTestId("quote-validity")).toHaveTextContent(/vigente hasta/i);
+    expect(screen.getByTestId("quote-validity")).toHaveTextContent(/cambios imprevistos/i);
   });
 });

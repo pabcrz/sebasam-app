@@ -24,7 +24,7 @@ import {
 import { QuoteBuilder } from "@/features/quotes/components/quote-builder";
 import { QuoteApprovalForm } from "@/features/quotes/components/quote-approval-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
-import { formatCents, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
+import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 
 export const metadata: Metadata = {
   title: "Cotizaciones",
@@ -140,7 +140,10 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                   <TableHead>Estado</TableHead>
                   <TableHead>Orden de trabajo</TableHead>
                   <TableHead>Conceptos</TableHead>
+                  <TableHead>Subtotal</TableHead>
+                  <TableHead>IVA</TableHead>
                   <TableHead>Total</TableHead>
+                  <TableHead>Vigente hasta</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -179,7 +182,10 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                         ))}
                       </ul>
                     </TableCell>
+                    <TableCell>{formatCents(quote.subtotalCents)}</TableCell>
+                    <TableCell>{formatCents(quote.taxCents)}</TableCell>
                     <TableCell className="font-medium">{formatCents(quote.totalCents)}</TableCell>
+                    <TableCell>{quote.validUntil ? formatDate(quote.validUntil) : "—"}</TableCell>
                     <TableCell>
                       {quote.status === "DRAFT" && !quote.workOrder ? (
                         <QuoteApprovalForm
@@ -200,7 +206,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 ))}
                 {quotes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-6 text-center text-[var(--color-text-muted)]">
+                    <TableCell colSpan={12} className="py-6 text-center text-[var(--color-text-muted)]">
                       No se encontraron cotizaciones.
                     </TableCell>
                   </TableRow>
@@ -240,9 +246,18 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 </div>
 
                 <div className="mt-3 border-t border-[var(--color-border-light)] pt-3">
-                  <p className="text-sm font-semibold text-[var(--color-primary)]">
-                    Total: {formatCents(quote.totalCents)}
-                  </p>
+                  <div className="grid gap-1 text-sm">
+                    <p className="text-[var(--color-text-muted)]">
+                      Subtotal: {formatCents(quote.subtotalCents)}
+                    </p>
+                    <p className="text-[var(--color-text-muted)]">IVA: {formatCents(quote.taxCents)}</p>
+                    <p className="font-semibold text-[var(--color-primary)]">
+                      Total: {formatCents(quote.totalCents)}
+                    </p>
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}
+                    </p>
+                  </div>
                   <ul className="mt-2 grid gap-1 text-sm text-[var(--color-text-muted)]">
                     {quote.items.map((item) => (
                       <li key={item.id}>

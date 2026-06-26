@@ -8,6 +8,11 @@ import { requireOperationalRole } from "@/lib/auth/session";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { createVehicleSnapshot } from "@/features/vehicles/schemas";
 import { quoteFormInputSchema, quoteInputSchema } from "./schemas";
+import {
+  calculateItemTotalCents,
+  calculateQuoteTotals,
+  createQuoteValidUntil,
+} from "./lib/calculate";
 
 const quotesPath = "/admin/quotes";
 
@@ -50,16 +55,13 @@ function quoteFormDataToInput(formData: FormData) {
     title: formData.get("title"),
     description: formData.get("description"),
     administrative: formData.get("administrative") === "on",
+    taxEnabled: formData.get("taxEnabled") === "on",
     items,
   };
 }
 
 function nullableOptional(value: string | undefined) {
   return value ?? null;
-}
-
-function calculateItemTotalCents(quantity: number, unitPriceCents: number) {
-  return Math.round(quantity * unitPriceCents);
 }
 
 function createQuoteNumber() {
@@ -85,6 +87,8 @@ export async function createQuote(input: unknown) {
     };
   });
   const subtotalCents = items.reduce((total, item) => total + item.totalCents, 0);
+  const { taxCents, totalCents } = calculateQuoteTotals(subtotalCents, data.taxEnabled);
+  const validUntil = createQuoteValidUntil();
 
   return prisma.$transaction(async (tx) => {
     const vehicleInput = {
@@ -104,9 +108,11 @@ export async function createQuote(input: unknown) {
         title: data.title,
         description: nullableOptional(data.description),
         administrative: data.administrative,
+        taxEnabled: data.taxEnabled,
         subtotalCents,
-        taxCents: 0,
-        totalCents: subtotalCents,
+        taxCents,
+        totalCents,
+        validUntil,
         items: { create: items },
       },
     });

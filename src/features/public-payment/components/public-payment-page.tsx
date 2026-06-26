@@ -12,7 +12,15 @@ import { WhatsAppReceiptCta } from "./whatsapp-receipt-cta";
 
 type PaymentRequestWithRelations = PaymentRequest & {
   customer: { id: string; name: string } | null;
-  quote: { id: string; number: string; totalCents: number } | null;
+  quote: {
+    id: string;
+    number: string;
+    subtotalCents: number;
+    taxCents: number;
+    totalCents: number;
+    taxEnabled: boolean;
+    validUntil: Date | null;
+  } | null;
   workOrder: { id: string; number: string } | null;
   customerFiscalProfile: { id: string; businessName: string; taxId: string } | null;
 };
@@ -28,6 +36,10 @@ function formatCurrency(cents: number) {
     style: "currency",
     currency: "MXN",
   }).format(cents / 100);
+}
+
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("es-MX", { dateStyle: "long" }).format(date);
 }
 
 export function PublicPaymentPage({
@@ -83,7 +95,21 @@ export function PublicPaymentPage({
       <div className="mb-6 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm md:p-5">
         <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">Referencia</p>
         <p className="text-lg font-bold text-[var(--color-text-main)]">{reference}</p>
-        {amount > 0 ? (
+        {request.quote ? (
+          <div className="mt-3 grid gap-1 text-sm text-[var(--color-text-muted)]">
+            <p>Subtotal: {formatCurrency(request.quote.subtotalCents)}</p>
+            {request.quote.taxEnabled ? <p>IVA: {formatCurrency(request.quote.taxCents)}</p> : null}
+            <p className="font-mono text-xl font-bold text-[var(--color-primary)]">
+              Total: {formatCurrency(request.quote.totalCents)}
+            </p>
+            {request.quote.validUntil ? (
+              <p className="text-xs">
+                Vigente hasta {formatDate(request.quote.validUntil)}. Sujeta a cambios imprevistos en
+                precios de materiales.
+              </p>
+            ) : null}
+          </div>
+        ) : amount > 0 ? (
           <p className="mt-1 font-mono text-xl font-bold text-[var(--color-primary)]">{formatCurrency(amount)}</p>
         ) : null}
       </div>
