@@ -133,6 +133,139 @@ export async function createQuoteFromForm(formData: FormData) {
   redirect(`${quotesPath}?created=1`);
 }
 
+export async function updateDraftQuote(quoteId: string, input: unknown) {
+  await requireOperationalRole();
+
+  const data = quoteInputSchema.parse(input);
+  const items = data.items.map((item, index) => {
+    const totalCents = calculateItemTotalCents(item.quantity, item.unitPriceCents);
+
+    return {
+      ...item,
+      quantity: item.quantity,
+      totalCents,
+      sortOrder: index,
+    };
+  });
+  const subtotalCents = items.reduce((total, item) => total + item.totalCents, 0);
+  const { taxCents, totalCents } = calculateQuoteTotals(subtotalCents, data.taxEnabled);
+
+  return prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({
+      where: { id: quoteId },
+      include: { items: true },
+    });
+
+    if (!quote) {
+      throw new Error("Quote not found.");
+    }
+
+    if (quote.status !== QuoteStatus.DRAFT) {
+      throw new Error("Only draft quotes can be updated.");
+    }
+
+    const vehicleInput = {
+      ...data.vehicle,
+      customerId: data.customerId,
+    };
+    const vehicle = await findOrCreateVehicle(tx, vehicleInput);
+    const vehicleSnapshot = createVehicleSnapshot(vehicleInput);
+
+    await tx.quoteItem.deleteMany({ where: { quoteId } });
+
+    return tx.quote.update({
+      where: { id: quoteId },
+      data: {
+        customerId: data.customerId,
+        vehicleId: vehicle.id,
+        vehicleSnapshot,
+        title: data.title,
+        description: nullableOptional(data.description),
+        administrative: data.administrative,
+        taxEnabled: data.taxEnabled,
+        subtotalCents,
+        taxCents,
+        totalCents,
+        items: { create: items },
+      },
+    });
+  });
+}
+
+export async function updateDraftQuoteFromForm(quoteId: string, formData: FormData) {
+  await requireOperationalRole();
+
+  const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
+
+  if (!parsed.success) {
+    redirect(`${quotesPath}/${quoteId}/edit?error=invalid`);
+  }
+
+  try {
+    await updateDraftQuote(quoteId, parsed.data);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Only draft quotes can be updated.") {
+      redirect(`${quotesPath}/${quoteId}/edit?error=not-draft`);
+    }
+
+    redirect(`${quotesPath}/${quoteId}/edit?error=update-failed`);
+  }
+
+  revalidatePath(quotesPath);
+  revalidatePath(`${quotesPath}/${quoteId}/edit`);
+  redirect(`${quotesPath}?updated=1`);
+}
+
+export async function cancelDraftQuote(quoteId: string) {
+  await requireOperationalRole();
+
+  return prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({ where: { id: quoteId } });
+
+    if (!quote) {
+      throw new Error("Quote not found.");
+    }
+
+    if (quote.status !== QuoteStatus.DRAFT) {
+      throw new Error("Only draft quotes can be cancelled.");
+    }
+
+    const updated = await tx.quote.updateMany({
+      where: { id: quoteId, status: QuoteStatus.DRAFT },
+      data: { status: QuoteStatus.CANCELLED },
+    });
+
+    if (updated.count !== 1) {
+      throw new Error("Quote cancellation state changed. Reload and try again.");
+    }
+
+    return tx.quote.findUniqueOrThrow({ where: { id: quoteId } });
+  });
+}
+
+export async function cancelDraftQuoteFromForm(formData: FormData) {
+  await requireOperationalRole();
+
+  const quoteId = formData.get("quoteId");
+
+  if (typeof quoteId !== "string" || quoteId.trim() === "") {
+    redirect(`${quotesPath}?error=invalid-cancellation`);
+  }
+
+  try {
+    await cancelDraftQuote(quoteId);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Only draft quotes can be cancelled.") {
+      redirect(`${quotesPath}?error=not-draft`);
+    }
+
+    redirect(`${quotesPath}?error=cancellation-failed`);
+  }
+
+  revalidatePath(quotesPath);
+  redirect(`${quotesPath}?cancelled=1`);
+}
+
 export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
   await requireOperationalRole();
 
