@@ -196,9 +196,8 @@ function checkLoginPage() {
   assertIncludes(loginSource, 'name="password"', "Login form must expose password field");
   assertIncludes(loginSource, 'type="submit"', "Login form must have a submit button");
 
-  // Responsive card must not collapse to a narrow column on mobile/narrow widths.
-  assertIncludes(loginSource, "min-w-0", "Login card must prevent flex shrink collapse");
-  assertIncludes(loginSource, "max-w-md", "Login card must cap its width on larger screens");
+  // Main owns the layout width; the card must fill that available space instead of re-capping itself.
+  assertIncludes(loginSource, 'className="w-full"', "Login card must fill the constrained main width");
 
   // User-facing copy must stay in Mexican Spanish.
   const spanishLabels = [

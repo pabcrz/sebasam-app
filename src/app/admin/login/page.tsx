@@ -34,7 +34,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
 
   return (
     <main className="flex min-h-dvh w-full items-center justify-center px-4 py-12 md:px-6">
-      <Card className="w-full min-w-0 max-w-md">
+      <Card className="w-full">
         <CardHeader>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
             Operaciones SEBASAM
