@@ -1,0 +1,73 @@
+import { Metadata } from "next";
+import {
+  getPaymentRequestByToken,
+  PaymentRequestExpiredError,
+  PaymentRequestCancelledError,
+} from "@/features/payment-requests/domain";
+import { setPaymentRequestInvoicePreference, savePaymentRequestFiscalData } from "@/features/public-payment/actions";
+import { PublicPaymentPage } from "@/features/public-payment/components/public-payment-page";
+import { PaymentRequestErrorState } from "@/features/public-payment/components/payment-request-error-state";
+import type { PaymentRequest } from "@prisma/client";
+
+export const metadata: Metadata = {
+  title: "Datos de pago",
+};
+
+interface PaymentPageProps {
+  params: Promise<{ token: string }>;
+}
+
+type PublicPaymentRequest = PaymentRequest & {
+  customer: { id: string; name: string };
+  quote: { id: string; number: string; totalCents: number } | null;
+  workOrder: { id: string; number: string } | null;
+  customerFiscalProfile: { id: string; businessName: string; taxId: string } | null;
+};
+
+type PaymentErrorType = "not-found" | "expired" | "cancelled";
+
+type PaymentPageResult =
+  | { kind: "success"; request: PublicPaymentRequest }
+  | { kind: "error"; errorType: PaymentErrorType };
+
+function mapErrorToType(error: unknown): PaymentErrorType {
+  if (error instanceof PaymentRequestExpiredError) {
+    return "expired";
+  }
+
+  if (error instanceof PaymentRequestCancelledError) {
+    return "cancelled";
+  }
+
+  return "not-found";
+}
+
+async function loadPaymentPageResult(token: string): Promise<PaymentPageResult> {
+  try {
+    const request = await getPaymentRequestByToken(token);
+    return { kind: "success", request };
+  } catch (error) {
+    return { kind: "error", errorType: mapErrorToType(error) };
+  }
+}
+
+export default async function DatosDePagoPage({ params }: PaymentPageProps) {
+  const { token } = await params;
+  const result = await loadPaymentPageResult(token);
+
+  if (result.kind === "error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4">
+        <PaymentRequestErrorState type={result.errorType} />
+      </div>
+    );
+  }
+
+  return (
+    <PublicPaymentPage
+      request={result.request}
+      setInvoicePreferenceAction={setPaymentRequestInvoicePreference.bind(null, token)}
+      saveFiscalDataAction={savePaymentRequestFiscalData.bind(null, token)}
+    />
+  );
+}
