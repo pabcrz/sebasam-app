@@ -279,8 +279,11 @@ describe("savePaymentRequestFiscalData", () => {
     createdPaymentRequestIds.push(request.id);
 
     const fiscalData = {
+      personType: "BUSINESS" as const,
       businessName: "Test Business S.A. de C.V.",
       taxId: "TEST123456789",
+      taxRegime: "601",
+      cfdiUse: "G03",
       zipCode: "01000",
       address: "Test Address 123",
       email: "test@example.com",
@@ -290,11 +293,17 @@ describe("savePaymentRequestFiscalData", () => {
     const updated = await savePaymentRequestFiscalData(request.token, fiscalData);
 
     expect(updated.customerFiscalProfile).not.toBeNull();
+    expect(updated.customerFiscalProfile?.personType).toBe(fiscalData.personType);
     expect(updated.customerFiscalProfile?.businessName).toBe(fiscalData.businessName);
     expect(updated.customerFiscalProfile?.taxId).toBe(fiscalData.taxId);
+    expect(updated.customerFiscalProfile?.taxRegime).toBe(fiscalData.taxRegime);
+    expect(updated.customerFiscalProfile?.cfdiUse).toBe(fiscalData.cfdiUse);
     expect(updated.fiscalSnapshot).toMatchObject({
+      personType: fiscalData.personType,
       businessName: fiscalData.businessName,
       taxId: fiscalData.taxId,
+      taxRegime: fiscalData.taxRegime,
+      cfdiUse: fiscalData.cfdiUse,
       zipCode: fiscalData.zipCode,
       address: fiscalData.address,
       email: fiscalData.email,
@@ -313,6 +322,7 @@ describe("savePaymentRequestFiscalData", () => {
     createdPaymentRequestIds.push(request.id);
 
     const fiscalData = {
+      personType: "INDIVIDUAL" as const,
       businessName: "First Name",
       taxId: "REUSE123",
     };
@@ -329,10 +339,14 @@ describe("savePaymentRequestFiscalData", () => {
 
     const second = await savePaymentRequestFiscalData(secondRequest.token, {
       ...fiscalData,
+      personType: "BUSINESS" as const,
       businessName: "Updated Name",
+      taxRegime: "601",
     });
 
     expect(second.customerFiscalProfile?.id).toBe(first.customerFiscalProfile?.id);
+    expect(second.customerFiscalProfile?.personType).toBe("BUSINESS");
     expect(second.customerFiscalProfile?.businessName).toBe("Updated Name");
+    expect(second.customerFiscalProfile?.taxRegime).toBe("601");
   }, 10000);
 });

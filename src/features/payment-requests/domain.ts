@@ -237,8 +237,11 @@ export async function savePaymentRequestFiscalData(token: string, input: unknown
   }
 
   const fiscalSnapshot = {
+    personType: data.personType,
     businessName: data.businessName,
     taxId: data.taxId,
+    taxRegime: data.taxRegime ?? null,
+    cfdiUse: data.cfdiUse ?? null,
     zipCode: data.zipCode ?? null,
     address: data.address ?? null,
     email: data.email ?? null,
@@ -250,7 +253,10 @@ export async function savePaymentRequestFiscalData(token: string, input: unknown
     const profile = await tx.customerFiscalProfile.upsert({
       where: { customerId_taxId: { customerId: request.customerId, taxId: data.taxId } },
       update: {
+        personType: data.personType,
         businessName: data.businessName,
+        taxRegime: data.taxRegime ?? null,
+        cfdiUse: data.cfdiUse ?? null,
         zipCode: data.zipCode ?? null,
         address: data.address ?? null,
         email: data.email ?? null,
@@ -258,8 +264,11 @@ export async function savePaymentRequestFiscalData(token: string, input: unknown
       },
       create: {
         customerId: request.customerId,
+        personType: data.personType,
         businessName: data.businessName,
         taxId: data.taxId,
+        taxRegime: data.taxRegime ?? null,
+        cfdiUse: data.cfdiUse ?? null,
         zipCode: data.zipCode ?? null,
         address: data.address ?? null,
         email: data.email ?? null,
