@@ -168,7 +168,75 @@ function checkCustomerPages() {
   );
 }
 
+function checkPublicPaymentPage() {
+  const pageSource = readFileSync("src/app/datos-de-pago/[token]/page.tsx", "utf8");
+  const shellSource = readFileSync("src/features/public-payment/components/public-payment-shell.tsx", "utf8");
+  const invoiceDecisionSource = readFileSync(
+    "src/features/public-payment/components/invoice-decision.tsx",
+    "utf8",
+  );
+  const fiscalFormSource = readFileSync(
+    "src/features/public-payment/components/fiscal-data-form.tsx",
+    "utf8",
+  );
+  const bankCardSource = readFileSync(
+    "src/features/public-payment/components/bank-data-card.tsx",
+    "utf8",
+  );
+
+  assertNoRadix(pageSource, "Public payment page");
+  assertNoRadix(shellSource, "Public payment shell");
+  assertNoRadix(invoiceDecisionSource, "Invoice decision");
+  assertNoRadix(fiscalFormSource, "Fiscal data form");
+
+  // Server-action wiring must remain intact.
+  assertIncludes(
+    pageSource,
+    "setPaymentRequestInvoicePreference",
+    "Page must wire invoice preference server action",
+  );
+  assertIncludes(
+    pageSource,
+    "savePaymentRequestFiscalData",
+    "Page must wire fiscal data server action",
+  );
+
+  // Required form field names must survive wrapper refactors.
+  const requiredFieldPatterns = [
+    'name="personType"',
+    'name="businessName"',
+    'name="taxId"',
+    'name="taxRegime"',
+    'name="cfdiUse"',
+    'name="zipCode"',
+  ];
+
+  for (const pattern of requiredFieldPatterns) {
+    assertIncludes(
+      fiscalFormSource,
+      pattern,
+      `Missing required fiscal form field pattern: ${pattern}`,
+    );
+  }
+
+  // User-facing copy must stay in Mexican Spanish.
+  const spanishLabels = [
+    { label: "¿Qué necesitas compartir?", source: invoiceDecisionSource },
+    { label: "Solo datos de pago", source: invoiceDecisionSource },
+    { label: "Requiero factura", source: invoiceDecisionSource },
+    { label: "Captura de datos fiscales", source: fiscalFormSource },
+    { label: "Guardar datos fiscales", source: fiscalFormSource },
+    { label: "Datos de pago", source: bankCardSource },
+    { label: "Enviar comprobante", source: readFileSync("src/features/public-payment/components/whatsapp-receipt-cta.tsx", "utf8") },
+  ];
+
+  for (const { label, source } of spanishLabels) {
+    assertIncludes(source, label, `Expected Spanish copy missing: ${label}`);
+  }
+}
+
 checkQuotesPage();
 checkCustomerPages();
+checkPublicPaymentPage();
 
-console.log("UI contract verified for /admin/quotes and /admin/customers.");
+console.log("UI contract verified for /admin/quotes, /admin/customers and /datos-de-pago/[token].");
