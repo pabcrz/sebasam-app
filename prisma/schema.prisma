@@ -64,6 +64,11 @@ enum PaymentRequestStatus {
   CANCELLED
 }
 
+enum PersonType {
+  INDIVIDUAL
+  BUSINESS
+}
+
 model UserProfile {
   id          String      @id @db.Uuid
   username    String      @unique
@@ -195,17 +200,20 @@ model ExecutionRecord {
 }
 
 model CustomerFiscalProfile {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   customerId   String
+  personType   PersonType @default(INDIVIDUAL)
   businessName String
   taxId        String
+  taxRegime    String?
+  cfdiUse      String?
   zipCode      String?
   address      String?
   email        String?
   phone        String?
-  isDefault    Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isDefault    Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
   paymentRequests PaymentRequest[]
