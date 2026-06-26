@@ -134,36 +134,60 @@ async function assertNoActiveRequest(
   }
 }
 
+async function createPaymentRequestForQuoteInTransaction(
+  tx: TransactionClient,
+  quoteId: string,
+  requiresInvoice = false,
+) {
+  const quote = await tx.quote.findUnique({
+    where: { id: quoteId },
+    include: { customer: true },
+  });
+
+  if (!quote) {
+    throw new PaymentRequestOperationError("Quote not found.");
+  }
+
+  const initialStatus = requiresInvoice
+    ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
+    : PaymentRequestStatus.PENDING;
+
+  return tx.paymentRequest.create({
+    data: {
+      token: createToken(),
+      status: initialStatus,
+      customerId: quote.customerId,
+      quoteId: quote.id,
+      requiresInvoice,
+      expiresAt: createExpirationDate(),
+    },
+  });
+}
+
+export async function getOrCreatePaymentRequestForQuote(
+  quoteId: string,
+  requiresInvoice = false,
+) {
+  return prisma.$transaction(async (tx) => {
+    const existingActive = await tx.paymentRequest.findFirst({
+      where: { quoteId, status: { in: ACTIVE_STATUSES } },
+    });
+
+    if (existingActive) {
+      return existingActive;
+    }
+
+    return createPaymentRequestForQuoteInTransaction(tx, quoteId, requiresInvoice);
+  });
+}
+
 export async function createPaymentRequestForQuote(
   quoteId: string,
   requiresInvoice = false,
 ) {
   return prisma.$transaction(async (tx) => {
-    const quote = await tx.quote.findUnique({
-      where: { id: quoteId },
-      include: { customer: true },
-    });
-
-    if (!quote) {
-      throw new PaymentRequestOperationError("Quote not found.");
-    }
-
-    await assertNoActiveRequest(tx, { quoteId: quote.id });
-
-    const initialStatus = requiresInvoice
-      ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
-      : PaymentRequestStatus.PENDING;
-
-    return tx.paymentRequest.create({
-      data: {
-        token: createToken(),
-        status: initialStatus,
-        customerId: quote.customerId,
-        quoteId: quote.id,
-        requiresInvoice,
-        expiresAt: createExpirationDate(),
-      },
-    });
+    await assertNoActiveRequest(tx, { quoteId });
+    return createPaymentRequestForQuoteInTransaction(tx, quoteId, requiresInvoice);
   });
 }
 

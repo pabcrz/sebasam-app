@@ -6,6 +6,7 @@ import {
 } from "@/features/quotes/actions";
 import { listQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
+import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
 import {
   Badge,
   Card,
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui";
 import { QuoteBuilder } from "@/features/quotes/components/quote-builder";
 import { QuoteApprovalForm } from "@/features/quotes/components/quote-approval-form";
+import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { formatCents, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 
 export const metadata: Metadata = {
@@ -185,6 +187,11 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                           quoteId={quote.id}
                           quoteNumber={quote.number}
                         />
+                      ) : quote.status === "SENT" || quote.status === "APPROVED" ? (
+                        <PaymentRequestLinkDialog
+                          action={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
+                          quoteNumber={quote.number}
+                        />
                       ) : (
                         <span className="text-sm text-[var(--color-text-muted)]">Sin acción</span>
                       )}
@@ -251,6 +258,13 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                     <QuoteApprovalForm
                       action={approveQuoteAndCreateWorkOrderFromForm}
                       quoteId={quote.id}
+                      quoteNumber={quote.number}
+                    />
+                  </div>
+                ) : quote.status === "SENT" || quote.status === "APPROVED" ? (
+                  <div className="mt-4">
+                    <PaymentRequestLinkDialog
+                      action={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
                       quoteNumber={quote.number}
                     />
                   </div>

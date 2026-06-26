@@ -19,6 +19,8 @@ function checkQuotesPage() {
   const builderSource = readFileSync(builderPath, "utf8");
   const approvalFormPath = "src/features/quotes/components/quote-approval-form.tsx";
   const approvalFormSource = readFileSync(approvalFormPath, "utf8");
+  const paymentLinkDialogPath = "src/features/payment-requests/components/payment-request-link-dialog.tsx";
+  const paymentLinkDialogSource = readFileSync(paymentLinkDialogPath, "utf8");
 
   assertNoRadix(pageSource, "Quotes page");
   assertNoRadix(builderSource, "Quote builder");
@@ -34,6 +36,16 @@ function checkQuotesPage() {
     pageSource,
     "approveQuoteAndCreateWorkOrderFromForm",
     "Approval form must wire to approveQuoteAndCreateWorkOrderFromForm server action",
+  );
+  assertIncludes(
+    pageSource,
+    "getOrCreatePaymentRequestForQuote",
+    "Quotes page must wire payment-link server action",
+  );
+  assertIncludes(
+    pageSource,
+    "PaymentRequestLinkDialog",
+    "Quotes page must render PaymentRequestLinkDialog",
   );
   assertIncludes(
     approvalFormSource,
@@ -81,6 +93,11 @@ function checkQuotesPage() {
     { label: "Título", source: builderSource },
     { label: "Descripción", source: builderSource },
     { label: "Aprobar y crear orden de trabajo", source: approvalFormSource },
+    { label: "Link de pago", source: paymentLinkDialogSource },
+    { label: "Genera o recupera el enlace de pago", source: paymentLinkDialogSource },
+    { label: "URL para el cliente", source: paymentLinkDialogSource },
+    { label: "Copiar link", source: paymentLinkDialogSource },
+    { label: "Generar link", source: paymentLinkDialogSource },
   ];
 
   for (const { label, source } of spanishLabels) {
@@ -239,4 +256,6 @@ checkQuotesPage();
 checkCustomerPages();
 checkPublicPaymentPage();
 
-console.log("UI contract verified for /admin/quotes, /admin/customers and /datos-de-pago/[token].");
+console.log(
+  "UI contract verified for /admin/quotes, /admin/customers, /datos-de-pago/[token] and payment-request link generation.",
+);
