@@ -20,7 +20,8 @@ import {
   SelectValue,
   Textarea,
 } from "@/components/ui";
-import { formatCents } from "@/features/quotes/lib/format";
+import { formatCents, formatDate } from "@/features/quotes/lib/format";
+import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
 
 type CustomerOption = {
   id: string;
@@ -68,7 +69,7 @@ const emptyItem: ItemFormValue = {
   unitPrice: "",
 };
 
-function calculateTotals(items: ItemFormValue[]) {
+function calculateTotals(items: ItemFormValue[], taxEnabled: boolean) {
   let subtotalCents = 0;
 
   for (const item of items) {
@@ -80,7 +81,9 @@ function calculateTotals(items: ItemFormValue[]) {
     }
   }
 
-  return { subtotalCents, totalCents: subtotalCents };
+  const taxCents = taxEnabled ? Math.round(subtotalCents * 0.16) : 0;
+
+  return { subtotalCents, taxCents, totalCents: subtotalCents + taxCents };
 }
 
 function validateItemValue(item: ItemFormValue, index: number): string | null {
@@ -182,14 +185,16 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [administrative, setAdministrative] = React.useState(false);
+  const [taxEnabled, setTaxEnabled] = React.useState(true);
   const [items, setItems] = React.useState<ItemFormValue[]>(() =>
     Array.from({ length: 5 }, () => ({ ...emptyItem })),
   );
 
   const currentStepIndex = steps.indexOf(step);
-  const { subtotalCents, totalCents } = calculateTotals(items);
+  const { subtotalCents, taxCents, totalCents } = calculateTotals(items, taxEnabled);
   const selectedCustomer = customers.find((customer) => customer.id === customerId);
   const completeItems = items.filter(isItemComplete);
+  const validUntil = createQuoteValidUntil();
 
   function updateItem(index: number, patch: Partial<ItemFormValue>) {
     setItems((prev) => {
@@ -428,6 +433,12 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
               checked={administrative}
               onCheckedChange={(checked) => setAdministrative(checked === true)}
             />
+            <input type="hidden" name="taxEnabled" value={taxEnabled ? "on" : "off"} />
+            <Checkbox
+              label="Incluir IVA (16%)"
+              checked={taxEnabled}
+              onCheckedChange={(checked) => setTaxEnabled(checked === true)}
+            />
           </section>
 
           {/* Step 4: Resumen */}
@@ -474,7 +485,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
               {administrative ? <Badge variant="info">Administrativa</Badge> : null}
             </div>
 
-            <QuoteTotalsCard subtotalCents={subtotalCents} totalCents={totalCents} />
+            <QuoteTotalsCard subtotalCents={subtotalCents} taxCents={taxCents} totalCents={totalCents} />
           </section>
 
           {/* Step 5: Preview / Enviar */}
@@ -487,7 +498,9 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
               administrative={administrative}
               items={completeItems}
               subtotalCents={subtotalCents}
+              taxCents={taxCents}
               totalCents={totalCents}
+              validUntil={validUntil}
             />
           </section>
 
@@ -570,16 +583,24 @@ function Stepper({
   );
 }
 
-function QuoteTotalsCard({ subtotalCents, totalCents }: { subtotalCents: number; totalCents: number }) {
+function QuoteTotalsCard({
+  subtotalCents,
+  taxCents,
+  totalCents,
+}: {
+  subtotalCents: number;
+  taxCents: number;
+  totalCents: number;
+}) {
   return (
     <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
       <div className="flex items-center justify-between text-sm text-[var(--color-text-muted)]">
         <span>Subtotal</span>
-        <span>{formatCents(subtotalCents)}</span>
+        <span data-testid="quote-subtotal">{formatCents(subtotalCents)}</span>
       </div>
       <div className="flex items-center justify-between text-sm text-[var(--color-text-muted)]">
         <span>IVA</span>
-        <span>{formatCents(0)}</span>
+        <span data-testid="quote-tax">{formatCents(taxCents)}</span>
       </div>
       <div className="flex items-center justify-between border-t border-[var(--color-border-light)] pt-2 text-lg font-bold text-[var(--color-primary)]">
         <span>Total</span>
@@ -597,7 +618,9 @@ function QuotePreviewCard({
   administrative,
   items,
   subtotalCents,
+  taxCents,
   totalCents,
+  validUntil,
 }: {
   customerName: string;
   vehicle: { plate: string; brand: string; model: string; color: string; year: string };
@@ -606,7 +629,9 @@ function QuotePreviewCard({
   administrative: boolean;
   items: ItemFormValue[];
   subtotalCents: number;
+  taxCents: number;
   totalCents: number;
+  validUntil: Date;
 }) {
   const vehicleDescription = [vehicle.brand, vehicle.model, vehicle.color, vehicle.year, vehicle.plate]
     .filter(Boolean)
@@ -653,7 +678,14 @@ function QuotePreviewCard({
           )}
         </div>
 
-        <QuoteTotalsCard subtotalCents={subtotalCents} totalCents={totalCents} />
+        <QuoteTotalsCard subtotalCents={subtotalCents} taxCents={taxCents} totalCents={totalCents} />
+
+        <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-sm text-[var(--color-text-muted)]">
+          <p data-testid="quote-validity">
+            Vigente hasta el {formatDate(validUntil)}. Los precios están sujetos a cambios imprevistos
+            en el costo de materiales.
+          </p>
+        </div>
       </div>
     </div>
   );

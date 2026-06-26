@@ -19,7 +19,15 @@ interface PaymentPageProps {
 
 type PublicPaymentRequest = PaymentRequest & {
   customer: { id: string; name: string };
-  quote: { id: string; number: string; totalCents: number } | null;
+  quote: {
+    id: string;
+    number: string;
+    subtotalCents: number;
+    taxCents: number;
+    totalCents: number;
+    taxEnabled: boolean;
+    validUntil: Date | null;
+  } | null;
   workOrder: { id: string; number: string } | null;
   customerFiscalProfile: { id: string; businessName: string; taxId: string } | null;
 };

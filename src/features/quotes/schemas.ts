@@ -41,6 +41,7 @@ export const quoteInputSchema = z.object({
   title: z.string().trim().min(1, "Quote title is required").max(160),
   description: optionalTrimmedString,
   administrative: z.boolean().default(false),
+  taxEnabled: z.boolean().default(true),
   items: z.array(quoteItemInputSchema).min(1, "At least one quote item is required").max(10),
 });
 

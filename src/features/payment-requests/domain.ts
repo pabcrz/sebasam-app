@@ -77,7 +77,17 @@ type TransactionClient = Prisma.TransactionClient;
 
 const defaultInclude = {
   customer: true,
-  quote: { select: { id: true, number: true, totalCents: true } },
+  quote: {
+    select: {
+      id: true,
+      number: true,
+      subtotalCents: true,
+      taxCents: true,
+      totalCents: true,
+      taxEnabled: true,
+      validUntil: true,
+    },
+  },
   workOrder: { select: { id: true, number: true } },
   customerFiscalProfile: true,
 } as const;
