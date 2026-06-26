@@ -196,9 +196,9 @@ function checkLoginPage() {
   assertIncludes(loginSource, 'name="password"', "Login form must expose password field");
   assertIncludes(loginSource, 'type="submit"', "Login form must have a submit button");
 
-  // Main constrains the layout width; the card fills it with w-full.
-  assertIncludes(loginSource, 'max-w-md', "Main must cap the login card width on desktop");
-  assertIncludes(loginSource, 'className="w-full"', "Login card must fill the constrained main width");
+  // Main owns the full screen; the login card caps its own width for this simple centered panel.
+  assertIncludes(loginSource, '<main className="flex min-h-dvh w-full', "Login main must occupy full viewport width");
+  assertIncludes(loginSource, 'className="w-full md:max-w-100"', "Login card must fill mobile width and cap width on desktop");
 
   // User-facing copy must stay in Mexican Spanish.
   const spanishLabels = [

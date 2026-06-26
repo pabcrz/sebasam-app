@@ -33,18 +33,15 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
   const error = params?.error ? errorMessages[params.error] : null;
 
   return (
-    <main className="flex min-h-dvh w-full max-w-md mx-auto items-center justify-center px-4 py-12 md:px-6">
-      <Card className="w-full">
+    <main className="flex min-h-dvh w-full items-center justify-center px-4 py-12 md:px-6">
+      <Card className="w-full md:max-w-100">
         <CardHeader>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
-            Operaciones SEBASAM
+            SEBASAM
           </p>
-          <CardTitle as="h1" className="mt-2 break-words text-2xl md:text-3xl">
+          <CardTitle as="h1" className="mt-2 break-words text-3xl">
             Iniciar sesión
           </CardTitle>
-          <p className="mt-2 break-words text-sm leading-6 text-[var(--color-text-muted)]">
-            Ingresa con tu usuario de SEBASAM para acceder a las pantallas operativas protegidas.
-          </p>
         </CardHeader>
         <CardContent>
           {error ? (
@@ -61,7 +58,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
                 name="username"
                 type="text"
                 autoComplete="username"
-                placeholder="pablo"
+                placeholder="Ingresa tu usuario"
                 required
               />
             </div>
@@ -73,6 +70,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
                 name="password"
                 type="password"
                 autoComplete="current-password"
+                placeholder="Ingresa tu contraseña"
                 required
               />
             </div>
