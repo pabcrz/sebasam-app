@@ -11,15 +11,6 @@ import {
   setPaymentRequestInvoicePreference as setPaymentRequestInvoicePreferenceDomain,
 } from "./domain";
 
-export {
-  PaymentRequestAlreadyExistsError,
-  PaymentRequestCancelledError,
-  PaymentRequestError,
-  PaymentRequestExpiredError,
-  PaymentRequestNotFoundError,
-  PaymentRequestOperationError,
-} from "./domain";
-
 export async function getPaymentRequestByToken(token: string) {
   return getPaymentRequestByTokenDomain(token);
 }
