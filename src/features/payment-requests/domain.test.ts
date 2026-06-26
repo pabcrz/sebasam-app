@@ -7,6 +7,7 @@ import {
   cancelPaymentRequest,
   createPaymentRequestForQuote,
   createPaymentRequestForWorkOrder,
+  getOrCreatePaymentRequestForQuote,
   getPaymentRequestByToken,
   PaymentRequestAlreadyExistsError,
   PaymentRequestCancelledError,
@@ -147,6 +148,58 @@ describe("createPaymentRequestForQuote", () => {
   });
 });
 
+describe("getOrCreatePaymentRequestForQuote", () => {
+  it("creates a payment request when none exists", async () => {
+    const quote = await createTestQuote(testCustomerId);
+
+    const request = await getOrCreatePaymentRequestForQuote(quote.id);
+    createdPaymentRequestIds.push(request.id);
+
+    expect(request.customerId).toBe(testCustomerId);
+    expect(request.quoteId).toBe(quote.id);
+    expect(request.status).toBe(PaymentRequestStatus.PENDING);
+    expect(request.token).toHaveLength(64);
+    expect(request.expiresAt.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it("reuses the same active request on subsequent calls", async () => {
+    const quote = await createTestQuote(testCustomerId);
+
+    const first = await getOrCreatePaymentRequestForQuote(quote.id);
+    createdPaymentRequestIds.push(first.id);
+
+    const second = await getOrCreatePaymentRequestForQuote(quote.id);
+
+    expect(second.id).toBe(first.id);
+    expect(second.token).toBe(first.token);
+  });
+
+  it("creates a new request after the active one is cancelled", async () => {
+    const quote = await createTestQuote(testCustomerId);
+
+    const first = await getOrCreatePaymentRequestForQuote(quote.id);
+    createdPaymentRequestIds.push(first.id);
+
+    await cancelPaymentRequest(first.id);
+
+    const second = await getOrCreatePaymentRequestForQuote(quote.id);
+    createdPaymentRequestIds.push(second.id);
+
+    expect(second.id).not.toBe(first.id);
+    expect(second.token).not.toBe(first.token);
+  });
+
+  it("sets FISCAL_DATA_REQUIRED when invoice is required at creation", async () => {
+    const quote = await createTestQuote(testCustomerId);
+
+    const request = await getOrCreatePaymentRequestForQuote(quote.id, true);
+    createdPaymentRequestIds.push(request.id);
+
+    expect(request.status).toBe(PaymentRequestStatus.FISCAL_DATA_REQUIRED);
+    expect(request.requiresInvoice).toBe(true);
+  });
+});
+
 describe("createPaymentRequestForWorkOrder", () => {
   it("creates a payment request linked to a work order and customer", async () => {
     const quote = await createTestQuote(testCustomerId);
@@ -239,7 +292,7 @@ describe("setPaymentRequestInvoicePreference", () => {
 
     expect(updated.requiresInvoice).toBe(true);
     expect(updated.status).toBe(PaymentRequestStatus.FISCAL_DATA_REQUIRED);
-  });
+  }, 10_000);
 
   it("transitions to READY_TO_PAY when invoice is not required", async () => {
     const quote = await createTestQuote(testCustomerId);

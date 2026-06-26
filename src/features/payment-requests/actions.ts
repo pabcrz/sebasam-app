@@ -5,18 +5,10 @@ import {
   cancelPaymentRequest as cancelPaymentRequestDomain,
   createPaymentRequestForQuote as createPaymentRequestForQuoteDomain,
   createPaymentRequestForWorkOrder as createPaymentRequestForWorkOrderDomain,
+  getOrCreatePaymentRequestForQuote as getOrCreatePaymentRequestForQuoteDomain,
   getPaymentRequestByToken as getPaymentRequestByTokenDomain,
   savePaymentRequestFiscalData as savePaymentRequestFiscalDataDomain,
   setPaymentRequestInvoicePreference as setPaymentRequestInvoicePreferenceDomain,
-} from "./domain";
-
-export {
-  PaymentRequestAlreadyExistsError,
-  PaymentRequestCancelledError,
-  PaymentRequestError,
-  PaymentRequestExpiredError,
-  PaymentRequestNotFoundError,
-  PaymentRequestOperationError,
 } from "./domain";
 
 export async function getPaymentRequestByToken(token: string) {
@@ -26,6 +18,11 @@ export async function getPaymentRequestByToken(token: string) {
 export async function createPaymentRequestForQuote(quoteId: string, requiresInvoice = false) {
   await requireOperationalRole();
   return createPaymentRequestForQuoteDomain(quoteId, requiresInvoice);
+}
+
+export async function getOrCreatePaymentRequestForQuote(quoteId: string, requiresInvoice = false) {
+  await requireOperationalRole();
+  return getOrCreatePaymentRequestForQuoteDomain(quoteId, requiresInvoice);
 }
 
 export async function createPaymentRequestForWorkOrder(
