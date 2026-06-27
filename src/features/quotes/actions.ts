@@ -6,13 +6,14 @@ import { Prisma, QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
-import { createVehicleSnapshot } from "@/features/vehicles/schemas";
-import { quoteFormInputSchema, quoteInputSchema } from "./schemas";
+import { createVehicleSnapshot, type VehicleInput } from "@/features/vehicles/schemas";
+import { quoteFormInputSchema, quoteInputSchema, type QuoteVehicleInput } from "./schemas";
 import {
   calculateItemTotalCents,
   calculateQuoteTotals,
   createQuoteValidUntil,
 } from "./lib/calculate";
+import { nextQuoteNumber, nextWorkOrderNumber } from "./lib/sequence";
 
 const quotesPath = "/admin/quotes";
 
@@ -26,13 +27,17 @@ type QuoteItemFormInput = {
 function quoteFormDataToInput(formData: FormData) {
   const items: QuoteItemFormInput[] = [];
 
-  for (let index = 0; index < 5; index += 1) {
-    const item = {
-      type: formData.get(`items.${index}.type`),
-      description: formData.get(`items.${index}.description`),
-      quantity: formData.get(`items.${index}.quantity`),
-      unitPriceCents: formData.get(`items.${index}.unitPrice`),
-    };
+  for (let index = 0; true; index += 1) {
+    const type = formData.get(`items.${index}.type`);
+    const description = formData.get(`items.${index}.description`);
+    const quantity = formData.get(`items.${index}.quantity`);
+    const unitPriceCents = formData.get(`items.${index}.unitPrice`);
+
+    if (type === null && description === null && quantity === null && unitPriceCents === null) {
+      break;
+    }
+
+    const item = { type, description, quantity, unitPriceCents };
 
     const hasAnyItemValue = [item.description, item.quantity, item.unitPriceCents].some(
       (value) => typeof value === "string" && value.trim() !== "",
@@ -49,7 +54,7 @@ function quoteFormDataToInput(formData: FormData) {
       plate: formData.get("plate"),
       brand: formData.get("brand"),
       model: formData.get("model"),
-      color: formData.get("color"),
+      color: undefined,
       year: formData.get("year"),
     },
     title: formData.get("title"),
@@ -64,18 +69,33 @@ function nullableOptional(value: string | undefined) {
   return value ?? null;
 }
 
-function createQuoteNumber() {
-  return `Q-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+function hasVehicleData(vehicle: QuoteVehicleInput): boolean {
+  return (
+    vehicle.plate !== undefined ||
+    vehicle.brand !== undefined ||
+    vehicle.model !== undefined ||
+    vehicle.color !== undefined ||
+    vehicle.year !== undefined
+  );
 }
 
-function createWorkOrderNumber() {
-  return `WO-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+function buildVehicleInput(customerId: string, vehicle: QuoteVehicleInput): VehicleInput {
+  return {
+    customerId,
+    plate: vehicle.plate,
+    brand: vehicle.brand,
+    model: vehicle.model,
+    color: vehicle.color,
+    year: vehicle.year,
+    notes: undefined,
+  };
 }
 
 export async function createQuote(input: unknown) {
   await requireOperationalRole();
 
   const data = quoteInputSchema.parse(input);
+  const quoteNumber = await nextQuoteNumber();
   const items = data.items.map((item, index) => {
     const totalCents = calculateItemTotalCents(item.quantity, item.unitPriceCents);
 
@@ -91,19 +111,20 @@ export async function createQuote(input: unknown) {
   const validUntil = createQuoteValidUntil();
 
   return prisma.$transaction(async (tx) => {
-    const vehicleInput = {
-      ...data.vehicle,
-      customerId: data.customerId,
-    };
-    const vehicle = await findOrCreateVehicle(tx, vehicleInput);
-    const vehicleSnapshot = createVehicleSnapshot(vehicleInput);
+    const shouldLinkVehicle = hasVehicleData(data.vehicle);
+    const vehicle = shouldLinkVehicle
+      ? await findOrCreateVehicle(tx, buildVehicleInput(data.customerId, data.vehicle))
+      : null;
+    const vehicleSnapshot = shouldLinkVehicle
+      ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
+      : Prisma.JsonNull;
 
     return tx.quote.create({
       data: {
         customerId: data.customerId,
-        vehicleId: vehicle.id,
+        vehicleId: vehicle?.id ?? null,
         vehicleSnapshot,
-        number: createQuoteNumber(),
+        number: quoteNumber,
         status: "DRAFT",
         title: data.title,
         description: nullableOptional(data.description),
@@ -164,12 +185,13 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       throw new Error("Only draft quotes can be updated.");
     }
 
-    const vehicleInput = {
-      ...data.vehicle,
-      customerId: data.customerId,
-    };
-    const vehicle = await findOrCreateVehicle(tx, vehicleInput);
-    const vehicleSnapshot = createVehicleSnapshot(vehicleInput);
+    const shouldLinkVehicle = hasVehicleData(data.vehicle);
+    const vehicle = shouldLinkVehicle
+      ? await findOrCreateVehicle(tx, buildVehicleInput(data.customerId, data.vehicle))
+      : null;
+    const vehicleSnapshot = shouldLinkVehicle
+      ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
+      : Prisma.JsonNull;
 
     await tx.quoteItem.deleteMany({ where: { quoteId } });
 
@@ -177,7 +199,7 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       where: { id: quoteId },
       data: {
         customerId: data.customerId,
-        vehicleId: vehicle.id,
+        vehicleId: vehicle?.id ?? null,
         vehicleSnapshot,
         title: data.title,
         description: nullableOptional(data.description),
@@ -269,6 +291,8 @@ export async function cancelDraftQuoteFromForm(formData: FormData) {
 export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
   await requireOperationalRole();
 
+  const woNumber = await nextWorkOrderNumber();
+
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({
       where: { id: quoteId },
@@ -300,7 +324,7 @@ export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
     return tx.workOrder.create({
       data: {
         quoteId: quote.id,
-        number: createWorkOrderNumber(),
+        number: woNumber,
       },
     });
   });

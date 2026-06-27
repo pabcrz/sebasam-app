@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useFormStatus } from "react-dom";
 import { QuoteItemType } from "@prisma/client";
 import {
   Badge,
@@ -52,7 +53,9 @@ const stepLabels: Record<Step, string> = {
   preview: "Enviar",
 };
 
-const itemTypes = Object.values(QuoteItemType);
+const itemTypes: QuoteItemType[] = ["LABOR", "MATERIAL", "SERVICE", "OTHER"];
+const maxQuantity = 100;
+const maxUnitPrice = 50_000;
 
 const itemTypeLabels: Record<QuoteItemType, string> = {
   SERVICE: "Servicio",
@@ -63,7 +66,7 @@ const itemTypeLabels: Record<QuoteItemType, string> = {
 };
 
 const emptyItem: ItemFormValue = {
-  type: "SERVICE",
+  type: "LABOR",
   description: "",
   quantity: "",
   unitPrice: "",
@@ -109,8 +112,12 @@ function validateItemValue(item: ItemFormValue, index: number): string | null {
   }
 
   const quantityNum = Number(quantity);
-  if (!Number.isFinite(quantityNum) || quantityNum <= 0 || quantityNum > 999_999.99) {
+  if (!Number.isFinite(quantityNum) || quantityNum <= 0) {
     return `La cantidad del concepto ${index + 1} debe ser mayor a 0.`;
+  }
+
+  if (quantityNum > maxQuantity) {
+    return `La cantidad del concepto ${index + 1} no puede ser mayor a ${maxQuantity}.`;
   }
 
   if (Number(quantityNum.toFixed(2)) !== quantityNum) {
@@ -124,6 +131,14 @@ function validateItemValue(item: ItemFormValue, index: number): string | null {
   const unitPriceNum = Number(unitPrice);
   if (!Number.isFinite(unitPriceNum) || unitPriceNum < 0) {
     return `El precio unitario del concepto ${index + 1} no puede ser negativo.`;
+  }
+
+  if (unitPriceNum > maxUnitPrice) {
+    return `El precio unitario del concepto ${index + 1} es demasiado alto.`;
+  }
+
+  if (Math.round(quantityNum * unitPriceNum * 100) > 2_147_483_647) {
+    return `El total del concepto ${index + 1} es demasiado alto.`;
   }
 
   return null;
@@ -151,7 +166,6 @@ function getStepError(step: Step, state: {
 }): string | null {
   if (step === "client") {
     if (!state.customerId) return "Selecciona un cliente.";
-    if (!state.vehicle.model.trim()) return "Ingresa el modelo del vehículo.";
     return null;
   }
 
@@ -179,7 +193,6 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
     plate: "",
     brand: "",
     model: "",
-    color: "",
     year: "",
   });
   const [title, setTitle] = React.useState("");
@@ -187,7 +200,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
   const [administrative, setAdministrative] = React.useState(false);
   const [taxEnabled, setTaxEnabled] = React.useState(true);
   const [items, setItems] = React.useState<ItemFormValue[]>(() =>
-    Array.from({ length: 5 }, () => ({ ...emptyItem })),
+    [{ ...emptyItem }],
   );
 
   const currentStepIndex = steps.indexOf(step);
@@ -195,6 +208,14 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
   const selectedCustomer = customers.find((customer) => customer.id === customerId);
   const completeItems = items.filter(isItemComplete);
   const validUntil = createQuoteValidUntil();
+
+  function addItem() {
+    setItems((prev) => [...prev, { ...emptyItem }]);
+  }
+
+  function removeItem(index: number) {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  }
 
   function updateItem(index: number, patch: Partial<ItemFormValue>) {
     setItems((prev) => {
@@ -298,31 +319,21 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="model">Modelo</Label>
+                  <Label htmlFor="model">Modelo (opcional)</Label>
                   <Input
                     id="model"
                     name="model"
-                    required
                     value={vehicle.model}
                     onChange={(event) => setVehicle((prev) => ({ ...prev, model: event.target.value }))}
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="color">Color</Label>
-                  <Input
-                    id="color"
-                    name="color"
-                    value={vehicle.color}
-                    onChange={(event) => setVehicle((prev) => ({ ...prev, color: event.target.value }))}
-                  />
-                </div>
                 <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="year">Año</Label>
+                  <Label htmlFor="year">Año (opcional)</Label>
                   <Input
                     id="year"
                     name="year"
                     type="number"
-                    min="1900"
+                    min="1950"
                     max={new Date().getFullYear() + 1}
                     value={vehicle.year}
                     onChange={(event) => setVehicle((prev) => ({ ...prev, year: event.target.value }))}
@@ -336,7 +347,9 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
           <section hidden={step !== "items"} className="grid gap-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-[var(--color-text-main)]">Conceptos</h3>
-              <Badge variant="info">{completeItems.length} de {items.length}</Badge>
+              {completeItems.length > 0 ? (
+                <Badge variant="info">{completeItems.length} completos</Badge>
+              ) : null}
             </div>
 
             {items.map((item, index) => (
@@ -346,21 +359,32 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-[var(--color-text-main)]">Concepto {index + 1}</span>
-                  <Select
-                    value={item.type}
-                    onValueChange={(value) => updateItem(index, { type: value as QuoteItemType })}
-                  >
-                    <SelectTrigger className="w-auto min-w-[140px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {itemTypes.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {itemTypeLabels[type]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={item.type}
+                      onValueChange={(value) => updateItem(index, { type: value as QuoteItemType })}
+                    >
+                      <SelectTrigger className="w-auto min-w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {itemTypes.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {itemTypeLabels[type]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      aria-label={`Eliminar concepto ${index + 1}`}
+                      onClick={() => removeItem(index)}
+                      className="h-8 w-8 p-0 text-[var(--color-status-danger-fg)] hover:bg-[var(--color-status-danger-bg)]"
+                    >
+                      ✕
+                    </Button>
+                  </div>
                 </div>
                 <input type="hidden" name={`items.${index}.type`} value={item.type} />
                 <div className="grid gap-2">
@@ -370,7 +394,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
                     name={`items.${index}.description`}
                     value={item.description}
                     onChange={(event) => updateItem(index, { description: event.target.value })}
-                    placeholder="Ej. Cambio de aceite"
+                    placeholder="Ej. Bajar dos muelles"
                   />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -381,6 +405,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
                       name={`items.${index}.quantity`}
                       type="number"
                       min="0.01"
+                      max={maxQuantity}
                       step="0.01"
                       value={item.quantity}
                       onChange={(event) => updateItem(index, { quantity: event.target.value })}
@@ -393,14 +418,28 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
                       name={`items.${index}.unitPrice`}
                       type="number"
                       min="0"
+                      max={maxUnitPrice}
                       step="0.01"
                       value={item.unitPrice}
                       onChange={(event) => updateItem(index, { unitPrice: event.target.value })}
                     />
                   </div>
                 </div>
+                {validateItemValue(item, index) ? (
+                  <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-3 py-2 text-sm text-[var(--color-status-danger-fg)]" role="status" aria-live="polite">
+                    {validateItemValue(item, index)}
+                  </p>
+                ) : null}
               </div>
             ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addItem}
+              className="w-full"
+            >
+              + Agregar concepto
+            </Button>
           </section>
 
           {/* Step 3: Notas */}
@@ -449,7 +488,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
                 {selectedCustomer?.name ?? "Sin cliente seleccionado"}
               </p>
               <p data-testid="summary-vehicle" className="text-sm text-[var(--color-text-muted)]">
-                {[vehicle.brand, vehicle.model, vehicle.color, vehicle.year, vehicle.plate]
+                {[vehicle.brand, vehicle.model, vehicle.year, vehicle.plate]
                   .filter(Boolean)
                   .join(" · ") || "Sin datos de vehículo"}
               </p>
@@ -505,22 +544,29 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
           </section>
 
           <div className="sticky bottom-0 z-30 -mx-[var(--space-md)] mt-2 flex items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-md)]">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={goToPrevious}
-              disabled={currentStepIndex === 0}
-              className="min-w-[96px]"
-            >
-              Anterior
-            </Button>
-
-            {step === "preview" ? (
-              <Button type="submit" variant="primary" className="min-w-[140px]">
-                Crear cotización
+            {currentStepIndex > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={goToPrevious}
+                className="min-w-[96px]"
+              >
+                Anterior
               </Button>
             ) : (
-              <Button type="button" variant="primary" onClick={goToNext} className="min-w-[140px]">
+              <span aria-hidden="true" className="min-w-[96px]" />
+            )}
+
+            {step === "preview" ? (
+              <CreateQuoteSubmitButton />
+            ) : (
+              <Button
+                type="button"
+                variant="primary"
+                onClick={goToNext}
+                disabled={step === "client" && !customerId}
+                className="min-w-[140px]"
+              >
                 Siguiente
               </Button>
             )}
@@ -528,6 +574,22 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+function CreateQuoteSubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button
+      type="submit"
+      variant="primary"
+      loading={pending}
+      className="min-w-[160px]"
+      aria-live="polite"
+    >
+      {pending ? "Creando..." : "Crear cotización"}
+    </Button>
   );
 }
 
@@ -623,7 +685,7 @@ function QuotePreviewCard({
   validUntil,
 }: {
   customerName: string;
-  vehicle: { plate: string; brand: string; model: string; color: string; year: string };
+  vehicle: { plate: string; brand: string; model: string; year: string };
   title: string;
   description: string;
   administrative: boolean;
@@ -633,7 +695,7 @@ function QuotePreviewCard({
   totalCents: number;
   validUntil: Date;
 }) {
-  const vehicleDescription = [vehicle.brand, vehicle.model, vehicle.color, vehicle.year, vehicle.plate]
+  const vehicleDescription = [vehicle.brand, vehicle.model, vehicle.year, vehicle.plate]
     .filter(Boolean)
     .join(" · ");
 

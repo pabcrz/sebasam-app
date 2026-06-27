@@ -69,6 +69,7 @@ function checkQuotesPage() {
   );
 
   // Required form field names must survive wrapper refactors.
+  // Vehicle fields are optional; only customer is required to create a quote.
   const requiredFieldPatterns = [
     'name="customerId"',
     'name="title"',
@@ -76,7 +77,6 @@ function checkQuotesPage() {
     'name="plate"',
     'name="brand"',
     'name="model"',
-    'name="color"',
     'name="year"',
     'name="administrative"',
     "items.${index}.type",
@@ -93,6 +93,47 @@ function checkQuotesPage() {
       `Missing required form field pattern: ${pattern}`,
     );
   }
+
+  const sequenceSource = readFileSync("src/features/quotes/lib/sequence.ts", "utf8");
+  assertIncludes(
+    sequenceSource,
+    'getNextNumber("quote", "C")',
+    "Quote numbering must use C- prefix for sequential numbers",
+  );
+  assertIncludes(
+    sequenceSource,
+    'getNextNumber("workOrder", "T")',
+    "Work order numbering must use T- prefix for sequential numbers",
+  );
+
+  // Dynamic concepts: builder must allow adding and removing items.
+  assertIncludes(builderSource, "addItem", "Quote builder must support adding a new concept");
+  assertIncludes(builderSource, "removeItem", "Quote builder must support removing a concept");
+  assertIncludes(
+    builderSource,
+    "Agregar concepto",
+    "Quote builder must offer an explicit add-concept action in Spanish",
+  );
+
+  // Vehicle fields are optional and color is no longer collected in the builder.
+  assert(!builderSource.includes('name="color"'), "Quote builder must not render a color field");
+
+  // Select wrapper must follow Radix docs for popper positioning.
+  const selectSource = readFileSync("src/components/ui/select.tsx", "utf8");
+  assertIncludes(
+    selectSource,
+    "min-w-[var(--radix-select-trigger-width)]",
+    "Select viewport must match trigger width",
+  );
+  assertIncludes(
+    selectSource,
+    "max-h-[var(--radix-select-content-available-height)]",
+    "Select viewport must constrain height to available space",
+  );
+  assert(
+    !selectSource.includes("h-[var(--radix-select-trigger-height)]"),
+    "Select viewport must not lock height to trigger height",
+  );
 
   // Heading hierarchy must not collapse to all h3.
   assertIncludes(pageSource, 'as="h1"', "Page must render a real h1 via CardTitle");

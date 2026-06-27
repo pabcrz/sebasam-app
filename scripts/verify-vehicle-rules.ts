@@ -7,7 +7,7 @@ type StoredVehicle = {
   customerId: string;
   plate: string | null;
   brand: string | null;
-  model: string;
+  model: string | null;
   color: string | null;
   year: number | null;
   notes: string | null;
@@ -76,8 +76,11 @@ assert.deepEqual(createVehicleSnapshot(parsedWithoutPlate), {
   year: null,
 });
 
-const missingModel = vehicleInputSchema.safeParse({ customerId: "customer-1", plate: "ABC-123", model: "" });
-assert.equal(missingModel.success, false);
+const optionalModel = vehicleInputSchema.safeParse({ customerId: "customer-1", plate: "ABC-123", model: "" });
+assert.equal(optionalModel.success, true);
+if (optionalModel.success) {
+  assert.equal(optionalModel.data.model, undefined);
+}
 
 async function main() {
   const withoutPlate = createMockTransaction();
@@ -107,6 +110,8 @@ async function main() {
   });
 
   assert.equal(withPlate.vehicles.length, 1, "Vehicles with the same customer and plate must be reused");
+  assert.ok(firstVehicle, "First vehicle must be created when vehicle data is provided");
+  assert.ok(reusedVehicle, "Existing vehicle must be reused when vehicle data is provided");
   assert.equal(reusedVehicle.id, firstVehicle.id);
   assert.equal(reusedVehicle.brand, "Volkswagen");
   assert.equal(reusedVehicle.color, "Blanco");
