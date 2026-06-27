@@ -19,6 +19,7 @@ function checkQuotesPage() {
   const builderSource = readFileSync(builderPath, "utf8");
   const approvalFormPath = "src/features/quotes/components/quote-approval-form.tsx";
   const approvalFormSource = readFileSync(approvalFormPath, "utf8");
+  const tableSource = readFileSync("src/components/ui/table.tsx", "utf8");
   const paymentLinkDialogPath = "src/features/payment-requests/components/payment-request-link-dialog.tsx";
   const paymentLinkDialogSource = readFileSync(paymentLinkDialogPath, "utf8");
 
@@ -46,6 +47,20 @@ function checkQuotesPage() {
     pageSource,
     "PaymentRequestLinkDialog",
     "Quotes page must render PaymentRequestLinkDialog",
+  );
+  const recentQuotesStart = pageSource.indexOf('<CardTitle as="h2">Cotizaciones recientes</CardTitle>');
+  assert(recentQuotesStart >= 0, "Quotes page must render the recent quotes section");
+  const recentQuotesEnd = pageSource.indexOf("{/* Mobile cards */}", recentQuotesStart);
+  const recentQuotesSource = pageSource.slice(Math.max(0, recentQuotesStart - 200), recentQuotesEnd);
+  assertIncludes(
+    recentQuotesSource,
+    "min-w-0",
+    "Recent quotes desktop table container must be allowed to shrink inside the page container",
+  );
+  assertIncludes(
+    tableSource,
+    "overflow-x-auto",
+    "Desktop table overflow must stay inside the table scroll wrapper",
   );
   assertIncludes(
     approvalFormSource,

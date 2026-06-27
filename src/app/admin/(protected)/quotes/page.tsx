@@ -123,11 +123,11 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
       <QuoteBuilder customers={customers} createAction={createQuoteFromForm} />
 
-      <Card>
+      <Card className="min-w-0">
         <CardHeader>
           <CardTitle as="h2">Cotizaciones recientes</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0">
           {/* Desktop table */}
           <div className="hidden md:block">
             <Table>
