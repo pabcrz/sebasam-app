@@ -31,7 +31,7 @@ export function formatSnapshotVehicle(snapshot: unknown) {
   return description ? `${plate} — ${description}` : plate;
 }
 
-export function formatVehicle(vehicle: { plate: string | null; brand: string | null; model: string }) {
+export function formatVehicle(vehicle: { plate: string | null; brand: string | null; model: string | null }) {
   const plate = vehicle.plate?.trim() || "Sin placas";
   const description = [vehicle.brand, vehicle.model].filter(Boolean).join(" ");
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { QuoteStatus } from "@prisma/client";
-import { cancelDraftQuote, cancelDraftQuoteFromForm, updateDraftQuote, updateDraftQuoteFromForm } from "./actions";
+import { Prisma, QuoteStatus } from "@prisma/client";
+import { cancelDraftQuote, cancelDraftQuoteFromForm, createQuote, updateDraftQuote, updateDraftQuoteFromForm } from "./actions";
 import { prisma } from "@/lib/prisma";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { redirect } from "next/navigation";
@@ -12,6 +12,9 @@ vi.mock("@/features/vehicles/schemas", async () => ({
   ...(await vi.importActual<typeof import("@/features/vehicles/schemas")>("@/features/vehicles/schemas")),
   createVehicleSnapshot: vi.fn(() => ({ plate: null, brand: "Toyota", model: "Hilux", color: null, year: null })),
 }));
+vi.mock("./lib/sequence", () => ({
+  nextQuoteNumber: vi.fn(() => Promise.resolve("C-0626-01")),
+}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
@@ -22,13 +25,14 @@ class MockFormData {
 }
 
 type MockTx = {
-  quote: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
+  quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   quoteItem: { deleteMany: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   const tx: MockTx = {
     quote: {
+      create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200 }),
       findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, items: [] }),
       update: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200 }),
       findUniqueOrThrow: vi.fn(),
@@ -65,6 +69,51 @@ function buildFormData(overrides: Record<string, string> = {}) {
   }
   return formData;
 }
+
+function validInputWithoutVehicle() {
+  return {
+    customerId: "cust-1",
+    vehicle: { plate: "", brand: "", model: "", color: "", year: "" },
+    title: "Servicio administrativo",
+    description: "",
+    administrative: true,
+    taxEnabled: false,
+    items: [{ type: "SERVICE" as const, description: "Asesoría", quantity: 1, unitPriceCents: 50000 }],
+  };
+}
+
+describe("createQuote", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("creates a quote linked to a vehicle when vehicle data is provided", async () => {
+    const tx = mockTx();
+    const result = await createQuote(validInput());
+
+    expect(findOrCreateVehicle).toHaveBeenCalledTimes(1);
+    expect(tx.quote.create).toHaveBeenCalledTimes(1);
+    expect(tx.quote.create.mock.calls[0][0].data.vehicleId).toBe("vehicle-1");
+    expect(tx.quote.create.mock.calls[0][0].data.vehicleSnapshot).toEqual({
+      plate: null,
+      brand: "Toyota",
+      model: "Hilux",
+      color: null,
+      year: null,
+    });
+    expect(result.totalCents).toBe(197200);
+  });
+
+  it("creates a quote without a vehicle when no vehicle data is provided", async () => {
+    const tx = mockTx();
+
+    await createQuote(validInputWithoutVehicle());
+
+    expect(findOrCreateVehicle).not.toHaveBeenCalled();
+    expect(tx.quote.create).toHaveBeenCalledTimes(1);
+    expect(tx.quote.create.mock.calls[0][0].data.vehicleId).toBeNull();
+    expect(tx.quote.create.mock.calls[0][0].data.vehicleSnapshot).toBe(Prisma.JsonNull);
+    expect(tx.quote.create.mock.calls[0][0].data.totalCents).toBe(50000);
+  });
+});
 
 describe("updateDraftQuote", () => {
   beforeEach(() => vi.clearAllMocks());

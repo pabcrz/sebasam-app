@@ -4,6 +4,7 @@ import { QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { executionRecordInputSchema, workOrderInputSchema } from "./schemas";
+import { nextWorkOrderNumber } from "@/features/quotes/lib/sequence";
 
 export async function createWorkOrder(input: unknown) {
   await requireOperationalRole();
@@ -15,10 +16,12 @@ export async function createWorkOrder(input: unknown) {
     throw new Error("Work orders require an approved quote.");
   }
 
+  const woNumber = await nextWorkOrderNumber();
+
   return prisma.workOrder.create({
     data: {
       quoteId: data.quoteId,
-      number: `WO-${Date.now()}`,
+      number: woNumber,
       scheduledFor: data.scheduledFor,
       siteAddress: data.siteAddress,
       notes: data.notes,

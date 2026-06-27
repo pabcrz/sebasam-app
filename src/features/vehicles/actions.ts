@@ -3,9 +3,20 @@ import { normalizeVehiclePlate, vehicleInputSchema, type VehicleInput } from "./
 
 type VehicleTransactionClient = Pick<Prisma.TransactionClient, "vehicle">;
 
-export async function findOrCreateVehicle(tx: VehicleTransactionClient, input: VehicleInput): Promise<Vehicle> {
+export async function findOrCreateVehicle(tx: VehicleTransactionClient, input: VehicleInput): Promise<Vehicle | null> {
   const data = vehicleInputSchema.parse(input);
   const plate = normalizeVehiclePlate(data.plate);
+  const hasAnyVehicleData =
+    plate !== null ||
+    data.brand !== undefined ||
+    data.model !== undefined ||
+    data.color !== undefined ||
+    data.year !== undefined ||
+    data.notes !== undefined;
+
+  if (!hasAnyVehicleData) {
+    return null;
+  }
 
   const existingVehicle = plate
     ? await tx.vehicle.findFirst({
@@ -17,9 +28,11 @@ export async function findOrCreateVehicle(tx: VehicleTransactionClient, input: V
     : null;
 
   if (existingVehicle) {
-    const updateData: Prisma.VehicleUpdateInput = {
-      model: data.model,
-    };
+    const updateData: Prisma.VehicleUpdateInput = {};
+
+    if (data.model !== undefined) {
+      updateData.model = data.model;
+    }
 
     if (data.brand !== undefined) {
       updateData.brand = data.brand;
@@ -38,11 +51,14 @@ export async function findOrCreateVehicle(tx: VehicleTransactionClient, input: V
     }
 
     if (
-      existingVehicle.model !== data.model ||
-      (data.brand !== undefined && existingVehicle.brand !== data.brand) ||
-      (data.color !== undefined && existingVehicle.color !== data.color) ||
-      (data.year !== undefined && existingVehicle.year !== data.year) ||
-      (data.notes !== undefined && existingVehicle.notes !== data.notes)
+      Object.keys(updateData).length > 0 &&
+      (
+        (data.model !== undefined && existingVehicle.model !== data.model) ||
+        (data.brand !== undefined && existingVehicle.brand !== data.brand) ||
+        (data.color !== undefined && existingVehicle.color !== data.color) ||
+        (data.year !== undefined && existingVehicle.year !== data.year) ||
+        (data.notes !== undefined && existingVehicle.notes !== data.notes)
+      )
     ) {
       return tx.vehicle.update({
         where: { id: existingVehicle.id },
@@ -58,7 +74,7 @@ export async function findOrCreateVehicle(tx: VehicleTransactionClient, input: V
       customerId: data.customerId,
       plate,
       brand: data.brand ?? null,
-      model: data.model,
+      model: data.model ?? null,
       color: data.color ?? null,
       year: data.year ?? null,
       notes: data.notes ?? null,
