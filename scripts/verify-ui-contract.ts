@@ -48,6 +48,16 @@ function checkQuotesPage() {
     "Quotes page must render PaymentRequestLinkDialog",
   );
   assertIncludes(
+    pageSource,
+    '<Card className="min-w-0">',
+    "Recent quotes card must allow its desktop table to shrink inside the page container",
+  );
+  assertIncludes(
+    pageSource,
+    '<CardContent className="min-w-0">',
+    "Recent quotes card content must allow table overflow to stay inside the table wrapper",
+  );
+  assertIncludes(
     approvalFormSource,
     '<input type="hidden" name="quoteId"',
     "Approval form must carry hidden quoteId field",
