@@ -68,9 +68,19 @@ const itemTypeLabels: Record<QuoteItemType, string> = {
 const emptyItem: ItemFormValue = {
   type: "LABOR",
   description: "",
-  quantity: "",
+  quantity: "1",
   unitPrice: "",
 };
+
+function formatQuantity(quantity: string) {
+  const value = Number(quantity);
+
+  if (!Number.isFinite(value)) {
+    return quantity;
+  }
+
+  return new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 }).format(value);
+}
 
 function calculateTotals(items: ItemFormValue[], taxEnabled: boolean) {
   let subtotalCents = 0;
@@ -93,7 +103,7 @@ function validateItemValue(item: ItemFormValue, index: number): string | null {
   const description = item.description.trim();
   const quantity = item.quantity.trim();
   const unitPrice = item.unitPrice.trim();
-  const hasAnyValue = description !== "" || quantity !== "" || unitPrice !== "";
+  const hasAnyValue = description !== "" || unitPrice !== "";
 
   if (!hasAnyValue) {
     return null;
@@ -221,6 +231,17 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
     setItems((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], ...patch };
+      return next;
+    });
+  }
+
+  function adjustItemQuantity(index: number, delta: number) {
+    setItems((prev) => {
+      const next = [...prev];
+      const currentQuantity = Number(next[index]?.quantity);
+      const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
+      const nextQuantity = Math.min(maxQuantity, Math.max(1, baseQuantity + delta));
+      next[index] = { ...next[index], quantity: String(nextQuantity) };
       return next;
     });
   }
@@ -400,16 +421,40 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="grid gap-2">
                     <Label htmlFor={`items-${index}-quantity`}>Cantidad</Label>
-                    <Input
-                      id={`items-${index}-quantity`}
-                      name={`items.${index}.quantity`}
-                      type="number"
-                      min="0.01"
-                      max={maxQuantity}
-                      step="0.01"
-                      value={item.quantity}
-                      onChange={(event) => updateItem(index, { quantity: event.target.value })}
-                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Restar cantidad del concepto ${index + 1}`}
+                        onClick={() => adjustItemQuantity(index, -1)}
+                        disabled={Number(item.quantity) <= 1}
+                        className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] px-0"
+                      >
+                        −
+                      </Button>
+                      <Input
+                        id={`items-${index}-quantity`}
+                        name={`items.${index}.quantity`}
+                        type="number"
+                        min="0.01"
+                        max={maxQuantity}
+                        step="0.01"
+                        value={item.quantity}
+                        onChange={(event) => updateItem(index, { quantity: event.target.value })}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Sumar cantidad del concepto ${index + 1}`}
+                        onClick={() => adjustItemQuantity(index, 1)}
+                        disabled={Number(item.quantity) >= maxQuantity}
+                        className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] px-0"
+                      >
+                        +
+                      </Button>
+                    </div>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor={`items-${index}-unitPrice`}>Precio unitario</Label>
@@ -509,7 +554,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
                         {item.description} ({itemTypeLabels[item.type]})
                       </span>
                       <span className="whitespace-nowrap text-[var(--color-text-muted)]">
-                        {Number(item.quantity).toFixed(2)} × {formatCents(Number(item.unitPrice) * 100)}
+                        {formatQuantity(item.quantity)} × {formatCents(Number(item.unitPrice) * 100)}
                       </span>
                     </li>
                   ))}
@@ -732,7 +777,7 @@ function QuotePreviewCard({
                     {item.description} ({itemTypeLabels[item.type]})
                   </span>
                   <span className="whitespace-nowrap text-[var(--color-text-muted)]">
-                    {formatCents(Math.round(Number(item.quantity) * Number(item.unitPrice) * 100))}
+                    {formatQuantity(item.quantity)} × {formatCents(Number(item.unitPrice) * 100)} = {formatCents(Math.round(Number(item.quantity) * Number(item.unitPrice) * 100))}
                   </span>
                 </li>
               ))}

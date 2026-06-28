@@ -38,6 +38,7 @@ function fillItemsStep(user: ReturnType<typeof userEvent.setup>) {
     const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "Cambio de aceite");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "1");
     await user.type(unitPriceInput, "850");
   };
@@ -213,6 +214,7 @@ describe("QuoteBuilder", () => {
     const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "Cambio de aceite");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "0");
     await user.type(unitPriceInput, "850");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
@@ -232,6 +234,7 @@ describe("QuoteBuilder", () => {
     const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "Cambio de aceite");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "1");
     await user.type(unitPriceInput, "-100");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
@@ -251,6 +254,7 @@ describe("QuoteBuilder", () => {
     const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "Bajar dos muelles");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "101");
     await user.type(unitPriceInput, "850");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
@@ -270,6 +274,7 @@ describe("QuoteBuilder", () => {
     const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "Bajar dos muelles");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "1");
     await user.type(unitPriceInput, "50000.01");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
@@ -292,6 +297,7 @@ describe("QuoteBuilder", () => {
     const [, unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "   ");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "1");
     await user.type(unitPriceInput, "100");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
@@ -311,6 +317,7 @@ describe("QuoteBuilder", () => {
     const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "Cambio de aceite");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "1.234");
     await user.type(unitPriceInput, "850");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
@@ -329,7 +336,7 @@ describe("QuoteBuilder", () => {
     await user.type(descriptionInput, "Solo descripción");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/concepto 1 necesita una cantidad/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/concepto 1 necesita un precio unitario/i);
   });
 
   it("prevents submission from hidden steps", async () => {
