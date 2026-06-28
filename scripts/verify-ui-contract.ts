@@ -17,6 +17,8 @@ function checkQuotesPage() {
   const pageSource = readFileSync(pagePath, "utf8");
   const builderPath = "src/features/quotes/components/quote-builder.tsx";
   const builderSource = readFileSync(builderPath, "utf8");
+  const builderDialogPath = "src/features/quotes/components/quote-builder-dialog.tsx";
+  const builderDialogSource = readFileSync(builderDialogPath, "utf8");
   const approvalFormPath = "src/features/quotes/components/quote-approval-form.tsx";
   const approvalFormSource = readFileSync(approvalFormPath, "utf8");
   const tableSource = readFileSync("src/components/ui/table.tsx", "utf8");
@@ -25,6 +27,7 @@ function checkQuotesPage() {
 
   assertNoRadix(pageSource, "Quotes page");
   assertNoRadix(builderSource, "Quote builder");
+  assertNoRadix(builderDialogSource, "Quote builder dialog");
   assertNoRadix(approvalFormSource, "Quote approval form");
 
   // Server-action wiring must remain intact.
@@ -47,6 +50,21 @@ function checkQuotesPage() {
     pageSource,
     "PaymentRequestLinkDialog",
     "Quotes page must render PaymentRequestLinkDialog",
+  );
+  assertIncludes(
+    pageSource,
+    "QuoteBuilderDialog",
+    "Quotes page must render QuoteBuilderDialog",
+  );
+  assertIncludes(
+    builderDialogSource,
+    "Nueva cotización",
+    "Quote builder dialog launch button must read Nueva cotización",
+  );
+  assertIncludes(
+    builderDialogSource,
+    "<QuoteBuilder",
+    "Quote builder dialog must render the QuoteBuilder component",
   );
   const recentQuotesStart = pageSource.indexOf('<CardTitle as="h2">Cotizaciones recientes</CardTitle>');
   assert(recentQuotesStart >= 0, "Quotes page must render the recent quotes section");
@@ -142,6 +160,7 @@ function checkQuotesPage() {
   // User-facing copy must stay in Mexican Spanish.
   const spanishLabels = [
     { label: "Cotizaciones en borrador", source: pageSource },
+    { label: "Nueva cotización", source: builderDialogSource },
     { label: "Crear cotización en borrador", source: builderSource },
     { label: "Cotizaciones recientes", source: pageSource },
     { label: "Conceptos", source: builderSource },

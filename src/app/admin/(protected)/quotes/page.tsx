@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui";
-import { QuoteBuilder } from "@/features/quotes/components/quote-builder";
+import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { QuoteApprovalForm } from "@/features/quotes/components/quote-approval-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
@@ -121,7 +121,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
         </CardContent>
       </Card>
 
-      <QuoteBuilder customers={customers} createAction={createQuoteFromForm} />
+      <QuoteBuilderDialog customers={customers} createAction={createQuoteFromForm} />
 
       <Card className="min-w-0">
         <CardHeader>
