@@ -16,7 +16,17 @@ function checkQuotesPage() {
   const pagePath = "src/app/admin/(protected)/quotes/page.tsx";
   const pageSource = readFileSync(pagePath, "utf8");
   const builderPath = "src/features/quotes/components/quote-builder.tsx";
-  const builderSource = readFileSync(builderPath, "utf8");
+  const builderComponentPaths = [
+    builderPath,
+    "src/features/quotes/components/quote-builder-stepper.tsx",
+    "src/features/quotes/components/quote-builder-items-step.tsx",
+    "src/features/quotes/components/quote-summary-card.tsx",
+    "src/features/quotes/components/quote-preview-card.tsx",
+    "src/features/quotes/components/quote-totals-card.tsx",
+  ];
+  const combinedBuilderSource = builderComponentPaths
+    .map((path) => readFileSync(path, "utf8"))
+    .join("\n");
   const builderDialogPath = "src/features/quotes/components/quote-builder-dialog.tsx";
   const builderDialogSource = readFileSync(builderDialogPath, "utf8");
   const approvalFormPath = "src/features/quotes/components/quote-approval-form.tsx";
@@ -26,7 +36,9 @@ function checkQuotesPage() {
   const paymentLinkDialogSource = readFileSync(paymentLinkDialogPath, "utf8");
 
   assertNoRadix(pageSource, "Quotes page");
-  assertNoRadix(builderSource, "Quote builder");
+  for (const path of builderComponentPaths) {
+    assertNoRadix(readFileSync(path, "utf8"), `Quote builder component ${path}`);
+  }
   assertNoRadix(builderDialogSource, "Quote builder dialog");
   assertNoRadix(approvalFormSource, "Quote approval form");
 
@@ -66,6 +78,11 @@ function checkQuotesPage() {
     "<QuoteBuilder",
     "Quote builder dialog must render the QuoteBuilder component",
   );
+  assertIncludes(
+    builderDialogSource,
+    "if (nextOpen) setOpen(true)",
+    "Quote builder dialog must ignore outside/Escape-driven close requests",
+  );
   const recentQuotesStart = pageSource.indexOf('<CardTitle as="h2">Cotizaciones recientes</CardTitle>');
   assert(recentQuotesStart >= 0, "Quotes page must render the recent quotes section");
   const recentQuotesEnd = pageSource.indexOf("{/* Mobile cards */}", recentQuotesStart);
@@ -80,10 +97,22 @@ function checkQuotesPage() {
     "overflow-x-auto",
     "Desktop table overflow must stay inside the table scroll wrapper",
   );
+  // Approval no longer uses a hidden form/requestSubmit; it calls the server
+  // action directly with a FormData containing the quoteId.
   assertIncludes(
     approvalFormSource,
-    '<input type="hidden" name="quoteId"',
-    "Approval form must carry hidden quoteId field",
+    "new FormData()",
+    "Approval form must build a FormData for the server action",
+  );
+  assertIncludes(
+    approvalFormSource,
+    'formData.set("quoteId"',
+    "Approval form must set quoteId in the FormData",
+  );
+  assertIncludes(
+    approvalFormSource,
+    "useTransition",
+    "Approval form must use a transition for the async server action",
   );
 
   // Required form field names must survive wrapper refactors.
@@ -101,12 +130,11 @@ function checkQuotesPage() {
     "items.${index}.description",
     "items.${index}.quantity",
     "items.${index}.unitPrice",
-    'name="quoteId"',
   ];
 
   for (const pattern of requiredFieldPatterns) {
     assertIncludes(
-      pattern === 'name="quoteId"' ? approvalFormSource : builderSource,
+      combinedBuilderSource,
       pattern,
       `Missing required form field pattern: ${pattern}`,
     );
@@ -125,16 +153,27 @@ function checkQuotesPage() {
   );
 
   // Dynamic concepts: builder must allow adding and removing items.
-  assertIncludes(builderSource, "addItem", "Quote builder must support adding a new concept");
-  assertIncludes(builderSource, "removeItem", "Quote builder must support removing a concept");
   assertIncludes(
-    builderSource,
+    combinedBuilderSource,
+    "addItem",
+    "Quote builder must support adding a new concept",
+  );
+  assertIncludes(
+    combinedBuilderSource,
+    "removeItem",
+    "Quote builder must support removing a concept",
+  );
+  assertIncludes(
+    combinedBuilderSource,
     "Agregar concepto",
     "Quote builder must offer an explicit add-concept action in Spanish",
   );
 
   // Vehicle fields are optional and color is no longer collected in the builder.
-  assert(!builderSource.includes('name="color"'), "Quote builder must not render a color field");
+  assert(
+    !combinedBuilderSource.includes('name="color"'),
+    "Quote builder must not render a color field",
+  );
 
   // Select wrapper must follow Radix docs for popper positioning.
   const selectSource = readFileSync("src/components/ui/select.tsx", "utf8");
@@ -152,6 +191,135 @@ function checkQuotesPage() {
     !selectSource.includes("h-[var(--radix-select-trigger-height)]"),
     "Select viewport must not lock height to trigger height",
   );
+  assertIncludes(
+    selectSource,
+    "data-select-content",
+    "Select content must be marked so dialogs can ignore outside interactions on it",
+  );
+  assertIncludes(
+    selectSource,
+    "stopImmediatePropagation",
+    "Select content must stop pointerdown propagation so portaled items are not seen as outside the dialog",
+  );
+
+  // Dialog must ignore outside interactions that target portaled Select content.
+  const dialogSource = readFileSync("src/components/ui/dialog.tsx", "utf8");
+  const confirmDialogSource = readFileSync("src/components/ui/confirm-dialog.tsx", "utf8");
+  assertIncludes(
+    dialogSource,
+    "data-select-content",
+    "Dialog must detect select-content markers to ignore outside interactions",
+  );
+  assertIncludes(
+    dialogSource,
+    "onInteractOutside",
+    "Dialog must hook into outside interactions to protect select content",
+  );
+  assertIncludes(
+    dialogSource,
+    "onPointerDownOutside",
+    "Dialog must hook into pointer-down-outside events to protect select content",
+  );
+  assertIncludes(
+    dialogSource,
+    "onFocusOutside",
+    "Dialog must hook into focus-outside events to protect select content",
+  );
+
+  assertIncludes(
+    confirmDialogSource,
+    "max-w-2xl",
+    "Confirm dialog must have a reasonable desktop width",
+  );
+
+  // Toast feedback replaces inline status messages for quote actions.
+  assertIncludes(
+    pageSource,
+    "QuotePageToasts",
+    "Quotes page must render the QuotePageToasts client component",
+  );
+
+  const quotePageToastsSource = readFileSync(
+    "src/features/quotes/components/quote-page-toasts.tsx",
+    "utf8",
+  );
+  assertIncludes(
+    quotePageToastsSource,
+    'params.get("updated")',
+    "Quote page toasts must handle updated quotes",
+  );
+  assertIncludes(
+    quotePageToastsSource,
+    'params.get("cancelled")',
+    "Quote page toasts must handle cancelled quotes",
+  );
+
+  const layoutSource = readFileSync("src/app/layout.tsx", "utf8");
+  assertIncludes(
+    layoutSource,
+    "ToasterProvider",
+    "Root layout must mount the react-hot-toast provider",
+  );
+
+  // Desktop table must not render a concepts column; preview is shown in a dialog.
+  const desktopTableEnd = pageSource.indexOf("{/* Mobile cards */}");
+  const desktopTableSource = pageSource.slice(0, desktopTableEnd);
+  assert(
+    !desktopTableSource.includes("<TableHead>Conceptos</TableHead>"),
+    "Desktop quotes table must not include a concepts column",
+  );
+  assertIncludes(
+    pageSource,
+    "QuotePreviewDialog",
+    "Quotes page must render a preview dialog for each quote",
+  );
+
+  const previewDialogSource = readFileSync(
+    "src/features/quotes/components/quote-preview-dialog.tsx",
+    "utf8",
+  );
+  assert(
+    !previewDialogSource.includes("({itemTypeLabels[item.type] ?? item.type})"),
+    "Quote preview dialog must not show item type as parenthetical text",
+  );
+  assertIncludes(
+    previewDialogSource,
+    '<Badge variant="default">{itemTypeLabels[item.type] ?? item.type}</Badge>',
+    "Quote preview dialog must render item type as a badge",
+  );
+  assertIncludes(
+    previewDialogSource,
+    'aria-label="Cerrar"',
+    "Quote preview dialog must expose an explicit close button",
+  );
+
+  // Builder concept rows must not show visible "Concepto N" headings.
+  assert(
+    !combinedBuilderSource.includes("Concepto {index + 1}"),
+    "Quote builder must not render visible Concepto N headings",
+  );
+  assertIncludes(
+    combinedBuilderSource,
+    'inputMode="numeric"',
+    "Quote builder quantity input must use a numeric input mode",
+  );
+  assertIncludes(
+    combinedBuilderSource,
+    'pattern="[0-9]*"',
+    "Quote builder quantity input must restrict input to digits",
+  );
+
+  assertIncludes(
+    paymentLinkDialogSource,
+    "max-w-2xl",
+    "Payment link dialog must cap its width like other dialogs",
+  );
+
+  assertIncludes(
+    readFileSync("src/components/ui/toaster.tsx", "utf8"),
+    'position="bottom-center"',
+    "Global toast provider must be positioned at the bottom center",
+  );
 
   // Heading hierarchy must not collapse to all h3.
   assertIncludes(pageSource, 'as="h1"', "Page must render a real h1 via CardTitle");
@@ -161,12 +329,11 @@ function checkQuotesPage() {
   const spanishLabels = [
     { label: "Cotizaciones en borrador", source: pageSource },
     { label: "Nueva cotización", source: builderDialogSource },
-    { label: "Crear cotización en borrador", source: builderSource },
-    { label: "Cotizaciones recientes", source: pageSource },
-    { label: "Conceptos", source: builderSource },
-    { label: "Cliente", source: builderSource },
-    { label: "Título", source: builderSource },
-    { label: "Descripción", source: builderSource },
+    { label: "Crear cotización en borrador", source: combinedBuilderSource },
+    { label: "Conceptos", source: combinedBuilderSource },
+    { label: "Cliente", source: combinedBuilderSource },
+    { label: "Título", source: combinedBuilderSource },
+    { label: "Descripción", source: combinedBuilderSource },
     { label: "Aprobar y crear orden de trabajo", source: approvalFormSource },
     { label: "Link de pago", source: paymentLinkDialogSource },
     { label: "Genera o recupera el enlace de pago", source: paymentLinkDialogSource },
