@@ -33,10 +33,10 @@ const centsFromDollarInput = z.preprocess((value) => {
 
 const quantitySchema = z.coerce
   .number()
+  .int("Quantity must be an integer")
   .positive("Quantity must be greater than zero")
   .max(MAX_QUANTITY)
-  .refine((value) => Number.isFinite(value), "Quantity must be a valid number")
-  .refine((value) => Number(value.toFixed(2)) === value, "Quantity supports up to 2 decimals");
+  .refine((value) => Number.isFinite(value), "Quantity must be a valid number");
 
 const quoteItemBaseSchema = z.object({
   type: z.nativeEnum(QuoteItemType),

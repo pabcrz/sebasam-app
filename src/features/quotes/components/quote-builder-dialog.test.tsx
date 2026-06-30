@@ -1,45 +1,66 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
 
-const customers = [
-  { id: "cust-1", name: "Constructora del Norte" },
-  { id: "cust-2", name: "Taller Hermanos Pérez" },
-];
+const customers = [{ id: "1", name: "Acme" }];
 
 describe("QuoteBuilderDialog", () => {
-  it("renders the launch button and opens the dialog with the quote builder", async () => {
+  it("opens and closes via the X button", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: "Nueva cotización" })).toBeInTheDocument();
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("quote-builder-form")).not.toBeInTheDocument();
-
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
-
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByTestId("quote-builder-form")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Crear cotización en borrador" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 
-  it("passes customers and the create action to the quote builder", async () => {
+  it("closes via the Cancel button on the first step", async () => {
     const user = userEvent.setup();
-    const action = vi.fn();
-    render(<QuoteBuilderDialog customers={customers} createAction={action} />);
+    render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
 
-    expect(screen.getByRole("combobox", { name: /cliente/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
 
-    const hiddenSelect = document.querySelector('select[name="customerId"]');
-    expect(hiddenSelect).toBeInTheDocument();
-    expect(hiddenSelect).toHaveValue("");
+  it("does not close when clicking the overlay", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
 
-    const options = Array.from(hiddenSelect?.querySelectorAll("option") ?? []);
-    expect(options.map((option) => option.textContent?.trim() ?? "")).toEqual(
-      expect.arrayContaining(["", "Constructora del Norte", "Taller Hermanos Pérez"]),
-    );
+    await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    const overlay = document.querySelector("[data-dialog-overlay]");
+    expect(overlay).not.toBeNull();
+    if (overlay instanceof HTMLElement) {
+      await user.click(overlay);
+    }
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-state", "open");
+  });
+
+  it("keeps the dialog open when selecting a customer from the portaled dropdown", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("combobox", { name: "Cliente" }));
+    const option = await screen.findByRole("option", { name: "Acme" });
+    await user.click(option);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-state", "open");
   });
 });
