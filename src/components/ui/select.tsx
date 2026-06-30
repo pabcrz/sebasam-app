@@ -43,6 +43,13 @@ export const SelectContent = React.forwardRef<
       <SelectPrimitive.Content
         ref={ref}
         position={position}
+        data-select-content
+        onPointerDown={(event) => {
+          // Stop the event from reaching the Dialog's document-level outside
+          // interaction listener, which would otherwise close the dialog when a
+          // portaled Select item is clicked.
+          event.nativeEvent.stopImmediatePropagation();
+        }}
         className={clsx(
           "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-md",
           position === "popper" &&

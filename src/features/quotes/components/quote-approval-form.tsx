@@ -11,19 +11,27 @@ export interface QuoteApprovalFormProps {
 
 export function QuoteApprovalForm({ action, quoteId, quoteNumber }: QuoteApprovalFormProps) {
   const [open, setOpen] = React.useState(false);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const formRef = React.useRef<HTMLFormElement>(null);
+  const [isPending, startTransition] = React.useTransition();
 
-  const formAction = React.useCallback(
-    async (formData: FormData) => {
+  const handleConfirm = React.useCallback(() => {
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set("quoteId", quoteId);
+
       try {
         await action(formData);
+      } catch (error) {
+        // NEXT_REDIRECT errors must be re-thrown so Next.js can navigate.
+        if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+          throw error;
+        }
+        // Unexpected failures surface through the query-param toast on the
+        // quotes page, so we just close the dialog here.
       } finally {
-        setIsSubmitting(false);
+        setOpen(false);
       }
-    },
-    [action],
-  );
+    });
+  }, [action, quoteId]);
 
   return (
     <>
@@ -31,16 +39,12 @@ export function QuoteApprovalForm({ action, quoteId, quoteNumber }: QuoteApprova
         type="button"
         variant="primary"
         className="w-full"
-        loading={isSubmitting}
-        disabled={isSubmitting}
+        loading={isPending}
+        disabled={isPending}
         onClick={() => setOpen(true)}
       >
         Aprobar y crear orden de trabajo
       </Button>
-
-      <form ref={formRef} action={formAction} className="hidden">
-        <input type="hidden" name="quoteId" value={quoteId} />
-      </form>
 
       <ConfirmDialog
         open={open}
@@ -49,11 +53,9 @@ export function QuoteApprovalForm({ action, quoteId, quoteNumber }: QuoteApprova
         description={`¿Confirmas aprobar ${quoteNumber} y crear la orden de trabajo correspondiente? Esta acción no se puede deshacer.`}
         confirmLabel="Aprobar y crear orden"
         cancelLabel="Cancelar"
-        loading={isSubmitting}
-        onConfirm={() => {
-          setIsSubmitting(true);
-          formRef.current?.requestSubmit();
-        }}
+        variant="default"
+        loading={isPending}
+        onConfirm={handleConfirm}
       />
     </>
   );
