@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import {
   createQuoteFromForm,
   approveQuoteAndCreateWorkOrderFromForm,
   cancelDraftQuoteFromForm,
+  shareQuoteFromForm,
 } from "@/features/quotes/actions";
 import { listQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
@@ -17,6 +17,12 @@ import { QuoteMobileCard } from "@/features/quotes/components/quote-mobile-card"
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
 import { QuoteFilters } from "@/features/quotes/components/quote-filters";
 import { hasFilterValue } from "@/lib/filters";
+import {
+  quoteStatusLabels,
+  quoteStatusBadgeVariant,
+  workOrderStatusLabels,
+  workOrderStatusBadgeVariant,
+} from "@/features/quotes/lib/status";
 
 export const metadata: Metadata = {
   title: "Cotizaciones",
@@ -26,6 +32,7 @@ type QuotesPageProps = {
   searchParams: Promise<{
     approved?: string;
     created?: string;
+    shared?: string;
     error?: string;
     status?: string;
     customerId?: string;
@@ -34,41 +41,6 @@ type QuotesPageProps = {
     dateFrom?: string;
     dateTo?: string;
   }>;
-};
-
-const quoteStatusLabels: Record<QuoteStatus, string> = {
-  DRAFT: "Borrador",
-  SENT: "Enviada",
-  APPROVED: "Aprobada",
-  REJECTED: "Rechazada",
-  CANCELLED: "Cancelada",
-};
-
-const quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info"> = {
-  DRAFT: "default",
-  SENT: "info",
-  APPROVED: "success",
-  REJECTED: "danger",
-  CANCELLED: "danger",
-};
-
-const workOrderStatusLabels: Record<WorkOrderStatus, string> = {
-  PLANNED: "Planeada",
-  ASSIGNED: "Asignada",
-  IN_PROGRESS: "En proceso",
-  COMPLETED: "Completada",
-  CANCELLED: "Cancelada",
-};
-
-const workOrderStatusBadgeVariant: Record<
-  WorkOrderStatus,
-  "default" | "success" | "warning" | "danger" | "info"
-> = {
-  PLANNED: "default",
-  ASSIGNED: "info",
-  IN_PROGRESS: "warning",
-  COMPLETED: "success",
-  CANCELLED: "danger",
 };
 
 export default async function QuotesPage({ searchParams }: QuotesPageProps) {
@@ -130,6 +102,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                     workOrderStatusBadgeVariant={workOrderStatusBadgeVariant}
                     approveAction={approveQuoteAndCreateWorkOrderFromForm}
                     cancelAction={cancelDraftQuoteFromForm}
+                    shareAction={shareQuoteFromForm}
                     paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
                   />
                 ))}
@@ -170,6 +143,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 workOrderStatusBadgeVariant={workOrderStatusBadgeVariant}
                 approveAction={approveQuoteAndCreateWorkOrderFromForm}
                 cancelAction={cancelDraftQuoteFromForm}
+                shareAction={shareQuoteFromForm}
                 paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
               />
             ))}

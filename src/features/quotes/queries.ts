@@ -18,6 +18,11 @@ export async function getQuoteById(quoteId: string) {
   });
 }
 
+function findActiveSharedQuote(sharedQuotes: { expiresAt: Date; revokedAt: Date | null }[]) {
+  const now = new Date();
+  return sharedQuotes.find((sharedQuote) => sharedQuote.revokedAt === null && sharedQuote.expiresAt >= now) ?? null;
+}
+
 export async function listQuotes(input: unknown = {}) {
   await requireOperationalRole();
 
@@ -58,6 +63,7 @@ export async function listQuotes(input: unknown = {}) {
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
       workOrder: true,
+      sharedQuotes: true,
     },
     orderBy: { createdAt: "desc" },
   });
@@ -75,5 +81,6 @@ export async function listQuotes(input: unknown = {}) {
       unitPriceCents: Number(item.unitPriceCents),
       totalCents: Number(item.totalCents),
     })),
+    activeSharedQuote: findActiveSharedQuote(quote.sharedQuotes),
   }));
 }

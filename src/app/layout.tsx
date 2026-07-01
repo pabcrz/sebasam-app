@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { PwaRegister } from "./pwa-register";
+import { ThemeScript } from "@/components/theme-script";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToasterProvider } from "@/components/ui/toaster";
 import "./globals.css";
@@ -50,8 +51,11 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <ThemeScript />
+      </head>
       <body className="min-h-full flex flex-col">
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+        <ThemeProvider>
           <PwaRegister />
           <ToasterProvider />
           {children}

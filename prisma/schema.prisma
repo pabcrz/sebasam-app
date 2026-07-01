@@ -143,6 +143,21 @@ model Quote {
   items           QuoteItem[]
   workOrder       WorkOrder?
   paymentRequests PaymentRequest[]
+  sharedQuotes    SharedQuote[]
+}
+
+model SharedQuote {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  quoteId   String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@index([token])
 }
 
 model QuoteItem {

@@ -1,13 +1,15 @@
 "use client";
 
 import * as React from "react";
-import type { PaymentRequest, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import type { PaymentRequest, QuoteStatus, SharedQuote, WorkOrderStatus } from "@prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
 import { Badge, TableCell, TableRow } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteApprovalForm } from "./quote-approval-form";
 import { QuoteCancelForm } from "./quote-cancel-form";
+import { ShareQuoteButton } from "./share-quote-button";
+import { ShareQuoteLinkDialog } from "./share-quote-link-dialog";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
@@ -20,6 +22,7 @@ interface QuoteListRowProps {
   workOrderStatusBadgeVariant: Record<WorkOrderStatus, "default" | "success" | "warning" | "danger" | "info">;
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
+  shareAction: (formData: FormData) => void | Promise<void>;
   paymentRequestAction: () => Promise<PaymentRequest>;
 }
 
@@ -31,6 +34,7 @@ export function QuoteListRow({
   workOrderStatusBadgeVariant,
   approveAction,
   cancelAction,
+  shareAction,
   paymentRequestAction,
 }: QuoteListRowProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
@@ -82,30 +86,40 @@ export function QuoteListRow({
       <TableCell>{quote.validUntil ? formatDate(quote.validUntil) : "—"}</TableCell>
       <TableCell className="min-w-[230px]" onClick={(event) => event.stopPropagation()}>
         <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
-        {quote.status === "DRAFT" && !quote.workOrder ? (
-          <div className="grid gap-2">
-            <QuoteApprovalForm
-              action={approveAction}
-              quoteId={quote.id}
-              quoteNumber={quote.number}
-              buttonLabel="Aprobar"
-              buttonAriaLabel="Aprobar y crear orden de trabajo"
-              variant="outline"
-              size="default"
-            />
-            <QuoteCancelForm
-              action={cancelAction}
-              quoteId={quote.id}
-              quoteNumber={quote.number}
-              variant="outline"
-              size="default"
-            />
-          </div>
-        ) : quote.status === "SENT" || quote.status === "APPROVED" ? (
-          <PaymentRequestLinkDialog action={paymentRequestAction} quoteNumber={quote.number} />
-        ) : (
-          <span className="text-sm text-[var(--color-text-muted)]">Sin acción</span>
-        )}
+        <div className="grid gap-2">
+          {quote.status === "DRAFT" && !quote.workOrder ? (
+            <>
+              <QuoteApprovalForm
+                action={approveAction}
+                quoteId={quote.id}
+                quoteNumber={quote.number}
+                buttonLabel="Aprobar"
+                buttonAriaLabel="Aprobar y crear orden de trabajo"
+                variant="outline"
+                size="default"
+              />
+              <QuoteCancelForm
+                action={cancelAction}
+                quoteId={quote.id}
+                quoteNumber={quote.number}
+                variant="outline"
+                size="default"
+              />
+            </>
+          ) : null}
+          {quote.status === "SENT" || quote.status === "APPROVED" ? (
+            <PaymentRequestLinkDialog action={paymentRequestAction} quoteNumber={quote.number} />
+          ) : null}
+          {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
+            quote.activeSharedQuote ? (
+              <ShareQuoteLinkDialog sharedQuote={quote.activeSharedQuote as SharedQuote} quoteNumber={quote.number} />
+            ) : (
+              <ShareQuoteButton action={shareAction} quoteId={quote.id} quoteNumber={quote.number} />
+            )
+          ) : (
+            <span className="text-sm text-[var(--color-text-muted)]">Sin acción</span>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );
