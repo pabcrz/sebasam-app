@@ -63,7 +63,7 @@ function validateItemTotal(
 export const quoteItemInputSchema = quoteItemBaseSchema.superRefine(validateItemTotal);
 
 export const quoteVehicleInputSchema = z.object({
-  plate: optionalTrimmedStringWithMax(40),
+  plate: optionalTrimmedStringWithMax(10),
   brand: optionalTrimmedStringWithMax(80),
   model: optionalTrimmedStringWithMax(80),
   color: optionalTrimmedString,

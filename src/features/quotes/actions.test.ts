@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Prisma, QuoteStatus } from "@prisma/client";
-import { cancelDraftQuote, cancelDraftQuoteFromForm, createQuote, updateDraftQuote, updateDraftQuoteFromForm } from "./actions";
+import { cancelDraftQuote, cancelDraftQuoteFromForm, createQuote, createQuoteFromForm, updateDraftQuote, updateDraftQuoteFromForm } from "./actions";
 import { prisma } from "@/lib/prisma";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { redirect } from "next/navigation";
@@ -160,6 +160,23 @@ describe("updateDraftQuoteFromForm", () => {
     mockTx(QuoteStatus.SENT);
     await updateDraftQuoteFromForm("quote-1", buildFormData() as unknown as FormData);
     expect(redirect).toHaveBeenCalledWith("/admin/quotes/quote-1/edit?error=not-draft");
+  });
+});
+
+describe("createQuoteFromForm", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("redirects with invalid error when the vehicle plate is longer than 10 characters", async () => {
+    mockTx();
+    await createQuoteFromForm(buildFormData({ plate: "ABCDEFGHIJK" }) as unknown as FormData);
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid");
+  });
+
+  it("redirects with invalid error when the vehicle year is greater than current year plus one", async () => {
+    mockTx();
+    const futureYear = String(new Date().getFullYear() + 2);
+    await createQuoteFromForm(buildFormData({ year: futureYear }) as unknown as FormData);
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid");
   });
 });
 

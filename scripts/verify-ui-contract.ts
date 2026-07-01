@@ -174,6 +174,16 @@ function checkQuotesPage() {
     !combinedBuilderSource.includes('name="color"'),
     "Quote builder must not render a color field",
   );
+  assertIncludes(
+    combinedBuilderSource,
+    "maxLength={10}",
+    "Quote builder plate input must limit input to 10 characters",
+  );
+  assertIncludes(
+    combinedBuilderSource,
+    "new Date().getFullYear() + 1",
+    "Quote builder year input must cap at current year plus one",
+  );
 
   // Select wrapper must follow Radix docs for popper positioning.
   const selectSource = readFileSync("src/components/ui/select.tsx", "utf8");
