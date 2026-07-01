@@ -28,8 +28,8 @@ describe("QuotePageToasts", () => {
     currentSearchParams = new URLSearchParams();
   });
 
-  it("shows success toasts for created, approved, updated and cancelled query params", async () => {
-    currentSearchParams = new URLSearchParams("created=1&approved=1&updated=1&cancelled=1");
+  it("shows success toasts for created, approved, updated, cancelled and shared query params", async () => {
+    currentSearchParams = new URLSearchParams("created=1&approved=1&updated=1&cancelled=1&shared=1");
     renderWithToaster(<QuotePageToasts />);
 
     await waitFor(() => {
@@ -37,6 +37,7 @@ describe("QuotePageToasts", () => {
       expect(screen.getByText("Cotización aprobada y orden de trabajo creada.")).toBeInTheDocument();
       expect(screen.getByText("Cotización actualizada.")).toBeInTheDocument();
       expect(screen.getByText("Cotización cancelada.")).toBeInTheDocument();
+      expect(screen.getByText("Cotización compartida.")).toBeInTheDocument();
     });
   });
 

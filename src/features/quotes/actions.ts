@@ -14,6 +14,7 @@ import {
   createQuoteValidUntil,
 } from "./lib/calculate";
 import { nextQuoteNumber, nextWorkOrderNumber } from "./lib/sequence";
+import { getOrCreateSharedQuoteForQuote, SharedQuoteOperationError } from "./domain";
 
 const quotesPath = "/admin/quotes";
 
@@ -350,4 +351,27 @@ export async function approveQuoteAndCreateWorkOrderFromForm(formData: FormData)
 
   revalidatePath(quotesPath);
   redirect(`${quotesPath}?approved=1`);
+}
+
+export async function shareQuoteFromForm(formData: FormData) {
+  await requireOperationalRole();
+
+  const quoteId = formData.get("quoteId");
+
+  if (typeof quoteId !== "string" || quoteId.trim() === "") {
+    redirect(`${quotesPath}?error=invalid-share`);
+  }
+
+  try {
+    await getOrCreateSharedQuoteForQuote(quoteId);
+  } catch (error) {
+    if (error instanceof SharedQuoteOperationError) {
+      redirect(`${quotesPath}?error=share-failed`);
+    }
+
+    redirect(`${quotesPath}?error=share-failed`);
+  }
+
+  revalidatePath(quotesPath);
+  redirect(`${quotesPath}?shared=1`);
 }

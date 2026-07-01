@@ -1,6 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Prisma, QuoteStatus } from "@prisma/client";
-import { cancelDraftQuote, cancelDraftQuoteFromForm, createQuote, createQuoteFromForm, updateDraftQuote, updateDraftQuoteFromForm } from "./actions";
+import {
+  cancelDraftQuote,
+  cancelDraftQuoteFromForm,
+  createQuote,
+  createQuoteFromForm,
+  shareQuoteFromForm,
+  updateDraftQuote,
+  updateDraftQuoteFromForm,
+} from "./actions";
 import { prisma } from "@/lib/prisma";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { redirect } from "next/navigation";
@@ -15,8 +23,19 @@ vi.mock("@/features/vehicles/schemas", async () => ({
 vi.mock("./lib/sequence", () => ({
   nextQuoteNumber: vi.fn(() => Promise.resolve("C-0626-01")),
 }));
+vi.mock("./domain", () => ({
+  getOrCreateSharedQuoteForQuote: vi.fn(),
+  SharedQuoteOperationError: class SharedQuoteOperationError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = "SharedQuoteOperationError";
+    }
+  },
+}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+
+import { getOrCreateSharedQuoteForQuote } from "./domain";
 
 class MockFormData {
   private data = new Map<string, string>();
@@ -238,5 +257,41 @@ describe("cancelDraftQuoteFromForm", () => {
     await cancelDraftQuoteFromForm(formData as unknown as FormData);
 
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=not-draft");
+  });
+});
+
+describe("shareQuoteFromForm", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("creates a shared quote and redirects with shared param", async () => {
+    const sharedQuote = { id: "sq-1", token: "token-1", quoteId: "quote-1", expiresAt: new Date() };
+    (getOrCreateSharedQuoteForQuote as ReturnType<typeof vi.fn>).mockResolvedValue(sharedQuote);
+
+    const formData = new MockFormData();
+    formData.set("quoteId", "quote-1");
+
+    await shareQuoteFromForm(formData as unknown as FormData);
+
+    expect(getOrCreateSharedQuoteForQuote).toHaveBeenCalledWith("quote-1");
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?shared=1");
+  });
+
+  it("redirects with invalid-share when quoteId is missing", async () => {
+    await shareQuoteFromForm(new MockFormData() as unknown as FormData);
+
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid-share");
+  });
+
+  it("redirects with share-failed when sharing is not allowed", async () => {
+    (getOrCreateSharedQuoteForQuote as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("Quote must have at least one complete item to be shared."),
+    );
+
+    const formData = new MockFormData();
+    formData.set("quoteId", "quote-1");
+
+    await shareQuoteFromForm(formData as unknown as FormData);
+
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=share-failed");
   });
 });

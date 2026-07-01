@@ -74,6 +74,8 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     ],
     workOrder: null,
     paymentRequests: [],
+    sharedQuotes: [],
+    activeSharedQuote: null,
     ...overrides,
   } as QuoteListItem;
 }
@@ -90,6 +92,7 @@ function renderRow(quote: QuoteListItem) {
           workOrderStatusBadgeVariant={workOrderStatusBadgeVariant}
           approveAction={vi.fn()}
           cancelAction={vi.fn()}
+          shareAction={vi.fn()}
           paymentRequestAction={vi.fn(() => Promise.resolve({ id: "pr-1", token: "token-1" } as PaymentRequest))}
         />
       </tbody>
