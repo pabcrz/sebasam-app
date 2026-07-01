@@ -10,6 +10,7 @@ import { QuoteApprovalForm } from "./quote-approval-form";
 import { QuoteCancelForm } from "./quote-cancel-form";
 import { ShareQuoteButton } from "./share-quote-button";
 import { ShareQuoteLinkDialog } from "./share-quote-link-dialog";
+import { QuoteAuthorizeForm } from "./quote-authorize-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
@@ -23,6 +24,7 @@ interface QuoteMobileCardProps {
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
   shareAction: (formData: FormData) => void | Promise<void>;
+  authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
 }
 
@@ -35,6 +37,7 @@ export function QuoteMobileCard({
   approveAction,
   cancelAction,
   shareAction,
+  authorizeAction,
   paymentRequestAction,
 }: QuoteMobileCardProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
@@ -101,6 +104,13 @@ export function QuoteMobileCard({
         ) : null}
         {quote.status === "SENT" || quote.status === "APPROVED" ? (
           <PaymentRequestLinkDialog action={paymentRequestAction} quoteNumber={quote.number} />
+        ) : null}
+        {quote.status === "SENT" ? (
+          <QuoteAuthorizeForm
+            action={authorizeAction}
+            quoteNumber={quote.number}
+            size="default"
+          />
         ) : null}
         {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
           quote.activeSharedQuote ? (

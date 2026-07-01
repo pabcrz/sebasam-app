@@ -5,6 +5,7 @@ import {
   approveQuoteAndCreateWorkOrderFromForm,
   cancelDraftQuoteFromForm,
   shareQuoteFromForm,
+  authorizeQuoteAction,
 } from "@/features/quotes/actions";
 import { listQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
@@ -103,6 +104,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                     approveAction={approveQuoteAndCreateWorkOrderFromForm}
                     cancelAction={cancelDraftQuoteFromForm}
                     shareAction={shareQuoteFromForm}
+                    authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
                     paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
                   />
                 ))}
@@ -144,6 +146,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 approveAction={approveQuoteAndCreateWorkOrderFromForm}
                 cancelAction={cancelDraftQuoteFromForm}
                 shareAction={shareQuoteFromForm}
+                authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
                 paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
               />
             ))}

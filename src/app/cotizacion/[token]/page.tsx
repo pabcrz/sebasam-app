@@ -57,7 +57,7 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
 
   return (
     <PublicQuoteShell>
-      <SharedQuoteView quote={result.quote} />
+      <SharedQuoteView quote={result.quote} token={token} />
     </PublicQuoteShell>
   );
 }
