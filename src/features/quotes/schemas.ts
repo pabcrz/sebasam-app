@@ -1,5 +1,6 @@
 import { QuoteItemType } from "@prisma/client";
 import { z } from "zod";
+import { optionalTrimmedString as optionalFilterString, optionalDate } from "@/lib/filters";
 
 const optionalTrimmedString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -119,5 +120,15 @@ export const quoteFormInputSchema = quoteInputBaseSchema.extend({
   items: z.array(quoteFormItemSchema).min(1, "At least one quote item is required").max(10),
 }).superRefine(validateQuoteTotals);
 
+export const quoteFilterSchema = z.object({
+  status: optionalFilterString(),
+  customerId: optionalFilterString(),
+  number: optionalFilterString(),
+  plate: optionalFilterString(),
+  dateFrom: optionalDate(),
+  dateTo: optionalDate(),
+});
+
+export type QuoteFilterInput = z.infer<typeof quoteFilterSchema>;
 export type QuoteInput = z.infer<typeof quoteInputSchema>;
 export type QuoteVehicleInput = z.infer<typeof quoteVehicleInputSchema>;

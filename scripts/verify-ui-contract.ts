@@ -415,6 +415,42 @@ function checkQuotesPage() {
   assertIncludes(pageSource, 'as="h1"', "Page must render a real h1 via CardTitle");
   assertIncludes(pageSource, 'as="h2"', "Section headings must be h2");
 
+  // Quote filters must be wired to URL params and render the filter controls.
+  assertIncludes(pageSource, "QuoteFilters", "Quotes page must render QuoteFilters");
+  assertIncludes(pageSource, "quoteFilterSchema", "Quotes page must parse filters via quoteFilterSchema");
+  assertIncludes(pageSource, "listQuotes(filters)", "Quotes page must pass parsed filters to listQuotes");
+
+  const quoteFiltersSource = readFileSync(
+    "src/features/quotes/components/quote-filters.tsx",
+    "utf8",
+  );
+  for (const field of ["status", "customerId", "number", "plate", "dateFrom", "dateTo"]) {
+    assertIncludes(
+      quoteFiltersSource,
+      `name="${field}"`,
+      `Quote filters must expose field: ${field}`,
+    );
+  }
+  assertIncludes(
+    quoteFiltersSource,
+    'router.push(`/admin/quotes?${params.toString()}`)',
+    "Quote filters must push filter params to the URL",
+  );
+  assertIncludes(
+    quoteFiltersSource,
+    'router.push("/admin/quotes")',
+    "Quote filters must offer a clear action",
+  );
+  assertIncludes(
+    quoteFiltersSource,
+    "Limpiar",
+    "Quote filters must label the clear action in Spanish",
+  );
+
+  // Empty state must explain how to clear filters or create a new record.
+  assertIncludes(pageSource, "Limpiar filtros", "Quotes empty state must offer to clear filters");
+  assertIncludes(pageSource, "crea una nueva cotización", "Quotes empty state must suggest creating a quote");
+
   // User-facing copy must stay in Mexican Spanish.
   const spanishLabels = [
     { label: "Cotizaciones en borrador", source: pageSource },
@@ -484,6 +520,23 @@ function checkCustomerPages() {
     editPageSource,
     "<CustomerEditForm",
     "Customer edit page must render CustomerEditForm",
+  );
+
+  // Customer search must cover contact info and related vehicle plates.
+  assertIncludes(
+    createPageSource,
+    "placas",
+    "Customer search placeholder must mention vehicle plates",
+  );
+  assertIncludes(
+    createPageSource,
+    "Limpiar búsqueda",
+    "Customer empty state must offer to clear the search",
+  );
+  assertIncludes(
+    createPageSource,
+    "da de alta un nuevo cliente",
+    "Customer empty state must suggest creating a customer",
   );
 
   // Required create form field names must survive wrapper refactors.

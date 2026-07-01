@@ -1,5 +1,8 @@
+import { Prisma, QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
+import { endOfDay } from "@/lib/filters";
+import { quoteFilterSchema, type QuoteFilterInput } from "./schemas";
 
 export async function getQuoteById(quoteId: string) {
   await requireOperationalRole();
@@ -15,10 +18,41 @@ export async function getQuoteById(quoteId: string) {
   });
 }
 
-export async function listQuotes() {
+export async function listQuotes(input: unknown = {}) {
   await requireOperationalRole();
 
-  return prisma.quote.findMany({
+  const parsed = quoteFilterSchema.safeParse(input);
+  const filters = parsed.success ? parsed.data : ({} as QuoteFilterInput);
+  const where: Prisma.QuoteWhereInput = {};
+
+  if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
+    where.status = filters.status as QuoteStatus;
+  }
+
+  if (filters.customerId) {
+    where.customerId = filters.customerId;
+  }
+
+  if (filters.number) {
+    where.number = { contains: filters.number, mode: "insensitive" };
+  }
+
+  if (filters.plate) {
+    const plateSearch = filters.plate;
+    where.OR = [
+      { vehicle: { plate: { contains: plateSearch, mode: "insensitive" } } },
+      { vehicleSnapshot: { path: ["plate"], string_contains: plateSearch, mode: "insensitive" } },
+    ];
+  }
+
+  if (filters.dateFrom || filters.dateTo) {
+    where.createdAt = {};
+    if (filters.dateFrom) where.createdAt.gte = filters.dateFrom;
+    if (filters.dateTo) where.createdAt.lte = endOfDay(filters.dateTo);
+  }
+
+  const quotes = await prisma.quote.findMany({
+    where: Object.keys(where).length > 0 ? where : undefined,
     include: {
       customer: true,
       vehicle: true,
@@ -27,4 +61,19 @@ export async function listQuotes() {
     },
     orderBy: { createdAt: "desc" },
   });
+
+  // Serialize Prisma Decimal fields to plain numbers so Next.js Server→Client Component
+  // serialization does not break with Turbopack.
+  return quotes.map((quote) => ({
+    ...quote,
+    subtotalCents: Number(quote.subtotalCents),
+    taxCents: Number(quote.taxCents),
+    totalCents: Number(quote.totalCents),
+    items: quote.items.map((item) => ({
+      ...item,
+      quantity: Number(item.quantity),
+      unitPriceCents: Number(item.unitPriceCents),
+      totalCents: Number(item.totalCents),
+    })),
+  }));
 }
