@@ -1,9 +1,9 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useThemeContext } from "./theme-provider";
 
 interface ThemeToggleProps {
   className?: string;
@@ -18,7 +18,7 @@ function useMounted() {
 }
 
 export function ThemeToggle({ className }: ThemeToggleProps) {
-  const { setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useThemeContext();
   const mounted = useMounted();
 
   if (!mounted) {
@@ -30,8 +30,8 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         disabled
         className={className}
       >
-      <span className="h-5 w-5" />
-    </Button>
+        <span className="h-5 w-5" />
+      </Button>
     );
   }
 

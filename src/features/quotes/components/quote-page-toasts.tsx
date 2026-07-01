@@ -9,6 +9,8 @@ const errorMessages: Record<string, string> = {
   "invalid-approval": "Selecciona una cotización válida antes de aprobar.",
   "duplicate-work-order": "Esta cotización ya tiene una orden de trabajo.",
   "approval-failed": "No se pudo aprobar la cotización. Recarga y confirma que siga en borrador.",
+  "invalid-share": "Selecciona una cotización válida antes de compartir.",
+  "share-failed": "No se pudo compartir la cotización. Recarga y confirma que tenga al menos un concepto completo.",
 };
 
 export function QuotePageToasts() {
@@ -40,6 +42,12 @@ export function QuotePageToasts() {
     if (params.get("cancelled")) {
       toast.success("Cotización cancelada.", { id: "quote-cancelled" });
       params.delete("cancelled");
+      changed = true;
+    }
+
+    if (params.get("shared")) {
+      toast.success("Cotización compartida.", { id: "quote-shared" });
+      params.delete("shared");
       changed = true;
     }
 

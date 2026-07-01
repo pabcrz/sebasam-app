@@ -1,13 +1,15 @@
 "use client";
 
 import * as React from "react";
-import type { PaymentRequest, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import type { PaymentRequest, QuoteStatus, SharedQuote, WorkOrderStatus } from "@prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
 import { Badge } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteApprovalForm } from "./quote-approval-form";
 import { QuoteCancelForm } from "./quote-cancel-form";
+import { ShareQuoteButton } from "./share-quote-button";
+import { ShareQuoteLinkDialog } from "./share-quote-link-dialog";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
@@ -20,6 +22,7 @@ interface QuoteMobileCardProps {
   workOrderStatusBadgeVariant: Record<WorkOrderStatus, "default" | "success" | "warning" | "danger" | "info">;
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
+  shareAction: (formData: FormData) => void | Promise<void>;
   paymentRequestAction: () => Promise<PaymentRequest>;
 }
 
@@ -31,6 +34,7 @@ export function QuoteMobileCard({
   workOrderStatusBadgeVariant,
   approveAction,
   cancelAction,
+  shareAction,
   paymentRequestAction,
 }: QuoteMobileCardProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
@@ -94,8 +98,16 @@ export function QuoteMobileCard({
             />
             <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} />
           </>
-        ) : quote.status === "SENT" || quote.status === "APPROVED" ? (
+        ) : null}
+        {quote.status === "SENT" || quote.status === "APPROVED" ? (
           <PaymentRequestLinkDialog action={paymentRequestAction} quoteNumber={quote.number} />
+        ) : null}
+        {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
+          quote.activeSharedQuote ? (
+            <ShareQuoteLinkDialog sharedQuote={quote.activeSharedQuote as SharedQuote} quoteNumber={quote.number} />
+          ) : (
+            <ShareQuoteButton action={shareAction} quoteId={quote.id} quoteNumber={quote.number} />
+          )
         ) : null}
       </div>
     </div>
