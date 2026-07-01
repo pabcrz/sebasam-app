@@ -12,7 +12,7 @@ export interface InvoiceDecisionProps {
 
 export function InvoiceDecision({ onDecision, isPending = false }: InvoiceDecisionProps) {
   return (
-    <Card className="mx-auto w-full max-w-xl">
+    <Card className="mx-auto w-full max-w-lg">
       <CardHeader>
         <CardTitle>¿Qué necesitas compartir?</CardTitle>
         <CardDescription>
