@@ -1,4 +1,5 @@
 import { formatCents } from "@/features/quotes/lib/format";
+import { formatAmountInWords } from "@/features/quotes/lib/amount-in-words";
 
 export interface QuoteTotalsCardProps {
   subtotalCents: number;
@@ -21,6 +22,12 @@ export function QuoteTotalsCard({ subtotalCents, taxCents, totalCents }: QuoteTo
         <span>Total</span>
         <span data-testid="quote-total">{formatCents(totalCents)}</span>
       </div>
+      <p
+        className="text-xs leading-5 text-[var(--color-text-muted)]"
+        data-testid="quote-total-in-words"
+      >
+        {formatAmountInWords(totalCents)}
+      </p>
     </div>
   );
 }

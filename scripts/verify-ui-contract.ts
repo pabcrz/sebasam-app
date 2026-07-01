@@ -31,6 +31,12 @@ function checkQuotesPage() {
   const builderDialogSource = readFileSync(builderDialogPath, "utf8");
   const approvalFormPath = "src/features/quotes/components/quote-approval-form.tsx";
   const approvalFormSource = readFileSync(approvalFormPath, "utf8");
+  const cancelFormPath = "src/features/quotes/components/quote-cancel-form.tsx";
+  const cancelFormSource = readFileSync(cancelFormPath, "utf8");
+  const listRowPath = "src/features/quotes/components/quote-list-row.tsx";
+  const listRowSource = readFileSync(listRowPath, "utf8");
+  const mobileCardPath = "src/features/quotes/components/quote-mobile-card.tsx";
+  const mobileCardSource = readFileSync(mobileCardPath, "utf8");
   const tableSource = readFileSync("src/components/ui/table.tsx", "utf8");
   const paymentLinkDialogPath = "src/features/payment-requests/components/payment-request-link-dialog.tsx";
   const paymentLinkDialogSource = readFileSync(paymentLinkDialogPath, "utf8");
@@ -55,13 +61,23 @@ function checkQuotesPage() {
   );
   assertIncludes(
     pageSource,
+    "cancelDraftQuoteFromForm",
+    "Quotes page must wire cancel draft quote server action",
+  );
+  assertIncludes(
+    pageSource,
     "getOrCreatePaymentRequestForQuote",
     "Quotes page must wire payment-link server action",
   );
   assertIncludes(
-    pageSource,
+    listRowSource,
     "PaymentRequestLinkDialog",
-    "Quotes page must render PaymentRequestLinkDialog",
+    "Desktop quote list row must render PaymentRequestLinkDialog",
+  );
+  assertIncludes(
+    mobileCardSource,
+    "PaymentRequestLinkDialog",
+    "Mobile quote card must render PaymentRequestLinkDialog",
   );
   assertIncludes(
     pageSource,
@@ -113,6 +129,65 @@ function checkQuotesPage() {
     approvalFormSource,
     "useTransition",
     "Approval form must use a transition for the async server action",
+  );
+
+  // Draft quotes must expose a visible cancel action.
+  assertIncludes(
+    listRowSource,
+    "QuoteCancelForm",
+    "Desktop quote list row must render QuoteCancelForm for draft quotes",
+  );
+  assertIncludes(
+    mobileCardSource,
+    "QuoteCancelForm",
+    "Mobile quote card must render QuoteCancelForm for draft quotes",
+  );
+  assertIncludes(
+    pageSource,
+    "cancelAction={cancelDraftQuoteFromForm}",
+    "Quotes page must wire cancel action into list row and mobile card",
+  );
+  assertIncludes(
+    cancelFormSource,
+    'formData.set("quoteId"',
+    "Cancel form must set quoteId in the FormData",
+  );
+  assertIncludes(
+    cancelFormSource,
+    "event.stopPropagation()",
+    "Cancel form button must stop propagation to avoid triggering row/card preview",
+  );
+
+  // Recent quotes rows/cards must open the preview dialog on click.
+  assertIncludes(
+    pageSource,
+    "QuoteListRow",
+    "Quotes page must render QuoteListRow for desktop recent quotes",
+  );
+  assertIncludes(
+    pageSource,
+    "QuoteMobileCard",
+    "Quotes page must render QuoteMobileCard for mobile recent quotes",
+  );
+  assertIncludes(
+    listRowSource,
+    "setPreviewOpen(true)",
+    "Desktop quote row click must open the preview dialog",
+  );
+  assertIncludes(
+    listRowSource,
+    "event.stopPropagation()",
+    "Desktop quote action cells must stop propagation to avoid triggering preview",
+  );
+  assertIncludes(
+    mobileCardSource,
+    "setPreviewOpen(true)",
+    "Mobile quote card click must open the preview dialog",
+  );
+  assertIncludes(
+    mobileCardSource,
+    "event.stopPropagation()",
+    "Mobile quote action container must stop propagation to avoid triggering preview",
   );
 
   // Required form field names must survive wrapper refactors.
@@ -279,9 +354,14 @@ function checkQuotesPage() {
     "Desktop quotes table must not include a concepts column",
   );
   assertIncludes(
-    pageSource,
+    listRowSource,
     "QuotePreviewDialog",
-    "Quotes page must render a preview dialog for each quote",
+    "Desktop quote list row must render a preview dialog",
+  );
+  assertIncludes(
+    mobileCardSource,
+    "QuotePreviewDialog",
+    "Mobile quote card must render a preview dialog",
   );
 
   const previewDialogSource = readFileSync(
