@@ -119,13 +119,13 @@ export function PublicPaymentPage({
       ) : null}
 
       {invoiceError ? (
-        <p role="alert" className="mx-auto mt-4 max-w-xl text-sm text-[var(--color-status-danger-fg)]">
+        <p role="alert" className="mx-auto mt-4 w-full max-w-xl text-sm text-[var(--color-status-danger-fg)]">
           {invoiceError}
         </p>
       ) : null}
 
       {showFiscalForm ? (
-        <div className="mx-auto max-w-xl">
+        <div className="mx-auto w-full max-w-xl">
           <FiscalDataForm
             action={submitFiscalData}
             isPending={isFiscalDataPending}

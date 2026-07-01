@@ -12,7 +12,7 @@ export interface InvoiceDecisionProps {
 
 export function InvoiceDecision({ onDecision, isPending = false }: InvoiceDecisionProps) {
   return (
-    <Card className="mx-auto max-w-xl">
+    <Card className="mx-auto w-full max-w-xl">
       <CardHeader>
         <CardTitle>¿Qué necesitas compartir?</CardTitle>
         <CardDescription>
@@ -34,7 +34,7 @@ export function InvoiceDecision({ onDecision, isPending = false }: InvoiceDecisi
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/80 text-[var(--color-primary)]">
             <Banknote className="h-5 w-5" aria-hidden="true" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="font-semibold text-[var(--color-text-main)]">Solo datos de pago</p>
             <p className="text-xs text-[var(--color-text-muted)]">Ver cuenta, CLABE y contacto</p>
           </div>
@@ -54,7 +54,7 @@ export function InvoiceDecision({ onDecision, isPending = false }: InvoiceDecisi
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-soft)] text-[var(--color-text-muted)]">
             <FileText className="h-5 w-5" aria-hidden="true" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="font-semibold text-[var(--color-text-main)]">Requiero factura</p>
             <p className="text-xs text-[var(--color-text-muted)]">Capturar datos fiscales primero</p>
           </div>
