@@ -11,12 +11,18 @@ import { quoteStatusLabels } from "@/features/quotes/lib/status";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
 import type { Quote, QuoteItem, Customer, Vehicle } from "@prisma/client";
 
+type SerializableQuoteItem = Omit<QuoteItem, "quantity"> & {
+  quantity: string;
+};
+
+export type SharedQuoteViewQuote = Quote & {
+  customer: Customer;
+  vehicle: Vehicle | null;
+  items: SerializableQuoteItem[];
+};
+
 export interface SharedQuoteViewProps {
-  quote: Quote & {
-    customer: Customer;
-    vehicle: Vehicle | null;
-    items: QuoteItem[];
-  };
+  quote: SharedQuoteViewQuote;
   token: string;
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QuoteStatus } from "@prisma/client";
+import { CustomerStatus, QuoteItemType, QuoteStatus } from "@prisma/client";
 import { SharedQuoteView, type SharedQuoteViewProps } from "./shared-quote-view";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
 
@@ -18,17 +18,18 @@ const acceptSharedQuoteActionMock = vi.mocked(acceptSharedQuoteAction);
 const declineSharedQuoteActionMock = vi.mocked(declineSharedQuoteAction);
 
 function makeQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps["quote"] {
-  return {
+  const quote: SharedQuoteViewProps["quote"] = {
     id: "quote-1",
     number: "COT-001",
     status,
     title: "Servicio general",
     description: "Servicio completo",
-    administrative: "",
+    administrative: false,
     subtotalCents: 100_00,
     taxCents: 16_00,
     totalCents: 116_00,
     taxEnabled: true,
+    approvedAt: null,
     validUntil: new Date("2026-07-15T12:00:00.000Z"),
     customerId: "customer-1",
     vehicleId: null,
@@ -42,6 +43,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps
       phone: null,
       address: null,
       notes: null,
+      status: CustomerStatus.ACTIVE,
       createdAt: new Date("2026-07-01T12:00:00.000Z"),
       updatedAt: new Date("2026-07-01T12:00:00.000Z"),
     },
@@ -50,17 +52,17 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps
       {
         id: "item-1",
         quoteId: "quote-1",
-        type: "SERVICE",
+        type: QuoteItemType.SERVICE,
         description: "Mano de obra",
-        quantity: 1,
+        quantity: "1",
         unitPriceCents: 100_00,
         totalCents: 100_00,
         sortOrder: 0,
-        createdAt: new Date("2026-07-01T12:00:00.000Z"),
-        updatedAt: new Date("2026-07-01T12:00:00.000Z"),
       },
     ],
-  } as unknown as SharedQuoteViewProps["quote"];
+  };
+
+  return quote;
 }
 
 describe("SharedQuoteView", () => {

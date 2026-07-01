@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Copy, LinkIcon } from "lucide-react";
+import { Check, Copy, ExternalLink, LinkIcon } from "lucide-react";
 import type { PaymentRequest } from "@prisma/client";
 import {
   Button,
@@ -90,6 +90,20 @@ export function PaymentRequestLinkDialog({ action, quoteNumber }: PaymentRequest
                   {absoluteUrl}
                 </p>
               </div>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard?.writeText(absoluteUrl).catch(() => {});
+                  window.open(absoluteUrl, "_blank", "noopener,noreferrer");
+                }}
+                aria-label={`Copiar y abrir link de ${quoteNumber}`}
+                className="w-full"
+              >
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                <span>Copiar y abrir</span>
+              </Button>
               <CopyButton value={absoluteUrl} />
             </div>
           ) : null}

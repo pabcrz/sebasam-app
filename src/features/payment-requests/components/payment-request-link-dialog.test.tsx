@@ -24,18 +24,18 @@ function createMockPaymentRequest(overrides: Partial<PaymentRequest> = {}): Paym
 }
 
 describe("PaymentRequestLinkDialog", () => {
-  let writeTextMock: ReturnType<typeof vi.fn>;
+  let windowOpenMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    writeTextMock = vi.fn().mockResolvedValue(undefined);
+    windowOpenMock = vi.fn();
 
     Object.defineProperty(window, "location", {
       value: { origin: "https://example.com" },
       writable: true,
       configurable: true,
     });
-    Object.defineProperty(window.navigator, "clipboard", {
-      value: { writeText: writeTextMock },
+    Object.defineProperty(window, "open", {
+      value: windowOpenMock,
       configurable: true,
     });
   });
@@ -69,6 +69,26 @@ describe("PaymentRequestLinkDialog", () => {
     await user.click(copyButton);
 
     expect(screen.getByRole("button", { name: /copiado/i })).toBeInTheDocument();
+  });
+
+  it("opens the URL in a new tab from the copy-and-open action", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue(createMockPaymentRequest());
+    render(<PaymentRequestLinkDialog action={action} quoteNumber="Q-001" />);
+
+    await user.click(screen.getByRole("button", { name: /link de pago/i }));
+    await user.click(screen.getByRole("button", { name: /generar link/i }));
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(screen.getByText("https://example.com/datos-de-pago/abc123token")).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: /copiar y abrir link de q-001/i }));
+
+    expect(windowOpenMock).toHaveBeenCalledWith(
+      "https://example.com/datos-de-pago/abc123token",
+      "_blank",
+      "noopener,noreferrer",
+    );
   });
 
   it("displays an error when the action fails", async () => {
