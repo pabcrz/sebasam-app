@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useFormStatus } from "react-dom";
+import { QuoteItemType } from "@prisma/client";
 import {
   Button,
   Card,
@@ -102,6 +103,46 @@ export function QuoteBuilder({ customers, createAction, onCancel }: QuoteBuilder
       const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
       const nextQuantity = Math.min(maxQuantity, Math.max(1, baseQuantity + delta));
       next[index] = { ...next[index], quantity: String(nextQuantity) };
+      return next;
+    });
+  }
+
+  function addItemOfType(type: QuoteItemType) {
+    const firstInvalidIndex = items.findIndex((item, index) => validateItemValue(item, index));
+
+    if (firstInvalidIndex !== -1) {
+      setShowItemValidation(true);
+      return;
+    }
+
+    setShowItemValidation(false);
+    setStepError(null);
+    setItems((prev) => [...prev, { ...emptyItem, type }]);
+  }
+
+  function duplicateItem(index: number) {
+    const firstInvalidIndex = items.findIndex((item, index) => validateItemValue(item, index));
+
+    if (firstInvalidIndex !== -1) {
+      setShowItemValidation(true);
+      return;
+    }
+
+    setShowItemValidation(false);
+    setStepError(null);
+    setItems((prev) => {
+      const source = prev[index];
+      if (!source) return prev;
+
+      const duplicated: ItemFormValue = {
+        type: source.type,
+        description: source.description,
+        quantity: source.quantity,
+        unitPrice: source.unitPrice,
+      };
+
+      const next = [...prev];
+      next.splice(index + 1, 0, duplicated);
       return next;
     });
   }
@@ -207,6 +248,7 @@ export function QuoteBuilder({ customers, createAction, onCancel }: QuoteBuilder
                   <Input
                     id="plate"
                     name="plate"
+                    maxLength={10}
                     value={vehicle.plate}
                     onChange={(event) => setVehicle((prev) => ({ ...prev, plate: event.target.value }))}
                   />
@@ -252,7 +294,9 @@ export function QuoteBuilder({ customers, createAction, onCancel }: QuoteBuilder
               showItemValidation={showItemValidation}
               completeItemsCount={completeItems.length}
               onAddItem={addItem}
+              onAddItemOfType={addItemOfType}
               onRemoveItem={removeItem}
+              onDuplicateItem={duplicateItem}
               onUpdateItem={updateItem}
               onAdjustQuantity={adjustItemQuantity}
             />

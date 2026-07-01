@@ -147,6 +147,7 @@ export async function createQuoteFromForm(formData: FormData) {
 
   if (!parsed.success) {
     redirect(`${quotesPath}?error=invalid`);
+    return;
   }
 
   await createQuote(parsed.data);

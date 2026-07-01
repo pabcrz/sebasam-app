@@ -1,15 +1,19 @@
 "use client";
 
 import { QuoteItemType } from "@prisma/client";
+import { Copy } from "lucide-react";
 import { Badge, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
 import { itemTypeLabels, itemTypes, ItemFormValue, maxQuantity, maxUnitPrice, validateItemValue } from "./quote-builder-shared";
+import { X, Minus, Plus } from "lucide-react";
 
 export interface QuoteBuilderItemsStepProps {
   items: ItemFormValue[];
   showItemValidation: boolean;
   completeItemsCount: number;
   onAddItem: () => void;
+  onAddItemOfType: (type: QuoteItemType) => void;
   onRemoveItem: (index: number) => void;
+  onDuplicateItem: (index: number) => void;
   onUpdateItem: (index: number, patch: Partial<ItemFormValue>) => void;
   onAdjustQuantity: (index: number, delta: number) => void;
 }
@@ -19,7 +23,9 @@ export function QuoteBuilderItemsStep({
   showItemValidation,
   completeItemsCount,
   onAddItem,
+  onAddItemOfType,
   onRemoveItem,
+  onDuplicateItem,
   onUpdateItem,
   onAdjustQuantity,
 }: QuoteBuilderItemsStepProps) {
@@ -58,12 +64,22 @@ export function QuoteBuilderItemsStep({
               </Select>
               <Button
                 type="button"
+                variant="outline"
+                size="sm"
+                aria-label={`Duplicar concepto ${index + 1}`}
+                onClick={() => onDuplicateItem(index)}
+                className="size-10"
+              >
+                <Copy aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
                 variant="ghost"
                 aria-label={`Eliminar concepto ${index + 1}`}
                 onClick={() => onRemoveItem(index)}
-                className="h-8 w-8 p-0 text-[var(--color-status-danger-fg)] hover:bg-[var(--color-status-danger-bg)]"
+                className="size-11 p-0 text--status-danger-fg hover:bg-status-danger-bg"
               >
-                ✕
+                <X aria-hidden="true" />
               </Button>
             </div>
             <input type="hidden" name={`items.${index}.type`} value={item.type} />
@@ -90,7 +106,7 @@ export function QuoteBuilderItemsStep({
                     disabled={Number(item.quantity) <= 1}
                     className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] px-0"
                   >
-                    −
+                    <Minus className="h-4 w-4" aria-hidden="true" />
                   </Button>
                   <Input
                     id={`items-${index}-quantity`}
@@ -122,7 +138,7 @@ export function QuoteBuilderItemsStep({
                     disabled={Number(item.quantity) >= maxQuantity}
                     className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] px-0"
                   >
-                    +
+                    <Plus className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </div>
@@ -156,6 +172,19 @@ export function QuoteBuilderItemsStep({
       >
         + Agregar concepto
       </Button>
+      <div className="grid grid-cols-2 gap-2">
+        {itemTypes.map((type) => (
+          <Button
+            key={type}
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onAddItemOfType(type)}
+          >
+            + {itemTypeLabels[type]}
+          </Button>
+        ))}
+      </div>
     </section>
   );
 }

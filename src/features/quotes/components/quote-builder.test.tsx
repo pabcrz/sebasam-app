@@ -394,4 +394,76 @@ describe("QuoteBuilder", () => {
     expect(screen.getByTestId("quote-validity")).toHaveTextContent(/vigente hasta/i);
     expect(screen.getByTestId("quote-validity")).toHaveTextContent(/cambios imprevistos/i);
   });
+
+  it("limits the vehicle plate input to 10 characters", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    const plateInput = screen.getByLabelText("Placas (opcional)");
+    expect(plateInput).toHaveAttribute("maxLength", "10");
+
+    await user.type(plateInput, "ABCDEFGHIJKLMNOP");
+    expect(plateInput).toHaveValue("ABCDEFGHIJ");
+  });
+
+  it("caps the vehicle year input at the current year plus one", () => {
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    const yearInput = screen.getByLabelText("Año (opcional)");
+    expect(yearInput).toHaveAttribute("max", String(new Date().getFullYear() + 1));
+  });
+
+  it("duplicates a concept row directly after the source row", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const [descriptionInput] = screen.getAllByLabelText(/descripción/i);
+    const [quantityInput] = screen.getAllByLabelText(/cantidad/i);
+    const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
+
+    await user.type(descriptionInput, "Cambio de aceite");
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "3");
+    await user.type(unitPriceInput, "850");
+
+    await user.click(screen.getByRole("button", { name: "Duplicar concepto 1" }));
+
+    const descriptions = Array.from(document.querySelectorAll('input[name$=".description"]'));
+    expect(descriptions).toHaveLength(2);
+    expect(descriptions[1]).toHaveValue("Cambio de aceite");
+
+    const quantities = Array.from(document.querySelectorAll('input[name$=".quantity"]'));
+    expect(quantities[1]).toHaveValue("3");
+
+    const unitPrices = Array.from(document.querySelectorAll('input[name$=".unitPrice"]'));
+    expect(unitPrices[1]).toHaveValue(850);
+
+    expect(document.querySelector('input[name="items.1.type"]')).toHaveValue("LABOR");
+  });
+
+  it("adds a concept row with the selected type", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const [descriptionInput] = screen.getAllByLabelText(/descripción/i);
+    const [quantityInput] = screen.getAllByLabelText(/cantidad/i);
+    const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
+
+    await user.type(descriptionInput, "Cambio de aceite");
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "1");
+    await user.type(unitPriceInput, "850");
+
+    await user.click(screen.getByRole("button", { name: "+ Material" }));
+
+    const descriptions = Array.from(document.querySelectorAll('input[name$=".description"]'));
+    expect(descriptions).toHaveLength(2);
+    expect(document.querySelector('input[name="items.1.type"]')).toHaveValue("MATERIAL");
+  });
 });
