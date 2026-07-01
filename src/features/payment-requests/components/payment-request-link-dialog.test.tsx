@@ -108,4 +108,14 @@ describe("PaymentRequestLinkDialog", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(action).not.toHaveBeenCalled();
   });
+
+  it("renders the dialog with the expected width constraint", async () => {
+    const user = userEvent.setup();
+    render(<PaymentRequestLinkDialog action={vi.fn()} quoteNumber="Q-001" />);
+
+    await user.click(screen.getByRole("button", { name: /link de pago/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveClass("max-w-2xl");
+  });
 });

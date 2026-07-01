@@ -1,0 +1,165 @@
+import { QuoteItemType } from "@prisma/client";
+
+export type Step = "client" | "items" | "notes" | "summary" | "preview";
+
+export type ItemFormValue = {
+  type: QuoteItemType;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+};
+
+export const steps: Step[] = ["client", "items", "notes", "summary", "preview"];
+
+export const stepLabels: Record<Step, string> = {
+  client: "Cliente / Unidad",
+  items: "Conceptos",
+  notes: "Notas",
+  summary: "Resumen",
+  preview: "Enviar",
+};
+
+export const itemTypes: QuoteItemType[] = ["LABOR", "MATERIAL", "SERVICE", "OTHER"];
+export const maxQuantity = 100;
+export const maxUnitPrice = 50_000;
+
+export const itemTypeLabels: Record<QuoteItemType, string> = {
+  SERVICE: "Servicio",
+  MATERIAL: "Material",
+  LABOR: "Mano de obra",
+  EQUIPMENT: "Equipo",
+  OTHER: "Otro",
+};
+
+export const emptyItem: ItemFormValue = {
+  type: "LABOR",
+  description: "",
+  quantity: "1",
+  unitPrice: "",
+};
+
+export function formatQuantity(quantity: number | string) {
+  const value = typeof quantity === "string" ? Number(quantity) : quantity;
+
+  if (!Number.isFinite(value)) {
+    return String(quantity);
+  }
+
+  return new Intl.NumberFormat("es-MX", { maximumFractionDigits: 0 }).format(value);
+}
+
+export function calculateTotals(items: ItemFormValue[], taxEnabled: boolean) {
+  let subtotalCents = 0;
+
+  for (const item of items) {
+    const quantity = Number(item.quantity);
+    const unitPrice = Number(item.unitPrice);
+
+    if (item.description.trim() && Number.isFinite(quantity) && quantity > 0 && Number.isFinite(unitPrice) && unitPrice >= 0) {
+      subtotalCents += Math.round(quantity * unitPrice * 100);
+    }
+  }
+
+  const taxCents = taxEnabled ? Math.round(subtotalCents * 0.16) : 0;
+
+  return { subtotalCents, taxCents, totalCents: subtotalCents + taxCents };
+}
+
+export function validateItemValue(item: ItemFormValue, index: number): string | null {
+  const description = item.description.trim();
+  const quantity = item.quantity.trim();
+  const unitPrice = item.unitPrice.trim();
+  const hasAnyValue = description !== "" || unitPrice !== "";
+
+  if (!hasAnyValue) {
+    return null;
+  }
+
+  if (description === "") {
+    return `El concepto ${index + 1} necesita una descripción.`;
+  }
+
+  if (description.length > 240) {
+    return `La descripción del concepto ${index + 1} es muy larga.`;
+  }
+
+  if (quantity === "") {
+    return `El concepto ${index + 1} necesita una cantidad.`;
+  }
+
+  const quantityNum = Number(quantity);
+  if (!Number.isFinite(quantityNum) || quantityNum <= 0) {
+    return `La cantidad del concepto ${index + 1} debe ser mayor a 0.`;
+  }
+
+  if (quantityNum > maxQuantity) {
+    return `La cantidad del concepto ${index + 1} no puede ser mayor a ${maxQuantity}.`;
+  }
+
+  if (!Number.isInteger(quantityNum)) {
+    return `La cantidad del concepto ${index + 1} debe ser un número entero.`;
+  }
+
+  if (unitPrice === "") {
+    return `El concepto ${index + 1} necesita un precio unitario.`;
+  }
+
+  const unitPriceNum = Number(unitPrice);
+  if (!Number.isFinite(unitPriceNum) || unitPriceNum < 0) {
+    return `El precio unitario del concepto ${index + 1} no puede ser negativo.`;
+  }
+
+  if (unitPriceNum > maxUnitPrice) {
+    return `El precio unitario del concepto ${index + 1} es demasiado alto.`;
+  }
+
+  if (Math.round(quantityNum * unitPriceNum * 100) > 2_147_483_647) {
+    return `El total del concepto ${index + 1} es demasiado alto.`;
+  }
+
+  return null;
+}
+
+export function isItemComplete(item: ItemFormValue): boolean {
+  const description = item.description.trim();
+  const quantityNum = Number(item.quantity.trim());
+  const unitPriceNum = Number(item.unitPrice.trim());
+
+  return (
+    description.length > 0 &&
+    Number.isFinite(quantityNum) &&
+    quantityNum > 0 &&
+    Number.isFinite(unitPriceNum) &&
+    unitPriceNum >= 0
+  );
+}
+
+export function getStepError(
+  step: Step,
+  state: {
+    customerId: string;
+    vehicle: { model: string };
+    title: string;
+    items: ItemFormValue[];
+  },
+): string | null {
+  if (step === "client") {
+    if (!state.customerId) return "Selecciona un cliente.";
+    return null;
+  }
+
+  if (step === "items") {
+    const rowError = state.items
+      .map((item, index) => validateItemValue(item, index))
+      .find(Boolean);
+    if (rowError) return rowError;
+
+    return state.items.some(isItemComplete) ? null : "Ingresa al menos un concepto completo.";
+  }
+
+  if (step === "notes") {
+    return state.title.trim() ? null : "Ingresa el título de la cotización.";
+  }
+
+  return null;
+}

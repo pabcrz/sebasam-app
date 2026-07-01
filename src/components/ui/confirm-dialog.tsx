@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { clsx } from "clsx";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ export interface ConfirmDialogProps {
   cancelLabel?: string;
   variant?: "default" | "danger";
   loading?: boolean;
+  className?: string;
   onConfirm: () => void;
 }
 
@@ -32,11 +34,12 @@ export function ConfirmDialog({
   cancelLabel = "Cancelar",
   variant = "default",
   loading = false,
+  className,
   onConfirm,
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className={clsx("max-w-2xl", className)}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}

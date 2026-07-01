@@ -21,8 +21,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui";
-import { QuoteBuilder } from "@/features/quotes/components/quote-builder";
+import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { QuoteApprovalForm } from "@/features/quotes/components/quote-approval-form";
+import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
+import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 
@@ -73,8 +75,8 @@ const workOrderStatusBadgeVariant: Record<
   CANCELLED: "danger",
 };
 
-export default async function QuotesPage({ searchParams }: QuotesPageProps) {
-  const params = await searchParams;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default async function QuotesPage({ searchParams: _searchParams }: QuotesPageProps) {
   const [customers, quotes] = await Promise.all([listCustomers(), listQuotes()]);
 
   return (
@@ -88,40 +90,11 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
           <p className="max-w-2xl text-sm leading-6 text-[var(--color-text-muted)] md:text-base md:leading-7">
             Crea cotizaciones en borrador para clientes existentes con subtotales y totales calculados en el servidor.
           </p>
-          {params.created ? (
-            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]">
-              Cotización en borrador creada.
-            </p>
-          ) : null}
-          {params.approved ? (
-            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]">
-              Cotización aprobada y orden de trabajo creada.
-            </p>
-          ) : null}
-          {params.error === "invalid" ? (
-            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
-              Revisa los datos de la cotización e incluye al menos un concepto completo.
-            </p>
-          ) : null}
-          {params.error === "invalid-approval" ? (
-            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
-              Selecciona una cotización válida antes de aprobar.
-            </p>
-          ) : null}
-          {params.error === "duplicate-work-order" ? (
-            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
-              Esta cotización ya tiene una orden de trabajo.
-            </p>
-          ) : null}
-          {params.error === "approval-failed" ? (
-            <p className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
-              No se pudo aprobar la cotización. Recarga y confirma que siga en borrador.
-            </p>
-          ) : null}
+          <QuotePageToasts />
         </CardContent>
       </Card>
 
-      <QuoteBuilder customers={customers} createAction={createQuoteFromForm} />
+      <QuoteBuilderDialog customers={customers} createAction={createQuoteFromForm} />
 
       <Card className="min-w-0">
         <CardHeader>
@@ -139,11 +112,11 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                   <TableHead>Título</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Orden de trabajo</TableHead>
-                  <TableHead>Conceptos</TableHead>
                   <TableHead>Subtotal</TableHead>
                   <TableHead>IVA</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Vigente hasta</TableHead>
+                  <TableHead className="w-[1%] whitespace-nowrap">Vista previa</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -172,20 +145,13 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                         <span className="text-sm text-[var(--color-text-muted)]">Ninguna</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <ul className="grid gap-1">
-                        {quote.items.map((item) => (
-                          <li key={item.id}>
-                            {item.description} — {Number(item.quantity).toFixed(2)} ×{" "}
-                            {formatCents(item.unitPriceCents)} = {formatCents(item.totalCents)}
-                          </li>
-                        ))}
-                      </ul>
-                    </TableCell>
                     <TableCell>{formatCents(quote.subtotalCents)}</TableCell>
                     <TableCell>{formatCents(quote.taxCents)}</TableCell>
                     <TableCell className="font-medium">{formatCents(quote.totalCents)}</TableCell>
                     <TableCell>{quote.validUntil ? formatDate(quote.validUntil) : "—"}</TableCell>
+                    <TableCell>
+                      <QuotePreviewDialog quote={quote} />
+                    </TableCell>
                     <TableCell>
                       {quote.status === "DRAFT" && !quote.workOrder ? (
                         <QuoteApprovalForm

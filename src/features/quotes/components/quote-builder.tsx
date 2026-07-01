@@ -2,9 +2,7 @@
 
 import * as React from "react";
 import { useFormStatus } from "react-dom";
-import { QuoteItemType } from "@prisma/client";
 import {
-  Badge,
   Button,
   Card,
   CardContent,
@@ -21,8 +19,22 @@ import {
   SelectValue,
   Textarea,
 } from "@/components/ui";
-import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
+import {
+  calculateTotals,
+  emptyItem,
+  getStepError,
+  isItemComplete,
+  ItemFormValue,
+  maxQuantity,
+  Step,
+  steps,
+  validateItemValue,
+} from "./quote-builder-shared";
+import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
+import { QuoteBuilderStepper } from "./quote-builder-stepper";
+import { QuotePreviewCard } from "./quote-preview-card";
+import { QuoteSummaryCard } from "./quote-summary-card";
 
 type CustomerOption = {
   id: string;
@@ -32,162 +44,13 @@ type CustomerOption = {
 type QuoteBuilderProps = {
   customers: CustomerOption[];
   createAction: (formData: FormData) => void | Promise<void>;
+  onCancel?: () => void;
 };
 
-type Step = "client" | "items" | "notes" | "summary" | "preview";
-
-type ItemFormValue = {
-  type: QuoteItemType;
-  description: string;
-  quantity: string;
-  unitPrice: string;
-};
-
-const steps: Step[] = ["client", "items", "notes", "summary", "preview"];
-
-const stepLabels: Record<Step, string> = {
-  client: "Cliente / Unidad",
-  items: "Conceptos",
-  notes: "Notas",
-  summary: "Resumen",
-  preview: "Enviar",
-};
-
-const itemTypes: QuoteItemType[] = ["LABOR", "MATERIAL", "SERVICE", "OTHER"];
-const maxQuantity = 100;
-const maxUnitPrice = 50_000;
-
-const itemTypeLabels: Record<QuoteItemType, string> = {
-  SERVICE: "Servicio",
-  MATERIAL: "Material",
-  LABOR: "Mano de obra",
-  EQUIPMENT: "Equipo",
-  OTHER: "Otro",
-};
-
-const emptyItem: ItemFormValue = {
-  type: "LABOR",
-  description: "",
-  quantity: "",
-  unitPrice: "",
-};
-
-function calculateTotals(items: ItemFormValue[], taxEnabled: boolean) {
-  let subtotalCents = 0;
-
-  for (const item of items) {
-    const quantity = Number(item.quantity);
-    const unitPrice = Number(item.unitPrice);
-
-    if (item.description.trim() && Number.isFinite(quantity) && quantity > 0 && Number.isFinite(unitPrice) && unitPrice >= 0) {
-      subtotalCents += Math.round(quantity * unitPrice * 100);
-    }
-  }
-
-  const taxCents = taxEnabled ? Math.round(subtotalCents * 0.16) : 0;
-
-  return { subtotalCents, taxCents, totalCents: subtotalCents + taxCents };
-}
-
-function validateItemValue(item: ItemFormValue, index: number): string | null {
-  const description = item.description.trim();
-  const quantity = item.quantity.trim();
-  const unitPrice = item.unitPrice.trim();
-  const hasAnyValue = description !== "" || quantity !== "" || unitPrice !== "";
-
-  if (!hasAnyValue) {
-    return null;
-  }
-
-  if (description === "") {
-    return `El concepto ${index + 1} necesita una descripción.`;
-  }
-
-  if (description.length > 240) {
-    return `La descripción del concepto ${index + 1} es muy larga.`;
-  }
-
-  if (quantity === "") {
-    return `El concepto ${index + 1} necesita una cantidad.`;
-  }
-
-  const quantityNum = Number(quantity);
-  if (!Number.isFinite(quantityNum) || quantityNum <= 0) {
-    return `La cantidad del concepto ${index + 1} debe ser mayor a 0.`;
-  }
-
-  if (quantityNum > maxQuantity) {
-    return `La cantidad del concepto ${index + 1} no puede ser mayor a ${maxQuantity}.`;
-  }
-
-  if (Number(quantityNum.toFixed(2)) !== quantityNum) {
-    return `La cantidad del concepto ${index + 1} admite hasta 2 decimales.`;
-  }
-
-  if (unitPrice === "") {
-    return `El concepto ${index + 1} necesita un precio unitario.`;
-  }
-
-  const unitPriceNum = Number(unitPrice);
-  if (!Number.isFinite(unitPriceNum) || unitPriceNum < 0) {
-    return `El precio unitario del concepto ${index + 1} no puede ser negativo.`;
-  }
-
-  if (unitPriceNum > maxUnitPrice) {
-    return `El precio unitario del concepto ${index + 1} es demasiado alto.`;
-  }
-
-  if (Math.round(quantityNum * unitPriceNum * 100) > 2_147_483_647) {
-    return `El total del concepto ${index + 1} es demasiado alto.`;
-  }
-
-  return null;
-}
-
-function isItemComplete(item: ItemFormValue): boolean {
-  const description = item.description.trim();
-  const quantityNum = Number(item.quantity.trim());
-  const unitPriceNum = Number(item.unitPrice.trim());
-
-  return (
-    description.length > 0 &&
-    Number.isFinite(quantityNum) &&
-    quantityNum > 0 &&
-    Number.isFinite(unitPriceNum) &&
-    unitPriceNum >= 0
-  );
-}
-
-function getStepError(step: Step, state: {
-  customerId: string;
-  vehicle: { model: string };
-  title: string;
-  items: ItemFormValue[];
-}): string | null {
-  if (step === "client") {
-    if (!state.customerId) return "Selecciona un cliente.";
-    return null;
-  }
-
-  if (step === "items") {
-    const rowError = state.items
-      .map((item, index) => validateItemValue(item, index))
-      .find(Boolean);
-    if (rowError) return rowError;
-
-    return state.items.some(isItemComplete) ? null : "Ingresa al menos un concepto completo.";
-  }
-
-  if (step === "notes") {
-    return state.title.trim() ? null : "Ingresa el título de la cotización.";
-  }
-
-  return null;
-}
-
-export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
+export function QuoteBuilder({ customers, createAction, onCancel }: QuoteBuilderProps) {
   const [step, setStep] = React.useState<Step>("client");
   const [stepError, setStepError] = React.useState<string | null>(null);
+  const [showItemValidation, setShowItemValidation] = React.useState(false);
   const [customerId, setCustomerId] = React.useState("");
   const [vehicle, setVehicle] = React.useState({
     plate: "",
@@ -199,9 +62,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
   const [description, setDescription] = React.useState("");
   const [administrative, setAdministrative] = React.useState(false);
   const [taxEnabled, setTaxEnabled] = React.useState(true);
-  const [items, setItems] = React.useState<ItemFormValue[]>(() =>
-    [{ ...emptyItem }],
-  );
+  const [items, setItems] = React.useState<ItemFormValue[]>(() => [{ ...emptyItem }]);
 
   const currentStepIndex = steps.indexOf(step);
   const { subtotalCents, taxCents, totalCents } = calculateTotals(items, taxEnabled);
@@ -210,6 +71,15 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
   const validUntil = createQuoteValidUntil();
 
   function addItem() {
+    const firstInvalidIndex = items.findIndex((item, index) => validateItemValue(item, index));
+
+    if (firstInvalidIndex !== -1) {
+      setShowItemValidation(true);
+      return;
+    }
+
+    setShowItemValidation(false);
+    setStepError(null);
     setItems((prev) => [...prev, { ...emptyItem }]);
   }
 
@@ -225,15 +95,46 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
     });
   }
 
-  function goToNext() {
-    const error = getStepError(step, { customerId, vehicle, title, items });
+  function adjustItemQuantity(index: number, delta: number) {
+    setItems((prev) => {
+      const next = [...prev];
+      const currentQuantity = Number(next[index]?.quantity);
+      const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
+      const nextQuantity = Math.min(maxQuantity, Math.max(1, baseQuantity + delta));
+      next[index] = { ...next[index], quantity: String(nextQuantity) };
+      return next;
+    });
+  }
 
-    if (error) {
-      setStepError(error);
-      return;
+  function goToNext() {
+    if (step === "items") {
+      const firstInvalidIndex = items.findIndex((item, index) => validateItemValue(item, index));
+
+      if (firstInvalidIndex !== -1) {
+        setShowItemValidation(true);
+        setStepError(null);
+        return;
+      }
+
+      if (completeItems.length === 0) {
+        setStepError("Ingresa al menos un concepto completo.");
+        setShowItemValidation(false);
+        return;
+      }
+
+      setShowItemValidation(false);
+      setStepError(null);
+    } else {
+      const error = getStepError(step, { customerId, vehicle, title, items });
+
+      if (error) {
+        setStepError(error);
+        return;
+      }
+
+      setStepError(null);
     }
 
-    setStepError(null);
     const nextIndex = currentStepIndex + 1;
 
     if (nextIndex < steps.length) {
@@ -243,6 +144,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
 
   function goToPrevious() {
     setStepError(null);
+    setShowItemValidation(false);
     const prevIndex = currentStepIndex - 1;
 
     if (prevIndex >= 0) {
@@ -268,7 +170,7 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
             }
           }}
         >
-          <Stepper steps={steps} current={step} onChange={setStep} />
+          <QuoteBuilderStepper current={step} onChange={setStep} />
 
           {stepError ? (
             <p
@@ -344,103 +246,17 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
           </section>
 
           {/* Step 2: Conceptos */}
-          <section hidden={step !== "items"} className="grid gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-[var(--color-text-main)]">Conceptos</h3>
-              {completeItems.length > 0 ? (
-                <Badge variant="info">{completeItems.length} completos</Badge>
-              ) : null}
-            </div>
-
-            {items.map((item, index) => (
-              <div
-                key={index}
-                className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-[var(--color-text-main)]">Concepto {index + 1}</span>
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={item.type}
-                      onValueChange={(value) => updateItem(index, { type: value as QuoteItemType })}
-                    >
-                      <SelectTrigger className="w-auto min-w-[140px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {itemTypes.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {itemTypeLabels[type]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      aria-label={`Eliminar concepto ${index + 1}`}
-                      onClick={() => removeItem(index)}
-                      className="h-8 w-8 p-0 text-[var(--color-status-danger-fg)] hover:bg-[var(--color-status-danger-bg)]"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </div>
-                <input type="hidden" name={`items.${index}.type`} value={item.type} />
-                <div className="grid gap-2">
-                  <Label htmlFor={`items-${index}-description`}>Descripción</Label>
-                  <Input
-                    id={`items-${index}-description`}
-                    name={`items.${index}.description`}
-                    value={item.description}
-                    onChange={(event) => updateItem(index, { description: event.target.value })}
-                    placeholder="Ej. Bajar dos muelles"
-                  />
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor={`items-${index}-quantity`}>Cantidad</Label>
-                    <Input
-                      id={`items-${index}-quantity`}
-                      name={`items.${index}.quantity`}
-                      type="number"
-                      min="0.01"
-                      max={maxQuantity}
-                      step="0.01"
-                      value={item.quantity}
-                      onChange={(event) => updateItem(index, { quantity: event.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor={`items-${index}-unitPrice`}>Precio unitario</Label>
-                    <Input
-                      id={`items-${index}-unitPrice`}
-                      name={`items.${index}.unitPrice`}
-                      type="number"
-                      min="0"
-                      max={maxUnitPrice}
-                      step="0.01"
-                      value={item.unitPrice}
-                      onChange={(event) => updateItem(index, { unitPrice: event.target.value })}
-                    />
-                  </div>
-                </div>
-                {validateItemValue(item, index) ? (
-                  <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-3 py-2 text-sm text-[var(--color-status-danger-fg)]" role="status" aria-live="polite">
-                    {validateItemValue(item, index)}
-                  </p>
-                ) : null}
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={addItem}
-              className="w-full"
-            >
-              + Agregar concepto
-            </Button>
-          </section>
+          <div hidden={step !== "items"}>
+            <QuoteBuilderItemsStep
+              items={items}
+              showItemValidation={showItemValidation}
+              completeItemsCount={completeItems.length}
+              onAddItem={addItem}
+              onRemoveItem={removeItem}
+              onUpdateItem={updateItem}
+              onAdjustQuantity={adjustItemQuantity}
+            />
+          </div>
 
           {/* Step 3: Notas */}
           <section hidden={step !== "notes"} className="grid gap-4">
@@ -482,49 +298,17 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
 
           {/* Step 4: Resumen */}
           <section hidden={step !== "summary"} className="grid gap-4">
-            <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-              <h3 className="font-semibold text-[var(--color-text-main)]">Cliente / Unidad</h3>
-              <p data-testid="summary-customer" className="text-sm text-[var(--color-text-main)]">
-                {selectedCustomer?.name ?? "Sin cliente seleccionado"}
-              </p>
-              <p data-testid="summary-vehicle" className="text-sm text-[var(--color-text-muted)]">
-                {[vehicle.brand, vehicle.model, vehicle.year, vehicle.plate]
-                  .filter(Boolean)
-                  .join(" · ") || "Sin datos de vehículo"}
-              </p>
-            </div>
-
-            <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-              <h3 className="font-semibold text-[var(--color-text-main)]">Conceptos</h3>
-              {completeItems.length === 0 ? (
-                <p className="text-sm text-[var(--color-text-muted)]">Sin conceptos.</p>
-              ) : (
-                <ul className="grid gap-2">
-                  {completeItems.map((item, index) => (
-                    <li
-                      key={index}
-                      className="flex items-start justify-between gap-3 text-sm text-[var(--color-text-main)]"
-                    >
-                      <span>
-                        {item.description} ({itemTypeLabels[item.type]})
-                      </span>
-                      <span className="whitespace-nowrap text-[var(--color-text-muted)]">
-                        {Number(item.quantity).toFixed(2)} × {formatCents(Number(item.unitPrice) * 100)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-              <h3 className="font-semibold text-[var(--color-text-main)]">Notas</h3>
-              <p className="text-sm text-[var(--color-text-main)]">{title || "Sin título"}</p>
-              {description ? <p className="text-sm text-[var(--color-text-muted)]">{description}</p> : null}
-              {administrative ? <Badge variant="info">Administrativa</Badge> : null}
-            </div>
-
-            <QuoteTotalsCard subtotalCents={subtotalCents} taxCents={taxCents} totalCents={totalCents} />
+            <QuoteSummaryCard
+              customerName={selectedCustomer?.name ?? ""}
+              vehicle={vehicle}
+              title={title}
+              description={description}
+              administrative={administrative}
+              items={completeItems}
+              subtotalCents={subtotalCents}
+              taxCents={taxCents}
+              totalCents={totalCents}
+            />
           </section>
 
           {/* Step 5: Preview / Enviar */}
@@ -544,7 +328,16 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
           </section>
 
           <div className="sticky bottom-0 z-30 -mx-[var(--space-md)] mt-2 flex items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-md)]">
-            {currentStepIndex > 0 ? (
+            {step === "client" ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                className="min-w-[96px]"
+              >
+                Cancelar
+              </Button>
+            ) : (
               <Button
                 type="button"
                 variant="outline"
@@ -553,8 +346,6 @@ export function QuoteBuilder({ customers, createAction }: QuoteBuilderProps) {
               >
                 Anterior
               </Button>
-            ) : (
-              <span aria-hidden="true" className="min-w-[96px]" />
             )}
 
             {step === "preview" ? (
@@ -590,165 +381,5 @@ function CreateQuoteSubmitButton() {
     >
       {pending ? "Creando..." : "Crear cotización"}
     </Button>
-  );
-}
-
-function Stepper({
-  steps,
-  current,
-  onChange,
-}: {
-  steps: Step[];
-  current: Step;
-  onChange?: (step: Step) => void;
-}) {
-  const currentIndex = steps.indexOf(current);
-
-  return (
-    <nav aria-label="Pasos de cotización">
-      <ol className="flex items-center justify-between gap-1">
-        {steps.map((step, index) => {
-          const isActive = step === current;
-          const isCompleted = index < currentIndex;
-          const isClickable = onChange && (isCompleted || index <= currentIndex);
-
-          return (
-            <li key={step} className="flex flex-1 flex-col items-center gap-1">
-              <button
-                type="button"
-                onClick={() => isClickable && onChange?.(step)}
-                disabled={!isClickable}
-                aria-current={isActive ? "step" : undefined}
-                aria-label={`Paso ${index + 1}: ${stepLabels[step]}`}
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
-                  isActive
-                    ? "bg-[var(--color-primary)] text-white"
-                    : isCompleted
-                      ? "bg-[var(--color-status-success)] text-white"
-                      : "bg-[var(--color-bg-soft)] text-[var(--color-text-muted)]"
-                } disabled:cursor-not-allowed disabled:opacity-60`}
-              >
-                {isCompleted ? "✓" : index + 1}
-              </button>
-              <span
-                className={`text-center text-[10px] font-medium leading-tight sm:text-xs ${
-                  isActive ? "text-[var(--color-text-main)]" : "text-[var(--color-text-muted)]"
-                }`}
-              >
-                {stepLabels[step]}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}
-
-function QuoteTotalsCard({
-  subtotalCents,
-  taxCents,
-  totalCents,
-}: {
-  subtotalCents: number;
-  taxCents: number;
-  totalCents: number;
-}) {
-  return (
-    <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
-      <div className="flex items-center justify-between text-sm text-[var(--color-text-muted)]">
-        <span>Subtotal</span>
-        <span data-testid="quote-subtotal">{formatCents(subtotalCents)}</span>
-      </div>
-      <div className="flex items-center justify-between text-sm text-[var(--color-text-muted)]">
-        <span>IVA</span>
-        <span data-testid="quote-tax">{formatCents(taxCents)}</span>
-      </div>
-      <div className="flex items-center justify-between border-t border-[var(--color-border-light)] pt-2 text-lg font-bold text-[var(--color-primary)]">
-        <span>Total</span>
-        <span data-testid="quote-total">{formatCents(totalCents)}</span>
-      </div>
-    </div>
-  );
-}
-
-function QuotePreviewCard({
-  customerName,
-  vehicle,
-  title,
-  description,
-  administrative,
-  items,
-  subtotalCents,
-  taxCents,
-  totalCents,
-  validUntil,
-}: {
-  customerName: string;
-  vehicle: { plate: string; brand: string; model: string; year: string };
-  title: string;
-  description: string;
-  administrative: boolean;
-  items: ItemFormValue[];
-  subtotalCents: number;
-  taxCents: number;
-  totalCents: number;
-  validUntil: Date;
-}) {
-  const vehicleDescription = [vehicle.brand, vehicle.model, vehicle.year, vehicle.plate]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
-    <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm">
-      <div className="bg-[image:var(--gradient-primary)] px-5 py-4 text-white">
-        <p className="text-xs font-medium opacity-90">Vista previa de cotización</p>
-        <p className="text-lg font-bold">{title || "Sin título"}</p>
-      </div>
-      <div className="grid gap-4 p-4">
-        <div>
-          <p className="text-xs font-medium text-[var(--color-text-muted)]">CLIENTE</p>
-          <p className="text-sm font-medium text-[var(--color-text-main)]">{customerName || "Sin cliente"}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-[var(--color-text-muted)]">UNIDAD</p>
-          <p className="text-sm text-[var(--color-text-main)]">{vehicleDescription || "Sin vehículo"}</p>
-        </div>
-        {administrative ? <Badge variant="info">Cotización administrativa</Badge> : null}
-        {description ? <p className="text-sm text-[var(--color-text-muted)]">{description}</p> : null}
-
-        <div className="grid gap-2">
-          <p className="text-xs font-medium text-[var(--color-text-muted)]">CONCEPTOS</p>
-          {items.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-muted)]">Sin conceptos.</p>
-          ) : (
-            <ul className="grid gap-2">
-              {items.map((item, index) => (
-                <li
-                  key={index}
-                  className="flex items-start justify-between gap-3 border-b border-[var(--color-border-light)] pb-2 text-sm text-[var(--color-text-main)] last:border-0 last:pb-0"
-                >
-                  <span>
-                    {item.description} ({itemTypeLabels[item.type]})
-                  </span>
-                  <span className="whitespace-nowrap text-[var(--color-text-muted)]">
-                    {formatCents(Math.round(Number(item.quantity) * Number(item.unitPrice) * 100))}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <QuoteTotalsCard subtotalCents={subtotalCents} taxCents={taxCents} totalCents={totalCents} />
-
-        <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-sm text-[var(--color-text-muted)]">
-          <p data-testid="quote-validity">
-            Vigente hasta el {formatDate(validUntil)}. Los precios están sujetos a cambios imprevistos
-            en el costo de materiales.
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }

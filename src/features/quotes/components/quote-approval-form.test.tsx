@@ -4,56 +4,55 @@ import userEvent from "@testing-library/user-event";
 import { QuoteApprovalForm } from "./quote-approval-form";
 
 describe("QuoteApprovalForm", () => {
-  it("opens the confirmation dialog when the approve button is clicked", async () => {
+  it("calls the server action with quoteId when confirmed", async () => {
+    const action = vi.fn();
     const user = userEvent.setup();
-    render(<QuoteApprovalForm action={vi.fn()} quoteId="quote-123" quoteNumber="Q-001" />);
+    render(<QuoteApprovalForm action={action} quoteId="q-123" quoteNumber="C-001" />);
 
     await user.click(screen.getByRole("button", { name: /aprobar y crear orden de trabajo/i }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
 
-    const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveTextContent(/aprobar cotización/i);
-    expect(dialog).toHaveClass("w-[calc(100vw_-_2rem)]", "max-w-lg", "overflow-y-auto");
-    expect(screen.getByRole("button", { name: /aprobar y crear orden/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /cancelar/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /aprobar y crear orden/i }));
+
+    await waitFor(() => {
+      expect(action).toHaveBeenCalledTimes(1);
+    });
+    const formData = action.mock.calls[0][0] as FormData;
+    expect(formData.get("quoteId")).toBe("q-123");
   });
 
-  it("does not submit when the dialog is cancelled", async () => {
-    const user = userEvent.setup();
+  it("does not call the server action when the confirmation is cancelled", async () => {
     const action = vi.fn();
-    render(<QuoteApprovalForm action={action} quoteId="quote-123" quoteNumber="Q-001" />);
+    const user = userEvent.setup();
+    render(<QuoteApprovalForm action={action} quoteId="q-123" quoteNumber="C-001" />);
 
     await user.click(screen.getByRole("button", { name: /aprobar y crear orden de trabajo/i }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: /cancelar/i }));
 
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
     expect(action).not.toHaveBeenCalled();
   });
 
-  it("submits exactly one quoteId when confirmed", async () => {
-    const user = userEvent.setup();
-    const action = vi.fn().mockResolvedValue(undefined);
-    render(<QuoteApprovalForm action={action} quoteId="quote-123" quoteNumber="Q-001" />);
-
-    await user.click(screen.getByRole("button", { name: /aprobar y crear orden de trabajo/i }));
-    await user.click(screen.getByRole("button", { name: /aprobar y crear orden/i }));
-
-    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
-
-    const formData = action.mock.calls[0][0] as FormData;
-    expect(formData.get("quoteId")).toBe("quote-123");
-  });
-
-  it("cannot double-submit while a confirmation is pending", async () => {
-    const user = userEvent.setup();
+  it("prevents double submission while the approval is pending", async () => {
     const action = vi.fn(() => new Promise<void>(() => {}));
-    render(<QuoteApprovalForm action={action} quoteId="quote-123" quoteNumber="Q-001" />);
+    const user = userEvent.setup();
+    render(<QuoteApprovalForm action={action} quoteId="q-123" quoteNumber="C-001" />);
 
     await user.click(screen.getByRole("button", { name: /aprobar y crear orden de trabajo/i }));
     const confirmButton = screen.getByRole("button", { name: /aprobar y crear orden/i });
 
     await user.click(confirmButton);
 
-    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(confirmButton).toBeDisabled());
+    await waitFor(() => {
+      expect(action).toHaveBeenCalledTimes(1);
+    });
+    expect(confirmButton).toBeDisabled();
+
+    await user.click(confirmButton);
+    expect(action).toHaveBeenCalledTimes(1);
   });
 });

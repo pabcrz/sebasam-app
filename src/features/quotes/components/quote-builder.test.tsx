@@ -38,6 +38,7 @@ function fillItemsStep(user: ReturnType<typeof userEvent.setup>) {
     const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "Cambio de aceite");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "1");
     await user.type(unitPriceInput, "850");
   };
@@ -201,7 +202,7 @@ describe("QuoteBuilder", () => {
     expect(formData.get("year")).toBe("");
   });
 
-  it("blocks advancing when a row has quantity 0", async () => {
+  it("blocks advancing when a row quantity is empty", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -213,11 +214,11 @@ describe("QuoteBuilder", () => {
     const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "Cambio de aceite");
-    await user.type(quantityInput, "0");
+    await user.clear(quantityInput);
     await user.type(unitPriceInput, "850");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/cantidad.*mayor a 0/i);
+    expect(screen.getByText(/concepto 1 necesita una cantidad/i)).toBeInTheDocument();
   });
 
   it("blocks advancing when a row has a negative unit price", async () => {
@@ -232,30 +233,28 @@ describe("QuoteBuilder", () => {
     const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "Cambio de aceite");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "1");
     await user.type(unitPriceInput, "-100");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/precio unitario.*no puede ser negativo/i);
+    expect(screen.getByText(/precio unitario.*no puede ser negativo/i)).toBeInTheDocument();
   });
 
-  it("blocks advancing when a row quantity is greater than 100", async () => {
+  it("clamps quantity input to a maximum of 100 on blur", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    const [descriptionInput] = screen.getAllByLabelText(/descripción/i);
     const [quantityInput] = screen.getAllByLabelText(/cantidad/i);
-    const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
-    await user.type(descriptionInput, "Bajar dos muelles");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "101");
-    await user.type(unitPriceInput, "850");
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.tab();
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/cantidad.*no puede ser mayor a 100/i);
+    expect(quantityInput).toHaveValue("100");
   });
 
   it("blocks advancing when a row unit price is greater than 50000", async () => {
@@ -270,11 +269,12 @@ describe("QuoteBuilder", () => {
     const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "Bajar dos muelles");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "1");
     await user.type(unitPriceInput, "50000.01");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/precio unitario.*demasiado alto/i);
+    expect(screen.getByText(/precio unitario.*demasiado alto/i)).toBeInTheDocument();
   });
 
   it("blocks advancing when a row has a blank description", async () => {
@@ -284,6 +284,15 @@ describe("QuoteBuilder", () => {
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
+    const [firstDescriptionInput] = screen.getAllByLabelText(/descripción/i);
+    const [firstQuantityInput] = screen.getAllByLabelText(/cantidad/i);
+    const [firstUnitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
+
+    await user.type(firstDescriptionInput, "Cambio de aceite");
+    await user.clear(firstQuantityInput);
+    await user.type(firstQuantityInput, "1");
+    await user.type(firstUnitPriceInput, "850");
+
     // Add a second concept so the blank-description test targets row 2.
     await user.click(screen.getByRole("button", { name: "+ Agregar concepto" }));
 
@@ -292,30 +301,27 @@ describe("QuoteBuilder", () => {
     const [, unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
     await user.type(descriptionInput, "   ");
+    await user.clear(quantityInput);
     await user.type(quantityInput, "1");
     await user.type(unitPriceInput, "100");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/concepto 2 necesita una descripción/i);
+    expect(screen.getByText(/concepto 2 necesita una descripción/i)).toBeInTheDocument();
   });
 
-  it("blocks advancing when a row has too many decimal places in quantity", async () => {
+  it("strips non-digit characters from quantity input", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    const [descriptionInput] = screen.getAllByLabelText(/descripción/i);
     const [quantityInput] = screen.getAllByLabelText(/cantidad/i);
-    const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
 
-    await user.type(descriptionInput, "Cambio de aceite");
-    await user.type(quantityInput, "1.234");
-    await user.type(unitPriceInput, "850");
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "12.34");
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/cantidad.*admite hasta 2 decimales/i);
+    expect(quantityInput).toHaveValue("1234");
   });
 
   it("blocks advancing when a row is only partially filled", async () => {
@@ -329,7 +335,7 @@ describe("QuoteBuilder", () => {
     await user.type(descriptionInput, "Solo descripción");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/concepto 1 necesita una cantidad/i);
+    expect(screen.getByText(/concepto 1 necesita un precio unitario/i)).toBeInTheDocument();
   });
 
   it("prevents submission from hidden steps", async () => {

@@ -63,7 +63,7 @@ export function PaymentRequestLinkDialog({ action, quoteNumber }: PaymentRequest
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Link de pago</DialogTitle>
             <DialogDescription>
