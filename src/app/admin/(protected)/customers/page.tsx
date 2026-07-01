@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Search, X } from "lucide-react";
 import { createCustomerFromForm } from "@/features/customers/actions";
 import { listCustomers } from "@/features/customers/queries";
+import { customerSearchSchema } from "@/features/customers/schemas";
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@/components/ui";
 import { CustomerCreateForm } from "@/features/customers/components/customer-create-form";
 import { CustomerCardList } from "@/features/customers/components/customer-card-list";
@@ -20,10 +21,10 @@ type CustomersPageProps = {
   }>;
 };
 
-
 export default async function CustomersPage({ searchParams }: CustomersPageProps) {
   const params = await searchParams;
-  const query = params.q ?? "";
+  const parsedSearch = customerSearchSchema.safeParse({ query: params.q });
+  const query = parsedSearch.success ? parsedSearch.data.query : "";
   const customers = await listCustomers({ query });
 
   return (
@@ -67,7 +68,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
             <Input
               name="q"
               defaultValue={query}
-              placeholder="Buscar por nombre, teléfono, correo, dirección o notas"
+              placeholder="Buscar por nombre, teléfono, correo, dirección, placas o notas"
               className="flex-1"
             />
             <Button type="submit" variant="secondary" className="w-full sm:w-fit">
@@ -83,7 +84,27 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
             ) : null}
           </form>
 
-          <CustomerCardList customers={customers} />
+          {customers.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-sm text-[var(--color-text-muted)]">
+                No se encontraron clientes.
+              </p>
+              {query ? (
+                <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                  <Link href="/admin/customers" className="text-[var(--color-primary)] hover:underline">
+                    Limpiar búsqueda
+                  </Link>{" "}
+                  o da de alta un nuevo cliente.
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                  Da de alta un nuevo cliente para comenzar.
+                </p>
+              )}
+            </div>
+          ) : (
+            <CustomerCardList customers={customers} />
+          )}
         </CardContent>
       </Card>
     </section>

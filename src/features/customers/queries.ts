@@ -17,6 +17,7 @@ export async function listCustomers(input: unknown = {}) {
             { phone: { contains: search, mode: "insensitive" } },
             { address: { contains: search, mode: "insensitive" } },
             { notes: { contains: search, mode: "insensitive" } },
+            { vehicles: { some: { plate: { contains: search, mode: "insensitive" } } } },
           ],
         }
       : undefined,

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import {
   createQuoteFromForm,
@@ -7,12 +8,15 @@ import {
 } from "@/features/quotes/actions";
 import { listQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
+import { quoteFilterSchema, type QuoteFilterInput } from "@/features/quotes/schemas";
 import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader } from "@/components/ui";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { QuoteListRow } from "@/features/quotes/components/quote-list-row";
 import { QuoteMobileCard } from "@/features/quotes/components/quote-mobile-card";
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
+import { QuoteFilters } from "@/features/quotes/components/quote-filters";
+import { hasFilterValue } from "@/lib/filters";
 
 export const metadata: Metadata = {
   title: "Cotizaciones",
@@ -23,6 +27,12 @@ type QuotesPageProps = {
     approved?: string;
     created?: string;
     error?: string;
+    status?: string;
+    customerId?: string;
+    number?: string;
+    plate?: string;
+    dateFrom?: string;
+    dateTo?: string;
   }>;
 };
 
@@ -61,9 +71,12 @@ const workOrderStatusBadgeVariant: Record<
   CANCELLED: "danger",
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default async function QuotesPage({ searchParams: _searchParams }: QuotesPageProps) {
-  const [customers, quotes] = await Promise.all([listCustomers(), listQuotes()]);
+export default async function QuotesPage({ searchParams }: QuotesPageProps) {
+  const params = await searchParams;
+  const parsedFilters = quoteFilterSchema.safeParse(params);
+  const filters = parsedFilters.success ? parsedFilters.data : {} as QuoteFilterInput;
+  const hasFilters = hasFilterValue(filters);
+  const [customers, quotes] = await Promise.all([listCustomers(), listQuotes(filters)]);
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
@@ -87,6 +100,10 @@ export default async function QuotesPage({ searchParams: _searchParams }: Quotes
           <CardTitle as="h2">Cotizaciones recientes</CardTitle>
         </CardHeader>
         <CardContent className="min-w-0">
+          <div className="mb-6 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
+            <QuoteFilters filters={filters} customers={customers} />
+          </div>
+
           {/* Desktop table */}
           <div className="hidden md:block">
             <Table>
@@ -118,8 +135,22 @@ export default async function QuotesPage({ searchParams: _searchParams }: Quotes
                 ))}
                 {quotes.length === 0 ? (
                   <tr>
-                    <TableCell colSpan={8} className="py-6 text-center text-[var(--color-text-muted)]">
-                      No se encontraron cotizaciones.
+                    <TableCell colSpan={8} className="py-8 text-center">
+                      <p className="text-[var(--color-text-muted)]">
+                        No se encontraron cotizaciones.
+                      </p>
+                      {hasFilters ? (
+                        <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                          <Link href="/admin/quotes" className="text-[var(--color-primary)] hover:underline">
+                            Limpiar filtros
+                          </Link>{" "}
+                          o crea una nueva cotización.
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                          Crea una nueva cotización para comenzar.
+                        </p>
+                      )}
                     </TableCell>
                   </tr>
                 ) : null}
@@ -143,9 +174,23 @@ export default async function QuotesPage({ searchParams: _searchParams }: Quotes
               />
             ))}
             {quotes.length === 0 ? (
-              <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">
-                No se encontraron cotizaciones.
-              </p>
+              <div className="py-8 text-center">
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  No se encontraron cotizaciones.
+                </p>
+                {hasFilters ? (
+                  <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                    <Link href="/admin/quotes" className="text-[var(--color-primary)] hover:underline">
+                      Limpiar filtros
+                    </Link>{" "}
+                    o crea una nueva cotización.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                    Crea una nueva cotización para comenzar.
+                  </p>
+                )}
+              </div>
             ) : null}
           </div>
         </CardContent>
