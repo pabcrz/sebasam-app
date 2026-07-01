@@ -9,8 +9,8 @@ import type { QuoteFilterInput } from "@/features/quotes/schemas";
 const quoteStatusLabels: Record<QuoteStatus, string> = {
   DRAFT: "Borrador",
   SENT: "Enviada",
-  APPROVED: "Aprobada",
-  REJECTED: "Rechazada",
+  APPROVED: "Aceptada",
+  REJECTED: "Declinada",
   CANCELLED: "Cancelada",
 };
 

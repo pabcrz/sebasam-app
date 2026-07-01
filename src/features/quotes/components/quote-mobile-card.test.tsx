@@ -91,6 +91,7 @@ function renderCard(quote: QuoteListItem) {
       approveAction={vi.fn()}
       cancelAction={vi.fn()}
       shareAction={vi.fn()}
+      authorizeAction={vi.fn(() => Promise.resolve({ success: true }))}
       paymentRequestAction={vi.fn(() => Promise.resolve({ id: "pr-1", token: "token-1" } as PaymentRequest))}
     />,
   );
@@ -147,6 +148,12 @@ describe("QuoteMobileCard", () => {
     }));
 
     expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
+  });
+
+  it("renders authorize button for sent quotes", () => {
+    renderCard(createMockQuote({ status: "SENT" }));
+
+    expect(screen.getByRole("button", { name: /autorizar cotización c-001/i })).toBeInTheDocument();
   });
 
   it("does not render actions for cancelled quotes", () => {

@@ -64,6 +64,11 @@ enum PaymentRequestStatus {
   CANCELLED
 }
 
+enum QuoteDecisionOrigin {
+  CUSTOMER
+  ADMIN
+}
+
 enum PersonType {
   INDIVIDUAL
   BUSINESS
@@ -144,6 +149,7 @@ model Quote {
   workOrder       WorkOrder?
   paymentRequests PaymentRequest[]
   sharedQuotes    SharedQuote[]
+  decisions       QuoteDecision[]
 }
 
 model SharedQuote {
@@ -158,6 +164,20 @@ model SharedQuote {
 
   @@index([quoteId])
   @@index([token])
+}
+
+model QuoteDecision {
+  id        String             @id @default(cuid())
+  quoteId   String
+  status    QuoteStatus
+  origin    QuoteDecisionOrigin
+  actorId   String?
+  note      String?
+  createdAt DateTime           @default(now())
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
 }
 
 model QuoteItem {

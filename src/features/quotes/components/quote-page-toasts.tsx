@@ -28,7 +28,7 @@ export function QuotePageToasts() {
     }
 
     if (params.get("approved")) {
-      toast.success("Cotización aprobada y orden de trabajo creada.", { id: "quote-approved" });
+      toast.success("Cotización aceptada.", { id: "quote-approved" });
       params.delete("approved");
       changed = true;
     }

@@ -14,7 +14,17 @@ import {
   createQuoteValidUntil,
 } from "./lib/calculate";
 import { nextQuoteNumber, nextWorkOrderNumber } from "./lib/sequence";
-import { getOrCreateSharedQuoteForQuote, SharedQuoteOperationError } from "./domain";
+import {
+  getOrCreateSharedQuoteForQuote,
+  SharedQuoteOperationError,
+  QuoteDecisionError,
+  acceptSharedQuote,
+  declineSharedQuote,
+  authorizeQuote,
+  SharedQuoteExpiredError,
+  SharedQuoteRevokedError,
+  SharedQuoteNotFoundError,
+} from "./domain";
 
 const quotesPath = "/admin/quotes";
 
@@ -374,4 +384,77 @@ export async function shareQuoteFromForm(formData: FormData) {
 
   revalidatePath(quotesPath);
   redirect(`${quotesPath}?shared=1`);
+}
+
+// --- Public accept / decline (no auth required; token is the authorization) ---
+
+export async function acceptSharedQuoteAction(token: string) {
+  try {
+    await acceptSharedQuote(token);
+  } catch (error) {
+    if (error instanceof SharedQuoteExpiredError) {
+      return { success: false, error: "El enlace de esta cotización expiró." };
+    }
+    if (error instanceof SharedQuoteRevokedError) {
+      return { success: false, error: "El enlace de esta cotización fue revocado." };
+    }
+    if (error instanceof SharedQuoteNotFoundError) {
+      return { success: false, error: "El enlace de esta cotización no es válido o ya no existe." };
+    }
+    if (error instanceof QuoteDecisionError) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: false, error: "No se pudo aceptar la cotización." };
+  }
+
+  revalidatePath(`/cotizacion/${token}`);
+  return { success: true };
+}
+
+export async function declineSharedQuoteAction(token: string) {
+  try {
+    await declineSharedQuote(token);
+  } catch (error) {
+    if (error instanceof SharedQuoteExpiredError) {
+      return { success: false, error: "El enlace de esta cotización expiró." };
+    }
+    if (error instanceof SharedQuoteRevokedError) {
+      return { success: false, error: "El enlace de esta cotización fue revocado." };
+    }
+    if (error instanceof SharedQuoteNotFoundError) {
+      return { success: false, error: "El enlace de esta cotización no es válido o ya no existe." };
+    }
+    if (error instanceof QuoteDecisionError) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: false, error: "No se pudo declinar la cotización." };
+  }
+
+  revalidatePath(`/cotizacion/${token}`);
+  return { success: true };
+}
+
+// --- Admin authorization (auth required) ---
+
+export async function authorizeQuoteAction(quoteId: string, note: string) {
+  const { profile } = await requireOperationalRole();
+
+  if (typeof note !== "string" || note.trim().length === 0) {
+    return { success: false, error: "La nota de autorización es obligatoria." };
+  }
+
+  try {
+    await authorizeQuote(quoteId, note, profile.id);
+  } catch (error) {
+    if (error instanceof QuoteDecisionError) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: false, error: "No se pudo autorizar la cotización." };
+  }
+
+  revalidatePath(quotesPath);
+  return { success: true };
 }

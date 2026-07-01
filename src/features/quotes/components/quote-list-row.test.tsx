@@ -93,6 +93,7 @@ function renderRow(quote: QuoteListItem) {
           approveAction={vi.fn()}
           cancelAction={vi.fn()}
           shareAction={vi.fn()}
+          authorizeAction={vi.fn(() => Promise.resolve({ success: true }))}
           paymentRequestAction={vi.fn(() => Promise.resolve({ id: "pr-1", token: "token-1" } as PaymentRequest))}
         />
       </tbody>

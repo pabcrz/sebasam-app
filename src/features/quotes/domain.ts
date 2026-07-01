@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { QuoteStatus, type Prisma } from "@prisma/client";
+import { QuoteDecisionOrigin, QuoteStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const SHARED_QUOTE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -36,6 +36,13 @@ export class SharedQuoteOperationError extends SharedQuoteError {
   constructor(message: string) {
     super(message);
     this.name = "SharedQuoteOperationError";
+  }
+}
+
+export class QuoteDecisionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "QuoteDecisionError";
   }
 }
 
@@ -161,5 +168,108 @@ export async function getOrCreateSharedQuoteForQuote(quoteId: string) {
     }
 
     return createSharedQuoteInTransaction(tx, quoteId);
+  });
+}
+
+// --- Quote decision (accept / decline / authorize) ---
+
+export async function acceptSharedQuote(token: string) {
+  return prisma.$transaction(async (tx) => {
+    const sharedQuote = await tx.sharedQuote.findFirst({
+      where: { token, revokedAt: null, expiresAt: { gte: new Date() } },
+      include: { quote: true },
+    });
+
+    if (!sharedQuote) {
+      const existing = await tx.sharedQuote.findUnique({ where: { token } });
+      if (!existing) throw new SharedQuoteNotFoundError();
+      if (existing.revokedAt) throw new SharedQuoteRevokedError();
+      throw new SharedQuoteExpiredError();
+    }
+
+    const result = await tx.quote.updateMany({
+      where: { id: sharedQuote.quoteId, status: QuoteStatus.SENT },
+      data: { status: QuoteStatus.APPROVED, approvedAt: new Date() },
+    });
+
+    if (result.count !== 1) {
+      throw new QuoteDecisionError("Solo se puede aceptar una cotización en estado enviado.");
+    }
+
+    return tx.quoteDecision.create({
+      data: {
+        quoteId: sharedQuote.quoteId,
+        status: QuoteStatus.APPROVED,
+        origin: QuoteDecisionOrigin.CUSTOMER,
+      },
+    });
+  });
+}
+
+export async function declineSharedQuote(token: string) {
+  return prisma.$transaction(async (tx) => {
+    const sharedQuote = await tx.sharedQuote.findFirst({
+      where: { token, revokedAt: null, expiresAt: { gte: new Date() } },
+      include: { quote: true },
+    });
+
+    if (!sharedQuote) {
+      const existing = await tx.sharedQuote.findUnique({ where: { token } });
+      if (!existing) throw new SharedQuoteNotFoundError();
+      if (existing.revokedAt) throw new SharedQuoteRevokedError();
+      throw new SharedQuoteExpiredError();
+    }
+
+    const result = await tx.quote.updateMany({
+      where: { id: sharedQuote.quoteId, status: QuoteStatus.SENT },
+      data: { status: QuoteStatus.REJECTED },
+    });
+
+    if (result.count !== 1) {
+      throw new QuoteDecisionError("Solo se puede declinar una cotización en estado enviado.");
+    }
+
+    return tx.quoteDecision.create({
+      data: {
+        quoteId: sharedQuote.quoteId,
+        status: QuoteStatus.REJECTED,
+        origin: QuoteDecisionOrigin.CUSTOMER,
+      },
+    });
+  });
+}
+
+export async function authorizeQuote(quoteId: string, note: string, actorId?: string) {
+  const trimmedNote = note.trim();
+
+  if (trimmedNote.length === 0) {
+    throw new QuoteDecisionError("La nota de autorización es obligatoria.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({ where: { id: quoteId } });
+
+    if (!quote) {
+      throw new QuoteDecisionError("Cotización no encontrada.");
+    }
+
+    const result = await tx.quote.updateMany({
+      where: { id: quoteId, status: QuoteStatus.SENT },
+      data: { status: QuoteStatus.APPROVED, approvedAt: new Date() },
+    });
+
+    if (result.count !== 1) {
+      throw new QuoteDecisionError("Solo se puede autorizar una cotización en estado enviado.");
+    }
+
+    return tx.quoteDecision.create({
+      data: {
+        quoteId,
+        status: QuoteStatus.APPROVED,
+        origin: QuoteDecisionOrigin.ADMIN,
+        actorId: actorId ?? null,
+        note: trimmedNote,
+      },
+    });
   });
 }

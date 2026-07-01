@@ -3,8 +3,8 @@ import { QuoteStatus, WorkOrderStatus } from "@prisma/client";
 export const quoteStatusLabels: Record<QuoteStatus, string> = {
   DRAFT: "Borrador",
   SENT: "Enviada",
-  APPROVED: "Aprobada",
-  REJECTED: "Rechazada",
+  APPROVED: "Aceptada",
+  REJECTED: "Declinada",
   CANCELLED: "Cancelada",
 };
 
