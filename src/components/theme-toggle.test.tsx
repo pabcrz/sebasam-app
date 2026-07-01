@@ -4,9 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { ThemeProvider } from "./theme-provider";
 import { ThemeToggle } from "./theme-toggle";
 
-function renderWithTheme(defaultTheme = "light") {
+function renderWithTheme() {
   return render(
-    <ThemeProvider attribute="class" defaultTheme={defaultTheme} enableSystem={false}>
+    <ThemeProvider>
       <ThemeToggle />
     </ThemeProvider>,
   );
@@ -21,7 +21,8 @@ afterEach(() => {
 describe("ThemeToggle", () => {
   it("switches to dark mode and persists the choice", async () => {
     const user = userEvent.setup();
-    renderWithTheme("light");
+    localStorage.setItem("sebasam-theme", "light");
+    renderWithTheme();
 
     const button = await screen.findByRole("button", { name: "Cambiar a modo oscuro" });
 
@@ -29,13 +30,14 @@ describe("ThemeToggle", () => {
 
     await waitFor(() => {
       expect(document.documentElement).toHaveClass("dark");
-      expect(localStorage.getItem("theme")).toBe("dark");
+      expect(localStorage.getItem("sebasam-theme")).toBe("dark");
     });
   });
 
   it("switches back to light mode and persists the choice", async () => {
     const user = userEvent.setup();
-    renderWithTheme("dark");
+    localStorage.setItem("sebasam-theme", "dark");
+    renderWithTheme();
 
     await waitFor(() => expect(document.documentElement).toHaveClass("dark"));
     const button = await screen.findByRole("button", { name: "Cambiar a modo claro" });
@@ -44,7 +46,7 @@ describe("ThemeToggle", () => {
 
     await waitFor(() => {
       expect(document.documentElement).not.toHaveClass("dark");
-      expect(localStorage.getItem("theme")).toBe("light");
+      expect(localStorage.getItem("sebasam-theme")).toBe("light");
     });
   });
 });
