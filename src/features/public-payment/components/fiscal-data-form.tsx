@@ -20,7 +20,7 @@ export function FiscalDataForm({ action, isPending = false, serverError }: Fisca
   const [personType, setPersonType] = React.useState<PersonType>(PersonType.INDIVIDUAL);
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Captura de datos fiscales</CardTitle>
         <CardDescription>
@@ -31,7 +31,7 @@ export function FiscalDataForm({ action, isPending = false, serverError }: Fisca
         <form action={action} className="space-y-4">
           <input type="hidden" name="personType" value={personType} />
 
-          <div className="flex gap-2" role="tablist" aria-label="Tipo de persona">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Tipo de persona">
             {personTypeTabs.map((tab) => (
               <button
                 key={tab.value}
