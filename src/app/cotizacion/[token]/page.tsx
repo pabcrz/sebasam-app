@@ -6,13 +6,25 @@ import {
 } from "@/features/quotes/domain";
 import { SharedQuoteErrorState } from "@/features/public-quotes/components/shared-quote-error-state";
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
-import { SharedQuoteView } from "@/features/public-quotes/components/shared-quote-view";
+import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
 type SharedQuotePageResult =
-  | { kind: "success"; quote: Awaited<ReturnType<typeof getSharedQuoteByToken>>["quote"] }
+  | { kind: "success"; quote: SharedQuoteViewQuote }
   | { kind: "error"; errorType: SharedQuoteErrorType };
+
+type SharedQuoteDomainResult = Awaited<ReturnType<typeof getSharedQuoteByToken>>["quote"];
+
+function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQuoteViewQuote {
+  return {
+    ...quote,
+    items: quote.items.map((item) => ({
+      ...item,
+      quantity: item.quantity.toString(),
+    })),
+  };
+}
 
 function mapErrorToType(error: unknown): SharedQuoteErrorType {
   if (error instanceof SharedQuoteExpiredError) {
@@ -29,7 +41,7 @@ function mapErrorToType(error: unknown): SharedQuoteErrorType {
 async function loadSharedQuotePageResult(token: string): Promise<SharedQuotePageResult> {
   try {
     const sharedQuote = await getSharedQuoteByToken(token);
-    return { kind: "success", quote: sharedQuote.quote };
+    return { kind: "success", quote: serializeSharedQuoteForClient(sharedQuote.quote) };
   } catch (error) {
     return { kind: "error", errorType: mapErrorToType(error) };
   }
