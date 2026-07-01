@@ -113,4 +113,16 @@ describe("QuotePreviewDialog", () => {
 
     expect(screen.getByText("Sin conceptos.")).toBeInTheDocument();
   });
+
+  it("opens when controlled open is set to true", () => {
+    const quote = createMockQuote();
+
+    const { rerender } = render(<QuotePreviewDialog quote={quote} open={false} onOpenChange={() => {}} />);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    rerender(<QuotePreviewDialog quote={quote} open onOpenChange={() => {}} />);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
 });
