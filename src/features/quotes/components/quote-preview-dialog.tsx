@@ -20,28 +20,41 @@ type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
 interface QuotePreviewDialogProps {
   quote: QuoteListItem;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
 }
 
-export function QuotePreviewDialog({ quote }: QuotePreviewDialogProps) {
-  const [open, setOpen] = React.useState(false);
+export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true }: QuotePreviewDialogProps) {
+  const [openInternal, setOpenInternal] = React.useState(false);
+  const open = openProp ?? openInternal;
+  const setOpen = React.useCallback(
+    (value: boolean) => {
+      setOpenInternal(value);
+      onOpenChange?.(value);
+    },
+    [onOpenChange],
+  );
   const vehicleDescription = quote.vehicle
     ? formatVehicle(quote.vehicle)
     : formatSnapshotVehicle(quote.vehicleSnapshot);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-label={`Ver vista previa de ${quote.number}`}
-          onClick={(event) => event.stopPropagation()}
-        >
-          <Eye className="h-4 w-4" aria-hidden="true" />
-          <span>Ver</span>
-        </Button>
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={`Ver vista previa de ${quote.number}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Eye className="h-4 w-4" aria-hidden="true" />
+            <span>Ver</span>
+          </Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="max-w-2xl">
         <DialogHeader className="relative">
           <DialogTitle>Vista previa de {quote.number}</DialogTitle>

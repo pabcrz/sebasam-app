@@ -2,14 +2,27 @@
 
 import * as React from "react";
 import { Button, ConfirmDialog } from "@/components/ui";
+import type { ButtonVariant, ButtonSize } from "@/components/ui";
 
 export interface QuoteApprovalFormProps {
   action: (formData: FormData) => void | Promise<void>;
   quoteId: string;
   quoteNumber: string;
+  buttonLabel?: string;
+  buttonAriaLabel?: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
 }
 
-export function QuoteApprovalForm({ action, quoteId, quoteNumber }: QuoteApprovalFormProps) {
+export function QuoteApprovalForm({
+  action,
+  quoteId,
+  quoteNumber,
+  buttonLabel = "Aprobar y crear orden de trabajo",
+  buttonAriaLabel,
+  variant = "primary",
+  size = "default",
+}: QuoteApprovalFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
 
@@ -37,13 +50,15 @@ export function QuoteApprovalForm({ action, quoteId, quoteNumber }: QuoteApprova
     <>
       <Button
         type="button"
-        variant="primary"
+        variant={variant}
+        size={size}
         className="w-full"
         loading={isPending}
         disabled={isPending}
         onClick={() => setOpen(true)}
+        aria-label={buttonAriaLabel}
       >
-        Aprobar y crear orden de trabajo
+        {buttonLabel}
       </Button>
 
       <ConfirmDialog
