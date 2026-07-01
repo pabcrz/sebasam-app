@@ -1,14 +1,17 @@
 /**
- * Server component that injects a minimal inline script into <head>.
+ * Injects a minimal inline script into the initial HTML.
  * Reads theme from localStorage and applies the `.dark` class before
  * React hydrates, preventing a flash of unstyled content.
  *
- * Does NOT render a <script> element inside the React component tree,
- * so it does not conflict with Turbopack's script-in-RFC warning.
+ * Next.js 16/React warns when an executable <script> is rendered while
+ * hydrating on the client, so the script is executable on the server output
+ * and inert (`text/plain`) on the client render.
  */
 export function ThemeScript() {
   return (
     <script
+      type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
+      suppressHydrationWarning
       dangerouslySetInnerHTML={{
         __html: `
           (function () {
