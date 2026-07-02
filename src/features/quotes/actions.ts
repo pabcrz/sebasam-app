@@ -186,7 +186,7 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({
       where: { id: quoteId },
-      include: { items: true },
+      include: { items: true, workOrder: true },
     });
 
     if (!quote) {
@@ -195,6 +195,10 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
 
     if (quote.status !== QuoteStatus.DRAFT) {
       throw new Error("Only draft quotes can be updated.");
+    }
+
+    if (quote.workOrder) {
+      throw new Error("This quote already has a work order.");
     }
 
     const shouldLinkVehicle = hasVehicleData(data.vehicle);
@@ -240,6 +244,10 @@ export async function updateDraftQuoteFromForm(quoteId: string, formData: FormDa
   } catch (error) {
     if (error instanceof Error && error.message === "Only draft quotes can be updated.") {
       redirect(`${quotesPath}/${quoteId}/edit?error=not-draft`);
+    }
+
+    if (error instanceof Error && error.message === "This quote already has a work order.") {
+      redirect(`${quotesPath}/${quoteId}/edit?error=has-work-order`);
     }
 
     redirect(`${quotesPath}/${quoteId}/edit?error=update-failed`);

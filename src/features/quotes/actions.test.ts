@@ -159,6 +159,19 @@ describe("updateDraftQuote", () => {
     mockTx(QuoteStatus.APPROVED);
     await expect(updateDraftQuote("quote-1", validInput())).rejects.toThrow("Only draft quotes can be updated.");
   });
+
+  it("throws when the quote already has a work order", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      status: QuoteStatus.DRAFT,
+      items: [],
+      workOrder: { id: "wo-1" },
+    });
+    await expect(updateDraftQuote("quote-1", validInput())).rejects.toThrow(
+      "This quote already has a work order.",
+    );
+  });
 });
 
 describe("updateDraftQuoteFromForm", () => {
@@ -179,6 +192,18 @@ describe("updateDraftQuoteFromForm", () => {
     mockTx(QuoteStatus.SENT);
     await updateDraftQuoteFromForm("quote-1", buildFormData() as unknown as FormData);
     expect(redirect).toHaveBeenCalledWith("/admin/quotes/quote-1/edit?error=not-draft");
+  });
+
+  it("redirects with has-work-order error when the quote already has a work order", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      status: QuoteStatus.DRAFT,
+      items: [],
+      workOrder: { id: "wo-1" },
+    });
+    await updateDraftQuoteFromForm("quote-1", buildFormData() as unknown as FormData);
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes/quote-1/edit?error=has-work-order");
   });
 });
 

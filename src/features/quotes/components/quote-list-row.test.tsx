@@ -1,9 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type React from "react";
 import type { PaymentRequest, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
 import { QuoteListRow } from "./quote-list-row";
+
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
@@ -160,5 +169,46 @@ describe("QuoteListRow", () => {
     expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /aprobar y crear orden de trabajo/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+  });
+
+  it("renders an edit link for draft quotes without a work order", () => {
+    renderRow(createMockQuote());
+
+    const editLink = screen.getByRole("link", { name: /editar cotización/i });
+    expect(editLink).toBeInTheDocument();
+    expect(editLink).toHaveAttribute("href", "/admin/quotes/quote-1/edit");
+  });
+
+  it("does not render an edit link for draft quotes with a work order", () => {
+    renderRow(createMockQuote({
+      workOrder: {
+        id: "work-order-1",
+        quoteId: "quote-1",
+        number: "T-001",
+        status: "PLANNED",
+        notes: null,
+        scheduledFor: null,
+        siteAddress: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    }));
+
+    expect(screen.queryByRole("link", { name: /editar cotización/i })).not.toBeInTheDocument();
+  });
+
+  it("does not render an edit link for non-draft quotes", () => {
+    renderRow(createMockQuote({ status: "APPROVED" }));
+
+    expect(screen.queryByRole("link", { name: /editar cotización/i })).not.toBeInTheDocument();
+  });
+
+  it("does not open the preview dialog when the edit link is clicked", async () => {
+    const user = userEvent.setup();
+    renderRow(createMockQuote());
+
+    await user.click(screen.getByRole("link", { name: /editar cotización/i }));
+
+    expect(screen.queryByRole("dialog", { name: /vista previa/i })).not.toBeInTheDocument();
   });
 });
