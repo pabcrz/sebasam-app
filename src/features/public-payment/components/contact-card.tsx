@@ -4,7 +4,18 @@ import { Phone, MessageCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { businessPaymentConfig } from "@/config/payment";
 
-export function ContactCard() {
+export interface ContactSettings {
+  phone: string;
+  whatsapp: string;
+}
+
+export interface ContactCardProps {
+  contact?: ContactSettings;
+}
+
+export function ContactCard({ contact }: ContactCardProps) {
+  const resolvedContact = contact ?? businessPaymentConfig.contact;
+
   return (
     <Card>
       <CardHeader>
@@ -17,7 +28,7 @@ export function ContactCard() {
           </div>
           <div>
             <p className="text-xs font-medium text-[var(--color-text-muted)]">Teléfono fijo</p>
-            <p className="text-sm font-semibold text-[var(--color-text-main)]">{businessPaymentConfig.contact.phone}</p>
+            <p className="text-sm font-semibold text-[var(--color-text-main)]">{resolvedContact.phone}</p>
           </div>
         </div>
 
@@ -27,7 +38,7 @@ export function ContactCard() {
           </div>
           <div>
             <p className="text-xs font-medium text-[var(--color-text-muted)]">WhatsApp</p>
-            <p className="text-sm font-semibold text-[var(--color-text-main)]">{businessPaymentConfig.contact.whatsapp}</p>
+            <p className="text-sm font-semibold text-[var(--color-text-main)]">{resolvedContact.whatsapp}</p>
           </div>
         </div>
       </CardContent>

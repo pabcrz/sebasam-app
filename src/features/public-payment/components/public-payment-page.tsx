@@ -3,11 +3,11 @@
 import * as React from "react";
 import { useActionState, useTransition } from "react";
 import { PaymentRequestStatus, type PaymentRequest } from "@prisma/client";
-import { PublicPaymentShell, PublicPaymentContent } from "./public-payment-shell";
+import { PublicPaymentShell, PublicPaymentContent, type ShellBusinessSettings } from "./public-payment-shell";
 import { InvoiceDecision } from "./invoice-decision";
 import { FiscalDataForm } from "./fiscal-data-form";
-import { BankDataCard } from "./bank-data-card";
-import { ContactCard } from "./contact-card";
+import { BankDataCard, type BankAccountData } from "./bank-data-card";
+import { ContactCard, type ContactSettings } from "./contact-card";
 import { WhatsAppReceiptCta } from "./whatsapp-receipt-cta";
 
 type PaymentRequestWithRelations = PaymentRequest & {
@@ -29,6 +29,9 @@ export interface PublicPaymentPageProps {
   request: PaymentRequestWithRelations;
   setInvoicePreferenceAction: (requiresInvoice: boolean) => Promise<{ success: boolean; error?: string }>;
   saveFiscalDataAction: (formData: FormData) => Promise<{ success: boolean; error?: string }>;
+  business?: ShellBusinessSettings;
+  bankAccounts?: BankAccountData[];
+  contact?: ContactSettings;
 }
 
 function formatCurrency(cents: number) {
@@ -46,6 +49,9 @@ export function PublicPaymentPage({
   request,
   setInvoicePreferenceAction,
   saveFiscalDataAction,
+  business,
+  bankAccounts,
+  contact,
 }: PublicPaymentPageProps) {
   const reference = request.quote?.number ?? request.workOrder?.number ?? request.id.slice(0, 8);
   const amount = request.quote?.totalCents ?? 0;
@@ -91,7 +97,7 @@ export function PublicPaymentPage({
       : "payment-and-invoice";
 
   return (
-    <PublicPaymentShell badge={badge}>
+    <PublicPaymentShell badge={badge} business={business}>
       <div className="mb-6 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm md:p-5">
         <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">Referencia</p>
         <p className="text-lg font-bold text-[var(--color-text-main)]">{reference}</p>
@@ -137,8 +143,8 @@ export function PublicPaymentPage({
       {showPaymentData ? (
         <PublicPaymentContent>
           <div className="space-y-4 md:space-y-6">
-            <BankDataCard />
-            <ContactCard />
+            <BankDataCard bankAccounts={bankAccounts} />
+            <ContactCard contact={contact} />
           </div>
           <div className="space-y-4 md:space-y-6">
             <WhatsAppReceiptCta reference={reference} />

@@ -3,19 +3,23 @@
 import * as React from "react";
 import { FileText } from "lucide-react";
 import { businessPaymentConfig } from "@/config/payment";
+import type { ShellBusinessSettings } from "@/features/public-payment/components/public-payment-shell";
 
 export interface PublicQuoteShellProps {
   children: React.ReactNode;
+  business?: ShellBusinessSettings;
 }
 
-export function PublicQuoteShell({ children }: PublicQuoteShellProps) {
+export function PublicQuoteShell({ children, business }: PublicQuoteShellProps) {
+  const resolvedBusiness = business ?? businessPaymentConfig;
+
   return (
     <div className="flex min-h-screen flex-col bg-[var(--background)]">
       <header className="bg-[image:var(--gradient-primary)] px-6 pb-6 pt-8 text-white md:rounded-b-[22px] md:px-8 md:pb-8 md:pt-10">
         <div className="mx-auto max-w-3xl">
-          <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">{businessPaymentConfig.name}</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">{resolvedBusiness.name}</h1>
           <p className="mt-2 text-sm text-[var(--color-on-navy-tint)] opacity-90 md:text-base">
-            {businessPaymentConfig.fullName}
+            {resolvedBusiness.fullName}
           </p>
 
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
@@ -32,12 +36,12 @@ export function PublicQuoteShell({ children }: PublicQuoteShellProps) {
       <footer className="bg-[var(--color-navy-900)] px-6 py-5 text-[var(--color-on-navy-tint)] md:px-8">
         <div className="mx-auto max-w-3xl">
           <a
-            href={businessPaymentConfig.mapsUrl}
+            href={resolvedBusiness.mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm underline transition-colors hover:text-white"
           >
-            {businessPaymentConfig.address}
+            {resolvedBusiness.address}
           </a>
           <p className="mt-1 text-xs opacity-70">Dirección del taller · confirmar antes de visitar.</p>
         </div>

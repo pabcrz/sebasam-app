@@ -5,9 +5,17 @@ import { clsx } from "clsx";
 import { Landmark, FileText, Banknote } from "lucide-react";
 import { businessPaymentConfig } from "@/config/payment";
 
+export interface ShellBusinessSettings {
+  name: string;
+  fullName: string;
+  address: string;
+  mapsUrl: string;
+}
+
 export interface PublicPaymentShellProps {
   children: React.ReactNode;
   badge?: "payment" | "invoice" | "payment-and-invoice";
+  business?: ShellBusinessSettings;
 }
 
 const badgeConfig = {
@@ -25,7 +33,8 @@ const badgeConfig = {
   },
 };
 
-export function PublicPaymentShell({ children, badge = "payment-and-invoice" }: PublicPaymentShellProps) {
+export function PublicPaymentShell({ children, badge = "payment-and-invoice", business }: PublicPaymentShellProps) {
+  const resolvedBusiness = business ?? businessPaymentConfig;
   const badgeInfo = badgeConfig[badge];
   const BadgeIcon = badgeInfo.icon;
 
@@ -33,9 +42,9 @@ export function PublicPaymentShell({ children, badge = "payment-and-invoice" }: 
     <div className="flex min-h-screen flex-col bg-[var(--background)]">
       <header className="bg-[image:var(--gradient-primary)] px-6 pb-6 pt-8 text-white md:rounded-b-[22px] md:px-8 md:pb-8 md:pt-10">
         <div className="mx-auto max-w-6xl">
-          <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">{businessPaymentConfig.name}</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">{resolvedBusiness.name}</h1>
           <p className="mt-2 text-sm text-[var(--color-on-navy-tint)] opacity-90 md:text-base">
-            {businessPaymentConfig.fullName}
+            {resolvedBusiness.fullName}
           </p>
 
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
@@ -52,12 +61,12 @@ export function PublicPaymentShell({ children, badge = "payment-and-invoice" }: 
       <footer className="bg-[var(--color-navy-900)] px-6 py-5 text-[var(--color-on-navy-tint)] md:px-8">
         <div className="mx-auto max-w-6xl">
           <a
-            href={businessPaymentConfig.mapsUrl}
+            href={resolvedBusiness.mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm underline transition-colors hover:text-white"
           >
-            {businessPaymentConfig.address}
+            {resolvedBusiness.address}
           </a>
           <p className="mt-1 text-xs opacity-70">Dirección del taller · confirmar antes de visitar.</p>
         </div>
