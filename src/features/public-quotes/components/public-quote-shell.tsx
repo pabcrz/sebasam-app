@@ -31,7 +31,14 @@ export function PublicQuoteShell({ children }: PublicQuoteShellProps) {
 
       <footer className="bg-[var(--color-navy-900)] px-6 py-5 text-[var(--color-on-navy-tint)] md:px-8">
         <div className="mx-auto max-w-3xl">
-          <p className="text-sm">{businessPaymentConfig.address}</p>
+          <a
+            href={businessPaymentConfig.mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm underline transition-colors hover:text-white"
+          >
+            {businessPaymentConfig.address}
+          </a>
           <p className="mt-1 text-xs opacity-70">Dirección del taller · confirmar antes de visitar.</p>
         </div>
       </footer>
