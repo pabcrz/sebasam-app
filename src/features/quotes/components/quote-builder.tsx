@@ -37,33 +37,46 @@ import { QuoteBuilderStepper } from "./quote-builder-stepper";
 import { QuotePreviewCard } from "./quote-preview-card";
 import { QuoteSummaryCard } from "./quote-summary-card";
 
-type CustomerOption = {
+export type CustomerOption = {
   id: string;
   name: string;
 };
 
+export type QuoteBuilderInitialData = {
+  customerId: string;
+  vehicle: { plate: string; brand: string; model: string; year: string };
+  title: string;
+  description: string;
+  administrative: boolean;
+  taxEnabled: boolean;
+  items: ItemFormValue[];
+};
+
 type QuoteBuilderProps = {
   customers: CustomerOption[];
-  createAction: (formData: FormData) => void | Promise<void>;
+  createAction?: (formData: FormData) => void | Promise<void>;
+  saveAction?: (formData: FormData) => void | Promise<void>;
+  initialData?: QuoteBuilderInitialData;
   onCancel?: () => void;
 };
 
-export function QuoteBuilder({ customers, createAction, onCancel }: QuoteBuilderProps) {
+export function QuoteBuilder({ customers, createAction, saveAction, initialData, onCancel }: QuoteBuilderProps) {
+  const isEdit = saveAction != null;
+  const formAction = saveAction ?? createAction;
   const [step, setStep] = React.useState<Step>("client");
   const [stepError, setStepError] = React.useState<string | null>(null);
   const [showItemValidation, setShowItemValidation] = React.useState(false);
-  const [customerId, setCustomerId] = React.useState("");
-  const [vehicle, setVehicle] = React.useState({
-    plate: "",
-    brand: "",
-    model: "",
-    year: "",
-  });
-  const [title, setTitle] = React.useState("");
-  const [description, setDescription] = React.useState("");
-  const [administrative, setAdministrative] = React.useState(false);
-  const [taxEnabled, setTaxEnabled] = React.useState(true);
-  const [items, setItems] = React.useState<ItemFormValue[]>(() => [{ ...emptyItem }]);
+  const [customerId, setCustomerId] = React.useState(initialData?.customerId ?? "");
+  const [vehicle, setVehicle] = React.useState(
+    initialData?.vehicle ?? { plate: "", brand: "", model: "", year: "" },
+  );
+  const [title, setTitle] = React.useState(initialData?.title ?? "");
+  const [description, setDescription] = React.useState(initialData?.description ?? "");
+  const [administrative, setAdministrative] = React.useState(initialData?.administrative ?? false);
+  const [taxEnabled, setTaxEnabled] = React.useState(initialData?.taxEnabled ?? true);
+  const [items, setItems] = React.useState<ItemFormValue[]>(() =>
+    initialData?.items.length ? initialData.items : [{ ...emptyItem }],
+  );
 
   const currentStepIndex = steps.indexOf(step);
   const { subtotalCents, taxCents, totalCents } = calculateTotals(items, taxEnabled);
@@ -196,12 +209,16 @@ export function QuoteBuilder({ customers, createAction, onCancel }: QuoteBuilder
   return (
     <Card>
       <CardHeader>
-        <CardTitle as="h2">Crear cotización en borrador</CardTitle>
-        <CardDescription>Flujo paso a paso para armar una cotización desde el celular.</CardDescription>
+        <CardTitle as="h2">{isEdit ? "Editar cotización en borrador" : "Crear cotización en borrador"}</CardTitle>
+        <CardDescription>
+          {isEdit
+            ? "Modifica los datos de la cotización en borrador."
+            : "Flujo paso a paso para armar una cotización desde el celular."}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form
-          action={createAction}
+          action={formAction}
           className="grid gap-6"
           data-testid="quote-builder-form"
           onSubmit={(event) => {
@@ -393,7 +410,7 @@ export function QuoteBuilder({ customers, createAction, onCancel }: QuoteBuilder
             )}
 
             {step === "preview" ? (
-              <CreateQuoteSubmitButton />
+              <CreateQuoteSubmitButton isEdit={isEdit} />
             ) : (
               <Button
                 type="button"
@@ -412,7 +429,7 @@ export function QuoteBuilder({ customers, createAction, onCancel }: QuoteBuilder
   );
 }
 
-function CreateQuoteSubmitButton() {
+function CreateQuoteSubmitButton({ isEdit }: { isEdit?: boolean }) {
   const { pending } = useFormStatus();
 
   return (
@@ -423,7 +440,7 @@ function CreateQuoteSubmitButton() {
       className="min-w-[160px]"
       aria-live="polite"
     >
-      {pending ? "Creando..." : "Crear cotización"}
+      {pending ? (isEdit ? "Guardando..." : "Creando...") : (isEdit ? "Guardar cambios" : "Crear cotización")}
     </Button>
   );
 }

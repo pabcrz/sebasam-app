@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { Pencil } from "lucide-react";
 import type { PaymentRequest, QuoteStatus, SharedQuote, WorkOrderStatus } from "@prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
-import { Badge, TableCell, TableRow } from "@/components/ui";
+import { Badge, Button, TableCell, TableRow } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteApprovalForm } from "./quote-approval-form";
@@ -92,6 +94,12 @@ export function QuoteListRow({
         <div className="grid gap-2">
           {quote.status === "DRAFT" && !quote.workOrder ? (
             <>
+              <Button asChild variant="outline" size="default">
+                <Link href={`/admin/quotes/${quote.id}/edit`} aria-label={`Editar cotización ${quote.number}`}>
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                  <span>Editar</span>
+                </Link>
+              </Button>
               <QuoteApprovalForm
                 action={approveAction}
                 quoteId={quote.id}
