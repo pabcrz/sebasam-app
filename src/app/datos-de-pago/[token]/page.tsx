@@ -7,6 +7,7 @@ import {
 import { setPaymentRequestInvoicePreference, savePaymentRequestFiscalData } from "@/features/public-payment/actions";
 import { PublicPaymentPage } from "@/features/public-payment/components/public-payment-page";
 import { PaymentRequestErrorState } from "@/features/public-payment/components/payment-request-error-state";
+import { getPaymentSettings } from "@/features/payment-settings/domain";
 import type { PaymentRequest } from "@prisma/client";
 
 export const metadata: Metadata = {
@@ -61,7 +62,10 @@ async function loadPaymentPageResult(token: string): Promise<PaymentPageResult> 
 
 export default async function DatosDePagoPage({ params }: PaymentPageProps) {
   const { token } = await params;
-  const result = await loadPaymentPageResult(token);
+  const [result, settings] = await Promise.all([
+    loadPaymentPageResult(token),
+    getPaymentSettings(),
+  ]);
 
   if (result.kind === "error") {
     return (
@@ -76,6 +80,17 @@ export default async function DatosDePagoPage({ params }: PaymentPageProps) {
       request={result.request}
       setInvoicePreferenceAction={setPaymentRequestInvoicePreference.bind(null, token)}
       saveFiscalDataAction={savePaymentRequestFiscalData.bind(null, token)}
+      business={{
+        name: settings.name,
+        fullName: settings.fullName,
+        address: settings.address,
+        mapsUrl: settings.mapsUrl,
+      }}
+      bankAccounts={settings.bankAccounts}
+      contact={{
+        phone: settings.contactPhone,
+        whatsapp: settings.contactWhatsapp,
+      }}
     />
   );
 }

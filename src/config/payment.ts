@@ -1,8 +1,12 @@
 /**
- * Public payment configuration for SEBASAM.
+ * Fallback payment configuration for SEBASAM.
  *
- * These values are displayed on the public payment page and are not secrets.
- * They match the business details shown in design docs and Figma.
+ * These values match the DB defaults in the PaymentSettings model and are only
+ * used as a fallback when settings haven't been loaded from the database.
+ *
+ * Prefer loading payment data via `getPaymentSettings()` from
+ * `@/features/payment-settings/domain` in server components and passing it
+ * as props to client components.
  */
 
 export const businessPaymentConfig = {
