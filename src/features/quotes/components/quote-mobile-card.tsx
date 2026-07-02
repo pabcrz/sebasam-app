@@ -2,11 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Pencil } from "lucide-react";
+import { Pencil, Copy } from "lucide-react";
 import type { PaymentRequest, QuoteStatus, SharedQuote, WorkOrderStatus } from "@prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
 import { Badge, Button } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
+import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteApprovalForm } from "./quote-approval-form";
 import { QuoteCancelForm } from "./quote-cancel-form";
@@ -28,6 +29,7 @@ interface QuoteMobileCardProps {
   shareAction: (formData: FormData) => void | Promise<void>;
   authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
+  duplicateAction: (formData: FormData) => void | Promise<void>;
 }
 
 export function QuoteMobileCard({
@@ -41,8 +43,10 @@ export function QuoteMobileCard({
   shareAction,
   authorizeAction,
   paymentRequestAction,
+  duplicateAction,
 }: QuoteMobileCardProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
+  const editable = isQuoteEditable(quote);
 
   return (
     <div
@@ -93,15 +97,26 @@ export function QuoteMobileCard({
       </div>
 
       <div className="mt-4 grid gap-2" onClick={(event) => event.stopPropagation()}>
-        <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} />
-        {quote.status === "DRAFT" && !quote.workOrder ? (
-          <>
-            <Button asChild variant="outline" size="default">
+        <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
+        <div className="flex gap-2">
+          {editable ? (
+            <Button asChild variant="outline" size="sm" className="flex-1">
               <Link href={`/admin/quotes/${quote.id}/edit`} aria-label={`Editar cotización ${quote.number}`}>
                 <Pencil className="h-4 w-4" aria-hidden="true" />
                 <span>Editar</span>
               </Link>
             </Button>
+          ) : null}
+          <form action={duplicateAction} className={editable ? "flex-1" : ""}>
+            <input type="hidden" name="quoteId" value={quote.id} />
+            <Button type="submit" variant="outline" size="sm" className="w-full">
+              <Copy className="h-4 w-4" aria-hidden="true" />
+              <span>Duplicar</span>
+            </Button>
+          </form>
+        </div>
+        {quote.status === "DRAFT" && !quote.workOrder ? (
+          <>
             <QuoteApprovalForm
               action={approveAction}
               quoteId={quote.id}
