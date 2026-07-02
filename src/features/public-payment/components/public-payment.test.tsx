@@ -9,6 +9,7 @@ import { ContactCard } from "./contact-card";
 import { WhatsAppReceiptCta } from "./whatsapp-receipt-cta";
 import { PaymentRequestErrorState } from "./payment-request-error-state";
 import { PublicPaymentPage } from "./public-payment-page";
+import { PublicPaymentShell } from "./public-payment-shell";
 
 function createMockRequest(overrides: { status?: PaymentRequestStatus; requiresInvoice?: boolean } = {}) {
   return {
@@ -208,5 +209,16 @@ describe("PublicPaymentPage", () => {
 
     await waitFor(() => expect(setInvoicePreferenceAction).toHaveBeenCalledWith(true));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Token vencido"));
+  });
+});
+
+describe("PublicPaymentShell", () => {
+  it("renders the workshop address as a Google Maps link", () => {
+    render(<PublicPaymentShell><p>content</p></PublicPaymentShell>);
+
+    const link = screen.getByRole("link", { name: /Batalla de Casa Blanca/i });
+    expect(link).toHaveAttribute("href", "https://maps.app.goo.gl/MYuGBKwabPGbea7y7");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 });
