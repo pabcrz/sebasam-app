@@ -13,6 +13,7 @@ import {
   calculateQuoteTotals,
   createQuoteValidUntil,
 } from "./lib/calculate";
+import { isQuoteEditable } from "./lib/editability";
 import { nextQuoteNumber, nextWorkOrderNumber } from "./lib/sequence";
 import {
   getOrCreateSharedQuoteForQuote,
@@ -193,12 +194,8 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       throw new Error("Quote not found.");
     }
 
-    if (quote.status !== QuoteStatus.DRAFT) {
-      throw new Error("Only draft quotes can be updated.");
-    }
-
-    if (quote.workOrder) {
-      throw new Error("This quote already has a work order.");
+    if (!isQuoteEditable(quote)) {
+      throw new Error("This quote is not editable.");
     }
 
     const shouldLinkVehicle = hasVehicleData(data.vehicle);
@@ -242,12 +239,8 @@ export async function updateDraftQuoteFromForm(quoteId: string, formData: FormDa
   try {
     await updateDraftQuote(quoteId, parsed.data);
   } catch (error) {
-    if (error instanceof Error && error.message === "Only draft quotes can be updated.") {
-      redirect(`${quotesPath}/${quoteId}/edit?error=not-draft`);
-    }
-
-    if (error instanceof Error && error.message === "This quote already has a work order.") {
-      redirect(`${quotesPath}/${quoteId}/edit?error=has-work-order`);
+    if (error instanceof Error && error.message === "This quote is not editable.") {
+      redirect(`${quotesPath}/${quoteId}/edit?error=not-editable`);
     }
 
     redirect(`${quotesPath}/${quoteId}/edit?error=update-failed`);
@@ -465,4 +458,89 @@ export async function authorizeQuoteAction(quoteId: string, note: string) {
 
   revalidatePath(quotesPath);
   return { success: true };
+}
+
+export async function duplicateQuote(quoteId: string) {
+  await requireOperationalRole();
+
+  const original = await prisma.quote.findUnique({
+    where: { id: quoteId },
+    include: {
+      vehicle: true,
+      items: { orderBy: { sortOrder: "asc" } },
+    },
+  });
+
+  if (!original) {
+    throw new Error("Quote not found.");
+  }
+
+  const quoteNumber = await nextQuoteNumber();
+  const validUntil = createQuoteValidUntil();
+
+  const items = original.items.map((item, index) => ({
+    type: item.type,
+    description: item.description,
+    quantity: item.quantity,
+    unitPriceCents: item.unitPriceCents,
+    totalCents: item.totalCents,
+    sortOrder: index,
+  }));
+
+  return prisma.$transaction(async (tx) => {
+    const shouldLinkVehicle = original.vehicle !== null;
+    const vehicleInput = shouldLinkVehicle
+      ? {
+          customerId: original.customerId,
+          plate: original.vehicle!.plate ?? undefined,
+          brand: original.vehicle!.brand ?? undefined,
+          model: original.vehicle!.model ?? undefined,
+          color: original.vehicle!.color ?? undefined,
+          year: original.vehicle!.year ?? undefined,
+          notes: original.vehicle!.notes ?? undefined,
+        }
+      : null;
+    const vehicle = vehicleInput ? await findOrCreateVehicle(tx, vehicleInput) : null;
+    const vehicleSnapshot = vehicleInput ? createVehicleSnapshot(vehicleInput) : Prisma.JsonNull;
+
+    return tx.quote.create({
+      data: {
+        customerId: original.customerId,
+        vehicleId: vehicle?.id ?? null,
+        vehicleSnapshot,
+        number: quoteNumber,
+        status: "DRAFT",
+        title: original.title,
+        description: original.description,
+        administrative: original.administrative,
+        taxEnabled: original.taxEnabled,
+        subtotalCents: original.subtotalCents,
+        taxCents: original.taxCents,
+        totalCents: original.totalCents,
+        validUntil,
+        items: { create: items },
+      },
+    });
+  });
+}
+
+export async function duplicateQuoteFromForm(formData: FormData) {
+  await requireOperationalRole();
+
+  const quoteId = formData.get("quoteId");
+
+  if (typeof quoteId !== "string" || quoteId.trim() === "") {
+    redirect(`${quotesPath}?error=invalid`);
+    return;
+  }
+
+  try {
+    await duplicateQuote(quoteId);
+  } catch (error) {
+    redirect(`${quotesPath}?error=duplicate-failed`);
+    return;
+  }
+
+  revalidatePath(quotesPath);
+  redirect(`${quotesPath}?duplicated=1`);
 }

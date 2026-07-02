@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { QuoteStatus, type QuoteItem } from "@prisma/client";
+import { type QuoteItem } from "@prisma/client";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { listCustomers } from "@/features/customers/queries";
@@ -8,6 +8,7 @@ import {
   updateDraftQuoteFromForm,
 } from "@/features/quotes/actions";
 import { EditDraftQuoteForm } from "@/features/quotes/components/edit-draft-quote-form";
+import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import type { QuoteBuilderInitialData } from "@/features/quotes/components/quote-builder";
 
 export const metadata: Metadata = {
@@ -69,7 +70,7 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
   const [quote, customers] = await Promise.all([loadQuote(id), listCustomers()]);
 
   if (!quote) notFound();
-  if (quote.status !== QuoteStatus.DRAFT || quote.workOrder) {
+  if (!isQuoteEditable(quote)) {
     redirect("/admin/quotes");
   }
 

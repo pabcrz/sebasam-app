@@ -75,11 +75,12 @@ describe("EditQuotePage", () => {
     expect(notFoundMock).toHaveBeenCalled();
   });
 
-  it("redirects to /admin/quotes when quote status is not DRAFT", async () => {
+  it("redirects to /admin/quotes when quote status is not editable", async () => {
     requireOperationalRoleMock.mockResolvedValue(undefined);
     prismaQuoteFindUniqueMock.mockResolvedValue({
-      status: QuoteStatus.SENT,
+      status: QuoteStatus.CANCELLED,
       workOrder: null,
+      validUntil: new Date("2026-12-31"),
     });
     listCustomersMock.mockResolvedValue([]);
     redirectMock.mockImplementation((url: string) => {
@@ -92,11 +93,12 @@ describe("EditQuotePage", () => {
     expect(redirectMock).toHaveBeenCalledWith("/admin/quotes");
   });
 
-  it("redirects to /admin/quotes when quote has a workOrder (even if DRAFT)", async () => {
+  it("redirects to /admin/quotes when quote has a COMPLETED work order", async () => {
     requireOperationalRoleMock.mockResolvedValue(undefined);
     prismaQuoteFindUniqueMock.mockResolvedValue({
       status: QuoteStatus.DRAFT,
-      workOrder: { id: "wo-1" },
+      workOrder: { id: "wo-1", status: "COMPLETED" },
+      validUntil: new Date("2026-12-31"),
     });
     listCustomersMock.mockResolvedValue([]);
     redirectMock.mockImplementation((url: string) => {

@@ -6,6 +6,7 @@ import {
   cancelDraftQuoteFromForm,
   shareQuoteFromForm,
   authorizeQuoteAction,
+  duplicateQuoteFromForm,
 } from "@/features/quotes/actions";
 import { listQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
@@ -34,6 +35,7 @@ type QuotesPageProps = {
     approved?: string;
     created?: string;
     shared?: string;
+    duplicated?: string;
     error?: string;
     status?: string;
     customerId?: string;
@@ -106,6 +108,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                     shareAction={shareQuoteFromForm}
                     authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
                     paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
+                    duplicateAction={duplicateQuoteFromForm}
                   />
                 ))}
                 {quotes.length === 0 ? (
@@ -148,6 +151,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 shareAction={shareQuoteFromForm}
                 authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
                 paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
+                duplicateAction={duplicateQuoteFromForm}
               />
             ))}
             {quotes.length === 0 ? (

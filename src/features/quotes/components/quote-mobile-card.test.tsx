@@ -102,6 +102,7 @@ function renderCard(quote: QuoteListItem) {
       shareAction={vi.fn()}
       authorizeAction={vi.fn(() => Promise.resolve({ success: true }))}
       paymentRequestAction={vi.fn(() => Promise.resolve({ id: "pr-1", token: "token-1" } as PaymentRequest))}
+      duplicateAction={vi.fn()}
     />,
   );
 }
@@ -115,6 +116,12 @@ describe("QuoteMobileCard", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Vista previa de C-001")).toBeInTheDocument();
+  });
+
+  it("does not render a redundant preview trigger", () => {
+    renderCard(createMockQuote());
+
+    expect(screen.queryByRole("button", { name: /ver vista previa/i })).not.toBeInTheDocument();
   });
 
   it("does not open the preview dialog when an action button is clicked", async () => {
@@ -181,7 +188,25 @@ describe("QuoteMobileCard", () => {
     expect(editLink).toHaveAttribute("href", "/admin/quotes/quote-1/edit");
   });
 
-  it("does not render an edit link for draft quotes with a work order", () => {
+  it("does not render an edit link for draft quotes with a COMPLETED work order", () => {
+    renderCard(createMockQuote({
+      workOrder: {
+        id: "work-order-1",
+        quoteId: "quote-1",
+        number: "T-001",
+        status: "COMPLETED",
+        notes: null,
+        scheduledFor: null,
+        siteAddress: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    }));
+
+    expect(screen.queryByRole("link", { name: /editar cotización/i })).not.toBeInTheDocument();
+  });
+
+  it("renders an edit link for draft quotes with a PLANNED work order", () => {
     renderCard(createMockQuote({
       workOrder: {
         id: "work-order-1",
@@ -196,13 +221,36 @@ describe("QuoteMobileCard", () => {
       },
     }));
 
+    const editLink = screen.getByRole("link", { name: /editar cotización/i });
+    expect(editLink).toBeInTheDocument();
+    expect(editLink).toHaveAttribute("href", "/admin/quotes/quote-1/edit");
+  });
+
+  it("does not render an edit link for non-editable quotes", () => {
+    renderCard(createMockQuote({ status: "CANCELLED" }));
+
     expect(screen.queryByRole("link", { name: /editar cotización/i })).not.toBeInTheDocument();
   });
 
-  it("does not render an edit link for non-draft quotes", () => {
+  it("renders an edit link for APPROVED quotes without a blocked work order", () => {
     renderCard(createMockQuote({ status: "APPROVED" }));
 
-    expect(screen.queryByRole("link", { name: /editar cotización/i })).not.toBeInTheDocument();
+    const editLink = screen.getByRole("link", { name: /editar cotización/i });
+    expect(editLink).toBeInTheDocument();
+    expect(editLink).toHaveAttribute("href", "/admin/quotes/quote-1/edit");
+  });
+
+  it("renders an edit link for SENT quotes", () => {
+    renderCard(createMockQuote({ status: "SENT" }));
+
+    const editLink = screen.getByRole("link", { name: /editar cotización/i });
+    expect(editLink).toBeInTheDocument();
+  });
+
+  it("renders a duplicate button for every quote including cancelled ones", () => {
+    renderCard(createMockQuote({ status: "CANCELLED" }));
+
+    expect(screen.getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
   });
 
   it("does not open the preview dialog when the edit link is clicked", async () => {
