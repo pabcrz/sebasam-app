@@ -1,7 +1,8 @@
 "use client";
 
+import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Filter, X } from "lucide-react";
+import { ChevronDown, Filter, X } from "lucide-react";
 import type { QuoteStatus } from "@prisma/client";
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
 import type { QuoteFilterInput } from "@/features/quotes/schemas";
@@ -29,8 +30,29 @@ function formatDateValue(date: Date | undefined): string {
   return date.toISOString().slice(0, 10);
 }
 
+function isQuoteStatus(value: string): value is QuoteStatus {
+  return Object.prototype.hasOwnProperty.call(quoteStatusLabels, value);
+}
+
+function getActiveFilterSummary(filters: QuoteFilterInput, customers: QuoteFiltersCustomer[]): string[] {
+  const summary: string[] = [];
+  const customer = customers.find((item) => item.id === filters.customerId);
+
+  if (filters.status) {
+    summary.push(`Estatus: ${isQuoteStatus(filters.status) ? quoteStatusLabels[filters.status] : filters.status}`);
+  }
+  if (filters.customerId) summary.push(`Cliente: ${customer?.name ?? filters.customerId}`);
+  if (filters.number) summary.push(`Folio: ${filters.number}`);
+  if (filters.plate) summary.push(`Placas: ${filters.plate}`);
+  if (filters.dateFrom) summary.push(`Desde: ${formatDateValue(filters.dateFrom)}`);
+  if (filters.dateTo) summary.push(`Hasta: ${formatDateValue(filters.dateTo)}`);
+
+  return summary;
+}
+
 export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
   const router = useRouter();
+  const [open, setOpen] = React.useState(false);
   const hasFilters =
     Boolean(filters.status) ||
     Boolean(filters.customerId) ||
@@ -38,6 +60,7 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
     Boolean(filters.plate) ||
     Boolean(filters.dateFrom) ||
     Boolean(filters.dateTo);
+  const activeFilterSummary = getActiveFilterSummary(filters, customers);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,113 +81,157 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
-      <div className="flex items-center gap-2">
-        <Filter className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
-        <h3 className="text-base font-medium text-[var(--color-text-main)]">Filtros</h3>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor="status" className="text-sm">
-            Estatus
-          </Label>
-          <Select name="status" defaultValue={filters.status ?? ""}>
-            <SelectTrigger id="status" aria-label="Estatus">
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
-              {Object.entries(quoteStatusLabels).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <div className="grid gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Filter className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
+            <h3 className="text-base font-medium text-[var(--color-text-main)]">Filtros</h3>
+          </div>
+          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+            {hasFilters
+              ? `${activeFilterSummary.length} filtro${activeFilterSummary.length === 1 ? "" : "s"} activo${activeFilterSummary.length === 1 ? "" : "s"}`
+              : "Sin filtros activos"}
+          </p>
         </div>
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="customerId" className="text-sm">
-            Cliente
-          </Label>
-          <Select name="customerId" defaultValue={filters.customerId ?? ""}>
-            <SelectTrigger id="customerId" aria-label="Cliente">
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
-              {customers.map((customer) => (
-                <SelectItem key={customer.id} value={customer.id}>
-                  {customer.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="number" className="text-sm">
-            Folio
-          </Label>
-          <Input
-            id="number"
-            name="number"
-            defaultValue={filters.number ?? ""}
-            placeholder="Ej. C-001"
-            type="search"
-          />
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="plate" className="text-sm">
-            Placas
-          </Label>
-          <Input
-            id="plate"
-            name="plate"
-            defaultValue={filters.plate ?? ""}
-            placeholder="Ej. ABC-123"
-            type="search"
-          />
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="dateFrom" className="text-sm">
-            Desde
-          </Label>
-          <Input
-            id="dateFrom"
-            name="dateFrom"
-            defaultValue={formatDateValue(filters.dateFrom)}
-            type="date"
-          />
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="dateTo" className="text-sm">
-            Hasta
-          </Label>
-          <Input
-            id="dateTo"
-            name="dateTo"
-            defaultValue={formatDateValue(filters.dateTo)}
-            type="date"
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="submit" variant="secondary" className="w-full sm:w-fit">
-          Filtrar
-        </Button>
-        {hasFilters ? (
-          <Button type="button" variant="outline" className="w-full sm:w-fit" onClick={handleClear}>
-            <X className="h-4 w-4" aria-hidden="true" />
-            Limpiar
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {hasFilters ? (
+            <Button type="button" variant="outline" className="w-full sm:w-fit" onClick={handleClear}>
+              <X className="h-4 w-4" aria-hidden="true" />
+              Limpiar
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full sm:w-fit"
+            aria-expanded={open}
+            aria-controls="quote-filter-fields"
+            onClick={() => setOpen((current) => !current)}
+          >
+            <Filter className="h-4 w-4" aria-hidden="true" />
+            {open ? "Ocultar filtros" : "Mostrar filtros"}
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
           </Button>
-        ) : null}
+        </div>
       </div>
-    </form>
+
+      {hasFilters ? (
+        <div className="flex flex-wrap gap-2" aria-label="Filtros activos">
+          {activeFilterSummary.map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 py-1 text-xs font-medium text-[var(--color-text-main)]"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {open ? (
+        <form id="quote-filter-fields" onSubmit={handleSubmit} className="grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="status" className="text-sm">
+                Estatus
+              </Label>
+              <Select name="status" defaultValue={filters.status ?? ""}>
+                <SelectTrigger id="status" aria-label="Estatus">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos</SelectItem>
+                  {Object.entries(quoteStatusLabels).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="customerId" className="text-sm">
+                Cliente
+              </Label>
+              <Select name="customerId" defaultValue={filters.customerId ?? ""}>
+                <SelectTrigger id="customerId" aria-label="Cliente">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos</SelectItem>
+                  {customers.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="number" className="text-sm">
+                Folio
+              </Label>
+              <Input
+                id="number"
+                name="number"
+                defaultValue={filters.number ?? ""}
+                placeholder="Ej. C-001"
+                type="search"
+              />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="plate" className="text-sm">
+                Placas
+              </Label>
+              <Input
+                id="plate"
+                name="plate"
+                defaultValue={filters.plate ?? ""}
+                placeholder="Ej. ABC-123"
+                type="search"
+              />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="dateFrom" className="text-sm">
+                Desde
+              </Label>
+              <Input
+                id="dateFrom"
+                name="dateFrom"
+                defaultValue={formatDateValue(filters.dateFrom)}
+                type="date"
+              />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="dateTo" className="text-sm">
+                Hasta
+              </Label>
+              <Input
+                id="dateTo"
+                name="dateTo"
+                defaultValue={formatDateValue(filters.dateTo)}
+                type="date"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button type="submit" variant="secondary" className="w-full sm:w-fit">
+              Filtrar
+            </Button>
+          </div>
+        </form>
+      ) : null}
+    </div>
   );
 }

@@ -116,12 +116,32 @@ describe("QuoteMobileCard", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Vista previa de C-001")).toBeInTheDocument();
+    expect(screen.getByText(/cambio de aceite/i)).toBeInTheDocument();
+  });
+
+  it("opens the preview dialog from the keyboard", async () => {
+    const user = userEvent.setup();
+    renderCard(createMockQuote());
+
+    screen.getByRole("button", { name: /abrir vista previa de c-001/i }).focus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Vista previa de C-001")).toBeInTheDocument();
   });
 
   it("does not render a redundant preview trigger", () => {
     renderCard(createMockQuote());
 
     expect(screen.queryByRole("button", { name: /ver vista previa/i })).not.toBeInTheDocument();
+  });
+
+  it("does not list individual quote items on the card", () => {
+    renderCard(createMockQuote());
+
+    expect(screen.queryByText(/cambio de aceite/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/subtotal:/i)).toBeInTheDocument();
+    expect(screen.getByText(/^total:/i)).toBeInTheDocument();
   });
 
   it("does not open the preview dialog when an action button is clicked", async () => {
@@ -253,11 +273,21 @@ describe("QuoteMobileCard", () => {
     expect(screen.getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
   });
 
-  it("does not open the preview dialog when the edit link is clicked", async () => {
+  it("does not open the preview dialog when a nested action button is clicked", async () => {
     const user = userEvent.setup();
     renderCard(createMockQuote());
 
-    await user.click(screen.getByRole("link", { name: /editar cotización/i }));
+    await user.click(screen.getByRole("button", { name: /duplicar/i }));
+
+    expect(screen.queryByRole("dialog", { name: /vista previa/i })).not.toBeInTheDocument();
+  });
+
+  it("does not open the preview dialog when an action is activated from the keyboard", async () => {
+    const user = userEvent.setup();
+    renderCard(createMockQuote());
+
+    screen.getByRole("button", { name: /duplicar/i }).focus();
+    await user.keyboard("{Enter}");
 
     expect(screen.queryByRole("dialog", { name: /vista previa/i })).not.toBeInTheDocument();
   });
