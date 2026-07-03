@@ -1,7 +1,8 @@
 // @vitest-environment node
 
+import crypto from "node:crypto";
 import { PaymentRequestStatus } from "@prisma/client";
-import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
   cancelPaymentRequest,
@@ -15,6 +16,7 @@ import {
   PaymentRequestNotFoundError,
   savePaymentRequestFiscalData,
   setPaymentRequestInvoicePreference,
+  createPaymentSlug,
 } from "./domain";
 
 let testCustomerId = "";
@@ -97,12 +99,33 @@ async function cleanup() {
   }
 }
 
+function mockSlugSuffixes(...suffixes: string[]) {
+  const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const values = suffixes.flatMap((suffix) =>
+    suffix.split("").map((char) => {
+      const index = alphabet.indexOf(char);
+      if (index === -1) {
+        throw new Error(`Unsupported slug suffix char in test: ${char}`);
+      }
+      return index;
+    }),
+  );
+  const randomInt = vi.spyOn(crypto, "randomInt") as unknown as {
+    mockReturnValueOnce: (value: number) => void;
+  };
+  for (const value of values) {
+    randomInt.mockReturnValueOnce(value);
+  }
+  return randomInt;
+}
+
 beforeEach(async () => {
   await cleanup();
   await createTestCustomer();
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await cleanup();
 });
 
@@ -122,8 +145,35 @@ describe("createPaymentRequestForQuote", () => {
     expect(request.quoteId).toBe(quote.id);
     expect(request.workOrderId).toBeNull();
     expect(request.status).toBe(PaymentRequestStatus.PENDING);
-    expect(request.token).toHaveLength(64);
+    // New slug format: P-{numberSuffix}-{8 base62} (e.g. P-0726-03-a1B2c3D4)
+    // The prefix is P + quote.number with first char dropped
+    const expectedPrefix = `P${quote.number.slice(1)}`;
+    const slugPattern = new RegExp(`^${expectedPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-[0-9A-Za-z]{8}$`);
+    expect(request.token).toMatch(slugPattern);
+    expect(request.token.length).toBeLessThan(64);
     expect(request.expiresAt.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it("retries payment slug generation when a quote payment token collides", async () => {
+    const collisionQuote = await createTestQuote(testCustomerId);
+    const targetQuote = await createTestQuote(testCustomerId);
+    const collisionToken = `P${targetQuote.number.slice(1)}-00000000`;
+    const existing = await prisma.paymentRequest.create({
+      data: {
+        token: collisionToken,
+        status: PaymentRequestStatus.CANCELLED,
+        customerId: testCustomerId,
+        quoteId: collisionQuote.id,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+    });
+    createdPaymentRequestIds.push(existing.id);
+    mockSlugSuffixes("00000000", "11111111");
+
+    const request = await createPaymentRequestForQuote(targetQuote.id);
+    createdPaymentRequestIds.push(request.id);
+
+    expect(request.token).toBe(`P${targetQuote.number.slice(1)}-11111111`);
   });
 
   it("sets FISCAL_DATA_REQUIRED when invoice is required at creation", async () => {
@@ -158,7 +208,11 @@ describe("getOrCreatePaymentRequestForQuote", () => {
     expect(request.customerId).toBe(testCustomerId);
     expect(request.quoteId).toBe(quote.id);
     expect(request.status).toBe(PaymentRequestStatus.PENDING);
-    expect(request.token).toHaveLength(64);
+    // New slug format
+    const expectedPrefix = `P${quote.number.slice(1)}`;
+    const slugPattern = new RegExp(`^${expectedPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-[0-9A-Za-z]{8}$`);
+    expect(request.token).toMatch(slugPattern);
+    expect(request.token.length).toBeLessThan(64);
     expect(request.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
 
@@ -212,6 +266,7 @@ describe("createPaymentRequestForWorkOrder", () => {
     expect(request.workOrderId).toBe(workOrder.id);
     expect(request.quoteId).toBeNull();
     expect(request.status).toBe(PaymentRequestStatus.PENDING);
+    expect(request.token).toMatch(new RegExp(`^P${workOrder.number.slice(1)}-[0-9A-Za-z]{8}$`));
   });
 
   it("prevents duplicate active requests for the same work order", async () => {
@@ -402,4 +457,34 @@ describe("savePaymentRequestFiscalData", () => {
     expect(second.customerFiscalProfile?.businessName).toBe("Updated Name");
     expect(second.customerFiscalProfile?.taxRegime).toBe("601");
   }, 10000);
+});
+
+describe("createPaymentSlug", () => {
+  it("generates a slug with format P-{numberSuffix}-{8 base62} from a quote number", () => {
+    const slug = createPaymentSlug("C-0726-03");
+
+    // P replaces C: P-0726-03-XXXXXXXX
+    expect(slug).toMatch(/^P-0726-03-[0-9A-Za-z]{8}$/);
+  });
+
+  it("generates a slug with format P-{numberSuffix}-{8 base62} from a work order number", () => {
+    const slug = createPaymentSlug("T-0726-03");
+
+    // P replaces T
+    expect(slug).toMatch(/^P-0726-03-[0-9A-Za-z]{8}$/);
+  });
+});
+
+describe("public lookup by stored slug", () => {
+  it("getPaymentRequestByToken works with the new slug format", async () => {
+    const quote = await createTestQuote(testCustomerId);
+    const created = await createPaymentRequestForQuote(quote.id);
+    createdPaymentRequestIds.push(created.id);
+
+    // Lookup by the stored slug (which is in the new format)
+    const request = await getPaymentRequestByToken(created.token);
+
+    expect(request.id).toBe(created.id);
+    expect(request.status).toBe(PaymentRequestStatus.VIEWED);
+  });
 });

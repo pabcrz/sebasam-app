@@ -10,6 +10,11 @@ import {
   SharedQuoteRevokedError,
   SharedQuoteNotFoundError,
   QuoteDecisionError,
+  createSharedQuoteSlug,
+  getOrCreateSharedQuoteForQuote,
+  createSharedQuoteForQuote,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  createSharedQuoteToken,
 } from "./domain";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -17,9 +22,9 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), sharedQuote: { findUnique: vi.fn() } } }));
 
 type MockTransaction = {
-  quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
+  quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn> };
-  sharedQuote: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
+  sharedQuote: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(): MockTransaction {
@@ -27,6 +32,7 @@ function mockTx(): MockTransaction {
     quote: {
       findUnique: vi.fn(),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      update: vi.fn(),
     },
     quoteDecision: {
       create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) =>
@@ -36,6 +42,9 @@ function mockTx(): MockTransaction {
     sharedQuote: {
       findFirst: vi.fn().mockResolvedValue(null),
       findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: "sq-new", ...args.data, createdAt: new Date() }),
+      ),
     },
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
@@ -85,6 +94,18 @@ describe("getSharedQuoteByToken", () => {
 
     expect(result.id).toBe("sq-1");
     expect(result.quote.status).toBe(QuoteStatus.SENT);
+  });
+
+  it("looks up shared quotes by the stored short slug", async () => {
+    const slug = "C-0726-03-a1B2c3D4";
+    mockSharedQuote({ token: slug });
+
+    const result = await getSharedQuoteByToken(slug);
+
+    expect(result.token).toBe(slug);
+    expect(prisma.sharedQuote.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      where: { token: slug },
+    }));
   });
 
   it("throws SharedQuoteNotFoundError when token doesn't exist", async () => {
@@ -330,5 +351,110 @@ describe("authorizeQuote", () => {
       data: expect.objectContaining({ actorId: null }),
     });
     expect(result.actorId).toBeNull();
+  });
+});
+
+describe("createSharedQuoteSlug", () => {
+  it("generates a slug with format {quoteNumber}-{8 base62 chars}", () => {
+    const slug = createSharedQuoteSlug("C-0726-03");
+
+    expect(slug).toMatch(/^C-0726-03-[0-9A-Za-z]{8}$/);
+  });
+});
+
+describe("getOrCreateSharedQuoteForQuote", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns existing active shared quote unchanged", async () => {
+    const tx = mockTx();
+    const existingToken = "C-0726-03-a1B2c3D4";
+    tx.sharedQuote.findFirst.mockResolvedValue({
+      id: "sq-existing",
+      token: existingToken,
+      quoteId: "q-1",
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + ONE_DAY_MS),
+      createdAt: new Date(),
+    });
+
+    const result = await getOrCreateSharedQuoteForQuote("q-1");
+
+    expect(result.id).toBe("sq-existing");
+    expect(result.token).toBe(existingToken);
+    // Must not call create
+    expect(tx.sharedQuote.create).not.toHaveBeenCalled();
+  });
+
+  it("creates a new shared quote with slug format when no active exists", async () => {
+    const tx = mockTx();
+    // No existing active
+    tx.sharedQuote.findFirst.mockResolvedValue(null);
+    // Quote is found and valid
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-1",
+      number: "C-0726-03",
+      status: QuoteStatus.SENT,
+      items: [{ description: "Repair", quantity: { toString: () => "1" }, unitPriceCents: 1000 }],
+    });
+    // No slug collision
+    tx.sharedQuote.findUnique.mockResolvedValue(null);
+
+    const result = await getOrCreateSharedQuoteForQuote("q-1");
+
+    expect(result.token).toMatch(/^C-0726-03-[0-9A-Za-z]{8}$/);
+    expect(tx.sharedQuote.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          token: expect.stringMatching(/^C-0726-03-[0-9A-Za-z]{8}$/),
+          quoteId: "q-1",
+        }),
+      }),
+    );
+  });
+
+  it("retries slug generation on collision", async () => {
+    const tx = mockTx();
+    // No existing active
+    tx.sharedQuote.findFirst.mockResolvedValue(null);
+    // Quote is found and valid
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-1",
+      number: "C-0726-03",
+      status: QuoteStatus.SENT,
+      items: [{ description: "Repair", quantity: { toString: () => "1" }, unitPriceCents: 1000 }],
+    });
+    // First slug collides, second is free
+    tx.sharedQuote.findUnique
+      .mockResolvedValueOnce({ id: "sq-collision" }) // first attempt → collision
+      .mockResolvedValueOnce(null); // second attempt → free
+
+    const result = await getOrCreateSharedQuoteForQuote("q-1");
+
+    expect(result.token).toMatch(/^C-0726-03-[0-9A-Za-z]{8}$/);
+    // findUnique called twice: one for collision, one for free slug
+    expect(tx.sharedQuote.findUnique).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("createSharedQuoteForQuote", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates a shared quote with slug format", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-1",
+      number: "C-0726-03",
+      status: QuoteStatus.SENT,
+      items: [{ description: "Repair", quantity: { toString: () => "1" }, unitPriceCents: 1000 }],
+    });
+    tx.sharedQuote.findUnique.mockResolvedValue(null);
+
+    const result = await createSharedQuoteForQuote("q-1");
+
+    expect(result.token).toMatch(/^C-0726-03-[0-9A-Za-z]{8}$/);
   });
 });
