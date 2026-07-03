@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { PaymentRequestStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { fiscalDataInputSchema, invoicePreferenceSchema } from "./schemas";
+import { generatePaymentSlugFromNumber, generateUniqueSlug } from "@/lib/slug";
 
 const ACTIVE_STATUSES: PaymentRequestStatus[] = [
   PaymentRequestStatus.PENDING,
@@ -55,7 +56,13 @@ export class PaymentRequestOperationError extends PaymentRequestError {
 }
 
 export function createToken(): string {
+  // Legacy token — kept for backward compatibility during migration.
+  // New tokens are generated via createPaymentSlug() using short slugs.
   return crypto.randomBytes(32).toString("hex");
+}
+
+export function createPaymentSlug(referenceNumber: string): string {
+  return generatePaymentSlugFromNumber(referenceNumber);
 }
 
 export function createExpirationDate(reference = new Date()): Date {
@@ -162,9 +169,20 @@ async function createPaymentRequestForQuoteInTransaction(
     ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
     : PaymentRequestStatus.PENDING;
 
+  const token = await generateUniqueSlug(
+    `P${quote.number.slice(1)}`,
+    async (slug) => {
+      const existing = await tx.paymentRequest.findUnique({
+        where: { token: slug },
+        select: { id: true },
+      });
+      return existing !== null;
+    },
+  );
+
   return tx.paymentRequest.create({
     data: {
-      token: createToken(),
+      token,
       status: initialStatus,
       customerId: quote.customerId,
       quoteId: quote.id,
@@ -225,9 +243,21 @@ export async function createPaymentRequestForWorkOrder(
       ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
       : PaymentRequestStatus.PENDING;
 
+    const slugPrefix = `P${workOrder.number.slice(1)}`;
+    const token = await generateUniqueSlug(
+      slugPrefix,
+      async (slug) => {
+        const existing = await tx.paymentRequest.findUnique({
+          where: { token: slug },
+          select: { id: true },
+        });
+        return existing !== null;
+      },
+    );
+
     return tx.paymentRequest.create({
       data: {
-        token: createToken(),
+        token,
         status: initialStatus,
         customerId: workOrder.quote.customerId,
         workOrderId: workOrder.id,

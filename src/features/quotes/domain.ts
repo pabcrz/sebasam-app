@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { QuoteDecisionOrigin, QuoteStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { generateSlug, generateUniqueSlug } from "@/lib/slug";
 
 const SHARED_QUOTE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -47,7 +48,13 @@ export class QuoteDecisionError extends Error {
 }
 
 export function createSharedQuoteToken(): string {
+  // Legacy token — kept for backward compatibility during migration.
+  // New tokens are generated via createSharedQuoteSlug() using short slugs.
   return crypto.randomBytes(32).toString("hex");
+}
+
+export function createSharedQuoteSlug(quoteNumber: string): string {
+  return generateSlug(quoteNumber);
 }
 
 export function createSharedQuoteExpirationDate(reference = new Date()): Date {
@@ -129,10 +136,15 @@ async function createSharedQuoteInTransaction(tx: TransactionClient, quoteId: st
 
   const nextStatus = quote.status === QuoteStatus.DRAFT ? QuoteStatus.SENT : quote.status;
 
+  const token = await generateUniqueSlug(quote.number, async (slug) => {
+    const existing = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
+    return existing !== null;
+  });
+
   const [sharedQuote] = await Promise.all([
     tx.sharedQuote.create({
       data: {
-        token: createSharedQuoteToken(),
+        token,
         quoteId: quote.id,
         expiresAt: createSharedQuoteExpirationDate(),
       },
