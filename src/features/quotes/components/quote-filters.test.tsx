@@ -11,6 +11,9 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("lucide-react", () => ({
+  ChevronDown: ({ ...props }: React.SVGAttributes<SVGSVGElement>) => (
+    <svg data-testid="chevron-down-icon" {...props} />
+  ),
   Filter: ({ ...props }: React.SVGAttributes<SVGSVGElement>) => (
     <svg data-testid="filter-icon" {...props} />
   ),
@@ -29,15 +32,30 @@ function renderFilters(filters = {}) {
 }
 
 describe("QuoteFilters", () => {
-  it("renders all filter fields", () => {
+  it("keeps filter fields collapsed by default", () => {
     renderFilters();
 
+    expect(screen.getByRole("button", { name: /mostrar filtros/i })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByLabelText("Estatus")).not.toBeInTheDocument();
+  });
+
+  it("opens and closes filter fields from the toggle", async () => {
+    const user = userEvent.setup();
+    renderFilters();
+
+    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
+
+    expect(screen.getByRole("button", { name: /ocultar filtros/i })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByLabelText("Estatus")).toBeInTheDocument();
     expect(screen.getByLabelText("Cliente")).toBeInTheDocument();
     expect(screen.getByLabelText("Folio")).toBeInTheDocument();
     expect(screen.getByLabelText("Placas")).toBeInTheDocument();
     expect(screen.getByLabelText("Desde")).toBeInTheDocument();
     expect(screen.getByLabelText("Hasta")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /ocultar filtros/i }));
+
+    expect(screen.queryByLabelText("Estatus")).not.toBeInTheDocument();
   });
 
   it("shows the clear button only when filters are active", () => {
@@ -54,6 +72,7 @@ describe("QuoteFilters", () => {
     const user = userEvent.setup();
     renderFilters();
 
+    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
     await user.type(screen.getByLabelText("Folio"), "C-001");
     await user.click(screen.getByRole("button", { name: /filtrar/i }));
 
@@ -73,9 +92,20 @@ describe("QuoteFilters", () => {
     const user = userEvent.setup();
     renderFilters();
 
+    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
     await user.click(screen.getByLabelText("Cliente"));
 
     expect(screen.getAllByText("Constructora del Norte").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Talleres Unidos").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("summarizes active filters while collapsed", () => {
+    renderFilters({ status: "DRAFT", customerId: "cust-1", number: "C-001" });
+
+    expect(screen.getByText("3 filtros activos")).toBeInTheDocument();
+    expect(screen.getByText("Estatus: Borrador")).toBeInTheDocument();
+    expect(screen.getByText("Cliente: Constructora del Norte")).toBeInTheDocument();
+    expect(screen.getByText("Folio: C-001")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Estatus")).not.toBeInTheDocument();
   });
 });
