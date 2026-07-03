@@ -128,7 +128,7 @@ export function QuoteMobileCard({
           <QuoteAuthorizeForm
             action={authorizeAction}
             quoteNumber={quote.number}
-            size="default"
+            size="sm"
           />
         ) : null}
         {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
