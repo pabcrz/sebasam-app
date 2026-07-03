@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Pencil, Copy } from "lucide-react";
+import { CalendarDays, Car, ClipboardList, Copy, Pencil } from "lucide-react";
 import type { PaymentRequest, QuoteStatus, SharedQuote, WorkOrderStatus } from "@prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
 import { Badge, Button } from "@/components/ui";
@@ -48,9 +48,12 @@ export function QuoteMobileCard({
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
   const openPreview = React.useCallback(() => setPreviewOpen(true), []);
+  const vehicleDescription = quote.vehicle
+    ? formatVehicle(quote.vehicle)
+    : formatSnapshotVehicle(quote.vehicleSnapshot);
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm">
       <button
         type="button"
         onClick={openPreview}
@@ -59,41 +62,81 @@ export function QuoteMobileCard({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium text-[var(--color-text-main)]">{quote.number}</p>
-            <p className="truncate text-sm text-[var(--color-text-muted)]">{quote.customer.name}</p>
+            <p className="truncate text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              {quote.number}
+            </p>
+            <p className="mt-1 truncate text-base font-semibold text-[var(--color-text-main)]">
+              {quote.customer.name}
+            </p>
           </div>
           <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
         </div>
 
-        <p className="mt-2 text-sm font-medium text-[var(--color-text-main)]">{quote.title}</p>
-        <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-          {quote.vehicle ? formatVehicle(quote.vehicle) : formatSnapshotVehicle(quote.vehicleSnapshot)}
+        <p className="mt-3 text-sm font-medium leading-5 text-[var(--color-text-main)]">
+          {quote.title || "Sin título"}
+        </p>
+        <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+          <Car className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>{vehicleDescription || "Sin vehículo"}</span>
         </p>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
           {quote.workOrder ? (
-            <Badge variant={workOrderStatusBadgeVariant[quote.workOrder.status]}>
-              {quote.workOrder.number} — {workOrderStatusLabels[quote.workOrder.status]}
-            </Badge>
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex min-w-0 items-center gap-2">
+                <ClipboardList className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
+                <span className="min-w-0">
+                  <span className="block text-xs font-medium text-[var(--color-text-muted)]">Orden de trabajo</span>
+                  <span className="block truncate text-sm font-medium text-[var(--color-text-main)]">
+                    {quote.workOrder.number}
+                  </span>
+                </span>
+              </span>
+              <Badge variant={workOrderStatusBadgeVariant[quote.workOrder.status]}>
+                {workOrderStatusLabels[quote.workOrder.status]}
+              </Badge>
+            </div>
           ) : (
-            <span className="text-xs text-[var(--color-text-muted)]">Sin orden de trabajo</span>
+            <span className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+              <ClipboardList className="h-4 w-4" aria-hidden="true" />
+              Sin orden de trabajo
+            </span>
           )}
         </div>
 
         <div className="mt-3 border-t border-[var(--color-border-light)] pt-3">
-          <div className="grid gap-1 text-sm">
-            <p className="text-[var(--color-text-muted)]">Subtotal: {formatCents(quote.subtotalCents)}</p>
-            <p className="text-[var(--color-text-muted)]">IVA: {formatCents(quote.taxCents)}</p>
-            <p className="font-semibold text-[var(--color-primary)]">Total: {formatCents(quote.totalCents)}</p>
-            <p className="text-xs text-[var(--color-text-muted)]">
-              Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}
-            </p>
-          </div>
+          <dl className="grid gap-1.5 text-sm">
+            <div className="flex items-center justify-between gap-3 text-xs text-[var(--color-text-muted)]">
+              <dt>Subtotal</dt>
+              <dd className="tabular-nums">{formatCents(quote.subtotalCents)}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-xs text-[var(--color-text-muted)]">
+              <dt>IVA</dt>
+              <dd className="tabular-nums">{formatCents(quote.taxCents)}</dd>
+            </div>
+            <div className="flex items-end justify-between gap-3 pt-1 text-[var(--color-primary)]">
+              <dt className="font-semibold text-[var(--color-text-main)]">Total</dt>
+              <dd className="text-xl font-bold tabular-nums">{formatCents(quote.totalCents)}</dd>
+            </div>
+          </dl>
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+            <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}</span>
+          </p>
         </div>
       </button>
 
       <div className="mt-4 grid gap-2">
         <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
+        {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
+          <div className="[&_button]:w-full [&_button]:border-[var(--color-primary)] [&_button]:text-[var(--color-primary)]">
+            {quote.activeSharedQuote ? (
+              <ShareQuoteLinkDialog sharedQuote={quote.activeSharedQuote as SharedQuote} quoteNumber={quote.number} />
+            ) : (
+              <ShareQuoteButton action={shareAction} quoteId={quote.id} quoteNumber={quote.number} />
+            )}
+          </div>
+        ) : null}
         <div className="flex gap-2">
           {editable ? (
             <Button asChild variant="outline" size="sm" className="flex-1">
@@ -130,13 +173,6 @@ export function QuoteMobileCard({
             quoteNumber={quote.number}
             size="sm"
           />
-        ) : null}
-        {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
-          quote.activeSharedQuote ? (
-            <ShareQuoteLinkDialog sharedQuote={quote.activeSharedQuote as SharedQuote} quoteNumber={quote.number} />
-          ) : (
-            <ShareQuoteButton action={shareAction} quoteId={quote.id} quoteNumber={quote.number} />
-          )
         ) : null}
       </div>
     </div>

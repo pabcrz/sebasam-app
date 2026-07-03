@@ -140,8 +140,63 @@ describe("QuoteMobileCard", () => {
     renderCard(createMockQuote());
 
     expect(screen.queryByText(/cambio de aceite/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/subtotal:/i)).toBeInTheDocument();
-    expect(screen.getByText(/^total:/i)).toBeInTheDocument();
+    expect(screen.getByText("Subtotal")).toBeInTheDocument();
+    expect(screen.getByText("IVA")).toBeInTheDocument();
+    expect(screen.getByText("Total")).toBeInTheDocument();
+    expect(screen.getByText("$116.00")).toBeInTheDocument();
+  });
+
+  it("renders missing vehicle with lower-weight text", () => {
+    renderCard(createMockQuote());
+
+    expect(screen.getByText("Sin vehículo")).toBeInTheDocument();
+  });
+
+  it("renders the work order as a non-clickable related row", () => {
+    renderCard(createMockQuote({
+      workOrder: {
+        id: "work-order-1",
+        quoteId: "quote-1",
+        number: "T-001",
+        status: "PLANNED",
+        notes: null,
+        scheduledFor: null,
+        siteAddress: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    }));
+
+    expect(screen.getByText("Orden de trabajo")).toBeInTheDocument();
+    expect(screen.getByText("T-001")).toBeInTheDocument();
+    expect(screen.getByText("Planeada")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /t-001|orden de trabajo/i })).not.toBeInTheDocument();
+  });
+
+  it("promotes the active shared quote link as the first action", () => {
+    renderCard(createMockQuote({
+      activeSharedQuote: {
+        id: "shared-1",
+        quoteId: "quote-1",
+        token: "token-1",
+        expiresAt: new Date("2026-12-31T00:00:00.000Z"),
+        revokedAt: null,
+        createdAt: new Date(),
+      } as unknown as QuoteListItem["activeSharedQuote"],
+    }));
+
+    const actions = screen.getAllByRole("button").filter((button) => button !== screen.getByLabelText(/abrir vista previa/i));
+
+    expect(actions[0]).toHaveAccessibleName(/ver link de cotización c-001/i);
+    expect(screen.queryByRole("button", { name: /compartir cotización/i })).not.toBeInTheDocument();
+  });
+
+  it("promotes share as the first action when no active shared quote exists", () => {
+    renderCard(createMockQuote());
+
+    const actions = screen.getAllByRole("button").filter((button) => button !== screen.getByLabelText(/abrir vista previa/i));
+
+    expect(actions[0]).toHaveAccessibleName(/compartir cotización c-001/i);
   });
 
   it("does not open the preview dialog when an action button is clicked", async () => {
