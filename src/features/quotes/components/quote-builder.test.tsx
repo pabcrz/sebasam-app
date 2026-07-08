@@ -87,6 +87,71 @@ describe("QuoteBuilder", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("creates and selects a customer without leaving the builder", async () => {
+    const user = userEvent.setup();
+    const createCustomerAction = vi.fn().mockResolvedValue({
+      success: true,
+      reused: false,
+      customer: { id: "cust-3", name: "Grúas del Centro" },
+    });
+
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        createCustomerAction={createCustomerAction}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+    await user.type(screen.getByLabelText("Nombre"), "Grúas del Centro");
+    await user.type(screen.getByLabelText("Correo electrónico"), "cliente@gruas.test");
+    await user.type(screen.getByLabelText("Teléfono"), "55 3333 4444");
+    await user.click(screen.getByRole("button", { name: "Guardar y seleccionar" }));
+
+    await waitFor(() => {
+      expect(createCustomerAction).toHaveBeenCalledWith({
+        name: "Grúas del Centro",
+        email: "cliente@gruas.test",
+        phone: "55 3333 4444",
+        address: "",
+        notes: "",
+      });
+      expect(screen.getByRole("button", { name: "Siguiente" })).not.toBeDisabled();
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Cliente creado y seleccionado.");
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByTestId("summary-customer")).toHaveTextContent("Grúas del Centro");
+  });
+
+  it("recovers when customer creation fails unexpectedly", async () => {
+    const user = userEvent.setup();
+    const createCustomerAction = vi.fn().mockRejectedValue(new Error("Unauthorized"));
+
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        createCustomerAction={createCustomerAction}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+    await user.type(screen.getByLabelText("Nombre"), "Grúas del Centro");
+    await user.click(screen.getByRole("button", { name: "Guardar y seleccionar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo crear el cliente. Intenta de nuevo.");
+    expect(screen.getByRole("button", { name: "Guardar y seleccionar" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Siguiente" })).toBeDisabled();
+  });
+
   it("advances through all steps and submits the expected FormData", async () => {
     const user = userEvent.setup();
     const action = vi.fn();

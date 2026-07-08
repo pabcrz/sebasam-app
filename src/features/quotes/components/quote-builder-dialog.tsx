@@ -21,9 +21,15 @@ type CustomerOption = {
 type QuoteBuilderDialogProps = {
   customers: CustomerOption[];
   createAction: (formData: FormData) => void | Promise<void>;
+  createCustomerAction?: (input: unknown) => Promise<{
+    success: boolean;
+    customer?: CustomerOption;
+    error?: string;
+    reused?: boolean;
+  }>;
 };
 
-export function QuoteBuilderDialog({ customers, createAction }: QuoteBuilderDialogProps) {
+export function QuoteBuilderDialog({ customers, createAction, createCustomerAction }: QuoteBuilderDialogProps) {
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -60,7 +66,12 @@ export function QuoteBuilderDialog({ customers, createAction }: QuoteBuilderDial
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </DialogHeader>
-        <QuoteBuilder customers={customers} createAction={createAction} onCancel={() => setOpen(false)} />
+        <QuoteBuilder
+          customers={customers}
+          createAction={createAction}
+          createCustomerAction={createCustomerAction}
+          onCancel={() => setOpen(false)}
+        />
       </DialogContent>
     </Dialog>
   );

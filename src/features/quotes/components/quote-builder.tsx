@@ -42,6 +42,13 @@ export type CustomerOption = {
   name: string;
 };
 
+type QuoteCustomerActionResult = {
+  success: boolean;
+  customer?: CustomerOption;
+  error?: string;
+  reused?: boolean;
+};
+
 export type QuoteBuilderInitialData = {
   customerId: string;
   vehicle: { plate: string; brand: string; model: string; year: string };
@@ -56,16 +63,32 @@ type QuoteBuilderProps = {
   customers: CustomerOption[];
   createAction?: (formData: FormData) => void | Promise<void>;
   saveAction?: (formData: FormData) => void | Promise<void>;
+  createCustomerAction?: (input: unknown) => Promise<QuoteCustomerActionResult>;
   initialData?: QuoteBuilderInitialData;
   onCancel?: () => void;
 };
 
-export function QuoteBuilder({ customers, createAction, saveAction, initialData, onCancel }: QuoteBuilderProps) {
+export function QuoteBuilder({
+  customers,
+  createAction,
+  saveAction,
+  createCustomerAction,
+  initialData,
+  onCancel,
+}: QuoteBuilderProps) {
   const isEdit = saveAction != null;
   const formAction = saveAction ?? createAction;
+  const [createdCustomerOptions, setCreatedCustomerOptions] = React.useState<CustomerOption[]>([]);
   const [step, setStep] = React.useState<Step>("client");
   const [stepError, setStepError] = React.useState<string | null>(null);
   const [showItemValidation, setShowItemValidation] = React.useState(false);
+  const [showCreateCustomer, setShowCreateCustomer] = React.useState(false);
+  const [newCustomerName, setNewCustomerName] = React.useState("");
+  const [newCustomerEmail, setNewCustomerEmail] = React.useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = React.useState("");
+  const [createCustomerMessage, setCreateCustomerMessage] = React.useState<string | null>(null);
+  const [createCustomerError, setCreateCustomerError] = React.useState<string | null>(null);
+  const [isCreatingCustomer, setIsCreatingCustomer] = React.useState(false);
   const [customerId, setCustomerId] = React.useState(initialData?.customerId ?? "");
   const [vehicle, setVehicle] = React.useState(
     initialData?.vehicle ?? { plate: "", brand: "", model: "", year: "" },
@@ -80,9 +103,67 @@ export function QuoteBuilder({ customers, createAction, saveAction, initialData,
 
   const currentStepIndex = steps.indexOf(step);
   const { subtotalCents, taxCents, totalCents } = calculateTotals(items, taxEnabled);
-  const selectedCustomer = customers.find((customer) => customer.id === customerId);
+  const customerOptions = React.useMemo(() => {
+    const merged = [...createdCustomerOptions];
+
+    for (const customer of customers) {
+      if (!merged.some((option) => option.id === customer.id)) {
+        merged.push(customer);
+      }
+    }
+
+    return merged;
+  }, [createdCustomerOptions, customers]);
+  const selectedCustomer = customerOptions.find((customer) => customer.id === customerId);
   const completeItems = items.filter(isItemComplete);
   const validUntil = createQuoteValidUntil();
+
+  async function handleCreateCustomer() {
+    if (!createCustomerAction) return;
+
+    setCreateCustomerError(null);
+    setCreateCustomerMessage(null);
+    setIsCreatingCustomer(true);
+
+    let result: QuoteCustomerActionResult;
+
+    try {
+      result = await createCustomerAction({
+        name: newCustomerName,
+        email: newCustomerEmail,
+        phone: newCustomerPhone,
+        address: "",
+        notes: "",
+      });
+    } catch {
+      setCreateCustomerError("No se pudo crear el cliente. Intenta de nuevo.");
+      setIsCreatingCustomer(false);
+      return;
+    }
+
+    setIsCreatingCustomer(false);
+
+    if (!result.success || !result.customer) {
+      setCreateCustomerError("Revisa el nombre, correo o teléfono del cliente.");
+      return;
+    }
+
+    const createdCustomer = result.customer;
+
+    setCreatedCustomerOptions((current) => {
+      if (current.some((customer) => customer.id === createdCustomer.id)) return current;
+      return [createdCustomer, ...current];
+    });
+    window.setTimeout(() => setCustomerId(createdCustomer.id), 0);
+    setNewCustomerName("");
+    setNewCustomerEmail("");
+    setNewCustomerPhone("");
+    setShowCreateCustomer(false);
+    setStepError(null);
+    setCreateCustomerMessage(
+      result.reused ? "Cliente existente seleccionado." : "Cliente creado y seleccionado.",
+    );
+  }
 
   function addItem() {
     const firstInvalidIndex = items.findIndex((item, index) => validateItemValue(item, index));
@@ -248,13 +329,86 @@ export function QuoteBuilder({ customers, createAction, saveAction, initialData,
                   <SelectValue placeholder="Selecciona un cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {customers.map((customer) => (
+                  {customerOptions.map((customer) => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {createCustomerAction ? (
+                <div className="grid gap-3 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--color-text-main)]">¿No encuentras el cliente?</p>
+                      <p className="text-xs text-[var(--color-text-muted)]">Créalo sin salir de la cotización.</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCreateCustomer((current) => !current)}
+                      aria-expanded={showCreateCustomer}
+                    >
+                      Crear cliente
+                    </Button>
+                  </div>
+
+                  {showCreateCustomer ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-2 sm:col-span-2">
+                        <Label htmlFor="quoteCustomerName">Nombre</Label>
+                        <Input
+                          id="quoteCustomerName"
+                          value={newCustomerName}
+                          onChange={(event) => setNewCustomerName(event.target.value)}
+                          placeholder="Nombre del cliente"
+                          required
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="quoteCustomerEmail">Correo electrónico</Label>
+                        <Input
+                          id="quoteCustomerEmail"
+                          type="email"
+                          value={newCustomerEmail}
+                          onChange={(event) => setNewCustomerEmail(event.target.value)}
+                          placeholder="cliente@ejemplo.com"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="quoteCustomerPhone">Teléfono</Label>
+                        <Input
+                          id="quoteCustomerPhone"
+                          value={newCustomerPhone}
+                          onChange={(event) => setNewCustomerPhone(event.target.value)}
+                          placeholder="55 1234 5678"
+                        />
+                      </div>
+                      {createCustomerError ? (
+                        <p className="text-sm text-[var(--color-status-danger-fg)]" role="alert">
+                          {createCustomerError}
+                        </p>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="primary"
+                        className="w-full sm:w-fit"
+                        loading={isCreatingCustomer}
+                        disabled={newCustomerName.trim() === ""}
+                        onClick={handleCreateCustomer}
+                      >
+                        Guardar y seleccionar
+                      </Button>
+                    </div>
+                  ) : null}
+                  {createCustomerMessage ? (
+                    <p className="text-sm text-[var(--color-status-success-fg)]" role="status">
+                      {createCustomerMessage}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
