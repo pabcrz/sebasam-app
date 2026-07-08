@@ -1,16 +1,17 @@
 import { prisma } from "@/lib/prisma";
 
-function formatSequentialNumber(prefix: string, sequence: number): string {
+function formatSequentialNumber(prefix: string, sequence: number, sequenceWidth: number): string {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const year = String(now.getFullYear()).slice(-2);
 
-  return `${prefix}-${month}${year}-${String(sequence).padStart(2, "0")}`;
+  return `${prefix}-${month}${year}-${String(sequence).padStart(sequenceWidth, "0")}`;
 }
 
 async function getNextNumber(
   table: "quote" | "workOrder",
   prefix: string,
+  sequenceWidth: number,
 ): Promise<string> {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -30,7 +31,7 @@ async function getNextNumber(
       }));
 
   if (records.length === 0) {
-    return formatSequentialNumber(prefix, 1);
+    return formatSequentialNumber(prefix, 1, sequenceWidth);
   }
 
   const highestSequence = records.reduce((highest, record) => {
@@ -45,13 +46,13 @@ async function getNextNumber(
     return Number.isFinite(sequence) ? Math.max(highest, sequence) : highest;
   }, 0);
 
-  return formatSequentialNumber(prefix, highestSequence + 1);
+  return formatSequentialNumber(prefix, highestSequence + 1, sequenceWidth);
 }
 
 export async function nextQuoteNumber(): Promise<string> {
-  return getNextNumber("quote", "C");
+  return getNextNumber("quote", "C", 3);
 }
 
 export async function nextWorkOrderNumber(): Promise<string> {
-  return getNextNumber("workOrder", "T");
+  return getNextNumber("workOrder", "T", 2);
 }

@@ -27,10 +27,10 @@ describe("sequential quote/work-order numbers", () => {
     vi.useRealTimers();
   });
 
-  it("starts quote numbers at C-MMYY-01 for an empty month", async () => {
+  it("starts quote numbers at C-MMYY-001 for an empty month", async () => {
     prismaMock.quote.findMany.mockResolvedValue([]);
 
-    await expect(nextQuoteNumber()).resolves.toBe("C-0626-01");
+    await expect(nextQuoteNumber()).resolves.toBe("C-0626-001");
     expect(prismaMock.quote.findMany).toHaveBeenCalledWith({
       where: { number: { startsWith: "C-0626-" } },
       select: { number: true },
@@ -45,6 +45,15 @@ describe("sequential quote/work-order numbers", () => {
     ]);
 
     await expect(nextQuoteNumber()).resolves.toBe("C-0626-101");
+  });
+
+  it("keeps compatibility with existing two-digit quote numbers", async () => {
+    prismaMock.quote.findMany.mockResolvedValue([
+      { number: "C-0626-03" },
+      { number: "C-0626-004" },
+    ]);
+
+    await expect(nextQuoteNumber()).resolves.toBe("C-0626-005");
   });
 
   it("starts work order numbers at T-MMYY-01 for an empty month", async () => {
