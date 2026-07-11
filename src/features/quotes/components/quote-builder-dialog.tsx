@@ -69,7 +69,7 @@ export function QuoteBuilderDialog({ customers, createAction, createCustomerActi
             Nueva cotización
           </Button>
         </DialogTrigger>
-        <DialogContent className="grid max-h-[90dvh] min-h-[50dvh] max-w-4xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+        <DialogContent className="grid max-h-[90dvh] max-w-4xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
           <DialogHeader className="relative">
             <DialogTitle>Crear cotización</DialogTitle>
             <button
@@ -86,6 +86,7 @@ export function QuoteBuilderDialog({ customers, createAction, createCustomerActi
             createAction={createAction}
             createCustomerAction={createCustomerAction}
             searchCustomersAction={searchCustomersAction}
+            layout="dialog"
             onCancel={requestClose}
           />
         </DialogContent>
