@@ -352,10 +352,10 @@ export function QuoteBuilder({
   const isDialogLayout = layout === "dialog";
   const formClass = isDialogLayout
     ? "flex flex-col"
-    : "flex min-h-0 flex-1 flex-col overflow-hidden";
+    : "flex flex-col";
   const scrollAreaClass = isDialogLayout
     ? "py-4 pr-1"
-    : "min-h-0 flex-1 overflow-y-auto py-4 pr-1";
+    : "py-4 pr-1";
 
   return (
     <form

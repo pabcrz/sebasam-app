@@ -48,7 +48,7 @@ describe("QuoteBuilder", () => {
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
     expect(screen.queryByRole("heading", { name: /cotización/i })).not.toBeInTheDocument();
-    expect(screen.getByTestId("quote-builder-scroll-area")).toHaveClass("overflow-y-auto");
+    expect(screen.getByTestId("quote-builder-scroll-area")).toBeInTheDocument();
     expect(screen.getByTestId("quote-builder-footer")).toHaveClass("shrink-0");
     expect(screen.getByRole("navigation", { name: /pasos de cotización/i })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /cliente/i })).toBeInTheDocument();
