@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui";
 import {
-  formatQuantity,
   itemTypeLabels,
   itemTypes,
   ItemFormValue,
@@ -117,10 +116,13 @@ export function QuoteBuilderItemsStep({
                 placeholder="Ej. Bajar dos muelles"
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-              <div className="grid gap-2">
+            <div
+              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end gap-3"
+              data-testid={`quantity-price-row-${index}`}
+            >
+              <div className="grid min-w-0 gap-2">
                 <Label htmlFor={`items-${index}-quantity`}>Cantidad</Label>
-                <div className="flex items-center gap-2 max-w-35">
+                <div className="flex w-full min-w-0 max-w-35 items-center overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
                   <Button
                     type="button"
                     variant="outline"
@@ -128,7 +130,7 @@ export function QuoteBuilderItemsStep({
                     aria-label={`Restar cantidad del concepto ${index + 1}`}
                     onClick={() => onAdjustQuantity(index, -1)}
                     disabled={Number(item.quantity) <= 1}
-                    className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] px-0"
+                    className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] shrink-0 rounded-none border-0 border-r border-[var(--color-border-light)] px-0"
                   >
                     <Minus className="h-4 w-4" aria-hidden="true" />
                   </Button>
@@ -139,7 +141,7 @@ export function QuoteBuilderItemsStep({
                     inputMode="numeric"
                     pattern="[0-9]*"
                     min={1}
-                    className="text-center"
+                    className="min-w-0 rounded-none border-0 px-1 text-center shadow-none focus-visible:ring-inset"
                     max={maxQuantity}
                     value={item.quantity}
                     onChange={(event) => {
@@ -160,34 +162,45 @@ export function QuoteBuilderItemsStep({
                     aria-label={`Sumar cantidad del concepto ${index + 1}`}
                     onClick={() => onAdjustQuantity(index, 1)}
                     disabled={Number(item.quantity) >= maxQuantity}
-                    className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] px-0"
+                    className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] shrink-0 rounded-none border-0 border-l border-[var(--color-border-light)] px-0"
                   >
                     <Plus className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </div>
-              <div className="grid gap-2">
+              <div className="grid min-w-0 gap-2">
                 <Label htmlFor={`items-${index}-unitPrice`}>Precio unitario</Label>
-                <Input
-                  id={`items-${index}-unitPrice`}
-                  name={`items.${index}.unitPrice`}
-                  type="number"
-                  min="0"
-                  max={maxUnitPrice}
-                  step="0.01"
-                  value={item.unitPrice}
-                  onChange={(event) => onUpdateItem(index, { unitPrice: event.target.value })}
-                />
-              </div>
-              <div className="grid min-w-28 gap-1 text-right">
-                <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Total</span>
-                <strong className="text-lg text-[var(--color-text-main)]" data-testid={`concept-total-${index}`}>
-                  {formatCents(Number.isFinite(lineTotalCents) ? lineTotalCents : 0)}
-                </strong>
-                <span className="text-xs text-[var(--color-text-muted)]">
-                  {formatQuantity(item.quantity || 0)} × {formatCents(Number(item.unitPrice || 0) * 100)}
+                <span id={`items-${index}-unitPrice-currency`} className="sr-only">
+                  Importe en pesos mexicanos.
                 </span>
+                <div className="flex min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
+                  <span
+                    className="pl-3 text-[var(--color-text-muted)]"
+                    data-testid={`currency-prefix-${index}`}
+                    aria-hidden="true"
+                  >
+                    $
+                  </span>
+                  <Input
+                    id={`items-${index}-unitPrice`}
+                    name={`items.${index}.unitPrice`}
+                    type="number"
+                    min="0"
+                    max={maxUnitPrice}
+                    step="0.01"
+                    aria-describedby={`items-${index}-unitPrice-currency`}
+                    value={item.unitPrice}
+                    onChange={(event) => onUpdateItem(index, { unitPrice: event.target.value })}
+                    className="min-w-0 border-0 pl-1 shadow-none focus-visible:ring-0"
+                  />
+                </div>
               </div>
+            </div>
+            <div className="flex items-center justify-between border-t border-[var(--color-border-light)] pt-3">
+              <span className="text-sm font-medium text-[var(--color-text-muted)]">Importe</span>
+              <strong className="text-lg text-[var(--color-text-main)]" data-testid={`concept-total-${index}`}>
+                {formatCents(Number.isFinite(lineTotalCents) ? lineTotalCents : 0)}
+              </strong>
             </div>
             {itemError ? (
               <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-3 py-2 text-sm text-[var(--color-status-danger-fg)]" role="status" aria-live="polite">

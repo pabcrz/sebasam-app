@@ -785,7 +785,7 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="items.1.type"]')).toHaveValue("LABOR");
   });
 
-  it("shows concept hierarchy, computed total and only one add action", async () => {
+  it("groups quantity and price with a concise formatted line amount", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -801,8 +801,17 @@ describe("QuoteBuilder", () => {
     await user.type(quantityInput, "1");
     await user.type(unitPriceInput, "850");
 
+    const quantityPriceRow = screen.getByTestId("quantity-price-row-0");
+    expect(quantityPriceRow).toContainElement(quantityInput);
+    expect(quantityPriceRow).toContainElement(unitPriceInput);
+    expect(quantityPriceRow).toHaveClass("grid-cols-[minmax(0,1fr)_minmax(0,1fr)]");
+    expect(quantityInput.parentElement).toHaveClass("min-w-0");
+    expect(unitPriceInput.parentElement).toHaveClass("min-w-0");
+    expect(screen.getByLabelText("Precio unitario")).toHaveAccessibleDescription("Importe en pesos mexicanos.");
+    expect(screen.getByTestId("currency-prefix-0")).toHaveTextContent("$");
+    expect(screen.getByText("Importe")).toBeInTheDocument();
     expect(screen.getByTestId("concept-total-0")).toHaveTextContent("$850.00");
-    expect(screen.getAllByText("1 × $850.00").length).toBeGreaterThanOrEqual(1);
+    expect(quantityPriceRow.parentElement).not.toHaveTextContent("1 × $850.00");
     expect(screen.getByRole("button", { name: "Duplicar concepto 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Eliminar concepto 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "+ Agregar concepto" })).toBeInTheDocument();
