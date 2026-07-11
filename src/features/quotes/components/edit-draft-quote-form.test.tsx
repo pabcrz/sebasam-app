@@ -36,6 +36,6 @@ describe("EditDraftQuoteForm", () => {
     expect(screen.getByRole("heading", { name: "Editar cotización COT-122" })).toBeInTheDocument();
     expect(screen.queryByText(/en borrador/i)).not.toBeInTheDocument();
     expect(screen.getByTestId("quote-builder-form")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Cancelar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cerrar edición" })).toBeInTheDocument();
   });
 });
