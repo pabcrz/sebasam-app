@@ -28,6 +28,7 @@ export interface QuoteBuilderItemsStepProps {
   items: ItemFormValue[];
   showItemValidation: boolean;
   completeItemsCount: number;
+  scrollable?: boolean;
   onAddItem: () => void;
   onRemoveItem: (index: number) => void;
   onDuplicateItem: (index: number) => void;
@@ -39,6 +40,7 @@ export function QuoteBuilderItemsStep({
   items,
   showItemValidation,
   completeItemsCount,
+  scrollable = false,
   onAddItem,
   onRemoveItem,
   onDuplicateItem,
@@ -54,6 +56,7 @@ export function QuoteBuilderItemsStep({
         ) : null}
       </div>
 
+      <div className={scrollable ? "max-h-[45dvh] overflow-y-auto pr-1" : undefined}>
       {items.map((item, index) => {
         const itemError = showItemValidation ? validateItemValue(item, index) : null;
         const lineTotalCents = Math.round(Number(item.quantity) * Number(item.unitPrice) * 100);
@@ -213,6 +216,7 @@ export function QuoteBuilderItemsStep({
           </div>
         );
       })}
+      </div>
       <Button
         type="button"
         variant="outline"

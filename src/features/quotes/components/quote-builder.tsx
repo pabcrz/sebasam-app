@@ -57,6 +57,7 @@ type QuoteBuilderProps = {
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
   initialData?: QuoteBuilderInitialData;
   onCancel?: () => void;
+  layout?: "page" | "dialog";
 };
 
 export function QuoteBuilder({
@@ -66,6 +67,7 @@ export function QuoteBuilder({
   createCustomerAction,
   searchCustomersAction,
   initialData,
+  layout = "page",
 }: QuoteBuilderProps) {
   const isEdit = saveAction != null;
   const formAction = saveAction ?? createAction;
@@ -347,11 +349,20 @@ export function QuoteBuilder({
     }
   }
 
+  const isDialogLayout = layout === "dialog";
+  const formClass = isDialogLayout
+    ? "flex flex-col"
+    : "flex flex-col";
+  const scrollAreaClass = isDialogLayout
+    ? "py-4 pr-1"
+    : "py-4 pr-1";
+
   return (
     <form
       action={formAction}
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      className={formClass}
       data-testid="quote-builder-form"
+      data-layout={layout}
       onSubmit={(event) => {
         if (step !== "preview") {
           event.preventDefault();
@@ -365,7 +376,7 @@ export function QuoteBuilder({
 
           <div
             ref={scrollAreaRef}
-            className="min-h-0 flex-1 overflow-y-auto py-4 pr-1"
+            className={scrollAreaClass}
             data-testid="quote-builder-scroll-area"
           >
             <div className="grid gap-6">
@@ -564,6 +575,7 @@ export function QuoteBuilder({
               items={items}
               showItemValidation={showItemValidation}
               completeItemsCount={completeItems.length}
+              scrollable={isDialogLayout}
               onAddItem={addItem}
               onRemoveItem={removeItem}
               onDuplicateItem={duplicateItem}
