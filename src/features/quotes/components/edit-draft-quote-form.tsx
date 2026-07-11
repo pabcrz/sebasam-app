@@ -1,8 +1,10 @@
 "use client";
 
+import * as React from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuoteBuilder } from "./quote-builder";
 import type { CustomerOption, QuoteBuilderInitialData } from "./quote-builder";
 
@@ -22,6 +24,7 @@ export function EditDraftQuoteForm({
   searchCustomersAction,
 }: EditDraftQuoteFormProps) {
   const router = useRouter();
+  const [showConfirmClose, setShowConfirmClose] = React.useState(false);
 
   return (
     <section className="mx-auto flex h-[calc(100dvh-5rem)] w-full max-w-6xl flex-col gap-4 px-4 py-6 md:px-6 md:py-10">
@@ -33,7 +36,7 @@ export function EditDraftQuoteForm({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => router.push("/admin/quotes")}
+          onClick={() => setShowConfirmClose(true)}
           aria-label="Cerrar edición"
         >
           <X className="h-5 w-5" aria-hidden="true" />
@@ -44,7 +47,16 @@ export function EditDraftQuoteForm({
         saveAction={saveAction}
         initialData={initialData}
         searchCustomersAction={searchCustomersAction}
-        onCancel={() => router.push("/admin/quotes")}
+      />
+      <ConfirmDialog
+        open={showConfirmClose}
+        onOpenChange={setShowConfirmClose}
+        title="¿Descartar los cambios?"
+        description="Si sales sin guardar, perderás las modificaciones hechas a esta cotización."
+        confirmLabel="Descartar cambios"
+        cancelLabel="Seguir editando"
+        variant="danger"
+        onConfirm={() => router.push("/admin/quotes")}
       />
     </section>
   );
