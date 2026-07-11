@@ -47,7 +47,7 @@ describe("QuoteBuilderDialog", () => {
     const dialog = screen.getByRole("dialog");
     expect(dialog).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Crear cotización" })).toBeInTheDocument();
-    expect(dialog).toHaveClass("h-[85dvh]", "overflow-hidden");
+    expect(dialog).toHaveClass("max-h-[90dvh]", "min-h-[50dvh]", "overflow-hidden");
     expect(screen.queryByText(/crear cotización en borrador/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
