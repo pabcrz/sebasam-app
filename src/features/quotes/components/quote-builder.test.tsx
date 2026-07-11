@@ -466,27 +466,6 @@ describe("QuoteBuilder", () => {
     expect(screen.getByRole("combobox", { name: /cliente/i })).toBeInTheDocument();
   });
 
-  it("keeps Cancel visible on all five steps", async () => {
-    const user = userEvent.setup();
-    render(<QuoteBuilder customers={customers} createAction={vi.fn()} onCancel={vi.fn()} />);
-
-    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
-    await fillClientStep(user)();
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
-
-    await fillItemsStep(user)();
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
-
-    await fillNotesStep(user)();
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
-  });
-
   it("resets step scroll and focuses the active heading after a transition", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);

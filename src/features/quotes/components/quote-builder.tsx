@@ -65,7 +65,6 @@ export function QuoteBuilder({
   createCustomerAction,
   searchCustomersAction,
   initialData,
-  onCancel,
 }: QuoteBuilderProps) {
   const isEdit = saveAction != null;
   const formAction = saveAction ?? createAction;
@@ -349,7 +348,7 @@ export function QuoteBuilder({
   return (
     <form
       action={formAction}
-      className="flex min-h-0 flex-1 flex-col"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
       data-testid="quote-builder-form"
       onSubmit={(event) => {
         if (step !== "preview") {
@@ -653,14 +652,6 @@ export function QuoteBuilder({
 
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4" data-testid="quote-builder-footer">
             <div className="flex items-center gap-2">
-                <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                className="min-w-[96px]"
-              >
-                Cancelar
-                </Button>
               {step !== "client" ? (
               <Button
                 type="button"

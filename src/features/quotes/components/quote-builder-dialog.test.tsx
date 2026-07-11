@@ -83,14 +83,14 @@ describe("QuoteBuilderDialog", () => {
     expect(screen.getByRole("dialog", { name: "Crear cotización" })).not.toHaveAttribute("aria-hidden");
   });
 
-  it("requests confirmation via the Cancel button on the first step", async () => {
+  it("requests confirmation via the X button on the first step", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
   });
 
@@ -128,7 +128,7 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     await enterRepresentativeQuoteState(user);
-    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
     await user.click(screen.getByRole("button", { name: "Seguir editando" }));
 
     expectRepresentativeQuoteState();
@@ -141,7 +141,7 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     await enterRepresentativeQuoteState(user);
-    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
     await user.click(screen.getByRole("button", { name: "Descartar cambios" }));
 
     await waitFor(() => {

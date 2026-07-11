@@ -263,7 +263,7 @@ describe("QuoteMobileCard", () => {
     expect(editLink).toHaveAttribute("href", "/admin/quotes/quote-1/edit");
   });
 
-  it("does not render an edit link for draft quotes with a COMPLETED work order", () => {
+  it("renders a disabled edit button for draft quotes with a COMPLETED work order", () => {
     renderCard(createMockQuote({
       workOrder: {
         id: "work-order-1",
@@ -278,7 +278,7 @@ describe("QuoteMobileCard", () => {
       },
     }));
 
-    expect(screen.queryByRole("link", { name: /editar cotización/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar" })).toBeDisabled();
   });
 
   it("renders an edit link for draft quotes with a PLANNED work order", () => {
@@ -301,10 +301,10 @@ describe("QuoteMobileCard", () => {
     expect(editLink).toHaveAttribute("href", "/admin/quotes/quote-1/edit");
   });
 
-  it("does not render an edit link for non-editable quotes", () => {
+  it("renders a disabled edit button for non-editable quotes", () => {
     renderCard(createMockQuote({ status: "CANCELLED" }));
 
-    expect(screen.queryByRole("link", { name: /editar cotización/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar" })).toBeDisabled();
   });
 
   it("renders an edit link for APPROVED quotes without a blocked work order", () => {

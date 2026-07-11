@@ -97,14 +97,25 @@ export function QuoteListRow({
         <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
         <div className="grid gap-2">
           <div className="flex gap-2">
-            {editable ? (
-              <Button asChild variant="outline" size="sm" className="flex-1">
+            <Button
+              asChild={editable}
+              variant="outline"
+              size="sm"
+              disabled={!editable}
+              className="flex-1"
+            >
+              {editable ? (
                 <Link href={`/admin/quotes/${quote.id}/edit`} aria-label={`Editar cotización ${quote.number}`}>
                   <Pencil className="h-4 w-4" aria-hidden="true" />
                   <span>Editar</span>
                 </Link>
-              </Button>
-            ) : null}
+              ) : (
+                <>
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                  <span>Editar</span>
+                </>
+              )}
+            </Button>
             <form action={duplicateAction} className={editable ? "flex-1" : ""}>
               <input type="hidden" name="quoteId" value={quote.id} />
               <Button type="submit" variant="outline" size="sm" className="w-full">

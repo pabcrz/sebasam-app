@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { EditDraftQuoteForm } from "./edit-draft-quote-form";
 
 const push = vi.fn();
@@ -20,8 +19,7 @@ const initialData = {
 };
 
 describe("EditDraftQuoteForm", () => {
-  it("shows the quote folio and cancels without saving", async () => {
-    const user = userEvent.setup();
+  it("shows the quote folio and renders the builder", async () => {
     const saveAction = vi.fn();
     push.mockClear();
 
@@ -37,9 +35,7 @@ describe("EditDraftQuoteForm", () => {
 
     expect(screen.getByRole("heading", { name: "Editar cotización COT-122" })).toBeInTheDocument();
     expect(screen.queryByText(/en borrador/i)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Cancelar" }));
-
-    expect(push).toHaveBeenCalledWith("/admin/quotes");
-    expect(saveAction).not.toHaveBeenCalled();
+    expect(screen.getByTestId("quote-builder-form")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancelar" })).not.toBeInTheDocument();
   });
 });
