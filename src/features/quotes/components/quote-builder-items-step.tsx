@@ -216,6 +216,7 @@ export function QuoteBuilderItemsStep({
           </div>
         );
       })}
+      </div>
       <Button
         type="button"
         variant="outline"
@@ -224,7 +225,6 @@ export function QuoteBuilderItemsStep({
       >
         + Agregar concepto
       </Button>
-      </div>
     </section>
   );
 }

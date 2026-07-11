@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  createQuoteFromForm,
   approveQuoteAndCreateWorkOrderFromForm,
   cancelDraftQuoteFromForm,
   shareQuoteFromForm,
@@ -10,11 +9,21 @@ import {
 } from "@/features/quotes/actions";
 import { listQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
-import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
-import { quoteFilterSchema, type QuoteFilterInput } from "@/features/quotes/schemas";
 import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader } from "@/components/ui";
-import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
+import { quoteFilterSchema, type QuoteFilterInput } from "@/features/quotes/schemas";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+} from "@/components/ui";
 import { QuoteListRow } from "@/features/quotes/components/quote-list-row";
 import { QuoteMobileCard } from "@/features/quotes/components/quote-mobile-card";
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
@@ -69,12 +78,11 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
         </CardContent>
       </Card>
 
-      <QuoteBuilderDialog
-        customers={customers}
-        createAction={createQuoteFromForm}
-        createCustomerAction={createOrReuseCustomerForQuote}
-        searchCustomersAction={searchCustomersForQuote}
-      />
+      <div className="flex justify-end">
+        <Button asChild variant="primary">
+          <Link href="/admin/quotes/nueva">Nueva cotización</Link>
+        </Button>
+      </div>
 
       <Card className="min-w-0">
         <CardHeader>
