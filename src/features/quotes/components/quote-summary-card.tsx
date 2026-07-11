@@ -1,8 +1,9 @@
 "use client";
 
 import { Badge } from "@/components/ui";
+import { ListChecks, NotebookText, Truck, UserRound } from "lucide-react";
 import { formatCents } from "@/features/quotes/lib/format";
-import { formatQuantity, ItemFormValue } from "./quote-builder-shared";
+import { formatQuantity, itemTypeLabels, ItemFormValue } from "./quote-builder-shared";
 import { QuoteTotalsCard } from "./quote-totals-card";
 
 export interface QuoteSummaryCardProps {
@@ -31,19 +32,26 @@ export function QuoteSummaryCard({
   return (
     <div className="grid gap-4">
       <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-        <h3 className="font-semibold text-[var(--color-text-main)]">Cliente / Unidad</h3>
-        <p data-testid="summary-customer" className="text-sm text-[var(--color-text-main)]">
-          {customerName || "Sin cliente seleccionado"}
-        </p>
-        <p data-testid="summary-vehicle" className="text-sm text-[var(--color-text-muted)]">
-          {[vehicle.brand, vehicle.model, vehicle.year, vehicle.plate]
-            .filter(Boolean)
-            .join(" · ") || "Sin datos de vehículo"}
-        </p>
+        <div className="flex items-start gap-3">
+          <UserRound className="mt-0.5 size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-customer-icon" />
+          <div>
+            <h3 className="font-semibold text-[var(--color-text-main)]">Cliente</h3>
+            <p data-testid="summary-customer" className="text-sm text-[var(--color-text-main)]">{customerName || "Sin cliente seleccionado"}</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <Truck className="mt-0.5 size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-vehicle-icon" />
+          <div>
+            <h3 className="font-semibold text-[var(--color-text-main)]">Unidad</h3>
+            <p data-testid="summary-vehicle" className="text-sm text-[var(--color-text-muted)]">
+              {[vehicle.brand, vehicle.model, vehicle.year, vehicle.plate].filter(Boolean).join(" · ") || "Sin datos de vehículo"}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-        <h3 className="font-semibold text-[var(--color-text-main)]">Conceptos</h3>
+        <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]"><ListChecks className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-items-icon" />Conceptos</h3>
         {items.length === 0 ? (
           <p className="text-sm text-[var(--color-text-muted)]">Sin conceptos.</p>
         ) : (
@@ -55,15 +63,15 @@ export function QuoteSummaryCard({
               return (
                 <li
                   key={index}
-                  className="flex items-start justify-between gap-3 py-2 text-sm text-[var(--color-text-main)]"
+                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-3 text-sm text-[var(--color-text-main)]"
                 >
-                  <span className="flex flex-wrap items-center gap-2">
-                    {item.description}
-                    <span className=" text-text-muted">Precio unitario: {formatCents(Number(item.unitPrice) * 100)} x {formatQuantity(item.quantity)}</span>
+                  <span className="grid gap-1">
+                    <span className="font-medium">{item.description}</span>
+                    <span className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]"><Badge variant="default">{itemTypeLabels[item.type]}</Badge>{formatQuantity(item.quantity)} × {formatCents(Number(item.unitPrice) * 100)}</span>
                   </span>
-                  <span className="whitespace-nowrap text-text-muted">
+                  <strong className="whitespace-nowrap text-right text-[var(--color-text-main)]">
                     {formatCents(lineTotalCents)}
-                  </span>
+                  </strong>
                 </li>
               );
             })}
@@ -72,7 +80,7 @@ export function QuoteSummaryCard({
       </div>
 
       <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-        <h3 className="font-semibold text-[var(--color-text-main)]">Notas</h3>
+        <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]"><NotebookText className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-notes-icon" />Notas</h3>
         <p className="text-sm text-[var(--color-text-main)]">{title || "Sin título"}</p>
         {description ? <p className="text-sm text-[var(--color-text-muted)]">{description}</p> : null}
         {administrative ? <Badge variant="info">Administrativa</Badge> : null}

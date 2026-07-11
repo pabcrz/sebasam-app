@@ -2,14 +2,8 @@
 
 import * as React from "react";
 import { useFormStatus } from "react-dom";
-import { QuoteItemType } from "@prisma/client";
 import {
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Checkbox,
   Input,
   Label,
@@ -23,6 +17,7 @@ import {
   isItemComplete,
   ItemFormValue,
   maxQuantity,
+  getMaxQuantityForType,
   Step,
   steps,
   validateItemValue,
@@ -71,7 +66,6 @@ export function QuoteBuilder({
   createCustomerAction,
   searchCustomersAction,
   initialData,
-  onCancel,
 }: QuoteBuilderProps) {
   const isEdit = saveAction != null;
   const formAction = saveAction ?? createAction;
@@ -84,6 +78,8 @@ export function QuoteBuilder({
   const [activeCustomerIndex, setActiveCustomerIndex] = React.useState(-1);
   const customerSearchRequest = React.useRef(0);
   const selectedCustomerRef = React.useRef<CustomerOption | undefined>(initialSelectedCustomer);
+  const scrollAreaRef = React.useRef<HTMLDivElement>(null);
+  const hasChangedStep = React.useRef(false);
   const [step, setStep] = React.useState<Step>("client");
   const [stepError, setStepError] = React.useState<string | null>(null);
   const [showItemValidation, setShowItemValidation] = React.useState(false);
@@ -111,6 +107,19 @@ export function QuoteBuilder({
   const selectedCustomer = customerOptions.find((customer) => customer.id === customerId);
   const completeItems = items.filter(isItemComplete);
   const validUntil = createQuoteValidUntil();
+
+  React.useEffect(() => {
+    if (!hasChangedStep.current) {
+      hasChangedStep.current = true;
+      return;
+    }
+
+    if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0;
+    const activeHeading = scrollAreaRef.current?.querySelector<HTMLElement>(
+      `[data-step-heading="${step}"]`,
+    );
+    activeHeading?.focus({ preventScroll: true });
+  }, [step]);
 
   React.useEffect(() => {
     if (!searchCustomersAction || customerSearch === selectedCustomer?.name) return;
@@ -258,23 +267,11 @@ export function QuoteBuilder({
       const next = [...prev];
       const currentQuantity = Number(next[index]?.quantity);
       const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
-      const nextQuantity = Math.min(maxQuantity, Math.max(1, baseQuantity + delta));
+      const limit = getMaxQuantityForType(next[index]?.type ?? "LABOR");
+      const nextQuantity = Math.min(limit, Math.max(1, baseQuantity + delta));
       next[index] = { ...next[index], quantity: String(nextQuantity) };
       return next;
     });
-  }
-
-  function addItemOfType(type: QuoteItemType) {
-    const firstInvalidIndex = items.findIndex((item, index) => validateItemValue(item, index));
-
-    if (firstInvalidIndex !== -1) {
-      setShowItemValidation(true);
-      return;
-    }
-
-    setShowItemValidation(false);
-    setStepError(null);
-    setItems((prev) => [...prev, { ...emptyItem, type }]);
   }
 
   function duplicateItem(index: number) {
@@ -351,28 +348,27 @@ export function QuoteBuilder({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle as="h2">{isEdit ? "Editar cotización en borrador" : "Crear cotización en borrador"}</CardTitle>
-        <CardDescription>
-          {isEdit
-            ? "Modifica los datos de la cotización en borrador."
-            : "Flujo paso a paso para armar una cotización desde el celular."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          action={formAction}
-          className="grid gap-6"
-          data-testid="quote-builder-form"
-          onSubmit={(event) => {
-            if (step !== "preview") {
-              event.preventDefault();
-              setStepError("Avanza al último paso antes de enviar la cotización.");
-            }
-          }}
-        >
-          <QuoteBuilderStepper current={step} onChange={setStep} />
+    <form
+      action={formAction}
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      data-testid="quote-builder-form"
+      onSubmit={(event) => {
+        if (step !== "preview") {
+          event.preventDefault();
+          setStepError("Avanza al último paso antes de enviar la cotización.");
+        }
+      }}
+    >
+          <div className="shrink-0 border-b border-[var(--color-border-light)] pb-4">
+            <QuoteBuilderStepper current={step} onChange={setStep} />
+          </div>
+
+          <div
+            ref={scrollAreaRef}
+            className="min-h-0 flex-1 overflow-y-auto py-4 pr-1"
+            data-testid="quote-builder-scroll-area"
+          >
+            <div className="grid gap-6">
 
           {stepError ? (
             <p
@@ -385,6 +381,9 @@ export function QuoteBuilder({
 
           {/* Step 1: Cliente / Unidad */}
           <section hidden={step !== "client"} className="grid gap-4">
+            <h2 className="sr-only" tabIndex={-1} data-step-heading="client">
+              Cliente y unidad
+            </h2>
             <div className="grid gap-2">
               <Label htmlFor="customerId">Cliente</Label>
               <input type="hidden" name="customerId" value={customerId} />
@@ -558,12 +557,14 @@ export function QuoteBuilder({
 
           {/* Step 2: Conceptos */}
           <div hidden={step !== "items"}>
+            <h2 className="sr-only" tabIndex={-1} data-step-heading="items">
+              Conceptos
+            </h2>
             <QuoteBuilderItemsStep
               items={items}
               showItemValidation={showItemValidation}
               completeItemsCount={completeItems.length}
               onAddItem={addItem}
-              onAddItemOfType={addItemOfType}
               onRemoveItem={removeItem}
               onDuplicateItem={duplicateItem}
               onUpdateItem={updateItem}
@@ -573,6 +574,9 @@ export function QuoteBuilder({
 
           {/* Step 3: Notas */}
           <section hidden={step !== "notes"} className="grid gap-4">
+            <h2 className="sr-only" tabIndex={-1} data-step-heading="notes">
+              Notas
+            </h2>
             <div className="grid gap-2">
               <Label htmlFor="title">Título</Label>
               <Input
@@ -611,6 +615,9 @@ export function QuoteBuilder({
 
           {/* Step 4: Resumen */}
           <section hidden={step !== "summary"} className="grid gap-4">
+            <h2 className="sr-only" tabIndex={-1} data-step-heading="summary">
+              Resumen
+            </h2>
             <QuoteSummaryCard
               customerName={selectedCustomer?.name ?? ""}
               vehicle={vehicle}
@@ -626,6 +633,9 @@ export function QuoteBuilder({
 
           {/* Step 5: Preview / Enviar */}
           <section hidden={step !== "preview"} className="grid gap-4">
+            <h2 className="sr-only" tabIndex={-1} data-step-heading="preview">
+              Enviar cotización
+            </h2>
             <QuotePreviewCard
               customerName={selectedCustomer?.name ?? ""}
               vehicle={vehicle}
@@ -639,18 +649,12 @@ export function QuoteBuilder({
               validUntil={validUntil}
             />
           </section>
+            </div>
+          </div>
 
-          <div className="sticky bottom-0 z-30 -mx-[var(--space-md)] mt-2 flex items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-md)]">
-            {step === "client" ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                className="min-w-[96px]"
-              >
-                Cancelar
-              </Button>
-            ) : (
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4" data-testid="quote-builder-footer">
+            <div className="flex items-center gap-2">
+              {step !== "client" ? (
               <Button
                 type="button"
                 variant="outline"
@@ -659,7 +663,8 @@ export function QuoteBuilder({
               >
                 Anterior
               </Button>
-            )}
+              ) : null}
+            </div>
 
             {step === "preview" ? (
               <CreateQuoteSubmitButton isEdit={isEdit} />
@@ -675,9 +680,7 @@ export function QuoteBuilder({
               </Button>
             )}
           </div>
-        </form>
-      </CardContent>
-    </Card>
+    </form>
   );
 }
 

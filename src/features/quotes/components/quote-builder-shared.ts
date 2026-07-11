@@ -23,6 +23,11 @@ export const itemTypes: QuoteItemType[] = ["LABOR", "MATERIAL", "SERVICE", "OTHE
 export const maxQuantity = 100;
 export const maxUnitPrice = 50_000;
 
+/** LABOR and SERVICE concepts are capped at 5 units; others use the default max. */
+export function getMaxQuantityForType(type: QuoteItemType): number {
+  return type === "LABOR" || type === "SERVICE" ? 5 : maxQuantity;
+}
+
 export const itemTypeLabels: Record<QuoteItemType, string> = {
   SERVICE: "Servicio",
   MATERIAL: "Material",
@@ -92,8 +97,8 @@ export function validateItemValue(item: ItemFormValue, index: number): string | 
     return `La cantidad del concepto ${index + 1} debe ser mayor a 0.`;
   }
 
-  if (quantityNum > maxQuantity) {
-    return `La cantidad del concepto ${index + 1} no puede ser mayor a ${maxQuantity}.`;
+  if (quantityNum > getMaxQuantityForType(item.type)) {
+    return `La cantidad del concepto ${index + 1} no puede ser mayor a ${getMaxQuantityForType(item.type)}.`;
   }
 
   if (!Number.isInteger(quantityNum)) {
