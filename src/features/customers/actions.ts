@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { customerInputSchema, customerUpdateSchema, type CustomerInput } from "./schemas";
+import { customerInputSchema, customerSearchSchema, customerUpdateSchema, type CustomerInput } from "./schemas";
 
 const customersPath = "/admin/customers";
 const quotesPath = "/admin/quotes";
@@ -108,6 +108,31 @@ export async function createOrReuseCustomerForQuote(input: unknown) {
   revalidatePath(quotesPath);
 
   return { success: true, customer, reused: false } as const;
+}
+
+export async function searchCustomersForQuote(input: unknown) {
+  await requireOperationalRole();
+
+  const { query } = customerSearchSchema.parse(input);
+  const search = query || undefined;
+
+  return prisma.customer.findMany({
+    where: search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search, mode: "insensitive" } },
+            { address: { contains: search, mode: "insensitive" } },
+            { notes: { contains: search, mode: "insensitive" } },
+            { vehicles: { some: { plate: { contains: search, mode: "insensitive" } } } },
+          ],
+        }
+      : undefined,
+    orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
+    take: 20,
+    select: { id: true, name: true },
+  });
 }
 
 export async function createCustomerFromForm(formData: FormData) {

@@ -8,26 +8,19 @@ const customers = [
   { id: "cust-2", name: "Taller Hermanos Pérez" },
 ];
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 function fillClientStep(user: ReturnType<typeof userEvent.setup>) {
   return async () => {
     await user.click(screen.getByRole("combobox", { name: /cliente/i }));
-
-    try {
-      await user.click(await screen.findByRole("option", { name: "Constructora del Norte" }, { timeout: 500 }));
-    } catch {
-      // jsdom does not always open Radix Select portals through pointer events.
-      // Use the hidden form select that Radix renders for submission instead.
-      const hiddenSelect = await waitFor(() => {
-        const element = document.querySelector('select[name="customerId"]');
-        if (!element) throw new Error("Hidden customer select not found");
-        return element;
-      });
-      fireEvent.change(hiddenSelect, { target: { value: "cust-1" } });
-    }
-
-    await waitFor(() => {
-      expect(document.querySelector('select[name="customerId"]')).toHaveValue("cust-1");
-    });
+    await user.click(screen.getByRole("option", { name: "Constructora del Norte" }));
+    expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-1");
   };
 }
 
@@ -121,6 +114,9 @@ describe("QuoteBuilder", () => {
     });
 
     expect(screen.getByRole("status")).toHaveTextContent("Cliente creado y seleccionado.");
+    expect(screen.getByRole("combobox", { name: /cliente/i })).toHaveValue("Grúas del Centro");
+    expect(screen.getByText(/cliente seleccionado:/i)).toHaveTextContent("Grúas del Centro");
+    expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-3");
 
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await fillItemsStep(user)();
@@ -129,6 +125,246 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     expect(screen.getByTestId("summary-customer")).toHaveTextContent("Grúas del Centro");
+  });
+
+  it("searches the server after a debounce and selects a result outside the initial list", async () => {
+    const user = userEvent.setup();
+    const searchCustomersAction = vi.fn().mockResolvedValue([
+      { id: "cust-101", name: "Cliente ciento uno" },
+    ]);
+
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        searchCustomersAction={searchCustomersAction}
+      />,
+    );
+
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+    await user.type(search, "ciento uno");
+    expect(searchCustomersAction).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(searchCustomersAction).toHaveBeenCalledTimes(1));
+    expect(searchCustomersAction).toHaveBeenCalledWith({ query: "ciento uno" });
+
+    await user.click(await screen.findByRole("option", { name: "Cliente ciento uno" }));
+    expect(search).toHaveValue("Cliente ciento uno");
+    expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-101");
+  });
+
+  it("shows a loading status while customer search is pending", async () => {
+    const user = userEvent.setup();
+    const pendingSearch = deferred<Array<{ id: string; name: string }>>();
+
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        searchCustomersAction={vi.fn().mockReturnValue(pendingSearch.promise)}
+      />,
+    );
+
+    await user.type(screen.getByRole("combobox", { name: /cliente/i }), "pendiente");
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Buscando clientes...");
+    pendingSearch.resolve([]);
+    await waitFor(() => expect(screen.queryByText("Buscando clientes...")).not.toBeInTheDocument());
+  });
+
+  it("shows a search error and recovers on the next query", async () => {
+    const user = userEvent.setup();
+    const searchCustomersAction = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Unavailable"))
+      .mockResolvedValueOnce([{ id: "cust-recovered", name: "Cliente recuperado" }]);
+
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        searchCustomersAction={searchCustomersAction}
+      />,
+    );
+
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+    await user.type(search, "falla");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No se pudo buscar clientes. Intenta de nuevo.",
+    );
+
+    await user.clear(search);
+    await user.type(search, "recuperado");
+
+    expect(await screen.findByRole("option", { name: "Cliente recuperado" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(searchCustomersAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the empty state when customer search returns no results", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        searchCustomersAction={vi.fn().mockResolvedValue([])}
+      />,
+    );
+
+    await user.type(screen.getByRole("combobox", { name: /cliente/i }), "sin coincidencias");
+
+    expect(await screen.findByText("No se encontraron clientes.")).toBeInTheDocument();
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+  });
+
+  it("keeps a manually selected customer visible when an older search resolves late", async () => {
+    const user = userEvent.setup();
+    const pendingSearch = deferred<Array<{ id: string; name: string }>>();
+    const searchCustomersAction = vi.fn().mockReturnValue(pendingSearch.promise);
+
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        searchCustomersAction={searchCustomersAction}
+      />,
+    );
+
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+    await user.type(search, "norte");
+    await waitFor(() => expect(searchCustomersAction).toHaveBeenCalledOnce());
+    await user.click(screen.getByRole("option", { name: "Constructora del Norte" }));
+
+    pendingSearch.resolve([{ id: "cust-late", name: "Respuesta tardía" }]);
+
+    await waitFor(() => expect(search).toHaveValue("Constructora del Norte"));
+    expect(screen.getByText(/cliente seleccionado:/i)).toHaveTextContent("Constructora del Norte");
+    expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-1");
+  });
+
+  it("keeps a created customer visible when an older search resolves late", async () => {
+    const user = userEvent.setup();
+    const pendingSearch = deferred<Array<{ id: string; name: string }>>();
+    const searchCustomersAction = vi.fn().mockReturnValue(pendingSearch.promise);
+    const createCustomerAction = vi.fn().mockResolvedValue({
+      success: true,
+      customer: { id: "cust-new", name: "Cliente recién creado" },
+    });
+
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        searchCustomersAction={searchCustomersAction}
+        createCustomerAction={createCustomerAction}
+      />,
+    );
+
+    await user.type(screen.getByRole("combobox", { name: /cliente/i }), "pendiente");
+    await waitFor(() => expect(searchCustomersAction).toHaveBeenCalledOnce());
+    await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+    await user.type(screen.getByLabelText("Nombre"), "Cliente recién creado");
+    await user.click(screen.getByRole("button", { name: "Guardar y seleccionar" }));
+
+    pendingSearch.resolve([{ id: "cust-late", name: "Respuesta tardía" }]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("combobox", { name: /cliente/i })).toHaveValue("Cliente recién creado");
+    });
+    expect(screen.getByText(/cliente seleccionado:/i)).toHaveTextContent("Cliente recién creado");
+    expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-new");
+  });
+
+  it("supports arrow navigation, active option, Enter selection and Escape dismissal", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+    await user.click(search);
+    await user.keyboard("{ArrowDown}");
+    expect(search).toHaveAttribute("aria-activedescendant", "customer-option-cust-1");
+
+    await user.keyboard("{ArrowDown}");
+    expect(search).toHaveAttribute("aria-activedescendant", "customer-option-cust-2");
+    expect(screen.getByRole("option", { name: "Taller Hermanos Pérez" })).toHaveAttribute("aria-selected", "true");
+
+    await user.keyboard("{Enter}");
+    expect(search).toHaveValue("Taller Hermanos Pérez");
+    expect(search).toHaveAttribute("aria-expanded", "false");
+    expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-2");
+
+    await user.click(search);
+    expect(search).toHaveAttribute("aria-expanded", "true");
+    await user.keyboard("{Escape}");
+    expect(search).toHaveAttribute("aria-expanded", "false");
+    expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-2");
+  });
+
+  it("wraps ArrowUp to the last option and selects the active customer with Enter", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+    await user.click(search);
+    await user.keyboard("{ArrowUp}");
+
+    expect(search).toHaveAttribute("aria-activedescendant", "customer-option-cust-2");
+    expect(screen.getByRole("option", { name: "Taller Hermanos Pérez" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    await user.keyboard("{Enter}");
+    expect(search).toHaveValue("Taller Hermanos Pérez");
+    expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-2");
+  });
+
+  it("visibly selects a reused customer and shows the existing-customer message", async () => {
+    const user = userEvent.setup();
+    const createCustomerAction = vi.fn().mockResolvedValue({
+      success: true,
+      reused: true,
+      customer: { id: "cust-existing", name: "Cliente existente" },
+    });
+
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        createCustomerAction={createCustomerAction}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+    await user.type(screen.getByLabelText("Nombre"), "Cliente existente");
+    await user.click(screen.getByRole("button", { name: "Guardar y seleccionar" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Cliente existente seleccionado.");
+    expect(screen.getByRole("combobox", { name: /cliente/i })).toHaveValue("Cliente existente");
+    expect(screen.getByText(/cliente seleccionado:/i)).toHaveTextContent("Cliente existente");
+    expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-existing");
+  });
+
+  it("preserves and visibly displays the initial customer in edit mode", () => {
+    render(
+      <QuoteBuilder
+        customers={[{ id: "cust-old", name: "Cliente histórico" }]}
+        saveAction={vi.fn()}
+        initialData={{
+          customerId: "cust-old",
+          vehicle: { plate: "", brand: "", model: "", year: "" },
+          title: "Cotización existente",
+          description: "",
+          administrative: false,
+          taxEnabled: true,
+          items: [],
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("combobox", { name: /cliente/i })).toHaveValue("Cliente histórico");
+    expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-old");
   });
 
   it("recovers when customer creation fails unexpectedly", async () => {

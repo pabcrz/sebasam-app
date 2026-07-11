@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { createOrReuseCustomerForQuote } from "./actions";
+import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "./actions";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -113,5 +113,41 @@ describe("createOrReuseCustomerForQuote", () => {
     expect(result).toEqual({ success: false, error: "invalid" });
     expect(prisma.customer.findMany).not.toHaveBeenCalled();
     expect(prisma.customer.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("searchCustomersForQuote", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({ profile: { id: "admin-1" } });
+    (prisma.customer.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+  });
+
+  it("requires operational auth and searches all supported customer fields with a minimal result", async () => {
+    await searchCustomersForQuote({ query: "ABC-123" });
+
+    expect(requireOperationalRole).toHaveBeenCalledOnce();
+    expect(prisma.customer.findMany).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { name: { contains: "ABC-123", mode: "insensitive" } },
+          { email: { contains: "ABC-123", mode: "insensitive" } },
+          { phone: { contains: "ABC-123", mode: "insensitive" } },
+          { address: { contains: "ABC-123", mode: "insensitive" } },
+          { notes: { contains: "ABC-123", mode: "insensitive" } },
+          { vehicles: { some: { plate: { contains: "ABC-123", mode: "insensitive" } } } },
+        ],
+      },
+      orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
+      take: 20,
+      select: { id: true, name: true },
+    });
+  });
+
+  it("does not query customers when auth fails", async () => {
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Unauthorized"));
+
+    await expect(searchCustomersForQuote({ query: "Acme" })).rejects.toThrow("Unauthorized");
+    expect(prisma.customer.findMany).not.toHaveBeenCalled();
   });
 });

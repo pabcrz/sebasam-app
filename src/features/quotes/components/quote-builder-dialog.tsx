@@ -27,9 +27,10 @@ type QuoteBuilderDialogProps = {
     error?: string;
     reused?: boolean;
   }>;
+  searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
 };
 
-export function QuoteBuilderDialog({ customers, createAction, createCustomerAction }: QuoteBuilderDialogProps) {
+export function QuoteBuilderDialog({ customers, createAction, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -70,6 +71,7 @@ export function QuoteBuilderDialog({ customers, createAction, createCustomerActi
           customers={customers}
           createAction={createAction}
           createCustomerAction={createCustomerAction}
+          searchCustomersAction={searchCustomersAction}
           onCancel={() => setOpen(false)}
         />
       </DialogContent>

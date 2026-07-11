@@ -9,6 +9,7 @@ type EditDraftQuoteFormProps = {
   saveAction: (formData: FormData) => void | Promise<void>;
   initialData: QuoteBuilderInitialData;
   quoteNumber: string;
+  searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
 };
 
 export function EditDraftQuoteForm({
@@ -16,6 +17,7 @@ export function EditDraftQuoteForm({
   saveAction,
   initialData,
   quoteNumber,
+  searchCustomersAction,
 }: EditDraftQuoteFormProps) {
   const router = useRouter();
 
@@ -25,6 +27,7 @@ export function EditDraftQuoteForm({
         customers={customers}
         saveAction={saveAction}
         initialData={initialData}
+        searchCustomersAction={searchCustomersAction}
         onCancel={() => router.push("/admin/quotes")}
       />
       <p className="text-center text-sm text-[var(--color-text-muted)]">
