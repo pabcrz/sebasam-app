@@ -4,6 +4,7 @@ import { type QuoteItem } from "@prisma/client";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { listCustomers } from "@/features/customers/queries";
+import { searchCustomersForQuote } from "@/features/customers/actions";
 import {
   updateDraftQuoteFromForm,
 } from "@/features/quotes/actions";
@@ -85,13 +86,17 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
     taxEnabled: quote.taxEnabled,
     items: toItemFormValues(quote.items),
   };
+  const customerOptions = customers.some((customer) => customer.id === quote.customerId)
+    ? customers
+    : [{ id: quote.customer.id, name: quote.customer.name }, ...customers];
 
   return (
     <EditDraftQuoteForm
-      customers={customers}
+      customers={customerOptions}
       saveAction={saveAction}
       initialData={initialData}
       quoteNumber={quote.number}
+      searchCustomersAction={searchCustomersForQuote}
     />
   );
 }

@@ -10,7 +10,7 @@ import {
 } from "@/features/quotes/actions";
 import { listQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
-import { createOrReuseCustomerForQuote } from "@/features/customers/actions";
+import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
 import { quoteFilterSchema, type QuoteFilterInput } from "@/features/quotes/schemas";
 import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader } from "@/components/ui";
@@ -73,6 +73,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
         customers={customers}
         createAction={createQuoteFromForm}
         createCustomerAction={createOrReuseCustomerForQuote}
+        searchCustomersAction={searchCustomersForQuote}
       />
 
       <Card className="min-w-0">
