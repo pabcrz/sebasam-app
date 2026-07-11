@@ -1,7 +1,7 @@
 "use client";
 
 import { QuoteItemType } from "@prisma/client";
-import { Copy, Minus, Plus, X } from "lucide-react";
+import { Copy, Minus, Plus, Trash2 } from "lucide-react";
 import {
   Badge,
   Button,
@@ -19,6 +19,7 @@ import {
   ItemFormValue,
   maxQuantity,
   maxUnitPrice,
+  getMaxQuantityForType,
   validateItemValue,
 } from "./quote-builder-shared";
 import { formatCents } from "@/features/quotes/lib/format";
@@ -56,6 +57,7 @@ export function QuoteBuilderItemsStep({
       {items.map((item, index) => {
         const itemError = showItemValidation ? validateItemValue(item, index) : null;
         const lineTotalCents = Math.round(Number(item.quantity) * Number(item.unitPrice) * 100);
+        const typeQuantityLimit = getMaxQuantityForType(item.type);
 
         return (
           <div
@@ -96,12 +98,13 @@ export function QuoteBuilderItemsStep({
                 </Button>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="danger"
+                  size="sm"
                   aria-label={`Eliminar concepto ${index + 1}`}
                   onClick={() => onRemoveItem(index)}
-                  className="size-11 p-0 text-[var(--color-status-danger-fg)] hover:bg-[var(--color-status-danger-bg)]"
+                  className="size-10"
                 >
-                  <X aria-hidden="true" />
+                  <Trash2 aria-hidden="true" className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -142,7 +145,7 @@ export function QuoteBuilderItemsStep({
                     pattern="[0-9]*"
                     min={1}
                     className="min-w-0 rounded-none border-0 px-1 text-center shadow-none focus-visible:ring-inset"
-                    max={maxQuantity}
+                    max={typeQuantityLimit}
                     value={item.quantity}
                     onChange={(event) => {
                       onUpdateItem(index, { quantity: event.target.value.replace(/\D/g, "") });
@@ -150,7 +153,7 @@ export function QuoteBuilderItemsStep({
                     onBlur={(event) => {
                       const digitsOnly = event.target.value.replace(/\D/g, "");
                       if (digitsOnly === "") return;
-                      const clamped = String(Math.min(maxQuantity, Math.max(1, Number(digitsOnly))));
+                      const clamped = String(Math.min(typeQuantityLimit, Math.max(1, Number(digitsOnly))));
                       onUpdateItem(index, { quantity: clamped });
                     }}
                     onWheel={(event) => event.currentTarget.blur()}
@@ -161,7 +164,7 @@ export function QuoteBuilderItemsStep({
                     size="sm"
                     aria-label={`Sumar cantidad del concepto ${index + 1}`}
                     onClick={() => onAdjustQuantity(index, 1)}
-                    disabled={Number(item.quantity) >= maxQuantity}
+                    disabled={Number(item.quantity) >= typeQuantityLimit}
                     className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] shrink-0 rounded-none border-0 border-l border-[var(--color-border-light)] px-0"
                   >
                     <Plus className="h-4 w-4" aria-hidden="true" />
@@ -175,7 +178,7 @@ export function QuoteBuilderItemsStep({
                 </span>
                 <div className="flex min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
                   <span
-                    className="pl-3 text-[var(--color-text-muted)]"
+                    className="flex items-center self-stretch pl-3 pr-1 text-[var(--color-text-muted)]"
                     data-testid={`currency-prefix-${index}`}
                     aria-hidden="true"
                   >

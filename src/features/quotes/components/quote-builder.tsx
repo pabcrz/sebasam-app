@@ -17,6 +17,7 @@ import {
   isItemComplete,
   ItemFormValue,
   maxQuantity,
+  getMaxQuantityForType,
   Step,
   steps,
   validateItemValue,
@@ -266,7 +267,8 @@ export function QuoteBuilder({
       const next = [...prev];
       const currentQuantity = Number(next[index]?.quantity);
       const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
-      const nextQuantity = Math.min(maxQuantity, Math.max(1, baseQuantity + delta));
+      const limit = getMaxQuantityForType(next[index]?.type ?? "LABOR");
+      const nextQuantity = Math.min(limit, Math.max(1, baseQuantity + delta));
       next[index] = { ...next[index], quantity: String(nextQuantity) };
       return next;
     });

@@ -568,6 +568,10 @@ describe("QuoteBuilder", () => {
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
+    const [typeTrigger] = screen.getAllByRole("combobox");
+    await user.click(typeTrigger);
+    await user.click(screen.getByRole("option", { name: "Material" }));
+
     const [quantityInput] = screen.getAllByLabelText(/cantidad/i);
 
     await user.clear(quantityInput);
@@ -575,6 +579,22 @@ describe("QuoteBuilder", () => {
     await user.tab();
 
     expect(quantityInput).toHaveValue("100");
+  });
+
+  it("clamps LABOR and SERVICE quantity to a maximum of 5 on blur", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const [quantityInput] = screen.getAllByLabelText(/cantidad/i);
+
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "6");
+    await user.tab();
+
+    expect(quantityInput).toHaveValue("5");
   });
 
   it("blocks advancing when a row unit price is greater than 50000", async () => {
