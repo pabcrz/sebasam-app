@@ -55,6 +55,15 @@ describe("Button", () => {
     expect(button.className).not.toContain("bg-[var(--color-primary)]");
   });
 
+  it("uses pointer cursor for enabled buttons and not-allowed cursor for disabled buttons", () => {
+    render(<Button disabled>Guardar</Button>);
+
+    const button = screen.getByRole("button", { name: "Guardar" });
+    expect(button.className).toContain("cursor-pointer");
+    expect(button.className).toContain("disabled:cursor-not-allowed");
+    expect(button.className).not.toContain("disabled:pointer-events-none");
+  });
+
   it("keeps the primary gradient token aligned with the Figma contract", () => {
     const globalsCss = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
