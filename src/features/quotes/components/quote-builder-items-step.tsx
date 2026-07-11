@@ -1,17 +1,34 @@
 "use client";
 
 import { QuoteItemType } from "@prisma/client";
-import { Copy } from "lucide-react";
-import { Badge, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
-import { itemTypeLabels, itemTypes, ItemFormValue, maxQuantity, maxUnitPrice, validateItemValue } from "./quote-builder-shared";
-import { X, Minus, Plus } from "lucide-react";
+import { Copy, Minus, Plus, X } from "lucide-react";
+import {
+  Badge,
+  Button,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
+import {
+  formatQuantity,
+  itemTypeLabels,
+  itemTypes,
+  ItemFormValue,
+  maxQuantity,
+  maxUnitPrice,
+  validateItemValue,
+} from "./quote-builder-shared";
+import { formatCents } from "@/features/quotes/lib/format";
 
 export interface QuoteBuilderItemsStepProps {
   items: ItemFormValue[];
   showItemValidation: boolean;
   completeItemsCount: number;
   onAddItem: () => void;
-  onAddItemOfType: (type: QuoteItemType) => void;
   onRemoveItem: (index: number) => void;
   onDuplicateItem: (index: number) => void;
   onUpdateItem: (index: number, patch: Partial<ItemFormValue>) => void;
@@ -23,7 +40,6 @@ export function QuoteBuilderItemsStep({
   showItemValidation,
   completeItemsCount,
   onAddItem,
-  onAddItemOfType,
   onRemoveItem,
   onDuplicateItem,
   onUpdateItem,
@@ -40,47 +56,55 @@ export function QuoteBuilderItemsStep({
 
       {items.map((item, index) => {
         const itemError = showItemValidation ? validateItemValue(item, index) : null;
+        const lineTotalCents = Math.round(Number(item.quantity) * Number(item.unitPrice) * 100);
 
         return (
           <div
             key={index}
-            className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-2 py-4"
+            className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
           >
             <div className="flex items-center justify-between gap-4">
-              <Select
-                value={item.type}
-                onValueChange={(value) => onUpdateItem(index, { type: value as QuoteItemType })}
-              >
-                <SelectTrigger className="w-auto min-w-39">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {itemTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {itemTypeLabels[type]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                aria-label={`Duplicar concepto ${index + 1}`}
-                onClick={() => onDuplicateItem(index)}
-                className="size-10"
-              >
-                <Copy aria-hidden="true" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                aria-label={`Eliminar concepto ${index + 1}`}
-                onClick={() => onRemoveItem(index)}
-                className="size-11 p-0 text--status-danger-fg hover:bg-status-danger-bg"
-              >
-                <X aria-hidden="true" />
-              </Button>
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface)] text-sm font-semibold text-[var(--color-text-main)]">
+                  {index + 1}
+                </span>
+                <Select
+                  value={item.type}
+                  onValueChange={(value) => onUpdateItem(index, { type: value as QuoteItemType })}
+                >
+                  <SelectTrigger className="w-auto min-w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {itemTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {itemTypeLabels[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label={`Duplicar concepto ${index + 1}`}
+                  onClick={() => onDuplicateItem(index)}
+                  className="size-10"
+                >
+                  <Copy aria-hidden="true" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-label={`Eliminar concepto ${index + 1}`}
+                  onClick={() => onRemoveItem(index)}
+                  className="size-11 p-0 text-[var(--color-status-danger-fg)] hover:bg-[var(--color-status-danger-bg)]"
+                >
+                  <X aria-hidden="true" />
+                </Button>
+              </div>
             </div>
             <input type="hidden" name={`items.${index}.type`} value={item.type} />
             <div className="grid gap-2">
@@ -93,7 +117,7 @@ export function QuoteBuilderItemsStep({
                 placeholder="Ej. Bajar dos muelles"
               />
             </div>
-            <div className="flex gap-3">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
               <div className="grid gap-2">
                 <Label htmlFor={`items-${index}-quantity`}>Cantidad</Label>
                 <div className="flex items-center gap-2 max-w-35">
@@ -155,6 +179,15 @@ export function QuoteBuilderItemsStep({
                   onChange={(event) => onUpdateItem(index, { unitPrice: event.target.value })}
                 />
               </div>
+              <div className="grid min-w-28 gap-1 text-right">
+                <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Total</span>
+                <strong className="text-lg text-[var(--color-text-main)]" data-testid={`concept-total-${index}`}>
+                  {formatCents(Number.isFinite(lineTotalCents) ? lineTotalCents : 0)}
+                </strong>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  {formatQuantity(item.quantity || 0)} × {formatCents(Number(item.unitPrice || 0) * 100)}
+                </span>
+              </div>
             </div>
             {itemError ? (
               <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-3 py-2 text-sm text-[var(--color-status-danger-fg)]" role="status" aria-live="polite">
@@ -172,19 +205,6 @@ export function QuoteBuilderItemsStep({
       >
         + Agregar concepto
       </Button>
-      <div className="grid grid-cols-2 gap-2">
-        {itemTypes.map((type) => (
-          <Button
-            key={type}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onAddItemOfType(type)}
-          >
-            + {itemTypeLabels[type]}
-          </Button>
-        ))}
-      </div>
     </section>
   );
 }

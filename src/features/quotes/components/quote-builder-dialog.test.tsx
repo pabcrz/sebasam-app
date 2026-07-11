@@ -11,7 +11,11 @@ describe("QuoteBuilderDialog", () => {
     render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Crear cotización" })).toBeInTheDocument();
+    expect(dialog).toHaveClass("h-[85dvh]", "overflow-hidden");
+    expect(screen.queryByText(/crear cotización en borrador/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
     await waitFor(() => {

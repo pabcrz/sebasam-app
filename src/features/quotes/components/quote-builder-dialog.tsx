@@ -6,7 +6,6 @@ import {
   Button,
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -48,16 +47,13 @@ export function QuoteBuilderDialog({ customers, createAction, createCustomerActi
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="max-w-4xl"
+        className="grid h-[85dvh] max-h-[85dvh] max-w-4xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden"
         onInteractOutside={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
         onFocusOutside={(event) => event.preventDefault()}
       >
         <DialogHeader className="relative">
-          <DialogTitle>Nueva cotización</DialogTitle>
-          <DialogDescription>
-            Completa el flujo para crear una cotización en borrador.
-          </DialogDescription>
+          <DialogTitle>Crear cotización</DialogTitle>
           <button
             type="button"
             onClick={() => setOpen(false)}

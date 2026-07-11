@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui";
+import { ListChecks, NotebookText, Truck, UserRound } from "lucide-react";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { formatQuantity, itemTypeLabels, ItemFormValue } from "./quote-builder-shared";
 import { QuoteTotalsCard } from "./quote-totals-card";
@@ -41,19 +42,21 @@ export function QuotePreviewCard({
         <p className="text-lg font-bold">{title || "Sin título"}</p>
       </div>
       <div className="grid gap-4 p-4">
-        <div>
+        <div className="grid grid-cols-[auto_1fr] gap-x-3">
+          <UserRound className="row-span-2 size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="preview-customer-icon" />
           <p className="text-xs font-medium text-[var(--color-text-muted)]">CLIENTE</p>
           <p className="text-sm font-medium text-[var(--color-text-main)]">{customerName || "Sin cliente"}</p>
         </div>
-        <div>
+        <div className="grid grid-cols-[auto_1fr] gap-x-3">
+          <Truck className="row-span-2 size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="preview-vehicle-icon" />
           <p className="text-xs font-medium text-[var(--color-text-muted)]">UNIDAD</p>
           <p className="text-sm text-[var(--color-text-main)]">{vehicleDescription || "Sin vehículo"}</p>
         </div>
         {administrative ? <Badge variant="info">Cotización administrativa</Badge> : null}
-        {description ? <p className="text-sm text-[var(--color-text-muted)]">{description}</p> : null}
+        {description ? <p className="flex items-start gap-3 text-sm text-[var(--color-text-muted)]"><NotebookText className="size-5 shrink-0 text-[var(--color-primary)]" aria-hidden="true" data-testid="preview-notes-icon" />{description}</p> : null}
 
         <div className="grid gap-2">
-          <p className="text-xs font-medium text-[var(--color-text-muted)]">CONCEPTOS</p>
+          <p className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)]"><ListChecks className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="preview-items-icon" />CONCEPTOS</p>
           {items.length === 0 ? (
             <p className="text-sm text-[var(--color-text-muted)]">Sin conceptos.</p>
           ) : (
@@ -65,18 +68,15 @@ export function QuotePreviewCard({
                 return (
                   <li
                     key={index}
-                    className="flex items-start justify-between gap-3 border-b border-[var(--color-border-light)] pb-2 text-sm text-[var(--color-text-main)] last:border-0 last:pb-0"
+                    className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-[var(--color-border-light)] pb-3 text-sm text-[var(--color-text-main)] last:border-0 last:pb-0"
                   >
-                    <span className="flex flex-wrap items-center gap-2">
-                      {quantityNum > 1 ? (
-                        <span className="font-medium">{formatQuantity(item.quantity)}×</span>
-                      ) : null}
-                      <Badge variant="default">{itemTypeLabels[item.type]}</Badge>
-                      {item.description}
+                    <span className="grid gap-1">
+                      <span className="font-medium">{item.description}</span>
+                      <span className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]"><Badge variant="default">{itemTypeLabels[item.type]}</Badge>{formatQuantity(item.quantity)} × {formatCents(Number(item.unitPrice) * 100)}</span>
                     </span>
-                    <span className="whitespace-nowrap text-[var(--color-text-muted)]">
+                    <strong className="whitespace-nowrap text-right text-[var(--color-text-main)]">
                       {formatCents(lineTotalCents)}
-                    </span>
+                    </strong>
                   </li>
                 );
               })}

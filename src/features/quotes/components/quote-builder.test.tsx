@@ -47,7 +47,9 @@ describe("QuoteBuilder", () => {
   it("renders the five-step flow and starts on the client/vehicle step", () => {
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
-    expect(screen.getByRole("heading", { name: "Crear cotización en borrador" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /cotización/i })).not.toBeInTheDocument();
+    expect(screen.getByTestId("quote-builder-scroll-area")).toHaveClass("overflow-y-auto");
+    expect(screen.getByTestId("quote-builder-footer")).toHaveClass("shrink-0");
     expect(screen.getByRole("navigation", { name: /pasos de cotización/i })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /cliente/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Modelo (opcional)")).toHaveAttribute("name", "model");
@@ -403,7 +405,7 @@ describe("QuoteBuilder", () => {
     await fillNotesStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByText("Resumen")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Resumen", level: 2 })).toHaveFocus();
     expect(screen.getByTestId("summary-customer")).toHaveTextContent("Constructora del Norte");
     expect(screen.getByTestId("summary-vehicle")).toHaveTextContent("Sin datos de vehículo");
 
@@ -462,6 +464,44 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Paso 1: Cliente / Unidad" }));
 
     expect(screen.getByRole("combobox", { name: /cliente/i })).toBeInTheDocument();
+  });
+
+  it("keeps Cancel visible on all five steps", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} onCancel={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+  });
+
+  it("resets step scroll and focuses the active heading after a transition", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    const scrollArea = screen.getByTestId("quote-builder-scroll-area");
+    scrollArea.scrollTop = 240;
+    expect(document.activeElement).not.toBe(screen.getByRole("heading", { name: "Cliente y unidad" }));
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    await waitFor(() => {
+      expect(scrollArea.scrollTop).toBe(0);
+      expect(screen.getByRole("heading", { name: "Conceptos", level: 2 })).toHaveFocus();
+    });
   });
 
   it("disables the next button on the first step until a customer is selected", async () => {
@@ -745,7 +785,7 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="items.1.type"]')).toHaveValue("LABOR");
   });
 
-  it("adds a concept row with the selected type", async () => {
+  it("shows concept hierarchy, computed total and only one add action", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -761,10 +801,38 @@ describe("QuoteBuilder", () => {
     await user.type(quantityInput, "1");
     await user.type(unitPriceInput, "850");
 
-    await user.click(screen.getByRole("button", { name: "+ Material" }));
+    expect(screen.getByTestId("concept-total-0")).toHaveTextContent("$850.00");
+    expect(screen.getAllByText("1 × $850.00").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: "Duplicar concepto 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Eliminar concepto 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ Agregar concepto" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "+ Material" })).not.toBeInTheDocument();
+  });
 
-    const descriptions = Array.from(document.querySelectorAll('input[name$=".description"]'));
-    expect(descriptions).toHaveLength(2);
-    expect(document.querySelector('input[name="items.1.type"]')).toHaveValue("MATERIAL");
+  it("renders semantic icons and scannable rows in summary and preview", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillNotesStep(user)();
+    const notesDescription = document.querySelector('textarea[name="description"]');
+    expect(notesDescription).toBeInstanceOf(HTMLTextAreaElement);
+    await user.type(notesDescription as HTMLTextAreaElement, "Notas de servicio");
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByTestId("summary-customer-icon")).toBeInTheDocument();
+    expect(screen.getByTestId("summary-vehicle-icon")).toBeInTheDocument();
+    expect(screen.getByTestId("summary-items-icon")).toBeInTheDocument();
+    expect(screen.getByTestId("summary-notes-icon")).toBeInTheDocument();
+    expect(screen.getAllByText("1 × $850.00").length).toBeGreaterThanOrEqual(1);
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByTestId("preview-customer-icon")).toBeInTheDocument();
+    expect(screen.getByTestId("preview-vehicle-icon")).toBeInTheDocument();
+    expect(screen.getByTestId("preview-items-icon")).toBeInTheDocument();
+    expect(screen.getByTestId("preview-notes-icon")).toBeInTheDocument();
   });
 });
