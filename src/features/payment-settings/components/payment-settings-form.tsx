@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Save, Plus, X } from "lucide-react";
+import { Building2, FileText, Hash, Key, Plus, Save, Trash2, User } from "lucide-react";
 import toast from "react-hot-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@/components/ui";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox } from "@/components/ui";
 import { Input } from "@/components/ui";
 import { Label } from "@/components/ui";
 import { savePaymentSettingsAction, addBankAccountAction, removeBankAccountAction } from "../actions";
@@ -34,26 +34,29 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
   return (
     <div className="rounded-lg border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-          Cuenta bancaria
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Cuenta bancaria</span>
+          <Badge variant={account.isForInvoicing ? "info" : "default"}>
+            {account.isForInvoicing ? "Para facturación" : "No usada para facturación"}
+          </Badge>
+        </div>
         <form onSubmit={handleRemove}>
           <Button
             type="submit"
-            variant="outline"
+            variant="danger"
             size="sm"
             aria-label={`Eliminar cuenta ${account.bankName}`}
-            className="h-8 w-8 p-0 text-[var(--color-status-danger-fg)]"
+            className="size-10"
             loading={pending}
           >
-            <X className="h-4 w-4" aria-hidden="true" />
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
             <span className="sr-only">Eliminar</span>
           </Button>
         </form>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className={fieldClass}>
-          <Label htmlFor={`accountHolder-${account.id}`}>Titular</Label>
+          <Label htmlFor={`accountHolder-${account.id}`} className="flex items-center gap-2"><User className="h-4 w-4" aria-hidden="true" />Titular</Label>
           <Input
             id={`accountHolder-${account.id}`}
             value={account.accountHolder}
@@ -62,7 +65,7 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
           />
         </div>
         <div className={fieldClass}>
-          <Label htmlFor={`bankName-${account.id}`}>Banco</Label>
+          <Label htmlFor={`bankName-${account.id}`} className="flex items-center gap-2"><Building2 className="h-4 w-4" aria-hidden="true" />Banco</Label>
           <Input
             id={`bankName-${account.id}`}
             value={account.bankName}
@@ -72,7 +75,7 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
         </div>
         {account.accountNumber.trim() ? (
           <div className={fieldClass}>
-            <Label htmlFor={`accountNumber-${account.id}`}>No. de cuenta</Label>
+            <Label htmlFor={`accountNumber-${account.id}`} className="flex items-center gap-2"><Hash className="h-4 w-4" aria-hidden="true" />No. de cuenta</Label>
             <Input
               id={`accountNumber-${account.id}`}
               value={account.accountNumber}
@@ -83,7 +86,7 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
         ) : null}
         {account.clabe.trim() ? (
           <div className={fieldClass}>
-            <Label htmlFor={`clabe-${account.id}`}>CLABE</Label>
+            <Label htmlFor={`clabe-${account.id}`} className="flex items-center gap-2"><Key className="h-4 w-4" aria-hidden="true" />CLABE</Label>
             <Input
               id={`clabe-${account.id}`}
               value={account.clabe}
@@ -236,22 +239,28 @@ export function PaymentSettingsForm({ settings, saveError }: PaymentSettingsForm
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className={fieldClass}>
-                <Label htmlFor="new-accountHolder">Titular</Label>
+                <Label htmlFor="new-accountHolder" className="flex items-center gap-2"><User className="h-4 w-4" aria-hidden="true" />Titular</Label>
                 <Input id="new-accountHolder" name="accountHolder" required />
               </div>
               <div className={fieldClass}>
-                <Label htmlFor="new-bankName">Banco</Label>
+                <Label htmlFor="new-bankName" className="flex items-center gap-2"><Building2 className="h-4 w-4" aria-hidden="true" />Banco</Label>
                 <Input id="new-bankName" name="bankName" required />
               </div>
               <div className={fieldClass}>
-                <Label htmlFor="new-accountNumber">No. de cuenta</Label>
+                <Label htmlFor="new-accountNumber" className="flex items-center gap-2"><Hash className="h-4 w-4" aria-hidden="true" />No. de cuenta</Label>
                 <Input id="new-accountNumber" name="accountNumber" />
               </div>
               <div className={fieldClass}>
-                <Label htmlFor="new-clabe">CLABE</Label>
+                <Label htmlFor="new-clabe" className="flex items-center gap-2"><Key className="h-4 w-4" aria-hidden="true" />CLABE</Label>
                 <Input id="new-clabe" name="clabe" />
               </div>
             </div>
+            <Checkbox
+              id="new-isForInvoicing"
+              name="isForInvoicing"
+              label={<span className="flex items-center gap-2"><FileText className="h-4 w-4" aria-hidden="true" />Usar esta cuenta para facturación</span>}
+              className="mt-3"
+            />
             <p className="mt-2 text-xs text-[var(--color-text-muted)]">
               Ingresa No. de cuenta, CLABE o ambos.
             </p>

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { savePaymentSettingsAction } from "./actions";
+import { addBankAccountAction, savePaymentSettingsAction } from "./actions";
+
+const { addBankAccount } = vi.hoisted(() => ({
+  addBankAccount: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("@/lib/auth/session", () => ({
   requireOperationalRole: vi.fn().mockResolvedValue(undefined),
@@ -11,6 +15,8 @@ vi.mock("next/cache", () => ({
 
 vi.mock("./domain", () => ({
   updatePaymentSettings: vi.fn().mockResolvedValue(undefined),
+  addBankAccount,
+  removeBankAccount: vi.fn(),
 }));
 
 function formDataWithMapsUrl(mapsUrl: string): FormData {
@@ -86,4 +92,29 @@ describe("savePaymentSettingsAction", () => {
       error: "La URL de Google Maps debe comenzar con http:// o https://.",
     });
   });
+});
+
+it("maps the invoicing checkbox when adding a bank account", async () => {
+  const formData = new FormData();
+  formData.set("accountHolder", "Juan Pérez");
+  formData.set("bankName", "BBVA");
+  formData.set("clabe", "123456789012345678");
+  formData.set("isForInvoicing", "on");
+
+  await addBankAccountAction(formData);
+
+  expect(addBankAccount).toHaveBeenCalledWith(expect.objectContaining({ isForInvoicing: true }));
+});
+
+it("maps an unchecked invoicing checkbox to false", async () => {
+  const formData = new FormData();
+  formData.set("accountHolder", "Juan Pérez");
+  formData.set("bankName", "BBVA");
+  formData.set("clabe", "123456789012345678");
+
+  await addBankAccountAction(formData);
+
+  expect(addBankAccount).toHaveBeenCalledWith(
+    expect.objectContaining({ isForInvoicing: false }),
+  );
 });
