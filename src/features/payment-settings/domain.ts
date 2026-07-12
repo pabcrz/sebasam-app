@@ -8,6 +8,7 @@ export type BankAccountData = {
   bankName: string;
   accountNumber: string;
   clabe: string;
+  isForInvoicing: boolean;
   sortOrder: number;
 };
 
@@ -74,6 +75,7 @@ export async function addBankAccount(data: {
   bankName: string;
   accountNumber: string;
   clabe: string;
+  isForInvoicing: boolean;
 }): Promise<BankAccountData> {
   const current = await prisma.bankAccount.findMany({
     where: { paymentSettingsId: PAYMENT_SETTINGS_ID },
@@ -90,6 +92,7 @@ export async function addBankAccount(data: {
       bankName: data.bankName.trim(),
       accountNumber: data.accountNumber.trim(),
       clabe: data.clabe.trim(),
+      isForInvoicing: data.isForInvoicing,
       sortOrder: nextSortOrder,
     },
   });
@@ -100,6 +103,7 @@ export async function addBankAccount(data: {
     bankName: account.bankName,
     accountNumber: account.accountNumber,
     clabe: account.clabe,
+    isForInvoicing: account.isForInvoicing,
     sortOrder: account.sortOrder,
   };
 }

@@ -41,6 +41,7 @@ export async function addBankAccountAction(formData: FormData) {
   const bankName = ((formData.get("bankName") as string) ?? "").trim();
   const accountNumber = ((formData.get("accountNumber") as string) ?? "").trim();
   const clabe = ((formData.get("clabe") as string) ?? "").trim();
+  const isForInvoicing = formData.get("isForInvoicing") === "on";
 
   if (!accountHolder || !bankName) {
     return { success: false as const, error: "Titular y banco son requeridos." };
@@ -50,7 +51,7 @@ export async function addBankAccountAction(formData: FormData) {
     return { success: false as const, error: "Ingresa No. de cuenta o CLABE." };
   }
 
-  await addBankAccount({ accountHolder, bankName, accountNumber, clabe });
+  await addBankAccount({ accountHolder, bankName, accountNumber, clabe, isForInvoicing });
 
   revalidatePath("/admin/configuracion-pago");
 

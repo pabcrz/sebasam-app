@@ -39,6 +39,7 @@ const defaultSettings: PaymentSettingsFormProps["settings"] = {
       bankName: "Santander",
       accountNumber: "123456",
       clabe: "4444 4444 4444 4444",
+      isForInvoicing: true,
       sortOrder: 0,
     },
     {
@@ -47,6 +48,7 @@ const defaultSettings: PaymentSettingsFormProps["settings"] = {
       bankName: "BBVA",
       accountNumber: "789012",
       clabe: "5555 5555 5555 5555",
+      isForInvoicing: false,
       sortOrder: 1,
     },
   ],
@@ -98,6 +100,16 @@ describe("PaymentSettingsForm", () => {
     // Two accounts = two remove buttons
     const removeButtons = screen.getAllByRole("button", { name: /eliminar cuenta/i });
     expect(removeButtons).toHaveLength(2);
+    expect(removeButtons[0]).toHaveClass("bg-[var(--color-status-danger)]");
+    expect(removeButtons[0].querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("shows invoicing status and exposes an accessible add-account checkbox", () => {
+    renderForm();
+
+    expect(screen.getByText("Para facturación")).toBeInTheDocument();
+    expect(screen.getByText("No usada para facturación")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Usar esta cuenta para facturación" })).toBeInTheDocument();
   });
 
   it("renders add bank account form with empty fields", () => {
@@ -278,6 +290,15 @@ describe("PaymentSettingsForm", () => {
   });
 
   describe("remove bank account", () => {
+    it("removes the account selected through its accessible delete control", async () => {
+      const user = userEvent.setup();
+      renderForm();
+
+      await user.click(screen.getAllByRole("button", { name: /eliminar cuenta/i })[1]);
+
+      await waitFor(() => expect(mockRemoveAction).toHaveBeenCalledWith(2));
+    });
+
     it("shows success toast when a bank account is removed", async () => {
       const user = userEvent.setup();
       renderForm();

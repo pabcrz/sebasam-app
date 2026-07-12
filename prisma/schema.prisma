@@ -305,6 +305,7 @@ model BankAccount {
   bankName          String
   accountNumber     String
   clabe             String
+  isForInvoicing    Boolean  @default(false)
   sortOrder         Int      @default(0)
   createdAt         DateTime @default(now())
 

@@ -1,0 +1,2 @@
+ALTER TABLE "BankAccount"
+ADD COLUMN "isForInvoicing" BOOLEAN NOT NULL DEFAULT false;
