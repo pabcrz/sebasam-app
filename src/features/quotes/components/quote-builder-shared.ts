@@ -19,7 +19,7 @@ export const stepLabels: Record<Step, string> = {
   preview: "Enviar",
 };
 
-export const itemTypes: QuoteItemType[] = ["LABOR", "MATERIAL", "SERVICE", "OTHER"];
+export const itemTypes: QuoteItemType[] = ["LABOR", "SERVICE", "MATERIAL", "EQUIPMENT", "OTHER"];
 export const maxQuantity = 100;
 export const maxUnitPrice = 50_000;
 
@@ -42,6 +42,12 @@ export const emptyItem: ItemFormValue = {
   quantity: "1",
   unitPrice: "",
 };
+
+export function normalizeItems(items: ItemFormValue[]): ItemFormValue[] {
+  return items.filter(
+    (item) => item.description.trim() !== "" || item.unitPrice.trim() !== "" || item.quantity !== "1",
+  );
+}
 
 export function formatQuantity(quantity: number | string) {
   const value = typeof quantity === "string" ? Number(quantity) : quantity;

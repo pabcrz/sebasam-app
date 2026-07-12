@@ -252,19 +252,19 @@ describe("updateDraftQuoteFromForm", () => {
 
   it("parses valid form data and redirects on success", async () => {
     mockTx();
-    await updateDraftQuoteFromForm("quote-1", buildFormData({ "items.0.unitPrice": "850" }) as unknown as FormData);
+    await updateDraftQuoteFromForm("quote-1", {}, buildFormData({ "items.0.unitPrice": "850" }) as unknown as FormData);
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?updated=1");
   });
 
-  it("redirects with invalid error when form data is malformed", async () => {
-    await updateDraftQuoteFromForm("quote-1", buildFormData({ title: "" }) as unknown as FormData);
-    expect(redirect).toHaveBeenCalledWith("/admin/quotes/quote-1/edit?error=invalid");
+  it("returns an error when form data is malformed", async () => {
+    await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData({ title: "" }) as unknown as FormData))
+      .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
   });
 
   it("redirects with not-editable error when quote is no longer editable", async () => {
     mockTx(QuoteStatus.CANCELLED);
-    await updateDraftQuoteFromForm("quote-1", buildFormData() as unknown as FormData);
-    expect(redirect).toHaveBeenCalledWith("/admin/quotes/quote-1/edit?error=not-editable");
+    await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData() as unknown as FormData))
+      .resolves.toEqual({ error: "Esta cotización ya no se puede editar." });
   });
 
   it("redirects with not-editable error when the quote has a COMPLETED work order", async () => {
@@ -275,25 +275,40 @@ describe("updateDraftQuoteFromForm", () => {
       items: [],
       workOrder: { id: "wo-1", status: "COMPLETED" },
     });
-    await updateDraftQuoteFromForm("quote-1", buildFormData() as unknown as FormData);
-    expect(redirect).toHaveBeenCalledWith("/admin/quotes/quote-1/edit?error=not-editable");
+    await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData() as unknown as FormData))
+      .resolves.toEqual({ error: "Esta cotización ya no se puede editar." });
   });
 });
 
 describe("createQuoteFromForm", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("redirects with invalid error when the vehicle plate is longer than 10 characters", async () => {
+  it("returns an error when the vehicle plate is longer than 10 characters", async () => {
     mockTx();
-    await createQuoteFromForm(buildFormData({ plate: "ABCDEFGHIJK" }) as unknown as FormData);
-    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid");
+    await expect(createQuoteFromForm({}, buildFormData({ plate: "ABCDEFGHIJK" }) as unknown as FormData))
+      .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
   });
 
-  it("redirects with invalid error when the vehicle year is greater than current year plus one", async () => {
+  it("returns an error when the vehicle year is greater than current year plus one", async () => {
     mockTx();
     const futureYear = String(new Date().getFullYear() + 2);
-    await createQuoteFromForm(buildFormData({ year: futureYear }) as unknown as FormData);
-    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid");
+    await expect(createQuoteFromForm({}, buildFormData({ year: futureYear }) as unknown as FormData))
+      .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
+  });
+
+  it("submits exactly the normalized non-empty concepts", async () => {
+    const tx = mockTx();
+    const formData = buildFormData({
+      "items.1.type": "EQUIPMENT",
+      "items.1.description": "",
+      "items.1.quantity": "1",
+      "items.1.unitPrice": "",
+    });
+
+    await createQuoteFromForm({}, formData as unknown as FormData);
+
+    expect(tx.quote.create.mock.calls[0][0].data.items.create).toHaveLength(1);
+    expect(tx.quote.create.mock.calls[0][0].data.items.create[0].description).toBe("Cambio de aceite");
   });
 });
 

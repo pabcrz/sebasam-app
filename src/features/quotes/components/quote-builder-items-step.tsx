@@ -17,7 +17,6 @@ import {
   itemTypeLabels,
   itemTypes,
   ItemFormValue,
-  maxQuantity,
   maxUnitPrice,
   getMaxQuantityForType,
   validateItemValue,
@@ -29,7 +28,7 @@ export interface QuoteBuilderItemsStepProps {
   showItemValidation: boolean;
   completeItemsCount: number;
   scrollable?: boolean;
-  onAddItem: () => void;
+  onAddItem: (type: QuoteItemType) => void;
   onRemoveItem: (index: number) => void;
   onDuplicateItem: (index: number) => void;
   onUpdateItem: (index: number, patch: Partial<ItemFormValue>) => void;
@@ -202,11 +201,11 @@ export function QuoteBuilderItemsStep({
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-between border-t border-[var(--color-border-light)] pt-3">
-              <span className="text-sm font-medium text-[var(--color-text-muted)]">Importe</span>
-              <strong className="text-lg text-[var(--color-text-main)]" data-testid={`concept-total-${index}`}>
+            <div className="flex items-center justify-between pt-1 text-sm text-[var(--color-text-muted)]">
+              <span>Importe</span>
+              <output className="font-medium" data-testid={`concept-total-${index}`} aria-label={`Importe del concepto ${index + 1}`}>
                 {formatCents(Number.isFinite(lineTotalCents) ? lineTotalCents : 0)}
-              </strong>
+              </output>
             </div>
             {itemError ? (
               <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-3 py-2 text-sm text-[var(--color-status-danger-fg)]" role="status" aria-live="polite">
@@ -217,14 +216,13 @@ export function QuoteBuilderItemsStep({
         );
       })}
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={onAddItem}
-        className="w-full"
-      >
-        + Agregar concepto
-      </Button>
+      <div className="flex flex-wrap gap-2" aria-label="Agregar concepto por tipo">
+        {itemTypes.map((type) => (
+          <Button key={type} type="button" variant="outline" size="sm" onClick={() => onAddItem(type)}>
+            + {itemTypeLabels[type]}
+          </Button>
+        ))}
+      </div>
     </section>
   );
 }

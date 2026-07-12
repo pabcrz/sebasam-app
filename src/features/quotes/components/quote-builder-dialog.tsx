@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui";
 import { QuoteBuilder } from "./quote-builder";
+import type { QuoteFormActionState } from "../actions";
 
 type CustomerOption = {
   id: string;
@@ -20,7 +21,7 @@ type CustomerOption = {
 
 type QuoteBuilderDialogProps = {
   customers: CustomerOption[];
-  createAction: (formData: FormData) => void | Promise<void>;
+  createAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   createCustomerAction?: (input: unknown) => Promise<{
     success: boolean;
     customer?: CustomerOption;

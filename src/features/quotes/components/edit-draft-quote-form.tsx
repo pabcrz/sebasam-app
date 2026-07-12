@@ -7,10 +7,11 @@ import { Button } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuoteBuilder } from "./quote-builder";
 import type { CustomerOption, QuoteBuilderInitialData } from "./quote-builder";
+import type { QuoteFormActionState } from "../actions";
 
 type EditDraftQuoteFormProps = {
   customers: CustomerOption[];
-  saveAction: (formData: FormData) => void | Promise<void>;
+  saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   initialData: QuoteBuilderInitialData;
   quoteNumber: string;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
