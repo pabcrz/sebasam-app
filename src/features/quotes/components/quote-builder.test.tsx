@@ -122,6 +122,7 @@ describe("QuoteBuilder", () => {
 
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "+ Equipo" }));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await fillNotesStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
@@ -417,7 +418,7 @@ describe("QuoteBuilder", () => {
 
     expect(action).toHaveBeenCalledTimes(1);
 
-    const formData = action.mock.calls[0][0] as FormData;
+    const formData = action.mock.calls[0][1] as FormData;
     const entries = Object.fromEntries(formData.entries());
 
     expect(entries.customerId).toBe("cust-1");
@@ -426,7 +427,77 @@ describe("QuoteBuilder", () => {
     expect(entries["items.0.quantity"]).toBe("1");
     expect(entries["items.0.unitPrice"]).toBe("850");
     expect(entries["items.0.type"]).toBe("LABOR");
+    expect(entries["items.1.type"]).toBeUndefined();
+    expect(screen.getAllByText("Cambio de aceite")).toHaveLength(2);
   }, 10_000);
+
+  it("preserves edited customer, concept, and preview step after a failed save", async () => {
+    const user = userEvent.setup();
+    const saveAction = vi.fn().mockResolvedValue({ error: "No se pudo guardar." });
+    render(
+      <QuoteBuilder
+        customers={customers}
+        saveAction={saveAction}
+        initialData={{
+          customerId: "cust-1",
+          vehicle: { plate: "ABC-123", brand: "Ford", model: "F-150", year: "2022" },
+          title: "Afinación original",
+          description: "Notas originales",
+          administrative: false,
+          taxEnabled: true,
+          items: [{ type: "SERVICE", description: "Afinación", quantity: "1", unitPrice: "1200" }],
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("combobox", { name: /cliente/i }));
+    await user.click(screen.getByRole("option", { name: "Taller Hermanos Pérez" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    const descriptionInput = document.querySelector('input[name="items.0.description"]') as HTMLInputElement;
+    await user.clear(descriptionInput);
+    await user.type(descriptionInput, "Afinación mayor");
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    fireEvent.submit(screen.getByTestId("quote-builder-form"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo guardar.");
+    expect(screen.getByText(/vista previa de cotización/i)).toBeInTheDocument();
+    expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-2");
+    expect(document.querySelector('input[name="items.0.description"]')).toHaveValue("Afinación mayor");
+
+    await user.click(screen.getByRole("button", { name: "Paso 2: Conceptos" }));
+    await user.clear(descriptionInput);
+    await user.type(descriptionInput, "   ");
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByText(/concepto 1 necesita una descripción/i)).toBeInTheDocument();
+    expect(screen.getByText("No se pudo guardar.")).toBeInTheDocument();
+
+    await user.clear(descriptionInput);
+    await user.type(descriptionInput, "Afinación corregida");
+
+    expect(screen.queryByText(/concepto 1 necesita una descripción/i)).not.toBeInTheDocument();
+    expect(screen.getByText("No se pudo guardar.")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["Mano de obra", "LABOR"],
+    ["Servicio", "SERVICE"],
+    ["Material", "MATERIAL"],
+    ["Equipo", "EQUIPMENT"],
+    ["Otro", "OTHER"],
+  ])("adds %s directly with type %s", async (label, type) => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+
+    await user.click(screen.getByRole("button", { name: `+ ${label}` }));
+
+    expect(document.querySelector('input[name="items.1.type"]')).toHaveValue(type);
+  });
 
   it("computes and displays the running total", async () => {
     const user = userEvent.setup();
@@ -514,7 +585,7 @@ describe("QuoteBuilder", () => {
 
     expect(action).toHaveBeenCalledTimes(1);
 
-    const formData = action.mock.calls[0][0] as FormData;
+    const formData = action.mock.calls[0][1] as FormData;
     expect(formData.get("customerId")).toBe("cust-1");
     expect(formData.get("model")).toBe("");
     expect(formData.get("plate")).toBe("");
@@ -634,7 +705,7 @@ describe("QuoteBuilder", () => {
     await user.type(firstUnitPriceInput, "850");
 
     // Add a second concept so the blank-description test targets row 2.
-    await user.click(screen.getByRole("button", { name: "+ Agregar concepto" }));
+    await user.click(screen.getByRole("button", { name: "+ Mano de obra" }));
 
     const [, descriptionInput] = screen.getAllByLabelText(/descripción/i);
     const [, quantityInput] = screen.getAllByLabelText(/cantidad/i);
@@ -676,6 +747,53 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     expect(screen.getByText(/concepto 1 necesita un precio unitario/i)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/precio unitario/i), "850");
+
+    expect(screen.queryByText(/concepto 1 necesita un precio unitario/i)).not.toBeInTheDocument();
+  });
+
+  it("clears the missing-concept error as soon as a complete concept is entered", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa al menos un concepto completo.");
+
+    const [descriptionInput] = screen.getAllByLabelText(/descripción/i);
+    const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
+    await user.type(descriptionInput, "Cambio de aceite");
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/necesita un precio unitario/i);
+
+    await user.type(unitPriceInput, "850");
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps and then clears the missing-title error as the title becomes valid", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
+
+    const titleInput = screen.getByLabelText("Título");
+    await user.type(titleInput, "   ");
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
+
+    await user.type(titleInput, "Servicio general");
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("prevents submission from hidden steps", async () => {
@@ -714,7 +832,7 @@ describe("QuoteBuilder", () => {
 
     fireEvent.submit(screen.getByTestId("quote-builder-form"));
 
-    const formData = action.mock.calls[0][0] as FormData;
+    const formData = action.mock.calls[0][1] as FormData;
     expect(formData.get("taxEnabled")).toBe("off");
   });
 
@@ -813,8 +931,8 @@ describe("QuoteBuilder", () => {
     expect(quantityPriceRow.parentElement).not.toHaveTextContent("1 × $850.00");
     expect(screen.getByRole("button", { name: "Duplicar concepto 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Eliminar concepto 1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "+ Agregar concepto" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "+ Material" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ Material" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ Equipo" })).toBeInTheDocument();
   });
 
   it("renders semantic icons and scannable rows in summary and preview", async () => {

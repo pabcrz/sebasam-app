@@ -51,9 +51,9 @@ function quoteFormDataToInput(formData: FormData) {
 
     const item = { type, description, quantity, unitPriceCents };
 
-    const hasAnyItemValue = [item.description, item.quantity, item.unitPriceCents].some(
+    const hasAnyItemValue = [item.description, item.unitPriceCents].some(
       (value) => typeof value === "string" && value.trim() !== "",
-    );
+    ) || (typeof item.quantity === "string" && item.quantity.trim() !== "1");
 
     if (hasAnyItemValue) {
       items.push(item);
@@ -152,17 +152,25 @@ export async function createQuote(input: unknown) {
   });
 }
 
-export async function createQuoteFromForm(formData: FormData) {
+export type QuoteFormActionState = { error?: string };
+
+export async function createQuoteFromForm(
+  _previousState: QuoteFormActionState,
+  formData: FormData,
+): Promise<QuoteFormActionState> {
   await requireOperationalRole();
 
   const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
 
   if (!parsed.success) {
-    redirect(`${quotesPath}?error=invalid`);
-    return;
+    return { error: "Revisa los datos e intenta de nuevo." };
   }
 
-  await createQuote(parsed.data);
+  try {
+    await createQuote(parsed.data);
+  } catch {
+    return { error: "No se pudo crear la cotización. Intenta de nuevo." };
+  }
   revalidatePath(quotesPath);
   redirect(`${quotesPath}?created=1`);
 }
@@ -227,23 +235,27 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
   });
 }
 
-export async function updateDraftQuoteFromForm(quoteId: string, formData: FormData) {
+export async function updateDraftQuoteFromForm(
+  quoteId: string,
+  _previousState: QuoteFormActionState,
+  formData: FormData,
+): Promise<QuoteFormActionState> {
   await requireOperationalRole();
 
   const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
 
   if (!parsed.success) {
-    redirect(`${quotesPath}/${quoteId}/edit?error=invalid`);
+    return { error: "Revisa los datos e intenta de nuevo." };
   }
 
   try {
     await updateDraftQuote(quoteId, parsed.data);
   } catch (error) {
     if (error instanceof Error && error.message === "This quote is not editable.") {
-      redirect(`${quotesPath}/${quoteId}/edit?error=not-editable`);
+      return { error: "Esta cotización ya no se puede editar." };
     }
 
-    redirect(`${quotesPath}/${quoteId}/edit?error=update-failed`);
+    return { error: "No se pudo guardar la cotización. Intenta de nuevo." };
   }
 
   revalidatePath(quotesPath);
@@ -536,7 +548,7 @@ export async function duplicateQuoteFromForm(formData: FormData) {
 
   try {
     await duplicateQuote(quoteId);
-  } catch (error) {
+  } catch {
     redirect(`${quotesPath}?error=duplicate-failed`);
     return;
   }

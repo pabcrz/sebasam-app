@@ -6,10 +6,11 @@ import { X } from "lucide-react";
 import { Button, ConfirmDialog } from "@/components/ui";
 import { QuoteBuilder } from "./quote-builder";
 import type { CustomerOption } from "./quote-builder";
+import type { QuoteFormActionState } from "../actions";
 
 type NewQuoteFormProps = {
   customers: CustomerOption[];
-  createAction: (formData: FormData) => void | Promise<void>;
+  createAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   createCustomerAction?: (input: unknown) => Promise<{
     success: boolean;
     customer?: CustomerOption;

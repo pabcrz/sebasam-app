@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useFormStatus } from "react-dom";
 import {
   Button,
   Checkbox,
@@ -15,8 +14,8 @@ import {
   emptyItem,
   getStepError,
   isItemComplete,
+  normalizeItems,
   ItemFormValue,
-  maxQuantity,
   getMaxQuantityForType,
   Step,
   steps,
@@ -26,6 +25,7 @@ import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderStepper } from "./quote-builder-stepper";
 import { QuotePreviewCard } from "./quote-preview-card";
 import { QuoteSummaryCard } from "./quote-summary-card";
+import type { QuoteFormActionState } from "../actions";
 
 export type CustomerOption = {
   id: string;
@@ -51,8 +51,8 @@ export type QuoteBuilderInitialData = {
 
 type QuoteBuilderProps = {
   customers: CustomerOption[];
-  createAction?: (formData: FormData) => void | Promise<void>;
-  saveAction?: (formData: FormData) => void | Promise<void>;
+  createAction?: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
+  saveAction?: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   createCustomerAction?: (input: unknown) => Promise<QuoteCustomerActionResult>;
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
   initialData?: QuoteBuilderInitialData;
@@ -70,7 +70,11 @@ export function QuoteBuilder({
   layout = "page",
 }: QuoteBuilderProps) {
   const isEdit = saveAction != null;
-  const formAction = saveAction ?? createAction;
+  const action = saveAction ?? createAction;
+  const [actionState, formAction, isSubmitting] = React.useActionState(
+    async (state: QuoteFormActionState, formData: FormData) => (await action?.(state, formData)) ?? {},
+    {},
+  );
   const initialSelectedCustomer = customers.find((customer) => customer.id === initialData?.customerId);
   const [customerOptions, setCustomerOptions] = React.useState<CustomerOption[]>(customers);
   const [customerSearch, setCustomerSearch] = React.useState(initialSelectedCustomer?.name ?? "");
@@ -239,7 +243,7 @@ export function QuoteBuilder({
     );
   }
 
-  function addItem() {
+  function addItem(type: ItemFormValue["type"]) {
     const firstInvalidIndex = items.findIndex((item, index) => validateItemValue(item, index));
 
     if (firstInvalidIndex !== -1) {
@@ -249,31 +253,37 @@ export function QuoteBuilder({
 
     setShowItemValidation(false);
     setStepError(null);
-    setItems((prev) => [...prev, { ...emptyItem }]);
+    setItems((prev) => [...prev, { ...emptyItem, type }]);
   }
 
   function removeItem(index: number) {
-    setItems((prev) => prev.filter((_, i) => i !== index));
+    const next = items.filter((_, i) => i !== index);
+    setItems(next);
+    setStepError((current) =>
+      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
+    );
   }
 
   function updateItem(index: number, patch: Partial<ItemFormValue>) {
-    setItems((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], ...patch };
-      return next;
-    });
+    const next = [...items];
+    next[index] = { ...next[index], ...patch };
+    setItems(next);
+    setStepError((current) =>
+      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
+    );
   }
 
   function adjustItemQuantity(index: number, delta: number) {
-    setItems((prev) => {
-      const next = [...prev];
-      const currentQuantity = Number(next[index]?.quantity);
-      const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
-      const limit = getMaxQuantityForType(next[index]?.type ?? "LABOR");
-      const nextQuantity = Math.min(limit, Math.max(1, baseQuantity + delta));
-      next[index] = { ...next[index], quantity: String(nextQuantity) };
-      return next;
-    });
+    const next = [...items];
+    const currentQuantity = Number(next[index]?.quantity);
+    const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
+    const limit = getMaxQuantityForType(next[index]?.type ?? "LABOR");
+    const nextQuantity = Math.min(limit, Math.max(1, baseQuantity + delta));
+    next[index] = { ...next[index], quantity: String(nextQuantity) };
+    setItems(next);
+    setStepError((current) =>
+      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
+    );
   }
 
   function duplicateItem(index: number) {
@@ -305,7 +315,8 @@ export function QuoteBuilder({
 
   function goToNext() {
     if (step === "items") {
-      const firstInvalidIndex = items.findIndex((item, index) => validateItemValue(item, index));
+      const normalizedItems = normalizeItems(items);
+      const firstInvalidIndex = normalizedItems.findIndex((item, index) => validateItemValue(item, index));
 
       if (firstInvalidIndex !== -1) {
         setShowItemValidation(true);
@@ -313,7 +324,7 @@ export function QuoteBuilder({
         return;
       }
 
-      if (completeItems.length === 0) {
+      if (normalizedItems.length === 0) {
         setStepError("Ingresa al menos un concepto completo.");
         setShowItemValidation(false);
         return;
@@ -321,6 +332,7 @@ export function QuoteBuilder({
 
       setShowItemValidation(false);
       setStepError(null);
+      setItems(normalizedItems);
     } else {
       const error = getStepError(step, { customerId, vehicle, title, items });
 
@@ -367,6 +379,8 @@ export function QuoteBuilder({
         if (step !== "preview") {
           event.preventDefault();
           setStepError("Avanza al último paso antes de enviar la cotización.");
+        } else {
+          setItems((current) => normalizeItems(current));
         }
       }}
     >
@@ -387,6 +401,11 @@ export function QuoteBuilder({
               role="alert"
             >
               {stepError}
+            </p>
+          ) : null}
+          {actionState.error ? (
+            <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
+              {actionState.error}
             </p>
           ) : null}
 
@@ -596,7 +615,15 @@ export function QuoteBuilder({
                 name="title"
                 required
                 value={title}
-                onChange={(event) => setTitle(event.target.value)}
+                onChange={(event) => {
+                  const nextTitle = event.target.value;
+                  setTitle(nextTitle);
+                  setStepError((current) =>
+                    current
+                      ? getStepError("notes", { customerId, vehicle, title: nextTitle, items })
+                      : null,
+                  );
+                }}
                 placeholder="Ej. Servicio general"
               />
             </div>
@@ -679,7 +706,9 @@ export function QuoteBuilder({
             </div>
 
             {step === "preview" ? (
-              <CreateQuoteSubmitButton isEdit={isEdit} />
+              <Button type="submit" variant="primary" loading={isSubmitting} className="min-w-[160px]" aria-live="polite">
+                {isSubmitting ? (isEdit ? "Guardando..." : "Creando...") : (isEdit ? "Guardar cambios" : "Crear cotización")}
+              </Button>
             ) : (
               <Button
                 type="button"
@@ -693,21 +722,5 @@ export function QuoteBuilder({
             )}
           </div>
     </form>
-  );
-}
-
-function CreateQuoteSubmitButton({ isEdit }: { isEdit?: boolean }) {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button
-      type="submit"
-      variant="primary"
-      loading={pending}
-      className="min-w-[160px]"
-      aria-live="polite"
-    >
-      {pending ? (isEdit ? "Guardando..." : "Creando...") : (isEdit ? "Guardar cambios" : "Crear cotización")}
-    </Button>
   );
 }
