@@ -72,10 +72,7 @@ export function QuoteMobileCard({
           <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
         </div>
 
-        <p className="mt-3 text-sm font-medium leading-5 text-[var(--color-text-main)]">
-          {quote.title || "Sin título"}
-        </p>
-        <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
           <Car className="h-3.5 w-3.5" aria-hidden="true" />
           <span>{vehicleDescription || "Sin vehículo"}</span>
         </p>

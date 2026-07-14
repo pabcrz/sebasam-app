@@ -28,6 +28,32 @@ import {
 } from "./domain";
 
 const quotesPath = "/admin/quotes";
+const quoteNumberAllocationAttempts = 3;
+
+function isQuoteNumberCollision(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+    return false;
+  }
+
+  const target = error.meta?.target;
+  return Array.isArray(target)
+    ? target.length === 1 && target[0] === "number"
+    : target === "Quote_number_key";
+}
+
+async function withQuoteNumberRetry<T>(operation: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; attempt <= quoteNumberAllocationAttempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isQuoteNumberCollision(error) || attempt === quoteNumberAllocationAttempts) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error("Quote number allocation retry exhausted.");
+}
 
 type QuoteItemFormInput = {
   type: FormDataEntryValue | null;
@@ -69,7 +95,6 @@ function quoteFormDataToInput(formData: FormData) {
       color: undefined,
       year: formData.get("year"),
     },
-    title: formData.get("title"),
     description: formData.get("description"),
     administrative: formData.get("administrative") === "on",
     taxEnabled: formData.get("taxEnabled") === "on",
@@ -107,7 +132,6 @@ export async function createQuote(input: unknown) {
   await requireOperationalRole();
 
   const data = quoteInputSchema.parse(input);
-  const quoteNumber = await nextQuoteNumber();
   const items = data.items.map((item, index) => {
     const totalCents = calculateItemTotalCents(item.quantity, item.unitPriceCents);
 
@@ -122,7 +146,8 @@ export async function createQuote(input: unknown) {
   const { taxCents, totalCents } = calculateQuoteTotals(subtotalCents, data.taxEnabled);
   const validUntil = createQuoteValidUntil();
 
-  return prisma.$transaction(async (tx) => {
+  return withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
+    const quoteNumber = await nextQuoteNumber(tx);
     const shouldLinkVehicle = hasVehicleData(data.vehicle);
     const vehicle = shouldLinkVehicle
       ? await findOrCreateVehicle(tx, buildVehicleInput(data.customerId, data.vehicle))
@@ -138,7 +163,7 @@ export async function createQuote(input: unknown) {
         vehicleSnapshot,
         number: quoteNumber,
         status: "DRAFT",
-        title: data.title,
+        title: quoteNumber,
         description: nullableOptional(data.description),
         administrative: data.administrative,
         taxEnabled: data.taxEnabled,
@@ -149,7 +174,7 @@ export async function createQuote(input: unknown) {
         items: { create: items },
       },
     });
-  });
+  }));
 }
 
 export type QuoteFormActionState = { error?: string };
@@ -222,7 +247,6 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
         customerId: data.customerId,
         vehicleId: vehicle?.id ?? null,
         vehicleSnapshot,
-        title: data.title,
         description: nullableOptional(data.description),
         administrative: data.administrative,
         taxEnabled: data.taxEnabled,
@@ -487,7 +511,6 @@ export async function duplicateQuote(quoteId: string) {
     throw new Error("Quote not found.");
   }
 
-  const quoteNumber = await nextQuoteNumber();
   const validUntil = createQuoteValidUntil();
 
   const items = original.items.map((item, index) => ({
@@ -499,7 +522,8 @@ export async function duplicateQuote(quoteId: string) {
     sortOrder: index,
   }));
 
-  return prisma.$transaction(async (tx) => {
+  return withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
+    const quoteNumber = await nextQuoteNumber(tx);
     const shouldLinkVehicle = original.vehicle !== null;
     const vehicleInput = shouldLinkVehicle
       ? {
@@ -522,7 +546,7 @@ export async function duplicateQuote(quoteId: string) {
         vehicleSnapshot,
         number: quoteNumber,
         status: "DRAFT",
-        title: original.title,
+        title: quoteNumber,
         description: original.description,
         administrative: original.administrative,
         taxEnabled: original.taxEnabled,
@@ -533,7 +557,7 @@ export async function duplicateQuote(quoteId: string) {
         items: { create: items },
       },
     });
-  });
+  }));
 }
 
 export async function duplicateQuoteFromForm(formData: FormData) {

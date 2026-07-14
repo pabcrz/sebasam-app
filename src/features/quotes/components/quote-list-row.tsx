@@ -66,7 +66,6 @@ export function QuoteListRow({
       <TableCell>
         {quote.vehicle ? formatVehicle(quote.vehicle) : formatSnapshotVehicle(quote.vehicleSnapshot)}
       </TableCell>
-      <TableCell>{quote.title}</TableCell>
       <TableCell>
         {quote.workOrder ? (
           <Badge variant={workOrderStatusBadgeVariant[quote.workOrder.status]}>

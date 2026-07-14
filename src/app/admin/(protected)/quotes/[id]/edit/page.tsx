@@ -80,7 +80,6 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
   const initialData: QuoteBuilderInitialData = {
     customerId: quote.customerId,
     vehicle: extractVehicleData(quote),
-    title: quote.title,
     description: quote.description ?? "",
     administrative: quote.administrative,
     taxEnabled: quote.taxEnabled,

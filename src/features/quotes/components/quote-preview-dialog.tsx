@@ -71,7 +71,7 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
         <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm">
           <div className="bg-[image:var(--gradient-primary)] px-5 py-4 text-white">
             <p className="text-xs font-medium opacity-90">Vista previa de cotización</p>
-            <p className="text-lg font-bold">{quote.title || "Sin título"}</p>
+            <p className="text-lg font-bold">Cotización {quote.number}</p>
           </div>
           <div className="grid gap-4 p-4">
             <div>

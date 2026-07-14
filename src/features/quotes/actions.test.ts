@@ -14,6 +14,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { redirect } from "next/navigation";
+import { nextQuoteNumber } from "./lib/sequence";
 
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), quote: { findUnique: vi.fn() } } }));
 vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
@@ -70,11 +71,18 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   return tx;
 }
 
+function uniqueConstraintError(target: string[]) {
+  return new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+    code: "P2002",
+    clientVersion: "test",
+    meta: { target },
+  });
+}
+
 function validInput() {
   return {
     customerId: "cust-1",
     vehicle: { plate: "ABC123", brand: "Toyota", model: "Hilux", color: "Blanco", year: 2022 },
-    title: "Servicio actualizado",
     description: "Notas actualizadas",
     administrative: false,
     taxEnabled: true,
@@ -86,7 +94,7 @@ function buildFormData(overrides: Record<string, string> = {}) {
   const formData = new MockFormData();
   const defaults: Record<string, string> = {
     customerId: "cust-1", plate: "", brand: "", model: "Hilux", color: "", year: "",
-    title: "Servicio", description: "", taxEnabled: "on",
+    description: "", taxEnabled: "on",
     "items.0.type": "SERVICE", "items.0.description": "Cambio de aceite", "items.0.quantity": "1", "items.0.unitPrice": "100",
   };
   for (const [key, value] of Object.entries({ ...defaults, ...overrides })) {
@@ -99,7 +107,6 @@ function validInputWithoutVehicle() {
   return {
     customerId: "cust-1",
     vehicle: { plate: "", brand: "", model: "", color: "", year: "" },
-    title: "Servicio administrativo",
     description: "",
     administrative: true,
     taxEnabled: false,
@@ -116,6 +123,10 @@ describe("createQuote", () => {
 
     expect(findOrCreateVehicle).toHaveBeenCalledTimes(1);
     expect(tx.quote.create).toHaveBeenCalledTimes(1);
+    expect(tx.quote.create.mock.calls[0][0].data).toMatchObject({
+      number: "C-0626-01",
+      title: "C-0626-01",
+    });
     expect(tx.quote.create.mock.calls[0][0].data.vehicleId).toBe("vehicle-1");
     expect(tx.quote.create.mock.calls[0][0].data.vehicleSnapshot).toEqual({
       plate: null,
@@ -138,13 +149,55 @@ describe("createQuote", () => {
     expect(tx.quote.create.mock.calls[0][0].data.vehicleSnapshot).toBe(Prisma.JsonNull);
     expect(tx.quote.create.mock.calls[0][0].data.totalCents).toBe(50000);
   });
+
+  it("retries a quote number collision and allocates a fresh folio", async () => {
+    const tx = mockTx();
+    (nextQuoteNumber as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce("C-0626-01")
+      .mockResolvedValueOnce("C-0626-02");
+    tx.quote.create
+      .mockRejectedValueOnce(uniqueConstraintError(["number"]))
+      .mockResolvedValueOnce({ id: "quote-2", number: "C-0626-02", title: "C-0626-02" });
+
+    await expect(createQuote(validInput())).resolves.toMatchObject({
+      number: "C-0626-02",
+      title: "C-0626-02",
+    });
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(tx.quote.create.mock.calls[1][0].data).toMatchObject({
+      number: "C-0626-02",
+      title: "C-0626-02",
+    });
+  });
+
+  it("does not retry an unrelated unique constraint error", async () => {
+    const tx = mockTx();
+    const error = uniqueConstraintError(["customerId", "plate"]);
+    tx.quote.create.mockRejectedValue(error);
+
+    await expect(createQuote(validInput())).rejects.toBe(error);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("updateDraftQuote", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("updates a DRAFT quote, recalculates totals and replaces items", async () => {
+  it("updates a DRAFT quote without replacing its historical title", async () => {
     const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      status: QuoteStatus.DRAFT,
+      title: "Historical title",
+      items: [],
+      workOrder: null,
+    });
+    tx.quote.update.mockResolvedValue({
+      id: "quote-1",
+      title: "Historical title",
+      totalCents: 197200,
+    });
     const result = await updateDraftQuote("quote-1", validInput());
     expect(tx.quoteItem.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });
     const updateData = tx.quote.update.mock.calls[0][0].data;
@@ -152,6 +205,8 @@ describe("updateDraftQuote", () => {
     expect(updateData.taxCents).toBe(27200);
     expect(updateData.totalCents).toBe(197200);
     expect(updateData.items.create).toHaveLength(1);
+    expect(updateData).not.toHaveProperty("title");
+    expect(result.title).toBe("Historical title");
     expect(result.totalCents).toBe(197200);
   });
 
@@ -256,9 +311,10 @@ describe("updateDraftQuoteFromForm", () => {
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?updated=1");
   });
 
-  it("returns an error when form data is malformed", async () => {
-    await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData({ title: "" }) as unknown as FormData))
-      .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
+  it("does not require title form data", async () => {
+    mockTx();
+    await updateDraftQuoteFromForm("quote-1", {}, buildFormData() as unknown as FormData);
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?updated=1");
   });
 
   it("redirects with not-editable error when quote is no longer editable", async () => {
@@ -317,6 +373,12 @@ describe("duplicateQuote", () => {
 
   it("creates a new DRAFT quote with a fresh number and validity while copying quote fields and items", async () => {
     const tx = mockTx();
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
+      (callback: (client: MockTx) => Promise<unknown>) => {
+        expect(nextQuoteNumber).not.toHaveBeenCalled();
+        return callback(tx);
+      },
+    );
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "quote-source",
       customerId: "cust-1",
@@ -370,6 +432,7 @@ describe("duplicateQuote", () => {
 
     const result = await duplicateQuote("quote-source");
 
+    expect(nextQuoteNumber).toHaveBeenCalledWith(tx);
     expect(prisma.quote.findUnique).toHaveBeenCalledWith({
       where: { id: "quote-source" },
       include: {
@@ -394,7 +457,7 @@ describe("duplicateQuote", () => {
       vehicleId: "vehicle-1",
       number: "C-0626-01",
       status: QuoteStatus.DRAFT,
-      title: "Servicio original",
+      title: "C-0626-01",
       description: "Notas originales",
       administrative: true,
       taxEnabled: true,
@@ -455,6 +518,28 @@ describe("duplicateQuote", () => {
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     await expect(duplicateQuote("missing-quote")).rejects.toThrow("Quote not found.");
+  });
+
+  it("caps quote number collision retries and propagates the final error", async () => {
+    const tx = mockTx();
+    const error = uniqueConstraintError(["number"]);
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "quote-source",
+      customerId: "cust-1",
+      vehicle: null,
+      description: null,
+      administrative: false,
+      taxEnabled: false,
+      subtotalCents: 50000,
+      taxCents: 0,
+      totalCents: 50000,
+      items: [],
+    });
+    tx.quote.create.mockRejectedValue(error);
+
+    await expect(duplicateQuote("quote-source")).rejects.toBe(error);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(3);
+    expect(nextQuoteNumber).toHaveBeenCalledTimes(3);
   });
 });
 

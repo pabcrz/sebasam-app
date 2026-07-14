@@ -9,7 +9,6 @@ import { QuoteTotalsCard } from "./quote-totals-card";
 export interface QuotePreviewCardProps {
   customerName: string;
   vehicle: { plate: string; brand: string; model: string; year: string };
-  title: string;
   description: string;
   administrative: boolean;
   items: ItemFormValue[];
@@ -22,7 +21,6 @@ export interface QuotePreviewCardProps {
 export function QuotePreviewCard({
   customerName,
   vehicle,
-  title,
   description,
   administrative,
   items,
@@ -39,7 +37,7 @@ export function QuotePreviewCard({
     <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm">
       <div className="bg-[image:var(--gradient-primary)] px-5 py-4 text-white">
         <p className="text-xs font-medium opacity-90">Vista previa de cotización</p>
-        <p className="text-lg font-bold">{title || "Sin título"}</p>
+        <p className="text-lg font-bold">Cotización</p>
       </div>
       <div className="grid gap-4 p-4">
         <div className="grid grid-cols-[auto_1fr] gap-x-3">

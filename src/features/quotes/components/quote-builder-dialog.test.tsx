@@ -17,7 +17,6 @@ async function enterRepresentativeQuoteState(user: ReturnType<typeof userEvent.s
   await user.type(screen.getByRole("textbox", { name: "Cantidad" }), "3");
   await user.type(screen.getByRole("spinbutton", { name: "Precio unitario" }), "1250");
   await user.click(screen.getByRole("button", { name: "Siguiente" }));
-  await user.type(screen.getByRole("textbox", { name: "Título" }), "Servicio completo");
   await user.type(screen.getByLabelText("Descripción", { selector: "textarea" }), "Trabajo prioritario");
   await user.click(screen.getByRole("checkbox", { name: "Cotización administrativa" }));
   await user.click(screen.getByRole("checkbox", { name: "Incluir IVA (16%)" }));
@@ -32,7 +31,6 @@ function expectRepresentativeQuoteState() {
   expect(screen.getByLabelText("Descripción", { selector: "input" })).toHaveValue("Cambio de frenos");
   expect(screen.getByLabelText("Cantidad")).toHaveValue("3");
   expect(screen.getByLabelText("Precio unitario")).toHaveValue(1250);
-  expect(screen.getByLabelText("Título")).toHaveValue("Servicio completo");
   expect(screen.getByLabelText("Descripción", { selector: "textarea" })).toHaveValue("Trabajo prioritario");
   expect(screen.getByLabelText("Cotización administrativa")).toBeChecked();
   expect(screen.getByLabelText("Incluir IVA (16%)")).not.toBeChecked();
@@ -156,7 +154,6 @@ describe("QuoteBuilderDialog", () => {
     expect(screen.getByLabelText("Descripción", { selector: "input" })).toHaveValue("");
     expect(screen.getByLabelText("Cantidad")).toHaveValue("1");
     expect(screen.getByLabelText("Precio unitario")).toHaveValue(null);
-    expect(screen.getByLabelText("Título")).toHaveValue("");
     expect(screen.getByLabelText("Descripción", { selector: "textarea" })).toHaveValue("");
     expect(screen.getByLabelText("Cotización administrativa")).not.toBeChecked();
     expect(screen.getByLabelText("Incluir IVA (16%)")).toBeChecked();

@@ -39,7 +39,8 @@ function fillItemsStep(user: ReturnType<typeof userEvent.setup>) {
 
 function fillNotesStep(user: ReturnType<typeof userEvent.setup>) {
   return async () => {
-    await user.type(screen.getByLabelText("Título"), "Servicio general");
+    const description = document.querySelector('textarea[name="description"]');
+    await user.type(description as HTMLTextAreaElement, "Servicio general");
   };
 }
 
@@ -357,7 +358,6 @@ describe("QuoteBuilder", () => {
         initialData={{
           customerId: "cust-old",
           vehicle: { plate: "", brand: "", model: "", year: "" },
-          title: "Cotización existente",
           description: "",
           administrative: false,
           taxEnabled: true,
@@ -422,7 +422,8 @@ describe("QuoteBuilder", () => {
     const entries = Object.fromEntries(formData.entries());
 
     expect(entries.customerId).toBe("cust-1");
-    expect(entries.title).toBe("Servicio general");
+    expect(entries.title).toBeUndefined();
+    expect(entries.description).toBe("Servicio general");
     expect(entries["items.0.description"]).toBe("Cambio de aceite");
     expect(entries["items.0.quantity"]).toBe("1");
     expect(entries["items.0.unitPrice"]).toBe("850");
@@ -441,7 +442,6 @@ describe("QuoteBuilder", () => {
         initialData={{
           customerId: "cust-1",
           vehicle: { plate: "ABC-123", brand: "Ford", model: "F-150", year: "2022" },
-          title: "Afinación original",
           description: "Notas originales",
           administrative: false,
           taxEnabled: true,
@@ -530,7 +530,8 @@ describe("QuoteBuilder", () => {
     await fillItemsStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByLabelText("Título")).toBeInTheDocument();
+    expect(document.querySelector('textarea[name="description"]')).toBeInTheDocument();
+    expect(screen.queryByLabelText("Título")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Paso 1: Cliente / Unidad" }));
 
@@ -774,7 +775,7 @@ describe("QuoteBuilder", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("keeps and then clears the missing-title error as the title becomes valid", async () => {
+  it("allows the notes step without a title or description", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -784,16 +785,8 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
-
-    const titleInput = screen.getByLabelText("Título");
-    await user.type(titleInput, "   ");
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
-
-    await user.type(titleInput, "Servicio general");
-
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Resumen", level: 2 })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Título")).not.toBeInTheDocument();
   });
 
   it("prevents submission from hidden steps", async () => {

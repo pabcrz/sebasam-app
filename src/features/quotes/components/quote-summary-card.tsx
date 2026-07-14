@@ -9,7 +9,6 @@ import { QuoteTotalsCard } from "./quote-totals-card";
 export interface QuoteSummaryCardProps {
   customerName: string;
   vehicle: { plate: string; brand: string; model: string; year: string };
-  title: string;
   description: string;
   administrative: boolean;
   items: ItemFormValue[];
@@ -21,7 +20,6 @@ export interface QuoteSummaryCardProps {
 export function QuoteSummaryCard({
   customerName,
   vehicle,
-  title,
   description,
   administrative,
   items,
@@ -81,8 +79,7 @@ export function QuoteSummaryCard({
 
       <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
         <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]"><NotebookText className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-notes-icon" />Notas</h3>
-        <p className="text-sm text-[var(--color-text-main)]">{title || "Sin título"}</p>
-        {description ? <p className="text-sm text-[var(--color-text-muted)]">{description}</p> : null}
+        <p className="text-sm text-[var(--color-text-muted)]">{description || "Sin notas adicionales."}</p>
         {administrative ? <Badge variant="info">Administrativa</Badge> : null}
       </div>
 

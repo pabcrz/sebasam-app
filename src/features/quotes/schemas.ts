@@ -82,7 +82,6 @@ export const quoteVehicleInputSchema = z.object({
 const quoteInputBaseSchema = z.object({
   customerId: z.string().min(1),
   vehicle: quoteVehicleInputSchema,
-  title: z.string().trim().min(1, "Quote title is required").max(160),
   description: optionalTrimmedString,
   administrative: z.boolean().default(false),
   taxEnabled: z.boolean().default(true),

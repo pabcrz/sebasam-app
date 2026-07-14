@@ -101,7 +101,6 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                   <TableHead>Número</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Vehículo</TableHead>
-                  <TableHead>Título</TableHead>
                   <TableHead>Orden de trabajo</TableHead>
                   <TableHead>Montos</TableHead>
                   <TableHead>Vigencia</TableHead>
@@ -127,7 +126,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 ))}
                 {quotes.length === 0 ? (
                   <tr>
-                    <TableCell colSpan={8} className="py-8 text-center">
+                    <TableCell colSpan={7} className="py-8 text-center">
                       <p className="text-[var(--color-text-muted)]">
                         No se encontraron cotizaciones.
                       </p>

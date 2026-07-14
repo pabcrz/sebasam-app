@@ -42,7 +42,6 @@ type QuoteCustomerActionResult = {
 export type QuoteBuilderInitialData = {
   customerId: string;
   vehicle: { plate: string; brand: string; model: string; year: string };
-  title: string;
   description: string;
   administrative: boolean;
   taxEnabled: boolean;
@@ -100,7 +99,6 @@ export function QuoteBuilder({
   const [vehicle, setVehicle] = React.useState(
     initialData?.vehicle ?? { plate: "", brand: "", model: "", year: "" },
   );
-  const [title, setTitle] = React.useState(initialData?.title ?? "");
   const [description, setDescription] = React.useState(initialData?.description ?? "");
   const [administrative, setAdministrative] = React.useState(initialData?.administrative ?? false);
   const [taxEnabled, setTaxEnabled] = React.useState(initialData?.taxEnabled ?? true);
@@ -260,7 +258,7 @@ export function QuoteBuilder({
     const next = items.filter((_, i) => i !== index);
     setItems(next);
     setStepError((current) =>
-      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
+      current ? getStepError("items", { customerId, vehicle, items: next }) : null,
     );
   }
 
@@ -269,7 +267,7 @@ export function QuoteBuilder({
     next[index] = { ...next[index], ...patch };
     setItems(next);
     setStepError((current) =>
-      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
+      current ? getStepError("items", { customerId, vehicle, items: next }) : null,
     );
   }
 
@@ -282,7 +280,7 @@ export function QuoteBuilder({
     next[index] = { ...next[index], quantity: String(nextQuantity) };
     setItems(next);
     setStepError((current) =>
-      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
+      current ? getStepError("items", { customerId, vehicle, items: next }) : null,
     );
   }
 
@@ -334,7 +332,7 @@ export function QuoteBuilder({
       setStepError(null);
       setItems(normalizedItems);
     } else {
-      const error = getStepError(step, { customerId, vehicle, title, items });
+      const error = getStepError(step, { customerId, vehicle, items });
 
       if (error) {
         setStepError(error);
@@ -609,25 +607,6 @@ export function QuoteBuilder({
               Notas
             </h2>
             <div className="grid gap-2">
-              <Label htmlFor="title">Título</Label>
-              <Input
-                id="title"
-                name="title"
-                required
-                value={title}
-                onChange={(event) => {
-                  const nextTitle = event.target.value;
-                  setTitle(nextTitle);
-                  setStepError((current) =>
-                    current
-                      ? getStepError("notes", { customerId, vehicle, title: nextTitle, items })
-                      : null,
-                  );
-                }}
-                placeholder="Ej. Servicio general"
-              />
-            </div>
-            <div className="grid gap-2">
               <Label htmlFor="description">Descripción</Label>
               <Textarea
                 id="description"
@@ -660,7 +639,6 @@ export function QuoteBuilder({
             <QuoteSummaryCard
               customerName={selectedCustomer?.name ?? ""}
               vehicle={vehicle}
-              title={title}
               description={description}
               administrative={administrative}
               items={completeItems}
@@ -678,7 +656,6 @@ export function QuoteBuilder({
             <QuotePreviewCard
               customerName={selectedCustomer?.name ?? ""}
               vehicle={vehicle}
-              title={title}
               description={description}
               administrative={administrative}
               items={completeItems}

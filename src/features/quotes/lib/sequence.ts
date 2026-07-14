@@ -1,4 +1,7 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+
+type SequenceClient = Pick<Prisma.TransactionClient, "quote" | "workOrder">;
 
 function formatSequentialNumber(prefix: string, sequence: number, sequenceWidth: number): string {
   const now = new Date();
@@ -9,6 +12,7 @@ function formatSequentialNumber(prefix: string, sequence: number, sequenceWidth:
 }
 
 async function getNextNumber(
+  client: SequenceClient,
   table: "quote" | "workOrder",
   prefix: string,
   sequenceWidth: number,
@@ -21,11 +25,11 @@ async function getNextNumber(
   // Read all numbers for this prefix/month and parse the numeric suffix.
   // String ordering breaks after 99 (e.g. "99" sorts after "100"), so compute max numerically.
   const records = await (table === "quote"
-    ? prisma.quote.findMany({
+    ? client.quote.findMany({
         where: { number: { startsWith: prefixPattern } },
         select: { number: true },
       })
-    : prisma.workOrder.findMany({
+    : client.workOrder.findMany({
         where: { number: { startsWith: prefixPattern } },
         select: { number: true },
       }));
@@ -49,10 +53,10 @@ async function getNextNumber(
   return formatSequentialNumber(prefix, highestSequence + 1, sequenceWidth);
 }
 
-export async function nextQuoteNumber(): Promise<string> {
-  return getNextNumber("quote", "C", 3);
+export async function nextQuoteNumber(client: SequenceClient = prisma): Promise<string> {
+  return getNextNumber(client, "quote", "C", 3);
 }
 
 export async function nextWorkOrderNumber(): Promise<string> {
-  return getNextNumber("workOrder", "T", 2);
+  return getNextNumber(prisma, "workOrder", "T", 2);
 }

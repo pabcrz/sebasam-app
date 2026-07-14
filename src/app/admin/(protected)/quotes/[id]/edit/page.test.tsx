@@ -161,7 +161,6 @@ describe("EditQuotePage", () => {
         saveAction: expect.any(Function),
         initialData: expect.objectContaining({
           customerId: "customer-1",
-          title: "Servicio general",
           description: "Descripción de prueba",
           administrative: false,
           taxEnabled: true,

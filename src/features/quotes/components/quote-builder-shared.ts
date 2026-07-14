@@ -150,7 +150,6 @@ export function getStepError(
   state: {
     customerId: string;
     vehicle: { model: string };
-    title: string;
     items: ItemFormValue[];
   },
 ): string | null {
@@ -166,10 +165,6 @@ export function getStepError(
     if (rowError) return rowError;
 
     return state.items.some(isItemComplete) ? null : "Ingresa al menos un concepto completo.";
-  }
-
-  if (step === "notes") {
-    return state.title.trim() ? null : "Ingresa el título de la cotización.";
   }
 
   return null;

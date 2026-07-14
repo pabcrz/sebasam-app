@@ -93,7 +93,6 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
       <QuotePreviewCard
         customerName={quote.customer.name}
         vehicle={vehicle}
-        title={quote.title}
         description={quote.description ?? ""}
         administrative={quote.administrative}
         items={items}
