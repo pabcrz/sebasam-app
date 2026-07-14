@@ -257,27 +257,33 @@ export function QuoteBuilder({
   }
 
   function removeItem(index: number) {
-    setItems((prev) => prev.filter((_, i) => i !== index));
+    const next = items.filter((_, i) => i !== index);
+    setItems(next);
+    setStepError((current) =>
+      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
+    );
   }
 
   function updateItem(index: number, patch: Partial<ItemFormValue>) {
-    setItems((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], ...patch };
-      return next;
-    });
+    const next = [...items];
+    next[index] = { ...next[index], ...patch };
+    setItems(next);
+    setStepError((current) =>
+      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
+    );
   }
 
   function adjustItemQuantity(index: number, delta: number) {
-    setItems((prev) => {
-      const next = [...prev];
-      const currentQuantity = Number(next[index]?.quantity);
-      const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
-      const limit = getMaxQuantityForType(next[index]?.type ?? "LABOR");
-      const nextQuantity = Math.min(limit, Math.max(1, baseQuantity + delta));
-      next[index] = { ...next[index], quantity: String(nextQuantity) };
-      return next;
-    });
+    const next = [...items];
+    const currentQuantity = Number(next[index]?.quantity);
+    const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
+    const limit = getMaxQuantityForType(next[index]?.type ?? "LABOR");
+    const nextQuantity = Math.min(limit, Math.max(1, baseQuantity + delta));
+    next[index] = { ...next[index], quantity: String(nextQuantity) };
+    setItems(next);
+    setStepError((current) =>
+      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
+    );
   }
 
   function duplicateItem(index: number) {
@@ -609,7 +615,15 @@ export function QuoteBuilder({
                 name="title"
                 required
                 value={title}
-                onChange={(event) => setTitle(event.target.value)}
+                onChange={(event) => {
+                  const nextTitle = event.target.value;
+                  setTitle(nextTitle);
+                  setStepError((current) =>
+                    current
+                      ? getStepError("notes", { customerId, vehicle, title: nextTitle, items })
+                      : null,
+                  );
+                }}
                 placeholder="Ej. Servicio general"
               />
             </div>

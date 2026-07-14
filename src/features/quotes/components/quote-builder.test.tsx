@@ -465,6 +465,20 @@ describe("QuoteBuilder", () => {
     expect(screen.getByText(/vista previa de cotización/i)).toBeInTheDocument();
     expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-2");
     expect(document.querySelector('input[name="items.0.description"]')).toHaveValue("Afinación mayor");
+
+    await user.click(screen.getByRole("button", { name: "Paso 2: Conceptos" }));
+    await user.clear(descriptionInput);
+    await user.type(descriptionInput, "   ");
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByText(/concepto 1 necesita una descripción/i)).toBeInTheDocument();
+    expect(screen.getByText("No se pudo guardar.")).toBeInTheDocument();
+
+    await user.clear(descriptionInput);
+    await user.type(descriptionInput, "Afinación corregida");
+
+    expect(screen.queryByText(/concepto 1 necesita una descripción/i)).not.toBeInTheDocument();
+    expect(screen.getByText("No se pudo guardar.")).toBeInTheDocument();
   });
 
   it.each([
@@ -733,6 +747,53 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     expect(screen.getByText(/concepto 1 necesita un precio unitario/i)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/precio unitario/i), "850");
+
+    expect(screen.queryByText(/concepto 1 necesita un precio unitario/i)).not.toBeInTheDocument();
+  });
+
+  it("clears the missing-concept error as soon as a complete concept is entered", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa al menos un concepto completo.");
+
+    const [descriptionInput] = screen.getAllByLabelText(/descripción/i);
+    const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
+    await user.type(descriptionInput, "Cambio de aceite");
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/necesita un precio unitario/i);
+
+    await user.type(unitPriceInput, "850");
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps and then clears the missing-title error as the title becomes valid", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
+
+    const titleInput = screen.getByLabelText("Título");
+    await user.type(titleInput, "   ");
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
+
+    await user.type(titleInput, "Servicio general");
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("prevents submission from hidden steps", async () => {
