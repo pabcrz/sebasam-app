@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
 
 const customers = [{ id: "1", name: "Acme" }];
+const editInitialData = { customerId: "1", vehicle: { plate: "ABC123", brand: "Ford", model: "Transit", year: "2024" }, title: "Servicio", description: "", administrative: false, taxEnabled: true, items: [{ type: "LABOR" as const, description: "Frenos", quantity: "1", unitPrice: "100" }] };
 
 async function enterRepresentativeQuoteState(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("combobox", { name: "Cliente" }));
@@ -208,13 +209,43 @@ describe("QuoteBuilderDialog", () => {
 
   it("opens edit with the existing state", async () => {
     const user = userEvent.setup();
-    render(<QuoteBuilderDialog customers={customers} saveAction={vi.fn()} quoteNumber="C-001" initialData={{ customerId: "1", vehicle: { plate: "ABC123", brand: "Ford", model: "Transit", year: "2024" }, title: "Servicio", description: "", administrative: false, taxEnabled: true, items: [{ type: "LABOR", description: "Frenos", quantity: "1", unitPrice: "100" }] }} />);
+    render(<QuoteBuilderDialog customers={customers} saveAction={vi.fn()} quoteNumber="C-001" initialData={editInitialData} />);
 
     await user.click(screen.getByRole("button", { name: "Editar" }));
 
     expect(screen.getByRole("dialog", { name: "Editar cotización C-001" })).toBeInTheDocument();
     expect(screen.getByLabelText("Cliente")).toHaveValue("Acme");
     expect(screen.getByLabelText("Placas (opcional)")).toHaveValue("ABC123");
+  });
+
+  it("submits edits, preserves them on failure, and resets after success", async () => {
+    const user = userEvent.setup();
+    const saveAction = vi.fn().mockResolvedValueOnce({ error: "Error del servidor" }).mockResolvedValueOnce({ success: true });
+    render(<QuoteBuilderDialog customers={customers} saveAction={saveAction} quoteNumber="C-001" initialData={editInitialData} />);
+
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    const title = screen.getByRole("textbox", { name: "Título" });
+    await user.clear(title);
+    await user.type(title, "Servicio editado");
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1));
+    expect(saveAction.mock.calls[0]?.[1]).toBeInstanceOf(FormData);
+    expect(saveAction.mock.calls[0]?.[1].get("title")).toBe("Servicio editado");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Error del servidor");
+    expect(screen.getByRole("dialog", { name: "Editar cotización C-001" })).toBeInTheDocument();
+    expect(title).toHaveValue("Servicio editado");
+
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Editar cotización C-001" })).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByRole("textbox", { name: "Título" })).toHaveValue("Servicio");
   });
 
   it("closes on success and keeps state open on a server error", async () => {
