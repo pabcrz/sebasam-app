@@ -387,10 +387,10 @@ export function QuoteBuilder({
 
   const isDialogLayout = layout === "dialog";
   const formClass = isDialogLayout
-    ? "min-h-0"
+    ? "flex min-h-0 flex-1 flex-col"
     : "flex flex-col";
   const scrollAreaClass = isDialogLayout
-    ? "min-h-0 py-4 pr-1"
+    ? "min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 pr-1"
     : "py-4 pr-1";
 
   return (
@@ -399,7 +399,6 @@ export function QuoteBuilder({
       className={formClass}
       data-testid="quote-builder-form"
       data-layout={layout}
-      style={isDialogLayout ? { display: "flex", flex: "1 1 0%", flexDirection: "column", alignItems: "stretch", justifyContent: "flex-start", minHeight: 0 } : undefined}
       onSubmit={(event) => {
         if (step !== "preview") {
           event.preventDefault();
@@ -409,10 +408,7 @@ export function QuoteBuilder({
         }
       }}
     >
-          <div
-            className="border-b border-[var(--color-border-light)] pb-4"
-            style={isDialogLayout ? { flexShrink: 0 } : undefined}
-          >
+          <div className="shrink-0 border-b border-[var(--color-border-light)] pb-4">
             <QuoteBuilderStepper current={step} onChange={setStep} />
           </div>
 
@@ -420,9 +416,8 @@ export function QuoteBuilder({
             ref={scrollAreaRef}
             className={scrollAreaClass}
             data-testid="quote-builder-scroll-area"
-            style={isDialogLayout ? { flex: "1 1 0%", minHeight: 0, overflowY: "auto", overscrollBehaviorY: "contain" } : undefined}
           >
-            <div className="grid content-start gap-6">
+            <div className="grid gap-6">
 
           {stepError ? (
             <p
@@ -720,11 +715,7 @@ export function QuoteBuilder({
             </div>
           </div>
 
-          <div
-            className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4"
-            data-testid="quote-builder-footer"
-            style={{ flexShrink: 0 }}
-          >
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4" data-testid="quote-builder-footer">
             <div className="flex items-center gap-2">
               {step !== "client" ? (
               <Button
