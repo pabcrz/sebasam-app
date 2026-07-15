@@ -6,13 +6,15 @@ import {
   shareQuoteFromForm,
   authorizeQuoteAction,
   duplicateQuoteFromForm,
+  createQuoteFromWorkspace,
+  updateDraftQuoteFromWorkspace,
 } from "@/features/quotes/actions";
+import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
 import { listQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
 import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
 import { quoteFilterSchema, type QuoteFilterInput } from "@/features/quotes/schemas";
 import {
-  Button,
   Card,
   CardContent,
   CardDescription,
@@ -28,6 +30,7 @@ import { QuoteListRow } from "@/features/quotes/components/quote-list-row";
 import { QuoteMobileCard } from "@/features/quotes/components/quote-mobile-card";
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
 import { QuoteFilters } from "@/features/quotes/components/quote-filters";
+import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { hasFilterValue } from "@/lib/filters";
 import {
   quoteStatusLabels,
@@ -79,9 +82,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
       </Card>
 
       <div className="flex justify-end">
-        <Button asChild variant="primary">
-          <Link href="/admin/quotes/nueva">Nueva cotización</Link>
-        </Button>
+        <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
       </div>
 
       <Card className="min-w-0">
@@ -123,6 +124,9 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                     authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
                     paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
                     duplicateAction={duplicateQuoteFromForm}
+                    customers={customers}
+                    saveAction={updateDraftQuoteFromWorkspace.bind(null, quote.id)}
+                    searchCustomersAction={searchCustomersForQuote}
                   />
                 ))}
                 {quotes.length === 0 ? (
@@ -166,6 +170,9 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
                 paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
                 duplicateAction={duplicateQuoteFromForm}
+                customers={customers}
+                saveAction={updateDraftQuoteFromWorkspace.bind(null, quote.id)}
+                searchCustomersAction={searchCustomersForQuote}
               />
             ))}
             {quotes.length === 0 ? (

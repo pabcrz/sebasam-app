@@ -47,9 +47,27 @@ describe("QuoteBuilderDialog", () => {
     const dialog = screen.getByRole("dialog");
     expect(dialog).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Crear cotización" })).toBeInTheDocument();
-    expect(dialog).toHaveClass("max-h-[90dvh]", "overflow-hidden");
+    expect(dialog).toHaveClass(
+      "!inset-0",
+      "!h-dvh",
+      "!max-h-none",
+      "!w-screen",
+      "!max-w-none",
+      "!translate-x-0",
+      "!translate-y-0",
+      "!rounded-none",
+      "overflow-hidden",
+      "sm:!h-[min(90dvh,52rem)]",
+      "sm:!max-h-[min(90dvh,52rem)]",
+      "sm:!w-[min(92vw,64rem)]",
+      "sm:!max-w-5xl",
+      "sm:!rounded-[var(--radius-lg)]",
+    );
+    expect(screen.getByTestId("quote-builder-form")).toHaveClass("min-h-0", "flex-1");
+    expect(screen.getByTestId("quote-builder-scroll-area")).toHaveClass("overflow-y-auto", "flex-1");
     expect(screen.queryByText(/crear cotización en borrador/i)).not.toBeInTheDocument();
 
+    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
     expect(screen.getByText("Se perderá todo el progreso que no hayas guardado.")).toBeInTheDocument();
@@ -63,6 +81,7 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     const closeButton = screen.getByRole("button", { name: "Cerrar" });
+    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
     await user.click(closeButton);
 
     const confirmation = screen.getByRole("dialog", { name: "¿Descartar la cotización?" });
@@ -83,7 +102,7 @@ describe("QuoteBuilderDialog", () => {
     expect(screen.getByRole("dialog", { name: "Crear cotización" })).not.toHaveAttribute("aria-hidden");
   });
 
-  it("requests confirmation via the X button on the first step", async () => {
+  it("closes a pristine form immediately", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
 
@@ -91,7 +110,7 @@ describe("QuoteBuilderDialog", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
-    expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("requests confirmation when clicking the overlay", async () => {
@@ -100,6 +119,7 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
 
     const overlay = document.querySelector("[data-dialog-overlay]");
     expect(overlay).not.toBeNull();
@@ -116,6 +136,7 @@ describe("QuoteBuilderDialog", () => {
     render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
+    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
     await user.keyboard("{Escape}");
 
     expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
@@ -183,5 +204,34 @@ describe("QuoteBuilderDialog", () => {
 
     expect(screen.getByRole("dialog", { name: "Crear cotización" })).toHaveAttribute("data-state", "open");
     expect(screen.queryByRole("dialog", { name: "¿Descartar la cotización?" })).not.toBeInTheDocument();
+  });
+
+  it("opens edit with the existing state", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilderDialog customers={customers} saveAction={vi.fn()} quoteNumber="C-001" initialData={{ customerId: "1", vehicle: { plate: "ABC123", brand: "Ford", model: "Transit", year: "2024" }, title: "Servicio", description: "", administrative: false, taxEnabled: true, items: [{ type: "LABOR", description: "Frenos", quantity: "1", unitPrice: "100" }] }} />);
+
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+
+    expect(screen.getByRole("dialog", { name: "Editar cotización C-001" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Cliente")).toHaveValue("Acme");
+    expect(screen.getByLabelText("Placas (opcional)")).toHaveValue("ABC123");
+  });
+
+  it("closes on success and keeps state open on a server error", async () => {
+    const user = userEvent.setup();
+    const createAction = vi.fn().mockResolvedValueOnce({ error: "Error del servidor" }).mockResolvedValueOnce({ success: true });
+    render(<QuoteBuilderDialog customers={customers} createAction={createAction} />);
+
+    await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
+    await enterRepresentativeQuoteState(user);
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Crear cotización" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Error del servidor");
+    expect(screen.getByLabelText("Título")).toHaveValue("Servicio completo");
+
+    await user.click(screen.getByRole("button", { name: "Crear cotización" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Crear cotización" })).not.toBeInTheDocument());
   });
 });

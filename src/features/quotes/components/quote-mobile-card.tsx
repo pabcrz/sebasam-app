@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { CalendarDays, Car, ClipboardList, Copy, Pencil } from "lucide-react";
 import type { PaymentRequest, QuoteStatus, SharedQuote, WorkOrderStatus } from "@prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
@@ -15,6 +14,9 @@ import { ShareQuoteButton } from "./share-quote-button";
 import { ShareQuoteLinkDialog } from "./share-quote-link-dialog";
 import { QuoteAuthorizeForm } from "./quote-authorize-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
+import { QuoteBuilderDialog } from "./quote-builder-dialog";
+import type { CustomerOption } from "./quote-builder";
+import type { QuoteFormActionState } from "../actions";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
@@ -30,6 +32,9 @@ interface QuoteMobileCardProps {
   authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   duplicateAction: (formData: FormData) => void | Promise<void>;
+  customers: CustomerOption[];
+  saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
+  searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
 }
 
 export function QuoteMobileCard({
@@ -44,6 +49,9 @@ export function QuoteMobileCard({
   authorizeAction,
   paymentRequestAction,
   duplicateAction,
+  customers,
+  saveAction,
+  searchCustomersAction,
 }: QuoteMobileCardProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
@@ -138,25 +146,14 @@ export function QuoteMobileCard({
           </div>
         ) : null}
         <div className="flex gap-2">
-          <Button
-            asChild={editable}
-            variant="outline"
-            size="sm"
-            disabled={!editable}
-            className="flex-1"
-          >
-            {editable ? (
-              <Link href={`/admin/quotes/${quote.id}/edit`} aria-label={`Editar cotización ${quote.number}`}>
-                <Pencil className="h-4 w-4" aria-hidden="true" />
-                <span>Editar</span>
-              </Link>
-            ) : (
-              <>
-                <Pencil className="h-4 w-4" aria-hidden="true" />
-                <span>Editar</span>
-              </>
-            )}
-          </Button>
+          {editable ? (
+            <QuoteBuilderDialog customers={customers} saveAction={saveAction} searchCustomersAction={searchCustomersAction} quote={quote} quoteNumber={quote.number} />
+          ) : (
+            <Button variant="outline" size="sm" disabled className="flex-1">
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+              <span>Editar</span>
+            </Button>
+          )}
           <form action={duplicateAction} className={editable ? "flex-1" : ""}>
             <input type="hidden" name="quoteId" value={quote.id} />
             <Button type="submit" variant="outline" size="sm" className="w-full">

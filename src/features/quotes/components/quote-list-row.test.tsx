@@ -105,6 +105,9 @@ function renderRow(quote: QuoteListItem) {
           authorizeAction={vi.fn(() => Promise.resolve({ success: true }))}
           paymentRequestAction={vi.fn(() => Promise.resolve({ id: "pr-1", token: "token-1" } as PaymentRequest))}
           duplicateAction={vi.fn()}
+          customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
+          saveAction={vi.fn()}
+          searchCustomersAction={vi.fn()}
         />
       </tbody>
     </table>,
@@ -175,9 +178,7 @@ describe("QuoteListRow", () => {
   it("renders an edit link for draft quotes without a work order", () => {
     renderRow(createMockQuote());
 
-    const editLink = screen.getByRole("link", { name: /editar cotización/i });
-    expect(editLink).toBeInTheDocument();
-    expect(editLink).toHaveAttribute("href", "/admin/quotes/quote-1/edit");
+    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
   it("renders a disabled edit button for draft quotes with a COMPLETED work order", () => {
@@ -213,9 +214,7 @@ describe("QuoteListRow", () => {
       },
     }));
 
-    const editLink = screen.getByRole("link", { name: /editar cotización/i });
-    expect(editLink).toBeInTheDocument();
-    expect(editLink).toHaveAttribute("href", "/admin/quotes/quote-1/edit");
+    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
   it("renders a disabled edit button for non-editable quotes", () => {
@@ -227,16 +226,13 @@ describe("QuoteListRow", () => {
   it("renders an edit link for APPROVED quotes without a blocked work order", () => {
     renderRow(createMockQuote({ status: "APPROVED" }));
 
-    const editLink = screen.getByRole("link", { name: /editar cotización/i });
-    expect(editLink).toBeInTheDocument();
-    expect(editLink).toHaveAttribute("href", "/admin/quotes/quote-1/edit");
+    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
   it("renders an edit link for SENT quotes", () => {
     renderRow(createMockQuote({ status: "SENT" }));
 
-    const editLink = screen.getByRole("link", { name: /editar cotización/i });
-    expect(editLink).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
   it("renders a duplicate button for every quote including cancelled ones", () => {
@@ -249,7 +245,7 @@ describe("QuoteListRow", () => {
     const user = userEvent.setup();
     renderRow(createMockQuote());
 
-    await user.click(screen.getByRole("link", { name: /editar cotización/i }));
+    await user.click(screen.getByRole("button", { name: "Editar" }));
 
     expect(screen.queryByRole("dialog", { name: /vista previa/i })).not.toBeInTheDocument();
   });
