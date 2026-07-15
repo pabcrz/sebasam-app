@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteBuilder } from "./quote-builder";
 
@@ -51,7 +51,7 @@ describe("QuoteBuilder", () => {
 
     expect(screen.queryByRole("heading", { name: /cotización/i })).not.toBeInTheDocument();
     expect(screen.getByTestId("quote-builder-scroll-area")).toBeInTheDocument();
-    expect(screen.getByTestId("quote-builder-footer")).toHaveClass("shrink-0");
+    expect(getComputedStyle(screen.getByTestId("quote-builder-footer")).flexShrink).toBe("0");
     expect(screen.getByRole("navigation", { name: /pasos de cotización/i })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /cliente/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Modelo (opcional)")).toHaveAttribute("name", "model");
@@ -232,6 +232,61 @@ describe("QuoteBuilder", () => {
     expect(await screen.findByRole("option", { name: "Cliente remoto" })).toBeInTheDocument();
     await new Promise((resolve) => window.setTimeout(resolve, 550));
     expect(searchCustomersAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores the exact cached results and active customer when revisiting a query", async () => {
+    vi.useFakeTimers();
+    const queryAResults = [
+      { id: "cust-a1", name: "Alpha Uno" },
+      { id: "cust-a2", name: "Alpha Dos" },
+    ];
+    const queryBResults = [{ id: "cust-b", name: "Beta Uno" }];
+    const searchCustomersAction = vi
+      .fn()
+      .mockResolvedValueOnce(queryAResults)
+      .mockResolvedValueOnce(queryBResults);
+
+    try {
+      render(
+        <QuoteBuilder
+          customers={customers}
+          createAction={vi.fn()}
+          searchCustomersAction={searchCustomersAction}
+        />,
+      );
+      const search = screen.getByRole("combobox", { name: /cliente/i });
+
+      fireEvent.change(search, { target: { value: "alpha" } });
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+        "Alpha Uno",
+        "Alpha Dos",
+      ]);
+
+      fireEvent.change(search, { target: { value: "beta" } });
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Beta Uno"]);
+
+      fireEvent.change(search, { target: { value: "alpha" } });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(501);
+        await Promise.resolve();
+      });
+
+      expect(searchCustomersAction).toHaveBeenCalledTimes(2);
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+        "Alpha Uno",
+        "Alpha Dos",
+      ]);
+      expect(search).toHaveAttribute("aria-activedescendant", "customer-option-cust-a1");
+
+      fireEvent.keyDown(search, { key: "Enter" });
+      expect(search).toHaveValue("Alpha Uno");
+      expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-a1");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("filters known customers immediately while a prefix server fallback is debounced", async () => {
