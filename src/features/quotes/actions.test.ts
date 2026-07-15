@@ -5,15 +5,18 @@ import {
   cancelDraftQuoteFromForm,
   createQuote,
   createQuoteFromForm,
+  createQuoteFromWorkspace,
   duplicateQuote,
   duplicateQuoteFromForm,
   shareQuoteFromForm,
   updateDraftQuote,
   updateDraftQuoteFromForm,
+  updateDraftQuoteFromWorkspace,
 } from "./actions";
 import { prisma } from "@/lib/prisma";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), quote: { findUnique: vi.fn() } } }));
 vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
@@ -310,6 +313,37 @@ describe("createQuoteFromForm", () => {
     expect(tx.quote.create.mock.calls[0][0].data.items.create).toHaveLength(1);
     expect(tx.quote.create.mock.calls[0][0].data.items.create[0].description).toBe("Cambio de aceite");
   });
+});
+
+describe.each([
+  ["create", (formData: FormData) => createQuoteFromWorkspace({}, formData), "No se pudo crear la cotización. Intenta de nuevo."],
+  ["update", (formData: FormData) => updateDraftQuoteFromWorkspace("quote-1", {}, formData), "No se pudo guardar la cotización. Intenta de nuevo."],
+])("%s quote workspace action", (_name, action, persistenceError) => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns success and revalidates valid data", async () => {
+    mockTx();
+    await expect(action(buildFormData() as unknown as FormData)).resolves.toEqual({ success: true });
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
+  });
+
+  it("returns the validation error for invalid form data", async () => {
+    await expect(action(buildFormData({ title: "" }) as unknown as FormData))
+      .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
+  });
+
+  it("returns the persistence error", async () => {
+    const tx = mockTx();
+    tx.quote.create.mockRejectedValue(new Error("database unavailable"));
+    tx.quote.update.mockRejectedValue(new Error("database unavailable"));
+    await expect(action(buildFormData() as unknown as FormData)).resolves.toEqual({ error: persistenceError });
+  });
+});
+
+it("returns the non-editable state from the update workspace action", async () => {
+  mockTx(QuoteStatus.CANCELLED);
+  await expect(updateDraftQuoteFromWorkspace("quote-1", {}, buildFormData() as unknown as FormData))
+    .resolves.toEqual({ error: "Esta cotización ya no se puede editar." });
 });
 
 describe("duplicateQuote", () => {
