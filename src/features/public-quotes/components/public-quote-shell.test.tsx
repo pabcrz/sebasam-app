@@ -3,6 +3,13 @@ import { render, screen } from "@testing-library/react";
 import { PublicQuoteShell } from "./public-quote-shell";
 
 describe("PublicQuoteShell", () => {
+  it("preserves workshop identity without a redundant quote label", () => {
+    render(<PublicQuoteShell>content</PublicQuoteShell>);
+
+    expect(screen.getByRole("heading", { level: 1, name: "SEBASAM" })).toBeInTheDocument();
+    expect(screen.queryByText("Cotización")).not.toBeInTheDocument();
+  });
+
   it("renders the workshop address as a Google Maps link", () => {
     render(<PublicQuoteShell>content</PublicQuoteShell>);
 

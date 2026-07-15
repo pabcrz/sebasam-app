@@ -129,7 +129,7 @@ describe("QuoteBuilder", () => {
     await fillNotesStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByTestId("summary-customer")).toHaveTextContent("Grúas del Centro");
+    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("Grúas del Centro");
   });
 
   it("searches the server after a debounce and selects a result outside the initial list", async () => {
@@ -545,12 +545,12 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     expect(screen.getByRole("heading", { name: "Resumen", level: 2 })).toHaveFocus();
-    expect(screen.getByTestId("summary-customer")).toHaveTextContent("Constructora del Norte");
-    expect(screen.getByTestId("summary-vehicle")).toHaveTextContent("Sin datos de vehículo");
+    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("Constructora del Norte");
+    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("Sin unidad");
 
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByText(/vista previa de cotización/i)).toBeInTheDocument();
+    expect(screen.getByRole("article", { name: "Servicio general" })).toBeInTheDocument();
 
     fireEvent.submit(screen.getByTestId("quote-builder-form"));
 
@@ -600,7 +600,7 @@ describe("QuoteBuilder", () => {
     fireEvent.submit(screen.getByTestId("quote-builder-form"));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo guardar.");
-    expect(screen.getByText(/vista previa de cotización/i)).toBeInTheDocument();
+    expect(screen.getByRole("article", { name: "Afinación original" })).toBeInTheDocument();
     expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-2");
     expect(document.querySelector('input[name="items.0.description"]')).toHaveValue("Afinación mayor");
 
@@ -650,13 +650,8 @@ describe("QuoteBuilder", () => {
     await fillNotesStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    const totals = screen.getAllByTestId("quote-total");
-    expect(totals.length).toBeGreaterThanOrEqual(1);
-    expect(totals[0]).toHaveTextContent("$986.00");
-
-    const taxes = screen.getAllByTestId("quote-tax");
-    expect(taxes.length).toBeGreaterThanOrEqual(1);
-    expect(taxes[0]).toHaveTextContent("$136.00");
+    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("$986.00");
+    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("$136.00");
   });
 
   it("allows jumping back to a completed step from the stepper", async () => {
@@ -962,11 +957,9 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    const totals = screen.getAllByTestId("quote-total");
-    expect(totals[0]).toHaveTextContent("$850.00");
+    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("$850.00");
 
-    const taxes = screen.getAllByTestId("quote-tax");
-    expect(taxes[0]).toHaveTextContent("$0.00");
+    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("$0.00");
 
     fireEvent.submit(screen.getByTestId("quote-builder-form"));
 
@@ -987,8 +980,8 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByTestId("quote-validity")).toHaveTextContent(/vigente hasta/i);
-    expect(screen.getByTestId("quote-validity")).toHaveTextContent(/cambios imprevistos/i);
+    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent(/vigencia: hasta el/i);
+    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent(/cambios imprevistos/i);
   });
 
   it("limits the vehicle plate input to 10 characters", async () => {
@@ -1064,7 +1057,7 @@ describe("QuoteBuilder", () => {
     expect(unitPriceInput.parentElement).toHaveClass("min-w-0");
     expect(screen.getByLabelText("Precio unitario")).toHaveAccessibleDescription("Importe en pesos mexicanos.");
     expect(screen.getByTestId("currency-prefix-0")).toHaveTextContent("$");
-    expect(screen.getByText("Importe")).toBeInTheDocument();
+    expect(screen.getAllByText("Importe").length).toBeGreaterThan(0);
     expect(screen.getByTestId("concept-total-0")).toHaveTextContent("$850.00");
     expect(quantityPriceRow.parentElement).not.toHaveTextContent("1 × $850.00");
     expect(screen.getByRole("button", { name: "Duplicar concepto 1" })).toBeInTheDocument();
@@ -1087,16 +1080,10 @@ describe("QuoteBuilder", () => {
     await user.type(notesDescription as HTMLTextAreaElement, "Notas de servicio");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByTestId("summary-customer-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("summary-vehicle-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("summary-items-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("summary-notes-icon")).toBeInTheDocument();
-    expect(screen.getAllByText("1 × $850.00").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("table", { name: "Conceptos de la cotización" })).toBeInTheDocument();
+    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("Mano de obra · Cant. 1");
 
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    expect(screen.getByTestId("preview-customer-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-vehicle-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-items-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-notes-icon")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Conceptos de la cotización" })).toBeInTheDocument();
   });
 });

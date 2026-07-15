@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { FileText } from "lucide-react";
 import { businessPaymentConfig } from "@/config/payment";
 import type { ShellBusinessSettings } from "@/features/public-payment/components/public-payment-shell";
 
@@ -21,11 +20,6 @@ export function PublicQuoteShell({ children, business }: PublicQuoteShellProps) 
           <p className="mt-2 text-sm text-[var(--color-on-navy-tint)] opacity-90 md:text-base">
             {resolvedBusiness.fullName}
           </p>
-
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
-            <FileText className="h-4 w-4" aria-hidden="true" />
-            <span>Cotización</span>
-          </div>
         </div>
       </header>
 

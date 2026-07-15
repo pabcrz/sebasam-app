@@ -10,8 +10,9 @@ import {
   Textarea,
 } from "@/components/ui";
 import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
+import { businessPaymentConfig } from "@/config/payment";
+import { mapBuilderToQuoteDocument } from "@/features/quotes/lib/quote-document";
 import {
-  calculateTotals,
   emptyItem,
   getStepError,
   isItemComplete,
@@ -24,8 +25,7 @@ import {
 } from "./quote-builder-shared";
 import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderStepper } from "./quote-builder-stepper";
-import { QuotePreviewCard } from "./quote-preview-card";
-import { QuoteSummaryCard } from "./quote-summary-card";
+import { QuoteDocument } from "./quote-document";
 import type { QuoteFormActionState } from "../actions";
 
 export type CustomerOption = {
@@ -142,10 +142,27 @@ export function QuoteBuilder({
   }));
 
   const currentStepIndex = steps.indexOf(step);
-  const { subtotalCents, taxCents, totalCents } = calculateTotals(items, taxEnabled);
   const selectedCustomer = customerOptions.find((customer) => customer.id === customerId);
   const completeItems = items.filter(isItemComplete);
   const validUntil = createQuoteValidUntil();
+  const quoteDocument = mapBuilderToQuoteDocument({
+    business: {
+      name: businessPaymentConfig.name,
+      legalName: businessPaymentConfig.fullName,
+      address: businessPaymentConfig.address,
+      phone: businessPaymentConfig.contact.phone,
+    },
+    folio: "Borrador",
+    issuedAt: new Date(),
+    validUntil,
+    customer: { name: selectedCustomer?.name ?? "Sin cliente" },
+    unit: vehicle,
+    title: title || "Sin título",
+    description,
+    items: completeItems,
+    taxEnabled,
+    conditions: ["Los precios están sujetos a cambios imprevistos en el costo de materiales."],
+  });
 
   React.useEffect(() => {
     if (actionState.success) onSuccess?.();
@@ -769,17 +786,7 @@ export function QuoteBuilder({
             <h2 className="sr-only" tabIndex={-1} data-step-heading="summary">
               Resumen
             </h2>
-            <QuoteSummaryCard
-              customerName={selectedCustomer?.name ?? ""}
-              vehicle={vehicle}
-              title={title}
-              description={description}
-              administrative={administrative}
-              items={completeItems}
-              subtotalCents={subtotalCents}
-              taxCents={taxCents}
-              totalCents={totalCents}
-            />
+            <QuoteDocument document={quoteDocument} />
           </section>
 
           {/* Step 5: Preview / Enviar */}
@@ -787,18 +794,7 @@ export function QuoteBuilder({
             <h2 className="sr-only" tabIndex={-1} data-step-heading="preview">
               Enviar cotización
             </h2>
-            <QuotePreviewCard
-              customerName={selectedCustomer?.name ?? ""}
-              vehicle={vehicle}
-              title={title}
-              description={description}
-              administrative={administrative}
-              items={completeItems}
-              subtotalCents={subtotalCents}
-              taxCents={taxCents}
-              totalCents={totalCents}
-              validUntil={validUntil}
-            />
+            <QuoteDocument document={quoteDocument} />
           </section>
             </div>
           </div>
