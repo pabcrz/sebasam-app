@@ -1,6 +1,7 @@
 import { QuoteItemType } from "@prisma/client";
 import { z } from "zod";
 import { optionalTrimmedString as optionalFilterString, optionalDate } from "@/lib/filters";
+import { calculateItemTotalCents, calculateQuoteTotals } from "./lib/calculate";
 
 const optionalTrimmedString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -50,7 +51,7 @@ function validateItemTotal(
   item: z.infer<typeof quoteItemBaseSchema>,
   ctx: z.RefinementCtx,
 ) {
-  const totalCents = Math.round(item.quantity * item.unitPriceCents);
+  const totalCents = calculateItemTotalCents(item.quantity, item.unitPriceCents);
 
   if (totalCents > MAX_INT_CENTS) {
     ctx.addIssue({
@@ -94,11 +95,10 @@ function validateQuoteTotals(
   ctx: z.RefinementCtx,
 ) {
   const subtotalCents = quote.items.reduce(
-    (total, item) => total + Math.round(item.quantity * item.unitPriceCents),
+    (total, item) => total + calculateItemTotalCents(item.quantity, item.unitPriceCents),
     0,
   );
-  const taxCents = quote.taxEnabled ? Math.round(subtotalCents * 0.16) : 0;
-  const totalCents = subtotalCents + taxCents;
+  const { taxCents, totalCents } = calculateQuoteTotals(subtotalCents, quote.taxEnabled);
 
   if (subtotalCents > MAX_INT_CENTS || taxCents > MAX_INT_CENTS || totalCents > MAX_INT_CENTS) {
     ctx.addIssue({

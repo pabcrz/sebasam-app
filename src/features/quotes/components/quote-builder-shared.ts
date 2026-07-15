@@ -1,4 +1,6 @@
 import { QuoteItemType } from "@prisma/client";
+import { calculateItemTotalCents, calculateQuoteTotals } from "../lib/calculate";
+import { quoteConceptTypeLabels, quoteConceptTypes } from "../lib/quote-concepts";
 
 export type Step = "client" | "items" | "notes" | "summary" | "preview";
 
@@ -19,7 +21,7 @@ export const stepLabels: Record<Step, string> = {
   preview: "Enviar",
 };
 
-export const itemTypes: QuoteItemType[] = ["LABOR", "SERVICE", "MATERIAL", "EQUIPMENT", "OTHER"];
+export const itemTypes: QuoteItemType[] = [...quoteConceptTypes];
 export const maxQuantity = 100;
 export const maxUnitPrice = 50_000;
 
@@ -28,13 +30,7 @@ export function getMaxQuantityForType(type: QuoteItemType): number {
   return type === "LABOR" || type === "SERVICE" ? 5 : maxQuantity;
 }
 
-export const itemTypeLabels: Record<QuoteItemType, string> = {
-  SERVICE: "Servicio",
-  MATERIAL: "Material",
-  LABOR: "Mano de obra",
-  EQUIPMENT: "Equipo",
-  OTHER: "Otro",
-};
+export const itemTypeLabels: Record<QuoteItemType, string> = quoteConceptTypeLabels;
 
 export const emptyItem: ItemFormValue = {
   type: "LABOR",
@@ -67,13 +63,11 @@ export function calculateTotals(items: ItemFormValue[], taxEnabled: boolean) {
     const unitPrice = Number(item.unitPrice);
 
     if (item.description.trim() && Number.isFinite(quantity) && quantity > 0 && Number.isFinite(unitPrice) && unitPrice >= 0) {
-      subtotalCents += Math.round(quantity * unitPrice * 100);
+      subtotalCents += calculateItemTotalCents(quantity, unitPrice * 100);
     }
   }
 
-  const taxCents = taxEnabled ? Math.round(subtotalCents * 0.16) : 0;
-
-  return { subtotalCents, taxCents, totalCents: subtotalCents + taxCents };
+  return calculateQuoteTotals(subtotalCents, taxEnabled);
 }
 
 export function validateItemValue(item: ItemFormValue, index: number): string | null {
