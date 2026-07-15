@@ -31,6 +31,17 @@ export function QuoteSummaryCard({
 }: QuoteSummaryCardProps) {
   return (
     <div className="grid gap-4">
+      <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
+        <div className="flex items-start gap-3">
+          <NotebookText className="mt-0.5 size-5 text-[var(--color-primary)]" aria-hidden="true" />
+          <div className="min-w-0">
+            <h3 className="font-semibold text-[var(--color-text-main)]">{title || "Sin título"}</h3>
+            {description ? <p className="mt-1 text-sm text-[var(--color-text-muted)]">{description}</p> : null}
+          </div>
+        </div>
+        {administrative ? <Badge variant="info">Administrativa</Badge> : null}
+      </div>
+
       <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
         <div className="flex items-start gap-3">
           <UserRound className="mt-0.5 size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-customer-icon" />
@@ -77,13 +88,6 @@ export function QuoteSummaryCard({
             })}
           </ul>
         )}
-      </div>
-
-      <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-        <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]"><NotebookText className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-notes-icon" />Notas</h3>
-        <p className="text-sm text-[var(--color-text-main)]">{title || "Sin título"}</p>
-        {description ? <p className="text-sm text-[var(--color-text-muted)]">{description}</p> : null}
-        {administrative ? <Badge variant="info">Administrativa</Badge> : null}
       </div>
 
       <QuoteTotalsCard subtotalCents={subtotalCents} taxCents={taxCents} totalCents={totalCents} />

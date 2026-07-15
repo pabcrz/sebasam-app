@@ -26,6 +26,7 @@ import {
 import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderStepper } from "./quote-builder-stepper";
 import { QuoteDocument } from "./quote-document";
+import { QuoteSummaryCard } from "./quote-summary-card";
 import type { QuoteFormActionState } from "../actions";
 
 export type CustomerOption = {
@@ -791,7 +792,17 @@ export function QuoteBuilder({
             <h2 className="sr-only" tabIndex={-1} data-step-heading="summary">
               Resumen
             </h2>
-            <QuoteDocument document={quoteDocument} />
+            <QuoteSummaryCard
+              customerName={selectedCustomer?.name ?? ""}
+              vehicle={vehicle}
+              title={title}
+              description={description}
+              administrative={administrative}
+              items={completeItems}
+              subtotalCents={quoteDocument.subtotalCents}
+              taxCents={quoteDocument.taxCents}
+              totalCents={quoteDocument.totalCents}
+            />
           </section>
 
           {/* Step 5: Preview / Enviar */}

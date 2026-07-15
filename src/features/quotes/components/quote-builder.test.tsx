@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { businessPaymentConfig } from "@/config/payment";
 import { QuoteBuilder } from "./quote-builder";
 
 const customers = [
@@ -129,7 +130,7 @@ describe("QuoteBuilder", () => {
     await fillNotesStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("Grúas del Centro");
+    expect(screen.getByTestId("summary-customer")).toHaveTextContent("Grúas del Centro");
   });
 
   it("searches the server after a debounce and selects a result outside the initial list", async () => {
@@ -597,15 +598,28 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     await fillNotesStep(user)();
+    const scrollArea = screen.getByTestId("quote-builder-scroll-area");
+    scrollArea.scrollTop = 240;
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("heading", { name: "Resumen", level: 2 })).toHaveFocus();
-    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("Constructora del Norte");
-    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("Sin unidad");
+    await waitFor(() => {
+      expect(scrollArea.scrollTop).toBe(0);
+      expect(screen.getByRole("heading", { name: "Resumen", level: 2 })).toHaveFocus();
+    });
+    const summary = screen.getByRole("heading", { name: "Resumen", level: 2 }).closest("section");
+    expect(summary).not.toBeNull();
+    expect(screen.getByTestId("summary-customer")).toHaveTextContent("Constructora del Norte");
+    expect(screen.getByTestId("summary-vehicle")).toHaveTextContent("Sin datos de vehículo");
+    expect(within(summary as HTMLElement).getByText("Servicio general")).toBeInTheDocument();
+    expect(screen.queryByRole("article", { name: "Servicio general" })).not.toBeInTheDocument();
+    expect(within(summary as HTMLElement).queryByText("Borrador")).not.toBeInTheDocument();
+    expect(within(summary as HTMLElement).queryByText(businessPaymentConfig.address)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     expect(screen.getByRole("article", { name: "Servicio general" })).toBeInTheDocument();
+    expect(screen.getByText("Borrador")).toBeInTheDocument();
+    expect(screen.getByText(businessPaymentConfig.address)).toBeInTheDocument();
 
     fireEvent.submit(screen.getByTestId("quote-builder-form"));
 
@@ -705,8 +719,8 @@ describe("QuoteBuilder", () => {
     await fillNotesStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("$986.00");
-    expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("$136.00");
+    expect(screen.getByTestId("quote-total")).toHaveTextContent("$986.00");
+    expect(screen.getByTestId("quote-tax")).toHaveTextContent("$136.00");
   });
 
   it("allows jumping back to a completed step from the stepper", async () => {
@@ -1121,7 +1135,7 @@ describe("QuoteBuilder", () => {
     expect(screen.getByRole("button", { name: "+ Equipo" })).toBeInTheDocument();
   });
 
-  it("renders semantic icons and scannable rows in summary and preview", async () => {
+  it("renders a compact summary and a formal preview document", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -1133,12 +1147,33 @@ describe("QuoteBuilder", () => {
     const notesDescription = document.querySelector('textarea[name="description"]');
     expect(notesDescription).toBeInstanceOf(HTMLTextAreaElement);
     await user.type(notesDescription as HTMLTextAreaElement, "Notas de servicio");
+    await user.click(screen.getByLabelText("Cotización administrativa"));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
+    expect(screen.getByTestId("summary-customer-icon")).toBeInTheDocument();
+    expect(screen.getByTestId("summary-vehicle-icon")).toBeInTheDocument();
+    expect(screen.getByTestId("summary-items-icon")).toBeInTheDocument();
+    const summary = screen.getByRole("heading", { name: "Resumen", level: 2 }).closest("section");
+    expect(summary).not.toBeNull();
+    const summaryView = within(summary as HTMLElement);
+    const headings = summaryView.getAllByRole("heading");
+    expect(headings[0]).toHaveTextContent("Resumen");
+    expect(headings[1]).toHaveTextContent("Servicio general");
+    expect(headings[1].tagName).toBe("H3");
+    expect(summaryView.queryByRole("heading", { name: "Notas" })).not.toBeInTheDocument();
+    expect(summaryView.getByText("Notas de servicio")).toBeInTheDocument();
+    expect(summaryView.getByText("Administrativa")).toBeInTheDocument();
+    expect(summaryView.getByRole("heading", { name: "Cliente", level: 3 })).toBeInTheDocument();
+    expect(summaryView.getByRole("heading", { name: "Unidad", level: 3 })).toBeInTheDocument();
+    expect(summaryView.getByRole("heading", { name: "Conceptos", level: 3 })).toBeInTheDocument();
+    expect(summaryView.getByText("Cambio de aceite")).toBeInTheDocument();
+    expect(summaryView.getByText(/Mano de obra/)).toBeInTheDocument();
+    expect(summaryView.getByTestId("quote-subtotal")).toHaveTextContent("$850.00");
+    expect(summaryView.getByTestId("quote-total")).toHaveTextContent("$986.00");
+    expect(screen.queryByRole("table", { name: "Conceptos de la cotización" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
     expect(screen.getByRole("table", { name: "Conceptos de la cotización" })).toBeInTheDocument();
     expect(screen.getByRole("article", { name: "Servicio general" })).toHaveTextContent("Mano de obra · Cant. 1");
-
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    expect(screen.getByRole("table", { name: "Conceptos de la cotización" })).toBeInTheDocument();
   });
 });
