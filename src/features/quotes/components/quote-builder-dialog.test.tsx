@@ -192,6 +192,7 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("combobox", { name: "Cliente" }));
     const option = await screen.findByRole("option", { name: "Acme" });
+    expect(option.closest("[data-dialog-popover]")?.parentElement).toBe(document.body);
     await user.click(option);
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 

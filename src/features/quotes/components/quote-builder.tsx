@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   Button,
   Checkbox,
@@ -31,6 +32,18 @@ export type CustomerOption = {
   id: string;
   name: string;
 };
+
+const customerSearchDelay = 500;
+const minimumCustomerQueryLength = 2;
+const customerListGap = 4;
+const customerListViewportMargin = 8;
+const customerListMaxHeight = 224;
+
+function filterCustomers(customers: CustomerOption[], query: string) {
+  const normalizedQuery = query.trim().toLocaleLowerCase("es-MX");
+  if (!normalizedQuery) return customers;
+  return customers.filter((customer) => customer.name.toLocaleLowerCase("es-MX").includes(normalizedQuery));
+}
 
 type QuoteCustomerActionResult = {
   success: boolean;
@@ -88,6 +101,11 @@ export function QuoteBuilder({
   const [activeCustomerIndex, setActiveCustomerIndex] = React.useState(-1);
   const customerSearchRequest = React.useRef(0);
   const selectedCustomerRef = React.useRef<CustomerOption | undefined>(initialSelectedCustomer);
+  const customerInputRef = React.useRef<HTMLInputElement>(null);
+  const customerListRef = React.useRef<HTMLDivElement>(null);
+  const knownCustomersRef = React.useRef(new Map(customers.map((customer) => [customer.id, customer])));
+  const customerQueryCache = React.useRef(new Map<string, CustomerOption[]>());
+  const [customerListPosition, setCustomerListPosition] = React.useState<React.CSSProperties>({});
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const hasChangedStep = React.useRef(false);
   const [step, setStep] = React.useState<Step>("client");
@@ -152,7 +170,61 @@ export function QuoteBuilder({
   }, [step]);
 
   React.useEffect(() => {
-    if (!searchCustomersAction || customerSearch === selectedCustomer?.name) return;
+    if (!isCustomerListOpen) return;
+
+    const positionList = () => {
+      const input = customerInputRef.current;
+      if (!input) return;
+      const bounds = input.getBoundingClientRect();
+      const listHeight = Math.min(customerListRef.current?.scrollHeight || customerListMaxHeight, customerListMaxHeight);
+      const availableBelow = Math.max(0, window.innerHeight - bounds.bottom - customerListGap - customerListViewportMargin);
+      const availableAbove = Math.max(0, bounds.top - customerListGap - customerListViewportMargin);
+      const placeBelow = availableBelow >= listHeight || availableBelow >= availableAbove;
+      const maxHeight = Math.min(
+        customerListMaxHeight,
+        placeBelow ? availableBelow : availableAbove,
+        Math.max(0, window.innerHeight - customerListViewportMargin * 2),
+      );
+      const width = Math.min(bounds.width, Math.max(0, window.innerWidth - customerListViewportMargin * 2));
+      const left = Math.min(
+        Math.max(customerListViewportMargin, bounds.left),
+        Math.max(customerListViewportMargin, window.innerWidth - customerListViewportMargin - width),
+      );
+      const preferredTop = placeBelow
+        ? bounds.bottom + customerListGap
+        : bounds.top - customerListGap - maxHeight;
+      const top = Math.min(
+        Math.max(customerListViewportMargin, preferredTop),
+        Math.max(customerListViewportMargin, window.innerHeight - customerListViewportMargin - maxHeight),
+      );
+      setCustomerListPosition({ left, top, width, maxHeight });
+    };
+    const closeList = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!customerInputRef.current?.contains(target) && !customerListRef.current?.contains(target)) {
+        setIsCustomerListOpen(false);
+        setActiveCustomerIndex(-1);
+      }
+    };
+
+    positionList();
+    window.addEventListener("resize", positionList);
+    window.addEventListener("scroll", positionList, true);
+    document.addEventListener("pointerdown", closeList, true);
+    return () => {
+      window.removeEventListener("resize", positionList);
+      window.removeEventListener("scroll", positionList, true);
+      document.removeEventListener("pointerdown", closeList, true);
+    };
+  }, [isCustomerListOpen]);
+
+  React.useEffect(() => {
+    const query = customerSearch.trim().toLocaleLowerCase("es-MX");
+    if (!searchCustomersAction || customerSearch === selectedCustomer?.name || query.length < minimumCustomerQueryLength) {
+      return;
+    }
+
+    if (customerQueryCache.current.has(query)) return;
 
     const requestId = ++customerSearchRequest.current;
     const timeout = window.setTimeout(async () => {
@@ -162,6 +234,8 @@ export function QuoteBuilder({
       try {
         const results = await searchCustomersAction({ query: customerSearch });
         if (requestId === customerSearchRequest.current) {
+          results.forEach((customer) => knownCustomersRef.current.set(customer.id, customer));
+          customerQueryCache.current.set(query, results);
           const selected = selectedCustomerRef.current;
           setCustomerOptions(
             selected && !results.some((customer) => customer.id === selected.id)
@@ -177,7 +251,7 @@ export function QuoteBuilder({
       } finally {
         if (requestId === customerSearchRequest.current) setIsSearchingCustomers(false);
       }
-    }, 300);
+    }, customerSearchDelay);
 
     return () => window.clearTimeout(timeout);
   }, [customerSearch, searchCustomersAction, selectedCustomer?.name]);
@@ -185,6 +259,7 @@ export function QuoteBuilder({
   function selectCustomer(customer: CustomerOption) {
     customerSearchRequest.current += 1;
     selectedCustomerRef.current = customer;
+    knownCustomersRef.current.set(customer.id, customer);
     setCustomerOptions((current) =>
       current.some((option) => option.id === customer.id) ? current : [customer, ...current],
     );
@@ -199,6 +274,8 @@ export function QuoteBuilder({
 
   function handleCustomerSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") {
+      if (!isCustomerListOpen) return;
+      event.stopPropagation();
       setIsCustomerListOpen(false);
       setActiveCustomerIndex(-1);
       return;
@@ -256,6 +333,7 @@ export function QuoteBuilder({
 
     const createdCustomer = result.customer;
 
+    customerQueryCache.current.clear();
     selectCustomer(createdCustomer);
     setNewCustomerName("");
     setNewCustomerEmail("");
@@ -442,6 +520,7 @@ export function QuoteBuilder({
               <Label htmlFor="customerId">Cliente</Label>
               <input type="hidden" name="customerId" value={customerId} />
               <Input
+                ref={customerInputRef}
                 id="customerId"
                 role="combobox"
                 aria-controls="customer-results"
@@ -455,11 +534,18 @@ export function QuoteBuilder({
                 autoComplete="off"
                 value={customerSearch}
                 onChange={(event) => {
-                  setCustomerSearch(event.target.value);
+                  const nextSearch = event.target.value;
+                  customerSearchRequest.current += 1;
+                  setCustomerSearch(nextSearch);
                   setCustomerId("");
                   selectedCustomerRef.current = undefined;
+                  setCustomerSearchError(null);
+                  setIsSearchingCustomers(false);
+                  const cached = customerQueryCache.current.get(nextSearch.trim().toLocaleLowerCase("es-MX"));
+                  const nextOptions = cached ?? filterCustomers([...knownCustomersRef.current.values()], nextSearch);
+                  setCustomerOptions(nextOptions);
                   setIsCustomerListOpen(true);
-                  setActiveCustomerIndex(0);
+                  setActiveCustomerIndex(nextOptions.length ? 0 : -1);
                 }}
                 onFocus={() => setIsCustomerListOpen(true)}
                 onClick={() => setIsCustomerListOpen(true)}
@@ -468,8 +554,8 @@ export function QuoteBuilder({
               />
               {isSearchingCustomers ? <p className="text-sm text-[var(--color-text-muted)]" role="status">Buscando clientes...</p> : null}
               {customerSearchError ? <p className="text-sm text-[var(--color-status-danger-fg)]" role="alert">{customerSearchError}</p> : null}
-              {isCustomerListOpen && !customerSearchError ? (
-                <div id="customer-results" role="listbox" aria-label="Resultados de clientes" className="max-h-56 overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1">
+              {isCustomerListOpen && !customerSearchError ? createPortal(
+                <div ref={customerListRef} id="customer-results" role="listbox" aria-label="Resultados de clientes" data-dialog-popover style={{ ...customerListPosition, pointerEvents: "auto" }} className="fixed z-[60] overflow-y-auto overscroll-contain rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1 shadow-lg">
                   {customerOptions.length ? customerOptions.map((customer) => (
                     <button
                       key={customer.id}
@@ -479,12 +565,14 @@ export function QuoteBuilder({
                       aria-selected={customerOptions[activeCustomerIndex]?.id === customer.id}
                       className={`flex min-h-11 w-full items-center rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] ${customerOptions[activeCustomerIndex]?.id === customer.id ? "bg-[var(--color-bg-soft)]" : ""}`}
                       onMouseEnter={() => setActiveCustomerIndex(customerOptions.indexOf(customer))}
+                      onPointerDown={(event) => event.preventDefault()}
                       onClick={() => selectCustomer(customer)}
                     >
                       {customer.name}
                     </button>
                   )) : <p className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">No se encontraron clientes.</p>}
-                </div>
+                </div>,
+                document.body,
               ) : null}
               {selectedCustomer ? <p className="text-sm text-[var(--color-text-muted)]">Cliente seleccionado: <strong className="text-[var(--color-text-main)]">{selectedCustomer.name}</strong></p> : null}
               {createCustomerAction ? (

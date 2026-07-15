@@ -27,9 +27,9 @@ export const DialogOverlay = React.forwardRef<
 });
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-function isSelectPortalTarget(target: EventTarget | null): boolean {
+function isDialogPortalTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  return target.closest("[data-select-content]") !== null;
+  return target.closest("[data-select-content], [data-dialog-popover]") !== null;
 }
 
 export const DialogContent = React.forwardRef<
@@ -50,21 +50,21 @@ export const DialogContent = React.forwardRef<
             className,
           )}
           onInteractOutside={(event) => {
-            if (isSelectPortalTarget(event.target)) {
+            if (isDialogPortalTarget(event.target)) {
               event.preventDefault();
               return;
             }
             onInteractOutside?.(event);
           }}
           onPointerDownOutside={(event) => {
-            if (isSelectPortalTarget(event.target)) {
+            if (isDialogPortalTarget(event.target)) {
               event.preventDefault();
               return;
             }
             onPointerDownOutside?.(event);
           }}
           onFocusOutside={(event) => {
-            if (isSelectPortalTarget(event.target)) {
+            if (isDialogPortalTarget(event.target)) {
               event.preventDefault();
               return;
             }
