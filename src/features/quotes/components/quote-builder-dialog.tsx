@@ -114,8 +114,14 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
             {isEdit ? "Editar" : "Nueva cotización"}
           </Button>
         </DialogTrigger>
-        <DialogContent className="!inset-0 flex !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 flex-col overflow-hidden !rounded-none p-4 sm:!bottom-auto sm:!left-1/2 sm:!right-auto sm:!top-1/2 sm:!h-[min(90dvh,52rem)] sm:!max-h-[min(90dvh,52rem)] sm:!w-[min(92vw,64rem)] sm:!max-w-5xl sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-[var(--radius-lg)] sm:p-6">
-          <DialogHeader className="relative">
+        <DialogContent
+          className="!inset-0 !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none p-4 sm:!bottom-auto sm:!left-1/2 sm:!right-auto sm:!top-1/2 sm:!h-[min(90dvh,52rem)] sm:!max-h-[min(90dvh,52rem)] sm:!w-[min(92vw,64rem)] sm:!max-w-5xl sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-[var(--radius-lg)] sm:p-6"
+          style={{ display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "flex-start", overflow: "hidden" }}
+        >
+          <DialogHeader
+            className="relative"
+            style={{ alignItems: "stretch", justifyContent: "flex-start", flexShrink: 0 }}
+          >
             <DialogTitle>{isEdit ? `Editar cotización ${quoteNumber}` : "Crear cotización"}</DialogTitle>
             <button
               type="button"
