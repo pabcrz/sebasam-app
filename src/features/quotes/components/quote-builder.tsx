@@ -816,7 +816,7 @@ export function QuoteBuilder({
           </div>
 
           <div
-            className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4"
+            className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4"
             data-testid="quote-builder-footer"
             style={{ flexShrink: 0 }}
           >
