@@ -51,7 +51,7 @@ describe("QuoteBuilder", () => {
 
     expect(screen.queryByRole("heading", { name: /cotización/i })).not.toBeInTheDocument();
     expect(screen.getByTestId("quote-builder-scroll-area")).toBeInTheDocument();
-    expect(screen.getByTestId("quote-builder-footer")).toHaveClass("shrink-0");
+    expect(getComputedStyle(screen.getByTestId("quote-builder-footer")).flexShrink).toBe("0");
     expect(screen.getByRole("navigation", { name: /pasos de cotización/i })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /cliente/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Modelo (opcional)")).toHaveAttribute("name", "model");
