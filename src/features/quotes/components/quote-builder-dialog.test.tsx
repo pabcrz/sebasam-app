@@ -113,6 +113,11 @@ describe("QuoteBuilderDialog", () => {
     expectTopAlignedDialogLayout(dialog);
     expectBodyOnlyScrollContract(dialog, itemCount > 1);
     expect(screen.getAllByLabelText("Descripción", { selector: "input" })).toHaveLength(itemCount);
+    const conceptList = screen.getByTestId("concept-list");
+    expect(conceptList).toHaveClass("grid", "gap-3");
+    expect(conceptList).not.toHaveClass("max-h-[45dvh]", "overflow-y-auto");
+    expect(getComputedStyle(conceptList).maxHeight).toBe("none");
+    expect(getComputedStyle(conceptList).overflowY).not.toBe("auto");
   });
 
   it("requests confirmation via the X button", async () => {

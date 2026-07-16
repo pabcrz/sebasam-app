@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteBuilder } from "./quote-builder";
@@ -7,6 +7,12 @@ const customers = [
   { id: "cust-1", name: "Constructora del Norte" },
   { id: "cust-2", name: "Taller Hermanos Pérez" },
 ];
+
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+
+afterEach(() => {
+  HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+});
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -1066,6 +1072,8 @@ describe("QuoteBuilder", () => {
 
   it("duplicates a concept row directly after the source row", async () => {
     const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
     await fillClientStep(user)();
@@ -1093,6 +1101,32 @@ describe("QuoteBuilder", () => {
     expect(unitPrices[1]).toHaveValue(850);
 
     expect(document.querySelector('input[name="items.1.type"]')).toHaveValue("LABOR");
+    expect(descriptions[1]).toHaveFocus();
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    const rows = screen.getByTestId("concept-list").querySelectorAll("[data-concept-row]");
+    expect(rows).toHaveLength(2);
+    expect(rows[0].getAttribute("data-concept-row")).not.toBe(rows[1].getAttribute("data-concept-row"));
+    expect(rows[0]).not.toHaveClass("motion-safe:animate-fade-in");
+    expect(rows[1]).toHaveClass("motion-safe:animate-fade-in", "motion-safe:animate-duration-fast");
+    expect(document.querySelector('input[name*="concept-"]')).not.toBeInTheDocument();
+  });
+
+  it("scrolls and focuses the exact newly added concept after render", async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "+ Equipo" }));
+
+    const descriptions = screen.getAllByLabelText("Descripción", { selector: "input" });
+    expect(descriptions).toHaveLength(2);
+    expect(descriptions[1]).toHaveFocus();
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
   });
 
   it("groups quantity and price with a concise formatted line amount", async () => {

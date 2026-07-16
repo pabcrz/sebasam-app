@@ -25,9 +25,10 @@ import { formatCents } from "@/features/quotes/lib/format";
 
 export interface QuoteBuilderItemsStepProps {
   items: ItemFormValue[];
+  itemIds: string[];
+  animatedItemId: string | null;
   showItemValidation: boolean;
   completeItemsCount: number;
-  scrollable?: boolean;
   onAddItem: (type: QuoteItemType) => void;
   onRemoveItem: (index: number) => void;
   onDuplicateItem: (index: number) => void;
@@ -37,9 +38,10 @@ export interface QuoteBuilderItemsStepProps {
 
 export function QuoteBuilderItemsStep({
   items,
+  itemIds,
+  animatedItemId,
   showItemValidation,
   completeItemsCount,
-  scrollable = false,
   onAddItem,
   onRemoveItem,
   onDuplicateItem,
@@ -55,7 +57,7 @@ export function QuoteBuilderItemsStep({
         ) : null}
       </div>
 
-      <div className={scrollable ? "max-h-[45dvh] overflow-y-auto pr-1" : undefined}>
+      <div className="grid gap-3" data-testid="concept-list">
       {items.map((item, index) => {
         const itemError = showItemValidation ? validateItemValue(item, index) : null;
         const lineTotalCents = Math.round(Number(item.quantity) * Number(item.unitPrice) * 100);
@@ -63,8 +65,9 @@ export function QuoteBuilderItemsStep({
 
         return (
           <div
-            key={index}
-            className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
+            key={itemIds[index]}
+            data-concept-row={itemIds[index]}
+            className={`${itemIds[index] === animatedItemId ? "motion-safe:animate-fade-in motion-safe:animate-duration-fast " : ""}grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4`}
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">

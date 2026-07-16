@@ -129,6 +129,12 @@ export function QuoteBuilder({
   const [items, setItems] = React.useState<ItemFormValue[]>(() =>
     initialData?.items.length ? initialData.items : [{ ...emptyItem }],
   );
+  const nextItemId = React.useRef(initialData?.items.length || 1);
+  const [itemIds, setItemIds] = React.useState<string[]>(() =>
+    Array.from({ length: initialData?.items.length || 1 }, (_, index) => `concept-${index}`),
+  );
+  const [animatedItemId, setAnimatedItemId] = React.useState<string | null>(null);
+  const pendingItemFocus = React.useRef<string | null>(null);
   const initialFormState = React.useRef(JSON.stringify({
     customerId: initialData?.customerId ?? "",
     customerSearch: initialSelectedCustomer?.name ?? "",
@@ -168,6 +174,19 @@ export function QuoteBuilder({
     );
     activeHeading?.focus({ preventScroll: true });
   }, [step]);
+
+  React.useLayoutEffect(() => {
+    const itemId = pendingItemFocus.current;
+    if (!itemId) return;
+
+    const row = scrollAreaRef.current?.querySelector<HTMLElement>(`[data-concept-row="${itemId}"]`);
+    const descriptionInput = row?.querySelector<HTMLInputElement>('input[name$=".description"]');
+    if (!row || !descriptionInput) return;
+
+    pendingItemFocus.current = null;
+    row.scrollIntoView?.({ block: "nearest" });
+    descriptionInput.focus({ preventScroll: true });
+  }, [itemIds]);
 
   React.useEffect(() => {
     if (!isCustomerListOpen) return;
@@ -355,12 +374,18 @@ export function QuoteBuilder({
 
     setShowItemValidation(false);
     setStepError(null);
+    const itemId = `concept-${nextItemId.current++}`;
+    pendingItemFocus.current = itemId;
+    setAnimatedItemId(itemId);
     setItems((prev) => [...prev, { ...emptyItem, type }]);
+    setItemIds((prev) => [...prev, itemId]);
   }
 
   function removeItem(index: number) {
     const next = items.filter((_, i) => i !== index);
     setItems(next);
+    setItemIds((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setAnimatedItemId((current) => current === itemIds[index] ? null : current);
     setStepError((current) =>
       current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
     );
@@ -398,6 +423,9 @@ export function QuoteBuilder({
 
     setShowItemValidation(false);
     setStepError(null);
+    const itemId = `concept-${nextItemId.current++}`;
+    pendingItemFocus.current = itemId;
+    setAnimatedItemId(itemId);
     setItems((prev) => {
       const source = prev[index];
       if (!source) return prev;
@@ -411,6 +439,11 @@ export function QuoteBuilder({
 
       const next = [...prev];
       next.splice(index + 1, 0, duplicated);
+      return next;
+    });
+    setItemIds((current) => {
+      const next = [...current];
+      next.splice(index + 1, 0, itemId);
       return next;
     });
   }
@@ -434,6 +467,14 @@ export function QuoteBuilder({
 
       setShowItemValidation(false);
       setStepError(null);
+      if (normalizedItems.length !== items.length) {
+        setItemIds((current) =>
+          items.flatMap((item, index) => {
+            const itemId = current[index];
+            return normalizedItems.includes(item) && itemId ? [itemId] : [];
+          }),
+        );
+      }
       setItems(normalizedItems);
     } else {
       const error = getStepError(step, { customerId, vehicle, title, items });
@@ -709,9 +750,10 @@ export function QuoteBuilder({
             </h2>
             <QuoteBuilderItemsStep
               items={items}
+              itemIds={itemIds}
+              animatedItemId={animatedItemId}
               showItemValidation={showItemValidation}
               completeItemsCount={completeItems.length}
-              scrollable={isDialogLayout}
               onAddItem={addItem}
               onRemoveItem={removeItem}
               onDuplicateItem={duplicateItem}
