@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { customerInputSchema, customerSearchSchema, customerUpdateSchema, type CustomerInput } from "./schemas";
+import {
+  customerInputSchema,
+  customerSearchSchema,
+  customerUpdateSchema,
+  normalizeMexicanPhone,
+  type CustomerInput,
+} from "./schemas";
 
 const customersPath = "/admin/customers";
 const quotesPath = "/admin/quotes";
@@ -45,6 +51,36 @@ function toCustomerCreateData(data: CustomerInput) {
   };
 }
 
+function prepareCustomerUpdate(input: unknown, currentPhone: string | null) {
+  const inputRecord = typeof input === "object" && input !== null
+    ? input as Record<string, unknown>
+    : null;
+  const submittedPhone = inputRecord?.phone;
+  const preserveLegacyPhone = typeof submittedPhone === "string"
+    && submittedPhone === currentPhone
+    && submittedPhone.trim() !== ""
+    && normalizeMexicanPhone(submittedPhone) == null;
+  const parsed = customerUpdateSchema.safeParse(
+    preserveLegacyPhone && inputRecord ? { ...inputRecord, phone: undefined } : input,
+  );
+
+  return { parsed, preserveLegacyPhone };
+}
+
+function toCustomerUpdateData(
+  data: ReturnType<typeof customerUpdateSchema.parse>,
+  preserveLegacyPhone: boolean,
+) {
+  return {
+    name: data.name,
+    email: nullableOptional(data.email),
+    ...(preserveLegacyPhone ? {} : { phone: nullableOptional(data.phone) }),
+    address: nullableOptional(data.address),
+    status: data.status,
+    notes: nullableOptional(data.notes),
+  };
+}
+
 export async function createCustomer(input: unknown) {
   await requireOperationalRole();
 
@@ -80,7 +116,22 @@ export async function createOrReuseCustomerForQuote(input: unknown) {
   }
 
   if (data.phone) {
-    comparableWhere.push({ phone: data.phone });
+    const phoneCandidates = await prisma.customer.findMany({
+      where: {
+        AND: [
+          { phone: { not: null } },
+          { phone: { not: "" } },
+        ],
+      },
+      orderBy: [{ id: "asc" }],
+    });
+    const phoneMatch = phoneCandidates.find(
+      (customer) => customer.phone != null && normalizeMexicanPhone(customer.phone) === data.phone,
+    );
+
+    if (phoneMatch) {
+      return { success: true, customer: phoneMatch, reused: true } as const;
+    }
   }
 
   const candidates = await prisma.customer.findMany({
@@ -94,9 +145,7 @@ export async function createOrReuseCustomerForQuote(input: unknown) {
   const existingCustomer = candidates.find((customer) => {
     const sameName = normalizeComparable(customer.name) === comparableName;
     const sameEmail = data.email != null && customer.email?.toLocaleLowerCase() === data.email.toLocaleLowerCase();
-    const samePhone = data.phone != null && customer.phone === data.phone;
-
-    return sameName || sameEmail || samePhone;
+    return sameName || sameEmail;
   });
 
   if (existingCustomer) {
@@ -152,31 +201,39 @@ export async function createCustomerFromForm(formData: FormData) {
 export async function updateCustomerBasics(customerId: string, input: unknown) {
   await requireOperationalRole();
 
-  const data = customerUpdateSchema.parse(input);
+  const currentCustomer = await prisma.customer.findUniqueOrThrow({
+    where: { id: customerId },
+    select: { phone: true },
+  });
+  const { parsed, preserveLegacyPhone } = prepareCustomerUpdate(input, currentCustomer.phone);
+  if (!parsed.success) throw parsed.error;
 
   return prisma.customer.update({
     where: { id: customerId },
-    data: {
-      name: data.name,
-      email: nullableOptional(data.email),
-      phone: nullableOptional(data.phone),
-      address: nullableOptional(data.address),
-      status: data.status,
-      notes: nullableOptional(data.notes),
-    },
+    data: toCustomerUpdateData(parsed.data, preserveLegacyPhone),
   });
 }
 
 export async function updateCustomerBasicsFromForm(customerId: string, formData: FormData) {
   await requireOperationalRole();
 
-  const parsed = customerUpdateSchema.safeParse(customerFormDataToUpdateInput(formData));
+  const currentCustomer = await prisma.customer.findUniqueOrThrow({
+    where: { id: customerId },
+    select: { phone: true },
+  });
+  const { parsed, preserveLegacyPhone } = prepareCustomerUpdate(
+    customerFormDataToUpdateInput(formData),
+    currentCustomer.phone,
+  );
 
   if (!parsed.success) {
     redirect(`${customersPath}/${customerId}/edit?error=invalid`);
   }
 
-  await updateCustomerBasics(customerId, parsed.data);
+  await prisma.customer.update({
+    where: { id: customerId },
+    data: toCustomerUpdateData(parsed.data, preserveLegacyPhone),
+  });
   revalidatePath(customersPath);
   revalidatePath(`${customersPath}/${customerId}/edit`);
   redirect(`${customersPath}?updated=1`);

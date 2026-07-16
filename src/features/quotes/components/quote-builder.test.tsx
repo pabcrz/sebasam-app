@@ -107,6 +107,9 @@ describe("QuoteBuilder", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+    expect(screen.getByLabelText("Teléfono")).toHaveAttribute("type", "tel");
+    expect(screen.getByLabelText("Teléfono")).toHaveAttribute("inputmode", "tel");
+    expect(screen.getByLabelText("Teléfono")).toHaveAttribute("maxlength", "20");
     await user.type(screen.getByLabelText("Nombre"), "Grúas del Centro");
     await user.type(screen.getByLabelText("Correo electrónico"), "cliente@gruas.test");
     await user.type(screen.getByLabelText("Teléfono"), "55 3333 4444");

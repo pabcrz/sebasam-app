@@ -1,13 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "./actions";
+import {
+  createOrReuseCustomerForQuote,
+  searchCustomersForQuote,
+  updateCustomerBasics,
+  updateCustomerBasicsFromForm,
+} from "./actions";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     customer: {
       findMany: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
     },
   },
 }));
@@ -56,7 +63,7 @@ describe("createOrReuseCustomerForQuote", () => {
     const result = await createOrReuseCustomerForQuote({
       name: " taller   central ",
       email: "cliente@example.com",
-      phone: "55 1111 2222",
+      phone: "",
       address: "",
       notes: "",
     });
@@ -74,6 +81,41 @@ describe("createOrReuseCustomerForQuote", () => {
         ]),
       }),
     }));
+    expect(prisma.customer.create).not.toHaveBeenCalled();
+  });
+
+  it("matches a legacy phone with separated final digits beyond ten broad collisions", async () => {
+    const legacyCustomer = {
+      ...existingCustomer,
+      name: "Different Name",
+      email: null,
+      phone: "55 1111 2-2-2-2",
+    };
+    const collisions = Array.from({ length: 11 }, (_, index) => ({
+      ...existingCustomer,
+      id: `collision-${index}`,
+      name: "New Customer",
+      phone: `55${String(index).padStart(4, "0")}2222`,
+    }));
+    (prisma.customer.findMany as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([...collisions, legacyCustomer]);
+
+    const result = await createOrReuseCustomerForQuote({
+      name: "New Customer",
+      phone: "+52 55 1111 2222",
+    });
+
+    expect(prisma.customer.findMany).toHaveBeenCalledWith({
+      where: {
+        AND: [
+          { phone: { not: null } },
+          { phone: { not: "" } },
+        ],
+      },
+      orderBy: [{ id: "asc" }],
+    });
+    expect(prisma.customer.findMany).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ success: true, customer: legacyCustomer, reused: true });
     expect(prisma.customer.create).not.toHaveBeenCalled();
   });
 
@@ -107,12 +149,103 @@ describe("createOrReuseCustomerForQuote", () => {
     expect(result).toMatchObject({ success: true, reused: false, customer: { id: "cust-new" } });
   });
 
+  it("persists a nonblank phone as canonical national digits", async () => {
+    await createOrReuseCustomerForQuote({
+      name: "Nuevo Cliente",
+      phone: "+52 (55) 1234-5678",
+    });
+
+    expect(prisma.customer.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ phone: "5512345678" }),
+    });
+  });
+
   it("returns an error result for invalid customer input", async () => {
-    const result = await createOrReuseCustomerForQuote({ name: "", email: "not-an-email" });
+    const result = await createOrReuseCustomerForQuote({
+      name: "Customer",
+      phone: "55 1234 ABCD",
+    });
 
     expect(result).toEqual({ success: false, error: "invalid" });
     expect(prisma.customer.findMany).not.toHaveBeenCalled();
     expect(prisma.customer.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateCustomerBasics", () => {
+  const validUpdate = {
+    name: "Updated Customer",
+    email: "",
+    phone: "legacy extension ABC",
+    address: "Updated address",
+    notes: "",
+    status: "ACTIVE",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({ profile: { id: "admin-1" } });
+    (prisma.customer.update as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "cust-1" });
+  });
+
+  it("preserves an unchanged invalid legacy phone during unrelated edits", async () => {
+    (prisma.customer.findUniqueOrThrow as ReturnType<typeof vi.fn>).mockResolvedValue({
+      phone: "legacy extension ABC",
+    });
+
+    await updateCustomerBasics("cust-1", validUpdate);
+
+    expect(prisma.customer.update).toHaveBeenCalledWith({
+      where: { id: "cust-1" },
+      data: {
+        name: "Updated Customer",
+        email: null,
+        address: "Updated address",
+        status: "ACTIVE",
+        notes: null,
+      },
+    });
+  });
+
+  it("normalizes an unchanged canonicalizable legacy phone", async () => {
+    (prisma.customer.findUniqueOrThrow as ReturnType<typeof vi.fn>).mockResolvedValue({
+      phone: "+52 (55) 1234-5678",
+    });
+
+    await updateCustomerBasics("cust-1", {
+      ...validUpdate,
+      phone: "+52 (55) 1234-5678",
+    });
+
+    expect(prisma.customer.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ phone: "5512345678" }),
+    }));
+  });
+
+  it("rejects a newly changed invalid nonblank phone", async () => {
+    (prisma.customer.findUniqueOrThrow as ReturnType<typeof vi.fn>).mockResolvedValue({
+      phone: "legacy extension ABC",
+    });
+
+    await expect(updateCustomerBasics("cust-1", {
+      ...validUpdate,
+      phone: "new invalid phone",
+    })).rejects.toThrow();
+    expect(prisma.customer.update).not.toHaveBeenCalled();
+  });
+
+  it("applies unchanged legacy compatibility through the form action", async () => {
+    (prisma.customer.findUniqueOrThrow as ReturnType<typeof vi.fn>).mockResolvedValue({
+      phone: "legacy extension ABC",
+    });
+    const formData = new FormData();
+    Object.entries(validUpdate).forEach(([key, value]) => formData.set(key, value));
+
+    await updateCustomerBasicsFromForm("cust-1", formData);
+
+    expect(prisma.customer.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.not.objectContaining({ phone: expect.anything() }),
+    }));
   });
 });
 
