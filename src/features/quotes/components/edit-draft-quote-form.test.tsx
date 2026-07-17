@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EditDraftQuoteForm } from "./edit-draft-quote-form";
 
@@ -19,11 +19,11 @@ const initialData = {
   items: [{ type: "LABOR" as const, description: "Trabajo", quantity: "1", unitPrice: "100" }],
 };
 
-function renderForm() {
+function renderForm(saveAction = vi.fn()) {
   return render(
     <EditDraftQuoteForm
       customers={[{ id: "customer-1", name: "Cliente" }]}
-      saveAction={vi.fn()}
+      saveAction={saveAction}
       initialData={initialData}
       quoteNumber="COT-122"
       searchCustomersAction={vi.fn().mockResolvedValue([])}
@@ -76,5 +76,21 @@ describe("EditDraftQuoteForm", () => {
 
     expect(push).not.toHaveBeenCalled();
     expect(screen.getByTestId("quote-builder-form")).toBeInTheDocument();
+  });
+
+  it("returns to the quote list with visible success state after saving", async () => {
+    const user = userEvent.setup();
+    const saveAction = vi.fn().mockResolvedValue({ success: true });
+    push.mockClear();
+    renderForm(saveAction);
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/quotes?updated=1"));
+    expect(saveAction).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Guardar cambios" })).not.toBeDisabled();
   });
 });

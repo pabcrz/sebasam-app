@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CustomerStatus, QuoteItemType, QuoteStatus } from "@prisma/client";
+import { QuoteItemType, QuoteStatus } from "@prisma/client";
 import { SharedQuoteView, type SharedQuoteViewProps } from "./shared-quote-view";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
 
@@ -15,9 +15,6 @@ const declineSharedQuoteActionMock = vi.mocked(declineSharedQuoteAction);
 
 function makeQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps["quote"] {
   const quote: SharedQuoteViewProps["quote"] = {
-    id: "quote-1",
-    submissionKey: null,
-    submissionHash: null,
     number: "COT-001",
     status,
     title: "Servicio general",
@@ -27,35 +24,18 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps
     taxCents: 16_00,
     totalCents: 116_00,
     taxEnabled: true,
-    approvedAt: null,
     validUntil: new Date("2026-07-15T12:00:00.000Z"),
-    customerId: "customer-1",
-    vehicleId: null,
     vehicleSnapshot: null,
-    createdAt: new Date("2026-07-01T12:00:00.000Z"),
-    updatedAt: new Date("2026-07-01T12:00:00.000Z"),
     customer: {
-      id: "customer-1",
       name: "Cliente Demo",
-      email: null,
-      phone: null,
-      address: null,
-      notes: null,
-      status: CustomerStatus.ACTIVE,
-      createdAt: new Date("2026-07-01T12:00:00.000Z"),
-      updatedAt: new Date("2026-07-01T12:00:00.000Z"),
     },
     vehicle: null,
     items: [
       {
-        id: "item-1",
-        quoteId: "quote-1",
         type: QuoteItemType.SERVICE,
         description: "Mano de obra",
         quantity: "1",
         unitPriceCents: 100_00,
-        totalCents: 100_00,
-        sortOrder: 0,
       },
     ],
   };

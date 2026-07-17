@@ -18,10 +18,28 @@ type SharedQuoteDomainResult = Awaited<ReturnType<typeof getSharedQuoteByToken>>
 
 function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQuoteViewQuote {
   return {
-    ...quote,
+    number: quote.number,
+    status: quote.status,
+    title: quote.title,
+    description: quote.description,
+    administrative: quote.administrative,
+    taxEnabled: quote.taxEnabled,
+    subtotalCents: quote.subtotalCents,
+    taxCents: quote.taxCents,
+    totalCents: quote.totalCents,
+    validUntil: quote.validUntil,
+    vehicleSnapshot: quote.vehicleSnapshot,
+    customer: { name: quote.customer.name },
+    vehicle: quote.vehicle ? {
+      plate: quote.vehicle.plate,
+      brand: quote.vehicle.brand,
+      model: quote.vehicle.model,
+    } : null,
     items: quote.items.map((item) => ({
-      ...item,
+      type: item.type,
+      description: item.description,
       quantity: item.quantity.toString(),
+      unitPriceCents: item.unitPriceCents,
     })),
   };
 }

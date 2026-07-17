@@ -1,6 +1,6 @@
 import { QuoteItemType } from "@prisma/client";
 
-export type Step = "client" | "items" | "notes" | "summary" | "preview";
+export type Step = "client" | "items" | "notes" | "preview";
 
 export type ItemFormValue = {
   type: QuoteItemType;
@@ -9,13 +9,12 @@ export type ItemFormValue = {
   unitPrice: string;
 };
 
-export const steps: Step[] = ["client", "items", "notes", "summary", "preview"];
+export const steps: Step[] = ["client", "items", "notes", "preview"];
 
 export const stepLabels: Record<Step, string> = {
   client: "Cliente / Unidad",
   items: "Conceptos",
   notes: "Notas",
-  summary: "Resumen",
   preview: "Enviar",
 };
 

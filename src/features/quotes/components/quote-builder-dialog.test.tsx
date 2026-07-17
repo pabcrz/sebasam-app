@@ -310,7 +310,6 @@ describe("QuoteBuilderDialog", () => {
     await user.clear(title);
     await user.type(title, "Servicio editado");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1));
@@ -330,19 +329,27 @@ describe("QuoteBuilderDialog", () => {
 
   it("closes on success and keeps state open on a server error", async () => {
     const user = userEvent.setup();
-    const createAction = vi.fn().mockResolvedValueOnce({ error: "Error del servidor" }).mockResolvedValueOnce({ success: true });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+    });
+    const createAction = vi.fn()
+      .mockResolvedValueOnce({ error: "Error del servidor" })
+      .mockResolvedValueOnce({ success: true, quoteId: "quote-1", sharePath: "/cotizacion/token" });
     render(<QuoteBuilderDialog customers={customers} createAction={createAction} />);
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     await enterRepresentativeQuoteState(user);
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    await user.click(screen.getByRole("button", { name: "Crear cotización" }));
+    await user.click(screen.getByRole("button", { name: "Enviar cotización" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Error del servidor");
     expect(screen.getByLabelText("Título")).toHaveValue("Servicio completo");
 
-    await user.click(screen.getByRole("button", { name: "Crear cotización" }));
+    await user.click(screen.getByRole("button", { name: "Enviar cotización" }));
+    expect(await screen.findByRole("dialog", { name: "Cotización enviada" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Crear cotización" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Crear cotización" })).not.toBeInTheDocument());
   });
 });

@@ -76,6 +76,8 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
   (findOrCreateVehicle as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "vehicle-1" });
+  (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({ user: { id: "user-1" } });
+  (getOrCreateSharedQuoteInTransaction as ReturnType<typeof vi.fn>).mockResolvedValue({ token: "public-token" });
   return tx;
 }
 
@@ -94,6 +96,7 @@ function validInput() {
 function buildFormData(overrides: Record<string, string> = {}) {
   const formData = new MockFormData();
   const defaults: Record<string, string> = {
+    submissionKey: "123e4567-e89b-42d3-a456-426614174000",
     customerId: "cust-1", plate: "", brand: "", model: "Hilux", color: "", year: "",
     title: "Servicio", description: "", taxEnabled: "on",
     "items.0.type": "SERVICE", "items.0.description": "Cambio de aceite", "items.0.quantity": "1", "items.0.unitPrice": "100",
@@ -165,7 +168,7 @@ describe("createAndShareQuote", () => {
 
     await expect(createAndShareQuote(validInput(), submissionKey)).resolves.toMatchObject({
       quote: { id: "quote-1" },
-      sharePath: "/cotizacion/share-token",
+      sharePath: "/cotizacion/public-token",
     });
 
     expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
@@ -187,7 +190,7 @@ describe("createAndShareQuote", () => {
     });
     await expect(createAndShareQuote(validInput(), submissionKey)).resolves.toMatchObject({
       quote: { id: "quote-existing" },
-      sharePath: "/cotizacion/share-token",
+      sharePath: "/cotizacion/public-token",
     });
     expect(tx.quote.create).toHaveBeenCalledTimes(1);
   });
@@ -324,7 +327,7 @@ describe("updateDraftQuoteFromForm", () => {
 
   it("returns an error when form data is malformed", async () => {
     await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData({ title: "" }) as unknown as FormData))
-      .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
+      .resolves.toEqual({ error: "Ingresa el título de la cotización." });
   });
 
   it("redirects with not-editable error when quote is no longer editable", async () => {
@@ -352,18 +355,19 @@ describe("createQuoteFromForm", () => {
   it("returns an error when the vehicle plate is longer than 10 characters", async () => {
     mockTx();
     await expect(createQuoteFromForm({}, buildFormData({ plate: "ABCDEFGHIJK" }) as unknown as FormData))
-      .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
+      .resolves.toEqual({ error: "Revisa las placas, el año y los datos del vehículo." });
   });
 
   it("returns an error when the vehicle year is greater than current year plus one", async () => {
     mockTx();
     const futureYear = String(new Date().getFullYear() + 2);
     await expect(createQuoteFromForm({}, buildFormData({ year: futureYear }) as unknown as FormData))
-      .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
+      .resolves.toEqual({ error: "Revisa las placas, el año y los datos del vehículo." });
   });
 
   it("submits exactly the normalized non-empty concepts", async () => {
     const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue(null);
     const formData = buildFormData({
       "items.1.type": "EQUIPMENT",
       "items.1.description": "",
@@ -385,18 +389,23 @@ describe.each([
   beforeEach(() => vi.clearAllMocks());
 
   it("returns success and revalidates valid data", async () => {
-    mockTx();
-    await expect(action(buildFormData() as unknown as FormData)).resolves.toEqual({ success: true });
+    const tx = mockTx();
+    if (_name === "create") tx.quote.findUnique.mockResolvedValue(null);
+    const result = await action(buildFormData() as unknown as FormData);
+    expect(result).toEqual(_name === "create"
+      ? { success: true, quoteId: "quote-1", sharePath: "/cotizacion/public-token" }
+      : { success: true });
     expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
   });
 
   it("returns the validation error for invalid form data", async () => {
     await expect(action(buildFormData({ title: "" }) as unknown as FormData))
-      .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
+      .resolves.toEqual({ error: "Ingresa el título de la cotización." });
   });
 
   it("returns the persistence error", async () => {
     const tx = mockTx();
+    if (_name === "create") tx.quote.findUnique.mockResolvedValue(null);
     tx.quote.create.mockRejectedValue(new Error("database unavailable"));
     tx.quote.update.mockRejectedValue(new Error("database unavailable"));
     await expect(action(buildFormData() as unknown as FormData)).resolves.toEqual({ error: persistenceError });

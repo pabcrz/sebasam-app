@@ -50,6 +50,7 @@ export function NewQuoteForm({
         createAction={createAction}
         createCustomerAction={createCustomerAction}
         searchCustomersAction={searchCustomersAction}
+        onSuccess={() => router.push("/admin/quotes?shared=1")}
       />
       <ConfirmDialog
         open={showConfirmClose}

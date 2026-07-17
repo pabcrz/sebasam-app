@@ -38,6 +38,8 @@ describe("CotizacionPage", () => {
         vehicleSnapshot: null,
         createdAt: new Date("2026-07-01T12:00:00.000Z"),
         updatedAt: new Date("2026-07-01T12:00:00.000Z"),
+        submissionKey: "private-key",
+        submissionHash: "private-hash",
         customer: {
           id: "customer-1",
           name: "Cliente Demo",
@@ -75,6 +77,12 @@ describe("CotizacionPage", () => {
         quote: expect.objectContaining({
           items: [expect.objectContaining({ quantity: "1.5" })],
         }),
+      }),
+      undefined,
+    );
+    expect(sharedQuoteViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quote: expect.not.objectContaining({ submissionKey: expect.anything(), submissionHash: expect.anything() }),
       }),
       undefined,
     );

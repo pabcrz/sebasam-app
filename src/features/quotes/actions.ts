@@ -88,6 +88,15 @@ function quoteFormDataToInput(formData: FormData) {
   };
 }
 
+function quoteValidationMessage(error: z.ZodError) {
+  const field = error.issues[0]?.path[0];
+  if (field === "customerId") return "Selecciona un cliente antes de continuar.";
+  if (field === "title") return "Ingresa el título de la cotización.";
+  if (field === "items") return "Completa al menos un concepto con descripción, cantidad y precio válidos.";
+  if (field === "vehicle") return "Revisa las placas, el año y los datos del vehículo.";
+  return "Revisa los campos marcados e intenta de nuevo.";
+}
+
 function nullableOptional(value: string | undefined) {
   return value ?? null;
 }
@@ -189,23 +198,25 @@ export async function createAndShareQuote(input: unknown, submissionKey: unknown
   return { quote, sharePath: `/cotizacion/${sharedQuote.token}` };
 }
 
-export type QuoteFormActionState = { error?: string; success?: boolean };
+export type QuoteFormActionState = { error?: string; success?: boolean; quoteId?: string; sharePath?: string };
 
 export async function createQuoteFromWorkspace(
   _previousState: QuoteFormActionState,
   formData: FormData,
 ): Promise<QuoteFormActionState> {
   const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
-  if (!parsed.success) return { error: "Revisa los datos e intenta de nuevo." };
+  if (!parsed.success) return { error: quoteValidationMessage(parsed.error) };
 
   try {
-    await createQuote(parsed.data);
-  } catch {
+    const { quote, sharePath } = await createAndShareQuote(parsed.data, formData.get("submissionKey"));
+    revalidatePath(quotesPath);
+    return { success: true, quoteId: quote.id, sharePath };
+  } catch (error) {
+    if (error instanceof QuoteSubmissionMismatchError) {
+      return { error: "Esta sesión ya se usó con otros datos. Cierra el formulario y crea una cotización nueva." };
+    }
     return { error: "No se pudo crear la cotización. Intenta de nuevo." };
   }
-
-  revalidatePath(quotesPath);
-  return { success: true };
 }
 
 export async function createQuoteFromForm(
@@ -217,16 +228,19 @@ export async function createQuoteFromForm(
   const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
 
   if (!parsed.success) {
-    return { error: "Revisa los datos e intenta de nuevo." };
+    return { error: quoteValidationMessage(parsed.error) };
   }
 
   try {
-    await createQuote(parsed.data);
-  } catch {
+    const { quote, sharePath } = await createAndShareQuote(parsed.data, formData.get("submissionKey"));
+    revalidatePath(quotesPath);
+    return { success: true, quoteId: quote.id, sharePath };
+  } catch (error) {
+    if (error instanceof QuoteSubmissionMismatchError) {
+      return { error: "Esta sesión ya se usó con otros datos. Cierra el formulario y crea una cotización nueva." };
+    }
     return { error: "No se pudo crear la cotización. Intenta de nuevo." };
   }
-  revalidatePath(quotesPath);
-  redirect(`${quotesPath}?created=1`);
 }
 
 export async function updateDraftQuote(quoteId: string, input: unknown) {
@@ -299,7 +313,7 @@ export async function updateDraftQuoteFromForm(
   const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
 
   if (!parsed.success) {
-    return { error: "Revisa los datos e intenta de nuevo." };
+    return { error: quoteValidationMessage(parsed.error) };
   }
 
   try {
@@ -323,7 +337,7 @@ export async function updateDraftQuoteFromWorkspace(
   formData: FormData,
 ): Promise<QuoteFormActionState> {
   const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
-  if (!parsed.success) return { error: "Revisa los datos e intenta de nuevo." };
+  if (!parsed.success) return { error: quoteValidationMessage(parsed.error) };
 
   try {
     await updateDraftQuote(quoteId, parsed.data);

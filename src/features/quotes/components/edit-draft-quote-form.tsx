@@ -48,6 +48,7 @@ export function EditDraftQuoteForm({
         saveAction={saveAction}
         initialData={initialData}
         searchCustomersAction={searchCustomersAction}
+        onSuccess={() => router.push("/admin/quotes?updated=1")}
       />
       <ConfirmDialog
         open={showConfirmClose}

@@ -5,6 +5,12 @@ import { createPortal } from "react-dom";
 import {
   Button,
   Checkbox,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
   Label,
   Textarea,
@@ -25,7 +31,6 @@ import {
 import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderStepper } from "./quote-builder-stepper";
 import { QuotePreviewCard } from "./quote-preview-card";
-import { QuoteSummaryCard } from "./quote-summary-card";
 import type { QuoteFormActionState } from "../actions";
 
 export type CustomerOption = {
@@ -51,6 +56,8 @@ type QuoteCustomerActionResult = {
   error?: string;
   reused?: boolean;
 };
+
+type ShareResult = { url: string; copied: boolean };
 
 export type QuoteBuilderInitialData = {
   customerId: string;
@@ -118,6 +125,9 @@ export function QuoteBuilder({
   const [createCustomerMessage, setCreateCustomerMessage] = React.useState<string | null>(null);
   const [createCustomerError, setCreateCustomerError] = React.useState<string | null>(null);
   const [isCreatingCustomer, setIsCreatingCustomer] = React.useState(false);
+  const [shareResult, setShareResult] = React.useState<ShareResult | null>(null);
+  const submissionKey = React.useRef<string | null>(null);
+  const submissionKeyRef = React.useRef<HTMLInputElement>(null);
   const [customerId, setCustomerId] = React.useState(initialData?.customerId ?? "");
   const [vehicle, setVehicle] = React.useState(
     initialData?.vehicle ?? { plate: "", brand: "", model: "", year: "" },
@@ -153,9 +163,40 @@ export function QuoteBuilder({
   const completeItems = items.filter(isItemComplete);
   const validUntil = createQuoteValidUntil();
 
+  React.useLayoutEffect(() => {
+    submissionKey.current = crypto.randomUUID();
+    if (submissionKeyRef.current) submissionKeyRef.current.value = submissionKey.current;
+  }, []);
+
   React.useEffect(() => {
-    if (actionState.success) onSuccess?.();
-  }, [actionState.success, onSuccess]);
+    if (!actionState.success) return;
+    if (!actionState.sharePath) return onSuccess?.();
+
+    let active = true;
+    const url = new URL(actionState.sharePath, window.location.origin).toString();
+    const copy = async () => {
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+        await navigator.clipboard.writeText(url);
+        if (active) setShareResult({ url, copied: true });
+      } catch {
+        if (active) setShareResult({ url, copied: false });
+      }
+    };
+    void copy();
+    return () => { active = false; };
+  }, [actionState.sharePath, actionState.success, onSuccess]);
+
+  async function retryCopy() {
+    if (!shareResult) return;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(shareResult.url);
+      setShareResult({ ...shareResult, copied: true });
+    } catch {
+      setShareResult({ ...shareResult, copied: false });
+    }
+  }
 
   React.useEffect(() => {
     const current = JSON.stringify({ customerId, customerSearch, vehicle, title, description, administrative, taxEnabled, items, newCustomer: [newCustomerName, newCustomerEmail, newCustomerPhone] });
@@ -524,10 +565,15 @@ export function QuoteBuilder({
           event.preventDefault();
           setStepError("Avanza al último paso antes de enviar la cotización.");
         } else {
+          if (submissionKeyRef.current) {
+            submissionKey.current ??= crypto.randomUUID();
+            submissionKeyRef.current.value = submissionKey.current;
+          }
           setItems((current) => normalizeItems(current));
         }
       }}
     >
+      {!isEdit ? <input ref={submissionKeyRef} type="hidden" name="submissionKey" defaultValue="" /> : null}
           <div
             className="border-b border-[var(--color-border-light)] pb-4"
             style={isDialogLayout ? { flexShrink: 0 } : undefined}
@@ -814,25 +860,7 @@ export function QuoteBuilder({
             />
           </section>
 
-          {/* Step 4: Resumen */}
-          <section hidden={step !== "summary"} className="grid gap-4">
-            <h2 className="sr-only" tabIndex={-1} data-step-heading="summary">
-              Resumen
-            </h2>
-            <QuoteSummaryCard
-              customerName={selectedCustomer?.name ?? ""}
-              vehicle={vehicle}
-              title={title}
-              description={description}
-              administrative={administrative}
-              items={completeItems}
-              subtotalCents={subtotalCents}
-              taxCents={taxCents}
-              totalCents={totalCents}
-            />
-          </section>
-
-          {/* Step 5: Preview / Enviar */}
+          {/* Step 4: Preview / Enviar */}
           <section hidden={step !== "preview"} className="grid gap-4">
             <h2 className="sr-only" tabIndex={-1} data-step-heading="preview">
               Enviar cotización
@@ -872,8 +900,8 @@ export function QuoteBuilder({
             </div>
 
             {step === "preview" ? (
-              <Button type="submit" variant="primary" loading={isSubmitting} className="min-w-[160px]" aria-live="polite">
-                {isSubmitting ? (isEdit ? "Guardando..." : "Creando...") : (isEdit ? "Guardar cambios" : "Crear cotización")}
+              <Button type="submit" variant="primary" loading={isSubmitting} disabled={isSubmitting || (!isEdit && actionState.success === true)} className="min-w-[160px]" aria-live="polite">
+                {isSubmitting ? (isEdit ? "Guardando..." : "Enviando...") : (isEdit ? "Guardar cambios" : "Enviar cotización")}
               </Button>
             ) : (
               <Button
@@ -887,6 +915,34 @@ export function QuoteBuilder({
               </Button>
             )}
           </div>
+      <Dialog open={shareResult != null} onOpenChange={(open) => {
+        if (!open && shareResult) {
+          setShareResult(null);
+          onSuccess?.();
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Cotización enviada</DialogTitle>
+            <DialogDescription role="status" aria-live="polite">
+              {shareResult?.copied
+                ? "El enlace público se copió al portapapeles."
+                : "La cotización se guardó, pero el enlace no se pudo copiar automáticamente."}
+            </DialogDescription>
+          </DialogHeader>
+          {shareResult ? <div className="grid gap-3">
+            <Input aria-label="Enlace público" value={shareResult.url} readOnly onFocus={(event) => event.currentTarget.select()} />
+            {!shareResult.copied ? <Button type="button" variant="outline" onClick={retryCopy}>Copiar / Reintentar</Button> : null}
+            <Button asChild type="button" variant="outline"><a href={shareResult.url} target="_blank" rel="noopener noreferrer">Abrir enlace</a></Button>
+          </div> : null}
+          <DialogFooter>
+            <Button type="button" onClick={() => {
+              setShareResult(null);
+              onSuccess?.();
+            }}>Continuar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

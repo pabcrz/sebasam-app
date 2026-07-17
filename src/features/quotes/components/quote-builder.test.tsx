@@ -9,9 +9,12 @@ const customers = [
 ];
 
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
 
 afterEach(() => {
   HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+  if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
+  else Reflect.deleteProperty(navigator, "clipboard");
 });
 
 function deferred<T>() {
@@ -51,14 +54,25 @@ function fillNotesStep(user: ReturnType<typeof userEvent.setup>) {
   };
 }
 
+async function advanceToPreview(user: ReturnType<typeof userEvent.setup>) {
+  await fillClientStep(user)();
+  await user.click(screen.getByRole("button", { name: "Siguiente" }));
+  await fillItemsStep(user)();
+  await user.click(screen.getByRole("button", { name: "Siguiente" }));
+  await fillNotesStep(user)();
+  await user.click(screen.getByRole("button", { name: "Siguiente" }));
+}
+
 describe("QuoteBuilder", () => {
-  it("renders the five-step flow and starts on the client/vehicle step", () => {
+  it("renders the four-step flow and starts on the client/vehicle step", () => {
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
     expect(screen.queryByRole("heading", { name: /cotización/i })).not.toBeInTheDocument();
     expect(screen.getByTestId("quote-builder-scroll-area")).toBeInTheDocument();
     expect(getComputedStyle(screen.getByTestId("quote-builder-footer")).flexShrink).toBe("0");
     expect(screen.getByRole("navigation", { name: /pasos de cotización/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Paso 4: Enviar" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Paso 5/ })).not.toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /cliente/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Modelo (opcional)")).toHaveAttribute("name", "model");
     expect(screen.queryByLabelText("Color")).not.toBeInTheDocument();
@@ -138,7 +152,7 @@ describe("QuoteBuilder", () => {
     await fillNotesStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByTestId("summary-customer")).toHaveTextContent("Grúas del Centro");
+    expect(screen.getByRole("heading", { name: "Enviar cotización", level: 2 })).toHaveFocus();
   });
 
   it("searches the server after a debounce and selects a result outside the initial list", async () => {
@@ -608,12 +622,6 @@ describe("QuoteBuilder", () => {
     await fillNotesStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByRole("heading", { name: "Resumen", level: 2 })).toHaveFocus();
-    expect(screen.getByTestId("summary-customer")).toHaveTextContent("Constructora del Norte");
-    expect(screen.getByTestId("summary-vehicle")).toHaveTextContent("Sin datos de vehículo");
-
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-
     expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
 
     fireEvent.submit(screen.getByTestId("quote-builder-form"));
@@ -630,8 +638,84 @@ describe("QuoteBuilder", () => {
     expect(entries["items.0.unitPrice"]).toBe("850");
     expect(entries["items.0.type"]).toBe("LABOR");
     expect(entries["items.1.type"]).toBeUndefined();
-    expect(screen.getAllByText("Cambio de aceite")).toHaveLength(2);
+    expect(entries.submissionKey).toMatch(/^[0-9a-f-]{36}$/);
+    expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
   }, 10_000);
+
+  it("shows truthful clipboard success and keeps one submission key", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    const action = vi.fn().mockResolvedValue({ success: true, quoteId: "quote-1", sharePath: "/cotizacion/token" });
+    render(<QuoteBuilder customers={customers} createAction={action} />);
+    await advanceToPreview(user);
+    await user.click(screen.getByRole("button", { name: "Enviar cotización" }));
+
+    expect(await screen.findByRole("dialog", { name: "Cotización enviada" })).toHaveTextContent("se copió al portapapeles");
+    expect(writeText).toHaveBeenCalledWith("http://localhost:3000/cotizacion/token");
+    const key = (action.mock.calls[0][1] as FormData).get("submissionKey");
+    expect(key).toMatch(/^[0-9a-f-]{36}$/);
+    expect(screen.getByRole("button", { name: "Enviar cotización" })).toBeDisabled();
+  });
+
+  it("shows URL, retry, and open fallback when clipboard rejects", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockRejectedValueOnce(new Error("denied")).mockResolvedValueOnce(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    const action = vi.fn().mockResolvedValue({ success: true, quoteId: "quote-1", sharePath: "/cotizacion/token" });
+    render(<QuoteBuilder customers={customers} createAction={action} />);
+    await advanceToPreview(user);
+    await user.click(screen.getByRole("button", { name: "Enviar cotización" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Cotización enviada" });
+    expect(dialog).toHaveTextContent("no se pudo copiar automáticamente");
+    expect(dialog).not.toHaveTextContent("se copió al portapapeles");
+    expect(screen.getByRole("button", { name: "Copiar / Reintentar" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrir enlace" })).toHaveAttribute("href", "http://localhost:3000/cotizacion/token");
+    await user.click(screen.getByRole("button", { name: "Copiar / Reintentar" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("se copió al portapapeles");
+  });
+
+  it("reuses the submission key when retrying after a failed send", async () => {
+    const user = userEvent.setup();
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn() } });
+    const action = vi.fn()
+      .mockResolvedValueOnce({ error: "No se pudo enviar." })
+      .mockResolvedValueOnce({ success: true, quoteId: "quote-1", sharePath: "/cotizacion/token" });
+    render(<QuoteBuilder customers={customers} createAction={action} />);
+    await advanceToPreview(user);
+
+    await user.click(screen.getByRole("button", { name: "Enviar cotización" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo enviar.");
+    expect(screen.getByRole("button", { name: "Enviar cotización" })).not.toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Enviar cotización" }));
+
+    expect(await screen.findByRole("dialog", { name: "Cotización enviada" })).toBeInTheDocument();
+    expect(action).toHaveBeenCalledTimes(2);
+    expect((action.mock.calls[1][1] as FormData).get("submissionKey"))
+      .toBe((action.mock.calls[0][1] as FormData).get("submissionKey"));
+  });
+
+  it("prevents a second send while the first is pending", async () => {
+    const user = userEvent.setup();
+    const pending = deferred<{ error: string }>();
+    const action = vi.fn(() => pending.promise);
+    render(<QuoteBuilder customers={customers} createAction={action} />);
+    await advanceToPreview(user);
+
+    const sendButton = screen.getByRole("button", { name: "Enviar cotización" });
+    await user.click(sendButton);
+    expect(sendButton).toBeDisabled();
+    await user.click(sendButton);
+    expect(action).toHaveBeenCalledTimes(1);
+
+    await act(async () => pending.resolve({ error: "No se pudo enviar." }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo enviar.");
+    expect(screen.getByRole("button", { name: "Enviar cotización" })).not.toBeDisabled();
+  });
 
   it("preserves edited customer, concept, and preview step after a failed save", async () => {
     const user = userEvent.setup();
@@ -658,7 +742,6 @@ describe("QuoteBuilder", () => {
     const descriptionInput = document.querySelector('input[name="items.0.description"]') as HTMLInputElement;
     await user.clear(descriptionInput);
     await user.type(descriptionInput, "Afinación mayor");
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     fireEvent.submit(screen.getByTestId("quote-builder-form"));
@@ -779,8 +862,6 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     await fillNotesStep(user)();
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     fireEvent.submit(screen.getByTestId("quote-builder-form"));
@@ -1024,7 +1105,6 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("checkbox", { name: /incluir iva/i }));
 
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     const totals = screen.getAllByTestId("quote-total");
     expect(totals[0]).toHaveTextContent("$850.00");
@@ -1048,7 +1128,6 @@ describe("QuoteBuilder", () => {
     await fillItemsStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await fillNotesStep(user)();
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     expect(screen.getByTestId("quote-validity")).toHaveTextContent(/vigente hasta/i);
@@ -1165,7 +1244,7 @@ describe("QuoteBuilder", () => {
     expect(screen.getByRole("button", { name: "+ Equipo" })).toBeInTheDocument();
   });
 
-  it("renders semantic icons and scannable rows in summary and preview", async () => {
+  it("renders semantic icons and scannable rows in the final preview", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -1179,13 +1258,7 @@ describe("QuoteBuilder", () => {
     await user.type(notesDescription as HTMLTextAreaElement, "Notas de servicio");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByTestId("summary-customer-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("summary-vehicle-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("summary-items-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("summary-notes-icon")).toBeInTheDocument();
-    expect(screen.getAllByText("1 × $850.00").length).toBeGreaterThanOrEqual(1);
-
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByText(/1 × \$850\.00/)).toBeInTheDocument();
     expect(screen.getByTestId("preview-customer-icon")).toBeInTheDocument();
     expect(screen.getByTestId("preview-vehicle-icon")).toBeInTheDocument();
     expect(screen.getByTestId("preview-items-icon")).toBeInTheDocument();

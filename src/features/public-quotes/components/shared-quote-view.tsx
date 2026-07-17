@@ -10,13 +10,17 @@ import { quoteStatusLabels } from "@/features/quotes/lib/status";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
 import type { Quote, QuoteItem, Customer, Vehicle } from "@prisma/client";
 
-type SerializableQuoteItem = Omit<QuoteItem, "quantity"> & {
+type SerializableQuoteItem = Pick<QuoteItem, "type" | "description" | "unitPriceCents"> & {
   quantity: string;
 };
 
-export type SharedQuoteViewQuote = Quote & {
-  customer: Customer;
-  vehicle: Vehicle | null;
+export type SharedQuoteViewQuote = Pick<
+  Quote,
+  "number" | "status" | "title" | "description" | "administrative" | "taxEnabled" |
+  "subtotalCents" | "taxCents" | "totalCents" | "validUntil" | "vehicleSnapshot"
+> & {
+  customer: Pick<Customer, "name">;
+  vehicle: Pick<Vehicle, "plate" | "brand" | "model"> | null;
   items: SerializableQuoteItem[];
 };
 
