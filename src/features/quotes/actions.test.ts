@@ -3,6 +3,7 @@ import { Prisma, QuoteStatus } from "@prisma/client";
 import {
   cancelDraftQuote,
   cancelDraftQuoteFromForm,
+  createAndShareQuote,
   createQuote,
   createQuoteFromForm,
   createQuoteFromWorkspace,
@@ -17,6 +18,7 @@ import { prisma } from "@/lib/prisma";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { requireOperationalRole } from "@/lib/auth/session";
 
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), quote: { findUnique: vi.fn() } } }));
 vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
@@ -34,6 +36,7 @@ vi.mock("./lib/calculate", async () => ({
 }));
 vi.mock("./domain", () => ({
   getOrCreateSharedQuoteForQuote: vi.fn(),
+  getOrCreateSharedQuoteInTransaction: vi.fn(),
   SharedQuoteOperationError: class SharedQuoteOperationError extends Error {
     constructor(message: string) {
       super(message);
@@ -45,6 +48,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
 import { getOrCreateSharedQuoteForQuote } from "./domain";
+import { getOrCreateSharedQuoteInTransaction } from "./domain";
 
 class MockFormData {
   private data = new Map<string, string>();
@@ -53,12 +57,14 @@ class MockFormData {
 }
 
 type MockTx = {
+  $queryRaw: ReturnType<typeof vi.fn>;
   quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   quoteItem: { deleteMany: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   const tx: MockTx = {
+    $queryRaw: vi.fn(),
     quote: {
       create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200 }),
       findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, items: [] }),
@@ -140,6 +146,63 @@ describe("createQuote", () => {
     expect(tx.quote.create.mock.calls[0][0].data.vehicleId).toBeNull();
     expect(tx.quote.create.mock.calls[0][0].data.vehicleSnapshot).toBe(Prisma.JsonNull);
     expect(tx.quote.create.mock.calls[0][0].data.totalCents).toBe(50000);
+  });
+});
+
+describe("createAndShareQuote", () => {
+  const submissionKey = "123e4567-e89b-42d3-a456-426614174000";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({ user: { id: "user-1" } });
+    (getOrCreateSharedQuoteInTransaction as ReturnType<typeof vi.fn>)
+      .mockResolvedValue({ token: "share-token" });
+  });
+
+  it("atomically creates the quote and active share with an idempotency fingerprint", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue(null);
+
+    await expect(createAndShareQuote(validInput(), submissionKey)).resolves.toMatchObject({
+      quote: { id: "quote-1" },
+      sharePath: "/cotizacion/share-token",
+    });
+
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(tx.quote.create.mock.calls[0][0].data).toMatchObject({
+      submissionKey: expect.stringMatching(/^[a-f0-9]{64}$/),
+      submissionHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(getOrCreateSharedQuoteInTransaction).toHaveBeenCalledWith(tx, "quote-1");
+  });
+
+  it("reuses an exact retry without creating another quote", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue(null);
+    await createAndShareQuote(validInput(), submissionKey);
+    const submissionHash = tx.quote.create.mock.calls[0][0].data.submissionHash;
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-existing",
+      submissionHash,
+    });
+    await expect(createAndShareQuote(validInput(), submissionKey)).resolves.toMatchObject({
+      quote: { id: "quote-existing" },
+      sharePath: "/cotizacion/share-token",
+    });
+    expect(tx.quote.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a retry when the canonical payload differs", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({ id: "quote-existing", submissionHash: "different" });
+    await expect(createAndShareQuote(validInput(), submissionKey))
+      .rejects.toThrow("This submission key was already used with different quote data");
+    expect(tx.quote.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed submission keys before starting a transaction", async () => {
+    await expect(createAndShareQuote(validInput(), "not-a-uuid")).rejects.toThrow();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
 

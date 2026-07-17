@@ -126,6 +126,8 @@ model Vehicle {
 
 model Quote {
   id              String      @id @default(cuid())
+  submissionKey   String?     @unique
+  submissionHash  String?
   customerId      String
   vehicleId       String?
   number          String      @unique

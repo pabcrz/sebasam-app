@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { QuoteDecisionOrigin, QuoteStatus, type Prisma } from "@prisma/client";
+import { Prisma, QuoteDecisionOrigin, QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateSlug, generateUniqueSlug } from "@/lib/slug";
 
@@ -105,6 +105,16 @@ export async function getActiveSharedQuoteForQuote(quoteId: string) {
 
 type TransactionClient = Prisma.TransactionClient;
 
+export async function getOrCreateSharedQuoteInTransaction(tx: TransactionClient, quoteId: string) {
+  await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${quoteId}, 0))`);
+  const existing = await tx.sharedQuote.findFirst({
+    where: { quoteId, revokedAt: null, expiresAt: { gte: new Date() } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return existing ?? createSharedQuoteInTransaction(tx, quoteId);
+}
+
 function assertQuoteCanBeShared(quote: { status: QuoteStatus; items: { description: string; quantity: unknown; unitPriceCents: number }[] }) {
   if (quote.status !== QuoteStatus.DRAFT && quote.status !== QuoteStatus.SENT && quote.status !== QuoteStatus.APPROVED) {
     throw new SharedQuoteOperationError("Quote cannot be shared in its current status.");
@@ -165,22 +175,7 @@ export async function createSharedQuoteForQuote(quoteId: string) {
 }
 
 export async function getOrCreateSharedQuoteForQuote(quoteId: string) {
-  return prisma.$transaction(async (tx) => {
-    const existingActive = await tx.sharedQuote.findFirst({
-      where: {
-        quoteId,
-        revokedAt: null,
-        expiresAt: { gte: new Date() },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (existingActive) {
-      return existingActive;
-    }
-
-    return createSharedQuoteInTransaction(tx, quoteId);
-  });
+  return prisma.$transaction((tx) => getOrCreateSharedQuoteInTransaction(tx, quoteId));
 }
 
 // --- Quote decision (accept / decline / authorize) ---

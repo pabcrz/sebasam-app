@@ -1,8 +1,10 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma, QuoteStatus } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
@@ -25,9 +27,18 @@ import {
   SharedQuoteExpiredError,
   SharedQuoteRevokedError,
   SharedQuoteNotFoundError,
+  getOrCreateSharedQuoteInTransaction,
 } from "./domain";
 
 const quotesPath = "/admin/quotes";
+const submissionKeySchema = z.string().uuid();
+
+class QuoteSubmissionMismatchError extends Error {
+  constructor() {
+    super("This submission key was already used with different quote data. Start a new submission.");
+    this.name = "QuoteSubmissionMismatchError";
+  }
+}
 
 type QuoteItemFormInput = {
   type: FormDataEntryValue | null;
@@ -103,11 +114,8 @@ function buildVehicleInput(customerId: string, vehicle: QuoteVehicleInput): Vehi
   };
 }
 
-export async function createQuote(input: unknown) {
-  await requireOperationalRole();
-
+async function persistQuote(input: unknown, submission?: { key: string; hash: string }) {
   const data = quoteInputSchema.parse(input);
-  const quoteNumber = await nextQuoteNumber();
   const items = data.items.map((item, index) => {
     const totalCents = calculateItemTotalCents(item.quantity, item.unitPriceCents);
 
@@ -120,9 +128,18 @@ export async function createQuote(input: unknown) {
   });
   const subtotalCents = items.reduce((total, item) => total + item.totalCents, 0);
   const { taxCents, totalCents } = calculateQuoteTotals(subtotalCents, data.taxEnabled);
-  const validUntil = createQuoteValidUntil();
-
   return prisma.$transaction(async (tx) => {
+    if (submission) {
+      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${submission.key}, 0))`);
+      const existing = await tx.quote.findUnique({ where: { submissionKey: submission.key } });
+      if (existing) {
+        if (existing.submissionHash !== submission.hash) throw new QuoteSubmissionMismatchError();
+        return { quote: existing, sharedQuote: await getOrCreateSharedQuoteInTransaction(tx, existing.id) };
+      }
+    }
+
+    const quoteNumber = await nextQuoteNumber();
+    const validUntil = createQuoteValidUntil();
     const shouldLinkVehicle = hasVehicleData(data.vehicle);
     const vehicle = shouldLinkVehicle
       ? await findOrCreateVehicle(tx, buildVehicleInput(data.customerId, data.vehicle))
@@ -131,8 +148,10 @@ export async function createQuote(input: unknown) {
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
 
-    return tx.quote.create({
+    const quote = await tx.quote.create({
       data: {
+        submissionKey: submission?.key,
+        submissionHash: submission?.hash,
         customerId: data.customerId,
         vehicleId: vehicle?.id ?? null,
         vehicleSnapshot,
@@ -149,7 +168,25 @@ export async function createQuote(input: unknown) {
         items: { create: items },
       },
     });
+    const sharedQuote = submission ? await getOrCreateSharedQuoteInTransaction(tx, quote.id) : null;
+    return { quote, sharedQuote };
   });
+}
+
+export async function createQuote(input: unknown) {
+  await requireOperationalRole();
+  return (await persistQuote(input)).quote;
+}
+
+export async function createAndShareQuote(input: unknown, submissionKey: unknown) {
+  const { user } = await requireOperationalRole();
+  const data = quoteInputSchema.parse(input);
+  const key = submissionKeySchema.parse(submissionKey);
+  const scopedKey = createHash("sha256").update(`${user.id}:${key}`).digest("hex");
+  const hash = createHash("sha256").update(JSON.stringify(data)).digest("hex");
+  const { quote, sharedQuote } = await persistQuote(data, { key: scopedKey, hash });
+  if (!sharedQuote) throw new Error("Shared quote was not created.");
+  return { quote, sharePath: `/cotizacion/${sharedQuote.token}` };
 }
 
 export type QuoteFormActionState = { error?: string; success?: boolean };

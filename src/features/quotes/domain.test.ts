@@ -22,6 +22,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), sharedQuote: { findUnique: vi.fn() } } }));
 
 type MockTransaction = {
+  $queryRaw: ReturnType<typeof vi.fn>;
   quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn> };
   sharedQuote: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
@@ -29,6 +30,7 @@ type MockTransaction = {
 
 function mockTx(): MockTransaction {
   const tx: MockTransaction = {
+    $queryRaw: vi.fn(),
     quote: {
       findUnique: vi.fn(),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
