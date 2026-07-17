@@ -152,7 +152,24 @@ export async function createQuote(input: unknown) {
   });
 }
 
-export type QuoteFormActionState = { error?: string };
+export type QuoteFormActionState = { error?: string; success?: boolean };
+
+export async function createQuoteFromWorkspace(
+  _previousState: QuoteFormActionState,
+  formData: FormData,
+): Promise<QuoteFormActionState> {
+  const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
+  if (!parsed.success) return { error: "Revisa los datos e intenta de nuevo." };
+
+  try {
+    await createQuote(parsed.data);
+  } catch {
+    return { error: "No se pudo crear la cotización. Intenta de nuevo." };
+  }
+
+  revalidatePath(quotesPath);
+  return { success: true };
+}
 
 export async function createQuoteFromForm(
   _previousState: QuoteFormActionState,
@@ -261,6 +278,27 @@ export async function updateDraftQuoteFromForm(
   revalidatePath(quotesPath);
   revalidatePath(`${quotesPath}/${quoteId}/edit`);
   redirect(`${quotesPath}?updated=1`);
+}
+
+export async function updateDraftQuoteFromWorkspace(
+  quoteId: string,
+  _previousState: QuoteFormActionState,
+  formData: FormData,
+): Promise<QuoteFormActionState> {
+  const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
+  if (!parsed.success) return { error: "Revisa los datos e intenta de nuevo." };
+
+  try {
+    await updateDraftQuote(quoteId, parsed.data);
+  } catch (error) {
+    if (error instanceof Error && error.message === "This quote is not editable.") {
+      return { error: "Esta cotización ya no se puede editar." };
+    }
+    return { error: "No se pudo guardar la cotización. Intenta de nuevo." };
+  }
+
+  revalidatePath(quotesPath);
+  return { success: true };
 }
 
 export async function cancelDraftQuote(quoteId: string) {

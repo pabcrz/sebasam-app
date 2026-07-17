@@ -57,6 +57,8 @@ type QuoteBuilderProps = {
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
   initialData?: QuoteBuilderInitialData;
   onCancel?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+  onSuccess?: () => void;
   layout?: "page" | "dialog";
 };
 
@@ -67,6 +69,8 @@ export function QuoteBuilder({
   createCustomerAction,
   searchCustomersAction,
   initialData,
+  onDirtyChange,
+  onSuccess,
   layout = "page",
 }: QuoteBuilderProps) {
   const isEdit = saveAction != null;
@@ -107,12 +111,32 @@ export function QuoteBuilder({
   const [items, setItems] = React.useState<ItemFormValue[]>(() =>
     initialData?.items.length ? initialData.items : [{ ...emptyItem }],
   );
+  const initialFormState = React.useRef(JSON.stringify({
+    customerId: initialData?.customerId ?? "",
+    customerSearch: initialSelectedCustomer?.name ?? "",
+    vehicle: initialData?.vehicle ?? { plate: "", brand: "", model: "", year: "" },
+    title: initialData?.title ?? "",
+    description: initialData?.description ?? "",
+    administrative: initialData?.administrative ?? false,
+    taxEnabled: initialData?.taxEnabled ?? true,
+    items: initialData?.items.length ? initialData.items : [{ ...emptyItem }],
+    newCustomer: ["", "", ""],
+  }));
 
   const currentStepIndex = steps.indexOf(step);
   const { subtotalCents, taxCents, totalCents } = calculateTotals(items, taxEnabled);
   const selectedCustomer = customerOptions.find((customer) => customer.id === customerId);
   const completeItems = items.filter(isItemComplete);
   const validUntil = createQuoteValidUntil();
+
+  React.useEffect(() => {
+    if (actionState.success) onSuccess?.();
+  }, [actionState.success, onSuccess]);
+
+  React.useEffect(() => {
+    const current = JSON.stringify({ customerId, customerSearch, vehicle, title, description, administrative, taxEnabled, items, newCustomer: [newCustomerName, newCustomerEmail, newCustomerPhone] });
+    onDirtyChange?.(current !== initialFormState.current);
+  }, [administrative, customerId, customerSearch, description, items, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, taxEnabled, title, vehicle]);
 
   React.useEffect(() => {
     if (!hasChangedStep.current) {
@@ -363,10 +387,10 @@ export function QuoteBuilder({
 
   const isDialogLayout = layout === "dialog";
   const formClass = isDialogLayout
-    ? "flex flex-col"
+    ? "flex min-h-0 flex-1 flex-col"
     : "flex flex-col";
   const scrollAreaClass = isDialogLayout
-    ? "py-4 pr-1"
+    ? "min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 pr-1"
     : "py-4 pr-1";
 
   return (
