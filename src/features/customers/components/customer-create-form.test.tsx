@@ -10,6 +10,9 @@ describe("CustomerCreateForm", () => {
     expect(screen.getByLabelText("Nombre")).toHaveAttribute("name", "name");
     expect(screen.getByLabelText("Correo electrónico")).toHaveAttribute("name", "email");
     expect(screen.getByLabelText("Teléfono")).toHaveAttribute("name", "phone");
+    expect(screen.getByLabelText("Teléfono")).toHaveAttribute("type", "tel");
+    expect(screen.getByLabelText("Teléfono")).toHaveAttribute("inputmode", "tel");
+    expect(screen.getByLabelText("Teléfono")).toHaveAttribute("maxlength", "20");
     expect(screen.getByLabelText("Dirección")).toHaveAttribute("name", "address");
     expect(screen.getByLabelText("Notas")).toHaveAttribute("name", "notes");
   });
