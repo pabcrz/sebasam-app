@@ -106,6 +106,8 @@ describe("QuoteBuilderDialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Editar cotización C-001" });
     expectStableDialogLayout(dialog, itemCount > 1);
     expect(screen.getAllByLabelText("Descripción", { selector: "input" })).toHaveLength(itemCount);
+    expect(screen.getByTestId("concept-list")).toHaveClass("grid", "gap-3");
+    expect(screen.getByTestId("concept-list")).not.toHaveClass("max-h-[45dvh]", "overflow-y-auto");
   });
 
   it("requests confirmation via the X button", async () => {

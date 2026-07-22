@@ -25,26 +25,32 @@ import { formatCents } from "@/features/quotes/lib/format";
 
 export interface QuoteBuilderItemsStepProps {
   items: ItemFormValue[];
+  rowIds: string[];
+  animatedRowId: string | null;
   showItemValidation: boolean;
   completeItemsCount: number;
-  scrollable?: boolean;
   onAddItem: (type: QuoteItemType) => void;
   onRemoveItem: (index: number) => void;
   onDuplicateItem: (index: number) => void;
   onUpdateItem: (index: number, patch: Partial<ItemFormValue>) => void;
   onAdjustQuantity: (index: number, delta: number) => void;
+  onRowRef: (rowId: string, node: HTMLDivElement | null) => void;
+  onDescriptionRef: (rowId: string, node: HTMLInputElement | null) => void;
 }
 
 export function QuoteBuilderItemsStep({
   items,
+  rowIds,
+  animatedRowId,
   showItemValidation,
   completeItemsCount,
-  scrollable = false,
   onAddItem,
   onRemoveItem,
   onDuplicateItem,
   onUpdateItem,
   onAdjustQuantity,
+  onRowRef,
+  onDescriptionRef,
 }: QuoteBuilderItemsStepProps) {
   return (
     <section className="grid gap-4">
@@ -55,16 +61,19 @@ export function QuoteBuilderItemsStep({
         ) : null}
       </div>
 
-      <div className={scrollable ? "max-h-[45dvh] overflow-y-auto pr-1" : undefined}>
+      <div className="grid gap-3" data-testid="concept-list">
       {items.map((item, index) => {
+        const rowId = rowIds[index]!;
         const itemError = showItemValidation ? validateItemValue(item, index) : null;
         const lineTotalCents = Math.round(Number(item.quantity) * Number(item.unitPrice) * 100);
         const typeQuantityLimit = getMaxQuantityForType(item.type);
 
         return (
           <div
-            key={index}
-            className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
+            key={rowId}
+            ref={(node) => onRowRef(rowId, node)}
+            data-testid={`concept-row-${index}`}
+            className={`grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4${rowId === animatedRowId ? " motion-safe:animate-fade-in motion-safe:animate-duration-200" : ""}`}
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
@@ -114,6 +123,7 @@ export function QuoteBuilderItemsStep({
             <div className="grid gap-2">
               <Label htmlFor={`items-${index}-description`}>Descripción</Label>
               <Input
+                ref={(node) => onDescriptionRef(rowId, node)}
                 id={`items-${index}-description`}
                 name={`items.${index}.description`}
                 value={item.description}

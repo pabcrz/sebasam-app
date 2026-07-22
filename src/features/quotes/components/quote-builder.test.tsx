@@ -620,6 +620,7 @@ describe("QuoteBuilder", () => {
     expect(entries["items.0.unitPrice"]).toBe("850");
     expect(entries["items.0.type"]).toBe("LABOR");
     expect(entries["items.1.type"]).toBeUndefined();
+    expect([...formData.keys()].some((key) => key.toLowerCase().includes("rowid"))).toBe(false);
     expect(screen.getAllByText("Cambio de aceite")).toHaveLength(2);
   }, 10_000);
 
@@ -1065,6 +1066,7 @@ describe("QuoteBuilder", () => {
 
   it("duplicates a concept row directly after the source row", async () => {
     const user = userEvent.setup();
+    const scrollIntoView = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
     await fillClientStep(user)();
@@ -1084,6 +1086,12 @@ describe("QuoteBuilder", () => {
     const descriptions = Array.from(document.querySelectorAll('input[name$=".description"]'));
     expect(descriptions).toHaveLength(2);
     expect(descriptions[1]).toHaveValue("Cambio de aceite");
+    expect(descriptions[1]).toHaveFocus();
+
+    const duplicatedRow = screen.getByTestId("concept-row-1");
+    expect(scrollIntoView.mock.instances.at(-1)).toBe(duplicatedRow);
+    expect(scrollIntoView).toHaveBeenLastCalledWith({ behavior: "smooth", block: "nearest" });
+    expect(duplicatedRow).toHaveClass("motion-safe:animate-fade-in", "motion-safe:animate-duration-200");
 
     const quantities = Array.from(document.querySelectorAll('input[name$=".quantity"]'));
     expect(quantities[1]).toHaveValue("3");
@@ -1092,6 +1100,38 @@ describe("QuoteBuilder", () => {
     expect(unitPrices[1]).toHaveValue(850);
 
     expect(document.querySelector('input[name="items.1.type"]')).toHaveValue("LABOR");
+    expect(document.querySelector('[name*="rowId"]')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Eliminar concepto 1" }));
+    expect(screen.getByTestId("concept-row-0")).toBe(duplicatedRow);
+    expect(document.querySelector('input[name="items.0.description"]')).toHaveValue("Cambio de aceite");
+    scrollIntoView.mockRestore();
+  });
+
+  it("validates before adding, then scrolls to and focuses the exact new row", async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Cambio de aceite");
+    await user.click(screen.getByRole("button", { name: "+ Material" }));
+
+    expect(screen.getByText(/concepto 1 necesita un precio unitario/i)).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Descripción", { selector: "input" })).toHaveLength(1);
+
+    await user.type(screen.getByLabelText("Precio unitario"), "850");
+    await user.click(screen.getByRole("button", { name: "+ Material" }));
+
+    const descriptions = screen.getAllByLabelText("Descripción", { selector: "input" });
+    const newRow = screen.getByTestId("concept-row-1");
+    expect(descriptions).toHaveLength(2);
+    expect(descriptions[1]).toHaveFocus();
+    expect(document.querySelector('input[name="items.1.type"]')).toHaveValue("MATERIAL");
+    expect(scrollIntoView.mock.instances.at(-1)).toBe(newRow);
+    expect(newRow).toHaveClass("motion-safe:animate-fade-in", "motion-safe:animate-duration-200");
+    scrollIntoView.mockRestore();
   });
 
   it("groups quantity and price with a concise formatted line amount", async () => {
