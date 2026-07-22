@@ -37,7 +37,14 @@ export function CustomerCreateForm({ action }: CustomerCreateFormProps) {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="phone">Teléfono</Label>
-            <Input id="phone" name="phone" placeholder="55 1234 5678" />
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              maxLength={20}
+              placeholder="55 1234 5678"
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="address">Dirección</Label>

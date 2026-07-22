@@ -674,6 +674,9 @@ export function QuoteBuilder({
                         <Label htmlFor="quoteCustomerPhone">Teléfono</Label>
                         <Input
                           id="quoteCustomerPhone"
+                          type="tel"
+                          inputMode="tel"
+                          maxLength={20}
                           value={newCustomerPhone}
                           onChange={(event) => setNewCustomerPhone(event.target.value)}
                           placeholder="55 1234 5678"

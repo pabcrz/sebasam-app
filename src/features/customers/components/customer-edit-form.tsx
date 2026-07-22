@@ -46,7 +46,14 @@ export function CustomerEditForm({ action, customer }: CustomerEditFormProps) {
       </div>
       <div className="grid gap-2">
         <Label htmlFor="phone">Teléfono</Label>
-        <Input id="phone" name="phone" defaultValue={customer.phone ?? ""} />
+        <Input
+          id="phone"
+          name="phone"
+          type="tel"
+          inputMode="tel"
+          maxLength={20}
+          defaultValue={customer.phone ?? ""}
+        />
       </div>
       <div className="grid gap-2">
         <Label htmlFor="status">Estado</Label>
