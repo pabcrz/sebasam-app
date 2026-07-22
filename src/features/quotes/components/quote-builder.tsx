@@ -126,9 +126,18 @@ export function QuoteBuilder({
   const [description, setDescription] = React.useState(initialData?.description ?? "");
   const [administrative, setAdministrative] = React.useState(initialData?.administrative ?? false);
   const [taxEnabled, setTaxEnabled] = React.useState(initialData?.taxEnabled ?? true);
+  const initialItemCount = initialData?.items.length || 1;
+  const nextItemRowId = React.useRef(initialItemCount);
   const [items, setItems] = React.useState<ItemFormValue[]>(() =>
     initialData?.items.length ? initialData.items : [{ ...emptyItem }],
   );
+  const [itemRowIds, setItemRowIds] = React.useState(() =>
+    Array.from({ length: initialItemCount }, (_, index) => `quote-item-${index}`),
+  );
+  const [animatedItemRowId, setAnimatedItemRowId] = React.useState<string | null>(null);
+  const pendingItemRowId = React.useRef<string | null>(null);
+  const itemRowRefs = React.useRef(new Map<string, HTMLDivElement>());
+  const itemDescriptionRefs = React.useRef(new Map<string, HTMLInputElement>());
   const initialFormState = React.useRef(JSON.stringify({
     customerId: initialData?.customerId ?? "",
     customerSearch: initialSelectedCustomer?.name ?? "",
@@ -168,6 +177,19 @@ export function QuoteBuilder({
     );
     activeHeading?.focus({ preventScroll: true });
   }, [step]);
+
+  React.useEffect(() => {
+    const rowId = pendingItemRowId.current;
+    if (!rowId) return;
+
+    const row = itemRowRefs.current.get(rowId);
+    const description = itemDescriptionRefs.current.get(rowId);
+    if (!row || !description) return;
+
+    row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    description.focus({ preventScroll: true });
+    pendingItemRowId.current = null;
+  }, [itemRowIds]);
 
   React.useEffect(() => {
     if (!isCustomerListOpen) return;
@@ -355,12 +377,17 @@ export function QuoteBuilder({
 
     setShowItemValidation(false);
     setStepError(null);
+    const rowId = `quote-item-${nextItemRowId.current++}`;
+    pendingItemRowId.current = rowId;
+    setAnimatedItemRowId(rowId);
+    setItemRowIds((current) => [...current, rowId]);
     setItems((prev) => [...prev, { ...emptyItem, type }]);
   }
 
   function removeItem(index: number) {
     const next = items.filter((_, i) => i !== index);
     setItems(next);
+    setItemRowIds((current) => current.filter((_, i) => i !== index));
     setStepError((current) =>
       current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
     );
@@ -398,6 +425,14 @@ export function QuoteBuilder({
 
     setShowItemValidation(false);
     setStepError(null);
+    const rowId = `quote-item-${nextItemRowId.current++}`;
+    pendingItemRowId.current = rowId;
+    setAnimatedItemRowId(rowId);
+    setItemRowIds((current) => {
+      const next = [...current];
+      next.splice(index + 1, 0, rowId);
+      return next;
+    });
     setItems((prev) => {
       const source = prev[index];
       if (!source) return prev;
@@ -434,6 +469,9 @@ export function QuoteBuilder({
 
       setShowItemValidation(false);
       setStepError(null);
+      setItemRowIds((current) =>
+        current.filter((_, index) => normalizedItems.includes(items[index]!)),
+      );
       setItems(normalizedItems);
     } else {
       const error = getStepError(step, { customerId, vehicle, title, items });
@@ -721,14 +759,23 @@ export function QuoteBuilder({
             </h2>
             <QuoteBuilderItemsStep
               items={items}
+              rowIds={itemRowIds}
+              animatedRowId={animatedItemRowId}
               showItemValidation={showItemValidation}
               completeItemsCount={completeItems.length}
-              scrollable={isDialogLayout}
               onAddItem={addItem}
               onRemoveItem={removeItem}
               onDuplicateItem={duplicateItem}
               onUpdateItem={updateItem}
               onAdjustQuantity={adjustItemQuantity}
+              onRowRef={(rowId, node) => {
+                if (node) itemRowRefs.current.set(rowId, node);
+                else itemRowRefs.current.delete(rowId);
+              }}
+              onDescriptionRef={(rowId, node) => {
+                if (node) itemDescriptionRefs.current.set(rowId, node);
+                else itemDescriptionRefs.current.delete(rowId);
+              }}
             />
           </div>
 
