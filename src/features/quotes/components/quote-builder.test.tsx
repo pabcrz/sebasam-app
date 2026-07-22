@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteBuilder } from "./quote-builder";
 
@@ -10,10 +10,12 @@ const customers = [
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((resolvePromise) => {
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise;
+    reject = rejectPromise;
   });
-  return { promise, resolve };
+  return { promise, reject, resolve };
 }
 
 function fillClientStep(user: ReturnType<typeof userEvent.setup>) {
@@ -156,6 +158,150 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-101");
   });
 
+  it("portals the anchored results outside form flow and closes on click-away", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+    await user.click(search);
+    const listbox = screen.getByRole("listbox", { name: /resultados de clientes/i });
+
+    expect(listbox.parentElement).toBe(document.body);
+    expect(listbox).toHaveClass("fixed", "z-[60]");
+    expect(screen.getByTestId("quote-builder-scroll-area")).not.toContainElement(listbox);
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(search).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("flips the results above and clamps their height when space below is insufficient", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+    vi.spyOn(search, "getBoundingClientRect").mockReturnValue({
+      bottom: 590,
+      height: 40,
+      left: -20,
+      right: 280,
+      top: 550,
+      width: 300,
+      x: -20,
+      y: 550,
+      toJSON: () => ({}),
+    });
+    vi.stubGlobal("innerHeight", 600);
+    vi.stubGlobal("innerWidth", 280);
+
+    await user.click(search);
+    const listbox = screen.getByRole("listbox", { name: /resultados de clientes/i });
+
+    expect(listbox).toHaveStyle({ left: "8px", maxHeight: "224px", top: "322px", width: "264px" });
+
+    vi.stubGlobal("innerHeight", 180);
+    fireEvent.scroll(window);
+    expect(listbox).toHaveStyle({ maxHeight: "164px", top: "8px" });
+    expect(listbox).toHaveClass("overflow-y-auto", "overscroll-contain");
+    vi.unstubAllGlobals();
+  });
+
+  it("requires a meaningful query and reuses identical cached searches", async () => {
+    const user = userEvent.setup();
+    const searchCustomersAction = vi.fn().mockResolvedValue([
+      { id: "cust-remote", name: "Cliente remoto" },
+    ]);
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        searchCustomersAction={searchCustomersAction}
+      />,
+    );
+
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+    await user.type(search, "c");
+    await new Promise((resolve) => window.setTimeout(resolve, 550));
+    expect(searchCustomersAction).not.toHaveBeenCalled();
+
+    await user.type(search, "liente remoto");
+    expect(await screen.findByRole("option", { name: "Cliente remoto" })).toBeInTheDocument();
+    expect(searchCustomersAction).toHaveBeenCalledTimes(1);
+
+    await user.clear(search);
+    await user.type(search, "cliente remoto");
+    expect(await screen.findByRole("option", { name: "Cliente remoto" })).toBeInTheDocument();
+    await new Promise((resolve) => window.setTimeout(resolve, 550));
+    expect(searchCustomersAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores the exact cached results and active customer when revisiting a query", async () => {
+    vi.useFakeTimers();
+    const queryAResults = [
+      { id: "cust-a1", name: "Alpha Uno" },
+      { id: "cust-a2", name: "Alpha Dos" },
+    ];
+    const queryBResults = [{ id: "cust-b", name: "Beta Uno" }];
+    const searchCustomersAction = vi
+      .fn()
+      .mockResolvedValueOnce(queryAResults)
+      .mockResolvedValueOnce(queryBResults);
+
+    try {
+      render(
+        <QuoteBuilder
+          customers={customers}
+          createAction={vi.fn()}
+          searchCustomersAction={searchCustomersAction}
+        />,
+      );
+      const search = screen.getByRole("combobox", { name: /cliente/i });
+
+      fireEvent.change(search, { target: { value: "alpha" } });
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+        "Alpha Uno",
+        "Alpha Dos",
+      ]);
+
+      fireEvent.change(search, { target: { value: "beta" } });
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Beta Uno"]);
+
+      fireEvent.change(search, { target: { value: "alpha" } });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(501);
+        await Promise.resolve();
+      });
+
+      expect(searchCustomersAction).toHaveBeenCalledTimes(2);
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+        "Alpha Uno",
+        "Alpha Dos",
+      ]);
+      expect(search).toHaveAttribute("aria-activedescendant", "customer-option-cust-a1");
+
+      fireEvent.keyDown(search, { key: "Enter" });
+      expect(search).toHaveValue("Alpha Uno");
+      expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-a1");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("filters known customers immediately while a prefix server fallback is debounced", async () => {
+    const user = userEvent.setup();
+    const searchCustomersAction = vi.fn().mockResolvedValue(customers);
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} searchCustomersAction={searchCustomersAction} />);
+
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+    await user.type(search, "con");
+
+    expect(screen.getByRole("option", { name: "Constructora del Norte" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Taller Hermanos Pérez" })).not.toBeInTheDocument();
+    expect(searchCustomersAction).not.toHaveBeenCalled();
+    await waitFor(() => expect(searchCustomersAction).toHaveBeenCalledWith({ query: "con" }));
+  });
+
   it("shows a loading status while customer search is pending", async () => {
     const user = userEvent.setup();
     const pendingSearch = deferred<Array<{ id: string; name: string }>>();
@@ -244,6 +390,52 @@ describe("QuoteBuilder", () => {
     await waitFor(() => expect(search).toHaveValue("Constructora del Norte"));
     expect(screen.getByText(/cliente seleccionado:/i)).toHaveTextContent("Constructora del Norte");
     expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-1");
+  });
+
+  it("ignores a late search response after the query is shortened below the minimum", async () => {
+    const user = userEvent.setup();
+    const pendingSearch = deferred<Array<{ id: string; name: string }>>();
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        searchCustomersAction={vi.fn().mockReturnValue(pendingSearch.promise)}
+      />,
+    );
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+
+    await user.type(search, "remoto");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Buscando clientes..."));
+    await user.clear(search);
+    await user.type(search, "r");
+    pendingSearch.resolve([{ id: "cust-late", name: "Respuesta tardía" }]);
+
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+    expect(search).toHaveValue("r");
+    expect(screen.queryByRole("option", { name: "Respuesta tardía" })).not.toBeInTheDocument();
+  });
+
+  it("ignores a late search error after the query is cleared", async () => {
+    const user = userEvent.setup();
+    const pendingSearch = deferred<Array<{ id: string; name: string }>>();
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        searchCustomersAction={vi.fn().mockReturnValue(pendingSearch.promise)}
+      />,
+    );
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+
+    await user.type(search, "falla");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Buscando clientes..."));
+    await user.clear(search);
+    pendingSearch.reject(new Error("Unavailable"));
+
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+    expect(search).toHaveValue("");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Constructora del Norte" })).toBeInTheDocument();
   });
 
   it("keeps a created customer visible when an older search resolves late", async () => {
