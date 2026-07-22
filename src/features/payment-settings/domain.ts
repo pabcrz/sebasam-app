@@ -39,12 +39,12 @@ const DEFAULT_HOURS: WorkshopHours = {
   saturday: "Sábados de 9:00 a 15:00",
 };
 
-function normalizeStringArray(value: string[] | null | undefined): string[] {
+export function normalizeStringArray(value: string[] | null | undefined): string[] {
   if (!value) return [];
   return value.filter((item): item is string => typeof item === "string" && item.trim() !== "");
 }
 
-function deserializeHours(raw: unknown): WorkshopHours {
+export function deserializeHours(raw: unknown): WorkshopHours {
   if (!raw || typeof raw !== "object") return DEFAULT_HOURS;
   const hours = raw as Record<string, unknown>;
   return {
