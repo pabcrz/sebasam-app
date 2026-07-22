@@ -126,6 +126,8 @@ model Vehicle {
 
 model Quote {
   id              String      @id @default(cuid())
+  submissionKey   String?     @unique
+  submissionHash  String?
   customerId      String
   vehicleId       String?
   number          String      @unique
@@ -293,6 +295,9 @@ model PaymentSettings {
   mapsUrl         String   @default("https://maps.app.goo.gl/MYuGBKwabPGbea7y7")
   contactPhone    String   @default("5556007675")
   contactWhatsapp String   @default("5536239346")
+  hours           Json     @default("{\"weekdays\":\"Lunes a viernes de 9:00 a 18:00\",\"saturday\":\"Sábados de 9:00 a 15:00\"}")
+  services        String[] @default(["Alineación de ejes", "Brio a muelles", "Refuerzos", "Soldadura"])
+  products        String[] @default(["Abrazaderas", "Bujes", "Perchas", "Columpios", "Tensores", "Balancines"])
   updatedAt       DateTime @updatedAt
 
   bankAccounts BankAccount[]

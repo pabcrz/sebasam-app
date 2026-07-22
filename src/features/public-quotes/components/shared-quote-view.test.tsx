@@ -16,6 +16,8 @@ const declineSharedQuoteActionMock = vi.mocked(declineSharedQuoteAction);
 function makeQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps["quote"] {
   const quote: SharedQuoteViewProps["quote"] = {
     id: "quote-1",
+    submissionKey: null,
+    submissionHash: null,
     number: "COT-001",
     status,
     title: "Servicio general",

@@ -12,6 +12,12 @@ export type BankAccountData = {
   sortOrder: number;
 };
 
+export type WorkshopHours = {
+  weekdays: string;
+  saturday: string;
+  sunday?: string | null;
+};
+
 export type PaymentSettingsData = {
   name: string;
   fullName: string;
@@ -19,16 +25,56 @@ export type PaymentSettingsData = {
   mapsUrl: string;
   contactPhone: string;
   contactWhatsapp: string;
+  hours: WorkshopHours;
+  services: string[];
+  products: string[];
   bankAccounts: BankAccountData[];
 };
 
 /** Editable fields via the main save action (no bank accounts). */
 export type PaymentSettingsEditableData = Omit<PaymentSettingsData, "bankAccounts">;
 
+const DEFAULT_HOURS: WorkshopHours = {
+  weekdays: "Lunes a viernes de 9:00 a 18:00",
+  saturday: "Sábados de 9:00 a 15:00",
+};
+
+function normalizeStringArray(value: string[] | null | undefined): string[] {
+  if (!value) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim() !== "");
+}
+
+function deserializeHours(raw: unknown): WorkshopHours {
+  if (!raw || typeof raw !== "object") return DEFAULT_HOURS;
+  const hours = raw as Record<string, unknown>;
+  return {
+    weekdays:
+      typeof hours.weekdays === "string" && hours.weekdays.trim() !== ""
+        ? hours.weekdays
+        : DEFAULT_HOURS.weekdays,
+    saturday:
+      typeof hours.saturday === "string" && hours.saturday.trim() !== ""
+        ? hours.saturday
+        : DEFAULT_HOURS.saturday,
+    sunday:
+      typeof hours.sunday === "string" && hours.sunday.trim() !== "" ? hours.sunday : null,
+  };
+}
+
 function toSerializable(
-  settings: PaymentSettingsEditableData & { bankAccounts: BankAccountData[] },
+  settings: Omit<PaymentSettingsData, "hours" | "services" | "products"> & {
+    hours: unknown;
+    services: string[] | null;
+    products: string[] | null;
+    bankAccounts: BankAccountData[];
+  },
 ): PaymentSettingsData {
-  return { ...settings };
+  return {
+    ...settings,
+    hours: deserializeHours(settings.hours),
+    services: normalizeStringArray(settings.services),
+    products: normalizeStringArray(settings.products),
+  };
 }
 
 /**
