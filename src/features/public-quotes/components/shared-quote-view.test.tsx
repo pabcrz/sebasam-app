@@ -10,10 +10,6 @@ vi.mock("@/features/quotes/actions", () => ({
   declineSharedQuoteAction: vi.fn(),
 }));
 
-vi.mock("@/features/quotes/components/quote-preview-card", () => ({
-  QuotePreviewCard: () => <div data-testid="quote-preview">Vista previa</div>,
-}));
-
 const acceptSharedQuoteActionMock = vi.mocked(acceptSharedQuoteAction);
 const declineSharedQuoteActionMock = vi.mocked(declineSharedQuoteAction);
 
@@ -74,9 +70,27 @@ describe("SharedQuoteView", () => {
   it("renders whole-quote decision controls for sent shared quotes", () => {
     render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
 
+    expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
+    expect(screen.getByText("Folio COT-001")).toBeInTheDocument();
+    expect(screen.queryByText(/vista previa/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Enviada")).not.toBeInTheDocument();
+    expect(screen.queryByText("SEBASAM")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Batalla de Casa Blanca/)).not.toBeInTheDocument();
+    expect(screen.getByText("Mano de obra")).toBeInTheDocument();
+    expect(screen.getByText(/Servicio · 1 ×/)).toBeInTheDocument();
+    expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
     expect(screen.getByRole("button", { name: "Aceptar cotización" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Declinar cotización" })).toBeInTheDocument();
     expect(screen.queryByText(/partida/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps final status as secondary feedback without decision controls", () => {
+    render(<SharedQuoteView quote={makeQuote(QuoteStatus.APPROVED)} token="token-123" />);
+
+    expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
+    expect(screen.getByText("Aceptada")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Aceptar cotización" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Declinar cotización" })).not.toBeInTheDocument();
   });
 
   it("accepts the full quote and shows the success state", async () => {
@@ -88,8 +102,11 @@ describe("SharedQuoteView", () => {
     await user.click(screen.getByRole("button", { name: "Aceptar cotización" }));
 
     expect(acceptSharedQuoteActionMock).toHaveBeenCalledWith("token-123");
-    expect(await screen.findByText("Cotización aceptada")).toBeInTheDocument();
+    const feedback = await screen.findByRole("status");
+    expect(feedback).toHaveTextContent("Cotización aceptada");
+    expect(feedback).toHaveFocus();
     expect(screen.queryByRole("button", { name: "Aceptar cotización" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Declinar cotización" })).not.toBeInTheDocument();
   });
 
   it("declines the full quote and shows the declined state", async () => {
@@ -101,7 +118,10 @@ describe("SharedQuoteView", () => {
     await user.click(screen.getByRole("button", { name: "Declinar cotización" }));
 
     expect(declineSharedQuoteActionMock).toHaveBeenCalledWith("token-123");
-    expect(await screen.findByText("Cotización declinada")).toBeInTheDocument();
+    const feedback = await screen.findByRole("status");
+    expect(feedback).toHaveTextContent("Cotización declinada");
+    expect(feedback).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Aceptar cotización" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Declinar cotización" })).not.toBeInTheDocument();
   });
 

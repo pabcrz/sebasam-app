@@ -604,7 +604,7 @@ describe("QuoteBuilder", () => {
 
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByText(/vista previa de cotización/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
 
     fireEvent.submit(screen.getByTestId("quote-builder-form"));
 
@@ -654,7 +654,7 @@ describe("QuoteBuilder", () => {
     fireEvent.submit(screen.getByTestId("quote-builder-form"));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo guardar.");
-    expect(screen.getByText(/vista previa de cotización/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Afinación original" })).toBeInTheDocument();
     expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-2");
     expect(document.querySelector('input[name="items.0.description"]')).toHaveValue("Afinación mayor");
 
