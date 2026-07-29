@@ -20,14 +20,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
 } from "@/components/ui";
-import { QuoteListRow } from "@/features/quotes/components/quote-list-row";
-import { QuoteMobileCard } from "@/features/quotes/components/quote-mobile-card";
+import { QuoteListCard } from "@/features/quotes/components/quote-mobile-card";
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
 import { QuoteFilters } from "@/features/quotes/components/quote-filters";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
@@ -94,70 +88,9 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
             <QuoteFilters filters={filters} customers={customers} />
           </div>
 
-          {/* Desktop table */}
-          <div className="hidden md:block">
-            <Table>
-              <TableHeader>
-                <tr>
-                  <TableHead>Número</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Vehículo</TableHead>
-                  <TableHead>Título</TableHead>
-                  <TableHead>Orden de trabajo</TableHead>
-                  <TableHead>Montos</TableHead>
-                  <TableHead>Vigencia</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </tr>
-              </TableHeader>
-              <TableBody>
-                {quotes.map((quote) => (
-                  <QuoteListRow
-                    key={quote.id}
-                    quote={quote}
-                    quoteStatusLabels={quoteStatusLabels}
-                    quoteStatusBadgeVariant={quoteStatusBadgeVariant}
-                    workOrderStatusLabels={workOrderStatusLabels}
-                    workOrderStatusBadgeVariant={workOrderStatusBadgeVariant}
-                    approveAction={approveQuoteAndCreateWorkOrderFromForm}
-                    cancelAction={cancelDraftQuoteFromForm}
-                    shareAction={shareQuoteFromForm}
-                    authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
-                    paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
-                    duplicateAction={duplicateQuoteFromForm}
-                    customers={customers}
-                    saveAction={updateDraftQuoteFromWorkspace.bind(null, quote.id)}
-                    searchCustomersAction={searchCustomersForQuote}
-                  />
-                ))}
-                {quotes.length === 0 ? (
-                  <tr>
-                    <TableCell colSpan={8} className="py-8 text-center">
-                      <p className="text-[var(--color-text-muted)]">
-                        No se encontraron cotizaciones.
-                      </p>
-                      {hasFilters ? (
-                        <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                          <Link href="/admin/quotes" className="text-[var(--color-primary)] hover:underline">
-                            Limpiar filtros
-                          </Link>{" "}
-                          o crea una nueva cotización.
-                        </p>
-                      ) : (
-                        <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                          Crea una nueva cotización para comenzar.
-                        </p>
-                      )}
-                    </TableCell>
-                  </tr>
-                ) : null}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="grid gap-3 md:hidden">
+          <div className="grid gap-3 lg:grid-cols-2">
             {quotes.map((quote) => (
-              <QuoteMobileCard
+              <QuoteListCard
                 key={quote.id}
                 quote={quote}
                 quoteStatusLabels={quoteStatusLabels}

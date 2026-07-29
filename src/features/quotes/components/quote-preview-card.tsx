@@ -16,7 +16,7 @@ export interface QuotePreviewCardProps {
   subtotalCents: number;
   taxCents: number;
   totalCents: number;
-  validUntil: Date;
+  validUntil: Date | null;
 }
 
 export function QuotePreviewCard({
@@ -89,7 +89,7 @@ export function QuotePreviewCard({
 
         <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-sm text-[var(--color-text-muted)]">
           <p data-testid="quote-validity">
-            Vigente hasta el {formatDate(validUntil)}. Los precios están sujetos a cambios imprevistos
+            Vigente hasta el {validUntil ? formatDate(validUntil) : "—"}. Los precios están sujetos a cambios imprevistos
             en el costo de materiales.
           </p>
         </div>
