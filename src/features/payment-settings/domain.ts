@@ -39,6 +39,19 @@ const DEFAULT_HOURS: WorkshopHours = {
   saturday: "Sábados de 9:00 a 15:00",
 };
 
+const DEFAULT_PAYMENT_SETTINGS: PaymentSettingsData = {
+  name: "SEBASAM",
+  fullName: "Servicio Básico a Suspensiones y Aire y Muelles",
+  address: "Batalla de Casa Blanca 1719B, Leyes de Reforma, Iztapalapa, 09310 Ciudad de México, CDMX",
+  mapsUrl: "https://maps.app.goo.gl/MYuGBKwabPGbea7y7",
+  contactPhone: "5556007675",
+  contactWhatsapp: "5536239346",
+  hours: DEFAULT_HOURS,
+  services: ["Alineación de ejes", "Brio a muelles", "Refuerzos", "Soldadura"],
+  products: ["Abrazaderas", "Bujes", "Perchas", "Columpios", "Tensores", "Balancines"],
+  bankAccounts: [],
+};
+
 function normalizeStringArray(value: string[] | null | undefined): string[] {
   if (!value) return [];
   return value.filter((item): item is string => typeof item === "string" && item.trim() !== "");
@@ -78,14 +91,12 @@ function toSerializable(
 }
 
 /**
- * Returns the singleton payment settings row with bank accounts ordered by
- * sortOrder, creating it with defaults if it doesn't exist yet.
+ * Returns the singleton payment settings row with bank accounts ordered by sortOrder.
+ * Schema-aligned defaults are owned here for read-only fallback when the row is missing.
  */
 export async function getPaymentSettings(): Promise<PaymentSettingsData> {
-  const settings = await prisma.paymentSettings.upsert({
+  const settings = await prisma.paymentSettings.findUnique({
     where: { id: PAYMENT_SETTINGS_ID },
-    update: {},
-    create: { id: PAYMENT_SETTINGS_ID },
     include: {
       bankAccounts: {
         orderBy: { sortOrder: "asc" },
@@ -93,15 +104,26 @@ export async function getPaymentSettings(): Promise<PaymentSettingsData> {
     },
   });
 
+  if (!settings) {
+    return {
+      ...DEFAULT_PAYMENT_SETTINGS,
+      hours: { ...DEFAULT_HOURS },
+      services: [...DEFAULT_PAYMENT_SETTINGS.services],
+      products: [...DEFAULT_PAYMENT_SETTINGS.products],
+      bankAccounts: [],
+    };
+  }
+
   return toSerializable(settings);
 }
 
 export async function updatePaymentSettings(
   data: Partial<PaymentSettingsEditableData>,
 ): Promise<PaymentSettingsData> {
-  const settings = await prisma.paymentSettings.update({
+  const settings = await prisma.paymentSettings.upsert({
     where: { id: PAYMENT_SETTINGS_ID },
-    data,
+    update: data,
+    create: { id: PAYMENT_SETTINGS_ID, ...data },
     include: {
       bankAccounts: {
         orderBy: { sortOrder: "asc" },
@@ -123,6 +145,12 @@ export async function addBankAccount(data: {
   clabe: string;
   isForInvoicing: boolean;
 }): Promise<BankAccountData> {
+  await prisma.paymentSettings.upsert({
+    where: { id: PAYMENT_SETTINGS_ID },
+    update: {},
+    create: { id: PAYMENT_SETTINGS_ID },
+  });
+
   const current = await prisma.bankAccount.findMany({
     where: { paymentSettingsId: PAYMENT_SETTINGS_ID },
     orderBy: { sortOrder: "desc" },
