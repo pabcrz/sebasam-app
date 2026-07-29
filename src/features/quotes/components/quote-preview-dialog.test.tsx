@@ -55,11 +55,12 @@ describe("QuotePreviewDialog", () => {
     await user.click(screen.getByRole("button", { name: /ver vista previa de c-001/i }));
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Vista previa de C-001")).toBeInTheDocument();
+    expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
+    expect(screen.queryByText(/vista previa/i)).not.toBeInTheDocument();
     expect(screen.getByText("Constructora del Norte")).toBeInTheDocument();
     expect(screen.getByText("Cotización administrativa")).toBeInTheDocument();
     expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
-    expect(screen.getByText("2×")).toBeInTheDocument();
+    expect(screen.getByText(/Mano de obra · 2 × \$50.00/i)).toBeInTheDocument();
     expect(screen.getByTestId("quote-subtotal")).toHaveTextContent("$100.00");
     expect(screen.getByTestId("quote-tax")).toHaveTextContent("$16.00");
     expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
@@ -100,7 +101,7 @@ describe("QuotePreviewDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(screen.getByText("ABC-123 — Toyota Hilux")).toBeInTheDocument();
+    expect(screen.getByText("Toyota · Hilux · 2022 · ABC-123")).toBeInTheDocument();
   });
 
   it("renders the empty concepts message when the quote has no items", async () => {

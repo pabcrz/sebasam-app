@@ -122,7 +122,7 @@ describe("QuoteListRow", () => {
     await user.click(screen.getByLabelText(/abrir vista previa de c-001/i));
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Vista previa de C-001")).toBeInTheDocument();
+    expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
   });
 
   it("does not open the preview dialog when an action button is clicked", async () => {

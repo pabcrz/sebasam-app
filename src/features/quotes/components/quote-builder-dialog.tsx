@@ -28,6 +28,8 @@ type QuoteBuilderDialogProps = {
   initialData?: QuoteBuilderInitialData;
   quote?: QuoteListItem;
   quoteNumber?: string;
+  triggerClassName?: string;
+  triggerSize?: "default" | "sm";
   createCustomerAction?: (input: unknown) => Promise<{
     success: boolean;
     customer?: CustomerOption;
@@ -37,7 +39,7 @@ type QuoteBuilderDialogProps = {
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
 };
 
-export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
+export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = React.useState(false);
   const [dirty, setDirty] = React.useState(false);
@@ -109,7 +111,7 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
         }}
       >
         <DialogTrigger asChild>
-          <Button type="button" variant="primary">
+          <Button type="button" variant="primary" size={triggerSize} className={triggerClassName}>
             {isEdit ? <Pencil className="h-4 w-4" aria-hidden="true" /> : null}
             {isEdit ? "Editar" : "Nueva cotización"}
           </Button>
