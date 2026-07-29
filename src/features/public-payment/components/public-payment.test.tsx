@@ -11,6 +11,12 @@ import { PaymentRequestErrorState } from "./payment-request-error-state";
 import { PublicPaymentPage } from "./public-payment-page";
 import { PublicPaymentShell } from "./public-payment-shell";
 
+const refresh = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
+
 function createMockRequest(overrides: { status?: PaymentRequestStatus; requiresInvoice?: boolean } = {}) {
   return {
     id: "pr-123",
@@ -343,6 +349,7 @@ describe("PublicPaymentPage", () => {
   it("submits invoice preference and displays returned error", async () => {
     const user = userEvent.setup();
     const setInvoicePreferenceAction = vi.fn().mockResolvedValue({ success: false, error: "Token vencido" });
+    refresh.mockClear();
 
     render(
       <PublicPaymentPage
@@ -356,6 +363,25 @@ describe("PublicPaymentPage", () => {
 
     await waitFor(() => expect(setInvoicePreferenceAction).toHaveBeenCalledWith(true));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Token vencido"));
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("refreshes server props after saving the invoice preference", async () => {
+    const user = userEvent.setup();
+    const setInvoicePreferenceAction = vi.fn().mockResolvedValue({ success: true });
+    refresh.mockClear();
+
+    render(
+      <PublicPaymentPage
+        request={createMockRequest({ status: PaymentRequestStatus.PENDING })}
+        setInvoicePreferenceAction={setInvoicePreferenceAction}
+        saveFiscalDataAction={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /solo datos de pago/i }));
+
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
   });
 });
 

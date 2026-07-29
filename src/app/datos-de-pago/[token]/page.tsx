@@ -8,7 +8,7 @@ import { setPaymentRequestInvoicePreference, savePaymentRequestFiscalData } from
 import { PublicPaymentPage } from "@/features/public-payment/components/public-payment-page";
 import { PaymentRequestErrorState } from "@/features/public-payment/components/payment-request-error-state";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
-import type { PaymentRequest } from "@prisma/client";
+import { PaymentRequestStatus, type PaymentRequest } from "@prisma/client";
 
 export const metadata: Metadata = {
   title: "Datos de pago",
@@ -38,6 +38,30 @@ type PaymentErrorType = "not-found" | "expired" | "cancelled";
 type PaymentPageResult =
   | { kind: "success"; request: PublicPaymentRequest }
   | { kind: "error"; errorType: PaymentErrorType };
+
+type SettingsBankAccount = Awaited<ReturnType<typeof getPaymentSettings>>["bankAccounts"][number];
+
+function toPublicBankAccounts(
+  accounts: SettingsBankAccount[],
+  request: Pick<PaymentRequest, "requiresInvoice" | "status">,
+) {
+  if (
+    request.status === PaymentRequestStatus.PENDING ||
+    request.status === PaymentRequestStatus.VIEWED
+  ) {
+    return [];
+  }
+
+  return accounts
+    .filter((account) => account.isForInvoicing === request.requiresInvoice)
+    .map(({ id, accountHolder, bankName, accountNumber, clabe }) => ({
+      id,
+      accountHolder,
+      bankName,
+      accountNumber,
+      clabe,
+    }));
+}
 
 function mapErrorToType(error: unknown): PaymentErrorType {
   if (error instanceof PaymentRequestExpiredError) {
@@ -86,7 +110,7 @@ export default async function DatosDePagoPage({ params }: PaymentPageProps) {
         address: settings.address,
         mapsUrl: settings.mapsUrl,
       }}
-      bankAccounts={settings.bankAccounts}
+      bankAccounts={toPublicBankAccounts(settings.bankAccounts, result.request)}
       contact={{
         phone: settings.contactPhone,
         whatsapp: settings.contactWhatsapp,
