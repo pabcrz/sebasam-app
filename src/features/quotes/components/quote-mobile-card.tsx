@@ -14,6 +14,8 @@ import { ShareQuoteButton } from "./share-quote-button";
 import { ShareQuoteLinkDialog } from "./share-quote-link-dialog";
 import { QuoteAuthorizeForm } from "./quote-authorize-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
+import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
+import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
@@ -31,6 +33,7 @@ interface QuoteListCardProps {
   shareAction: (formData: FormData) => void | Promise<void>;
   authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
+  paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
   duplicateAction: (formData: FormData) => void | Promise<void>;
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
@@ -48,6 +51,7 @@ export function QuoteListCard({
   shareAction,
   authorizeAction,
   paymentRequestAction,
+  paymentRequestBankAccounts,
   duplicateAction,
   customers,
   saveAction,
@@ -56,6 +60,7 @@ export function QuoteListCard({
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
   const openPreview = React.useCallback(() => setPreviewOpen(true), []);
+  const paymentRequestContext = createPaymentRequestDialogContext(quote, paymentRequestBankAccounts);
   const vehicleDescription = quote.vehicle
     ? formatVehicle(quote.vehicle)
     : formatSnapshotVehicle(quote.vehicleSnapshot);
@@ -168,7 +173,7 @@ export function QuoteListCard({
           </>
         ) : null}
         {quote.status === "SENT" || quote.status === "APPROVED" ? (
-          <PaymentRequestLinkDialog action={paymentRequestAction} quoteNumber={quote.number} />
+          <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
         ) : null}
         {quote.status === "SENT" ? (
           <QuoteAuthorizeForm

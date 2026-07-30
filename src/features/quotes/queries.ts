@@ -59,11 +59,34 @@ export async function listQuotes(input: unknown = {}) {
   const quotes = await prisma.quote.findMany({
     where: Object.keys(where).length > 0 ? where : undefined,
     include: {
-      customer: true,
+      customer: {
+        include: {
+          fiscalProfiles: {
+            orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+            take: 1,
+            select: {
+              id: true,
+              businessName: true,
+              taxId: true,
+            },
+          },
+        },
+      },
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
       workOrder: true,
       sharedQuotes: true,
+      paymentRequests: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          requiresInvoice: true,
+          customerFiscalProfileId: true,
+          fiscalSnapshot: true,
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });

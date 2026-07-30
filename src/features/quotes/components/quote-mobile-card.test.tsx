@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type React from "react";
 import type { PaymentRequest, QuoteStatus, WorkOrderStatus } from "@prisma/client";
@@ -67,7 +67,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     administrative: true,
     createdAt: new Date("2026-07-01T12:00:00.000Z"),
     updatedAt: new Date(),
-    customer: { id: "cust-1", name: "Constructora del Norte" },
+    customer: { id: "cust-1", name: "Constructora del Norte", fiscalProfiles: [] },
     vehicle: null,
     items: [
       {
@@ -102,6 +102,12 @@ function renderCard(quote: QuoteListItem) {
       shareAction={vi.fn()}
       authorizeAction={vi.fn(() => Promise.resolve({ success: true }))}
       paymentRequestAction={vi.fn(() => Promise.resolve({ id: "pr-1", token: "token-1" } as PaymentRequest))}
+      paymentRequestBankAccounts={[{
+        accountHolder: "Federico Cruz",
+        bankName: "Santander",
+        accountNumber: "123456",
+        clabe: "4444 4444 4444 4444",
+      }]}
       duplicateAction={vi.fn()}
       customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
       saveAction={vi.fn()}
@@ -228,6 +234,19 @@ describe("QuoteListCard", () => {
     expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /compartir cotización/i })).toBeInTheDocument();
+  });
+
+  it("passes quote payment context to the payment link dialog", async () => {
+    const user = userEvent.setup();
+    renderCard(createMockQuote({ status: "APPROVED" }));
+
+    await user.click(screen.getByRole("button", { name: /link de pago/i }));
+
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("Cotización C-001")).toBeInTheDocument();
+    expect(dialog.getByText("Constructora del Norte")).toBeInTheDocument();
+    expect(dialog.getByText("Factura requerida")).toBeInTheDocument();
+    expect(dialog.getByText("Santander")).toBeInTheDocument();
   });
 
   it("does not render cancel action for draft quotes with a work order", () => {
