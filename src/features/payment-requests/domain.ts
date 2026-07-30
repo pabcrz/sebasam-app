@@ -154,7 +154,6 @@ async function assertNoActiveRequest(
 async function createPaymentRequestForQuoteInTransaction(
   tx: TransactionClient,
   quoteId: string,
-  requiresInvoice = false,
 ) {
   const quote = await tx.quote.findUnique({
     where: { id: quoteId },
@@ -165,6 +164,7 @@ async function createPaymentRequestForQuoteInTransaction(
     throw new PaymentRequestOperationError("Quote not found.");
   }
 
+  const requiresInvoice = quote.taxEnabled;
   const initialStatus = requiresInvoice
     ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
     : PaymentRequestStatus.PENDING;
@@ -192,10 +192,7 @@ async function createPaymentRequestForQuoteInTransaction(
   });
 }
 
-export async function getOrCreatePaymentRequestForQuote(
-  quoteId: string,
-  requiresInvoice = false,
-) {
+export async function getOrCreatePaymentRequestForQuote(quoteId: string) {
   return prisma.$transaction(async (tx) => {
     const existingActive = await tx.paymentRequest.findFirst({
       where: { quoteId, status: { in: ACTIVE_STATUSES } },
@@ -205,24 +202,18 @@ export async function getOrCreatePaymentRequestForQuote(
       return existingActive;
     }
 
-    return createPaymentRequestForQuoteInTransaction(tx, quoteId, requiresInvoice);
+    return createPaymentRequestForQuoteInTransaction(tx, quoteId);
   });
 }
 
-export async function createPaymentRequestForQuote(
-  quoteId: string,
-  requiresInvoice = false,
-) {
+export async function createPaymentRequestForQuote(quoteId: string) {
   return prisma.$transaction(async (tx) => {
     await assertNoActiveRequest(tx, { quoteId });
-    return createPaymentRequestForQuoteInTransaction(tx, quoteId, requiresInvoice);
+    return createPaymentRequestForQuoteInTransaction(tx, quoteId);
   });
 }
 
-export async function createPaymentRequestForWorkOrder(
-  workOrderId: string,
-  requiresInvoice = false,
-) {
+export async function createPaymentRequestForWorkOrder(workOrderId: string) {
   return prisma.$transaction(async (tx) => {
     const workOrder = await tx.workOrder.findUnique({
       where: { id: workOrderId },
@@ -239,6 +230,7 @@ export async function createPaymentRequestForWorkOrder(
 
     await assertNoActiveRequest(tx, { workOrderId: workOrder.id });
 
+    const requiresInvoice = workOrder.quote.taxEnabled;
     const initialStatus = requiresInvoice
       ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
       : PaymentRequestStatus.PENDING;
