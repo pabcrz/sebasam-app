@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useActionState, useTransition } from "react";
 import { PaymentRequestStatus, type PaymentRequest } from "@prisma/client";
+import { useRouter } from "next/navigation";
 import { PublicPaymentShell, PublicPaymentContent, type ShellBusinessSettings } from "./public-payment-shell";
 import { InvoiceDecision } from "./invoice-decision";
 import { FiscalDataForm } from "./fiscal-data-form";
@@ -53,6 +54,7 @@ export function PublicPaymentPage({
   bankAccounts,
   contact,
 }: PublicPaymentPageProps) {
+  const router = useRouter();
   const reference = request.quote?.number ?? request.workOrder?.number ?? request.id.slice(0, 8);
   const amount = request.quote?.totalCents ?? 0;
 
@@ -71,12 +73,14 @@ export function PublicPaymentPage({
       setInvoiceError(null);
       startInvoicePreferenceTransition(async () => {
         const result = await setInvoicePreferenceAction(requiresInvoice);
-        if (!result.success && result.error) {
+        if (result.success) {
+          router.refresh();
+        } else if (result.error) {
           setInvoiceError(result.error);
         }
       });
     },
-    [setInvoicePreferenceAction],
+    [router, setInvoicePreferenceAction],
   );
 
   const showPaymentData =
