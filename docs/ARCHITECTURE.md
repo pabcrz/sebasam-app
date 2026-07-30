@@ -51,7 +51,8 @@ Mapa de rutas objetivo:
 | `/trabajador/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Detalle del trabajador. |
 | `/nomina` | `ADMIN`, `ADMIN_ASSISTANT` | Nómina semanal calculada desde registros admin. |
 | `/trabajo/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Detalle del trabajo con gestión de asignación y ejecución. |
-| `/datos-de-pago/[token]` | Token de cliente público | Página pública MVP de datos de pago vinculada a un `PaymentRequest`. |
+| `/datos-de-pago/[token]` | Token de cliente público | Instrucciones contextuales y opcionales para una transferencia vinculada a un `PaymentRequest`. |
+| `/datos-pago` | Público | Ruta genérica cuyo alcance final de producto está pendiente; no es autoridad para instrucciones contextuales. |
 
 Rutas post-MVP (fuera del MVP inmediato):
 
@@ -82,32 +83,36 @@ El dominio separa claramente **cotización comercial** (`Quote`) de **orden de t
 | `WorkOrder` | Orden de trabajo vinculada a una cotización; debe evolucionar para soportar autorización administrativa y `ESPERA` | `Quote`, `WorkAssignment`, `ExecutionRecord` |
 | `WorkAssignment` | Asignación administrativa de empleado a orden de trabajo | `WorkOrder`, `UserProfile` |
 | `ExecutionRecord` | Registro administrativo de ejecución realizado | `WorkOrder`, `UserProfile` |
+| `CustomerFiscalProfile` | Perfil fiscal reutilizable, administrado por personal interno | `Customer`, `PaymentRequest` |
+| `PaymentRequest` | Solicitud tokenizada de instrucciones para transferencia; no registra pagos ni liquidaciones | `Customer`, `Quote` o `WorkOrder`, `CustomerFiscalProfile` |
+| `Payment` | Objetivo: cobro aplicado con monto y método | `Customer`, `Quote` o `WorkOrder` |
+| `LedgerEntry` | Objetivo: movimiento de la cuenta del cliente | `Customer`, `Payment` |
 
 Regla objetivo pendiente: la autorización administrativa no debe crear un flujo paralelo; debe usar el mismo registro de cotización/alcance, marcarlo como aceptado y exigir una nota con canal y motivo (p. ej. "autorización por teléfono"). La evidencia inicial es opcional. Tras la aceptación o autorización, la orden debe pasar por `ESPERA` hasta que se confirme espacio del taller y disponibilidad de maestro.
 
-## Autorización parcial y flujo de pago
+## Autorización parcial y dominio financiero
 
 Una cotización se construye por secciones desde el inicio. La acción principal del cotizador es **Agregar sección**; dentro de cada sección, el usuario agrega conceptos con **Agregar concepto**. Los subtotales por sección y el total de la cotización se calculan automáticamente. El cliente puede autorizar secciones individuales con **Autorizar sección** o la cotización completa con **Autorizar cotización completa**. Las secciones autorizadas no se modelan como cotizaciones separadas; persisten dentro de la misma cotización con su propio estado de autorización. La agrupación retrospectiva de conceptos no es parte del flujo principal del MVP.
 
 > **Terminología:** en la interfaz del cotizador cada línea se presenta como un **concepto** (acción **Agregar concepto**). En el modelo de dominio esa línea sigue siendo `QuoteItem`. Los tipos de concepto incluyen mano de obra, material, refacción, servicio externo y otro.
 
-El flujo de pago es independiente de la aceptación de la cotización:
+El subtotal general de una cotización integra refacciones, mano de obra y servicios. Sin factura, el total pagable es el subtotal; con factura, es el subtotal más IVA. El personal define la preferencia de factura y captura o reutiliza `CustomerFiscalProfile`. Cuando corresponde, la operación conserva un snapshot fiscal para no depender de cambios posteriores al perfil reutilizable.
 
-- Si la cotización no requiere factura, los datos de pago se muestran directamente.
-- Si la cotización requiere factura, el sistema solicita los datos fiscales faltantes o confirma los datos fiscales existentes del cliente antes de mostrar los datos de pago.
+La preferencia de factura, el método de pago, el estado de pago, el estado de factura y el saldo pendiente son ejes independientes. `QuoteStatus` describe el flujo operativo y no debe incorporar cobro ni adeudo. Facturada no significa pagada.
+
+El dominio financiero objetivo incluye métodos `CASH`, `TRANSFER` y `OTHER`; estados de pago `PENDING`, `PARTIAL` y `PAID`; y estados de factura `NOT_REQUESTED`, `DATA_MISSING`, `READY` e `ISSUED`. Estas entidades y enumeraciones están planificadas. Cada abono parcial deberá crear o actualizar el saldo del ledger del cliente y el indicador financiero de saldo pendiente de la cotización.
+
+El efectivo puede liquidar o abonar sin `PaymentRequest`. Un cambio de preferencia de factura hasta la liquidación final modifica IVA y total pagable; por eso requiere recálculo controlado, confirmación auditada y regeneración de instrucciones.
 
 La distinción operativa `ACEPTADA` → `ESPERA` → `EN_PROGRESO` se preserva: una vez autorizadas las secciones necesarias, la orden de trabajo sigue pasando por `ESPERA` hasta confirmar espacio del taller y disponibilidad de maestro.
 
-## Página pública de datos de pago
+## Instrucciones públicas de transferencia
 
-La ruta `/datos-de-pago/[token]` es el destino público de un `PaymentRequest`. El token se resuelve server-side y la página guía al cliente por uno de dos caminos:
+`PaymentRequest` representa una solicitud tokenizada y revocable de instrucciones, no un `Payment`, una entrada de ledger ni evidencia de liquidación. Su ciclo de token, expiración y cancelación, la reutilización de `CustomerFiscalProfile`, el snapshot fiscal y el filtrado de cuentas bancarias constituyen la base implementada.
 
-1. **No requiere factura**: se muestran directamente los datos de pago y un botón/contacto de WhatsApp para enviar el comprobante.
-2. **Requiere factura**: se capturan o confirman los datos fiscales, se guardan en `CustomerFiscalProfile` y se almacena un `fiscalSnapshot` en `PaymentRequest`; luego se muestran los datos de pago.
+La ruta `/datos-de-pago/[token]` debe mostrar únicamente un importe decidido por el personal, las cuentas elegibles para esa transferencia y las acciones de contacto o envío de comprobante. No ofrece selector de factura ni formulario fiscal. La recepción de un comprobante requiere validación interna y registro separado del pago.
 
-El comprobante se envía por WhatsApp en el MVP; no hay upload ni storage de archivos. Los estados `EXPIRED` y `CANCELLED` se manejan con mensajes de error claros; un token inexistente se trata como inválido.
-
-Esta página está desacoplada de la aceptación de la cotización: el cliente puede recibir los datos de pago sin haber aceptado previamente el link de cotización, dependiendo de cómo se genere el `PaymentRequest`.
+El link es opcional y exclusivo para `TRANSFER`; `CASH` no lo necesita. La ruta genérica `/datos-pago` no representa instrucciones ligadas a una operación y su alcance final de producto permanece pendiente.
 
 ## Límites del MVP
 
