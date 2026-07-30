@@ -12,10 +12,6 @@ vi.mock("@/features/payment-requests/domain", () => ({
   PaymentRequestCancelledError: class PaymentRequestCancelledError extends Error {},
 }));
 vi.mock("@/features/payment-settings/domain", () => ({ getPaymentSettings }));
-vi.mock("@/features/public-payment/actions", () => ({
-  setPaymentRequestInvoicePreference: vi.fn(),
-  savePaymentRequestFiscalData: vi.fn(),
-}));
 
 import DatosDePagoPage from "./page";
 
@@ -84,55 +80,36 @@ async function loadBankAccountProps() {
 }
 
 describe("DatosDePagoPage bank account boundary", () => {
-  it.each([
-    [PaymentRequestStatus.FISCAL_DATA_REQUIRED, true, ["Invoice First", "Invoice Last"]],
-    [PaymentRequestStatus.READY_TO_PAY, false, ["Payment Only"]],
-  ])("only exposes matching accounts for decided status %s", async (status, requiresInvoice, expectedHolders) => {
-    mockPageData(status, requiresInvoice);
+  it("only exposes transfer-only (non-invoice) bank accounts", async () => {
+    mockPageData(PaymentRequestStatus.READY_TO_PAY, false);
 
     const accounts = await loadBankAccountProps();
 
-    expect(accounts.map((account: { accountHolder: string }) => account.accountHolder)).toEqual(
-      expectedHolders,
-    );
+    expect(accounts.map((account: { accountHolder: string }) => account.accountHolder)).toEqual([
+      "Payment Only",
+    ]);
   });
 
-  it.each([PaymentRequestStatus.PENDING, PaymentRequestStatus.VIEWED])(
-    "exposes no accounts while status %s means the invoice preference is undecided",
-    async (status) => {
-      mockPageData(status, false);
-
-      expect(await loadBankAccountProps()).toEqual([]);
-    },
-  );
-
-  it("returns an explicit empty list instead of falling back to ineligible accounts", async () => {
+  it("returns an explicit empty list when all accounts are for invoicing", async () => {
     mockPageData(
-      PaymentRequestStatus.FISCAL_DATA_REQUIRED,
-      true,
-      bankAccounts.filter((account) => !account.isForInvoicing),
+      PaymentRequestStatus.READY_TO_PAY,
+      false,
+      bankAccounts.filter((account) => account.isForInvoicing),
     );
 
     expect(await loadBankAccountProps()).toEqual([]);
   });
 
   it("preserves settings order and projects only public bank fields", async () => {
-    mockPageData(PaymentRequestStatus.FISCAL_DATA_REQUIRED, true);
+    mockPageData(PaymentRequestStatus.READY_TO_PAY, false);
 
     expect(await loadBankAccountProps()).toEqual([
       {
-        id: 1,
-        accountHolder: "Invoice First",
-        bankName: "Invoice Bank",
-        accountNumber: "111",
-        clabe: "111111111111111111",
-      },
-      {
-        id: 3,
-        accountHolder: "Invoice Last",
-        bankName: "Invoice Bank 2",
-        accountNumber: "333",
-        clabe: "333333333333333333",
+        id: 2,
+        accountHolder: "Payment Only",
+        bankName: "Payment Bank",
+        accountNumber: "222",
+        clabe: "222222222222222222",
       },
     ]);
   });
