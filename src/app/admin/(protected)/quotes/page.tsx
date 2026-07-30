@@ -13,6 +13,7 @@ import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/featur
 import { listQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
 import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
+import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { quoteFilterSchema, type QuoteFilterInput } from "@/features/quotes/schemas";
 import {
   Card,
@@ -32,6 +33,7 @@ import {
   workOrderStatusLabels,
   workOrderStatusBadgeVariant,
 } from "@/features/quotes/lib/status";
+import { filterPaymentRequestDialogBankAccounts } from "@/features/quotes/lib/payment-request-dialog-context";
 
 export const metadata: Metadata = {
   title: "Cotizaciones",
@@ -58,7 +60,12 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const parsedFilters = quoteFilterSchema.safeParse(params);
   const filters = parsedFilters.success ? parsedFilters.data : {} as QuoteFilterInput;
   const hasFilters = hasFilterValue(filters);
-  const [customers, quotes] = await Promise.all([listCustomers(), listQuotes(filters)]);
+  const [customers, quotes, paymentSettings] = await Promise.all([
+    listCustomers(),
+    listQuotes(filters),
+    getPaymentSettings(),
+  ]);
+  const eligiblePaymentRequestBankAccounts = filterPaymentRequestDialogBankAccounts(paymentSettings.bankAccounts);
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
@@ -102,6 +109,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 shareAction={shareQuoteFromForm}
                 authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
                 paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
+                paymentRequestBankAccounts={eligiblePaymentRequestBankAccounts}
                 duplicateAction={duplicateQuoteFromForm}
                 customers={customers}
                 saveAction={updateDraftQuoteFromWorkspace.bind(null, quote.id)}
