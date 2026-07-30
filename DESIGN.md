@@ -142,7 +142,7 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 | Componente | Responsabilidad |
 |---|---|
 | `QuoteOperationalBadge` | Mapea `EstadoCotizacion` a etapa humana: Pendiente / Aceptada / Espera / En proceso / Ajuste final / Cancelada. |
-| `QuoteFinancialBadges` | Muestra estado de pago + factura. Solo Admin y Cliente. |
+| `QuoteFinancialBadges` | Objetivo: muestra por separado estado de pago, estado de factura y saldo pendiente. Solo Admin y Cliente. |
 | `QuoteCard` | Resumen compacto de cotización para listados. |
 | `QuoteTableRow` | Fila de tabla en dashboard admin. |
 | `FilterBar` | Búsqueda + filtros de estado en listados. |
@@ -167,8 +167,8 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 | `ErrorText` | Texto de error bajo un campo. |
 | `Avatar` | Iniciales de usuario/cliente. |
 | `Divider` | Separación visual entre bloques. |
-| `PaymentSummary` | Resumen de pagos/abonos/saldo. |
-| `LedgerMovementRow` | Fila de movimiento de cuenta. |
+| `PaymentSummary` | Objetivo: resumen de pagos, abonos y saldo pendiente. |
+| `LedgerMovementRow` | Objetivo: fila de movimiento de cuenta del cliente. |
 | `TimelineItem` | Evento de evidencia/diagnóstico/nota. |
 | `EvidenceCard` | Foto o archivo de evidencia. |
 | `PayrollSummary` | Resumen de nómina por trabajador. |
@@ -192,7 +192,7 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 | `QuoteTotalsCard` | Subtotal / IVA / Total con toggle de IVA. |
 | `QuoteNotesSection` | Notas internas y visibles para cliente. |
 | `QuotePreviewCard` | Vista previa de cotización para compartir. |
-| `PaymentLinkCard` | Tarjeta de datos de pago (CLABE, QR, WhatsApp). |
+| `PaymentLinkCard` | Tarjeta opcional de instrucciones para transferencia (importe, cuenta elegible, contacto y comprobante). |
 
 ## Shell y navegación
 
@@ -244,6 +244,8 @@ flowchart LR
 - Objetivo pendiente: tras `ACEPTADA`, la orden entra en `ESPERA` hasta que el admin confirme espacio del taller y disponibilidad de maestro.
 - La transición de `ESPERA` a `EN_PROCESO` ocurre al confirmar espacio y maestro; en ese punto el admin asigna empleados y registra ejecución.
 - `FACTURADA` no implica pagada; siempre se muestra el estado financiero aparte.
+- `QuoteStatus` nunca representa pago, factura ni saldo pendiente.
+- Los estados financieros objetivo se reconocen por grupos separados: pago (`PENDING`, `PARTIAL`, `PAID`), factura (`NOT_REQUESTED`, `DATA_MISSING`, `READY`, `ISSUED`) y saldo pendiente.
 - En el MVP inmediato el empleado **no tiene login/app propio**; el admin gestiona asignación y ejecución. El self-service del trabajador (`/mis-trabajos`, `/mi-nomina`) es post-MVP. Ver GitHub #65.
 
 Las reglas de negocio completas viven en [`README.md`](./README.md#reglas-de-negocio-).
@@ -252,6 +254,28 @@ Las reglas de negocio completas viven en [`README.md`](./README.md#reglas-de-neg
 
 1. **Operativo** (`QuoteOperationalBadge`): visible para Admin y Cliente. En el MVP inmediato el empleado no accede a la app; el admin gestiona la vista operativa.
 2. **Financiero / Documento** (`QuoteFinancialBadges`): solo Admin y Cliente.
+
+El indicador de saldo pendiente es financiero y se muestra junto con el monto; no sustituye ni altera el badge operativo.
+
+### Interfaz interna de cobranza
+
+1. Mostrar primero el subtotal general y la fórmula aplicada: sin factura, `total = subtotal`; con factura, `total = subtotal + IVA`.
+2. Permitir al personal elegir preferencia de factura y método de pago como controles independientes.
+3. Reutilizar `CustomerFiscalProfile`; si faltan datos fiscales, capturarlos en la interfaz interna y confirmar el snapshot de la operación.
+4. Para efectivo, ofrecer liquidación total o abono parcial sin generar link ni exigir cuentas bancarias.
+5. Para todo abono parcial, mostrar saldo restante, impacto en la cuenta del cliente e indicador financiero en la cotización.
+6. Si cambia la preferencia de factura hasta la liquidación final, presentar el recálculo de IVA y total, solicitar confirmación y advertir que se actualizarán las instrucciones de pago.
+
+Los registros `Payment`, el cobro parcial en efectivo, el ledger y estos estados financieros son componentes objetivo.
+
+### Página pública de transferencia
+
+- El importe está decidido y se presenta con máxima jerarquía visual.
+- Solo aparecen cuentas compatibles con la preferencia fiscal registrada internamente.
+- Las acciones son copiar datos, contactar al taller y enviar comprobante.
+- No se muestran selector de factura, toggle de IVA ni formulario fiscal.
+- `PaymentRequest` identifica instrucciones; la UI no comunica que el pago quedó aplicado o liquidado.
+- `/datos-pago` no se usa como referencia contextual; su alcance final está pendiente.
 
 ## Pantallas por rol
 
@@ -271,7 +295,7 @@ Las reglas de negocio completas viven en [`README.md`](./README.md#reglas-de-neg
 - Ver cotización / orden de trabajo asignada.
 - Aceptar o declinar cotización.
 - Ver evidencia (fotos/diagnóstico) con URLs firmadas.
-- Ver datos de pago fijos.
+- Ver instrucciones de transferencia cuando recibe un link contextual.
 - **Fuera del MVP inmediato** según `docs/MVP_ISSUES.md`.
 
 ### Empleado (post-MVP inmediato)
@@ -289,9 +313,9 @@ Las reglas de negocio completas viven en [`README.md`](./README.md#reglas-de-neg
 - Bloque cliente/vehículo en grid de 2 columnas.
 - Banner `SERVICIO` con fondo `#E6F1FB`.
 - Tabla de conceptos: `Cant. / Concepto / Unitario / Importe`.
-- Totales: Subtotal / IVA (si aplica) / Total grande en `#004AAD`.
-- Card "Datos de pago" en deep navy con CLABEs en monospace y QR a `/pago`.
-- No imprimir CLABEs directamente; usar URL + QR.
+- Totales: subtotal general / IVA (si aplica) / total pagable grande en `#004AAD`.
+- Card o QR de transferencia solo cuando existe un `PaymentRequest` contextual.
+- El efectivo no muestra QR, link ni cuentas bancarias.
 
 ## Do's and Don'ts
 
