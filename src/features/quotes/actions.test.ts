@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { Prisma, QuoteStatus } from "@prisma/client";
+import { PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
 import {
   cancelDraftQuote,
   cancelDraftQuoteFromForm,
@@ -55,6 +55,7 @@ class MockFormData {
 type MockTx = {
   quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   quoteItem: { deleteMany: ReturnType<typeof vi.fn> };
+  payment: { count: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
@@ -67,6 +68,7 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
       updateMany: vi.fn(),
     },
     quoteItem: { deleteMany: vi.fn() },
+    payment: { count: vi.fn().mockResolvedValue(0) },
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
   (findOrCreateVehicle as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "vehicle-1" });
@@ -212,6 +214,28 @@ describe("updateDraftQuote", () => {
     const result = await updateDraftQuote("quote-1", validInput());
 
     expect(result.totalCents).toBe(197200);
+  });
+
+  it("rejects lowering a quote total after a paid cash payment without replacing its items", async () => {
+    const tx = mockTx(QuoteStatus.APPROVED);
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      status: QuoteStatus.APPROVED,
+      totalCents: 250000,
+      items: [],
+      workOrder: null,
+    });
+    tx.payment.count.mockResolvedValue(1);
+
+    await expect(updateDraftQuote("quote-1", validInput())).rejects.toThrow(
+      "This quote has paid payments and cannot be edited.",
+    );
+
+    expect(tx.payment.count).toHaveBeenCalledWith({
+      where: { quoteId: "quote-1", status: PaymentStatus.PAID },
+    });
+    expect(tx.quoteItem.deleteMany).not.toHaveBeenCalled();
+    expect(tx.quote.update).not.toHaveBeenCalled();
   });
 
   it("allows updating a REJECTED quote when not expired and work order is not terminal", async () => {
