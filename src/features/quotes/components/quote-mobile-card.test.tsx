@@ -61,6 +61,8 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     subtotalCents: 10000,
     taxCents: 1600,
     totalCents: 11600,
+    paidCents: 0,
+    remainingCents: 11600,
     taxEnabled: true,
     validUntil: new Date("2026-12-31T00:00:00.000Z"),
     approvedAt: null,
@@ -102,12 +104,17 @@ function renderCard(quote: QuoteListItem) {
       shareAction={vi.fn()}
       authorizeAction={vi.fn(() => Promise.resolve({ success: true }))}
       paymentRequestAction={vi.fn(() => Promise.resolve({ id: "pr-1", token: "token-1" } as PaymentRequest))}
-      paymentRequestBankAccounts={[{
+       paymentRequestBankAccounts={[{
         accountHolder: "Federico Cruz",
         bankName: "Santander",
         accountNumber: "123456",
         clabe: "4444 4444 4444 4444",
-      }]}
+       }]}
+       cashPaymentAction={vi.fn(() => Promise.resolve({
+         payment: { amountCents: 1000 },
+         paidCents: 1000,
+         remainingCents: 10600,
+       }))}
       duplicateAction={vi.fn()}
       customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
       saveAction={vi.fn()}
@@ -234,6 +241,7 @@ describe("QuoteListCard", () => {
     expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /compartir cotización/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /registrar pago en efectivo/i })).toBeInTheDocument();
   });
 
   it("passes quote payment context to the payment link dialog", async () => {
