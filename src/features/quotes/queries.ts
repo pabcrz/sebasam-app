@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { endOfDay } from "@/lib/filters";
 import { quoteFilterSchema, type QuoteFilterInput } from "./schemas";
+import { getQuotePaidTotals } from "@/features/payments/queries";
 
 export async function getQuoteById(quoteId: string) {
   await requireOperationalRole();
@@ -91,19 +92,32 @@ export async function listQuotes(input: unknown = {}) {
     orderBy: { createdAt: "desc" },
   });
 
+  const paidTotals = await getQuotePaidTotals(quotes.map((quote) => quote.id));
+
   // Serialize Prisma Decimal fields to plain numbers so Next.js Server→Client Component
   // serialization does not break with Turbopack.
-  return quotes.map((quote) => ({
-    ...quote,
-    subtotalCents: Number(quote.subtotalCents),
-    taxCents: Number(quote.taxCents),
-    totalCents: Number(quote.totalCents),
-    items: quote.items.map((item) => ({
-      ...item,
-      quantity: Number(item.quantity),
-      unitPriceCents: Number(item.unitPriceCents),
-      totalCents: Number(item.totalCents),
-    })),
-    activeSharedQuote: findActiveSharedQuote(quote.sharedQuotes),
-  }));
+  return quotes.map((quote) => {
+    const totalCents = Number(quote.totalCents);
+    const paidCents = paidTotals.get(quote.id) ?? 0;
+
+    if (paidCents > totalCents) {
+      throw new Error(`Los pagos registrados exceden el total de la cotización ${quote.number}.`);
+    }
+
+    return {
+      ...quote,
+      subtotalCents: Number(quote.subtotalCents),
+      taxCents: Number(quote.taxCents),
+      totalCents,
+      paidCents,
+      remainingCents: totalCents - paidCents,
+      items: quote.items.map((item) => ({
+        ...item,
+        quantity: Number(item.quantity),
+        unitPriceCents: Number(item.unitPriceCents),
+        totalCents: Number(item.totalCents),
+      })),
+      activeSharedQuote: findActiveSharedQuote(quote.sharedQuotes),
+    };
+  });
 }

@@ -17,6 +17,7 @@ import { PaymentRequestLinkDialog } from "@/features/payment-requests/components
 import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
+import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
 
@@ -34,6 +35,11 @@ interface QuoteListCardProps {
   authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
+  cashPaymentAction: (amount: string, operationKey: string) => Promise<{
+    payment: { amountCents: number };
+    paidCents: number;
+    remainingCents: number;
+  }>;
   duplicateAction: (formData: FormData) => void | Promise<void>;
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
@@ -52,6 +58,7 @@ export function QuoteListCard({
   authorizeAction,
   paymentRequestAction,
   paymentRequestBankAccounts,
+  cashPaymentAction,
   duplicateAction,
   customers,
   saveAction,
@@ -174,6 +181,15 @@ export function QuoteListCard({
         ) : null}
         {quote.status === "SENT" || quote.status === "APPROVED" ? (
           <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
+        ) : null}
+        {quote.status === "SENT" || quote.status === "APPROVED" ? (
+          <CashPaymentDialog
+            action={cashPaymentAction}
+            quoteNumber={quote.number}
+            totalCents={quote.totalCents}
+            paidCents={quote.paidCents}
+            remainingCents={quote.remainingCents}
+          />
         ) : null}
         {quote.status === "SENT" ? (
           <QuoteAuthorizeForm
