@@ -9,7 +9,7 @@ export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
       <div
         ref={ref}
         className={clsx(
-          "rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-[var(--space-md)] shadow-sm",
+          "w-full rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-[var(--space-md)] shadow-sm",
           className,
         )}
         {...props}
