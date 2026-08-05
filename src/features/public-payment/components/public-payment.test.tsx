@@ -1,9 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { PaymentRequestStatus } from "@prisma/client";
-import { InvoiceDecision } from "./invoice-decision";
-import { FiscalDataForm } from "./fiscal-data-form";
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
 import { BankDataCard } from "./bank-data-card";
 import { ContactCard } from "./contact-card";
 import { WhatsAppReceiptCta } from "./whatsapp-receipt-cta";
@@ -11,15 +7,15 @@ import { PaymentRequestErrorState } from "./payment-request-error-state";
 import { PublicPaymentPage } from "./public-payment-page";
 import { PublicPaymentShell } from "./public-payment-shell";
 
-function createMockRequest(overrides: { status?: PaymentRequestStatus; requiresInvoice?: boolean } = {}) {
+function createMockRequest() {
   return {
     id: "pr-123",
     token: "token-123",
-    status: overrides.status ?? PaymentRequestStatus.PENDING,
+    status: "READY_TO_PAY" as const,
     customerId: "customer-123",
     quoteId: null,
     workOrderId: null,
-    requiresInvoice: overrides.requiresInvoice ?? false,
+    requiresInvoice: false,
     customerFiscalProfileId: null,
     fiscalSnapshot: null,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -40,76 +36,6 @@ function createMockRequest(overrides: { status?: PaymentRequestStatus; requiresI
     customerFiscalProfile: null,
   };
 }
-
-describe("InvoiceDecision", () => {
-  it("calls onDecision(false) when payment-only option is selected", async () => {
-    const user = userEvent.setup();
-    const onDecision = vi.fn();
-    render(<InvoiceDecision onDecision={onDecision} />);
-
-    await user.click(screen.getByRole("button", { name: /solo datos de pago/i }));
-
-    expect(onDecision).toHaveBeenCalledWith(false);
-  });
-
-  it("calls onDecision(true) when invoice option is selected", async () => {
-    const user = userEvent.setup();
-    const onDecision = vi.fn();
-    render(<InvoiceDecision onDecision={onDecision} />);
-
-    await user.click(screen.getByRole("button", { name: /requiero factura/i }));
-
-    expect(onDecision).toHaveBeenCalledWith(true);
-  });
-
-  it("disables buttons while pending", () => {
-    render(<InvoiceDecision onDecision={vi.fn()} isPending />);
-
-    expect(screen.getByRole("button", { name: /solo datos de pago/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /requiero factura/i })).toBeDisabled();
-  });
-});
-
-describe("FiscalDataForm", () => {
-  it("submits required fields when valid", async () => {
-    const user = userEvent.setup();
-    const action = vi.fn().mockResolvedValue(undefined);
-    render(<FiscalDataForm action={action} />);
-
-    await user.type(screen.getByLabelText(/nombre completo/i), "Juan Pérez");
-    await user.type(screen.getByLabelText(/rfc/i), "PEPJ800101ABC");
-    await user.type(screen.getByLabelText(/régimen fiscal/i), "612");
-    await user.type(screen.getByLabelText(/uso de cfdi/i), "G03");
-    await user.type(screen.getByLabelText(/código postal fiscal/i), "01000");
-    await user.click(screen.getByRole("button", { name: /guardar datos fiscales/i }));
-
-    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
-
-    const formData = action.mock.calls[0][0] as FormData;
-    expect(formData.get("personType")).toBe("INDIVIDUAL");
-    expect(formData.get("businessName")).toBe("Juan Pérez");
-    expect(formData.get("taxId")).toBe("PEPJ800101ABC");
-    expect(formData.get("taxRegime")).toBe("612");
-    expect(formData.get("cfdiUse")).toBe("G03");
-    expect(formData.get("zipCode")).toBe("01000");
-  });
-
-  it("switches person type to BUSINESS and updates label", async () => {
-    const user = userEvent.setup();
-    render(<FiscalDataForm action={vi.fn()} />);
-
-    await user.click(screen.getByRole("tab", { name: /empresa/i }));
-
-    expect(screen.getByLabelText(/razón social/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/nombre completo/i)).not.toBeInTheDocument();
-  });
-
-  it("displays server error when provided", () => {
-    render(<FiscalDataForm action={vi.fn()} serverError="RFC inválido" />);
-
-    expect(screen.getByRole("alert")).toHaveTextContent("RFC inválido");
-  });
-});
 
 describe("BankDataCard", () => {
   it("renders bank details and copy buttons when no props (legacy fallback)", () => {
@@ -303,59 +229,47 @@ describe("PaymentRequestErrorState", () => {
 });
 
 describe("PublicPaymentPage", () => {
-  it("shows decision when request is pending", () => {
+  it("renders payment data section with bank accounts, contact, reference, and WhatsApp CTA", () => {
     render(
       <PublicPaymentPage
-        request={createMockRequest({ status: PaymentRequestStatus.PENDING })}
-        setInvoicePreferenceAction={vi.fn()}
-        saveFiscalDataAction={vi.fn()}
+        request={createMockRequest()}
+        bankAccounts={[
+          {
+            id: 1,
+            accountHolder: "Juan Pérez",
+            bankName: "BBVA",
+            accountNumber: "987654",
+            clabe: "0123 4567 8901 2345",
+          },
+        ]}
+        contact={{
+          phone: "5511223344",
+          whatsapp: "5544332211",
+        }}
       />,
     );
 
-    expect(screen.getByRole("heading", { name: /qué necesitas compartir/i })).toBeInTheDocument();
+    expect(screen.getByText("Q-001")).toBeInTheDocument();
+    expect(screen.getByText(/Total: \$4,000\.00/)).toBeInTheDocument();
+    expect(screen.getByText("Juan Pérez")).toBeInTheDocument();
+    expect(screen.getByText("BBVA")).toBeInTheDocument();
+    expect(screen.getByText("5511223344")).toBeInTheDocument();
+    expect(screen.getByText("5544332211")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /enviar whatsapp/i })).toBeInTheDocument();
   });
 
-  it("shows fiscal form when invoice is required", () => {
-    render(
-      <PublicPaymentPage
-        request={createMockRequest({ status: PaymentRequestStatus.FISCAL_DATA_REQUIRED, requiresInvoice: true })}
-        setInvoicePreferenceAction={vi.fn()}
-        saveFiscalDataAction={vi.fn()}
-      />,
-    );
+  it("renders payment data directly without invoice decision or fiscal-form elements", () => {
+    render(<PublicPaymentPage request={createMockRequest()} />);
 
-    expect(screen.getByRole("heading", { name: /captura de datos fiscales/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /qué necesitas compartir/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /captura de datos fiscales/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Q-001")).toBeInTheDocument();
   });
 
-  it("shows payment data when ready to pay", () => {
-    render(
-      <PublicPaymentPage
-        request={createMockRequest({ status: PaymentRequestStatus.READY_TO_PAY })}
-        setInvoicePreferenceAction={vi.fn()}
-        saveFiscalDataAction={vi.fn()}
-      />,
-    );
+  it("shows the payment badge in the shell", () => {
+    render(<PublicPaymentPage request={createMockRequest()} />);
 
-    expect(screen.getByRole("heading", { name: /datos de pago/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /enviar comprobante/i })).toBeInTheDocument();
-  });
-
-  it("submits invoice preference and displays returned error", async () => {
-    const user = userEvent.setup();
-    const setInvoicePreferenceAction = vi.fn().mockResolvedValue({ success: false, error: "Token vencido" });
-
-    render(
-      <PublicPaymentPage
-        request={createMockRequest({ status: PaymentRequestStatus.PENDING })}
-        setInvoicePreferenceAction={setInvoicePreferenceAction}
-        saveFiscalDataAction={vi.fn()}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: /requiero factura/i }));
-
-    await waitFor(() => expect(setInvoicePreferenceAction).toHaveBeenCalledWith(true));
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Token vencido"));
+    expect(screen.getAllByText("Datos para transferencia").length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -390,12 +304,10 @@ describe("PublicPaymentShell", () => {
   });
 
   it("passes business/bank/contact props through PublicPaymentPage to children", () => {
-    const mockRequest = createMockRequest({ status: PaymentRequestStatus.READY_TO_PAY });
+    const mockRequest = createMockRequest();
     render(
       <PublicPaymentPage
         request={mockRequest}
-        setInvoicePreferenceAction={vi.fn()}
-        saveFiscalDataAction={vi.fn()}
         business={{
           name: "Custom Business",
           fullName: "Custom Full Name",

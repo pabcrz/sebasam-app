@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { PaymentRequest } from "@prisma/client";
-import { PaymentRequestLinkDialog } from "./payment-request-link-dialog";
+import {
+  PaymentRequestLinkDialog,
+  type PaymentRequestDialogContext,
+} from "./payment-request-link-dialog";
 
 function createMockPaymentRequest(overrides: Partial<PaymentRequest> = {}): PaymentRequest {
   return {
@@ -21,6 +24,30 @@ function createMockPaymentRequest(overrides: Partial<PaymentRequest> = {}): Paym
     updatedAt: new Date(),
     ...overrides,
   } as PaymentRequest;
+}
+
+function createDialogContext(overrides: Partial<PaymentRequestDialogContext> = {}): PaymentRequestDialogContext {
+  return {
+    quoteNumber: "Q-001",
+    title: "Servicio general",
+    customerName: "Constructora del Norte",
+    vehicleDescription: "Ford Transit 2024 · ABC123",
+    workOrderNumber: "T-001",
+    subtotalCents: 10000,
+    taxCents: 1600,
+    totalCents: 11600,
+    requiresInvoice: true,
+    paymentRequestStatus: "FISCAL_DATA_REQUIRED",
+    fiscalProfile: null,
+    fiscalActionHref: "/admin/customers/cust-123/edit",
+    bankAccount: {
+      accountHolder: "Federico Cruz",
+      bankName: "Santander",
+      accountNumber: "123456",
+      clabe: "4444 4444 4444 4444",
+    },
+    ...overrides,
+  };
 }
 
 describe("PaymentRequestLinkDialog", () => {
@@ -47,7 +74,7 @@ describe("PaymentRequestLinkDialog", () => {
   it("opens the dialog and generates a payment link", async () => {
     const user = userEvent.setup();
     const action = vi.fn().mockResolvedValue(createMockPaymentRequest());
-    render(<PaymentRequestLinkDialog action={action} quoteNumber="Q-001" />);
+    render(<PaymentRequestLinkDialog action={action} context={createDialogContext()} />);
 
     await user.click(screen.getByRole("button", { name: /link de pago/i }));
     await user.click(screen.getByRole("button", { name: /generar link/i }));
@@ -59,7 +86,7 @@ describe("PaymentRequestLinkDialog", () => {
   it("copies the absolute URL to the clipboard", async () => {
     const user = userEvent.setup();
     const action = vi.fn().mockResolvedValue(createMockPaymentRequest());
-    render(<PaymentRequestLinkDialog action={action} quoteNumber="Q-001" />);
+    render(<PaymentRequestLinkDialog action={action} context={createDialogContext()} />);
 
     await user.click(screen.getByRole("button", { name: /link de pago/i }));
     await user.click(screen.getByRole("button", { name: /generar link/i }));
@@ -74,7 +101,7 @@ describe("PaymentRequestLinkDialog", () => {
   it("opens the URL in a new tab from the copy-and-open action", async () => {
     const user = userEvent.setup();
     const action = vi.fn().mockResolvedValue(createMockPaymentRequest());
-    render(<PaymentRequestLinkDialog action={action} quoteNumber="Q-001" />);
+    render(<PaymentRequestLinkDialog action={action} context={createDialogContext()} />);
 
     await user.click(screen.getByRole("button", { name: /link de pago/i }));
     await user.click(screen.getByRole("button", { name: /generar link/i }));
@@ -94,7 +121,7 @@ describe("PaymentRequestLinkDialog", () => {
   it("displays an error when the action fails", async () => {
     const user = userEvent.setup();
     const action = vi.fn().mockRejectedValue(new Error("La cotización no existe."));
-    render(<PaymentRequestLinkDialog action={action} quoteNumber="Q-001" />);
+    render(<PaymentRequestLinkDialog action={action} context={createDialogContext()} />);
 
     await user.click(screen.getByRole("button", { name: /link de pago/i }));
     await user.click(screen.getByRole("button", { name: /generar link/i }));
@@ -106,7 +133,7 @@ describe("PaymentRequestLinkDialog", () => {
   it("prevents double submission while loading", async () => {
     const user = userEvent.setup();
     const action = vi.fn(() => new Promise<PaymentRequest>(() => {}));
-    render(<PaymentRequestLinkDialog action={action} quoteNumber="Q-001" />);
+    render(<PaymentRequestLinkDialog action={action} context={createDialogContext()} />);
 
     await user.click(screen.getByRole("button", { name: /link de pago/i }));
     const generateButton = screen.getByRole("button", { name: /generar link/i });
@@ -120,7 +147,7 @@ describe("PaymentRequestLinkDialog", () => {
   it("closes the dialog without calling the action when cancelled", async () => {
     const user = userEvent.setup();
     const action = vi.fn();
-    render(<PaymentRequestLinkDialog action={action} quoteNumber="Q-001" />);
+    render(<PaymentRequestLinkDialog action={action} context={createDialogContext()} />);
 
     await user.click(screen.getByRole("button", { name: /link de pago/i }));
     await user.click(screen.getByRole("button", { name: /cancelar/i }));
@@ -129,13 +156,52 @@ describe("PaymentRequestLinkDialog", () => {
     expect(action).not.toHaveBeenCalled();
   });
 
-  it("renders the dialog with the expected width constraint", async () => {
+  it("renders the dialog with responsive width and scroll constraints", async () => {
     const user = userEvent.setup();
-    render(<PaymentRequestLinkDialog action={vi.fn()} quoteNumber="Q-001" />);
+    render(<PaymentRequestLinkDialog action={vi.fn()} context={createDialogContext()} />);
 
     await user.click(screen.getByRole("button", { name: /link de pago/i }));
 
     const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveClass("w-[calc(100vw-2rem)]");
     expect(dialog).toHaveClass("max-w-2xl");
+    expect(dialog).toHaveClass("overflow-y-auto");
+  });
+
+  it("renders quote, fiscal, and bank context before generating the link", async () => {
+    const user = userEvent.setup();
+    render(<PaymentRequestLinkDialog action={vi.fn()} context={createDialogContext()} />);
+
+    await user.click(screen.getByRole("button", { name: /link de pago/i }));
+
+    expect(screen.getByText("Cotización Q-001")).toBeInTheDocument();
+    expect(screen.getByText("Constructora del Norte")).toBeInTheDocument();
+    expect(screen.getByText("Ford Transit 2024 · ABC123")).toBeInTheDocument();
+    expect(screen.getByText("$116.00")).toBeInTheDocument();
+    expect(screen.getByText("Factura requerida")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /revisar cliente/i })).toHaveAttribute(
+      "href",
+      "/admin/customers/cust-123/edit",
+    );
+    expect(screen.getByText("Santander")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /copiar clabe al portapapeles/i })).toBeInTheDocument();
+  });
+
+  it("shows the saved fiscal profile instead of the review action", async () => {
+    const user = userEvent.setup();
+    render(
+      <PaymentRequestLinkDialog
+        action={vi.fn()}
+        context={createDialogContext({
+          fiscalProfile: { businessName: "Constructora del Norte SA", taxId: "CNO010101AA1" },
+          paymentRequestStatus: "READY_TO_PAY",
+        })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /link de pago/i }));
+
+    expect(screen.getByText(/Constructora del Norte SA · RFC CNO010101AA1/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /revisar cliente/i })).not.toBeInTheDocument();
   });
 });

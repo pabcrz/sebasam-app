@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { connection } from "next/server";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { DirectPaymentPage } from "@/features/public-payment/components/direct-payment-page";
 
@@ -7,6 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DatosPagoPage() {
+  await connection();
   const settings = await getPaymentSettings();
 
   return (

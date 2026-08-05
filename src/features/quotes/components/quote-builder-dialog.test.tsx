@@ -6,6 +6,47 @@ import { QuoteBuilderDialog } from "./quote-builder-dialog";
 const customers = [{ id: "1", name: "Acme" }];
 const editInitialData = { customerId: "1", vehicle: { plate: "ABC123", brand: "Ford", model: "Transit", year: "2024" }, title: "Servicio", description: "", administrative: false, taxEnabled: true, items: [{ type: "LABOR" as const, description: "Frenos", quantity: "1", unitPrice: "100" }] };
 
+function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
+  const dialogStyle = getComputedStyle(dialog);
+  expect(dialogStyle.display).toBe("flex");
+  expect(dialogStyle.flexDirection).toBe("column");
+  expect(dialogStyle.alignItems).toBe("stretch");
+  expect(dialogStyle.justifyContent).toBe("flex-start");
+  expect(dialogStyle.overflow).toBe("hidden");
+
+  const header = screen.getByRole("heading", { name: /cotización/ }).parentElement;
+  const form = screen.getByTestId("quote-builder-form");
+  const stepper = screen.getByRole("navigation", { name: "Pasos de cotización" }).parentElement;
+  const body = screen.getByTestId("quote-builder-scroll-area");
+  const footer = screen.getByTestId("quote-builder-footer");
+
+  expect(header).not.toBeNull();
+  expect(stepper).not.toBeNull();
+  expect(Array.from(dialog.children)).toEqual([header, form]);
+  expect(Array.from(form.children)).toEqual([stepper, body, footer]);
+  expect(getComputedStyle(form).justifyContent).toBe("flex-start");
+  expect(getComputedStyle(form).minHeight).toBe("0px");
+
+  for (const fixedRegion of [header!, stepper!, footer]) {
+    const style = getComputedStyle(fixedRegion);
+    expect(style.flexShrink).toBe("0");
+    expect(style.overflowY).not.toBe("auto");
+  }
+
+  const bodyStyle = getComputedStyle(body);
+  expect(bodyStyle.flexGrow).toBe("1");
+  expect(bodyStyle.flexShrink).toBe("1");
+  expect(bodyStyle.minHeight).toBe("0px");
+  expect(bodyStyle.overflowY).toBe("auto");
+  expect(bodyStyle.overscrollBehaviorY).toBe("contain");
+
+  Object.defineProperties(body, {
+    clientHeight: { configurable: true, value: 320 },
+    scrollHeight: { configurable: true, value: overflowing ? 960 : 240 },
+  });
+  expect(body.scrollHeight > body.clientHeight).toBe(overflowing);
+}
+
 async function enterRepresentativeQuoteState(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("combobox", { name: "Cliente" }));
   await user.click(await screen.findByRole("option", { name: "Acme" }));
@@ -40,6 +81,35 @@ function expectRepresentativeQuoteState() {
 }
 
 describe("QuoteBuilderDialog", () => {
+  it.each([
+    ["short", 1],
+    ["long", 12],
+  ])("keeps chrome fixed and content top-aligned for a %s step", async (_, itemCount) => {
+    const user = userEvent.setup();
+    const items = Array.from({ length: itemCount }, (__, index) => ({
+      type: "LABOR" as const,
+      description: `Concept ${index + 1}`,
+      quantity: "1",
+      unitPrice: "100",
+    }));
+    render(
+      <QuoteBuilderDialog
+        customers={customers}
+        initialData={{ ...editInitialData, items }}
+        quoteNumber="C-001"
+        saveAction={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Editar cotización C-001" });
+    expectStableDialogLayout(dialog, itemCount > 1);
+    expect(screen.getAllByLabelText("Descripción", { selector: "input" })).toHaveLength(itemCount);
+    expect(screen.getByTestId("concept-list")).toHaveClass("grid", "gap-3");
+    expect(screen.getByTestId("concept-list")).not.toHaveClass("max-h-[45dvh]", "overflow-y-auto");
+  });
+
   it("requests confirmation via the X button", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
@@ -57,15 +127,13 @@ describe("QuoteBuilderDialog", () => {
       "!translate-x-0",
       "!translate-y-0",
       "!rounded-none",
-      "overflow-hidden",
       "sm:!h-[min(90dvh,52rem)]",
       "sm:!max-h-[min(90dvh,52rem)]",
       "sm:!w-[min(92vw,64rem)]",
       "sm:!max-w-5xl",
       "sm:!rounded-[var(--radius-lg)]",
     );
-    expect(screen.getByTestId("quote-builder-form")).toHaveClass("min-h-0", "flex-1");
-    expect(screen.getByTestId("quote-builder-scroll-area")).toHaveClass("overflow-y-auto", "flex-1");
+    expectStableDialogLayout(dialog, false);
     expect(screen.queryByText(/crear cotización en borrador/i)).not.toBeInTheDocument();
 
     await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
@@ -193,6 +261,7 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("combobox", { name: "Cliente" }));
     const option = await screen.findByRole("option", { name: "Acme" });
+    expect(option.closest("[data-dialog-popover]")?.parentElement).toBe(document.body);
     await user.click(option);
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 

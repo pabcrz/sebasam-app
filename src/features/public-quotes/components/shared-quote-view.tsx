@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useTransition } from "react";
 import { Check, X } from "lucide-react";
-import { Badge } from "@/components/ui";
 import { Button } from "@/components/ui";
 import { QuotePreviewCard } from "@/features/quotes/components/quote-preview-card";
 import { formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
@@ -29,10 +28,17 @@ export interface SharedQuoteViewProps {
 export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
   const [decision, setDecision] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const decisionFeedbackRef = React.useRef<HTMLDivElement>(null);
   const [acceptPending, startAccept] = useTransition();
   const [declinePending, startDecline] = useTransition();
   const isPending = acceptPending || declinePending;
   const hasDecided = decision !== null;
+
+  React.useEffect(() => {
+    if (decision) {
+      decisionFeedbackRef.current?.focus();
+    }
+  }, [decision]);
 
   const handleAccept = React.useCallback(() => {
     setError(null);
@@ -82,12 +88,11 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm">
-        <div>
-          <p className="text-xs font-medium text-[var(--color-text-muted)]">COTIZACIÓN</p>
-          <p className="text-lg font-bold text-[var(--color-text-main)]">{quote.number}</p>
-        </div>
-        <Badge variant="info">{quoteStatusLabels[quote.status]}</Badge>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-[var(--color-text-muted)]">
+        <p>Folio {quote.number}</p>
+        {quote.status !== "SENT" ? (
+          <p className="font-medium">{quoteStatusLabels[quote.status]}</p>
+        ) : null}
       </div>
 
       <QuotePreviewCard
@@ -104,7 +109,12 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
       />
 
       {decision === "accepted" ? (
-        <div className="rounded-[var(--radius-md)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] p-4 text-center">
+        <div
+          ref={decisionFeedbackRef}
+          role="status"
+          tabIndex={-1}
+          className="rounded-[var(--radius-md)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] p-4 text-center"
+        >
           <Check className="mx-auto h-8 w-8 text-[var(--color-status-success-fg)]" aria-hidden="true" />
           <p className="mt-2 font-semibold text-[var(--color-status-success-fg)]">Cotización aceptada</p>
           <p className="mt-1 text-sm text-[var(--color-status-success-fg)] opacity-80">
@@ -112,7 +122,12 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
           </p>
         </div>
       ) : decision === "declined" ? (
-        <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4 text-center">
+        <div
+          ref={decisionFeedbackRef}
+          role="status"
+          tabIndex={-1}
+          className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4 text-center"
+        >
           <X className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" aria-hidden="true" />
           <p className="mt-2 font-semibold text-[var(--color-text-main)]">Cotización declinada</p>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">

@@ -64,6 +64,17 @@ enum PaymentRequestStatus {
   CANCELLED
 }
 
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
 enum QuoteDecisionOrigin {
   CUSTOMER
   ADMIN
@@ -126,6 +137,8 @@ model Vehicle {
 
 model Quote {
   id              String      @id @default(cuid())
+  submissionKey   String?     @unique
+  submissionHash  String?
   customerId      String
   vehicleId       String?
   number          String      @unique
@@ -148,6 +161,7 @@ model Quote {
   items           QuoteItem[]
   workOrder       WorkOrder?
   paymentRequests PaymentRequest[]
+  payments        Payment[]
   sharedQuotes    SharedQuote[]
   decisions       QuoteDecision[]
 }
@@ -278,11 +292,31 @@ model PaymentRequest {
   quote                 Quote?                 @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   workOrder             WorkOrder?             @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   customerFiscalProfile CustomerFiscalProfile? @relation(fields: [customerFiscalProfileId], references: [id], onDelete: SetNull)
+  payments              Payment[]
 
   @@index([customerId])
   @@index([quoteId])
   @@index([workOrderId])
   @@index([token])
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  operationKey     String        @unique
+  quoteId          String
+  paymentRequestId String?
+  method           PaymentMethod
+  amountCents      Int
+  status           PaymentStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  quote          Quote           @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  paymentRequest PaymentRequest? @relation(fields: [paymentRequestId], references: [id], onDelete: SetNull)
+
+  @@index([quoteId])
+  @@index([paymentRequestId])
+  @@index([quoteId, status])
 }
 
 model PaymentSettings {
@@ -293,6 +327,9 @@ model PaymentSettings {
   mapsUrl         String   @default("https://maps.app.goo.gl/MYuGBKwabPGbea7y7")
   contactPhone    String   @default("5556007675")
   contactWhatsapp String   @default("5536239346")
+  hours           Json     @default("{\"weekdays\":\"Lunes a viernes de 9:00 a 18:00\",\"saturday\":\"Sábados de 9:00 a 15:00\"}")
+  services        String[] @default(["Alineación de ejes", "Brio a muelles", "Refuerzos", "Soldadura"])
+  products        String[] @default(["Abrazaderas", "Bujes", "Perchas", "Columpios", "Tensores", "Balancines"])
   updatedAt       DateTime @updatedAt
 
   bankAccounts BankAccount[]

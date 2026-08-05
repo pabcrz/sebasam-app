@@ -28,6 +28,8 @@ type QuoteBuilderDialogProps = {
   initialData?: QuoteBuilderInitialData;
   quote?: QuoteListItem;
   quoteNumber?: string;
+  triggerClassName?: string;
+  triggerSize?: "default" | "sm";
   createCustomerAction?: (input: unknown) => Promise<{
     success: boolean;
     customer?: CustomerOption;
@@ -37,7 +39,7 @@ type QuoteBuilderDialogProps = {
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
 };
 
-export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
+export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = React.useState(false);
   const [dirty, setDirty] = React.useState(false);
@@ -109,13 +111,25 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
         }}
       >
         <DialogTrigger asChild>
-          <Button type="button" variant="primary">
+          <Button type="button" variant="primary" size={triggerSize} className={triggerClassName}>
             {isEdit ? <Pencil className="h-4 w-4" aria-hidden="true" /> : null}
             {isEdit ? "Editar" : "Nueva cotización"}
           </Button>
         </DialogTrigger>
-        <DialogContent className="!inset-0 flex !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 flex-col overflow-hidden !rounded-none p-4 sm:!bottom-auto sm:!left-1/2 sm:!right-auto sm:!top-1/2 sm:!h-[min(90dvh,52rem)] sm:!max-h-[min(90dvh,52rem)] sm:!w-[min(92vw,64rem)] sm:!max-w-5xl sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-[var(--radius-lg)] sm:p-6">
-          <DialogHeader className="relative">
+        <DialogContent
+          className="!inset-0 !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none p-4 sm:!bottom-auto sm:!left-1/2 sm:!right-auto sm:!top-1/2 sm:!h-[min(90dvh,52rem)] sm:!max-h-[min(90dvh,52rem)] sm:!w-[min(92vw,64rem)] sm:!max-w-5xl sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-[var(--radius-lg)] sm:p-6"
+          style={{
+            alignItems: "stretch",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-start",
+            overflow: "hidden",
+          }}
+        >
+          <DialogHeader
+            className="relative"
+            style={{ alignItems: "stretch", flexShrink: 0, justifyContent: "flex-start" }}
+          >
             <DialogTitle>{isEdit ? `Editar cotización ${quoteNumber}` : "Crear cotización"}</DialogTitle>
             <button
               type="button"

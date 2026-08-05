@@ -15,22 +15,19 @@ export async function getPaymentRequestByToken(token: string) {
   return getPaymentRequestByTokenDomain(token);
 }
 
-export async function createPaymentRequestForQuote(quoteId: string, requiresInvoice = false) {
+export async function createPaymentRequestForQuote(quoteId: string) {
   await requireOperationalRole();
-  return createPaymentRequestForQuoteDomain(quoteId, requiresInvoice);
+  return createPaymentRequestForQuoteDomain(quoteId);
 }
 
-export async function getOrCreatePaymentRequestForQuote(quoteId: string, requiresInvoice = false) {
+export async function getOrCreatePaymentRequestForQuote(quoteId: string) {
   await requireOperationalRole();
-  return getOrCreatePaymentRequestForQuoteDomain(quoteId, requiresInvoice);
+  return getOrCreatePaymentRequestForQuoteDomain(quoteId);
 }
 
-export async function createPaymentRequestForWorkOrder(
-  workOrderId: string,
-  requiresInvoice = false,
-) {
+export async function createPaymentRequestForWorkOrder(workOrderId: string) {
   await requireOperationalRole();
-  return createPaymentRequestForWorkOrderDomain(workOrderId, requiresInvoice);
+  return createPaymentRequestForWorkOrderDomain(workOrderId);
 }
 
 export async function setPaymentRequestInvoicePreference(token: string, input: unknown) {

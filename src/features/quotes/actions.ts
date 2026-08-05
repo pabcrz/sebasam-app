@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { Prisma, QuoteStatus } from "@prisma/client";
+import { PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
@@ -223,6 +223,16 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       throw new Error("This quote is not editable.");
     }
 
+    const paidPayments = await tx.payment.count({
+      where: { quoteId, status: PaymentStatus.PAID },
+    });
+
+    // This form always replaces quote items and recalculates totals, so it cannot
+    // safely make an administrative-only update without rewriting paid terms.
+    if (paidPayments > 0) {
+      throw new Error("This quote has paid payments and cannot be edited.");
+    }
+
     const shouldLinkVehicle = hasVehicleData(data.vehicle);
     const vehicle = shouldLinkVehicle
       ? await findOrCreateVehicle(tx, buildVehicleInput(data.customerId, data.vehicle))
@@ -249,7 +259,7 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
         items: { create: items },
       },
     });
-  });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 export async function updateDraftQuoteFromForm(
@@ -270,6 +280,10 @@ export async function updateDraftQuoteFromForm(
   } catch (error) {
     if (error instanceof Error && error.message === "This quote is not editable.") {
       return { error: "Esta cotización ya no se puede editar." };
+    }
+
+    if (error instanceof Error && error.message === "This quote has paid payments and cannot be edited.") {
+      return { error: "Esta cotización ya tiene pagos registrados y no se puede editar." };
     }
 
     return { error: "No se pudo guardar la cotización. Intenta de nuevo." };
@@ -293,6 +307,9 @@ export async function updateDraftQuoteFromWorkspace(
   } catch (error) {
     if (error instanceof Error && error.message === "This quote is not editable.") {
       return { error: "Esta cotización ya no se puede editar." };
+    }
+    if (error instanceof Error && error.message === "This quote has paid payments and cannot be edited.") {
+      return { error: "Esta cotización ya tiene pagos registrados y no se puede editar." };
     }
     return { error: "No se pudo guardar la cotización. Intenta de nuevo." };
   }

@@ -34,12 +34,13 @@ async function createTestCustomer() {
   return customer;
 }
 
-async function createTestQuote(customerId: string) {
+async function createTestQuote(customerId: string, opts?: { taxEnabled?: boolean }) {
   const quote = await prisma.quote.create({
     data: {
       customerId,
       number: `Q-TEST-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       title: "Test Quote",
+      taxEnabled: opts?.taxEnabled ?? false,
     },
   });
   createdQuoteIds.push(quote.id);
@@ -176,10 +177,10 @@ describe("createPaymentRequestForQuote", () => {
     expect(request.token).toBe(`P${targetQuote.number.slice(1)}-11111111`);
   });
 
-  it("sets FISCAL_DATA_REQUIRED when invoice is required at creation", async () => {
-    const quote = await createTestQuote(testCustomerId);
+  it("sets FISCAL_DATA_REQUIRED when the quote has tax enabled", async () => {
+    const quote = await createTestQuote(testCustomerId, { taxEnabled: true });
 
-    const request = await createPaymentRequestForQuote(quote.id, true);
+    const request = await createPaymentRequestForQuote(quote.id);
     createdPaymentRequestIds.push(request.id);
 
     expect(request.status).toBe(PaymentRequestStatus.FISCAL_DATA_REQUIRED);
@@ -243,10 +244,10 @@ describe("getOrCreatePaymentRequestForQuote", () => {
     expect(second.token).not.toBe(first.token);
   });
 
-  it("sets FISCAL_DATA_REQUIRED when invoice is required at creation", async () => {
-    const quote = await createTestQuote(testCustomerId);
+  it("sets FISCAL_DATA_REQUIRED when the quote has tax enabled", async () => {
+    const quote = await createTestQuote(testCustomerId, { taxEnabled: true });
 
-    const request = await getOrCreatePaymentRequestForQuote(quote.id, true);
+    const request = await getOrCreatePaymentRequestForQuote(quote.id);
     createdPaymentRequestIds.push(request.id);
 
     expect(request.status).toBe(PaymentRequestStatus.FISCAL_DATA_REQUIRED);
@@ -350,8 +351,8 @@ describe("setPaymentRequestInvoicePreference", () => {
   }, 10_000);
 
   it("transitions to READY_TO_PAY when invoice is not required", async () => {
-    const quote = await createTestQuote(testCustomerId);
-    const request = await createPaymentRequestForQuote(quote.id, true);
+    const quote = await createTestQuote(testCustomerId, { taxEnabled: true });
+    const request = await createPaymentRequestForQuote(quote.id);
     createdPaymentRequestIds.push(request.id);
 
     const updated = await setPaymentRequestInvoicePreference(request.token, {
@@ -382,8 +383,8 @@ describe("savePaymentRequestFiscalData", () => {
   it(
     "creates a customer fiscal profile and snapshots data into the request",
     async () => {
-    const quote = await createTestQuote(testCustomerId);
-    const request = await createPaymentRequestForQuote(quote.id, true);
+    const quote = await createTestQuote(testCustomerId, { taxEnabled: true });
+    const request = await createPaymentRequestForQuote(quote.id);
     createdPaymentRequestIds.push(request.id);
 
     const fiscalData = {
@@ -425,8 +426,8 @@ describe("savePaymentRequestFiscalData", () => {
   }, 10000);
 
   it("reuses an existing fiscal profile for the same customer and taxId", async () => {
-    const quote = await createTestQuote(testCustomerId);
-    const request = await createPaymentRequestForQuote(quote.id, true);
+    const quote = await createTestQuote(testCustomerId, { taxEnabled: true });
+    const request = await createPaymentRequestForQuote(quote.id);
     createdPaymentRequestIds.push(request.id);
 
     const fiscalData = {
@@ -442,7 +443,7 @@ describe("savePaymentRequestFiscalData", () => {
 
     await cancelPaymentRequest(request.id);
 
-    const secondRequest = await createPaymentRequestForQuote(quote.id, true);
+    const secondRequest = await createPaymentRequestForQuote(quote.id);
     createdPaymentRequestIds.push(secondRequest.id);
 
     const second = await savePaymentRequestFiscalData(secondRequest.token, {

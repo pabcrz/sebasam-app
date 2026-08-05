@@ -4,11 +4,10 @@ import {
   PaymentRequestExpiredError,
   PaymentRequestCancelledError,
 } from "@/features/payment-requests/domain";
-import { setPaymentRequestInvoicePreference, savePaymentRequestFiscalData } from "@/features/public-payment/actions";
 import { PublicPaymentPage } from "@/features/public-payment/components/public-payment-page";
 import { PaymentRequestErrorState } from "@/features/public-payment/components/payment-request-error-state";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
-import type { PaymentRequest } from "@prisma/client";
+import { type PaymentRequest } from "@prisma/client";
 
 export const metadata: Metadata = {
   title: "Datos de pago",
@@ -38,6 +37,20 @@ type PaymentErrorType = "not-found" | "expired" | "cancelled";
 type PaymentPageResult =
   | { kind: "success"; request: PublicPaymentRequest }
   | { kind: "error"; errorType: PaymentErrorType };
+
+type SettingsBankAccount = Awaited<ReturnType<typeof getPaymentSettings>>["bankAccounts"][number];
+
+function toPublicBankAccounts(accounts: SettingsBankAccount[]) {
+  return accounts
+    .filter((account) => !account.isForInvoicing)
+    .map(({ id, accountHolder, bankName, accountNumber, clabe }) => ({
+      id,
+      accountHolder,
+      bankName,
+      accountNumber,
+      clabe,
+    }));
+}
 
 function mapErrorToType(error: unknown): PaymentErrorType {
   if (error instanceof PaymentRequestExpiredError) {
@@ -78,15 +91,13 @@ export default async function DatosDePagoPage({ params }: PaymentPageProps) {
   return (
     <PublicPaymentPage
       request={result.request}
-      setInvoicePreferenceAction={setPaymentRequestInvoicePreference.bind(null, token)}
-      saveFiscalDataAction={savePaymentRequestFiscalData.bind(null, token)}
       business={{
         name: settings.name,
         fullName: settings.fullName,
         address: settings.address,
         mapsUrl: settings.mapsUrl,
       }}
-      bankAccounts={settings.bankAccounts}
+      bankAccounts={toPublicBankAccounts(settings.bankAccounts)}
       contact={{
         phone: settings.contactPhone,
         whatsapp: settings.contactWhatsapp,

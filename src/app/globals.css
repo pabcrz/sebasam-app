@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tailwind-animations";
 
 :root {
   --background: #f3f6fa;
@@ -158,13 +159,6 @@
   /* Gradients */
   --gradient-primary: var(--gradient-primary);
   --gradient-primary-hover: var(--gradient-primary-hover);
-
-  /* Spacing */
-  --spacing-xs: var(--space-xs);
-  --spacing-sm: var(--space-sm);
-  --spacing-md: var(--space-md);
-  --spacing-lg: var(--space-lg);
-  --spacing-xl: var(--space-xl);
 
   /* Radii */
   --radius-sm: var(--radius-sm);

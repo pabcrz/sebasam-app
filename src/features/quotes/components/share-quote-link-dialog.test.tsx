@@ -41,7 +41,9 @@ describe("ShareQuoteLinkDialog", () => {
     const user = userEvent.setup();
     render(<ShareQuoteLinkDialog sharedQuote={createMockSharedQuote()} quoteNumber="C-001" />);
 
-    await user.click(screen.getByRole("button", { name: /ver link de cotización c-001/i }));
+    const shareButton = screen.getByRole("button", { name: /compartir cotización c-001/i });
+    expect(shareButton.querySelector("svg")).toBeInTheDocument();
+    await user.click(shareButton);
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText(/cotizacion\/abc123/i)).toBeInTheDocument();
@@ -51,7 +53,7 @@ describe("ShareQuoteLinkDialog", () => {
     const user = userEvent.setup();
     render(<ShareQuoteLinkDialog sharedQuote={createMockSharedQuote()} quoteNumber="C-001" />);
 
-    await user.click(screen.getByRole("button", { name: /ver link de cotización c-001/i }));
+    await user.click(screen.getByRole("button", { name: /compartir cotización c-001/i }));
     await waitFor(() => {
       expect(screen.getByText("https://example.com/cotizacion/abc123")).toBeInTheDocument();
     });

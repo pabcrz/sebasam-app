@@ -14,13 +14,16 @@ import { ShareQuoteButton } from "./share-quote-button";
 import { ShareQuoteLinkDialog } from "./share-quote-link-dialog";
 import { QuoteAuthorizeForm } from "./quote-authorize-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
+import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
+import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
+import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
-interface QuoteMobileCardProps {
+interface QuoteListCardProps {
   quote: QuoteListItem;
   quoteStatusLabels: Record<QuoteStatus, string>;
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
@@ -31,13 +34,19 @@ interface QuoteMobileCardProps {
   shareAction: (formData: FormData) => void | Promise<void>;
   authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
+  paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
+  cashPaymentAction: (amount: string, operationKey: string) => Promise<{
+    payment: { amountCents: number };
+    paidCents: number;
+    remainingCents: number;
+  }>;
   duplicateAction: (formData: FormData) => void | Promise<void>;
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
 }
 
-export function QuoteMobileCard({
+export function QuoteListCard({
   quote,
   quoteStatusLabels,
   quoteStatusBadgeVariant,
@@ -48,14 +57,17 @@ export function QuoteMobileCard({
   shareAction,
   authorizeAction,
   paymentRequestAction,
+  paymentRequestBankAccounts,
+  cashPaymentAction,
   duplicateAction,
   customers,
   saveAction,
   searchCustomersAction,
-}: QuoteMobileCardProps) {
+}: QuoteListCardProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
   const openPreview = React.useCallback(() => setPreviewOpen(true), []);
+  const paymentRequestContext = createPaymentRequestDialogContext(quote, paymentRequestBankAccounts);
   const vehicleDescription = quote.vehicle
     ? formatVehicle(quote.vehicle)
     : formatSnapshotVehicle(quote.vehicleSnapshot);
@@ -68,20 +80,23 @@ export function QuoteMobileCard({
         className="block w-full cursor-pointer rounded-[var(--radius-sm)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2"
         aria-label={`Abrir vista previa de ${quote.number}`}
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              {quote.number}
-            </p>
-            <p className="mt-1 truncate text-base font-semibold text-[var(--color-text-main)]">
-              {quote.customer.name}
-            </p>
+            <h3 className="text-lg font-semibold leading-6 text-[var(--color-text-main)]">
+              {quote.title || "Sin título"}
+            </h3>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
+              <span>Folio {quote.number}</span>
+              <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
+            </div>
           </div>
-          <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
+          <p className="shrink-0 text-xl font-bold tabular-nums text-[var(--color-primary)]">
+            {formatCents(quote.totalCents)}
+          </p>
         </div>
 
-        <p className="mt-3 text-sm font-medium leading-5 text-[var(--color-text-main)]">
-          {quote.title || "Sin título"}
+        <p className="mt-3 text-sm font-medium text-[var(--color-text-main)]">
+          {quote.customer.name}
         </p>
         <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
           <Car className="h-3.5 w-3.5" aria-hidden="true" />
@@ -112,22 +127,12 @@ export function QuoteMobileCard({
           )}
         </div>
 
-        <div className="mt-3 border-t border-[var(--color-border-light)] pt-3">
-          <dl className="grid gap-1.5 text-sm">
-            <div className="flex items-center justify-between gap-3 text-xs text-[var(--color-text-muted)]">
-              <dt>Subtotal</dt>
-              <dd className="tabular-nums">{formatCents(quote.subtotalCents)}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-3 text-xs text-[var(--color-text-muted)]">
-              <dt>IVA</dt>
-              <dd className="tabular-nums">{formatCents(quote.taxCents)}</dd>
-            </div>
-            <div className="flex items-end justify-between gap-3 pt-1 text-[var(--color-primary)]">
-              <dt className="font-semibold text-[var(--color-text-main)]">Total</dt>
-              <dd className="text-xl font-bold tabular-nums">{formatCents(quote.totalCents)}</dd>
-            </div>
-          </dl>
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--color-border-light)] pt-3 text-xs text-[var(--color-text-muted)]">
+          <p className="flex items-center gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Creada el {formatDate(quote.createdAt)}</span>
+          </p>
+          <p className="flex items-center gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
             <span>Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}</span>
           </p>
@@ -145,18 +150,20 @@ export function QuoteMobileCard({
             )}
           </div>
         ) : null}
-        <div className="flex gap-2">
-          {editable ? (
-            <QuoteBuilderDialog customers={customers} saveAction={saveAction} searchCustomersAction={searchCustomersAction} quote={quote} quoteNumber={quote.number} />
-          ) : (
-            <Button variant="outline" size="sm" disabled className="flex-1">
-              <Pencil className="h-4 w-4" aria-hidden="true" />
-              <span>Editar</span>
-            </Button>
-          )}
-          <form action={duplicateAction} className={editable ? "flex-1" : ""}>
+        <div data-testid="quote-primary-actions" className="grid grid-cols-2 gap-2 [&_button]:h-9 [&_button]:w-full">
+          <div className="min-w-0">
+            {editable ? (
+              <QuoteBuilderDialog customers={customers} saveAction={saveAction} searchCustomersAction={searchCustomersAction} quote={quote} quoteNumber={quote.number} triggerClassName="h-9 w-full" triggerSize="sm" />
+            ) : (
+              <Button variant="outline" size="sm" disabled className="h-9 w-full">
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                <span>Editar</span>
+              </Button>
+            )}
+          </div>
+          <form action={duplicateAction} className="min-w-0 w-full">
             <input type="hidden" name="quoteId" value={quote.id} />
-            <Button type="submit" variant="outline" size="sm" className="w-full">
+            <Button type="submit" variant="outline" size="sm" className="h-9 w-full">
               <Copy className="h-4 w-4" aria-hidden="true" />
               <span>Duplicar</span>
             </Button>
@@ -173,7 +180,16 @@ export function QuoteMobileCard({
           </>
         ) : null}
         {quote.status === "SENT" || quote.status === "APPROVED" ? (
-          <PaymentRequestLinkDialog action={paymentRequestAction} quoteNumber={quote.number} />
+          <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
+        ) : null}
+        {quote.status === "SENT" || quote.status === "APPROVED" ? (
+          <CashPaymentDialog
+            action={cashPaymentAction}
+            quoteNumber={quote.number}
+            totalCents={quote.totalCents}
+            paidCents={quote.paidCents}
+            remainingCents={quote.remainingCents}
+          />
         ) : null}
         {quote.status === "SENT" ? (
           <QuoteAuthorizeForm

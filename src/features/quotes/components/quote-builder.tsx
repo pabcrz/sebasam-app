@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   Button,
   Checkbox,
@@ -31,6 +32,18 @@ export type CustomerOption = {
   id: string;
   name: string;
 };
+
+const customerSearchDelay = 500;
+const minimumCustomerQueryLength = 2;
+const customerListGap = 4;
+const customerListViewportMargin = 8;
+const customerListMaxHeight = 224;
+
+function filterCustomers(customers: CustomerOption[], query: string) {
+  const normalizedQuery = query.trim().toLocaleLowerCase("es-MX");
+  if (!normalizedQuery) return customers;
+  return customers.filter((customer) => customer.name.toLocaleLowerCase("es-MX").includes(normalizedQuery));
+}
 
 type QuoteCustomerActionResult = {
   success: boolean;
@@ -88,6 +101,11 @@ export function QuoteBuilder({
   const [activeCustomerIndex, setActiveCustomerIndex] = React.useState(-1);
   const customerSearchRequest = React.useRef(0);
   const selectedCustomerRef = React.useRef<CustomerOption | undefined>(initialSelectedCustomer);
+  const customerInputRef = React.useRef<HTMLInputElement>(null);
+  const customerListRef = React.useRef<HTMLDivElement>(null);
+  const knownCustomersRef = React.useRef(new Map(customers.map((customer) => [customer.id, customer])));
+  const customerQueryCache = React.useRef(new Map<string, CustomerOption[]>());
+  const [customerListPosition, setCustomerListPosition] = React.useState<React.CSSProperties>({});
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const hasChangedStep = React.useRef(false);
   const [step, setStep] = React.useState<Step>("client");
@@ -108,9 +126,18 @@ export function QuoteBuilder({
   const [description, setDescription] = React.useState(initialData?.description ?? "");
   const [administrative, setAdministrative] = React.useState(initialData?.administrative ?? false);
   const [taxEnabled, setTaxEnabled] = React.useState(initialData?.taxEnabled ?? true);
+  const initialItemCount = initialData?.items.length || 1;
+  const nextItemRowId = React.useRef(initialItemCount);
   const [items, setItems] = React.useState<ItemFormValue[]>(() =>
     initialData?.items.length ? initialData.items : [{ ...emptyItem }],
   );
+  const [itemRowIds, setItemRowIds] = React.useState(() =>
+    Array.from({ length: initialItemCount }, (_, index) => `quote-item-${index}`),
+  );
+  const [animatedItemRowId, setAnimatedItemRowId] = React.useState<string | null>(null);
+  const pendingItemRowId = React.useRef<string | null>(null);
+  const itemRowRefs = React.useRef(new Map<string, HTMLDivElement>());
+  const itemDescriptionRefs = React.useRef(new Map<string, HTMLInputElement>());
   const initialFormState = React.useRef(JSON.stringify({
     customerId: initialData?.customerId ?? "",
     customerSearch: initialSelectedCustomer?.name ?? "",
@@ -152,7 +179,74 @@ export function QuoteBuilder({
   }, [step]);
 
   React.useEffect(() => {
-    if (!searchCustomersAction || customerSearch === selectedCustomer?.name) return;
+    const rowId = pendingItemRowId.current;
+    if (!rowId) return;
+
+    const row = itemRowRefs.current.get(rowId);
+    const description = itemDescriptionRefs.current.get(rowId);
+    if (!row || !description) return;
+
+    row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    description.focus({ preventScroll: true });
+    pendingItemRowId.current = null;
+  }, [itemRowIds]);
+
+  React.useEffect(() => {
+    if (!isCustomerListOpen) return;
+
+    const positionList = () => {
+      const input = customerInputRef.current;
+      if (!input) return;
+      const bounds = input.getBoundingClientRect();
+      const listHeight = Math.min(customerListRef.current?.scrollHeight || customerListMaxHeight, customerListMaxHeight);
+      const availableBelow = Math.max(0, window.innerHeight - bounds.bottom - customerListGap - customerListViewportMargin);
+      const availableAbove = Math.max(0, bounds.top - customerListGap - customerListViewportMargin);
+      const placeBelow = availableBelow >= listHeight || availableBelow >= availableAbove;
+      const maxHeight = Math.min(
+        customerListMaxHeight,
+        placeBelow ? availableBelow : availableAbove,
+        Math.max(0, window.innerHeight - customerListViewportMargin * 2),
+      );
+      const width = Math.min(bounds.width, Math.max(0, window.innerWidth - customerListViewportMargin * 2));
+      const left = Math.min(
+        Math.max(customerListViewportMargin, bounds.left),
+        Math.max(customerListViewportMargin, window.innerWidth - customerListViewportMargin - width),
+      );
+      const preferredTop = placeBelow
+        ? bounds.bottom + customerListGap
+        : bounds.top - customerListGap - maxHeight;
+      const top = Math.min(
+        Math.max(customerListViewportMargin, preferredTop),
+        Math.max(customerListViewportMargin, window.innerHeight - customerListViewportMargin - maxHeight),
+      );
+      setCustomerListPosition({ left, top, width, maxHeight });
+    };
+    const closeList = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!customerInputRef.current?.contains(target) && !customerListRef.current?.contains(target)) {
+        setIsCustomerListOpen(false);
+        setActiveCustomerIndex(-1);
+      }
+    };
+
+    positionList();
+    window.addEventListener("resize", positionList);
+    window.addEventListener("scroll", positionList, true);
+    document.addEventListener("pointerdown", closeList, true);
+    return () => {
+      window.removeEventListener("resize", positionList);
+      window.removeEventListener("scroll", positionList, true);
+      document.removeEventListener("pointerdown", closeList, true);
+    };
+  }, [isCustomerListOpen]);
+
+  React.useEffect(() => {
+    const query = customerSearch.trim().toLocaleLowerCase("es-MX");
+    if (!searchCustomersAction || customerSearch === selectedCustomer?.name || query.length < minimumCustomerQueryLength) {
+      return;
+    }
+
+    if (customerQueryCache.current.has(query)) return;
 
     const requestId = ++customerSearchRequest.current;
     const timeout = window.setTimeout(async () => {
@@ -162,6 +256,8 @@ export function QuoteBuilder({
       try {
         const results = await searchCustomersAction({ query: customerSearch });
         if (requestId === customerSearchRequest.current) {
+          results.forEach((customer) => knownCustomersRef.current.set(customer.id, customer));
+          customerQueryCache.current.set(query, results);
           const selected = selectedCustomerRef.current;
           setCustomerOptions(
             selected && !results.some((customer) => customer.id === selected.id)
@@ -177,7 +273,7 @@ export function QuoteBuilder({
       } finally {
         if (requestId === customerSearchRequest.current) setIsSearchingCustomers(false);
       }
-    }, 300);
+    }, customerSearchDelay);
 
     return () => window.clearTimeout(timeout);
   }, [customerSearch, searchCustomersAction, selectedCustomer?.name]);
@@ -185,6 +281,7 @@ export function QuoteBuilder({
   function selectCustomer(customer: CustomerOption) {
     customerSearchRequest.current += 1;
     selectedCustomerRef.current = customer;
+    knownCustomersRef.current.set(customer.id, customer);
     setCustomerOptions((current) =>
       current.some((option) => option.id === customer.id) ? current : [customer, ...current],
     );
@@ -199,6 +296,8 @@ export function QuoteBuilder({
 
   function handleCustomerSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") {
+      if (!isCustomerListOpen) return;
+      event.stopPropagation();
       setIsCustomerListOpen(false);
       setActiveCustomerIndex(-1);
       return;
@@ -256,6 +355,7 @@ export function QuoteBuilder({
 
     const createdCustomer = result.customer;
 
+    customerQueryCache.current.clear();
     selectCustomer(createdCustomer);
     setNewCustomerName("");
     setNewCustomerEmail("");
@@ -277,12 +377,17 @@ export function QuoteBuilder({
 
     setShowItemValidation(false);
     setStepError(null);
+    const rowId = `quote-item-${nextItemRowId.current++}`;
+    pendingItemRowId.current = rowId;
+    setAnimatedItemRowId(rowId);
+    setItemRowIds((current) => [...current, rowId]);
     setItems((prev) => [...prev, { ...emptyItem, type }]);
   }
 
   function removeItem(index: number) {
     const next = items.filter((_, i) => i !== index);
     setItems(next);
+    setItemRowIds((current) => current.filter((_, i) => i !== index));
     setStepError((current) =>
       current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
     );
@@ -320,6 +425,14 @@ export function QuoteBuilder({
 
     setShowItemValidation(false);
     setStepError(null);
+    const rowId = `quote-item-${nextItemRowId.current++}`;
+    pendingItemRowId.current = rowId;
+    setAnimatedItemRowId(rowId);
+    setItemRowIds((current) => {
+      const next = [...current];
+      next.splice(index + 1, 0, rowId);
+      return next;
+    });
     setItems((prev) => {
       const source = prev[index];
       if (!source) return prev;
@@ -356,6 +469,9 @@ export function QuoteBuilder({
 
       setShowItemValidation(false);
       setStepError(null);
+      setItemRowIds((current) =>
+        current.filter((_, index) => normalizedItems.includes(items[index]!)),
+      );
       setItems(normalizedItems);
     } else {
       const error = getStepError(step, { customerId, vehicle, title, items });
@@ -387,10 +503,10 @@ export function QuoteBuilder({
 
   const isDialogLayout = layout === "dialog";
   const formClass = isDialogLayout
-    ? "flex min-h-0 flex-1 flex-col"
+    ? "min-h-0"
     : "flex flex-col";
   const scrollAreaClass = isDialogLayout
-    ? "min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 pr-1"
+    ? "min-h-0 py-4 pr-1"
     : "py-4 pr-1";
 
   return (
@@ -399,6 +515,14 @@ export function QuoteBuilder({
       className={formClass}
       data-testid="quote-builder-form"
       data-layout={layout}
+      style={isDialogLayout ? {
+        alignItems: "stretch",
+        display: "flex",
+        flex: "1 1 0%",
+        flexDirection: "column",
+        justifyContent: "flex-start",
+        minHeight: 0,
+      } : undefined}
       onSubmit={(event) => {
         if (step !== "preview") {
           event.preventDefault();
@@ -408,7 +532,10 @@ export function QuoteBuilder({
         }
       }}
     >
-          <div className="shrink-0 border-b border-[var(--color-border-light)] pb-4">
+          <div
+            className="shrink-0 border-b border-[var(--color-border-light)] pb-4"
+            style={isDialogLayout ? { flexShrink: 0 } : undefined}
+          >
             <QuoteBuilderStepper current={step} onChange={setStep} />
           </div>
 
@@ -416,8 +543,14 @@ export function QuoteBuilder({
             ref={scrollAreaRef}
             className={scrollAreaClass}
             data-testid="quote-builder-scroll-area"
+            style={isDialogLayout ? {
+              flex: "1 1 0%",
+              minHeight: 0,
+              overflowY: "auto",
+              overscrollBehaviorY: "contain",
+            } : undefined}
           >
-            <div className="grid gap-6">
+            <div className="grid content-start gap-6">
 
           {stepError ? (
             <p
@@ -442,6 +575,7 @@ export function QuoteBuilder({
               <Label htmlFor="customerId">Cliente</Label>
               <input type="hidden" name="customerId" value={customerId} />
               <Input
+                ref={customerInputRef}
                 id="customerId"
                 role="combobox"
                 aria-controls="customer-results"
@@ -455,11 +589,18 @@ export function QuoteBuilder({
                 autoComplete="off"
                 value={customerSearch}
                 onChange={(event) => {
-                  setCustomerSearch(event.target.value);
+                  const nextSearch = event.target.value;
+                  customerSearchRequest.current += 1;
+                  setCustomerSearch(nextSearch);
                   setCustomerId("");
                   selectedCustomerRef.current = undefined;
+                  setCustomerSearchError(null);
+                  setIsSearchingCustomers(false);
+                  const cached = customerQueryCache.current.get(nextSearch.trim().toLocaleLowerCase("es-MX"));
+                  const nextOptions = cached ?? filterCustomers([...knownCustomersRef.current.values()], nextSearch);
+                  setCustomerOptions(nextOptions);
                   setIsCustomerListOpen(true);
-                  setActiveCustomerIndex(0);
+                  setActiveCustomerIndex(nextOptions.length ? 0 : -1);
                 }}
                 onFocus={() => setIsCustomerListOpen(true)}
                 onClick={() => setIsCustomerListOpen(true)}
@@ -468,8 +609,8 @@ export function QuoteBuilder({
               />
               {isSearchingCustomers ? <p className="text-sm text-[var(--color-text-muted)]" role="status">Buscando clientes...</p> : null}
               {customerSearchError ? <p className="text-sm text-[var(--color-status-danger-fg)]" role="alert">{customerSearchError}</p> : null}
-              {isCustomerListOpen && !customerSearchError ? (
-                <div id="customer-results" role="listbox" aria-label="Resultados de clientes" className="max-h-56 overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1">
+              {isCustomerListOpen && !customerSearchError ? createPortal(
+                <div ref={customerListRef} id="customer-results" role="listbox" aria-label="Resultados de clientes" data-dialog-popover style={{ ...customerListPosition, pointerEvents: "auto" }} className="fixed z-[60] overflow-y-auto overscroll-contain rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1 shadow-lg">
                   {customerOptions.length ? customerOptions.map((customer) => (
                     <button
                       key={customer.id}
@@ -479,12 +620,14 @@ export function QuoteBuilder({
                       aria-selected={customerOptions[activeCustomerIndex]?.id === customer.id}
                       className={`flex min-h-11 w-full items-center rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] ${customerOptions[activeCustomerIndex]?.id === customer.id ? "bg-[var(--color-bg-soft)]" : ""}`}
                       onMouseEnter={() => setActiveCustomerIndex(customerOptions.indexOf(customer))}
+                      onPointerDown={(event) => event.preventDefault()}
                       onClick={() => selectCustomer(customer)}
                     >
                       {customer.name}
                     </button>
                   )) : <p className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">No se encontraron clientes.</p>}
-                </div>
+                </div>,
+                document.body,
               ) : null}
               {selectedCustomer ? <p className="text-sm text-[var(--color-text-muted)]">Cliente seleccionado: <strong className="text-[var(--color-text-main)]">{selectedCustomer.name}</strong></p> : null}
               {createCustomerAction ? (
@@ -531,6 +674,9 @@ export function QuoteBuilder({
                         <Label htmlFor="quoteCustomerPhone">Teléfono</Label>
                         <Input
                           id="quoteCustomerPhone"
+                          type="tel"
+                          inputMode="tel"
+                          maxLength={20}
                           value={newCustomerPhone}
                           onChange={(event) => setNewCustomerPhone(event.target.value)}
                           placeholder="55 1234 5678"
@@ -616,14 +762,23 @@ export function QuoteBuilder({
             </h2>
             <QuoteBuilderItemsStep
               items={items}
+              rowIds={itemRowIds}
+              animatedRowId={animatedItemRowId}
               showItemValidation={showItemValidation}
               completeItemsCount={completeItems.length}
-              scrollable={isDialogLayout}
               onAddItem={addItem}
               onRemoveItem={removeItem}
               onDuplicateItem={duplicateItem}
               onUpdateItem={updateItem}
               onAdjustQuantity={adjustItemQuantity}
+              onRowRef={(rowId, node) => {
+                if (node) itemRowRefs.current.set(rowId, node);
+                else itemRowRefs.current.delete(rowId);
+              }}
+              onDescriptionRef={(rowId, node) => {
+                if (node) itemDescriptionRefs.current.set(rowId, node);
+                else itemDescriptionRefs.current.delete(rowId);
+              }}
             />
           </div>
 
@@ -715,7 +870,11 @@ export function QuoteBuilder({
             </div>
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4" data-testid="quote-builder-footer">
+          <div
+            className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4"
+            data-testid="quote-builder-footer"
+            style={isDialogLayout ? { flexShrink: 0 } : undefined}
+          >
             <div className="flex items-center gap-2">
               {step !== "client" ? (
               <Button

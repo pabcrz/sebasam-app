@@ -16,7 +16,7 @@ export interface QuotePreviewCardProps {
   subtotalCents: number;
   taxCents: number;
   totalCents: number;
-  validUntil: Date;
+  validUntil: Date | null;
 }
 
 export function QuotePreviewCard({
@@ -38,8 +38,7 @@ export function QuotePreviewCard({
   return (
     <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm">
       <div className="bg-[image:var(--gradient-primary)] px-5 py-4 text-white">
-        <p className="text-xs font-medium opacity-90">Vista previa de cotización</p>
-        <p className="text-lg font-bold">{title || "Sin título"}</p>
+        <h2 className="text-xl font-bold leading-tight">{title || "Sin título"}</h2>
       </div>
       <div className="grid gap-4 p-4">
         <div className="grid grid-cols-[auto_1fr] gap-x-3">
@@ -72,7 +71,9 @@ export function QuotePreviewCard({
                   >
                     <span className="grid gap-1">
                       <span className="font-medium">{item.description}</span>
-                      <span className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]"><Badge variant="default">{itemTypeLabels[item.type]}</Badge>{formatQuantity(item.quantity)} × {formatCents(Number(item.unitPrice) * 100)}</span>
+                      <span className="text-xs text-[var(--color-text-muted)]">
+                        {itemTypeLabels[item.type]} · {formatQuantity(item.quantity)} × {formatCents(Number(item.unitPrice) * 100)}
+                      </span>
                     </span>
                     <strong className="whitespace-nowrap text-right text-[var(--color-text-main)]">
                       {formatCents(lineTotalCents)}
@@ -88,7 +89,7 @@ export function QuotePreviewCard({
 
         <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-sm text-[var(--color-text-muted)]">
           <p data-testid="quote-validity">
-            Vigente hasta el {formatDate(validUntil)}. Los precios están sujetos a cambios imprevistos
+            Vigente hasta el {validUntil ? formatDate(validUntil) : "—"}. Los precios están sujetos a cambios imprevistos
             en el costo de materiales.
           </p>
         </div>

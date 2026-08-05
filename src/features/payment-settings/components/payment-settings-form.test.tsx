@@ -32,6 +32,9 @@ const defaultSettings: PaymentSettingsFormProps["settings"] = {
   mapsUrl: "https://maps.app.goo.gl/test",
   contactPhone: "5556007675",
   contactWhatsapp: "5536239346",
+  hours: { weekdays: "Lunes a viernes", saturday: "Sábado" },
+  services: ["Alineación"],
+  products: ["Bujes"],
   bankAccounts: [
     {
       id: 1,

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type React from "react";
 import type { PaymentRequest, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
-import { QuoteMobileCard } from "./quote-mobile-card";
+import { QuoteListCard } from "./quote-mobile-card";
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
@@ -61,13 +61,15 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     subtotalCents: 10000,
     taxCents: 1600,
     totalCents: 11600,
+    paidCents: 0,
+    remainingCents: 11600,
     taxEnabled: true,
     validUntil: new Date("2026-12-31T00:00:00.000Z"),
     approvedAt: null,
     administrative: true,
-    createdAt: new Date(),
+    createdAt: new Date("2026-07-01T12:00:00.000Z"),
     updatedAt: new Date(),
-    customer: { id: "cust-1", name: "Constructora del Norte" },
+    customer: { id: "cust-1", name: "Constructora del Norte", fiscalProfiles: [] },
     vehicle: null,
     items: [
       {
@@ -91,7 +93,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
 
 function renderCard(quote: QuoteListItem) {
   return render(
-    <QuoteMobileCard
+    <QuoteListCard
       quote={quote}
       quoteStatusLabels={quoteStatusLabels}
       quoteStatusBadgeVariant={quoteStatusBadgeVariant}
@@ -102,6 +104,17 @@ function renderCard(quote: QuoteListItem) {
       shareAction={vi.fn()}
       authorizeAction={vi.fn(() => Promise.resolve({ success: true }))}
       paymentRequestAction={vi.fn(() => Promise.resolve({ id: "pr-1", token: "token-1" } as PaymentRequest))}
+       paymentRequestBankAccounts={[{
+        accountHolder: "Federico Cruz",
+        bankName: "Santander",
+        accountNumber: "123456",
+        clabe: "4444 4444 4444 4444",
+       }]}
+       cashPaymentAction={vi.fn(() => Promise.resolve({
+         payment: { amountCents: 1000 },
+         paidCents: 1000,
+         remainingCents: 10600,
+       }))}
       duplicateAction={vi.fn()}
       customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
       saveAction={vi.fn()}
@@ -110,7 +123,7 @@ function renderCard(quote: QuoteListItem) {
   );
 }
 
-describe("QuoteMobileCard", () => {
+describe("QuoteListCard", () => {
   it("opens the preview dialog when the card is clicked", async () => {
     const user = userEvent.setup();
     renderCard(createMockQuote());
@@ -118,7 +131,7 @@ describe("QuoteMobileCard", () => {
     await user.click(screen.getByLabelText(/abrir vista previa de c-001/i));
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Vista previa de C-001")).toBeInTheDocument();
+    expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
     expect(screen.getByText(/cambio de aceite/i)).toBeInTheDocument();
   });
 
@@ -130,7 +143,7 @@ describe("QuoteMobileCard", () => {
     await user.keyboard("{Enter}");
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Vista previa de C-001")).toBeInTheDocument();
+    expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
   });
 
   it("does not render a redundant preview trigger", () => {
@@ -139,14 +152,17 @@ describe("QuoteMobileCard", () => {
     expect(screen.queryByRole("button", { name: /ver vista previa/i })).not.toBeInTheDocument();
   });
 
-  it("does not list individual quote items on the card", () => {
+  it("keeps title, total, and creation date primary while folio and validity stay secondary", () => {
     renderCard(createMockQuote());
 
     expect(screen.queryByText(/cambio de aceite/i)).not.toBeInTheDocument();
-    expect(screen.getByText("Subtotal")).toBeInTheDocument();
-    expect(screen.getByText("IVA")).toBeInTheDocument();
-    expect(screen.getByText("Total")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
     expect(screen.getByText("$116.00")).toBeInTheDocument();
+    expect(screen.getByText(/creada el 1 de julio de 2026/i)).toBeInTheDocument();
+    expect(screen.getByText("Folio C-001")).toBeInTheDocument();
+    expect(screen.getByText(/vigente hasta:/i)).toBeInTheDocument();
+    expect(screen.queryByText("Subtotal")).not.toBeInTheDocument();
+    expect(screen.queryByText("IVA")).not.toBeInTheDocument();
   });
 
   it("renders missing vehicle with lower-weight text", () => {
@@ -176,7 +192,7 @@ describe("QuoteMobileCard", () => {
     expect(screen.queryByRole("link", { name: /t-001|orden de trabajo/i })).not.toBeInTheDocument();
   });
 
-  it("promotes the active shared quote link as the first action", () => {
+  it("keeps active-link sharing labeled and iconed as sharing", () => {
     renderCard(createMockQuote({
       activeSharedQuote: {
         id: "shared-1",
@@ -190,8 +206,8 @@ describe("QuoteMobileCard", () => {
 
     const actions = screen.getAllByRole("button").filter((button) => button !== screen.getByLabelText(/abrir vista previa/i));
 
-    expect(actions[0]).toHaveAccessibleName(/ver link de cotización c-001/i);
-    expect(screen.queryByRole("button", { name: /compartir cotización/i })).not.toBeInTheDocument();
+    expect(actions[0]).toHaveAccessibleName(/compartir cotización c-001/i);
+    expect(actions[0].querySelector("svg")).toBeInTheDocument();
   });
 
   it("promotes share as the first action when no active shared quote exists", () => {
@@ -208,7 +224,7 @@ describe("QuoteMobileCard", () => {
 
     await user.click(screen.getByRole("button", { name: /aprobar y crear orden de trabajo/i }));
 
-    expect(screen.queryByRole("dialog", { name: /vista previa/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Cotización C-001")).not.toBeInTheDocument();
     expect(screen.getByRole("dialog", { name: /aprobar cotización/i })).toBeInTheDocument();
   });
 
@@ -224,6 +240,21 @@ describe("QuoteMobileCard", () => {
 
     expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /compartir cotización/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /registrar pago en efectivo/i })).toBeInTheDocument();
+  });
+
+  it("passes quote payment context to the payment link dialog", async () => {
+    const user = userEvent.setup();
+    renderCard(createMockQuote({ status: "APPROVED" }));
+
+    await user.click(screen.getByRole("button", { name: /link de pago/i }));
+
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("Cotización C-001")).toBeInTheDocument();
+    expect(dialog.getByText("Constructora del Norte")).toBeInTheDocument();
+    expect(dialog.getByText("Factura requerida")).toBeInTheDocument();
+    expect(dialog.getByText("Santander")).toBeInTheDocument();
   });
 
   it("does not render cancel action for draft quotes with a work order", () => {
@@ -324,13 +355,25 @@ describe("QuoteMobileCard", () => {
     expect(screen.getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
   });
 
+  it.each(["DRAFT", "CANCELLED"] as const)(
+    "keeps Edit and Duplicate in equal full-width columns when status is %s",
+    (status) => {
+      renderCard(createMockQuote({ status }));
+
+      const actions = screen.getByTestId("quote-primary-actions");
+      expect(actions).toHaveClass("grid-cols-2");
+      expect(screen.getByRole("button", { name: "Editar" })).toHaveClass("w-full", "h-9");
+      expect(screen.getByRole("button", { name: /duplicar/i })).toHaveClass("w-full", "h-9");
+    },
+  );
+
   it("does not open the preview dialog when a nested action button is clicked", async () => {
     const user = userEvent.setup();
     renderCard(createMockQuote());
 
     await user.click(screen.getByRole("button", { name: /duplicar/i }));
 
-    expect(screen.queryByRole("dialog", { name: /vista previa/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Cotización C-001")).not.toBeInTheDocument();
   });
 
   it("does not open the preview dialog when an action is activated from the keyboard", async () => {
@@ -340,6 +383,6 @@ describe("QuoteMobileCard", () => {
     screen.getByRole("button", { name: /duplicar/i }).focus();
     await user.keyboard("{Enter}");
 
-    expect(screen.queryByRole("dialog", { name: /vista previa/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Cotización C-001")).not.toBeInTheDocument();
   });
 });

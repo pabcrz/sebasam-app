@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Copy, ExternalLink, LinkIcon } from "lucide-react";
+import { Check, Copy, ExternalLink, Share2 } from "lucide-react";
 import type { SharedQuote } from "@prisma/client";
 import {
   Button,
@@ -32,10 +32,10 @@ export function ShareQuoteLinkDialog({ sharedQuote, quoteNumber }: ShareQuoteLin
         variant="outline"
         size="sm"
         onClick={() => setOpen(true)}
-        aria-label={`Ver link de cotización ${quoteNumber}`}
+        aria-label={`Compartir cotización ${quoteNumber}`}
       >
-        <LinkIcon className="h-4 w-4" aria-hidden="true" />
-        <span>Ver link</span>
+        <Share2 className="h-4 w-4" aria-hidden="true" />
+        <span>Compartir</span>
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
