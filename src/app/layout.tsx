@@ -32,6 +32,24 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  icons: {
+    icon: [
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
+  openGraph: {
+    title: "Operaciones SEBASAM",
+    description: "Aplicación operativa de SEBASAM para cotizaciones, órdenes de trabajo y ejecución de campo.",
+    images: [{ url: "/icon-512.png", width: 512, height: 512 }],
+  },
+  twitter: {
+    card: "summary",
+    title: "Operaciones SEBASAM",
+    description: "Aplicación operativa de SEBASAM para cotizaciones, órdenes de trabajo y ejecución de campo.",
+    images: [{ url: "/icon-512.png", width: 512, height: 512 }],
+  },
 };
 
 export const viewport: Viewport = {
