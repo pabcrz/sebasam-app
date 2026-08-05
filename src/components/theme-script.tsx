@@ -1,8 +1,6 @@
-/**
- * Reads theme from localStorage and applies the `.dark` class before
- * React hydrates, preventing a flash of unstyled content.
- */
-export const themeScript = `
+"use client";
+
+const themeScript = `
   (function () {
     try {
       var theme = localStorage.getItem('sebasam-theme');
@@ -16,3 +14,13 @@ export const themeScript = `
     }
   })();
 `;
+
+export function ThemeScript() {
+  return (
+    <script
+      type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
+      suppressHydrationWarning
+      dangerouslySetInnerHTML={{ __html: themeScript }}
+    />
+  );
+}
