@@ -84,14 +84,14 @@
 }
 
 .dark {
-  --background: #001024;
-  --foreground: #ffffff;
+  --background: #071a2f;
+  --foreground: #f8fafc;
 
   /* Surfaces */
-  --color-bg-soft: #001024;
-  --color-surface: #001b3f;
-  --color-border-light: #002b68;
-  --color-blue-tint: #002b68;
+  --color-bg-soft: #0a2038;
+  --color-surface: #0d2744;
+  --color-border-light: #1a4166;
+  --color-blue-tint: #123b62;
   --color-nav-active-text: #e6f1fb;
 
   /* Text */
