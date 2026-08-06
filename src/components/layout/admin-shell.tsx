@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleUserRound, Cog, FileText, Home, LogOut, Users, type LucideIcon } from "lucide-react";
+import { CircleUserRound, Cog, FileText, Home, LogOut, UserCog, Users, type LucideIcon } from "lucide-react";
 import { logoutAdmin } from "@/features/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: "/admin", label: "Inicio", icon: Home },
   { href: "/admin/customers", label: "Clientes", icon: Users },
+  { href: "/admin/workers", label: "Trabajadores", icon: UserCog },
   { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
   { href: "/admin/configuracion-pago", label: "Configuración", icon: Cog },
 ];
@@ -127,7 +128,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] text-white md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="grid grid-cols-4">
+        <div className="grid grid-cols-5">
           {navItems.map((item) => (
             <NavLink key={item.href} {...item} mobile />
           ))}

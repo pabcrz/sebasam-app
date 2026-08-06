@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Users, FileText, LayoutDashboard } from "lucide-react";
+import { Users, FileText, LayoutDashboard, UserCog } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
@@ -20,6 +20,12 @@ const modules = [
     description: "Crear borradores y aprobar cotizaciones.",
     icon: FileText,
   },
+  {
+    href: "/admin/workers",
+    title: "Trabajadores",
+    description: "Gestionar maestros y ayudantes operativos.",
+    icon: UserCog,
+  },
 ];
 
 export default function AdminHomePage() {
@@ -34,7 +40,7 @@ export default function AdminHomePage() {
             Panel de operaciones
           </h1>
           <p className="text-sm text-[var(--color-text-muted)]">
-            Administra clientes y cotizaciones desde cualquier dispositivo.
+            Administra clientes, trabajadores y cotizaciones desde cualquier dispositivo.
           </p>
         </div>
       </div>

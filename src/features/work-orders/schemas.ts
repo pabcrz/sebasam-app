@@ -14,5 +14,12 @@ export const executionRecordInputSchema = z.object({
   happenedAt: z.coerce.date().optional(),
 });
 
+export const workAssignmentInputSchema = z.object({
+  workOrderId: z.string().min(1),
+  workerId: z.string().uuid(),
+  notes: z.string().trim().optional(),
+});
+
 export type WorkOrderInput = z.infer<typeof workOrderInputSchema>;
 export type ExecutionRecordInput = z.infer<typeof executionRecordInputSchema>;
+export type WorkAssignmentInput = z.infer<typeof workAssignmentInputSchema>;
