@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CalendarDays, Car, ClipboardList, Copy, Pencil } from "lucide-react";
-import type { PaymentRequest, QuoteStatus, SharedQuote, WorkOrderStatus } from "@prisma/client";
+import type { PaymentRequest, QuoteStatus, SharedQuote } from "@prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
 import { Badge, Button } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
@@ -20,7 +20,6 @@ import { QuoteBuilderDialog } from "./quote-builder-dialog";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
-import { QuotePaymentBalanceIndicator } from "./quote-payment-balance-indicator";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
@@ -28,8 +27,6 @@ interface QuoteListCardProps {
   quote: QuoteListItem;
   quoteStatusLabels: Record<QuoteStatus, string>;
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
-  workOrderStatusLabels: Record<WorkOrderStatus, string>;
-  workOrderStatusBadgeVariant: Record<WorkOrderStatus, "default" | "success" | "warning" | "danger" | "info">;
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
   shareAction: (formData: FormData) => void | Promise<void>;
@@ -51,8 +48,6 @@ export function QuoteListCard({
   quote,
   quoteStatusLabels,
   quoteStatusBadgeVariant,
-  workOrderStatusLabels,
-  workOrderStatusBadgeVariant,
   approveAction,
   cancelAction,
   shareAction,
@@ -89,10 +84,9 @@ export function QuoteListCard({
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
               <span>Folio {quote.number}</span>
               <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
-              <QuotePaymentBalanceIndicator paidCents={quote.paidCents} remainingCents={quote.remainingCents} />
             </div>
           </div>
-          <p className="shrink-0 text-xl font-bold tabular-nums text-[var(--color-primary)]">
+          <p className="shrink-0 text-2xl font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
             {formatCents(quote.totalCents)}
           </p>
         </div>
@@ -117,9 +111,7 @@ export function QuoteListCard({
                   </span>
                 </span>
               </span>
-              <Badge variant={workOrderStatusBadgeVariant[quote.workOrder.status]}>
-                {workOrderStatusLabels[quote.workOrder.status]}
-              </Badge>
+              <span className="text-sm font-medium text-[var(--color-text-main)]">{quote.workOrder.number}</span>
             </div>
           ) : (
             <span className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
