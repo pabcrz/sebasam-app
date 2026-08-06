@@ -77,8 +77,8 @@ describe("work order worker guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(requireOperationalRole).mockResolvedValue({} as never);
-    vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId });
-    vi.mocked(prisma.workAssignment.create).mockResolvedValue({ id: "assignment-1" });
+    vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId } as never);
+    vi.mocked(prisma.workAssignment.create).mockResolvedValue({ id: "assignment-1" } as never);
   });
 
   it("rejects inactive workers for legacy individual assignments", async () => {
@@ -114,7 +114,7 @@ describe("work order actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(requireOperationalRole).mockResolvedValue({} as never);
-    vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId });
+    vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId } as never);
   });
 
   it("requires an approved quote before creating the waiting work order", async () => {
