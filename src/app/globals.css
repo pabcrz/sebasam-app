@@ -15,6 +15,7 @@
   --color-white: #ffffff;
   --color-blue-tint: #e6f1fb;
   --color-blue-tint-hover: #d9e7f7;
+  --color-blue-tint-strong: #cfe4f7;
   --color-on-navy-tint: #e6f1fb;
 
   /* Surfaces */
@@ -132,6 +133,7 @@
   --color-white: var(--color-white);
   --color-blue-tint: var(--color-blue-tint);
   --color-blue-tint-hover: var(--color-blue-tint-hover);
+  --color-blue-tint-strong: var(--color-blue-tint-strong);
   --color-on-navy-tint: var(--color-on-navy-tint);
 
   /* Surfaces */
