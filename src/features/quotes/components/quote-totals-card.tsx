@@ -18,7 +18,7 @@ export function QuoteTotalsCard({ subtotalCents, taxCents, totalCents }: QuoteTo
         <span>IVA</span>
         <span data-testid="quote-tax">{formatCents(taxCents)}</span>
       </div>
-      <div className="flex items-center justify-between border-t border-[var(--color-border-light)] pt-2 text-lg font-bold text-[var(--color-primary)]">
+      <div className="flex items-center justify-between border-t border-[var(--color-border-light)] pt-2 text-xl font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
         <span>Total</span>
         <span data-testid="quote-total">{formatCents(totalCents)}</span>
       </div>

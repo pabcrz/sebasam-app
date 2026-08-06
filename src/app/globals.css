@@ -34,6 +34,7 @@
   --color-status-danger: #ef4444;
   --color-status-danger-hover: #dc2626;
   --color-status-info: #004aad;
+  --color-total-emphasis: #004aad;
 
   /* Status foreground: WCAG AA on surface for small text */
   --color-status-success-fg: #15803d;
@@ -102,6 +103,7 @@
   --color-status-warning-fg: #fcd34d;
   --color-status-danger-fg: #fca5a5;
   --color-status-info-fg: #93c5fd;
+  --color-total-emphasis: #93c5fd;
 
   /* Status pastel backgrounds / borders: slightly stronger on dark */
   --color-status-success-bg: rgba(74, 222, 128, 0.14);
@@ -152,6 +154,7 @@
   --color-status-danger: var(--color-status-danger);
   --color-status-danger-hover: var(--color-status-danger-hover);
   --color-status-info: var(--color-status-info);
+  --color-total-emphasis: var(--color-total-emphasis);
   --color-status-success-bg: var(--color-status-success-bg);
   --color-status-success-border: var(--color-status-success-border);
   --color-status-warning-bg: var(--color-status-warning-bg);

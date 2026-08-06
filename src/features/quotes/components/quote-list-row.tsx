@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Pencil, Copy } from "lucide-react";
-import type { PaymentRequest, QuoteStatus, SharedQuote, WorkOrderStatus } from "@prisma/client";
+import type { PaymentRequest, QuoteStatus, SharedQuote } from "@prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
 import { Badge, Button, TableCell, TableRow } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
@@ -19,7 +19,6 @@ import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
-import { QuotePaymentBalanceIndicator } from "./quote-payment-balance-indicator";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
@@ -27,8 +26,6 @@ interface QuoteListRowProps {
   quote: QuoteListItem;
   quoteStatusLabels: Record<QuoteStatus, string>;
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
-  workOrderStatusLabels: Record<WorkOrderStatus, string>;
-  workOrderStatusBadgeVariant: Record<WorkOrderStatus, "default" | "success" | "warning" | "danger" | "info">;
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
   shareAction: (formData: FormData) => void | Promise<void>;
@@ -45,8 +42,6 @@ export function QuoteListRow({
   quote,
   quoteStatusLabels,
   quoteStatusBadgeVariant,
-  workOrderStatusLabels,
-  workOrderStatusBadgeVariant,
   approveAction,
   cancelAction,
   shareAction,
@@ -74,7 +69,6 @@ export function QuoteListRow({
           <Badge variant={quoteStatusBadgeVariant[quote.status]} className="w-fit">
             {quoteStatusLabels[quote.status]}
           </Badge>
-          <QuotePaymentBalanceIndicator paidCents={quote.paidCents} remainingCents={quote.remainingCents} />
         </div>
       </TableCell>
       <TableCell>{quote.customer.name}</TableCell>
@@ -84,9 +78,7 @@ export function QuoteListRow({
       <TableCell>{quote.title}</TableCell>
       <TableCell>
         {quote.workOrder ? (
-          <Badge variant={workOrderStatusBadgeVariant[quote.workOrder.status]}>
-            {quote.workOrder.number} — {workOrderStatusLabels[quote.workOrder.status]}
-          </Badge>
+          <span className="text-sm text-[var(--color-text-muted)]">{quote.workOrder.number}</span>
         ) : (
           <span className="text-sm text-[var(--color-text-muted)]">Ninguna</span>
         )}
@@ -101,7 +93,7 @@ export function QuoteListRow({
             <dt>IVA</dt>
             <dd>{formatCents(quote.taxCents)}</dd>
           </div>
-          <div className="flex items-center justify-between gap-3 font-semibold text-[var(--color-text-main)]">
+          <div className="flex items-center justify-between gap-3 text-base font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
             <dt>Total</dt>
             <dd>{formatCents(quote.totalCents)}</dd>
           </div>

@@ -31,8 +31,6 @@ import { hasFilterValue } from "@/lib/filters";
 import {
   quoteStatusLabels,
   quoteStatusBadgeVariant,
-  workOrderStatusLabels,
-  workOrderStatusBadgeVariant,
 } from "@/features/quotes/lib/status";
 import { filterPaymentRequestDialogBankAccounts } from "@/features/quotes/lib/payment-request-dialog-context";
 
@@ -103,8 +101,6 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 quote={quote}
                 quoteStatusLabels={quoteStatusLabels}
                 quoteStatusBadgeVariant={quoteStatusBadgeVariant}
-                workOrderStatusLabels={workOrderStatusLabels}
-                workOrderStatusBadgeVariant={workOrderStatusBadgeVariant}
                 approveAction={approveQuoteAndCreateWorkOrderFromForm}
                 cancelAction={cancelDraftQuoteFromForm}
                 shareAction={shareQuoteFromForm}

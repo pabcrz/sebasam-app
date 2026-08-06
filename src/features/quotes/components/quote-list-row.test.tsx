@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type React from "react";
-import type { PaymentRequest, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
 import { QuoteListRow } from "./quote-list-row";
 
@@ -29,22 +29,6 @@ const quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warn
   SENT: "info",
   APPROVED: "success",
   REJECTED: "danger",
-  CANCELLED: "danger",
-};
-
-const workOrderStatusLabels: Record<WorkOrderStatus, string> = {
-  PLANNED: "Planeada",
-  ASSIGNED: "Asignada",
-  IN_PROGRESS: "En proceso",
-  COMPLETED: "Completada",
-  CANCELLED: "Cancelada",
-};
-
-const workOrderStatusBadgeVariant: Record<WorkOrderStatus, "default" | "success" | "warning" | "danger" | "info"> = {
-  PLANNED: "default",
-  ASSIGNED: "info",
-  IN_PROGRESS: "warning",
-  COMPLETED: "success",
   CANCELLED: "danger",
 };
 
@@ -97,8 +81,6 @@ function renderRow(quote: QuoteListItem) {
           quote={quote}
           quoteStatusLabels={quoteStatusLabels}
           quoteStatusBadgeVariant={quoteStatusBadgeVariant}
-          workOrderStatusLabels={workOrderStatusLabels}
-          workOrderStatusBadgeVariant={workOrderStatusBadgeVariant}
           approveAction={vi.fn()}
           cancelAction={vi.fn()}
           shareAction={vi.fn()}
@@ -148,10 +130,10 @@ describe("QuoteListRow", () => {
     expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
-  it("renders the financial balance indicator separately from quote status", () => {
+  it("renders only the quote status badge", () => {
     renderRow(createMockQuote({ status: "APPROVED", paidCents: 2500, remainingCents: 9100 }));
 
-    expect(screen.getByTestId("quote-payment-balance-indicator")).toHaveTextContent("Saldo pendiente: $91.00");
+    expect(screen.queryByTestId("quote-payment-balance-indicator")).not.toBeInTheDocument();
     expect(screen.getByText("Aprobada")).toBeInTheDocument();
   });
 
