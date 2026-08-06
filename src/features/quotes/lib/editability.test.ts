@@ -73,16 +73,16 @@ describe("isQuoteEditable", () => {
       ).toBe(true);
     });
 
-    it("returns true when workOrder is ASSIGNED", () => {
+    it("returns false when workOrder is ASSIGNED", () => {
       expect(
         isQuoteEditable({ ...baseQuote, workOrder: { status: "ASSIGNED" } }, now),
-      ).toBe(true);
+      ).toBe(false);
     });
 
-    it("returns true when workOrder is IN_PROGRESS", () => {
+    it("returns false when workOrder is IN_PROGRESS", () => {
       expect(
         isQuoteEditable({ ...baseQuote, workOrder: { status: "IN_PROGRESS" } }, now),
-      ).toBe(true);
+      ).toBe(false);
     });
 
     it("returns true when workOrder is null", () => {

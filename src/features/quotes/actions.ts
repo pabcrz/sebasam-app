@@ -371,8 +371,6 @@ export async function cancelDraftQuoteFromForm(formData: FormData) {
 export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
   await requireOperationalRole();
 
-  const woNumber = await nextWorkOrderNumber();
-
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({
       where: { id: quoteId },
@@ -400,6 +398,8 @@ export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
     if (updatedQuote.count !== 1) {
       throw new Error("Quote approval state changed. Reload and try again.");
     }
+
+    const woNumber = await nextWorkOrderNumber(tx);
 
     return tx.workOrder.create({
       data: {

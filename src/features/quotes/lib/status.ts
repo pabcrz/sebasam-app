@@ -17,7 +17,7 @@ export const quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" 
 };
 
 export const workOrderStatusLabels: Record<WorkOrderStatus, string> = {
-  PLANNED: "Planeada",
+  PLANNED: "En espera",
   ASSIGNED: "Asignada",
   IN_PROGRESS: "En proceso",
   COMPLETED: "Completada",

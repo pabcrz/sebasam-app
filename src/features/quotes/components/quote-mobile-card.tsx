@@ -20,6 +20,8 @@ import { QuoteBuilderDialog } from "./quote-builder-dialog";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
+import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
+import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
@@ -42,6 +44,8 @@ interface QuoteListCardProps {
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
+  workers?: WorkerOption[];
+  workOrderActions?: WorkOrderActions;
 }
 
 export function QuoteListCard({
@@ -59,6 +63,8 @@ export function QuoteListCard({
   customers,
   saveAction,
   searchCustomersAction,
+  workers,
+  workOrderActions,
 }: QuoteListCardProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
@@ -192,6 +198,13 @@ export function QuoteListCard({
             size="sm"
           />
         ) : null}
+        <WorkOrderOperationsDialog
+          quoteNumber={quote.number}
+          quoteStatus={quote.status}
+          workOrder={quote.workOrder}
+          workers={workers}
+          actions={workOrderActions}
+        />
       </div>
     </div>
   );

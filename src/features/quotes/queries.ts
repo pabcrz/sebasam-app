@@ -14,7 +14,12 @@ export async function getQuoteById(quoteId: string) {
       customer: true,
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
-      workOrder: true,
+      workOrder: {
+        include: {
+          assignments: { include: { worker: true } },
+          executionRecords: { include: { worker: true }, orderBy: { happenedAt: "desc" } },
+        },
+      },
     },
   });
 }
@@ -75,7 +80,12 @@ export async function listQuotes(input: unknown = {}) {
       },
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
-      workOrder: true,
+      workOrder: {
+        include: {
+          assignments: { include: { worker: true } },
+          executionRecords: { include: { worker: true }, orderBy: { happenedAt: "desc" } },
+        },
+      },
       sharedQuotes: true,
       paymentRequests: {
         orderBy: { createdAt: "desc" },
