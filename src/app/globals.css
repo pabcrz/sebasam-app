@@ -83,19 +83,19 @@
 }
 
 .dark {
-  --background: #001024;
-  --foreground: #ffffff;
+  --background: #0b1730;
+  --foreground: #f8fafc;
 
   /* Surfaces */
-  --color-bg-soft: #001024;
-  --color-surface: #001b3f;
-  --color-border-light: #002b68;
-  --color-blue-tint: #002b68;
+  --color-bg-soft: #0f2039;
+  --color-surface: #142943;
+  --color-border-light: #2a4b73;
+  --color-blue-tint: #1c4168;
 
   /* Text */
-  --color-text-main: #ffffff;
-  --color-text-muted: #94a3b8;
-  --color-text-muted-fg: #cbd5e1;
+  --color-text-main: #f8fafc;
+  --color-text-muted: #b6c7dc;
+  --color-text-muted-fg: #dce8f5;
 
   /* Status foreground: brighter for dark navy surfaces */
   --color-status-success-fg: #4ade80;
