@@ -20,6 +20,7 @@ import { QuoteBuilderDialog } from "./quote-builder-dialog";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
+import { QuotePaymentBalanceIndicator } from "./quote-payment-balance-indicator";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
@@ -88,6 +89,7 @@ export function QuoteListCard({
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
               <span>Folio {quote.number}</span>
               <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
+              <QuotePaymentBalanceIndicator paidCents={quote.paidCents} remainingCents={quote.remainingCents} />
             </div>
           </div>
           <p className="shrink-0 text-xl font-bold tabular-nums text-[var(--color-primary)]">
@@ -182,7 +184,7 @@ export function QuoteListCard({
         {quote.status === "SENT" || quote.status === "APPROVED" ? (
           <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
         ) : null}
-        {quote.status === "SENT" || quote.status === "APPROVED" ? (
+        {quote.status === "APPROVED" ? (
           <CashPaymentDialog
             action={cashPaymentAction}
             quoteNumber={quote.number}

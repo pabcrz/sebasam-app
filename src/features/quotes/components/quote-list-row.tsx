@@ -19,6 +19,7 @@ import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
+import { QuotePaymentBalanceIndicator } from "./quote-payment-balance-indicator";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
@@ -68,11 +69,12 @@ export function QuoteListRow({
       aria-label={`Abrir vista previa de ${quote.number}`}
     >
       <TableCell className="whitespace-nowrap">
-        <div className="grid gap-1">
+        <div className="flex flex-wrap items-start gap-1">
           <span className="font-medium">{quote.number}</span>
           <Badge variant={quoteStatusBadgeVariant[quote.status]} className="w-fit">
             {quoteStatusLabels[quote.status]}
           </Badge>
+          <QuotePaymentBalanceIndicator paidCents={quote.paidCents} remainingCents={quote.remainingCents} />
         </div>
       </TableCell>
       <TableCell>{quote.customer.name}</TableCell>
