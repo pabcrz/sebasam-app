@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ClipboardList, Plus, Trash2 } from "lucide-react";
-import type { QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import type { QuoteStatus, UserRole, WorkOrderStatus } from "@prisma/client";
 import {
   Button,
   Checkbox,
@@ -25,6 +25,7 @@ import {
 export type WorkerOption = {
   id: string;
   displayName: string;
+  role: UserRole;
   workerKind: "MASTER" | "HELPER" | null;
 };
 
@@ -83,6 +84,44 @@ function formatDate(value: Date) {
   return new Intl.DateTimeFormat("es-MX", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
+const timelineSteps = [
+  { status: "PLANNED" as const, label: "En espera" },
+  { status: "ASSIGNED" as const, label: "Asignada" },
+  { status: "IN_PROGRESS" as const, label: "En proceso" },
+];
+
+function WorkOrderTimeline({ status }: { status: WorkOrderStatus }) {
+  const terminal = status === "COMPLETED" || status === "CANCELLED";
+  const currentIndex = timelineSteps.findIndex((step) => step.status === status);
+
+  return (
+    <ol aria-label="Etapas de la orden de trabajo" className="grid gap-2 sm:grid-cols-3 sm:gap-0">
+      {timelineSteps.map((step, index) => {
+        const complete = terminal || (currentIndex >= 0 && index < currentIndex);
+        const current = step.status === status;
+
+        return (
+          <li key={step.status} className="relative flex items-center gap-3 sm:block sm:text-center">
+            {index > 0 ? <span aria-hidden="true" className={`hidden sm:absolute sm:left-0 sm:top-4 sm:block sm:h-0.5 sm:w-1/2 ${complete || current ? "bg-[var(--color-primary)]" : "bg-[var(--color-border-light)]"}`} /> : null}
+            {index < timelineSteps.length - 1 ? <span aria-hidden="true" className={`hidden sm:absolute sm:right-0 sm:top-4 sm:block sm:h-0.5 sm:w-1/2 ${complete ? "bg-[var(--color-primary)]" : "bg-[var(--color-border-light)]"}`} /> : null}
+            <span className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold sm:mx-auto ${complete || current ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white" : "border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-muted)]"}`}>
+              {index + 1}
+            </span>
+            <span className={`text-sm sm:mt-2 sm:block ${current ? "font-semibold text-[var(--color-text-main)]" : "text-[var(--color-text-muted)]"}`} aria-current={current ? "step" : undefined}>
+              {step.label}
+            </span>
+          </li>
+        );
+      })}
+      {terminal ? (
+        <li className="mt-1 text-sm font-semibold text-[var(--color-text-main)] sm:col-span-3 sm:mt-3 sm:text-center">
+          Estado terminal: {status === "COMPLETED" ? "Completada" : "Cancelada"}
+        </li>
+      ) : null}
+    </ol>
+  );
+}
+
 export function WorkOrderOperationsDialog({
   quoteNumber,
   quoteStatus,
@@ -97,18 +136,17 @@ export function WorkOrderOperationsDialog({
   const [helperIds, setHelperIds] = React.useState<string[]>([]);
   const [capacityConfirmed, setCapacityConfirmed] = React.useState(false);
   const [availabilityConfirmed, setAvailabilityConfirmed] = React.useState(false);
-  const [summary, setSummary] = React.useState("");
-  const [notes, setNotes] = React.useState("");
+  const [detail, setDetail] = React.useState("");
   const [progressPercent, setProgressPercent] = React.useState("0");
   const [workerId, setWorkerId] = React.useState("");
   const [isExtra, setIsExtra] = React.useState(false);
   const [happenedAt, setHappenedAt] = React.useState(() => new Date().toISOString().slice(0, 16));
 
-  const masters = workers.filter((worker) => worker.workerKind === "MASTER");
-  const helpers = workers.filter((worker) => worker.workerKind === "HELPER");
+  const eligibleWorkers = workers.filter((worker) => worker.role === "WORKER" && worker.workerKind !== null);
+  const masters = eligibleWorkers.filter((worker) => worker.workerKind === "MASTER");
+  const helpers = eligibleWorkers.filter((worker) => worker.workerKind === "HELPER");
   const assignedWorkers = workOrder?.assignments ?? [];
   const records = workOrder?.executionRecords ?? [];
-  const isTerminal = workOrder?.status === "COMPLETED" || workOrder?.status === "CANCELLED";
 
   const runAction = React.useCallback(
     (action: () => Promise<ActionResult>) => {
@@ -147,36 +185,26 @@ export function WorkOrderOperationsDialog({
   };
 
   const handleStart = () => {
-    if (!capacityConfirmed || !availabilityConfirmed) {
-      setError("Confirma el espacio del taller y la disponibilidad del maestro.");
-      return;
-    }
-
-    runAction(() => actions.start({
-      workOrderId: workOrder!.id,
-      workshopCapacityConfirmed: capacityConfirmed,
-      masterAvailabilityConfirmed: availabilityConfirmed,
-    }));
+    runAction(() => actions.start({ workOrderId: workOrder!.id }));
   };
 
   const handleRecord = () => {
-    if (!workOrder || !workerId || !summary.trim()) {
-      setError("Selecciona quién realizó el trabajo y agrega un resumen.");
+    if (!workOrder || !workerId) {
+      setError("Selecciona quién realizó el trabajo.");
       return;
     }
 
     runAction(() => actions.recordExecution({
       workOrderId: workOrder.id,
       workerId,
-      summary,
-      notes: notes || undefined,
+      summary: detail,
       progressPercent,
       isExtra,
       happenedAt: happenedAt ? new Date(happenedAt).toISOString() : undefined,
     }));
   };
 
-  if (quoteStatus !== "APPROVED" || isTerminal) return null;
+  if (quoteStatus !== "APPROVED") return null;
 
   return (
     <>
@@ -218,12 +246,7 @@ export function WorkOrderOperationsDialog({
             </div>
           ) : (
             <div className="grid gap-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] bg-[var(--color-bg-soft)] p-3">
-                <span className="text-sm font-medium">Estado operativo</span>
-                <span className="text-sm text-[var(--color-text-muted)]">
-                  {workOrder.status === "PLANNED" ? "En espera" : workOrder.status === "ASSIGNED" ? "Asignada" : "En proceso"}
-                </span>
-              </div>
+              <WorkOrderTimeline status={workOrder.status} />
 
               {workOrder.status === "PLANNED" ? (
                 <section className="grid gap-3">
@@ -272,16 +295,7 @@ export function WorkOrderOperationsDialog({
                   <ul className="grid gap-1 text-sm text-[var(--color-text-muted)]">
                     {assignedWorkers.map((assignment) => <li key={assignment.id}>{assignment.worker.displayName} ({assignment.worker.workerKind === "MASTER" ? "Maestro" : "Ayudante"})</li>)}
                   </ul>
-                  <Checkbox
-                    label="Confirmo que hay espacio disponible en el taller"
-                    checked={capacityConfirmed}
-                    onCheckedChange={(checked) => setCapacityConfirmed(checked === true)}
-                  />
-                  <Checkbox
-                    label="Confirmo la disponibilidad del maestro"
-                    checked={availabilityConfirmed}
-                    onCheckedChange={(checked) => setAvailabilityConfirmed(checked === true)}
-                  />
+                  <p className="text-sm text-[var(--color-text-muted)]">Capacidad y disponibilidad confirmadas durante la asignación.</p>
                   <Button type="button" loading={isPending} onClick={handleStart}>Iniciar trabajo</Button>
                 </section>
               ) : null}
@@ -295,22 +309,21 @@ export function WorkOrderOperationsDialog({
                       <SelectValue placeholder="Selecciona quién realizó el trabajo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {workers.map((worker) => <SelectItem key={worker.id} value={worker.id}>{worker.displayName}</SelectItem>)}
+                      {eligibleWorkers.map((worker) => <SelectItem key={worker.id} value={worker.id}>{worker.displayName}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor={`execution-summary-${workOrder.id}`}>Resumen</Label>
-                  <Input id={`execution-summary-${workOrder.id}`} value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Ej. Se desmontó la suspensión trasera" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor={`execution-notes-${workOrder.id}`}>Notas y detalles</Label>
-                  <Textarea id={`execution-notes-${workOrder.id}`} value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} />
+                  <Label htmlFor={`execution-detail-${workOrder.id}`}>Detalle (opcional)</Label>
+                  <Textarea id={`execution-detail-${workOrder.id}`} value={detail} onChange={(event) => setDetail(event.target.value)} rows={2} placeholder="Ej. Se desmontó la suspensión trasera" />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor={`execution-progress-${workOrder.id}`}>Avance (%)</Label>
-                    <Input id={`execution-progress-${workOrder.id}`} type="number" min={0} max={100} value={progressPercent} onChange={(event) => setProgressPercent(event.target.value)} />
+                    <Label htmlFor={`execution-progress-${workOrder.id}`}>Avance: {progressPercent}%</Label>
+                    <div role="progressbar" aria-label="Avance actual" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Number(progressPercent)} className="h-2 overflow-hidden rounded-full bg-[var(--color-bg-soft)]">
+                      <div className="h-full bg-[var(--color-primary)] transition-[width]" style={{ width: `${progressPercent}%` }} />
+                    </div>
+                    <Input id={`execution-progress-${workOrder.id}`} type="range" min={0} max={100} step={10} value={progressPercent} onChange={(event) => setProgressPercent(event.target.value)} className="h-8 cursor-pointer accent-[var(--color-primary)]" aria-label="Avance en incrementos de diez" />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor={`execution-date-${workOrder.id}`}>Fecha y hora</Label>
@@ -330,7 +343,7 @@ export function WorkOrderOperationsDialog({
                   {records.map((record) => (
                     <div key={record.id} className="flex items-start justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] p-3 text-sm">
                       <div>
-                        <p className="font-medium">{record.summary}{record.isExtra ? " — Adicional" : ""}</p>
+                        <p className="font-medium">{record.summary || "Sin detalle"}{record.isExtra ? " — Adicional" : ""}</p>
                         <p className="text-[var(--color-text-muted)]">{record.worker?.displayName ?? "Sin trabajador"} · {record.progressPercent}% · {formatDate(record.happenedAt)}</p>
                         {record.notes ? <p className="mt-1 text-[var(--color-text-muted)]">{record.notes}</p> : null}
                       </div>

@@ -17,14 +17,12 @@ export const assignWorkOrderInputSchema = z.object({
 
 export const startWorkOrderInputSchema = z.object({
   workOrderId: z.string().min(1),
-  workshopCapacityConfirmed: z.boolean(),
-  masterAvailabilityConfirmed: z.boolean(),
 });
 
 export const executionRecordInputSchema = z.object({
   workOrderId: z.string().min(1),
   workerId: z.string().uuid(),
-  summary: z.string().trim().min(1),
+  summary: z.string().trim().default(""),
   notes: z.string().trim().optional(),
   progressPercent: z.coerce.number().int().min(0).max(100).default(0),
   isExtra: z.boolean().default(false),

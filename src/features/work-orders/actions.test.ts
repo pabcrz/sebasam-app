@@ -184,11 +184,31 @@ describe("work order actions", () => {
     expect(tx.workOrder.updateMany).not.toHaveBeenCalled();
   });
 
+  it("never accepts an administrative assistant as a helper", async () => {
+    const tx = createTx();
+    tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.PLANNED, quote: { status: QuoteStatus.APPROVED } });
+    tx.userProfile.findMany.mockResolvedValue([
+      worker(masterId, WorkerKind.MASTER),
+      { id: helperId, role: UserRole.ADMIN_ASSISTANT, workerKind: null, isActive: true },
+    ]);
+
+    await expect(assignWorkOrder({
+      workOrderId: "wo-1",
+      masterId,
+      helperIds: [helperId],
+      workshopCapacityConfirmed: true,
+      masterAvailabilityConfirmed: true,
+    })).rejects.toThrow("ayudantes");
+    expect(tx.workAssignment.createMany).not.toHaveBeenCalled();
+  });
+
   it("starts only an assigned order after both confirmations", async () => {
     const tx = createTx();
     tx.workOrder.findUnique.mockResolvedValue({
       status: WorkOrderStatus.ASSIGNED,
       quote: { status: QuoteStatus.APPROVED },
+      workshopCapacityConfirmedAt: new Date(),
+      masterAvailabilityConfirmedAt: new Date(),
       assignments: [{ status: "ASSIGNED", worker: worker(masterId, WorkerKind.MASTER) }],
     });
 
@@ -198,6 +218,8 @@ describe("work order actions", () => {
       where: { id: "wo-1", status: WorkOrderStatus.ASSIGNED },
       data: expect.objectContaining({ status: WorkOrderStatus.IN_PROGRESS }),
     }));
+    expect(tx.workOrder.updateMany.mock.calls[0][0].data).not.toHaveProperty("workshopCapacityConfirmedAt");
+    expect(tx.workOrder.updateMany.mock.calls[0][0].data).not.toHaveProperty("masterAvailabilityConfirmedAt");
   });
 
   it("links execution records to the eligible work order and worker", async () => {
@@ -208,14 +230,12 @@ describe("work order actions", () => {
     await recordExecution({
       workOrderId: "wo-1",
       workerId,
-      summary: "Se instaló el refuerzo",
-      notes: "Se verificó torque",
       progressPercent: 60,
       isExtra: true,
     });
 
     expect(tx.executionRecord.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ workOrderId: "wo-1", workerId, progressPercent: 60, isExtra: true }),
+      data: expect.objectContaining({ workOrderId: "wo-1", workerId, summary: "", progressPercent: 60, isExtra: true }),
     });
   });
 

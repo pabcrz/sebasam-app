@@ -53,6 +53,7 @@ describe("worker queries", () => {
         displayName: true,
         username: true,
         email: true,
+        role: true,
         workerKind: true,
       },
     });

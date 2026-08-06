@@ -26,6 +26,7 @@ import {
   assertDistinctWorkers,
   assertExecutionCanBeRecorded,
   assertMasterAvailabilityConfirmed,
+  assertStoredConfirmations,
   assertWorkOrderCanBeAssigned,
   assertWorkOrderCanBeChanged,
   assertWorkOrderCanBeStarted,
@@ -171,8 +172,6 @@ export async function startWorkOrder(input: unknown) {
   await requireOperationalRole();
 
   const data = startWorkOrderInputSchema.parse(input);
-  assertCapacityConfirmed(data.workshopCapacityConfirmed);
-  assertMasterAvailabilityConfirmed(data.masterAvailabilityConfirmed);
 
   return prisma.$transaction(async (tx) => {
     const workOrder = await tx.workOrder.findUnique({
@@ -186,6 +185,7 @@ export async function startWorkOrder(input: unknown) {
 
     assertApprovedQuote(workOrder.quote.status);
     assertWorkOrderCanBeStarted(workOrder.status);
+    assertStoredConfirmations(workOrder);
 
     const masters = workOrder.assignments.filter(
       (assignment) => assignment.status !== AssignmentStatus.CANCELLED && assignment.worker.workerKind === WorkerKind.MASTER,
@@ -198,13 +198,10 @@ export async function startWorkOrder(input: unknown) {
       throw new WorkOrderOperationError("La orden requiere exactamente un maestro activo asignado.");
     }
 
-    const now = new Date();
     const updated = await tx.workOrder.updateMany({
       where: { id: data.workOrderId, status: WorkOrderStatus.ASSIGNED },
       data: {
         status: WorkOrderStatus.IN_PROGRESS,
-        workshopCapacityConfirmedAt: now,
-        masterAvailabilityConfirmedAt: now,
       },
     });
 
@@ -253,7 +250,7 @@ export async function recordExecution(input: unknown) {
       data: {
         workOrderId: data.workOrderId,
         workerId: data.workerId,
-        summary: data.summary,
+        summary: data.summary || "",
         notes: data.notes,
         progressPercent: data.progressPercent,
         isExtra: data.isExtra,

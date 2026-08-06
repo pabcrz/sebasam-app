@@ -7,6 +7,7 @@ import {
   assertDistinctWorkers,
   assertExecutionCanBeRecorded,
   assertMasterAvailabilityConfirmed,
+  assertStoredConfirmations,
   assertWorkOrderCanBeAssigned,
   assertWorkOrderCanBeChanged,
   assertWorkOrderCanBeStarted,
@@ -34,6 +35,11 @@ describe("work order domain rules", () => {
     expect(() => assertMasterAvailabilityConfirmed(false)).toThrow("disponibilidad");
     expect(() => assertCapacityConfirmed(true)).not.toThrow();
     expect(() => assertMasterAvailabilityConfirmed(true)).not.toThrow();
+  });
+
+  it("requires persisted confirmations when starting assigned work", () => {
+    expect(() => assertStoredConfirmations({ workshopCapacityConfirmedAt: null, masterAvailabilityConfirmedAt: new Date() })).toThrow();
+    expect(() => assertStoredConfirmations({ workshopCapacityConfirmedAt: new Date(), masterAvailabilityConfirmedAt: new Date() })).not.toThrow();
   });
 
   it("requires one distinct master and rejects duplicate workers", () => {

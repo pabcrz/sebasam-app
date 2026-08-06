@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui";
+import type { ButtonVariant } from "@/components/ui";
 import { QuoteBuilder, type QuoteBuilderInitialData } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
 import type { listQuotes } from "../queries";
@@ -30,6 +31,7 @@ type QuoteBuilderDialogProps = {
   quoteNumber?: string;
   triggerClassName?: string;
   triggerSize?: "default" | "sm";
+  triggerVariant?: ButtonVariant;
   createCustomerAction?: (input: unknown) => Promise<{
     success: boolean;
     customer?: CustomerOption;
@@ -39,7 +41,7 @@ type QuoteBuilderDialogProps = {
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
 };
 
-export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
+export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, triggerVariant, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = React.useState(false);
   const [dirty, setDirty] = React.useState(false);
@@ -111,7 +113,7 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
         }}
       >
         <DialogTrigger asChild>
-          <Button type="button" variant="primary" size={triggerSize} className={triggerClassName}>
+          <Button type="button" variant={triggerVariant ?? "primary"} size={triggerSize} className={triggerClassName}>
             {isEdit ? <Pencil className="h-4 w-4" aria-hidden="true" /> : null}
             {isEdit ? "Editar" : "Nueva cotización"}
           </Button>

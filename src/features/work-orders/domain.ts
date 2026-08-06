@@ -63,6 +63,15 @@ export function assertMasterAvailabilityConfirmed(confirmed: boolean) {
   }
 }
 
+export function assertStoredConfirmations(workOrder: {
+  workshopCapacityConfirmedAt: Date | null;
+  masterAvailabilityConfirmedAt: Date | null;
+}) {
+  if (!workOrder.workshopCapacityConfirmedAt || !workOrder.masterAvailabilityConfirmedAt) {
+    throw new WorkOrderOperationError("La orden requiere confirmar capacidad y disponibilidad durante la asignación.");
+  }
+}
+
 export function assertActiveWorker(worker: WorkerProfile, kind: WorkerKind) {
   if (worker.role !== UserRole.WORKER || !worker.isActive || worker.workerKind !== kind) {
     throw new WorkOrderOperationError(
