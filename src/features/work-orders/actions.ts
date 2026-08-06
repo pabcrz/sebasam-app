@@ -1,10 +1,37 @@
 "use server";
 
-import { QuoteStatus } from "@prisma/client";
+import { QuoteStatus, UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { executionRecordInputSchema, workOrderInputSchema } from "./schemas";
+import {
+  executionRecordInputSchema,
+  workAssignmentInputSchema,
+  workOrderInputSchema,
+} from "./schemas";
 import { nextWorkOrderNumber } from "@/features/quotes/lib/sequence";
+
+export class WorkerUnavailableError extends Error {
+  constructor() {
+    super("Only active workers with a classification can receive assignments or execution records.");
+    this.name = "WorkerUnavailableError";
+  }
+}
+
+async function requireActiveWorker(workerId: string) {
+  const worker = await prisma.userProfile.findFirst({
+    where: {
+      id: workerId,
+      role: UserRole.WORKER,
+      isActive: true,
+      workerKind: { not: null },
+    },
+    select: { id: true },
+  });
+
+  if (!worker) {
+    throw new WorkerUnavailableError();
+  }
+}
 
 export async function createWorkOrder(input: unknown) {
   await requireOperationalRole();
@@ -34,7 +61,22 @@ export async function recordExecution(input: unknown) {
 
   const data = executionRecordInputSchema.parse(input);
 
+  if (data.workerId) {
+    await requireActiveWorker(data.workerId);
+  }
+
   return prisma.executionRecord.create({
+    data,
+  });
+}
+
+export async function assignWorker(input: unknown) {
+  await requireOperationalRole();
+
+  const data = workAssignmentInputSchema.parse(input);
+  await requireActiveWorker(data.workerId);
+
+  return prisma.workAssignment.create({
     data,
   });
 }

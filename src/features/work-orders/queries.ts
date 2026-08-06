@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
+export { listActiveWorkers } from "@/features/workers/queries";
 
 export async function listWorkOrders() {
   await requireOperationalRole();
