@@ -52,7 +52,8 @@ describe("Button", () => {
     const button = screen.getByRole("button", { name: "Guardar" });
     expect(button.className).toContain("bg-[image:var(--gradient-primary)]");
     expect(button.className).toContain("hover:bg-[image:var(--gradient-primary-hover)]");
-    expect(button.className).not.toContain("bg-[var(--color-primary)]");
+    expect(button.className).toContain("dark:bg-[var(--color-primary)]");
+    expect(button.className).toContain("dark:bg-none");
   });
 
   it("uses pointer cursor for enabled buttons and not-allowed cursor for disabled buttons", () => {
