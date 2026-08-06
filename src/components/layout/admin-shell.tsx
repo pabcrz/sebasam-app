@@ -43,8 +43,8 @@ function NavLink({ href, label, icon: Icon, mobile = false }: NavItem & { mobile
             }`
           : `flex min-h-[var(--tap-min-height)] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               active
-                ? "bg-[image:var(--gradient-primary)] text-white shadow-sm"
-                : "text-white/70 hover:bg-white/8 hover:text-white"
+                ? "bg-[var(--color-blue-tint)] text-[var(--color-nav-active-text)] shadow-sm"
+                : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)]"
             }`
       }
       aria-current={active ? "page" : undefined}
@@ -58,10 +58,10 @@ function NavLink({ href, label, icon: Icon, mobile = false }: NavItem & { mobile
 export function AdminShell({ displayName, role, children }: AdminShellProps) {
   return (
     <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(var(--tap-min-height)+env(safe-area-inset-bottom))] md:pb-0">
-      <aside className="hidden w-64 shrink-0 flex-col bg-[var(--color-navy-900)] p-4 text-white md:flex">
-        <div className="border-b border-white/12 px-3 pb-5">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 text-[var(--color-text-main)] md:flex">
+        <div className="border-b border-[var(--color-border-light)] px-3 pb-5">
           <p className="text-xl font-extrabold tracking-[-0.04em]">SEBASAM</p>
-          <p className="mt-1 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-white/55">
+          <p className="mt-1 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
             Operaciones
           </p>
         </div>
@@ -72,9 +72,9 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
           ))}
         </nav>
 
-        <div className="border-t border-white/12 px-3 pt-4">
+        <div className="border-t border-[var(--color-border-light)] px-3 pt-4">
           <p className="truncate text-sm font-semibold">{displayName}</p>
-          <p className="mt-1 text-xs text-white/55">{role}</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{role}</p>
         </div>
       </aside>
 
