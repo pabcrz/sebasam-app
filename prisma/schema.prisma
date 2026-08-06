@@ -75,6 +75,11 @@ enum PaymentStatus {
   PAID
 }
 
+enum LedgerEntryType {
+  CREDIT
+  DEBIT
+}
+
 enum QuoteDecisionOrigin {
   CUSTOMER
   ADMIN
@@ -115,6 +120,7 @@ model Customer {
   vehicles        Vehicle[]
   fiscalProfiles  CustomerFiscalProfile[]
   paymentRequests PaymentRequest[]
+  ledgerEntries   LedgerEntry[]
 }
 
 model Vehicle {
@@ -313,10 +319,26 @@ model Payment {
 
   quote          Quote           @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   paymentRequest PaymentRequest? @relation(fields: [paymentRequestId], references: [id], onDelete: SetNull)
+  ledgerEntry    LedgerEntry?
 
   @@index([quoteId])
   @@index([paymentRequestId])
   @@index([quoteId, status])
+}
+
+model LedgerEntry {
+  id                    String          @id @default(cuid())
+  customerId            String
+  paymentId             String          @unique
+  type                  LedgerEntryType
+  amountCents           Int
+  resultingBalanceCents Int
+  createdAt             DateTime        @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  payment  Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, createdAt])
 }
 
 model PaymentSettings {

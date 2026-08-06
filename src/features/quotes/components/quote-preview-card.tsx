@@ -5,6 +5,7 @@ import { ListChecks, NotebookText, Truck, UserRound } from "lucide-react";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { formatQuantity, itemTypeLabels, ItemFormValue } from "./quote-builder-shared";
 import { QuoteTotalsCard } from "./quote-totals-card";
+import { QuotePaymentBalanceIndicator } from "./quote-payment-balance-indicator";
 
 export interface QuotePreviewCardProps {
   customerName: string;
@@ -16,6 +17,8 @@ export interface QuotePreviewCardProps {
   subtotalCents: number;
   taxCents: number;
   totalCents: number;
+  paidCents?: number;
+  remainingCents?: number;
   validUntil: Date | null;
 }
 
@@ -29,6 +32,8 @@ export function QuotePreviewCard({
   subtotalCents,
   taxCents,
   totalCents,
+  paidCents,
+  remainingCents,
   validUntil,
 }: QuotePreviewCardProps) {
   const vehicleDescription = [vehicle.brand, vehicle.model, vehicle.year, vehicle.plate]
@@ -86,6 +91,7 @@ export function QuotePreviewCard({
         </div>
 
         <QuoteTotalsCard subtotalCents={subtotalCents} taxCents={taxCents} totalCents={totalCents} />
+        <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} />
 
         <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-sm text-[var(--color-text-muted)]">
           <p data-testid="quote-validity">

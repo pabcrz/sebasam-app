@@ -48,6 +48,8 @@ export function toQuotePreviewCardProps(quote: QuoteListItem): QuotePreviewCardP
     subtotalCents: Number(quote.subtotalCents),
     taxCents: Number(quote.taxCents),
     totalCents: Number(quote.totalCents),
+    paidCents: quote.paidCents,
+    remainingCents: quote.remainingCents,
     validUntil: quote.validUntil,
   };
 }

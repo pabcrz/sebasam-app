@@ -235,6 +235,13 @@ describe("QuoteListCard", () => {
     expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
+  it("renders the financial balance indicator separately from quote status", () => {
+    renderCard(createMockQuote({ status: "APPROVED", paidCents: 2500, remainingCents: 9100 }));
+
+    expect(screen.getByTestId("quote-payment-balance-indicator")).toHaveTextContent("Saldo pendiente: $91.00");
+    expect(screen.getByText("Aprobada")).toBeInTheDocument();
+  });
+
   it("does not render cancel action for approved quotes", () => {
     renderCard(createMockQuote({ status: "APPROVED" }));
 
@@ -242,6 +249,13 @@ describe("QuoteListCard", () => {
     expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /compartir cotización/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /registrar pago en efectivo/i })).toBeInTheDocument();
+  });
+
+  it("does not render cash payment controls before approval", () => {
+    renderCard(createMockQuote({ status: "SENT" }));
+
+    expect(screen.queryByRole("button", { name: /registrar pago en efectivo/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
   });
 
   it("passes quote payment context to the payment link dialog", async () => {

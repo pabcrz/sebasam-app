@@ -1,7 +1,7 @@
-import { PaymentMethod, PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
+import { LedgerEntryType, PaymentMethod, PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-const CASH_PAYMENT_QUOTE_STATUSES: QuoteStatus[] = [QuoteStatus.SENT, QuoteStatus.APPROVED];
+const CASH_PAYMENT_QUOTE_STATUSES: QuoteStatus[] = [QuoteStatus.APPROVED];
 
 export class PaymentOperationError extends Error {
   constructor(message: string) {
@@ -32,6 +32,10 @@ export type RecordedCashPayment = PaymentBalance & {
 };
 
 type RecordedPayment = RecordedCashPayment["payment"];
+
+type QuotePaymentBalance = PaymentBalance & {
+  customerId: string;
+};
 
 export function parseCashAmountCents(value: unknown): number {
   if (typeof value !== "string" || !/^\d+(?:\.\d{1,2})?$/.test(value.trim())) {
@@ -65,10 +69,10 @@ function validatePaymentReference(input: RecordCashPaymentInput) {
   }
 }
 
-async function getPaymentBalance(tx: Prisma.TransactionClient, quoteId: string): Promise<PaymentBalance> {
+async function getPaymentBalance(tx: Prisma.TransactionClient, quoteId: string): Promise<QuotePaymentBalance> {
   const quote = await tx.quote.findUnique({
     where: { id: quoteId },
-    select: { totalCents: true },
+    select: { customerId: true, totalCents: true },
   });
 
   if (!quote) {
@@ -85,10 +89,65 @@ async function getPaymentBalance(tx: Prisma.TransactionClient, quoteId: string):
     throw new PaymentOperationError("Los pagos registrados exceden el total de la cotización.");
   }
 
-  return { paidCents, remainingCents: quote.totalCents - paidCents };
+  return { customerId: quote.customerId, paidCents, remainingCents: quote.totalCents - paidCents };
+}
+
+async function getCustomerOutstandingBalance(tx: Prisma.TransactionClient, customerId: string): Promise<number> {
+  const charges = await tx.quote.aggregate({
+    where: { customerId, status: QuoteStatus.APPROVED },
+    _sum: { totalCents: true },
+  });
+  const payments = await tx.payment.aggregate({
+    where: {
+      status: PaymentStatus.PAID,
+      quote: { customerId, status: QuoteStatus.APPROVED },
+    },
+    _sum: { amountCents: true },
+  });
+
+  const chargedCents = charges._sum.totalCents ?? 0;
+  const paidCents = payments._sum.amountCents ?? 0;
+
+  if (paidCents > chargedCents) {
+    throw new PaymentOperationError("Los pagos registrados exceden el saldo aprobado del cliente.");
+  }
+
+  return chargedCents - paidCents;
+}
+
+async function ensurePaymentLedgerEntry(
+  tx: Prisma.TransactionClient,
+  input: {
+    paymentId: string;
+    customerId: string;
+    amountCents: number;
+    resultingBalanceCents: number;
+  },
+) {
+  const existingEntry = await tx.ledgerEntry.findUnique({
+    where: { paymentId: input.paymentId },
+    select: { id: true },
+  });
+
+  if (existingEntry) {
+    return;
+  }
+
+  // Credits stay positive; the balance snapshot is the customer's approved debt after this payment.
+  await tx.ledgerEntry.create({
+    data: {
+      customerId: input.customerId,
+      paymentId: input.paymentId,
+      type: LedgerEntryType.CREDIT,
+      amountCents: input.amountCents,
+      resultingBalanceCents: input.resultingBalanceCents,
+    },
+  });
 }
 
 function recordedPaymentResult(payment: RecordedPayment, balance: PaymentBalance): RecordedCashPayment {
+  const { paidCents, remainingCents } = balance;
+
   return {
     payment: {
       id: payment.id,
@@ -96,7 +155,8 @@ function recordedPaymentResult(payment: RecordedPayment, balance: PaymentBalance
       method: payment.method,
       status: payment.status,
     },
-    ...balance,
+    paidCents,
+    remainingCents,
   };
 }
 
@@ -111,7 +171,18 @@ export async function recordCashPayment(input: RecordCashPaymentInput): Promise<
     });
 
     if (existingPayment) {
-      return recordedPaymentResult(existingPayment, await getPaymentBalance(tx, existingPayment.quoteId));
+      const balance = await getPaymentBalance(tx, existingPayment.quoteId);
+
+      if (existingPayment.status === PaymentStatus.PAID) {
+        await ensurePaymentLedgerEntry(tx, {
+          paymentId: existingPayment.id,
+          customerId: balance.customerId,
+          amountCents: existingPayment.amountCents,
+          resultingBalanceCents: await getCustomerOutstandingBalance(tx, balance.customerId),
+        });
+      }
+
+      return recordedPaymentResult(existingPayment, balance);
     }
 
     let quoteId = input.quoteId;
@@ -135,7 +206,7 @@ export async function recordCashPayment(input: RecordCashPaymentInput): Promise<
 
     const quote = await tx.quote.findUnique({
       where: { id: quoteId },
-      select: { id: true, status: true, totalCents: true },
+      select: { id: true, customerId: true, status: true, totalCents: true },
     });
 
     if (!quote) {
@@ -143,7 +214,7 @@ export async function recordCashPayment(input: RecordCashPaymentInput): Promise<
     }
 
     if (!CASH_PAYMENT_QUOTE_STATUSES.includes(quote.status)) {
-      throw new PaymentOperationError("Solo se pueden registrar pagos en cotizaciones enviadas o aprobadas.");
+      throw new PaymentOperationError("Solo se pueden registrar pagos en cotizaciones aprobadas.");
     }
 
     const { paidCents, remainingCents } = await getPaymentBalance(tx, quote.id);
@@ -164,9 +235,18 @@ export async function recordCashPayment(input: RecordCashPaymentInput): Promise<
       select: { id: true, amountCents: true, method: true, status: true },
     });
 
-    return recordedPaymentResult(payment, {
+    const resultingBalance = {
       paidCents: paidCents + payment.amountCents,
       remainingCents: remainingCents - payment.amountCents,
+    };
+
+    await ensurePaymentLedgerEntry(tx, {
+      paymentId: payment.id,
+      customerId: quote.customerId,
+      amountCents: payment.amountCents,
+      resultingBalanceCents: await getCustomerOutstandingBalance(tx, quote.customerId),
     });
+
+    return recordedPaymentResult(payment, resultingBalance);
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }

@@ -148,6 +148,13 @@ describe("QuoteListRow", () => {
     expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
+  it("renders the financial balance indicator separately from quote status", () => {
+    renderRow(createMockQuote({ status: "APPROVED", paidCents: 2500, remainingCents: 9100 }));
+
+    expect(screen.getByTestId("quote-payment-balance-indicator")).toHaveTextContent("Saldo pendiente: $91.00");
+    expect(screen.getByText("Aprobada")).toBeInTheDocument();
+  });
+
   it("does not render cancel action for approved quotes", () => {
     renderRow(createMockQuote({ status: "APPROVED" }));
 

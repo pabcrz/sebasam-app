@@ -104,6 +104,17 @@ describe("QuotePreviewDialog", () => {
     expect(screen.getByText("Toyota · Hilux · 2022 · ABC-123")).toBeInTheDocument();
   });
 
+  it("renders the pending balance when the quote has a partial payment", async () => {
+    const user = userEvent.setup();
+    const quote = createMockQuote({ paidCents: 2500, remainingCents: 9100 });
+
+    render(<QuotePreviewDialog quote={quote} />);
+
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+
+    expect(screen.getByTestId("quote-payment-balance-indicator")).toHaveTextContent("Saldo pendiente: $91.00");
+  });
+
   it("renders the empty concepts message when the quote has no items", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote({ items: [], subtotalCents: 0, taxCents: 0, totalCents: 0 });
