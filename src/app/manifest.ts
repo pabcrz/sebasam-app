@@ -2,13 +2,13 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Operaciones SEBASAM",
+    name: "SEBASAM",
     short_name: "SEBASAM",
-    description: "Cotizaciones, órdenes de trabajo y registros de ejecución para las operaciones de SEBASAM.",
+    description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#f3f6fa",
+    background_color: "#000000",
     theme_color: "#004AAD",
     orientation: "portrait",
     icons: [
