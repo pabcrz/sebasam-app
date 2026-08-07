@@ -19,12 +19,12 @@ const dmMono = DM_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Operaciones SEBASAM",
-    template: "%s | Operaciones SEBASAM",
+    default: "SEBASAM",
+    template: "%s | SEBASAM",
   },
-  description: "Aplicación operativa de SEBASAM para cotizaciones, órdenes de trabajo y ejecución de campo.",
+  description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
   manifest: "/manifest.webmanifest",
-  applicationName: "Operaciones SEBASAM",
+  applicationName: "SEBASAM",
   appleWebApp: {
     capable: true,
     title: "SEBASAM",
@@ -41,14 +41,14 @@ export const metadata: Metadata = {
     apple: "/apple-icon.png",
   },
   openGraph: {
-    title: "Operaciones SEBASAM",
-    description: "Aplicación operativa de SEBASAM para cotizaciones, órdenes de trabajo y ejecución de campo.",
+    title: "SEBASAM",
+    description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
     images: [{ url: "/icon-512.png", width: 512, height: 512 }],
   },
   twitter: {
     card: "summary",
-    title: "Operaciones SEBASAM",
-    description: "Aplicación operativa de SEBASAM para cotizaciones, órdenes de trabajo y ejecución de campo.",
+    title: "SEBASAM",
+    description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
     images: [{ url: "/icon-512.png", width: 512, height: 512 }],
   },
 };
