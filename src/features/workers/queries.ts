@@ -50,6 +50,7 @@ export async function listActiveWorkers() {
       displayName: true,
       username: true,
       email: true,
+      role: true,
       workerKind: true,
     },
   });

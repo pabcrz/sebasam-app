@@ -17,9 +17,12 @@ import { PaymentRequestLinkDialog } from "@/features/payment-requests/components
 import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
+import { QuoteActionsMenu } from "./quote-actions-menu";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
+import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
+import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
@@ -42,6 +45,8 @@ interface QuoteListCardProps {
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
+  workers?: WorkerOption[];
+  workOrderActions?: WorkOrderActions;
 }
 
 export function QuoteListCard({
@@ -59,6 +64,8 @@ export function QuoteListCard({
   customers,
   saveAction,
   searchCustomersAction,
+  workers,
+  workOrderActions,
 }: QuoteListCardProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
@@ -67,6 +74,7 @@ export function QuoteListCard({
   const vehicleDescription = quote.vehicle
     ? formatVehicle(quote.vehicle)
     : formatSnapshotVehicle(quote.vehicleSnapshot);
+  const canUsePaymentActions = quote.status === "APPROVED" && quote.workOrder?.status === "IN_PROGRESS";
 
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm">
@@ -135,33 +143,47 @@ export function QuoteListCard({
 
       <div className="mt-4 grid gap-2">
         <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
-        {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
-          <div className="[&_button]:w-full [&_button]:border-[var(--color-primary)] [&_button]:text-[var(--color-primary)]">
-            {quote.activeSharedQuote ? (
-              <ShareQuoteLinkDialog sharedQuote={quote.activeSharedQuote as SharedQuote} quoteNumber={quote.number} />
-            ) : (
-              <ShareQuoteButton action={shareAction} quoteId={quote.id} quoteNumber={quote.number} />
-            )}
-          </div>
-        ) : null}
-        <div data-testid="quote-primary-actions" className="grid grid-cols-2 gap-2 [&_button]:h-9 [&_button]:w-full">
-          <div className="min-w-0">
+        <div className="flex justify-end">
+          <QuoteActionsMenu quoteNumber={quote.number}>
             {editable ? (
-              <QuoteBuilderDialog customers={customers} saveAction={saveAction} searchCustomersAction={searchCustomersAction} quote={quote} quoteNumber={quote.number} triggerClassName="h-9 w-full" triggerSize="sm" />
+              <QuoteBuilderDialog
+                customers={customers}
+                saveAction={saveAction}
+                searchCustomersAction={searchCustomersAction}
+                quote={quote}
+                quoteNumber={quote.number}
+                triggerClassName="w-full justify-start"
+                triggerSize="sm"
+                triggerVariant="ghost"
+              />
             ) : (
-              <Button variant="outline" size="sm" disabled className="h-9 w-full">
+              <Button variant="ghost" size="sm" disabled className="w-full justify-start">
                 <Pencil className="h-4 w-4" aria-hidden="true" />
                 <span>Editar</span>
               </Button>
             )}
-          </div>
-          <form action={duplicateAction} className="min-w-0 w-full">
-            <input type="hidden" name="quoteId" value={quote.id} />
-            <Button type="submit" variant="outline" size="sm" className="h-9 w-full">
-              <Copy className="h-4 w-4" aria-hidden="true" />
-              <span>Duplicar</span>
-            </Button>
-          </form>
+            {quote.activeSharedQuote ? (
+              <ShareQuoteLinkDialog
+                sharedQuote={quote.activeSharedQuote as SharedQuote}
+                quoteNumber={quote.number}
+                triggerClassName="w-full justify-start"
+              />
+            ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
+              <ShareQuoteButton
+                action={shareAction}
+                quoteId={quote.id}
+                quoteNumber={quote.number}
+                className="w-full justify-start"
+              />
+            ) : null}
+            <form action={duplicateAction} className="w-full">
+              <input type="hidden" name="quoteId" value={quote.id} />
+              <Button type="submit" variant="ghost" size="sm" className="w-full justify-start">
+                <Copy className="h-4 w-4" aria-hidden="true" />
+                <span>Duplicar</span>
+              </Button>
+            </form>
+          </QuoteActionsMenu>
         </div>
         {quote.status === "DRAFT" && !quote.workOrder ? (
           <>
@@ -173,10 +195,10 @@ export function QuoteListCard({
             <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} />
           </>
         ) : null}
-        {quote.status === "SENT" || quote.status === "APPROVED" ? (
+        {canUsePaymentActions ? (
           <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
         ) : null}
-        {quote.status === "APPROVED" ? (
+        {canUsePaymentActions ? (
           <CashPaymentDialog
             action={cashPaymentAction}
             quoteNumber={quote.number}
@@ -192,6 +214,13 @@ export function QuoteListCard({
             size="sm"
           />
         ) : null}
+        <WorkOrderOperationsDialog
+          quoteNumber={quote.number}
+          quoteStatus={quote.status}
+          workOrder={quote.workOrder}
+          workers={workers}
+          actions={workOrderActions}
+        />
       </div>
     </div>
   );

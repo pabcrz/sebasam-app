@@ -102,6 +102,28 @@ function renderRow(quote: QuoteListItem) {
   );
 }
 
+function createInProgressWorkOrder(): NonNullable<QuoteListItem["workOrder"]> {
+  return {
+    id: "work-order-active",
+    quoteId: "quote-1",
+    number: "T-002",
+    status: "IN_PROGRESS",
+    notes: null,
+    scheduledFor: null,
+    siteAddress: null,
+    workshopCapacityConfirmedAt: new Date(),
+    masterAvailabilityConfirmedAt: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    assignments: [],
+    executionRecords: [],
+  } as NonNullable<QuoteListItem["workOrder"]>;
+}
+
+async function openActionsMenu(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByLabelText(/más acciones de cotización c-001/i));
+}
+
 describe("QuoteListRow", () => {
   it("opens the preview dialog when the row is clicked", async () => {
     const user = userEvent.setup();
@@ -137,16 +159,16 @@ describe("QuoteListRow", () => {
     expect(screen.getByText("Aprobada")).toBeInTheDocument();
   });
 
-  it("does not render cancel action for approved quotes", () => {
+  it("does not render payment actions for approved quotes before work starts", () => {
     renderRow(createMockQuote({ status: "APPROVED" }));
 
     expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
   });
 
   it("passes quote payment context to the payment link dialog", async () => {
     const user = userEvent.setup();
-    renderRow(createMockQuote({ status: "APPROVED" }));
+    renderRow(createMockQuote({ status: "APPROVED", workOrder: createInProgressWorkOrder() }));
 
     await user.click(screen.getByRole("button", { name: /link de pago/i }));
 
@@ -167,6 +189,10 @@ describe("QuoteListRow", () => {
         notes: null,
         scheduledFor: null,
         siteAddress: null,
+        assignments: [],
+        executionRecords: [],
+        workshopCapacityConfirmedAt: null,
+        masterAvailabilityConfirmedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -183,13 +209,16 @@ describe("QuoteListRow", () => {
     expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
   });
 
-  it("renders an edit link for draft quotes without a work order", () => {
+  it("renders an edit action for draft quotes without a work order", async () => {
+    const user = userEvent.setup();
     renderRow(createMockQuote());
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
-  it("renders a disabled edit button for draft quotes with a COMPLETED work order", () => {
+  it("renders a disabled edit action for draft quotes with a COMPLETED work order", async () => {
+    const user = userEvent.setup();
     renderRow(createMockQuote({
       workOrder: {
         id: "work-order-1",
@@ -199,15 +228,21 @@ describe("QuoteListRow", () => {
         notes: null,
         scheduledFor: null,
         siteAddress: null,
+        assignments: [],
+        executionRecords: [],
+        workshopCapacityConfirmedAt: null,
+        masterAvailabilityConfirmedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
     }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeDisabled();
   });
 
-  it("renders an edit link for draft quotes with a PLANNED work order", () => {
+  it("renders an edit action for draft quotes with a PLANNED work order", async () => {
+    const user = userEvent.setup();
     renderRow(createMockQuote({
       workOrder: {
         id: "work-order-1",
@@ -217,34 +252,47 @@ describe("QuoteListRow", () => {
         notes: null,
         scheduledFor: null,
         siteAddress: null,
+        assignments: [],
+        executionRecords: [],
+        workshopCapacityConfirmedAt: null,
+        masterAvailabilityConfirmedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
     }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
-  it("renders a disabled edit button for non-editable quotes", () => {
+  it("renders a disabled edit action for non-editable quotes", async () => {
+    const user = userEvent.setup();
     renderRow(createMockQuote({ status: "CANCELLED" }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeDisabled();
   });
 
-  it("renders an edit link for APPROVED quotes without a blocked work order", () => {
+  it("renders an edit action for APPROVED quotes without a blocked work order", async () => {
+    const user = userEvent.setup();
     renderRow(createMockQuote({ status: "APPROVED" }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
-  it("renders an edit link for SENT quotes", () => {
+  it("renders an edit action for SENT quotes", async () => {
+    const user = userEvent.setup();
     renderRow(createMockQuote({ status: "SENT" }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
-  it("renders a duplicate button for every quote including cancelled ones", () => {
+  it("renders a duplicate action for every quote including cancelled ones", async () => {
+    const user = userEvent.setup();
     renderRow(createMockQuote({ status: "CANCELLED" }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
   });
@@ -252,6 +300,7 @@ describe("QuoteListRow", () => {
   it("does not open the preview dialog when the edit link is clicked", async () => {
     const user = userEvent.setup();
     renderRow(createMockQuote());
+    await openActionsMenu(user);
 
     await user.click(screen.getByRole("button", { name: "Editar" }));
 

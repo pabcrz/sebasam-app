@@ -33,6 +33,14 @@ import {
   quoteStatusBadgeVariant,
 } from "@/features/quotes/lib/status";
 import { filterPaymentRequestDialogBankAccounts } from "@/features/quotes/lib/payment-request-dialog-context";
+import {
+  assignWorkOrderAction,
+  ensureWorkOrderWaitingAction,
+  recordExecutionAction,
+  removeExecutionRecordAction,
+  startWorkOrderAction,
+} from "@/features/work-orders/actions";
+import { listActiveWorkers } from "@/features/work-orders/queries";
 
 export const metadata: Metadata = {
   title: "Cotizaciones",
@@ -59,10 +67,11 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const parsedFilters = quoteFilterSchema.safeParse(params);
   const filters = parsedFilters.success ? parsedFilters.data : {} as QuoteFilterInput;
   const hasFilters = hasFilterValue(filters);
-  const [customers, quotes, paymentSettings] = await Promise.all([
+  const [customers, quotes, paymentSettings, workers] = await Promise.all([
     listCustomers(),
     listQuotes(filters),
     getPaymentSettings(),
+    listActiveWorkers(),
   ]);
   const eligiblePaymentRequestBankAccounts = filterPaymentRequestDialogBankAccounts(paymentSettings.bankAccounts);
 
@@ -112,6 +121,14 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 customers={customers}
                 saveAction={updateDraftQuoteFromWorkspace.bind(null, quote.id)}
                 searchCustomersAction={searchCustomersForQuote}
+                workers={workers}
+                workOrderActions={{
+                  ensureWaiting: ensureWorkOrderWaitingAction.bind(null, quote.id),
+                  assign: assignWorkOrderAction,
+                  start: startWorkOrderAction,
+                  recordExecution: recordExecutionAction,
+                  removeExecution: removeExecutionRecordAction,
+                }}
               />
             ))}
             {quotes.length === 0 ? (

@@ -12,7 +12,7 @@ type QuoteForEditability = {
  * Editable when:
  * - Status is DRAFT, SENT, APPROVED, or REJECTED
  * - NOT expired (validUntil >= now)
- * - WorkOrder is NOT COMPLETED or CANCELLED
+ * - WorkOrder is not assigned, in progress, completed, or cancelled
  */
 export function isQuoteEditable(quote: QuoteForEditability, now: Date = new Date()): boolean {
   const editableStatuses: QuoteStatus[] = ["DRAFT", "SENT", "APPROVED", "REJECTED"];
@@ -26,7 +26,7 @@ export function isQuoteEditable(quote: QuoteForEditability, now: Date = new Date
   }
 
   if (quote.workOrder) {
-    const blockedWorkOrderStatuses: WorkOrderStatus[] = ["COMPLETED", "CANCELLED"];
+    const blockedWorkOrderStatuses: WorkOrderStatus[] = ["ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
     if (blockedWorkOrderStatuses.includes(quote.workOrder.status)) {
       return false;
     }

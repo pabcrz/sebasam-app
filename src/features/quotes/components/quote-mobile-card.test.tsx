@@ -75,6 +75,24 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
   } as QuoteListItem;
 }
 
+function createInProgressWorkOrder(): NonNullable<QuoteListItem["workOrder"]> {
+  return {
+    id: "work-order-active",
+    quoteId: "quote-1",
+    number: "T-002",
+    status: "IN_PROGRESS",
+    notes: null,
+    scheduledFor: null,
+    siteAddress: null,
+    workshopCapacityConfirmedAt: new Date(),
+    masterAvailabilityConfirmedAt: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    assignments: [],
+    executionRecords: [],
+  } as NonNullable<QuoteListItem["workOrder"]>;
+}
+
 function renderCard(quote: QuoteListItem) {
   return render(
     <QuoteListCard
@@ -103,6 +121,10 @@ function renderCard(quote: QuoteListItem) {
       searchCustomersAction={vi.fn()}
     />,
   );
+}
+
+async function openActionsMenu(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByLabelText(/más acciones de cotización c-001/i));
 }
 
 describe("QuoteListCard", () => {
@@ -163,6 +185,10 @@ describe("QuoteListCard", () => {
         notes: null,
         scheduledFor: null,
         siteAddress: null,
+        assignments: [],
+        executionRecords: [],
+        workshopCapacityConfirmedAt: null,
+        masterAvailabilityConfirmedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -174,7 +200,8 @@ describe("QuoteListCard", () => {
     expect(screen.queryByRole("link", { name: /t-001|orden de trabajo/i })).not.toBeInTheDocument();
   });
 
-  it("keeps active-link sharing labeled and iconed as sharing", () => {
+  it("keeps active-link sharing labeled and iconed as sharing", async () => {
+    const user = userEvent.setup();
     renderCard(createMockQuote({
       activeSharedQuote: {
         id: "shared-1",
@@ -186,18 +213,23 @@ describe("QuoteListCard", () => {
       } as unknown as QuoteListItem["activeSharedQuote"],
     }));
 
-    const actions = screen.getAllByRole("button").filter((button) => button !== screen.getByLabelText(/abrir vista previa/i));
+    await openActionsMenu(user);
+    const shareAction = screen.getByRole("button", { name: /compartir cotización c-001/i });
 
-    expect(actions[0]).toHaveAccessibleName(/compartir cotización c-001/i);
-    expect(actions[0].querySelector("svg")).toBeInTheDocument();
+    expect(shareAction.querySelector("svg")).toBeInTheDocument();
   });
 
-  it("promotes share as the first action when no active shared quote exists", () => {
+  it("renders compact quote actions under the three-dot menu", async () => {
+    const user = userEvent.setup();
     renderCard(createMockQuote());
 
-    const actions = screen.getAllByRole("button").filter((button) => button !== screen.getByLabelText(/abrir vista previa/i));
+    expect(screen.getByLabelText(/más acciones de cotización c-001/i)).toBeInTheDocument();
+    await user.click(screen.getByLabelText(/más acciones de cotización c-001/i));
 
-    expect(actions[0]).toHaveAccessibleName(/compartir cotización c-001/i);
+    expect(screen.getByRole("menu", { name: /acciones de c-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /compartir cotización c-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
   });
 
   it("does not open the preview dialog when an action button is clicked", async () => {
@@ -217,32 +249,33 @@ describe("QuoteListCard", () => {
     expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
-  it("renders only the quote status badge", () => {
+  it("does not render payment controls for an approved quote before work starts", () => {
     renderCard(createMockQuote({ status: "APPROVED", paidCents: 2500, remainingCents: 9100 }));
 
     expect(screen.queryByTestId("quote-payment-balance-indicator")).not.toBeInTheDocument();
     expect(screen.getByText("Aprobada")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /registrar pago en efectivo/i })).not.toBeInTheDocument();
   });
 
   it("does not render cancel action for approved quotes", () => {
     renderCard(createMockQuote({ status: "APPROVED" }));
 
     expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /compartir cotización/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /registrar pago en efectivo/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /registrar pago en efectivo/i })).not.toBeInTheDocument();
   });
 
   it("does not render cash payment controls before approval", () => {
     renderCard(createMockQuote({ status: "SENT" }));
 
     expect(screen.queryByRole("button", { name: /registrar pago en efectivo/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
   });
 
   it("passes quote payment context to the payment link dialog", async () => {
     const user = userEvent.setup();
-    renderCard(createMockQuote({ status: "APPROVED" }));
+    renderCard(createMockQuote({ status: "APPROVED", workOrder: createInProgressWorkOrder() }));
 
     await user.click(screen.getByRole("button", { name: /link de pago/i }));
 
@@ -263,6 +296,10 @@ describe("QuoteListCard", () => {
         notes: null,
         scheduledFor: null,
         siteAddress: null,
+        assignments: [],
+        executionRecords: [],
+        workshopCapacityConfirmedAt: null,
+        masterAvailabilityConfirmedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -285,13 +322,16 @@ describe("QuoteListCard", () => {
     expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
   });
 
-  it("renders an edit link for draft quotes without a work order", () => {
+  it("renders an edit action for draft quotes without a work order", async () => {
+    const user = userEvent.setup();
     renderCard(createMockQuote());
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
-  it("renders a disabled edit button for draft quotes with a COMPLETED work order", () => {
+  it("renders a disabled edit action for draft quotes with a COMPLETED work order", async () => {
+    const user = userEvent.setup();
     renderCard(createMockQuote({
       workOrder: {
         id: "work-order-1",
@@ -301,15 +341,21 @@ describe("QuoteListCard", () => {
         notes: null,
         scheduledFor: null,
         siteAddress: null,
+        assignments: [],
+        executionRecords: [],
+        workshopCapacityConfirmedAt: null,
+        masterAvailabilityConfirmedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
     }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeDisabled();
   });
 
-  it("renders an edit link for draft quotes with a PLANNED work order", () => {
+  it("renders an edit action for draft quotes with a PLANNED work order", async () => {
+    const user = userEvent.setup();
     renderCard(createMockQuote({
       workOrder: {
         id: "work-order-1",
@@ -319,53 +365,69 @@ describe("QuoteListCard", () => {
         notes: null,
         scheduledFor: null,
         siteAddress: null,
+        assignments: [],
+        executionRecords: [],
+        workshopCapacityConfirmedAt: null,
+        masterAvailabilityConfirmedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
     }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
-  it("renders a disabled edit button for non-editable quotes", () => {
+  it("renders a disabled edit action for non-editable quotes", async () => {
+    const user = userEvent.setup();
     renderCard(createMockQuote({ status: "CANCELLED" }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeDisabled();
   });
 
-  it("renders an edit link for APPROVED quotes without a blocked work order", () => {
+  it("renders an edit action for APPROVED quotes without a blocked work order", async () => {
+    const user = userEvent.setup();
     renderCard(createMockQuote({ status: "APPROVED" }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
-  it("renders an edit link for SENT quotes", () => {
+  it("renders an edit action for SENT quotes", async () => {
+    const user = userEvent.setup();
     renderCard(createMockQuote({ status: "SENT" }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
   });
 
-  it("renders a duplicate button for every quote including cancelled ones", () => {
+  it("renders a duplicate action for every quote including cancelled ones", async () => {
+    const user = userEvent.setup();
     renderCard(createMockQuote({ status: "CANCELLED" }));
+    await openActionsMenu(user);
 
     expect(screen.getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
   });
 
   it.each(["DRAFT", "CANCELLED"] as const)(
     "keeps Edit and Duplicate in equal full-width columns when status is %s",
-    (status) => {
+    async (status) => {
+      const user = userEvent.setup();
       renderCard(createMockQuote({ status }));
+      await openActionsMenu(user);
 
-      const actions = screen.getByTestId("quote-primary-actions");
-      expect(actions).toHaveClass("grid-cols-2");
-      expect(screen.getByRole("button", { name: "Editar" })).toHaveClass("w-full", "h-9");
-      expect(screen.getByRole("button", { name: /duplicar/i })).toHaveClass("w-full", "h-9");
+      const actions = screen.queryByTestId("quote-primary-actions");
+      expect(actions).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Editar" })).toHaveClass("w-full");
+      expect(screen.getByRole("button", { name: /duplicar/i })).toHaveClass("w-full");
     },
   );
 
   it("does not open the preview dialog when a nested action button is clicked", async () => {
     const user = userEvent.setup();
     renderCard(createMockQuote());
+    await openActionsMenu(user);
 
     await user.click(screen.getByRole("button", { name: /duplicar/i }));
 
@@ -375,6 +437,7 @@ describe("QuoteListCard", () => {
   it("does not open the preview dialog when an action is activated from the keyboard", async () => {
     const user = userEvent.setup();
     renderCard(createMockQuote());
+    await openActionsMenu(user);
 
     screen.getByRole("button", { name: /duplicar/i }).focus();
     await user.keyboard("{Enter}");

@@ -214,15 +214,17 @@ model QuoteItem {
 }
 
 model WorkOrder {
-  id           String          @id @default(cuid())
-  quoteId      String          @unique
-  number       String          @unique
-  status       WorkOrderStatus @default(PLANNED)
-  scheduledFor DateTime?
-  siteAddress  String?
-  notes        String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  id                            String          @id @default(cuid())
+  quoteId                       String          @unique
+  number                        String          @unique
+  status                        WorkOrderStatus @default(PLANNED)
+  scheduledFor                  DateTime?
+  siteAddress                   String?
+  notes                         String?
+  workshopCapacityConfirmedAt   DateTime?
+  masterAvailabilityConfirmedAt DateTime?
+  createdAt                     DateTime        @default(now())
+  updatedAt                     DateTime        @updatedAt
 
   quote            Quote             @relation(fields: [quoteId], references: [id])
   assignments      WorkAssignment[]
@@ -245,12 +247,15 @@ model WorkAssignment {
 }
 
 model ExecutionRecord {
-  id          String   @id @default(cuid())
-  workOrderId String
-  workerId    String?  @db.Uuid
-  summary     String
-  happenedAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
+  id              String   @id @default(cuid())
+  workOrderId     String
+  workerId        String?  @db.Uuid
+  summary         String
+  notes           String?
+  progressPercent Int      @default(0)
+  isExtra         Boolean  @default(false)
+  happenedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
 
   workOrder WorkOrder    @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   worker    UserProfile? @relation(fields: [workerId], references: [id])

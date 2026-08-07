@@ -7,10 +7,25 @@ export const workOrderInputSchema = z.object({
   notes: z.string().trim().optional(),
 });
 
+export const assignWorkOrderInputSchema = z.object({
+  workOrderId: z.string().min(1),
+  masterId: z.string().uuid(),
+  helperIds: z.array(z.string().uuid()).default([]),
+  workshopCapacityConfirmed: z.boolean(),
+  masterAvailabilityConfirmed: z.boolean(),
+});
+
+export const startWorkOrderInputSchema = z.object({
+  workOrderId: z.string().min(1),
+});
+
 export const executionRecordInputSchema = z.object({
   workOrderId: z.string().min(1),
-  workerId: z.string().uuid().optional(),
-  summary: z.string().trim().min(1),
+  workerId: z.string().uuid(),
+  summary: z.string().trim().default(""),
+  notes: z.string().trim().optional(),
+  progressPercent: z.coerce.number().int().min(0).max(100).default(0),
+  isExtra: z.boolean().default(false),
   happenedAt: z.coerce.date().optional(),
 });
 
@@ -21,5 +36,7 @@ export const workAssignmentInputSchema = z.object({
 });
 
 export type WorkOrderInput = z.infer<typeof workOrderInputSchema>;
+export type AssignWorkOrderInput = z.infer<typeof assignWorkOrderInputSchema>;
+export type StartWorkOrderInput = z.infer<typeof startWorkOrderInputSchema>;
 export type ExecutionRecordInput = z.infer<typeof executionRecordInputSchema>;
 export type WorkAssignmentInput = z.infer<typeof workAssignmentInputSchema>;

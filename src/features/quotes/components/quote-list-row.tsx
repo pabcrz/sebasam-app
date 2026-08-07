@@ -17,8 +17,11 @@ import { PaymentRequestLinkDialog } from "@/features/payment-requests/components
 import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
+import { QuoteActionsMenu } from "./quote-actions-menu";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
+import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
+import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
@@ -36,6 +39,8 @@ interface QuoteListRowProps {
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
+  workers?: WorkerOption[];
+  workOrderActions?: WorkOrderActions;
 }
 
 export function QuoteListRow({
@@ -52,10 +57,13 @@ export function QuoteListRow({
   customers,
   saveAction,
   searchCustomersAction,
+  workers,
+  workOrderActions,
 }: QuoteListRowProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
   const paymentRequestContext = createPaymentRequestDialogContext(quote, paymentRequestBankAccounts);
+  const canUsePaymentActions = quote.status === "APPROVED" && quote.workOrder?.status === "IN_PROGRESS";
 
   return (
     <TableRow
@@ -103,22 +111,47 @@ export function QuoteListRow({
       <TableCell className="min-w-[230px]" onClick={(event) => event.stopPropagation()}>
         <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
         <div className="grid gap-2">
-          <div className="flex gap-2">
+          <div className="flex justify-end">
+            <QuoteActionsMenu quoteNumber={quote.number}>
             {editable ? (
-              <QuoteBuilderDialog customers={customers} saveAction={saveAction} searchCustomersAction={searchCustomersAction} quote={quote} quoteNumber={quote.number} />
+              <QuoteBuilderDialog
+                customers={customers}
+                saveAction={saveAction}
+                searchCustomersAction={searchCustomersAction}
+                quote={quote}
+                quoteNumber={quote.number}
+                triggerClassName="w-full justify-start"
+                triggerSize="sm"
+                triggerVariant="ghost"
+              />
             ) : (
-              <Button variant="outline" size="sm" disabled className="flex-1">
+              <Button variant="ghost" size="sm" disabled className="w-full justify-start">
                 <Pencil className="h-4 w-4" aria-hidden="true" />
                 <span>Editar</span>
               </Button>
             )}
-            <form action={duplicateAction} className={editable ? "flex-1" : ""}>
+            {quote.activeSharedQuote ? (
+              <ShareQuoteLinkDialog
+                sharedQuote={quote.activeSharedQuote as SharedQuote}
+                quoteNumber={quote.number}
+                triggerClassName="w-full justify-start"
+              />
+            ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
+              <ShareQuoteButton
+                action={shareAction}
+                quoteId={quote.id}
+                quoteNumber={quote.number}
+                className="w-full justify-start"
+              />
+            ) : null}
+            <form action={duplicateAction} className="w-full">
               <input type="hidden" name="quoteId" value={quote.id} />
-              <Button type="submit" variant="outline" size="sm" className="w-full">
+              <Button type="submit" variant="ghost" size="sm" className="w-full justify-start">
                 <Copy className="h-4 w-4" aria-hidden="true" />
                 <span>Duplicar</span>
               </Button>
             </form>
+            </QuoteActionsMenu>
           </div>
           {quote.status === "DRAFT" && !quote.workOrder ? (
             <>
@@ -140,7 +173,7 @@ export function QuoteListRow({
               />
             </>
           ) : null}
-          {quote.status === "SENT" || quote.status === "APPROVED" ? (
+          {canUsePaymentActions ? (
             <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
           ) : null}
           {quote.status === "SENT" ? (
@@ -150,15 +183,13 @@ export function QuoteListRow({
               size="default"
             />
           ) : null}
-          {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
-            quote.activeSharedQuote ? (
-              <ShareQuoteLinkDialog sharedQuote={quote.activeSharedQuote as SharedQuote} quoteNumber={quote.number} />
-            ) : (
-              <ShareQuoteButton action={shareAction} quoteId={quote.id} quoteNumber={quote.number} />
-            )
-          ) : (
-            <span className="text-sm text-[var(--color-text-muted)]">Sin acción</span>
-          )}
+          <WorkOrderOperationsDialog
+            quoteNumber={quote.number}
+            quoteStatus={quote.status}
+            workOrder={quote.workOrder}
+            workers={workers}
+            actions={workOrderActions}
+          />
         </div>
       </TableCell>
     </TableRow>
