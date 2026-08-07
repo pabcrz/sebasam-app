@@ -13,28 +13,26 @@ import { requireOperationalRole } from "@/lib/auth/session";
 import { nextWorkOrderNumber } from "@/features/quotes/lib/sequence";
 import {
   assignWorkOrderInputSchema,
+  completeWorkOrderInputSchema,
   executionRecordInputSchema,
   workAssignmentInputSchema,
-  startWorkOrderInputSchema,
   workOrderInputSchema,
   type WorkOrderInput,
 } from "./schemas";
 import {
   assertActiveWorker,
   assertApprovedQuote,
-  assertCapacityConfirmed,
   assertDistinctWorkers,
-  assertExecutionCanBeRecorded,
-  assertMasterAvailabilityConfirmed,
-  assertStoredConfirmations,
   assertWorkOrderCanBeAssigned,
   assertWorkOrderCanBeChanged,
-  assertWorkOrderCanBeStarted,
+  assertWorkOrderCanBeCompleted,
   WorkOrderOperationError,
   WorkerUnavailableError,
 } from "./domain";
 
 const quotesPath = "/admin/quotes";
+const workOrdersPath = "/admin/work-orders";
+const notasPath = "/admin/notas";
 
 type ActionResult = { success: boolean; error?: string };
 
@@ -61,12 +59,15 @@ async function requireActiveWorker(workerId: string) {
   }
 }
 
+/**
+ * Creates a work order for an approved quote (idempotent — returns existing if already created).
+ */
 export async function createWorkOrder(input: unknown) {
   const data = workOrderInputSchema.parse(input);
-  return ensureWorkOrderWaiting(data.quoteId, data);
+  return ensureWorkOrderPlanned(data.quoteId, data);
 }
 
-export async function ensureWorkOrderWaiting(
+async function ensureWorkOrderPlanned(
   quoteId: string,
   input: Pick<WorkOrderInput, "scheduledFor" | "siteAddress" | "notes"> = {},
 ) {
@@ -99,13 +100,192 @@ export async function ensureWorkOrderWaiting(
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
+/**
+ * Assigns a work order to a master (and optional helpers), or marks it as a special order.
+ * Creates the work order if it doesn't exist yet — single step from approved quote to in-process.
+ */
 export async function assignWorkOrder(input: unknown) {
   await requireOperationalRole();
 
   const data = assignWorkOrderInputSchema.parse(input);
-  assertCapacityConfirmed(data.workshopCapacityConfirmed);
-  assertMasterAvailabilityConfirmed(data.masterAvailabilityConfirmed);
-  assertDistinctWorkers(data.masterId, data.helperIds);
+
+  return prisma.$transaction(async (tx) => {
+    // Ensure the work order exists (create if needed)
+    let workOrder = await tx.workOrder.findFirst({
+      where: { id: data.workOrderId },
+      include: { quote: true },
+    });
+
+    if (!workOrder) {
+      throw new WorkOrderOperationError("Orden de trabajo no encontrada.");
+    }
+
+    assertApprovedQuote(workOrder.quote.status);
+    assertWorkOrderCanBeAssigned(workOrder.status);
+
+    const now = new Date();
+
+    if (data.isSpecial) {
+      // Special order: no UserProfile assignment
+      const updated = await tx.workOrder.updateMany({
+        where: { id: data.workOrderId, status: WorkOrderStatus.PLANNED },
+        data: {
+          status: WorkOrderStatus.ASSIGNED,
+          isSpecial: true,
+          specialAssigneeName: data.specialAssigneeName,
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new WorkOrderOperationError("El estado de la orden cambió. Recarga e intenta de nuevo.");
+      }
+    } else {
+      assertDistinctWorkers(data.masterId, data.helperIds);
+
+      const workerIds = [data.masterId, ...data.helperIds];
+      const workers = await tx.userProfile.findMany({
+        where: { id: { in: workerIds }, role: UserRole.WORKER, isActive: true },
+        select: { id: true, role: true, workerKind: true, isActive: true },
+      });
+      const workersById = new Map(workers.map((w) => [w.id, w]));
+      const master = workersById.get(data.masterId);
+
+      if (!master) {
+        throw new WorkOrderOperationError("El maestro no existe o está inactivo.");
+      }
+
+      assertActiveWorker(master, WorkerKind.MASTER);
+
+      for (const helperId of data.helperIds) {
+        const helper = workersById.get(helperId);
+        if (!helper) {
+          throw new WorkOrderOperationError("Uno de los ayudantes no existe o está inactivo.");
+        }
+        assertActiveWorker(helper, WorkerKind.HELPER);
+      }
+
+      const updated = await tx.workOrder.updateMany({
+        where: { id: data.workOrderId, status: WorkOrderStatus.PLANNED },
+        data: {
+          status: WorkOrderStatus.ASSIGNED,
+          isSpecial: false,
+          specialAssigneeName: null,
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new WorkOrderOperationError("El estado de la orden cambió. Recarga e intenta de nuevo.");
+      }
+
+      await tx.workAssignment.createMany({
+        data: workerIds.map((workerId) => ({
+          workOrderId: data.workOrderId,
+          workerId,
+          status: AssignmentStatus.ASSIGNED,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    return tx.workOrder.findUniqueOrThrow({ where: { id: data.workOrderId } });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+/**
+ * Creates a PLANNED work order for an approved quote, then immediately assigns it.
+ * This is the single entry point from the UI: quote approved → assign master → done.
+ */
+export async function createAndAssignWorkOrder(quoteId: string, assignInput: unknown) {
+  await requireOperationalRole();
+
+  return prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true } });
+
+    if (!quote) {
+      throw new WorkOrderOperationError("Cotización no encontrada.");
+    }
+
+    assertApprovedQuote(quote.status);
+
+    let workOrderId: string;
+
+    if (quote.workOrder) {
+      assertWorkOrderCanBeAssigned(quote.workOrder.status);
+      workOrderId = quote.workOrder.id;
+    } else {
+      const number = await nextWorkOrderNumber(tx);
+      const created = await tx.workOrder.create({
+        data: { quoteId, number },
+      });
+      workOrderId = created.id;
+    }
+
+    // Now assign using the parsed input
+    const data = assignWorkOrderInputSchema.parse(assignInput);
+    // Override workOrderId with the one we just created/found
+    const inputWithId = { ...data, workOrderId };
+
+    // Inline the assign logic (can't call assignWorkOrder since we're already in a tx)
+    if (inputWithId.isSpecial) {
+      await tx.workOrder.update({
+        where: { id: workOrderId },
+        data: {
+          status: WorkOrderStatus.ASSIGNED,
+          isSpecial: true,
+          specialAssigneeName: inputWithId.specialAssigneeName,
+        },
+      });
+    } else {
+      assertDistinctWorkers(inputWithId.masterId, inputWithId.helperIds);
+
+      const workerIds = [inputWithId.masterId, ...inputWithId.helperIds];
+      const workers = await tx.userProfile.findMany({
+        where: { id: { in: workerIds }, role: UserRole.WORKER, isActive: true },
+        select: { id: true, role: true, workerKind: true, isActive: true },
+      });
+      const workersById = new Map(workers.map((w) => [w.id, w]));
+      const master = workersById.get(inputWithId.masterId);
+
+      if (!master) throw new WorkOrderOperationError("El maestro no existe o está inactivo.");
+      assertActiveWorker(master, WorkerKind.MASTER);
+
+      for (const helperId of inputWithId.helperIds) {
+        const helper = workersById.get(helperId);
+        if (!helper) throw new WorkOrderOperationError("Uno de los ayudantes no existe o está inactivo.");
+        assertActiveWorker(helper, WorkerKind.HELPER);
+      }
+
+      await tx.workOrder.update({
+        where: { id: workOrderId },
+        data: {
+          status: WorkOrderStatus.ASSIGNED,
+          isSpecial: false,
+          specialAssigneeName: null,
+        },
+      });
+
+      await tx.workAssignment.createMany({
+        data: workerIds.map((workerId) => ({
+          workOrderId,
+          workerId,
+          status: AssignmentStatus.ASSIGNED,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    return tx.workOrder.findUniqueOrThrow({ where: { id: workOrderId } });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+/**
+ * Completes a work order (ASSIGNED → COMPLETED).
+ * After this, the quote items are frozen and a delivery note (Nota de Remisión) can be printed.
+ */
+export async function completeWorkOrder(input: unknown) {
+  await requireOperationalRole();
+
+  const data = completeWorkOrderInputSchema.parse(input);
 
   return prisma.$transaction(async (tx) => {
     const workOrder = await tx.workOrder.findUnique({
@@ -118,90 +298,13 @@ export async function assignWorkOrder(input: unknown) {
     }
 
     assertApprovedQuote(workOrder.quote.status);
-    assertWorkOrderCanBeAssigned(workOrder.status);
-
-    const workerIds = [data.masterId, ...data.helperIds];
-    const workers = await tx.userProfile.findMany({
-      where: { id: { in: workerIds }, role: UserRole.WORKER, isActive: true },
-      select: { id: true, role: true, workerKind: true, isActive: true },
-    });
-    const workersById = new Map(workers.map((worker) => [worker.id, worker]));
-    const master = workersById.get(data.masterId);
-
-    if (!master) {
-      throw new WorkOrderOperationError("El maestro no existe o está inactivo.");
-    }
-
-    assertActiveWorker(master, WorkerKind.MASTER);
-
-    for (const helperId of data.helperIds) {
-      const helper = workersById.get(helperId);
-      if (!helper) {
-        throw new WorkOrderOperationError("Uno de los ayudantes no existe o está inactivo.");
-      }
-      assertActiveWorker(helper, WorkerKind.HELPER);
-    }
-
-    const now = new Date();
-    const updated = await tx.workOrder.updateMany({
-      where: { id: data.workOrderId, status: WorkOrderStatus.PLANNED },
-      data: {
-        status: WorkOrderStatus.ASSIGNED,
-        workshopCapacityConfirmedAt: now,
-        masterAvailabilityConfirmedAt: now,
-      },
-    });
-
-    if (updated.count !== 1) {
-      throw new WorkOrderOperationError("El estado de la orden cambió. Recarga e intenta de nuevo.");
-    }
-
-    await tx.workAssignment.createMany({
-      data: workerIds.map((workerId) => ({
-        workOrderId: data.workOrderId,
-        workerId,
-        status: AssignmentStatus.ASSIGNED,
-      })),
-    });
-
-    return tx.workOrder.findUniqueOrThrow({ where: { id: data.workOrderId } });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-}
-
-export async function startWorkOrder(input: unknown) {
-  await requireOperationalRole();
-
-  const data = startWorkOrderInputSchema.parse(input);
-
-  return prisma.$transaction(async (tx) => {
-    const workOrder = await tx.workOrder.findUnique({
-      where: { id: data.workOrderId },
-      include: { quote: true, assignments: { include: { worker: true } } },
-    });
-
-    if (!workOrder) {
-      throw new WorkOrderOperationError("Orden de trabajo no encontrada.");
-    }
-
-    assertApprovedQuote(workOrder.quote.status);
-    assertWorkOrderCanBeStarted(workOrder.status);
-    assertStoredConfirmations(workOrder);
-
-    const masters = workOrder.assignments.filter(
-      (assignment) => assignment.status !== AssignmentStatus.CANCELLED && assignment.worker.workerKind === WorkerKind.MASTER,
-    );
-    for (const assignment of workOrder.assignments) {
-      if (assignment.status === AssignmentStatus.CANCELLED || !assignment.worker.workerKind) continue;
-      assertActiveWorker(assignment.worker, assignment.worker.workerKind);
-    }
-    if (masters.length !== 1) {
-      throw new WorkOrderOperationError("La orden requiere exactamente un maestro activo asignado.");
-    }
+    assertWorkOrderCanBeCompleted(workOrder.status);
 
     const updated = await tx.workOrder.updateMany({
       where: { id: data.workOrderId, status: WorkOrderStatus.ASSIGNED },
       data: {
-        status: WorkOrderStatus.IN_PROGRESS,
+        status: WorkOrderStatus.COMPLETED,
+        completedAt: new Date(),
       },
     });
 
@@ -212,6 +315,10 @@ export async function startWorkOrder(input: unknown) {
     return tx.workOrder.findUniqueOrThrow({ where: { id: data.workOrderId } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
+
+// ─── Internal / future use: execution tracking ──────────────────────────────
+// These actions are kept for the future execution tracking feature (progress + photos
+// visible to the customer). They are not exposed in the UI yet.
 
 export async function recordExecution(input: unknown) {
   await requireOperationalRole();
@@ -231,7 +338,6 @@ export async function recordExecution(input: unknown) {
     }
 
     assertApprovedQuote(workOrder.quote.status);
-    assertExecutionCanBeRecorded(workOrder.status);
 
     const worker = await tx.userProfile.findUnique({
       where: { id: data.workerId },
@@ -260,79 +366,34 @@ export async function recordExecution(input: unknown) {
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
-export async function removeExecutionRecord(executionRecordId: string) {
-  await requireOperationalRole();
+// ─── Server Action wrappers ───────────────────────────────────────────────────
 
-  return prisma.$transaction(async (tx) => {
-    const record = await tx.executionRecord.findUnique({
-      where: { id: executionRecordId },
-      include: { workOrder: true },
-    });
-
-    if (!record) {
-      throw new WorkOrderOperationError("Registro de ejecución no encontrado.");
-    }
-
-    assertWorkOrderCanBeChanged(record.workOrder.status);
-
-    if (!record.isExtra) {
-      throw new WorkOrderOperationError("Solo se pueden quitar registros marcados como adicionales.");
-    }
-
-    return tx.executionRecord.delete({ where: { id: executionRecordId } });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-}
-
-export async function ensureWorkOrderWaitingAction(quoteId: string): Promise<ActionResult> {
+export async function createAndAssignWorkOrderAction(
+  quoteId: string,
+  input: unknown,
+): Promise<ActionResult> {
   try {
-    await ensureWorkOrderWaiting(quoteId);
+    await createAndAssignWorkOrder(quoteId, input);
     revalidatePath(quotesPath);
-    return { success: true };
-  } catch (error) {
-    return toActionResult(error, "No se pudo enviar la cotización a espera.");
-  }
-}
-
-export async function assignWorkOrderAction(input: unknown): Promise<ActionResult> {
-  try {
-    await assignWorkOrder(input);
-    revalidatePath(quotesPath);
+    revalidatePath(workOrdersPath);
     return { success: true };
   } catch (error) {
     return toActionResult(error, "No se pudo asignar la orden de trabajo.");
   }
 }
 
-export async function startWorkOrderAction(input: unknown): Promise<ActionResult> {
+export async function completeWorkOrderAction(input: unknown): Promise<ActionResult> {
   try {
-    await startWorkOrder(input);
-    revalidatePath(quotesPath);
+    await completeWorkOrder(input);
+    revalidatePath(workOrdersPath);
+    revalidatePath(notasPath);
     return { success: true };
   } catch (error) {
-    return toActionResult(error, "No se pudo iniciar la orden de trabajo.");
+    return toActionResult(error, "No se pudo finalizar la orden de trabajo.");
   }
 }
 
-export async function recordExecutionAction(input: unknown): Promise<ActionResult> {
-  try {
-    await recordExecution(input);
-    revalidatePath(quotesPath);
-    return { success: true };
-  } catch (error) {
-    return toActionResult(error, "No se pudo registrar la ejecución.");
-  }
-}
-
-export async function removeExecutionRecordAction(executionRecordId: string): Promise<ActionResult> {
-  try {
-    await removeExecutionRecord(executionRecordId);
-    revalidatePath(quotesPath);
-    return { success: true };
-  } catch (error) {
-    return toActionResult(error, "No se pudo quitar el registro adicional.");
-  }
-}
-
+// Legacy: kept for backward compatibility during migration
 export async function assignWorker(input: unknown) {
   await requireOperationalRole();
 
