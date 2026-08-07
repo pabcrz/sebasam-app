@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleUserRound, Cog, FileText, Home, LogOut, UserCog, Users, type LucideIcon } from "lucide-react";
+import { CircleUserRound, ClipboardList, Cog, FileCheck, FileText, Home, LogOut, UserCog, Users, type LucideIcon } from "lucide-react";
 import { logoutAdmin } from "@/features/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -19,12 +19,24 @@ type NavItem = {
   icon: LucideIcon;
 };
 
+/** All nav items shown in the desktop sidebar. */
 const navItems: NavItem[] = [
   { href: "/admin", label: "Inicio", icon: Home },
   { href: "/admin/customers", label: "Clientes", icon: Users },
   { href: "/admin/workers", label: "Trabajadores", icon: UserCog },
   { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
+  { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
+  { href: "/admin/notas", label: "Notas", icon: FileCheck },
   { href: "/admin/configuracion-pago", label: "Configuración", icon: Cog },
+];
+
+/** Five items shown in the mobile bottom nav bar. Notas is accessible via desktop sidebar or from Trabajos. */
+const mobileNavItems: NavItem[] = [
+  { href: "/admin", label: "Inicio", icon: Home },
+  { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
+  { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
+  { href: "/admin/notas", label: "Notas", icon: FileCheck },
+  { href: "/admin/configuracion-pago", label: "Config", icon: Cog },
 ];
 
 function NavLink({ href, label, icon: Icon, mobile = false }: NavItem & { mobile?: boolean }) {
@@ -129,7 +141,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="grid grid-cols-5">
-          {navItems.map((item) => (
+          {mobileNavItems.map((item) => (
             <NavLink key={item.href} {...item} mobile />
           ))}
         </div>

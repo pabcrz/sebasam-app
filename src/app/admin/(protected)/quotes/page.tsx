@@ -69,7 +69,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const hasFilters = hasFilterValue(filters);
   const [customers, quotes, paymentSettings, workers] = await Promise.all([
     listCustomers(),
-    listQuotes(filters),
+    listQuotes(filters, { excludeWithActiveWorkOrder: true }),
     getPaymentSettings(),
     listActiveWorkers(),
   ]);

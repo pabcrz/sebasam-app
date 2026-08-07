@@ -1,4 +1,4 @@
-import { Prisma, QuoteStatus } from "@prisma/client";
+import { Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { endOfDay } from "@/lib/filters";
@@ -29,12 +29,19 @@ function findActiveSharedQuote(sharedQuotes: { expiresAt: Date; revokedAt: Date 
   return sharedQuotes.find((sharedQuote) => sharedQuote.revokedAt === null && sharedQuote.expiresAt >= now) ?? null;
 }
 
-export async function listQuotes(input: unknown = {}) {
+export async function listQuotes(input: unknown = {}, options: { excludeWithActiveWorkOrder?: boolean } = {}) {
   await requireOperationalRole();
 
   const parsed = quoteFilterSchema.safeParse(input);
   const filters = parsed.success ? parsed.data : ({} as QuoteFilterInput);
   const where: Prisma.QuoteWhereInput = {};
+
+  // Exclude quotes that have an active (ASSIGNED) work order — they live in Trabajos
+  if (options.excludeWithActiveWorkOrder) {
+    where.NOT = {
+      workOrder: { status: WorkOrderStatus.ASSIGNED },
+    };
+  }
 
   if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
     where.status = filters.status as QuoteStatus;
