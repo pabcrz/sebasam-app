@@ -221,8 +221,9 @@ model WorkOrder {
   scheduledFor                  DateTime?
   siteAddress                   String?
   notes                         String?
-  workshopCapacityConfirmedAt   DateTime?
-  masterAvailabilityConfirmedAt DateTime?
+  completedAt                   DateTime?
+  isSpecial                     Boolean         @default(false)
+  specialAssigneeName           String?
   createdAt                     DateTime        @default(now())
   updatedAt                     DateTime        @updatedAt
 
