@@ -222,11 +222,9 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
     }
 
     // Now assign using the parsed input
-    const data = assignWorkOrderInputSchema.parse(
-      typeof assignInput === "object" && assignInput !== null
-        ? { workOrderId, ...assignInput }
-        : assignInput,
-    );
+    const assignObj = typeof assignInput === "object" && assignInput !== null ? { ...assignInput } : {};
+    delete (assignObj as Record<string, unknown>).workOrderId;
+    const data = assignWorkOrderInputSchema.parse({ ...assignObj, workOrderId });
     const inputWithId = data;
 
     // Inline the assign logic (can't call assignWorkOrder since we're already in a tx)

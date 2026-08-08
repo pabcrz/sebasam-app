@@ -121,7 +121,7 @@ export function WorkOrderOperationsDialog({
       }
       runAction(() =>
         actions.assign({
-          workOrderId: workOrder?.id ?? "",
+          workOrderId: workOrder?.id || "pending",
           isSpecial: true,
           specialAssigneeName: specialAssigneeName.trim(),
         }),
@@ -133,7 +133,7 @@ export function WorkOrderOperationsDialog({
       }
       runAction(() =>
         actions.assign({
-          workOrderId: workOrder?.id ?? "",
+          workOrderId: workOrder?.id || "pending",
           isSpecial: false,
           masterId,
           helperIds,

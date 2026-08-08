@@ -71,7 +71,7 @@ function NavLink({ href, label, icon: Icon, mobile = false }: NavItem & { mobile
 export function AdminShell({ displayName, role, children }: AdminShellProps) {
   return (
     <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(var(--tap-min-height)+env(safe-area-inset-bottom))] md:pb-0">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 text-[var(--color-text-main)] md:flex">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 text-[var(--color-text-main)] md:flex overflow-y-auto">
         <div className="border-b border-[var(--color-border-light)] px-3 pb-5">
           <p className="text-xl font-extrabold tracking-[-0.04em]">SEBASAM</p>
           <p className="mt-1 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
