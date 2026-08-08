@@ -1,8 +1,21 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Bolt, CircleUserRound, ClipboardList, FileCheck, FileText, Home, LogOut, UserCog, Users, type LucideIcon } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Bolt,
+  CircleUserRound,
+  ClipboardList,
+  FileCheck,
+  FileText,
+  Home,
+  Loader2,
+  LogOut,
+  UserCog,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { logoutAdmin } from "@/features/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -38,36 +51,70 @@ const mobileNavItems: NavItem[] = [
   { href: "/admin/notas", label: "Notas", icon: FileCheck },
 ];
 
-function NavLink({ href, label, icon: Icon, mobile = false }: NavItem & { mobile?: boolean }) {
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  mobile = false,
+  onNavStart,
+}: NavItem & { mobile?: boolean; onNavStart?: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isPending, startTransition] = React.useTransition();
+
   const active =
     href === "/admin"
       ? pathname === href
       : pathname === href || pathname.startsWith(`${href}/`);
 
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (active || isPending) {
+      if (active) e.preventDefault();
+      return;
+    }
+    e.preventDefault();
+    onNavStart?.();
+    startTransition(() => {
+      router.push(href);
+    });
+  };
+
   return (
     <Link
       href={href}
+      onClick={handleClick}
       className={
         mobile
           ? `flex min-h-[var(--tap-min-height)] flex-col items-center justify-center gap-0.5 px-3 py-1 text-xs font-medium transition-colors ${
               active ? "text-white" : "text-white/70 hover:text-white"
-            }`
+            } ${isPending ? "opacity-75" : ""}`
           : `flex min-h-[var(--tap-min-height)] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               active
                 ? "bg-[var(--color-blue-tint)] text-[var(--color-nav-active-text)] shadow-sm"
                 : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)]"
-            }`
+            } ${isPending ? "opacity-75" : ""}`
       }
       aria-current={active ? "page" : undefined}
     >
-      <Icon className={mobile ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" />
+      {isPending ? (
+        <Loader2 className={mobile ? "h-5 w-5 animate-spin text-white" : "h-4 w-4 animate-spin text-[var(--color-primary)]"} aria-hidden="true" />
+      ) : (
+        <Icon className={mobile ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" />
+      )}
       <span>{label}</span>
     </Link>
   );
 }
 
 export function AdminShell({ displayName, role, children }: AdminShellProps) {
+  const [isGlobalPending, setGlobalPending] = React.useState(false);
+  const pathname = usePathname();
+
+  // Reset global pending indicator when pathname changes
+  React.useEffect(() => {
+    setGlobalPending(false);
+  }, [pathname]);
+
   return (
     <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(var(--tap-min-height)+env(safe-area-inset-bottom))] md:pb-0">
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 text-[var(--color-text-main)] md:flex overflow-y-auto">
@@ -80,7 +127,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
 
         <nav aria-label="Navegación principal" className="mt-6 flex flex-1 flex-col gap-1">
           {navItems.map((item) => (
-            <NavLink key={item.href} {...item} />
+            <NavLink key={item.href} {...item} onNavStart={() => setGlobalPending(true)} />
           ))}
         </nav>
 
@@ -92,6 +139,9 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-40 border-b border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)]">
+          {isGlobalPending ? (
+            <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--color-primary)] animate-pulse" />
+          ) : null}
           <div className="mx-auto flex w-full items-center justify-between px-4 py-3 md:px-6">
             <div className="md:hidden">
               <p className="text-lg font-extrabold tracking-[-0.04em]">SEBASAM</p>
@@ -99,9 +149,17 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
                 Operaciones
               </p>
             </div>
-            <p className="hidden font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)] md:block">
-              Panel de operaciones
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="hidden font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)] md:block">
+                Panel de operaciones
+              </p>
+              {isGlobalPending ? (
+                <span className="flex items-center gap-1 text-xs text-[var(--color-primary)] font-medium">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  Cargando…
+                </span>
+              ) : null}
+            </div>
 
             <div className="flex items-center gap-1">
               <Link
@@ -150,7 +208,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
       >
         <div className="grid grid-cols-4">
           {mobileNavItems.map((item) => (
-            <NavLink key={item.href} {...item} mobile />
+            <NavLink key={item.href} {...item} mobile onNavStart={() => setGlobalPending(true)} />
           ))}
         </div>
       </nav>

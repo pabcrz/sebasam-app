@@ -82,12 +82,12 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     paymentRequests: [],
     sharedQuotes: [],
     activeSharedQuote: null,
+
     paidCents: 0,
     remainingCents: 11600,
-    paymentStatus: "UNPAID",
-    isFullyPaid: false,
-    hasPayments: false,
-    hasPendingPaymentRequest: false,
+
+
+
     ...overrides,
   };
 }
