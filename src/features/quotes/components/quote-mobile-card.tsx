@@ -143,85 +143,69 @@ export function QuoteListCard({
 
       <div className="mt-4 grid gap-2">
         <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
-        <div className="flex justify-end">
-          <QuoteActionsMenu quoteNumber={quote.number}>
-            {editable ? (
-              <QuoteBuilderDialog
-                customers={customers}
-                saveAction={saveAction}
-                searchCustomersAction={searchCustomersAction}
-                quote={quote}
-                quoteNumber={quote.number}
-                triggerClassName="w-full justify-start"
-                triggerSize="sm"
-                triggerVariant="ghost"
-              />
-            ) : (
-              <Button variant="ghost" size="sm" disabled className="w-full justify-start">
-                <Pencil className="h-4 w-4" aria-hidden="true" />
-                <span>Editar</span>
-              </Button>
-            )}
-            {quote.activeSharedQuote ? (
-              <ShareQuoteLinkDialog
-                sharedQuote={quote.activeSharedQuote as SharedQuote}
-                quoteNumber={quote.number}
-                triggerClassName="w-full justify-start"
-              />
-            ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
-              <ShareQuoteButton
-                action={shareAction}
-                quoteId={quote.id}
-                quoteNumber={quote.number}
-                className="w-full justify-start"
-              />
-            ) : null}
-            <form action={duplicateAction} className="w-full">
-              <input type="hidden" name="quoteId" value={quote.id} />
-              <Button type="submit" variant="ghost" size="sm" className="w-full justify-start">
-                <Copy className="h-4 w-4" aria-hidden="true" />
-                <span>Duplicar</span>
-              </Button>
-            </form>
-          </QuoteActionsMenu>
-        </div>
-        {quote.status === "DRAFT" && !quote.workOrder ? (
-          <>
-            <QuoteApprovalForm
-              action={approveAction}
+        <div className="flex flex-wrap items-center gap-2">
+          {editable ? (
+            <QuoteBuilderDialog
+              customers={customers}
+              saveAction={saveAction}
+              searchCustomersAction={searchCustomersAction}
+              quote={quote}
+              quoteNumber={quote.number}
+              triggerSize="sm"
+              triggerVariant="outline"
+            />
+          ) : null}
+
+          <form action={duplicateAction}>
+            <input type="hidden" name="quoteId" value={quote.id} />
+            <Button type="submit" variant="outline" size="sm" title="Duplicar cotización">
+              <Copy className="h-4 w-4" aria-hidden="true" />
+              <span>Duplicar</span>
+            </Button>
+          </form>
+
+          {quote.activeSharedQuote ? (
+            <ShareQuoteLinkDialog
+              sharedQuote={quote.activeSharedQuote as SharedQuote}
+              quoteNumber={quote.number}
+            />
+          ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
+            <ShareQuoteButton
+              action={shareAction}
               quoteId={quote.id}
               quoteNumber={quote.number}
             />
-            <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} />
-          </>
-        ) : null}
-        {canUsePaymentActions ? (
-          <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
-        ) : null}
-        {canUsePaymentActions ? (
-          <CashPaymentDialog
-            action={cashPaymentAction}
-            quoteNumber={quote.number}
-            totalCents={quote.totalCents}
-            paidCents={quote.paidCents}
-            remainingCents={quote.remainingCents}
-          />
-        ) : null}
-        {quote.status === "SENT" ? (
-          <QuoteAuthorizeForm
-            action={authorizeAction}
-            quoteNumber={quote.number}
-            size="sm"
-          />
-        ) : null}
-        <WorkOrderOperationsDialog
-          quoteNumber={quote.number}
-          quoteStatus={quote.status}
-          workOrder={quote.workOrder}
-          workers={workers}
-          actions={workOrderActions}
-        />
+          ) : null}
+
+          {quote.status === "DRAFT" || quote.status === "SENT" ? (
+            <QuoteAuthorizeForm
+              action={authorizeAction}
+              quoteNumber={quote.number}
+              variant="outline"
+              size="sm"
+            />
+          ) : null}
+
+          {quote.status === "APPROVED" ? (
+            <WorkOrderOperationsDialog
+              quoteNumber={quote.number}
+              quoteStatus={quote.status}
+              workOrder={quote.workOrder}
+              workers={workers}
+              actions={workOrderActions}
+            />
+          ) : null}
+
+          {quote.status === "DRAFT" || quote.status === "SENT" ? (
+            <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant="outline" size="sm" />
+          ) : null}
+
+          {canUsePaymentActions ? (
+            <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
+          ) : null}
+        </div>
       </div>
     </div>
   );
 }
+

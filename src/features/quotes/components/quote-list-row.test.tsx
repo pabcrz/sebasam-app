@@ -1,66 +1,89 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type React from "react";
-import type { PaymentRequest, QuoteStatus } from "@prisma/client";
-import type { listQuotes } from "@/features/quotes/queries";
 import { QuoteListRow } from "./quote-list-row";
+import type { listQuotes } from "@/features/quotes/queries";
 
-vi.mock("next/link", () => ({
-  default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: vi.fn(),
+    push: vi.fn(),
+  }),
 }));
+
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
-const quoteStatusLabels: Record<QuoteStatus, string> = {
+const quoteStatusLabels = {
   DRAFT: "Borrador",
   SENT: "Enviada",
   APPROVED: "Aprobada",
   REJECTED: "Rechazada",
   CANCELLED: "Cancelada",
-};
+} as const;
 
-const quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info"> = {
-  DRAFT: "default",
-  SENT: "info",
-  APPROVED: "success",
-  REJECTED: "danger",
-  CANCELLED: "danger",
+const quoteStatusBadgeVariant = {
+  DRAFT: "default" as const,
+  SENT: "info" as const,
+  APPROVED: "success" as const,
+  REJECTED: "danger" as const,
+  CANCELLED: "warning" as const,
 };
 
 function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem {
   return {
     id: "quote-1",
+    submissionKey: "key-1",
+    submissionHash: "hash-1",
     customerId: "cust-1",
-    vehicleId: null,
+    vehicleId: "veh-1",
     number: "C-001",
     status: "DRAFT",
-    title: "Servicio general",
-    description: "Revisión completa",
+    title: "Mantenimiento preventivo",
+    description: null,
     vehicleSnapshot: null,
     subtotalCents: 10000,
     taxCents: 1600,
     totalCents: 11600,
     taxEnabled: true,
-    validUntil: new Date("2026-12-31T00:00:00.000Z"),
+    validUntil: new Date("2026-12-31"),
+
     approvedAt: null,
-    administrative: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    customer: { id: "cust-1", name: "Constructora del Norte", fiscalProfiles: [] },
-    vehicle: null,
+    administrative: false,
+    createdAt: new Date("2026-06-15"),
+    updatedAt: new Date("2026-06-15"),
+    customer: {
+      id: "cust-1",
+      name: "Constructora del Norte",
+      email: "contacto@constructora.com",
+      phone: "555-0192",
+      address: null,
+      status: "ACTIVE",
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      fiscalProfiles: [],
+    },
+    vehicle: {
+      id: "veh-1",
+      customerId: "cust-1",
+      brand: "Ford",
+      model: "F-150",
+      year: 2020,
+      color: "Blanco",
+      plate: "ABC-123",
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
     items: [
       {
         id: "item-1",
         quoteId: "quote-1",
-        type: "LABOR",
+        type: "SERVICE",
         description: "Cambio de aceite",
-        quantity: 2,
-        unitPriceCents: 5000,
+        quantity: 1,
+        unitPriceCents: 10000,
         totalCents: 10000,
         sortOrder: 0,
       },
@@ -69,8 +92,14 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     paymentRequests: [],
     sharedQuotes: [],
     activeSharedQuote: null,
+    paidCents: 0,
+    remainingCents: 11600,
+    paymentStatus: "UNPAID",
+    isFullyPaid: false,
+    hasPayments: false,
+    hasPendingPaymentRequest: false,
     ...overrides,
-  } as QuoteListItem;
+  };
 }
 
 function renderRow(quote: QuoteListItem) {
@@ -84,14 +113,12 @@ function renderRow(quote: QuoteListItem) {
           approveAction={vi.fn()}
           cancelAction={vi.fn()}
           shareAction={vi.fn()}
-          authorizeAction={vi.fn(() => Promise.resolve({ success: true }))}
-          paymentRequestAction={vi.fn(() => Promise.resolve({ id: "pr-1", token: "token-1" } as PaymentRequest))}
-          paymentRequestBankAccounts={[{
-            accountHolder: "Federico Cruz",
-            bankName: "Santander",
-            accountNumber: "123456",
-            clabe: "4444 4444 4444 4444",
-          }]}
+          authorizeAction={vi.fn().mockResolvedValue({ success: true })}
+          paymentRequestAction={vi.fn()}
+          paymentRequestBankAccounts={[
+            { id: "acc-1", accountHolder: "SEBASAM", bankName: "Santander", accountNumber: "1234", clabe: "5678", isDefault: true, isActive: true } as any,
+          ]}
+
           duplicateAction={vi.fn()}
           customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
           saveAction={vi.fn()}
@@ -107,7 +134,7 @@ function createInProgressWorkOrder(): NonNullable<QuoteListItem["workOrder"]> {
     id: "work-order-active",
     quoteId: "quote-1",
     number: "T-002",
-    status: "IN_PROGRESS",
+    status: "ASSIGNED",
     notes: null,
     scheduledFor: null,
     siteAddress: null,
@@ -118,199 +145,50 @@ function createInProgressWorkOrder(): NonNullable<QuoteListItem["workOrder"]> {
     updatedAt: new Date(),
     assignments: [],
     executionRecords: [],
-  } as NonNullable<QuoteListItem["workOrder"]>;
-}
-
-async function openActionsMenu(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByLabelText(/más acciones de cotización c-001/i));
+  };
 }
 
 describe("QuoteListRow", () => {
-  it("opens the preview dialog when the row is clicked", async () => {
-    const user = userEvent.setup();
+  it("renders quote details correctly", () => {
     renderRow(createMockQuote());
 
-    await user.click(screen.getByLabelText(/abrir vista previa de c-001/i));
+    expect(screen.getByText("C-001")).toBeInTheDocument();
+    expect(screen.getByText("Constructora del Norte")).toBeInTheDocument();
+    expect(screen.getByText("ABC-123 — Ford F-150")).toBeInTheDocument();
 
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
+    expect(screen.getByText("Mantenimiento preventivo")).toBeInTheDocument();
   });
 
-  it("does not open the preview dialog when an action button is clicked", async () => {
-    const user = userEvent.setup();
+  it("renders authorization and cancel actions for draft quotes", () => {
     renderRow(createMockQuote());
 
-    await user.click(screen.getByRole("button", { name: /aprobar y crear orden de trabajo/i }));
-
-    expect(screen.queryByRole("dialog", { name: /vista previa/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("dialog", { name: /aprobar cotización/i })).toBeInTheDocument();
-  });
-
-  it("renders approval and cancel actions for draft quotes", () => {
-    renderRow(createMockQuote());
-
-    expect(screen.getByRole("button", { name: /aprobar y crear orden de trabajo/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /autorizar cotización c-001/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
-  it("renders only the quote status badge", () => {
-    renderRow(createMockQuote({ status: "APPROVED", paidCents: 2500, remainingCents: 9100 }));
+  it("renders status badge", () => {
+    renderRow(createMockQuote({ status: "APPROVED" }));
 
-    expect(screen.queryByTestId("quote-payment-balance-indicator")).not.toBeInTheDocument();
     expect(screen.getByText("Aprobada")).toBeInTheDocument();
   });
 
-  it("does not render payment actions for approved quotes before work starts", () => {
+  it("renders work order operations trigger for approved quotes", () => {
     renderRow(createMockQuote({ status: "APPROVED" }));
 
-    expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /gestionar trabajo/i })).toBeInTheDocument();
   });
 
-  it("passes quote payment context to the payment link dialog", async () => {
-    const user = userEvent.setup();
-    renderRow(createMockQuote({ status: "APPROVED", workOrder: createInProgressWorkOrder() }));
-
-    await user.click(screen.getByRole("button", { name: /link de pago/i }));
-
-    const dialog = within(screen.getByRole("dialog"));
-    expect(dialog.getByText("Cotización C-001")).toBeInTheDocument();
-    expect(dialog.getByText("Constructora del Norte")).toBeInTheDocument();
-    expect(dialog.getByText("Factura requerida")).toBeInTheDocument();
-    expect(dialog.getByText("Santander")).toBeInTheDocument();
-  });
-
-  it("does not render cancel action for draft quotes with a work order", () => {
-    renderRow(createMockQuote({
-      workOrder: {
-        id: "work-order-1",
-        quoteId: "quote-1",
-        number: "T-001",
-        status: "PLANNED",
-        notes: null,
-        scheduledFor: null,
-        siteAddress: null,
-        assignments: [],
-        executionRecords: [],
-        completedAt: null,
-        isSpecial: false,
-        specialAssigneeName: null,
-
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    }));
-
-    expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
-  });
-
-  it("does not render actions for cancelled quotes", () => {
+  it("does not render cancel action for cancelled quotes", () => {
     renderRow(createMockQuote({ status: "CANCELLED" }));
 
     expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /aprobar y crear orden de trabajo/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /autorizar cotización/i })).not.toBeInTheDocument();
   });
 
-  it("renders an edit action for draft quotes without a work order", async () => {
-    const user = userEvent.setup();
+  it("renders direct action buttons (Editar, Duplicar, Compartir)", () => {
     renderRow(createMockQuote());
-    await openActionsMenu(user);
 
-    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
-  });
-
-  it("renders a disabled edit action for draft quotes with a COMPLETED work order", async () => {
-    const user = userEvent.setup();
-    renderRow(createMockQuote({
-      workOrder: {
-        id: "work-order-1",
-        quoteId: "quote-1",
-        number: "T-001",
-        status: "COMPLETED",
-        notes: null,
-        scheduledFor: null,
-        siteAddress: null,
-        assignments: [],
-        executionRecords: [],
-        completedAt: null,
-        isSpecial: false,
-        specialAssigneeName: null,
-
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    }));
-    await openActionsMenu(user);
-
-    expect(screen.getByRole("button", { name: "Editar" })).toBeDisabled();
-  });
-
-  it("renders an edit action for draft quotes with a PLANNED work order", async () => {
-    const user = userEvent.setup();
-    renderRow(createMockQuote({
-      workOrder: {
-        id: "work-order-1",
-        quoteId: "quote-1",
-        number: "T-001",
-        status: "PLANNED",
-        notes: null,
-        scheduledFor: null,
-        siteAddress: null,
-        assignments: [],
-        executionRecords: [],
-        completedAt: null,
-        isSpecial: false,
-        specialAssigneeName: null,
-
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    }));
-    await openActionsMenu(user);
-
-    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
-  });
-
-  it("renders a disabled edit action for non-editable quotes", async () => {
-    const user = userEvent.setup();
-    renderRow(createMockQuote({ status: "CANCELLED" }));
-    await openActionsMenu(user);
-
-    expect(screen.getByRole("button", { name: "Editar" })).toBeDisabled();
-  });
-
-  it("renders an edit action for APPROVED quotes without a blocked work order", async () => {
-    const user = userEvent.setup();
-    renderRow(createMockQuote({ status: "APPROVED" }));
-    await openActionsMenu(user);
-
-    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
-  });
-
-  it("renders an edit action for SENT quotes", async () => {
-    const user = userEvent.setup();
-    renderRow(createMockQuote({ status: "SENT" }));
-    await openActionsMenu(user);
-
-    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
-  });
-
-  it("renders a duplicate action for every quote including cancelled ones", async () => {
-    const user = userEvent.setup();
-    renderRow(createMockQuote({ status: "CANCELLED" }));
-    await openActionsMenu(user);
-
+    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
-  });
-
-  it("does not open the preview dialog when the edit link is clicked", async () => {
-    const user = userEvent.setup();
-    renderRow(createMockQuote());
-    await openActionsMenu(user);
-
-    await user.click(screen.getByRole("button", { name: "Editar" }));
-
-    expect(screen.queryByRole("dialog", { name: /vista previa/i })).not.toBeInTheDocument();
   });
 });

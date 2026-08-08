@@ -283,9 +283,10 @@ describe("authorizeQuote", () => {
 
     expect(tx.quote.findUnique).toHaveBeenCalledWith({ where: { id: "q-1" } });
     expect(tx.quote.updateMany).toHaveBeenCalledWith({
-      where: { id: "q-1", status: QuoteStatus.SENT },
+      where: { id: "q-1", status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT] } },
       data: { status: QuoteStatus.APPROVED, approvedAt: expect.any(Date) },
     });
+
     expect(tx.quoteDecision.create).toHaveBeenCalledWith({
       data: {
         quoteId: "q-1",

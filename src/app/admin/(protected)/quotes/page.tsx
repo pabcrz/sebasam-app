@@ -34,12 +34,10 @@ import {
 } from "@/features/quotes/lib/status";
 import { filterPaymentRequestDialogBankAccounts } from "@/features/quotes/lib/payment-request-dialog-context";
 import {
-  assignWorkOrderAction,
-  ensureWorkOrderWaitingAction,
-  recordExecutionAction,
-  removeExecutionRecordAction,
-  startWorkOrderAction,
+  createAndAssignWorkOrderAction,
+  completeWorkOrderAction,
 } from "@/features/work-orders/actions";
+
 import { listActiveWorkers } from "@/features/work-orders/queries";
 
 export const metadata: Metadata = {
@@ -123,12 +121,10 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 searchCustomersAction={searchCustomersForQuote}
                 workers={workers}
                 workOrderActions={{
-                  ensureWaiting: ensureWorkOrderWaitingAction.bind(null, quote.id),
-                  assign: assignWorkOrderAction,
-                  start: startWorkOrderAction,
-                  recordExecution: recordExecutionAction,
-                  removeExecution: removeExecutionRecordAction,
+                  assign: createAndAssignWorkOrderAction.bind(null, quote.id),
+                  complete: completeWorkOrderAction,
                 }}
+
               />
             ))}
             {quotes.length === 0 ? (
