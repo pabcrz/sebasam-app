@@ -25,7 +25,8 @@ interface WorkOrderActiveListProps {
   customers: CustomerOption[];
   /** Full quote data map (quoteId → listQuotes item) for builder dialogs */
   quoteMap: Map<string, QuoteListItem>;
-  saveQuoteAction: (quoteId: string) => (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
+  /** Pre-bound save actions, one per work order in the same order as workOrders */
+  saveQuoteActions: Array<(state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
   duplicateQuoteAction: (formData: FormData) => void | Promise<void>;
   shareQuoteAction: (formData: FormData) => void | Promise<void>;
@@ -56,15 +57,16 @@ export function WorkOrderActiveList({
   workOrders,
   customers,
   quoteMap,
-  saveQuoteAction,
+  saveQuoteActions,
   searchCustomersAction,
   duplicateQuoteAction,
   shareQuoteAction,
 }: WorkOrderActiveListProps) {
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      {workOrders.map((wo) => {
+      {workOrders.map((wo, index) => {
         const fullQuote = quoteMap.get(wo.quote.id);
+        const saveAction = saveQuoteActions[index];
 
         return (
           <div
@@ -111,10 +113,10 @@ export function WorkOrderActiveList({
               </Button>
 
               {/* Editar cotización */}
-              {fullQuote ? (
+              {fullQuote && saveAction ? (
                 <QuoteBuilderDialog
                   customers={customers}
-                  saveAction={saveQuoteAction(wo.quote.id)}
+                  saveAction={saveAction}
                   searchCustomersAction={searchCustomersAction}
                   quote={fullQuote}
                   quoteNumber={wo.quote.number}

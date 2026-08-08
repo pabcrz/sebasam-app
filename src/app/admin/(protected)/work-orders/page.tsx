@@ -86,7 +86,7 @@ export default async function WorkOrdersPage() {
               workers={workers}
               customers={customers}
               quoteMap={quoteMap}
-              saveQuoteAction={(quoteId) => updateDraftQuoteFromWorkspace.bind(null, quoteId)}
+              saveQuoteActions={workOrders.map((wo) => updateDraftQuoteFromWorkspace.bind(null, wo.quote.id))}
               searchCustomersAction={searchCustomersForQuote}
               duplicateQuoteAction={duplicateQuoteFromForm}
               shareQuoteAction={shareQuoteFromForm}
