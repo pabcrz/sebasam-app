@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleUserRound, ClipboardList, Cog, FileCheck, FileText, Home, LogOut, UserCog, Users, type LucideIcon } from "lucide-react";
+import { Bolt, CircleUserRound, ClipboardList, FileCheck, FileText, Home, LogOut, UserCog, Users, type LucideIcon } from "lucide-react";
 import { logoutAdmin } from "@/features/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -27,16 +27,15 @@ const navItems: NavItem[] = [
   { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
   { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
   { href: "/admin/notas", label: "Notas", icon: FileCheck },
-  { href: "/admin/configuracion-pago", label: "Configuración", icon: Cog },
+  { href: "/admin/configuracion-pago", label: "Configuración", icon: Bolt },
 ];
 
-/** Five items shown in the mobile bottom nav bar. Notas is accessible via desktop sidebar or from Trabajos. */
+/** Four main items shown in the mobile bottom nav bar. */
 const mobileNavItems: NavItem[] = [
   { href: "/admin", label: "Inicio", icon: Home },
   { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
   { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
   { href: "/admin/notas", label: "Notas", icon: FileCheck },
-  { href: "/admin/configuracion-pago", label: "Config", icon: Cog },
 ];
 
 function NavLink({ href, label, icon: Icon, mobile = false }: NavItem & { mobile?: boolean }) {
@@ -105,6 +104,15 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
             </p>
 
             <div className="flex items-center gap-1">
+              <Link
+                href="/admin/configuracion-pago"
+                className="flex h-9 w-9 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)]"
+                title="Configuración"
+                aria-label="Configuración"
+              >
+                <Bolt className="h-5 w-5" aria-hidden="true" />
+              </Link>
+
               <details className="relative">
                 <summary className="flex min-h-[var(--tap-min-height)] cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-[var(--color-bg-soft)] [&::-webkit-details-marker]:hidden">
                   <CircleUserRound className="h-5 w-5" aria-hidden="true" />
@@ -140,7 +148,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] text-white md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-4">
           {mobileNavItems.map((item) => (
             <NavLink key={item.href} {...item} mobile />
           ))}

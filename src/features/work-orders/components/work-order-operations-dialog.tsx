@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui";
 
+import { useRouter } from "next/navigation";
+
 export type WorkerOption = {
   id: string;
   displayName: string;
@@ -76,6 +78,7 @@ export function WorkOrderOperationsDialog({
   workers = [],
   actions = noopActions,
 }: WorkOrderOperationsDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
@@ -102,11 +105,12 @@ export function WorkOrderOperationsDialog({
           return;
         }
         setOpen(false);
-        if (typeof window !== "undefined") window.location.reload();
+        router.refresh();
       });
     },
-    [],
+    [router],
   );
+
 
   const toggleHelper = (id: string, checked: boolean | "indeterminate") => {
     if (checked === true) setHelperIds((current) => [...current, id]);

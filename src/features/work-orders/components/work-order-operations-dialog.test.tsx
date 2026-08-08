@@ -3,6 +3,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: vi.fn(),
+    push: vi.fn(),
+  }),
+}));
+
+
 const actions: WorkOrderActions = {
   assign: vi.fn(() => Promise.resolve({ success: true })),
   complete: vi.fn(() => Promise.resolve({ success: true })),

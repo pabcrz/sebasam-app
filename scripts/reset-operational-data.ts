@@ -17,21 +17,16 @@ async function resetOperationalData() {
   const deletedWorkOrders = await prisma.workOrder.deleteMany({});
   console.log(`Deleted ${deletedWorkOrders.count} work orders.`);
 
-  // 4. Update quotes: reset SENT or REJECTED quotes back to APPROVED so they can be assigned as jobs
+  // 4. Reset ALL quotes back to DRAFT (borrador) status
   const updatedQuotes = await prisma.quote.updateMany({
-    where: {
-      status: {
-        in: [QuoteStatus.SENT, QuoteStatus.APPROVED],
-      },
-    },
     data: {
-      status: QuoteStatus.APPROVED,
-      approvedAt: new Date(),
+      status: QuoteStatus.DRAFT,
+      approvedAt: null,
     },
   });
-  console.log(`Reset ${updatedQuotes.count} quotes to APPROVED status (ready for work assignment).`);
+  console.log(`Reset ${updatedQuotes.count} quotes back to DRAFT status.`);
 
-  console.log("Operational data reset complete! All quotes are fresh and ready to be assigned as work orders.");
+  console.log("Operational data reset complete! All quotes are back to DRAFT status.");
 }
 
 resetOperationalData()
