@@ -67,8 +67,11 @@ enum PaymentRequestStatus {
 enum PaymentMethod {
   CASH
   TRANSFER
+  CREDIT_CARD
+  DEBIT_CARD
   OTHER
 }
+
 
 enum PaymentStatus {
   PENDING

@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui";
 import { WorkOrderCompletedList } from "@/features/work-orders/components/work-order-completed-list";
+import { recordPaymentAction } from "@/features/payments/actions";
 
 export const metadata: Metadata = {
   title: "Notas de remisión",
@@ -50,7 +51,13 @@ export default async function NotasPage() {
               </p>
             </div>
           ) : (
-            <WorkOrderCompletedList workOrders={workOrders} />
+            <WorkOrderCompletedList
+              workOrders={workOrders}
+              recordPaymentActions={workOrders.map((wo) => ({
+                workOrderId: wo.id,
+                action: recordPaymentAction.bind(null, wo.quote.id),
+              }))}
+            />
           )}
         </CardContent>
       </Card>

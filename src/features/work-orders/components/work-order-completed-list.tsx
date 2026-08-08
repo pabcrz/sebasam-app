@@ -5,8 +5,25 @@ import { Printer } from "lucide-react";
 import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
 import { Badge, Button } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
+import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 
 type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>[number];
+
+type PaymentResult = {
+  payment: { amountCents: number };
+  paidCents: number;
+  remainingCents: number;
+};
+
+type WorkOrderPaymentAction = {
+  workOrderId: string;
+  action: (amount: string, operationKey: string, method: string) => Promise<PaymentResult>;
+};
+
+interface WorkOrderCompletedListProps {
+  workOrders: WorkOrderItem[];
+  recordPaymentActions?: WorkOrderPaymentAction[];
+}
 
 function formatDate(date: Date | null) {
   if (!date) return "—";
@@ -19,55 +36,74 @@ function formatVehicle(wo: WorkOrderItem) {
   return [v.brand, v.model, v.year, v.plate ? `· ${v.plate}` : null].filter(Boolean).join(" ");
 }
 
-export function WorkOrderCompletedList({ workOrders }: { workOrders: WorkOrderItem[] }) {
+export function WorkOrderCompletedList({ workOrders, recordPaymentActions = [] }: WorkOrderCompletedListProps) {
+  const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
+
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      {workOrders.map((wo) => (
-        <div
-          key={wo.id}
-          className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm"
-        >
-          <div className="mb-3 flex items-start justify-between gap-2">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
-                <Badge variant="success" className="w-fit">Completada</Badge>
+      {workOrders.map((wo) => {
+        const paymentAction = paymentActionMap.get(wo.id);
+        const totalCents = Number(wo.quote.totalCents);
+
+        return (
+          <div
+            key={wo.id}
+            className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm"
+          >
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
+                  <Badge variant="success" className="w-fit">Completada</Badge>
+                </div>
+                <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer.name}</p>
+                <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
               </div>
-              <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer.name}</p>
-              <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
+              <div className="text-right">
+                <p className="font-mono text-lg font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
+                  {formatCents(totalCents)}
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  Finalizada {formatDate(wo.completedAt)}
+                </p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="font-mono text-lg font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
-                {formatCents(Number(wo.quote.totalCents))}
-              </p>
-              <p className="text-xs text-[var(--color-text-muted)]">
-                Finalizada {formatDate(wo.completedAt)}
-              </p>
+
+            <div className="mb-3 text-sm text-[var(--color-text-muted)]">
+              <span className="font-medium">Cot. {wo.quote.number}</span>
+              {" · "}
+              {wo.isSpecial
+                ? `Trabajo especial: ${wo.specialAssigneeName ?? "—"}`
+                : wo.assignments.find((a) => a.worker.workerKind === "MASTER")?.worker.displayName ?? "Sin maestro"}
+            </div>
+
+            {paymentAction ? (
+              <div className="mb-3">
+                <CashPaymentDialog
+                  action={paymentAction}
+                  quoteNumber={wo.quote.number}
+                  totalCents={totalCents}
+                  paidCents={0}
+                  remainingCents={totalCents}
+                />
+              </div>
+            ) : null}
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => window.open(`/admin/notas/${wo.id}/print`, "_blank")}
+              >
+                <Printer className="h-4 w-4" aria-hidden="true" />
+                Imprimir nota
+              </Button>
             </div>
           </div>
-
-          <div className="mb-3 text-sm text-[var(--color-text-muted)]">
-            <span className="font-medium">Cot. {wo.quote.number}</span>
-            {" · "}
-            {wo.isSpecial
-              ? `Trabajo especial: ${wo.specialAssigneeName ?? "—"}`
-              : wo.assignments.find((a) => a.worker.workerKind === "MASTER")?.worker.displayName ?? "Sin maestro"}
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={() => window.open(`/admin/notas/${wo.id}/print`, "_blank")}
-            >
-              <Printer className="h-4 w-4" aria-hidden="true" />
-              Imprimir nota
-            </Button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
