@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ClipboardList } from "lucide-react";
-import { listActiveWorkOrders } from "@/features/work-orders/queries";
-import { listActiveWorkers } from "@/features/workers/queries";
+import { listActiveWorkOrders, listActiveWorkers } from "@/features/work-orders/queries";
 import {
   Card,
   CardContent,
@@ -11,16 +10,30 @@ import {
   CardTitle,
 } from "@/components/ui";
 import { WorkOrderActiveList } from "@/features/work-orders/components/work-order-active-list";
+import { listCustomers } from "@/features/customers/queries";
+import { listQuotes } from "@/features/quotes/queries";
+import { searchCustomersForQuote } from "@/features/customers/actions";
+import { duplicateQuoteFromForm, shareQuoteFromForm, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
 
 export const metadata: Metadata = {
   title: "Trabajos en proceso",
 };
 
 export default async function WorkOrdersPage() {
-  const [workOrders, workers] = await Promise.all([
+  const [workOrders, workers, customers] = await Promise.all([
     listActiveWorkOrders(),
     listActiveWorkers(),
+    listCustomers(),
   ]);
+
+  // Load full quote data (with paidCents, activeSharedQuote, etc.) for the
+  // work-order builder dialogs. We filter by the quote IDs that have active work orders.
+  const activeQuoteIds = new Set(workOrders.map((wo) => wo.quote.id));
+  const allQuotes = activeQuoteIds.size > 0
+    ? await listQuotes({}, { excludeWithActiveWorkOrder: false })
+    : [];
+  const activeQuotes = allQuotes.filter((q) => activeQuoteIds.has(q.id));
+  const quoteMap = new Map(activeQuotes.map((q) => [q.id, q]));
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
@@ -68,7 +81,16 @@ export default async function WorkOrdersPage() {
               </p>
             </div>
           ) : (
-            <WorkOrderActiveList workOrders={workOrders} workers={workers} />
+            <WorkOrderActiveList
+              workOrders={workOrders}
+              workers={workers}
+              customers={customers}
+              quoteMap={quoteMap}
+              saveQuoteAction={(quoteId) => updateDraftQuoteFromWorkspace.bind(null, quoteId)}
+              searchCustomersAction={searchCustomersForQuote}
+              duplicateQuoteAction={duplicateQuoteFromForm}
+              shareQuoteAction={shareQuoteFromForm}
+            />
           )}
         </CardContent>
       </Card>
