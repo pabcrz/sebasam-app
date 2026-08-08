@@ -36,12 +36,13 @@ export async function listQuotes(input: unknown = {}, options: { excludeWithActi
   const filters = parsed.success ? parsed.data : ({} as QuoteFilterInput);
   const where: Prisma.QuoteWhereInput = {};
 
-  // Exclude quotes that have an active (ASSIGNED) work order — they live in Trabajos
+  // Exclude quotes that live in Trabajos (ASSIGNED) or Notas (COMPLETED)
   if (options.excludeWithActiveWorkOrder) {
     where.NOT = {
-      workOrder: { status: WorkOrderStatus.ASSIGNED },
+      workOrder: { status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.COMPLETED] } },
     };
   }
+
 
   if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
     where.status = filters.status as QuoteStatus;

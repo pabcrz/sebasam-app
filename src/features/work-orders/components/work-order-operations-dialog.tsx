@@ -89,6 +89,11 @@ export function WorkOrderOperationsDialog({
   const [masterId, setMasterId] = React.useState("");
   const [helperIds, setHelperIds] = React.useState<string[]>([]);
   const [confirmComplete, setConfirmComplete] = React.useState(false);
+  const [reassigning, setReassigning] = React.useState(false);
+  const [reassignMasterId, setReassignMasterId] = React.useState("");
+  const [reassignHelperIds, setReassignHelperIds] = React.useState<string[]>([]);
+  const [reassignSpecial, setReassignSpecial] = React.useState(false);
+  const [reassignSpecialName, setReassignSpecialName] = React.useState("");
 
   const eligibleWorkers = workers.filter((worker) => worker.role === "WORKER" && worker.workerKind !== null);
   const masters = eligibleWorkers.filter((worker) => worker.workerKind === "MASTER");
@@ -141,6 +146,35 @@ export function WorkOrderOperationsDialog({
           isSpecial: false,
           masterId,
           helperIds,
+        }),
+      );
+    }
+  };
+
+  const handleReassign = () => {
+    if (reassignSpecial) {
+      if (!reassignSpecialName.trim()) {
+        setError("Indica el nombre de quien realiza el trabajo especial.");
+        return;
+      }
+      runAction(() =>
+        actions.assign({
+          workOrderId: workOrder?.id || "pending",
+          isSpecial: true,
+          specialAssigneeName: reassignSpecialName.trim(),
+        }),
+      );
+    } else {
+      if (!reassignMasterId) {
+        setError("Selecciona un maestro para el trabajo.");
+        return;
+      }
+      runAction(() =>
+        actions.assign({
+          workOrderId: workOrder?.id || "pending",
+          isSpecial: false,
+          masterId: reassignMasterId,
+          helperIds: reassignHelperIds,
         }),
       );
     }
@@ -295,47 +329,70 @@ export function WorkOrderOperationsDialog({
                   )}
                 </div>
 
-                {!confirmComplete ? (
-                  <Button
-                    type="button"
-                    variant="primary"
-                    loading={isPending}
-                    onClick={() => setConfirmComplete(true)}
-                  >
-                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                    Finalizar trabajo
+                {/* Cambiar maestro */}
+                {!reassigning ? (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => { setReassigning(true); setConfirmComplete(false); }}>
+                    Cambiar maestro o asignación
                   </Button>
                 ) : (
-                  <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
-                    <p className="text-sm font-semibold text-[var(--color-text-main)]">
-                      ¿Confirmas que el trabajo fue completado?
-                    </p>
-                    <p className="text-xs text-[var(--color-text-muted)]">
-                      Al finalizar, los conceptos quedan congelados y se habilita la impresión de la Nota de Remisión.
-                    </p>
+                  <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
+                    <h4 className="text-sm font-semibold text-[var(--color-text-main)]">Reasignar personal</h4>
+                    <Checkbox id="reassign-special-toggle" label="Trabajo especial (Patrón o personal no registrado)" checked={reassignSpecial} onCheckedChange={(checked) => setReassignSpecial(checked === true)} />
+                    {reassignSpecial ? (
+                      <div className="grid gap-2">
+                        <Label htmlFor="reassign-special-name">Nombre del responsable *</Label>
+                        <Input id="reassign-special-name" placeholder="Ej. Patrón, Sebastián, Externo..." value={reassignSpecialName} onChange={(e) => setReassignSpecialName(e.target.value)} />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid gap-2">
+                          <Label htmlFor="reassign-master-select">Maestro responsable *</Label>
+                          <Select value={reassignMasterId} onValueChange={setReassignMasterId}>
+                            <SelectTrigger id="reassign-master-select"><SelectValue placeholder="Selecciona un maestro" /></SelectTrigger>
+                            <SelectContent>{masters.map((w) => (<SelectItem key={w.id} value={w.id}>{w.displayName}</SelectItem>))}</SelectContent>
+                          </Select>
+                        </div>
+                        {helpers.length > 0 ? (
+                          <div className="grid gap-2">
+                            <Label>Ayudantes opcionales</Label>
+                            <div className="grid gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] p-3">
+                              {helpers.map((w) => (
+                                <Checkbox key={w.id} id={`reassign-helper-${w.id}`} label={w.displayName} checked={reassignHelperIds.includes(w.id)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked === true) setReassignHelperIds((c) => [...c, w.id]);
+                                    if (checked === false) setReassignHelperIds((c) => c.filter((id) => id !== w.id));
+                                  }} />
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
+                    )}
                     <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="primary"
-                        size="sm"
-                        loading={isPending}
-                        onClick={handleComplete}
-                        className="flex-1"
-                      >
-                        Sí, finalizar orden
+                      <Button type="button" variant="primary" size="sm" loading={isPending} onClick={handleReassign} className="flex-1">
+                        <UserCheck className="h-4 w-4" aria-hidden="true" />
+                        Confirmar reasignación
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={isPending}
-                        onClick={() => setConfirmComplete(false)}
-                      >
-                        Cancelar
-                      </Button>
+                      <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={() => setReassigning(false)}>Cancelar</Button>
                     </div>
                   </div>
                 )}
+
+                {!reassigning && !confirmComplete ? (
+                  <Button type="button" variant="primary" loading={isPending} onClick={() => setConfirmComplete(true)}>
+                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                    Finalizar trabajo
+                  </Button>
+                ) : !reassigning && confirmComplete ? (
+                  <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
+                    <p className="text-sm font-semibold text-[var(--color-text-main)]">¿Confirmás que el trabajo fue completado?</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">Al finalizar, los conceptos quedan congelados y se habilita la impresión de la Nota de Remisión.</p>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="primary" size="sm" loading={isPending} onClick={handleComplete} className="flex-1">Sí, finalizar orden</Button>
+                      <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={() => setConfirmComplete(false)}>Cancelar</Button>
+                    </div>
+                  </div>
+                ) : null}
               </section>
             ) : null}
 

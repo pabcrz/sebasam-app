@@ -28,8 +28,8 @@ export function assertApprovedQuote(status: QuoteStatus) {
 }
 
 export function assertWorkOrderCanBeAssigned(status: WorkOrderStatus) {
-  if (status !== WorkOrderStatus.PLANNED) {
-    throw new WorkOrderOperationError("La orden solo se puede asignar cuando está en estado inicial.");
+  if (status !== WorkOrderStatus.PLANNED && status !== WorkOrderStatus.ASSIGNED) {
+    throw new WorkOrderOperationError("La orden solo se puede asignar o reasignar si está en proceso.");
   }
 }
 

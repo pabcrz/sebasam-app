@@ -129,7 +129,7 @@ export async function assignWorkOrder(input: unknown) {
     if (data.isSpecial) {
       // Special order: no UserProfile assignment
       const updated = await tx.workOrder.updateMany({
-        where: { id: data.workOrderId, status: WorkOrderStatus.PLANNED },
+        where: { id: data.workOrderId, status: { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED] } },
         data: {
           status: WorkOrderStatus.ASSIGNED,
           isSpecial: true,
@@ -140,6 +140,10 @@ export async function assignWorkOrder(input: unknown) {
       if (updated.count !== 1) {
         throw new WorkOrderOperationError("El estado de la orden cambió. Recarga e intenta de nuevo.");
       }
+
+      await tx.workAssignment.deleteMany({
+        where: { workOrderId: data.workOrderId },
+      });
     } else {
       assertDistinctWorkers(data.masterId, data.helperIds);
 
@@ -166,7 +170,7 @@ export async function assignWorkOrder(input: unknown) {
       }
 
       const updated = await tx.workOrder.updateMany({
-        where: { id: data.workOrderId, status: WorkOrderStatus.PLANNED },
+        where: { id: data.workOrderId, status: { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED] } },
         data: {
           status: WorkOrderStatus.ASSIGNED,
           isSpecial: false,
@@ -177,6 +181,10 @@ export async function assignWorkOrder(input: unknown) {
       if (updated.count !== 1) {
         throw new WorkOrderOperationError("El estado de la orden cambió. Recarga e intenta de nuevo.");
       }
+
+      await tx.workAssignment.deleteMany({
+        where: { workOrderId: data.workOrderId },
+      });
 
       await tx.workAssignment.createMany({
         data: workerIds.map((workerId) => ({
@@ -237,6 +245,10 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
           specialAssigneeName: inputWithId.specialAssigneeName,
         },
       });
+
+      await tx.workAssignment.deleteMany({
+        where: { workOrderId },
+      });
     } else {
       assertDistinctWorkers(inputWithId.masterId, inputWithId.helperIds);
 
@@ -264,6 +276,10 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
           isSpecial: false,
           specialAssigneeName: null,
         },
+      });
+
+      await tx.workAssignment.deleteMany({
+        where: { workOrderId },
       });
 
       await tx.workAssignment.createMany({

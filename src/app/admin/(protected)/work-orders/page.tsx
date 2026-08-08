@@ -14,6 +14,7 @@ import { listCustomers } from "@/features/customers/queries";
 import { listQuotes } from "@/features/quotes/queries";
 import { searchCustomersForQuote } from "@/features/customers/actions";
 import { duplicateQuoteFromForm, shareQuoteFromForm, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
+import { assignWorkOrder, completeWorkOrder } from "@/features/work-orders/actions";
 
 export const metadata: Metadata = {
   title: "Trabajos en proceso",
@@ -90,6 +91,10 @@ export default async function WorkOrdersPage() {
               searchCustomersAction={searchCustomersForQuote}
               duplicateQuoteAction={duplicateQuoteFromForm}
               shareQuoteAction={shareQuoteFromForm}
+              workOrderActions={{
+                assign: assignWorkOrder,
+                complete: completeWorkOrder,
+              }}
             />
           )}
         </CardContent>

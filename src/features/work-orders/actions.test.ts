@@ -34,7 +34,7 @@ type MockTx = {
   quote: { findUnique: ReturnType<typeof vi.fn> };
   workOrder: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn> };
   userProfile: { findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
-  workAssignment: { createMany: ReturnType<typeof vi.fn> };
+  workAssignment: { createMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   executionRecord: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
 };
 
@@ -43,7 +43,7 @@ function createTx(): MockTx {
     quote: { findUnique: vi.fn() },
     workOrder: { create: vi.fn().mockResolvedValue({ id: "wo-new" }), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: vi.fn() },
     userProfile: { findMany: vi.fn(), findUnique: vi.fn() },
-    workAssignment: { createMany: vi.fn() },
+    workAssignment: { createMany: vi.fn(), deleteMany: vi.fn() },
     executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
   };
   vi.mocked(prisma.$transaction).mockImplementation(

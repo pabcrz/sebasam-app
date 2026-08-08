@@ -19,9 +19,9 @@ describe("work order domain rules", () => {
   });
 
   it("keeps assignment, completion, and terminal transitions explicit", () => {
-    // Only PLANNED can be assigned
+    // Only PLANNED and ASSIGNED can be assigned
     expect(() => assertWorkOrderCanBeAssigned(WorkOrderStatus.PLANNED)).not.toThrow();
-    expect(() => assertWorkOrderCanBeAssigned(WorkOrderStatus.ASSIGNED)).toThrow();
+    expect(() => assertWorkOrderCanBeAssigned(WorkOrderStatus.ASSIGNED)).not.toThrow();
     expect(() => assertWorkOrderCanBeAssigned(WorkOrderStatus.COMPLETED)).toThrow();
 
     // Only ASSIGNED can be completed (simplified flow: no IN_PROGRESS step)
