@@ -4,9 +4,11 @@ import { Search, X } from "lucide-react";
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@/components/ui";
 import {
   createWorkerFromForm,
+  deleteWorkerFromForm,
   setWorkerActiveFromForm,
   updateWorkerFromForm,
 } from "@/features/workers/actions";
+
 import { WorkerCreateDialog } from "@/features/workers/components/worker-create-dialog";
 import { WorkerCardList } from "@/features/workers/components/worker-card-list";
 import { listWorkers } from "@/features/workers/queries";
@@ -120,7 +122,9 @@ export default async function WorkersPage({ searchParams }: WorkersPageProps) {
               workers={workers}
               updateAction={updateWorkerFromForm}
               setActiveAction={setWorkerActiveFromForm}
+              deleteAction={deleteWorkerFromForm}
             />
+
           </div>
         </CardContent>
       </Card>

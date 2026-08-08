@@ -144,6 +144,17 @@ export async function updateWorkerFromForm(workerId: string, formData: FormData)
   redirect(`${workersPath}?updated=1`);
 }
 
+export async function deleteWorker(workerId: string) {
+  await requireOperationalRole();
+  await requireWorker(workerId);
+
+  return prisma.$transaction(async (tx) => {
+    await tx.workAssignment.deleteMany({ where: { workerId } });
+    await tx.executionRecord.deleteMany({ where: { workerId } });
+    return tx.userProfile.delete({ where: { id: workerId } });
+  });
+}
+
 export async function setWorkerActiveFromForm(workerId: string, formData: FormData) {
   await requireOperationalRole();
 
@@ -158,3 +169,14 @@ export async function setWorkerActiveFromForm(workerId: string, formData: FormDa
   revalidatePath(`${workersPath}/${workerId}/edit`);
   redirect(`${workersPath}?updated=1`);
 }
+
+export async function deleteWorkerFromForm(workerId: string, formData: FormData) {
+  await requireOperationalRole();
+  const returnPath = getWorkerReturnPath(formData, `${workersPath}/${workerId}/edit`);
+
+  await deleteWorker(workerId);
+  revalidatePath(workersPath);
+  revalidatePath(returnPath);
+  redirect(`${workersPath}?deleted=1`);
+}
+
