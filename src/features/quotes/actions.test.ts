@@ -55,7 +55,7 @@ class MockFormData {
 type MockTx = {
   quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   quoteItem: { deleteMany: ReturnType<typeof vi.fn> };
-  payment: { count: ReturnType<typeof vi.fn> };
+  payment: { count: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
@@ -68,7 +68,7 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
       updateMany: vi.fn(),
     },
     quoteItem: { deleteMany: vi.fn() },
-    payment: { count: vi.fn().mockResolvedValue(0) },
+    payment: { count: vi.fn().mockResolvedValue(0), aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: null } }) },
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
   (findOrCreateVehicle as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "vehicle-1" });
@@ -171,7 +171,7 @@ describe("updateDraftQuote", () => {
     await expect(updateDraftQuote("quote-1", validInput())).rejects.toThrow("This quote is not editable.");
   });
 
-  it("throws when the quote already has a COMPLETED work order", async () => {
+  it("allows updating a quote with a COMPLETED work order", async () => {
     const tx = mockTx();
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
@@ -179,7 +179,8 @@ describe("updateDraftQuote", () => {
       items: [],
       workOrder: { id: "wo-1", status: "COMPLETED" },
     });
-    await expect(updateDraftQuote("quote-1", validInput())).rejects.toThrow("This quote is not editable.");
+    const result = await updateDraftQuote("quote-1", validInput());
+    expect(result.totalCents).toBe(197200);
   });
 
   it("allows updating a DRAFT quote with a PLANNED work order", async () => {
@@ -216,7 +217,7 @@ describe("updateDraftQuote", () => {
     expect(result.totalCents).toBe(197200);
   });
 
-  it("rejects lowering a quote total after a paid cash payment without replacing its items", async () => {
+  it("rejects updating a quote to a total lower than its paid cash payments", async () => {
     const tx = mockTx(QuoteStatus.APPROVED);
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
@@ -225,14 +226,15 @@ describe("updateDraftQuote", () => {
       items: [],
       workOrder: null,
     });
-    tx.payment.count.mockResolvedValue(1);
+    tx.payment.aggregate.mockResolvedValue({ _sum: { amountCents: 250000 } });
 
     await expect(updateDraftQuote("quote-1", validInput())).rejects.toThrow(
-      "This quote has paid payments and cannot be edited.",
+      "Esta cotización ya tiene 2500 abonados, el nuevo total no puede ser menor a esa cantidad.",
     );
 
-    expect(tx.payment.count).toHaveBeenCalledWith({
+    expect(tx.payment.aggregate).toHaveBeenCalledWith({
       where: { quoteId: "quote-1", status: PaymentStatus.PAID },
+      _sum: { amountCents: true },
     });
     expect(tx.quoteItem.deleteMany).not.toHaveBeenCalled();
     expect(tx.quote.update).not.toHaveBeenCalled();
@@ -247,7 +249,7 @@ describe("updateDraftQuote", () => {
     expect(result.totalCents).toBe(197200);
   });
 
-  it("throws when the quote is expired", async () => {
+  it("allows updating when the quote is expired", async () => {
     const tx = mockTx(QuoteStatus.DRAFT);
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
@@ -257,10 +259,11 @@ describe("updateDraftQuote", () => {
       workOrder: null,
     });
 
-    await expect(updateDraftQuote("quote-1", validInput())).rejects.toThrow("This quote is not editable.");
+    const result = await updateDraftQuote("quote-1", validInput());
+    expect(result.totalCents).toBe(197200);
   });
 
-  it("throws when a SENT quote has a COMPLETED work order", async () => {
+  it("allows updating a SENT quote when it has a COMPLETED work order", async () => {
     const tx = mockTx(QuoteStatus.SENT);
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
@@ -270,7 +273,8 @@ describe("updateDraftQuote", () => {
       workOrder: { id: "wo-1", status: "COMPLETED" },
     });
 
-    await expect(updateDraftQuote("quote-1", validInput())).rejects.toThrow("This quote is not editable.");
+    const result = await updateDraftQuote("quote-1", validInput());
+    expect(result.totalCents).toBe(197200);
   });
 });
 
@@ -294,7 +298,7 @@ describe("updateDraftQuoteFromForm", () => {
       .resolves.toEqual({ error: "Esta cotización ya no se puede editar." });
   });
 
-  it("redirects with not-editable error when the quote has a COMPLETED work order", async () => {
+  it("updates form successfully when the quote has a COMPLETED work order", async () => {
     const tx = mockTx();
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
@@ -302,8 +306,8 @@ describe("updateDraftQuoteFromForm", () => {
       items: [],
       workOrder: { id: "wo-1", status: "COMPLETED" },
     });
-    await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData() as unknown as FormData))
-      .resolves.toEqual({ error: "Esta cotización ya no se puede editar." });
+    await updateDraftQuoteFromForm("quote-1", {}, buildFormData({ "items.0.unitPrice": "850" }) as unknown as FormData);
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?updated=1");
   });
 });
 

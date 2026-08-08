@@ -223,14 +223,16 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       throw new Error("This quote is not editable.");
     }
 
-    const paidPayments = await tx.payment.count({
+    const paidTotals = await tx.payment.aggregate({
       where: { quoteId, status: PaymentStatus.PAID },
+      _sum: { amountCents: true },
     });
+    const paidCents = Number(paidTotals._sum.amountCents ?? 0);
 
-    // This form always replaces quote items and recalculates totals, so it cannot
-    // safely make an administrative-only update without rewriting paid terms.
-    if (paidPayments > 0) {
-      throw new Error("This quote has paid payments and cannot be edited.");
+    // This form always replaces quote items and recalculates totals. We must ensure
+    // the new total is not less than what has already been paid.
+    if (paidCents > totalCents) {
+      throw new Error(`Esta cotización ya tiene ${paidCents / 100} abonados, el nuevo total no puede ser menor a esa cantidad.`);
     }
 
     const shouldLinkVehicle = hasVehicleData(data.vehicle);

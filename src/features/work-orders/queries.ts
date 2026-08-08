@@ -1,7 +1,7 @@
 import { WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { getQuotePaidTotals } from "@/features/quotes/queries";
+import { getQuotePaidTotals } from "@/features/payments/queries";
 export { listActiveWorkers } from "@/features/workers/queries";
 
 const workOrderInclude = {
