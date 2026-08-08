@@ -1,6 +1,7 @@
 import { WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
+import { getQuotePaidTotals } from "@/features/quotes/queries";
 export { listActiveWorkers } from "@/features/workers/queries";
 
 const workOrderInclude = {
@@ -83,7 +84,21 @@ export async function listCompletedWorkOrders() {
     orderBy: { completedAt: "desc" },
   });
 
-  return workOrders.map(serializeWorkOrder);
+  const paidTotals = await getQuotePaidTotals(workOrders.map((wo) => wo.quote.id));
+
+  return workOrders.map((wo) => {
+    const serialized = serializeWorkOrder(wo);
+    const totalCents = Number(wo.quote.totalCents);
+    const paidCents = paidTotals.get(wo.quote.id) ?? 0;
+    return {
+      ...serialized,
+      quote: {
+        ...serialized.quote,
+        paidCents,
+        remainingCents: totalCents - paidCents,
+      },
+    };
+  });
 }
 
 /** Returns a single work order with all related data for the detail/manage view. */

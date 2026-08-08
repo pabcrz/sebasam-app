@@ -417,7 +417,13 @@ export async function ensureWorkOrderWaitingAction(quoteId: string): Promise<Act
 }
 
 export async function assignWorkOrderAction(input: unknown): Promise<ActionResult> {
-  return { success: true };
+  try {
+    await assignWorkOrder(input);
+    revalidatePath(workOrdersPath);
+    return { success: true };
+  } catch (error) {
+    return toActionResult(error, "No se pudo asignar/reasignar la orden de trabajo.");
+  }
 }
 
 export async function startWorkOrderAction(input: unknown): Promise<ActionResult> {

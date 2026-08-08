@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { FileCheck } from "lucide-react";
 import { listCompletedWorkOrders } from "@/features/work-orders/queries";
+import { listQuotes } from "@/features/quotes/queries";
 import {
   Card,
   CardContent,
@@ -17,6 +18,10 @@ export const metadata: Metadata = {
 
 export default async function NotasPage() {
   const workOrders = await listCompletedWorkOrders();
+  const quoteIds = workOrders.map((wo) => wo.quote.id);
+  const quotes = await listQuotes({});
+  const relevantQuotes = quotes.filter((q) => quoteIds.includes(q.id));
+  const quoteMap = new Map(relevantQuotes.map((q) => [q.id, q]));
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
@@ -53,6 +58,7 @@ export default async function NotasPage() {
           ) : (
             <WorkOrderCompletedList
               workOrders={workOrders}
+              quoteMap={quoteMap}
               recordPaymentActions={workOrders.map((wo) => ({
                 workOrderId: wo.id,
                 action: recordPaymentAction.bind(null, wo.quote.id),

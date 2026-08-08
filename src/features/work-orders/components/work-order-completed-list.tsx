@@ -6,6 +6,8 @@ import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
 import { Badge, Button } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
+import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
+import type { listQuotes } from "@/features/quotes/queries";
 
 type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>[number];
 
@@ -22,6 +24,7 @@ type WorkOrderPaymentAction = {
 
 interface WorkOrderCompletedListProps {
   workOrders: WorkOrderItem[];
+  quoteMap?: Map<string, Awaited<ReturnType<typeof listQuotes>>[number]>;
   recordPaymentActions?: WorkOrderPaymentAction[];
 }
 
@@ -36,11 +39,18 @@ function formatVehicle(wo: WorkOrderItem) {
   return [v.brand, v.model, v.year, v.plate ? `· ${v.plate}` : null].filter(Boolean).join(" ");
 }
 
-export function WorkOrderCompletedList({ workOrders, recordPaymentActions = [] }: WorkOrderCompletedListProps) {
+export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActions = [] }: WorkOrderCompletedListProps) {
   const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
+  const [selectedQuoteId, setSelectedQuoteId] = React.useState<string | null>(null);
+
+  const selectedQuote = React.useMemo(() => {
+    if (!selectedQuoteId || !quoteMap) return null;
+    return quoteMap.get(selectedQuoteId) ?? null;
+  }, [selectedQuoteId, quoteMap]);
 
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <>
+      <div className="grid gap-3 lg:grid-cols-2">
       {workOrders.map((wo) => {
         const paymentAction = paymentActionMap.get(wo.id);
         const totalCents = Number(wo.quote.totalCents);
@@ -48,8 +58,16 @@ export function WorkOrderCompletedList({ workOrders, recordPaymentActions = [] }
         return (
           <div
             key={wo.id}
-            className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm"
+            className="flex flex-col rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm overflow-hidden"
           >
+            <div
+              className="flex-1 cursor-pointer p-4 hover:bg-[var(--color-bg-soft)] transition-colors"
+              onClick={() => {
+                if (quoteMap?.has(wo.quote.id)) {
+                  setSelectedQuoteId(wo.quote.id);
+                }
+              }}
+            >
             <div className="mb-3 flex items-start justify-between gap-2">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -76,6 +94,9 @@ export function WorkOrderCompletedList({ workOrders, recordPaymentActions = [] }
                 ? `Trabajo especial: ${wo.specialAssigneeName ?? "—"}`
                 : wo.assignments.find((a) => a.worker.workerKind === "MASTER")?.worker.displayName ?? "Sin maestro"}
             </div>
+          </div>
+
+          <div className="border-t border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
 
             {paymentAction ? (
               <div className="mb-3">
@@ -83,8 +104,8 @@ export function WorkOrderCompletedList({ workOrders, recordPaymentActions = [] }
                   action={paymentAction}
                   quoteNumber={wo.quote.number}
                   totalCents={totalCents}
-                  paidCents={0}
-                  remainingCents={totalCents}
+                  paidCents={wo.quote.paidCents ?? 0}
+                  remainingCents={wo.quote.remainingCents ?? totalCents}
                 />
               </div>
             ) : null}
@@ -102,8 +123,20 @@ export function WorkOrderCompletedList({ workOrders, recordPaymentActions = [] }
               </Button>
             </div>
           </div>
+          </div>
         );
       })}
     </div>
+
+    {selectedQuote && (
+      <QuotePreviewDialog
+        quote={selectedQuote}
+        open={selectedQuoteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedQuoteId(null);
+        }}
+      />
+    )}
+  </>
   );
 }
