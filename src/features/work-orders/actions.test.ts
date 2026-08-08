@@ -12,10 +12,19 @@ import { WorkerUnavailableError } from "./domain";
 
 vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
 vi.mock("@/features/quotes/lib/sequence", () => ({ nextWorkOrderNumber: vi.fn().mockResolvedValue("T-0826-01") }));
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    $transaction: vi.fn(),
+    userProfile: { findFirst: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
+    workAssignment: { create: vi.fn(), createMany: vi.fn() },
+    workOrder: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findUniqueOrThrow: vi.fn() },
+    executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
+  },
+}));
 
-const masterId = "master-id";
-const helperId = "helper-id";
-const workerId = "worker-id";
+const masterId = "11111111-1111-4111-8111-111111111111";
+const helperId = "22222222-2222-4222-8222-222222222222";
+const workerId = "33333333-3333-4333-8333-333333333333";
 
 function worker(id: string, workerKind: WorkerKind) {
   return { id, role: UserRole.WORKER, workerKind, isActive: true };
@@ -188,6 +197,7 @@ describe("work order actions", () => {
     it("blocks execution records on cancelled orders", async () => {
       const tx = createTx();
       tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.CANCELLED, quote: { status: QuoteStatus.APPROVED } });
+      tx.userProfile.findUnique.mockResolvedValue(worker(workerId, WorkerKind.HELPER));
       await expect(recordExecution({ workOrderId: "wo-1", workerId, summary: "No debe guardarse" })).rejects.toThrow("no permite");
     });
   });

@@ -3,43 +3,43 @@ import { QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/clie
 import {
   assertActiveWorker,
   assertApprovedQuote,
-  assertCapacityConfirmed,
   assertDistinctWorkers,
   assertExecutionCanBeRecorded,
-  assertMasterAvailabilityConfirmed,
-  assertStoredConfirmations,
   assertWorkOrderCanBeAssigned,
   assertWorkOrderCanBeChanged,
-  assertWorkOrderCanBeStarted,
+  assertWorkOrderCanBeCompleted,
   WorkOrderOperationError,
 } from "./domain";
 
 describe("work order domain rules", () => {
   it("only allows approved quotes to enter the operational flow", () => {
     expect(() => assertApprovedQuote(QuoteStatus.SENT)).toThrow(WorkOrderOperationError);
+    expect(() => assertApprovedQuote(QuoteStatus.DRAFT)).toThrow(WorkOrderOperationError);
     expect(() => assertApprovedQuote(QuoteStatus.APPROVED)).not.toThrow();
   });
 
-  it("keeps waiting, assignment, progress, and terminal transitions explicit", () => {
+  it("keeps assignment, completion, and terminal transitions explicit", () => {
+    // Only PLANNED can be assigned
     expect(() => assertWorkOrderCanBeAssigned(WorkOrderStatus.PLANNED)).not.toThrow();
     expect(() => assertWorkOrderCanBeAssigned(WorkOrderStatus.ASSIGNED)).toThrow();
-    expect(() => assertWorkOrderCanBeStarted(WorkOrderStatus.ASSIGNED)).not.toThrow();
-    expect(() => assertWorkOrderCanBeStarted(WorkOrderStatus.PLANNED)).toThrow();
+    expect(() => assertWorkOrderCanBeAssigned(WorkOrderStatus.COMPLETED)).toThrow();
+
+    // Only ASSIGNED can be completed (simplified flow: no IN_PROGRESS step)
+    expect(() => assertWorkOrderCanBeCompleted(WorkOrderStatus.ASSIGNED)).not.toThrow();
+    expect(() => assertWorkOrderCanBeCompleted(WorkOrderStatus.PLANNED)).toThrow("en proceso");
+    expect(() => assertWorkOrderCanBeCompleted(WorkOrderStatus.COMPLETED)).toThrow("en proceso");
+
+    // COMPLETED and CANCELLED are protected against unsafe changes
+    expect(() => assertWorkOrderCanBeChanged(WorkOrderStatus.COMPLETED)).toThrow("protegida");
+    expect(() => assertWorkOrderCanBeChanged(WorkOrderStatus.CANCELLED)).toThrow("protegida");
+    expect(() => assertWorkOrderCanBeChanged(WorkOrderStatus.ASSIGNED)).not.toThrow();
+  });
+
+  it("allows recording execution on ASSIGNED or IN_PROGRESS orders (future tracking feature)", () => {
+    expect(() => assertExecutionCanBeRecorded(WorkOrderStatus.ASSIGNED)).not.toThrow();
     expect(() => assertExecutionCanBeRecorded(WorkOrderStatus.IN_PROGRESS)).not.toThrow();
     expect(() => assertExecutionCanBeRecorded(WorkOrderStatus.CANCELLED)).toThrow();
-    expect(() => assertWorkOrderCanBeChanged(WorkOrderStatus.COMPLETED)).toThrow("protegida");
-  });
-
-  it("requires both operational confirmations", () => {
-    expect(() => assertCapacityConfirmed(false)).toThrow("espacio");
-    expect(() => assertMasterAvailabilityConfirmed(false)).toThrow("disponibilidad");
-    expect(() => assertCapacityConfirmed(true)).not.toThrow();
-    expect(() => assertMasterAvailabilityConfirmed(true)).not.toThrow();
-  });
-
-  it("requires persisted confirmations when starting assigned work", () => {
-    expect(() => assertStoredConfirmations({ workshopCapacityConfirmedAt: null, masterAvailabilityConfirmedAt: new Date() })).toThrow();
-    expect(() => assertStoredConfirmations({ workshopCapacityConfirmedAt: new Date(), masterAvailabilityConfirmedAt: new Date() })).not.toThrow();
+    expect(() => assertExecutionCanBeRecorded(WorkOrderStatus.COMPLETED)).toThrow();
   });
 
   it("requires one distinct master and rejects duplicate workers", () => {

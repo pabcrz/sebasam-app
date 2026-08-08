@@ -1,19 +1,18 @@
-import { WorkOrderStatus } from \"@prisma/client\";
-import { prisma } from \"@/lib/prisma\";
-import { requireOperationalRole } from \"@/lib/auth/session\";
-export { listActiveWorkers } from \"@/features/workers/queries\";
+import { WorkOrderStatus } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { requireOperationalRole } from "@/lib/auth/session";
+export { listActiveWorkers } from "@/features/workers/queries";
 
-// Full include shape used by both active and completed work order views
 const workOrderInclude = {
   quote: {
     include: {
       customer: true,
       vehicle: true,
-      items: { orderBy: { sortOrder: \"asc\" as const } },
+      items: { orderBy: { sortOrder: "asc" as const } },
     },
   },
   assignments: {
-    where: { status: { not: \"CANCELLED\" as const } },
+    where: { status: { not: "CANCELLED" as const } },
     include: { worker: true },
   },
 } as const;
@@ -24,7 +23,7 @@ export async function listWorkOrders() {
 
   return prisma.workOrder.findMany({
     include: workOrderInclude,
-    orderBy: { createdAt: \"desc\" },
+    orderBy: { createdAt: "desc" },
   });
 }
 
@@ -35,7 +34,7 @@ export async function listActiveWorkOrders() {
   return prisma.workOrder.findMany({
     where: { status: WorkOrderStatus.ASSIGNED },
     include: workOrderInclude,
-    orderBy: { createdAt: \"desc\" },
+    orderBy: { createdAt: "desc" },
   });
 }
 
@@ -46,7 +45,7 @@ export async function listCompletedWorkOrders() {
   return prisma.workOrder.findMany({
     where: { status: WorkOrderStatus.COMPLETED },
     include: workOrderInclude,
-    orderBy: { completedAt: \"desc\" },
+    orderBy: { completedAt: "desc" },
   });
 }
 
@@ -59,11 +58,11 @@ export async function getWorkOrderById(workOrderId: string) {
     include: {
       ...workOrderInclude,
       executionRecords: {
-        orderBy: { happenedAt: \"desc\" },
+        orderBy: { happenedAt: "desc" },
         include: { worker: true },
       },
       paymentRequests: {
-        orderBy: { createdAt: \"desc\" },
+        orderBy: { createdAt: "desc" },
         take: 1,
         select: { id: true, status: true },
       },
