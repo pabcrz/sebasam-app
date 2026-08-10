@@ -10,6 +10,8 @@ import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteApprovalForm } from "./quote-approval-form";
 import { QuoteCancelForm } from "./quote-cancel-form";
+import { QuoteDuplicateForm } from "./quote-duplicate-form";
+import { QuoteDeleteForm } from "./quote-delete-form";
 import { ShareQuoteButton } from "./share-quote-button";
 import { ShareQuoteLinkDialog } from "./share-quote-link-dialog";
 import { QuoteAuthorizeForm } from "./quote-authorize-form";
@@ -36,6 +38,7 @@ interface QuoteListRowProps {
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
   duplicateAction: (formData: FormData) => void | Promise<void>;
+  deleteAction: (formData: FormData) => void | Promise<void>;
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
@@ -54,6 +57,7 @@ export function QuoteListRow({
   paymentRequestAction,
   paymentRequestBankAccounts,
   duplicateAction,
+  deleteAction,
   customers,
   saveAction,
   searchCustomersAction,
@@ -110,87 +114,72 @@ export function QuoteListRow({
       <TableCell>{quote.validUntil ? formatDate(quote.validUntil) : "—"}</TableCell>
       <TableCell className="min-w-[230px]" onClick={(event) => event.stopPropagation()}>
         <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
-        <div className="grid gap-2">
-          <div className="flex justify-end">
-            <QuoteActionsMenu quoteNumber={quote.number}>
-            {editable ? (
-              <QuoteBuilderDialog
-                customers={customers}
-                saveAction={saveAction}
-                searchCustomersAction={searchCustomersAction}
-                quote={quote}
-                quoteNumber={quote.number}
-                triggerClassName="w-full justify-start"
-                triggerSize="sm"
-                triggerVariant="ghost"
-              />
-            ) : (
-              <Button variant="ghost" size="sm" disabled className="w-full justify-start">
-                <Pencil className="h-4 w-4" aria-hidden="true" />
-                <span>Editar</span>
-              </Button>
-            )}
-            {quote.activeSharedQuote ? (
-              <ShareQuoteLinkDialog
-                sharedQuote={quote.activeSharedQuote as SharedQuote}
-                quoteNumber={quote.number}
-                triggerClassName="w-full justify-start"
-              />
-            ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
-              <ShareQuoteButton
-                action={shareAction}
-                quoteId={quote.id}
-                quoteNumber={quote.number}
-                className="w-full justify-start"
-              />
-            ) : null}
-            <form action={duplicateAction} className="w-full">
-              <input type="hidden" name="quoteId" value={quote.id} />
-              <Button type="submit" variant="ghost" size="sm" className="w-full justify-start">
-                <Copy className="h-4 w-4" aria-hidden="true" />
-                <span>Duplicar</span>
-              </Button>
-            </form>
-            </QuoteActionsMenu>
-          </div>
-          {quote.status === "DRAFT" && !quote.workOrder ? (
-            <>
-              <QuoteApprovalForm
-                action={approveAction}
-                quoteId={quote.id}
-                quoteNumber={quote.number}
-                buttonLabel="Aprobar"
-                buttonAriaLabel="Aprobar y crear orden de trabajo"
-                variant="outline"
-                size="default"
-              />
-              <QuoteCancelForm
-                action={cancelAction}
-                quoteId={quote.id}
-                quoteNumber={quote.number}
-                variant="outline"
-                size="default"
-              />
-            </>
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {editable ? (
+            <QuoteBuilderDialog
+              customers={customers}
+              saveAction={saveAction}
+              searchCustomersAction={searchCustomersAction}
+              quote={quote}
+              quoteNumber={quote.number}
+              triggerSize="sm"
+              triggerVariant="outline"
+            />
           ) : null}
-          {canUsePaymentActions ? (
-            <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
+
+          <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} />
+
+          {quote.status === "DRAFT" ? (
+            <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
           ) : null}
-          {quote.status === "SENT" ? (
+
+          {quote.activeSharedQuote ? (
+            <ShareQuoteLinkDialog
+              sharedQuote={quote.activeSharedQuote as SharedQuote}
+              quoteNumber={quote.number}
+            />
+          ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
+            <ShareQuoteButton
+              action={shareAction}
+              quoteId={quote.id}
+              quoteNumber={quote.number}
+            />
+          ) : null}
+
+          {quote.status === "DRAFT" || quote.status === "SENT" ? (
             <QuoteAuthorizeForm
               action={authorizeAction}
               quoteNumber={quote.number}
-              size="default"
+              variant="outline"
+              size="sm"
             />
           ) : null}
-          <WorkOrderOperationsDialog
-            quoteNumber={quote.number}
-            quoteStatus={quote.status}
-            workOrder={quote.workOrder}
-            workers={workers}
-            actions={workOrderActions}
-          />
+
+          {quote.status === "APPROVED" ? (
+            <WorkOrderOperationsDialog
+              quoteNumber={quote.number}
+              quoteStatus={quote.status}
+              workOrder={quote.workOrder}
+              workers={workers}
+              actions={workOrderActions}
+            />
+          ) : null}
+
+          {quote.status === "DRAFT" || quote.status === "SENT" ? (
+            <QuoteCancelForm
+              action={cancelAction}
+              quoteId={quote.id}
+              quoteNumber={quote.number}
+              variant="outline"
+              size="sm"
+            />
+          ) : null}
+
+          {canUsePaymentActions ? (
+            <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
+          ) : null}
         </div>
+
       </TableCell>
     </TableRow>
   );

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
 import type { UserProfile, UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
@@ -32,7 +33,7 @@ export class UnauthorizedRoleError extends Error {
   }
 }
 
-export async function getCurrentUser(): Promise<User | null> {
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -44,7 +45,7 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 
   return user;
-}
+});
 
 export async function requireUser(): Promise<User> {
   const user = await getCurrentUser();
@@ -74,7 +75,7 @@ export async function getCurrentProfile(): Promise<CurrentProfile | null> {
   return { user, profile };
 }
 
-export async function requireProfile(): Promise<CurrentProfile> {
+export const requireProfile = cache(async (): Promise<CurrentProfile> => {
   const user = await requireUser();
   const profile = await prisma.userProfile.findUnique({
     where: { id: user.id },
@@ -89,7 +90,7 @@ export async function requireProfile(): Promise<CurrentProfile> {
   }
 
   return { user, profile };
-}
+});
 
 export async function requireProfileForPage(): Promise<CurrentProfile> {
   const user = await requireUser();
@@ -121,3 +122,4 @@ export async function requireAdmin(): Promise<CurrentProfile> {
 export async function requireOperationalRole(): Promise<CurrentProfile> {
   return requireRole(["ADMIN", "ADMIN_ASSISTANT"]);
 }
+

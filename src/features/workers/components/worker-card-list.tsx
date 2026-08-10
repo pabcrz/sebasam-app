@@ -16,6 +16,7 @@ type WorkerCardListProps = {
   workers: WorkerCardListWorker[];
   updateAction: (workerId: string, formData: FormData) => void | Promise<void>;
   setActiveAction: (workerId: string, formData: FormData) => void | Promise<void>;
+  deleteAction?: (workerId: string, formData: FormData) => void | Promise<void>;
 };
 
 const kindLabels = {
@@ -23,7 +24,7 @@ const kindLabels = {
   HELPER: "Ayudante",
 } as const;
 
-export function WorkerCardList({ workers, updateAction, setActiveAction }: WorkerCardListProps) {
+export function WorkerCardList({ workers, updateAction, setActiveAction, deleteAction }: WorkerCardListProps) {
   return (
     <div className="grid gap-3" data-testid="worker-card-list">
       {workers.map((worker) => {
@@ -50,10 +51,12 @@ export function WorkerCardList({ workers, updateAction, setActiveAction }: Worke
               worker={worker}
               updateAction={updateAction}
               setActiveAction={setActiveAction}
+              deleteAction={deleteAction}
             />
           </div>
         );
       })}
+
       {workers.length === 0 ? (
         <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">
           No se encontraron trabajadores.

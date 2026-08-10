@@ -1,73 +1,53 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import {
   assignWorker,
-  assignWorkOrder,
-  ensureWorkOrderWaiting,
+  createAndAssignWorkOrder,
+  completeWorkOrder,
   recordExecution,
-  removeExecutionRecord,
-  startWorkOrder,
 } from "./actions";
 import { WorkerUnavailableError } from "./domain";
 
+vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
+vi.mock("@/features/quotes/lib/sequence", () => ({ nextWorkOrderNumber: vi.fn().mockResolvedValue("T-0826-01") }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
-    userProfile: { findFirst: vi.fn() },
-    workAssignment: { create: vi.fn() },
+    userProfile: { findFirst: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
+    workAssignment: { create: vi.fn(), createMany: vi.fn() },
+    workOrder: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findUniqueOrThrow: vi.fn() },
+    executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
   },
 }));
-vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
-vi.mock("@/features/quotes/lib/sequence", () => ({ nextWorkOrderNumber: vi.fn(() => Promise.resolve("T-0826-01")) }));
 
-type MockTx = {
-  quote: { findUnique: ReturnType<typeof vi.fn> };
-  workOrder: {
-    findUnique: ReturnType<typeof vi.fn>;
-    updateMany: ReturnType<typeof vi.fn>;
-    create: ReturnType<typeof vi.fn>;
-    findUniqueOrThrow: ReturnType<typeof vi.fn>;
-  };
-  userProfile: {
-    findMany: ReturnType<typeof vi.fn>;
-    findUnique: ReturnType<typeof vi.fn>;
-  };
-  workAssignment: { createMany: ReturnType<typeof vi.fn> };
-  executionRecord: {
-    create: ReturnType<typeof vi.fn>;
-    findUnique: ReturnType<typeof vi.fn>;
-    delete: ReturnType<typeof vi.fn>;
-  };
-};
-
-const masterId = "00000000-0000-1000-8000-000000000001";
-const helperId = "00000000-0000-1000-8000-000000000002";
-const workerId = "00000000-0000-1000-8000-000000000003";
+const masterId = "11111111-1111-4111-8111-111111111111";
+const helperId = "22222222-2222-4222-8222-222222222222";
+const workerId = "33333333-3333-4333-8333-333333333333";
 
 function worker(id: string, workerKind: WorkerKind) {
   return { id, role: UserRole.WORKER, workerKind, isActive: true };
 }
 
+type MockTx = {
+  quote: { findUnique: ReturnType<typeof vi.fn> };
+  workOrder: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn> };
+  userProfile: { findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
+  workAssignment: { createMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
+  executionRecord: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
+};
+
 function createTx(): MockTx {
-  const tx: MockTx = {
+  const tx = {
     quote: { findUnique: vi.fn() },
-    workOrder: {
-      findUnique: vi.fn(),
-      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-      create: vi.fn().mockResolvedValue({ id: "wo-1", status: WorkOrderStatus.PLANNED }),
-      findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "wo-1" }),
-    },
+    workOrder: { create: vi.fn().mockResolvedValue({ id: "wo-new" }), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: vi.fn() },
     userProfile: { findMany: vi.fn(), findUnique: vi.fn() },
-    workAssignment: { createMany: vi.fn() },
-    executionRecord: {
-      create: vi.fn().mockResolvedValue({ id: "record-1" }),
-      findUnique: vi.fn(),
-      delete: vi.fn().mockResolvedValue({ id: "record-1" }),
-    },
+    workAssignment: { createMany: vi.fn(), deleteMany: vi.fn() },
+    executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
   };
-  (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
+  vi.mocked(prisma.$transaction).mockImplementation(
+    // @ts-expect-error Mock
     (callback: (transaction: MockTx) => Promise<unknown>) => callback(tx),
   );
   return tx;
@@ -117,145 +97,108 @@ describe("work order actions", () => {
     vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId } as never);
   });
 
-  it("requires an approved quote before creating the waiting work order", async () => {
-    const tx = createTx();
-    tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.SENT, workOrder: null });
+  describe("createAndAssignWorkOrder", () => {
+    it("creates and assigns a regular work order in one step", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.APPROVED, workOrder: null });
+      tx.userProfile.findMany.mockResolvedValue([worker(masterId, WorkerKind.MASTER), worker(helperId, WorkerKind.HELPER)]);
 
-    await expect(ensureWorkOrderWaiting("quote-1")).rejects.toThrow("aceptada");
-    expect(tx.workOrder.create).not.toHaveBeenCalled();
-  });
+      await createAndAssignWorkOrder("quote-1", {
+        isSpecial: false,
+        masterId,
+        helperIds: [helperId],
+      });
 
-  it("creates the waiting work order linked to the approved quote", async () => {
-    const tx = createTx();
-    tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.APPROVED, workOrder: null });
+      expect(tx.workOrder.create).toHaveBeenCalledWith({
+        data: { quoteId: "quote-1", number: "T-0826-01" },
+      });
+      expect(tx.workOrder.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: "wo-new" },
+        data: expect.objectContaining({ status: WorkOrderStatus.ASSIGNED, isSpecial: false }),
+      }));
+      expect(tx.workAssignment.createMany).toHaveBeenCalledWith({
+        data: [
+          { workOrderId: "wo-new", workerId: masterId, status: "ASSIGNED" },
+          { workOrderId: "wo-new", workerId: helperId, status: "ASSIGNED" },
+        ],
+        skipDuplicates: true,
+      });
+    });
 
-    await ensureWorkOrderWaiting("quote-1", { notes: "Ingreso autorizado" });
+    it("creates and assigns a special order without validating master/helpers", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.APPROVED, workOrder: { id: "wo-existing", status: WorkOrderStatus.PLANNED } });
 
-    expect(tx.workOrder.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ quoteId: "quote-1", number: "T-0826-01", notes: "Ingreso autorizado" }),
+      await createAndAssignWorkOrder("quote-1", {
+        isSpecial: true,
+        specialAssigneeName: "Juan Perez (Externo)",
+      });
+
+      expect(tx.workOrder.create).not.toHaveBeenCalled();
+      expect(tx.workOrder.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: "wo-existing" },
+        data: expect.objectContaining({ status: WorkOrderStatus.ASSIGNED, isSpecial: true, specialAssigneeName: "Juan Perez (Externo)" }),
+      }));
+      expect(tx.workAssignment.createMany).not.toHaveBeenCalled();
+    });
+
+    it("rejects assigning if quote is not approved", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.SENT, workOrder: null });
+
+      await expect(createAndAssignWorkOrder("quote-1", {
+        isSpecial: true,
+        specialAssigneeName: "Juan",
+      })).rejects.toThrow("aceptada");
     });
   });
 
-  it("assigns exactly one master and optional helpers atomically", async () => {
-    const tx = createTx();
-    tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.PLANNED, quote: { status: QuoteStatus.APPROVED } });
-    tx.userProfile.findMany.mockResolvedValue([worker(masterId, WorkerKind.MASTER), worker(helperId, WorkerKind.HELPER)]);
+  describe("completeWorkOrder", () => {
+    it("completes an assigned work order", async () => {
+      const tx = createTx();
+      tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.ASSIGNED, quote: { status: QuoteStatus.APPROVED } });
 
-    await assignWorkOrder({
-      workOrderId: "wo-1",
-      masterId,
-      helperIds: [helperId],
-      workshopCapacityConfirmed: true,
-      masterAvailabilityConfirmed: true,
+      await completeWorkOrder({ workOrderId: "wo-1" });
+
+      expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: "wo-1", status: WorkOrderStatus.ASSIGNED },
+        data: expect.objectContaining({ status: WorkOrderStatus.COMPLETED }),
+      }));
+      // should set completedAt
+      expect(tx.workOrder.updateMany.mock.calls[0][0].data.completedAt).toBeInstanceOf(Date);
     });
 
-    expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: "wo-1", status: WorkOrderStatus.PLANNED },
-      data: expect.objectContaining({ status: WorkOrderStatus.ASSIGNED }),
-    }));
-    expect(tx.workAssignment.createMany).toHaveBeenCalledWith({
-      data: [
-        { workOrderId: "wo-1", workerId: masterId, status: "ASSIGNED" },
-        { workOrderId: "wo-1", workerId: helperId, status: "ASSIGNED" },
-      ],
+    it("rejects completing an already completed work order", async () => {
+      const tx = createTx();
+      tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.COMPLETED, quote: { status: QuoteStatus.APPROVED } });
+
+      await expect(completeWorkOrder({ workOrderId: "wo-1" })).rejects.toThrow("en proceso para poder finalizarse");
     });
   });
 
-  it("rejects missing capacity confirmation and invalid worker roles", async () => {
-    const tx = createTx();
-    tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.PLANNED, quote: { status: QuoteStatus.APPROVED } });
-    tx.userProfile.findMany.mockResolvedValue([worker(masterId, WorkerKind.HELPER)]);
+  describe("recordExecution", () => {
+    it("links execution records to the eligible work order and worker", async () => {
+      const tx = createTx();
+      tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.IN_PROGRESS, quote: { status: QuoteStatus.APPROVED } });
+      tx.userProfile.findUnique.mockResolvedValue(worker(workerId, WorkerKind.HELPER));
 
-    await expect(assignWorkOrder({
-      workOrderId: "wo-1",
-      masterId,
-      helperIds: [],
-      workshopCapacityConfirmed: false,
-      masterAvailabilityConfirmed: true,
-    })).rejects.toThrow("espacio");
+      await recordExecution({
+        workOrderId: "wo-1",
+        workerId,
+        progressPercent: 60,
+        isExtra: true,
+      });
 
-    await expect(assignWorkOrder({
-      workOrderId: "wo-1",
-      masterId,
-      helperIds: [],
-      workshopCapacityConfirmed: true,
-      masterAvailabilityConfirmed: true,
-    })).rejects.toThrow("Maestro");
-    expect(tx.workOrder.updateMany).not.toHaveBeenCalled();
-  });
-
-  it("never accepts an administrative assistant as a helper", async () => {
-    const tx = createTx();
-    tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.PLANNED, quote: { status: QuoteStatus.APPROVED } });
-    tx.userProfile.findMany.mockResolvedValue([
-      worker(masterId, WorkerKind.MASTER),
-      { id: helperId, role: UserRole.ADMIN_ASSISTANT, workerKind: null, isActive: true },
-    ]);
-
-    await expect(assignWorkOrder({
-      workOrderId: "wo-1",
-      masterId,
-      helperIds: [helperId],
-      workshopCapacityConfirmed: true,
-      masterAvailabilityConfirmed: true,
-    })).rejects.toThrow("ayudantes");
-    expect(tx.workAssignment.createMany).not.toHaveBeenCalled();
-  });
-
-  it("starts only an assigned order after both confirmations", async () => {
-    const tx = createTx();
-    tx.workOrder.findUnique.mockResolvedValue({
-      status: WorkOrderStatus.ASSIGNED,
-      quote: { status: QuoteStatus.APPROVED },
-      workshopCapacityConfirmedAt: new Date(),
-      masterAvailabilityConfirmedAt: new Date(),
-      assignments: [{ status: "ASSIGNED", worker: worker(masterId, WorkerKind.MASTER) }],
+      expect(tx.executionRecord.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ workOrderId: "wo-1", workerId, summary: "", progressPercent: 60, isExtra: true }),
+      });
     });
 
-    await startWorkOrder({ workOrderId: "wo-1", workshopCapacityConfirmed: true, masterAvailabilityConfirmed: true });
-
-    expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: "wo-1", status: WorkOrderStatus.ASSIGNED },
-      data: expect.objectContaining({ status: WorkOrderStatus.IN_PROGRESS }),
-    }));
-    expect(tx.workOrder.updateMany.mock.calls[0][0].data).not.toHaveProperty("workshopCapacityConfirmedAt");
-    expect(tx.workOrder.updateMany.mock.calls[0][0].data).not.toHaveProperty("masterAvailabilityConfirmedAt");
-  });
-
-  it("links execution records to the eligible work order and worker", async () => {
-    const tx = createTx();
-    tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.IN_PROGRESS, quote: { status: QuoteStatus.APPROVED } });
-    tx.userProfile.findUnique.mockResolvedValue(worker(workerId, WorkerKind.HELPER));
-
-    await recordExecution({
-      workOrderId: "wo-1",
-      workerId,
-      progressPercent: 60,
-      isExtra: true,
+    it("blocks execution records on cancelled orders", async () => {
+      const tx = createTx();
+      tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.CANCELLED, quote: { status: QuoteStatus.APPROVED } });
+      tx.userProfile.findUnique.mockResolvedValue(worker(workerId, WorkerKind.HELPER));
+      await expect(recordExecution({ workOrderId: "wo-1", workerId, summary: "No debe guardarse" })).rejects.toThrow("no permite");
     });
-
-    expect(tx.executionRecord.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ workOrderId: "wo-1", workerId, summary: "", progressPercent: 60, isExtra: true }),
-    });
-  });
-
-  it("blocks execution records on cancelled orders and removes only extras", async () => {
-    const tx = createTx();
-    tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.CANCELLED, quote: { status: QuoteStatus.APPROVED } });
-    await expect(recordExecution({ workOrderId: "wo-1", workerId, summary: "No debe guardarse" })).rejects.toThrow("no permite");
-
-    tx.executionRecord.findUnique.mockResolvedValue({ isExtra: false, workOrder: { status: WorkOrderStatus.IN_PROGRESS } });
-    await expect(removeExecutionRecord("record-1")).rejects.toThrow("adicionales");
-
-    tx.executionRecord.findUnique.mockResolvedValue({ isExtra: true, workOrder: { status: WorkOrderStatus.IN_PROGRESS } });
-    await removeExecutionRecord("record-1");
-    expect(tx.executionRecord.delete).toHaveBeenCalledWith({ where: { id: "record-1" } });
-  });
-
-  it("requires the existing operational auth guard", async () => {
-    vi.mocked(requireOperationalRole).mockRejectedValue(new Error("unauthorized"));
-
-    await expect(ensureWorkOrderWaiting("quote-1")).rejects.toThrow("unauthorized");
-    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

@@ -7,12 +7,27 @@ export const workOrderInputSchema = z.object({
   notes: z.string().trim().optional(),
 });
 
-export const assignWorkOrderInputSchema = z.object({
+/**
+ * Assigns a master (and optional helpers) to a work order in one step.
+ * Also supports special orders where no registered worker is assigned.
+ */
+export const assignWorkOrderInputSchema = z
+  .discriminatedUnion("isSpecial", [
+    z.object({
+      workOrderId: z.string().min(1),
+      isSpecial: z.literal(false),
+      masterId: z.string().uuid(),
+      helperIds: z.array(z.string().uuid()).default([]),
+    }),
+    z.object({
+      workOrderId: z.string().min(1),
+      isSpecial: z.literal(true),
+      specialAssigneeName: z.string().trim().min(1, "Indica quién realizó el trabajo."),
+    }),
+  ]);
+
+export const completeWorkOrderInputSchema = z.object({
   workOrderId: z.string().min(1),
-  masterId: z.string().uuid(),
-  helperIds: z.array(z.string().uuid()).default([]),
-  workshopCapacityConfirmed: z.boolean(),
-  masterAvailabilityConfirmed: z.boolean(),
 });
 
 export const startWorkOrderInputSchema = z.object({
@@ -37,6 +52,7 @@ export const workAssignmentInputSchema = z.object({
 
 export type WorkOrderInput = z.infer<typeof workOrderInputSchema>;
 export type AssignWorkOrderInput = z.infer<typeof assignWorkOrderInputSchema>;
+export type CompleteWorkOrderInput = z.infer<typeof completeWorkOrderInputSchema>;
 export type StartWorkOrderInput = z.infer<typeof startWorkOrderInputSchema>;
 export type ExecutionRecordInput = z.infer<typeof executionRecordInputSchema>;
 export type WorkAssignmentInput = z.infer<typeof workAssignmentInputSchema>;

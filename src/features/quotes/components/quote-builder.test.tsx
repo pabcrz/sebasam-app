@@ -70,10 +70,10 @@ describe("QuoteBuilder", () => {
     expect(screen.getByLabelText("Año (opcional)")).toHaveAttribute("name", "year");
 
     // Hidden item type inputs are rendered even while step is hidden.
-    expect(document.querySelector('input[name="items.0.type"]')).toHaveAttribute("value", "LABOR");
-    expect(document.querySelector('input[name="items.0.description"]')).toBeInTheDocument();
-    expect(document.querySelector('input[name="items.0.quantity"]')).toBeInTheDocument();
-    expect(document.querySelector('input[name="items.0.unitPrice"]')).toBeInTheDocument();
+    expect(document.querySelector('input[name="sections.0.items.0.type"]')).toHaveAttribute("value", "LABOR");
+    expect(document.querySelector('input[name="sections.0.items.0.description"]')).toBeInTheDocument();
+    expect(document.querySelector('input[name="sections.0.items.0.quantity"]')).toBeInTheDocument();
+    expect(document.querySelector('input[name="sections.0.items.0.unitPrice"]')).toBeInTheDocument();
     expect(document.querySelector('input[name="taxEnabled"]')).toHaveValue("on");
   });
 
@@ -556,7 +556,8 @@ describe("QuoteBuilder", () => {
           description: "",
           administrative: false,
           taxEnabled: true,
-          items: [],
+          discountCents: 0,
+          sections: [{ name: "", items: [] }],
         }}
       />,
     );
@@ -618,11 +619,11 @@ describe("QuoteBuilder", () => {
 
     expect(entries.customerId).toBe("cust-1");
     expect(entries.title).toBe("Servicio general");
-    expect(entries["items.0.description"]).toBe("Cambio de aceite");
-    expect(entries["items.0.quantity"]).toBe("1");
-    expect(entries["items.0.unitPrice"]).toBe("850");
-    expect(entries["items.0.type"]).toBe("LABOR");
-    expect(entries["items.1.type"]).toBeUndefined();
+    expect(entries["sections.0.items.0.description"]).toBe("Cambio de aceite");
+    expect(entries["sections.0.items.0.quantity"]).toBe("1");
+    expect(entries["sections.0.items.0.unitPrice"]).toBe("850");
+    expect(entries["sections.0.items.0.type"]).toBe("LABOR");
+    expect(entries["sections.0.items.1.type"]).toBeUndefined();
     expect([...formData.keys()].some((key) => key.toLowerCase().includes("rowid"))).toBe(false);
     expect(screen.getAllByText("Cambio de aceite")).toHaveLength(2);
   }, 10_000);
@@ -641,7 +642,8 @@ describe("QuoteBuilder", () => {
           description: "Notas originales",
           administrative: false,
           taxEnabled: true,
-          items: [{ type: "SERVICE", description: "Afinación", quantity: "1", unitPrice: "1200" }],
+          discountCents: 0,
+          sections: [{ name: "", items: [{ type: "SERVICE", description: "Afinación", quantity: "1", unitPrice: "1200" }] }],
         }}
       />,
     );
@@ -649,7 +651,7 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("combobox", { name: /cliente/i }));
     await user.click(screen.getByRole("option", { name: "Taller Hermanos Pérez" }));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    const descriptionInput = document.querySelector('input[name="items.0.description"]') as HTMLInputElement;
+    const descriptionInput = document.querySelector('input[name="sections.0.items.0.description"]') as HTMLInputElement;
     await user.clear(descriptionInput);
     await user.type(descriptionInput, "Afinación mayor");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
@@ -660,7 +662,7 @@ describe("QuoteBuilder", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo guardar.");
     expect(screen.getByRole("heading", { name: "Afinación original" })).toBeInTheDocument();
     expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-2");
-    expect(document.querySelector('input[name="items.0.description"]')).toHaveValue("Afinación mayor");
+    expect(document.querySelector('input[name="sections.0.items.0.description"]')).toHaveValue("Afinación mayor");
 
     await user.click(screen.getByRole("button", { name: "Paso 2: Conceptos" }));
     await user.clear(descriptionInput);
@@ -692,7 +694,7 @@ describe("QuoteBuilder", () => {
 
     await user.click(screen.getByRole("button", { name: `+ ${label}` }));
 
-    expect(document.querySelector('input[name="items.1.type"]')).toHaveValue(type);
+    expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue(type);
   });
 
   it("computes and displays the running total", async () => {
@@ -1102,12 +1104,12 @@ describe("QuoteBuilder", () => {
     const unitPrices = Array.from(document.querySelectorAll('input[name$=".unitPrice"]'));
     expect(unitPrices[1]).toHaveValue(850);
 
-    expect(document.querySelector('input[name="items.1.type"]')).toHaveValue("LABOR");
+    expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue("LABOR");
     expect(document.querySelector('[name*="rowId"]')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Eliminar concepto 1" }));
     expect(screen.getByTestId("concept-row-0")).toBe(duplicatedRow);
-    expect(document.querySelector('input[name="items.0.description"]')).toHaveValue("Cambio de aceite");
+    expect(document.querySelector('input[name="sections.0.items.0.description"]')).toHaveValue("Cambio de aceite");
     scrollIntoView.mockRestore();
   });
 
@@ -1131,7 +1133,7 @@ describe("QuoteBuilder", () => {
     const newRow = screen.getByTestId("concept-row-1");
     expect(descriptions).toHaveLength(2);
     expect(descriptions[1]).toHaveFocus();
-    expect(document.querySelector('input[name="items.1.type"]')).toHaveValue("MATERIAL");
+    expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue("MATERIAL");
     expect(scrollIntoView.mock.instances.at(-1)).toBe(newRow);
     expect(newRow).toHaveClass("motion-safe:animate-fade-in", "motion-safe:animate-duration-200");
     scrollIntoView.mockRestore();

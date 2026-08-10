@@ -6,6 +6,7 @@ import {
   shareQuoteFromForm,
   authorizeQuoteAction,
   duplicateQuoteFromForm,
+  deleteDraftQuoteFromForm,
   createQuoteFromWorkspace,
   updateDraftQuoteFromWorkspace,
 } from "@/features/quotes/actions";
@@ -34,12 +35,10 @@ import {
 } from "@/features/quotes/lib/status";
 import { filterPaymentRequestDialogBankAccounts } from "@/features/quotes/lib/payment-request-dialog-context";
 import {
-  assignWorkOrderAction,
-  ensureWorkOrderWaitingAction,
-  recordExecutionAction,
-  removeExecutionRecordAction,
-  startWorkOrderAction,
+  createAndAssignWorkOrderAction,
+  completeWorkOrderAction,
 } from "@/features/work-orders/actions";
+
 import { listActiveWorkers } from "@/features/work-orders/queries";
 
 export const metadata: Metadata = {
@@ -69,7 +68,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const hasFilters = hasFilterValue(filters);
   const [customers, quotes, paymentSettings, workers] = await Promise.all([
     listCustomers(),
-    listQuotes(filters),
+    listQuotes(filters, { excludeWithActiveWorkOrder: true }),
     getPaymentSettings(),
     listActiveWorkers(),
   ]);
@@ -118,17 +117,16 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 paymentRequestBankAccounts={eligiblePaymentRequestBankAccounts}
                 cashPaymentAction={recordCashPaymentAction.bind(null, quote.id)}
                 duplicateAction={duplicateQuoteFromForm}
+                deleteAction={deleteDraftQuoteFromForm}
                 customers={customers}
                 saveAction={updateDraftQuoteFromWorkspace.bind(null, quote.id)}
                 searchCustomersAction={searchCustomersForQuote}
                 workers={workers}
                 workOrderActions={{
-                  ensureWaiting: ensureWorkOrderWaitingAction.bind(null, quote.id),
-                  assign: assignWorkOrderAction,
-                  start: startWorkOrderAction,
-                  recordExecution: recordExecutionAction,
-                  removeExecution: removeExecutionRecordAction,
+                  assign: createAndAssignWorkOrderAction.bind(null, quote.id),
+                  complete: completeWorkOrderAction,
                 }}
+
               />
             ))}
             {quotes.length === 0 ? (

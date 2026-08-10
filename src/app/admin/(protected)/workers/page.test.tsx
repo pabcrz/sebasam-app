@@ -5,6 +5,7 @@ const listWorkersMock = vi.hoisted(() => vi.fn());
 const createWorkerFromFormMock = vi.hoisted(() => vi.fn());
 const updateWorkerFromFormMock = vi.hoisted(() => vi.fn());
 const setWorkerActiveFromFormMock = vi.hoisted(() => vi.fn());
+const deleteWorkerFromFormMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/workers/queries", () => ({
   listWorkers: listWorkersMock,
@@ -14,7 +15,9 @@ vi.mock("@/features/workers/actions", () => ({
   createWorkerFromForm: createWorkerFromFormMock,
   updateWorkerFromForm: updateWorkerFromFormMock,
   setWorkerActiveFromForm: setWorkerActiveFromFormMock,
+  deleteWorkerFromForm: deleteWorkerFromFormMock,
 }));
+
 
 import WorkersPage from "./page";
 

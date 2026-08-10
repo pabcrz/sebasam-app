@@ -23,25 +23,19 @@ type WorkerProfile = {
 
 export function assertApprovedQuote(status: QuoteStatus) {
   if (status !== QuoteStatus.APPROVED) {
-    throw new WorkOrderOperationError("Solo una cotización aceptada puede entrar a espera.");
+    throw new WorkOrderOperationError("Solo una cotización aceptada puede tener una orden de trabajo activa.");
   }
 }
 
 export function assertWorkOrderCanBeAssigned(status: WorkOrderStatus) {
-  if (status !== WorkOrderStatus.PLANNED) {
-    throw new WorkOrderOperationError("La orden solo se puede asignar cuando está en espera.");
+  if (status !== WorkOrderStatus.PLANNED && status !== WorkOrderStatus.ASSIGNED) {
+    throw new WorkOrderOperationError("La orden solo se puede asignar o reasignar si está en proceso.");
   }
 }
 
-export function assertWorkOrderCanBeStarted(status: WorkOrderStatus) {
+export function assertWorkOrderCanBeCompleted(status: WorkOrderStatus) {
   if (status !== WorkOrderStatus.ASSIGNED) {
-    throw new WorkOrderOperationError("La orden debe tener una asignación antes de iniciar.");
-  }
-}
-
-export function assertExecutionCanBeRecorded(status: WorkOrderStatus) {
-  if (status !== WorkOrderStatus.IN_PROGRESS) {
-    throw new WorkOrderOperationError("La orden no permite registrar ejecución en este estado.");
+    throw new WorkOrderOperationError("La orden debe estar en proceso para poder finalizarse.");
   }
 }
 
@@ -51,24 +45,9 @@ export function assertWorkOrderCanBeChanged(status: WorkOrderStatus) {
   }
 }
 
-export function assertCapacityConfirmed(confirmed: boolean) {
-  if (!confirmed) {
-    throw new WorkOrderOperationError("Confirma que existe espacio disponible en el taller.");
-  }
-}
-
-export function assertMasterAvailabilityConfirmed(confirmed: boolean) {
-  if (!confirmed) {
-    throw new WorkOrderOperationError("Confirma la disponibilidad del maestro.");
-  }
-}
-
-export function assertStoredConfirmations(workOrder: {
-  workshopCapacityConfirmedAt: Date | null;
-  masterAvailabilityConfirmedAt: Date | null;
-}) {
-  if (!workOrder.workshopCapacityConfirmedAt || !workOrder.masterAvailabilityConfirmedAt) {
-    throw new WorkOrderOperationError("La orden requiere confirmar capacidad y disponibilidad durante la asignación.");
+export function assertExecutionCanBeRecorded(status: WorkOrderStatus) {
+  if (status !== WorkOrderStatus.IN_PROGRESS && status !== WorkOrderStatus.ASSIGNED) {
+    throw new WorkOrderOperationError("La orden no permite registrar ejecución en este estado.");
   }
 }
 

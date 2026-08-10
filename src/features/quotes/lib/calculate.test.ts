@@ -29,6 +29,7 @@ describe("calculateQuoteTotals", () => {
   it("adds tax to the subtotal when tax is enabled", () => {
     expect(calculateQuoteTotals(85000, true)).toEqual({
       subtotalCents: 85000,
+      discountCents: 0,
       taxCents: 13600,
       totalCents: 98600,
     });
@@ -37,6 +38,7 @@ describe("calculateQuoteTotals", () => {
   it("keeps the total equal to the subtotal when tax is disabled", () => {
     expect(calculateQuoteTotals(85000, false)).toEqual({
       subtotalCents: 85000,
+      discountCents: 0,
       taxCents: 0,
       totalCents: 85000,
     });

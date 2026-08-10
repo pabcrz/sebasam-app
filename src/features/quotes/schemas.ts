@@ -63,6 +63,14 @@ function validateItemTotal(
 
 export const quoteItemInputSchema = quoteItemBaseSchema.superRefine(validateItemTotal);
 
+const quoteSectionBaseSchema = z.object({
+  name: z.string().trim().max(160),
+});
+
+export const quoteSectionInputSchema = quoteSectionBaseSchema.extend({
+  items: z.array(quoteItemInputSchema),
+});
+
 export const quoteVehicleInputSchema = z.object({
   plate: optionalTrimmedStringWithMax(10),
   brand: optionalTrimmedStringWithMax(80),
@@ -86,25 +94,37 @@ const quoteInputBaseSchema = z.object({
   description: optionalTrimmedString,
   administrative: z.boolean().default(false),
   taxEnabled: z.boolean().default(true),
-  items: z.array(quoteItemInputSchema).min(1, "At least one quote item is required").max(10),
+  discountCents: z.number().int().nonnegative().default(0),
+  sections: z.array(quoteSectionInputSchema).min(1, "At least one quote section is required").max(10),
 });
 
 function validateQuoteTotals(
   quote: z.infer<typeof quoteInputBaseSchema>,
   ctx: z.RefinementCtx,
 ) {
-  const subtotalCents = quote.items.reduce(
-    (total, item) => total + Math.round(item.quantity * item.unitPriceCents),
+  const subtotalCents = quote.sections.reduce(
+    (total, section) => total + section.items.reduce((secTotal, item) => secTotal + Math.round(item.quantity * item.unitPriceCents), 0),
     0,
   );
-  const taxCents = quote.taxEnabled ? Math.round(subtotalCents * 0.16) : 0;
-  const totalCents = subtotalCents + taxCents;
+  
+  if (quote.discountCents > subtotalCents) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Discount cannot be greater than the subtotal",
+      path: ["discountCents"],
+    });
+    return;
+  }
+
+  const taxableCents = Math.max(0, subtotalCents - quote.discountCents);
+  const taxCents = quote.taxEnabled ? Math.round(taxableCents * 0.16) : 0;
+  const totalCents = taxableCents + taxCents;
 
   if (subtotalCents > MAX_INT_CENTS || taxCents > MAX_INT_CENTS || totalCents > MAX_INT_CENTS) {
     ctx.addIssue({
       code: "custom",
       message: "Quote total is too large",
-      path: ["items"],
+      path: ["sections"],
     });
   }
 }
@@ -115,9 +135,14 @@ export const quoteFormItemSchema = quoteItemBaseSchema.extend({
   unitPriceCents: centsFromDollarInput,
 }).superRefine(validateItemTotal);
 
+export const quoteFormSectionSchema = quoteSectionBaseSchema.extend({
+  items: z.array(quoteFormItemSchema),
+});
+
 export const quoteFormInputSchema = quoteInputBaseSchema.extend({
   administrative: z.coerce.boolean().default(false),
-  items: z.array(quoteFormItemSchema).min(1, "At least one quote item is required").max(10),
+  discountCents: centsFromDollarInput.default(0),
+  sections: z.array(quoteFormSectionSchema).min(1, "At least one quote section is required").max(10),
 }).superRefine(validateQuoteTotals);
 
 export const quoteFilterSchema = z.object({

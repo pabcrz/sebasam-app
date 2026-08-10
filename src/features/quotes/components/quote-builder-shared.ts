@@ -9,6 +9,13 @@ export type ItemFormValue = {
   unitPrice: string;
 };
 
+export type SectionFormValue = {
+  name: string;
+  items: ItemFormValue[];
+  /** stable row IDs parallel to items */
+  rowIds: string[];
+};
+
 export const steps: Step[] = ["client", "items", "notes", "summary", "preview"];
 
 export const stepLabels: Record<Step, string> = {
@@ -43,10 +50,35 @@ export const emptyItem: ItemFormValue = {
   unitPrice: "",
 };
 
+export const DEFAULT_SECTION_NAME = "General";
+
+export function makeEmptySection(rowIdBase: number): SectionFormValue {
+  return {
+    name: DEFAULT_SECTION_NAME,
+    items: [{ ...emptyItem }],
+    rowIds: [`quote-item-${rowIdBase}`],
+  };
+}
+
 export function normalizeItems(items: ItemFormValue[]): ItemFormValue[] {
   return items.filter(
     (item) => item.description.trim() !== "" || item.unitPrice.trim() !== "" || item.quantity !== "1",
   );
+}
+
+export function normalizeSections(sections: SectionFormValue[]): SectionFormValue[] {
+  return sections
+    .map((section) => {
+      const kept: boolean[] = section.items.map(
+        (item) => normalizeItems([item]).length > 0,
+      );
+      return {
+        ...section,
+        items: section.items.filter((_, i) => kept[i]),
+        rowIds: section.rowIds.filter((_, i) => kept[i]),
+      };
+    })
+    .filter((section) => section.items.length > 0);
 }
 
 export function formatQuantity(quantity: number | string) {
@@ -59,7 +91,7 @@ export function formatQuantity(quantity: number | string) {
   return new Intl.NumberFormat("es-MX", { maximumFractionDigits: 0 }).format(value);
 }
 
-export function calculateTotals(items: ItemFormValue[], taxEnabled: boolean) {
+export function calculateTotals(items: ItemFormValue[], taxEnabled: boolean, discountCents = 0) {
   let subtotalCents = 0;
 
   for (const item of items) {
@@ -71,9 +103,15 @@ export function calculateTotals(items: ItemFormValue[], taxEnabled: boolean) {
     }
   }
 
-  const taxCents = taxEnabled ? Math.round(subtotalCents * 0.16) : 0;
+  const taxableCents = Math.max(0, subtotalCents - discountCents);
+  const taxCents = taxEnabled ? Math.round(taxableCents * 0.16) : 0;
 
-  return { subtotalCents, taxCents, totalCents: subtotalCents + taxCents };
+  return { subtotalCents, taxCents, totalCents: taxableCents + taxCents };
+}
+
+export function calculateSectionsTotals(sections: SectionFormValue[], taxEnabled: boolean, discountCents = 0) {
+  const allItems = sections.flatMap((s) => s.items);
+  return calculateTotals(allItems, taxEnabled, discountCents);
 }
 
 export function validateItemValue(item: ItemFormValue, index: number): string | null {
@@ -151,7 +189,7 @@ export function getStepError(
     customerId: string;
     vehicle: { model: string };
     title: string;
-    items: ItemFormValue[];
+    sections: SectionFormValue[];
   },
 ): string | null {
   if (step === "client") {
@@ -160,12 +198,13 @@ export function getStepError(
   }
 
   if (step === "items") {
-    const rowError = state.items
+    const allItems = state.sections.flatMap((s) => s.items);
+    const rowError = allItems
       .map((item, index) => validateItemValue(item, index))
       .find(Boolean);
     if (rowError) return rowError;
 
-    return state.items.some(isItemComplete) ? null : "Ingresa al menos un concepto completo.";
+    return allItems.some(isItemComplete) ? null : "Ingresa al menos un concepto completo.";
   }
 
   if (step === "notes") {

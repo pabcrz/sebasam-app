@@ -36,28 +36,44 @@ type QuoteItemFormInput = {
   unitPriceCents: FormDataEntryValue | null;
 };
 
+type QuoteSectionFormInput = {
+  name: FormDataEntryValue | null;
+  items: QuoteItemFormInput[];
+};
+
 function quoteFormDataToInput(formData: FormData) {
-  const items: QuoteItemFormInput[] = [];
+  const sections: QuoteSectionFormInput[] = [];
 
-  for (let index = 0; true; index += 1) {
-    const type = formData.get(`items.${index}.type`);
-    const description = formData.get(`items.${index}.description`);
-    const quantity = formData.get(`items.${index}.quantity`);
-    const unitPriceCents = formData.get(`items.${index}.unitPrice`);
+  for (let sIndex = 0; true; sIndex += 1) {
+    const sectionName = formData.get(`sections.${sIndex}.name`);
+    const items: QuoteItemFormInput[] = [];
 
-    if (type === null && description === null && quantity === null && unitPriceCents === null) {
+    for (let index = 0; true; index += 1) {
+      const type = formData.get(`sections.${sIndex}.items.${index}.type`);
+      const description = formData.get(`sections.${sIndex}.items.${index}.description`);
+      const quantity = formData.get(`sections.${sIndex}.items.${index}.quantity`);
+      const unitPriceCents = formData.get(`sections.${sIndex}.items.${index}.unitPrice`);
+
+      if (type === null && description === null && quantity === null && unitPriceCents === null) {
+        break;
+      }
+
+      const item = { type, description, quantity, unitPriceCents };
+
+      const hasAnyItemValue = [item.description, item.unitPriceCents].some(
+        (value) => typeof value === "string" && value.trim() !== "",
+      ) || (typeof item.quantity === "string" && item.quantity.trim() !== "1");
+
+      if (hasAnyItemValue) {
+        items.push(item);
+      }
+    }
+
+    if (sectionName === null && items.length === 0) {
       break;
     }
 
-    const item = { type, description, quantity, unitPriceCents };
-
-    const hasAnyItemValue = [item.description, item.unitPriceCents].some(
-      (value) => typeof value === "string" && value.trim() !== "",
-    ) || (typeof item.quantity === "string" && item.quantity.trim() !== "1");
-
-    if (hasAnyItemValue) {
-      items.push(item);
-    }
+    sections.push({ name: sectionName ?? "General", items });
   }
 
   return {
@@ -73,7 +89,8 @@ function quoteFormDataToInput(formData: FormData) {
     description: formData.get("description"),
     administrative: formData.get("administrative") === "on",
     taxEnabled: formData.get("taxEnabled") === "on",
-    items,
+    discountCents: formData.get("discount") || "0",
+    sections,
   };
 }
 
@@ -108,18 +125,15 @@ export async function createQuote(input: unknown) {
 
   const data = quoteInputSchema.parse(input);
   const quoteNumber = await nextQuoteNumber();
-  const items = data.items.map((item, index) => {
-    const totalCents = calculateItemTotalCents(item.quantity, item.unitPriceCents);
-
-    return {
-      ...item,
-      quantity: item.quantity,
-      totalCents,
-      sortOrder: index,
-    };
-  });
-  const subtotalCents = items.reduce((total, item) => total + item.totalCents, 0);
-  const { taxCents, totalCents } = calculateQuoteTotals(subtotalCents, data.taxEnabled);
+  const sectionData = data.sections.map((section, sIndex) => ({
+    name: section.name,
+    sortOrder: sIndex,
+  }));
+  const subtotalCents = data.sections.reduce(
+    (total, section) => total + section.items.reduce((secTotal, item) => secTotal + calculateItemTotalCents(item.quantity, item.unitPriceCents), 0),
+    0
+  );
+  const { taxCents, totalCents, discountCents } = calculateQuoteTotals(subtotalCents, data.taxEnabled, data.discountCents);
   const validUntil = createQuoteValidUntil();
 
   return prisma.$transaction(async (tx) => {
@@ -131,7 +145,7 @@ export async function createQuote(input: unknown) {
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
 
-    return tx.quote.create({
+    const quote = await tx.quote.create({
       data: {
         customerId: data.customerId,
         vehicleId: vehicle?.id ?? null,
@@ -143,12 +157,39 @@ export async function createQuote(input: unknown) {
         administrative: data.administrative,
         taxEnabled: data.taxEnabled,
         subtotalCents,
+        discountCents,
         taxCents,
         totalCents,
         validUntil,
-        items: { create: items },
+        sections: { create: sectionData },
       },
+      include: { sections: true },
     });
+
+    const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
+    data.sections.forEach((sectionInput, sIndex) => {
+      const createdSection = quote.sections.find((s) => s.sortOrder === sIndex);
+      if (createdSection) {
+        sectionInput.items.forEach((item, iIndex) => {
+          itemsToCreate.push({
+            quoteId: quote.id,
+            sectionId: createdSection.id,
+            type: item.type,
+            description: item.description,
+            quantity: item.quantity,
+            unitPriceCents: item.unitPriceCents,
+            totalCents: calculateItemTotalCents(item.quantity, item.unitPriceCents),
+            sortOrder: iIndex,
+          });
+        });
+      }
+    });
+
+    if (itemsToCreate.length > 0) {
+      await tx.quoteItem.createMany({ data: itemsToCreate });
+    }
+
+    return quote;
   });
 }
 
@@ -196,18 +237,16 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
   await requireOperationalRole();
 
   const data = quoteInputSchema.parse(input);
-  const items = data.items.map((item, index) => {
-    const totalCents = calculateItemTotalCents(item.quantity, item.unitPriceCents);
+  const sectionData = data.sections.map((section, sIndex) => ({
+    name: section.name,
+    sortOrder: sIndex,
+  }));
 
-    return {
-      ...item,
-      quantity: item.quantity,
-      totalCents,
-      sortOrder: index,
-    };
-  });
-  const subtotalCents = items.reduce((total, item) => total + item.totalCents, 0);
-  const { taxCents, totalCents } = calculateQuoteTotals(subtotalCents, data.taxEnabled);
+  const subtotalCents = data.sections.reduce(
+    (total, section) => total + section.items.reduce((secTotal, item) => secTotal + calculateItemTotalCents(item.quantity, item.unitPriceCents), 0),
+    0,
+  );
+  const { taxCents, totalCents, discountCents } = calculateQuoteTotals(subtotalCents, data.taxEnabled, data.discountCents);
 
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({
@@ -223,14 +262,16 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       throw new Error("This quote is not editable.");
     }
 
-    const paidPayments = await tx.payment.count({
+    const paidTotals = await tx.payment.aggregate({
       where: { quoteId, status: PaymentStatus.PAID },
+      _sum: { amountCents: true },
     });
+    const paidCents = Number(paidTotals._sum.amountCents ?? 0);
 
-    // This form always replaces quote items and recalculates totals, so it cannot
-    // safely make an administrative-only update without rewriting paid terms.
-    if (paidPayments > 0) {
-      throw new Error("This quote has paid payments and cannot be edited.");
+    // This form always replaces quote items and recalculates totals. We must ensure
+    // the new total is not less than what has already been paid.
+    if (paidCents > totalCents) {
+      throw new Error(`Esta cotización ya tiene ${paidCents / 100} abonados, el nuevo total no puede ser menor a esa cantidad.`);
     }
 
     const shouldLinkVehicle = hasVehicleData(data.vehicle);
@@ -241,9 +282,10 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
 
+    await tx.quoteSection.deleteMany({ where: { quoteId } });
     await tx.quoteItem.deleteMany({ where: { quoteId } });
 
-    return tx.quote.update({
+    const updatedQuote = await tx.quote.update({
       where: { id: quoteId },
       data: {
         customerId: data.customerId,
@@ -254,11 +296,38 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
         administrative: data.administrative,
         taxEnabled: data.taxEnabled,
         subtotalCents,
+        discountCents,
         taxCents,
         totalCents,
-        items: { create: items },
+        sections: { create: sectionData },
       },
+      include: { sections: true },
     });
+
+    const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
+    data.sections.forEach((sectionInput, sIndex) => {
+      const createdSection = updatedQuote.sections.find((s) => s.sortOrder === sIndex);
+      if (createdSection) {
+        sectionInput.items.forEach((item, iIndex) => {
+          itemsToCreate.push({
+            quoteId: quoteId,
+            sectionId: createdSection.id,
+            type: item.type,
+            description: item.description,
+            quantity: item.quantity,
+            unitPriceCents: item.unitPriceCents,
+            totalCents: calculateItemTotalCents(item.quantity, item.unitPriceCents),
+            sortOrder: iIndex,
+          });
+        });
+      }
+    });
+
+    if (itemsToCreate.length > 0) {
+      await tx.quoteItem.createMany({ data: itemsToCreate });
+    }
+
+    return updatedQuote;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
@@ -366,6 +435,48 @@ export async function cancelDraftQuoteFromForm(formData: FormData) {
 
   revalidatePath(quotesPath);
   redirect(`${quotesPath}?cancelled=1`);
+}
+
+export async function deleteDraftQuote(quoteId: string) {
+  await requireOperationalRole();
+
+  return prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({ where: { id: quoteId } });
+
+    if (!quote) {
+      throw new Error("Quote not found.");
+    }
+
+    if (quote.status !== QuoteStatus.DRAFT) {
+      throw new Error("Only draft quotes can be deleted.");
+    }
+
+    await tx.quote.delete({ where: { id: quoteId } });
+    return quote;
+  });
+}
+
+export async function deleteDraftQuoteFromForm(formData: FormData) {
+  await requireOperationalRole();
+
+  const quoteId = formData.get("quoteId");
+
+  if (typeof quoteId !== "string" || quoteId.trim() === "") {
+    redirect(`${quotesPath}?error=invalid-deletion`);
+  }
+
+  try {
+    await deleteDraftQuote(quoteId);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Only draft quotes can be deleted.") {
+      redirect(`${quotesPath}?error=not-draft-delete`);
+    }
+
+    redirect(`${quotesPath}?error=deletion-failed`);
+  }
+
+  revalidatePath(quotesPath);
+  redirect(`${quotesPath}?deleted=1`);
 }
 
 export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
@@ -534,7 +645,7 @@ export async function duplicateQuote(quoteId: string) {
     where: { id: quoteId },
     include: {
       vehicle: true,
-      items: { orderBy: { sortOrder: "asc" } },
+      sections: { include: { items: { orderBy: { sortOrder: "asc" } } }, orderBy: { sortOrder: "asc" } },
     },
   });
 
@@ -545,13 +656,9 @@ export async function duplicateQuote(quoteId: string) {
   const quoteNumber = await nextQuoteNumber();
   const validUntil = createQuoteValidUntil();
 
-  const items = original.items.map((item, index) => ({
-    type: item.type,
-    description: item.description,
-    quantity: item.quantity,
-    unitPriceCents: item.unitPriceCents,
-    totalCents: item.totalCents,
-    sortOrder: index,
+  const sectionData = original.sections.map((section, sIndex) => ({
+    name: section.name,
+    sortOrder: sIndex,
   }));
 
   return prisma.$transaction(async (tx) => {
@@ -570,7 +677,7 @@ export async function duplicateQuote(quoteId: string) {
     const vehicle = vehicleInput ? await findOrCreateVehicle(tx, vehicleInput) : null;
     const vehicleSnapshot = vehicleInput ? createVehicleSnapshot(vehicleInput) : Prisma.JsonNull;
 
-    return tx.quote.create({
+    const duplicatedQuote = await tx.quote.create({
       data: {
         customerId: original.customerId,
         vehicleId: vehicle?.id ?? null,
@@ -582,12 +689,39 @@ export async function duplicateQuote(quoteId: string) {
         administrative: original.administrative,
         taxEnabled: original.taxEnabled,
         subtotalCents: original.subtotalCents,
+        discountCents: original.discountCents,
         taxCents: original.taxCents,
         totalCents: original.totalCents,
         validUntil,
-        items: { create: items },
+        sections: { create: sectionData },
       },
+      include: { sections: true },
     });
+
+    const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
+    original.sections.forEach((sectionInput, sIndex) => {
+      const createdSection = duplicatedQuote.sections.find((s) => s.sortOrder === sIndex);
+      if (createdSection) {
+        sectionInput.items.forEach((item, iIndex) => {
+          itemsToCreate.push({
+            quoteId: duplicatedQuote.id,
+            sectionId: createdSection.id,
+            type: item.type,
+            description: item.description,
+            quantity: item.quantity,
+            unitPriceCents: item.unitPriceCents,
+            totalCents: item.totalCents,
+            sortOrder: iIndex,
+          });
+        });
+      }
+    });
+
+    if (itemsToCreate.length > 0) {
+      await tx.quoteItem.createMany({ data: itemsToCreate });
+    }
+
+    return duplicatedQuote;
   });
 }
 

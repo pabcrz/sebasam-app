@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui";
 import { Label } from "@/components/ui";
 import type { ButtonVariant, ButtonSize } from "@/components/ui";
 
+import { useRouter } from "next/navigation";
+
 export interface QuoteAuthorizeFormProps {
   action: (note: string) => Promise<{ success: boolean; error?: string }>;
   quoteNumber: string;
@@ -28,6 +30,7 @@ export function QuoteAuthorizeForm({
   variant = "outline",
   size = "sm",
 }: QuoteAuthorizeFormProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const [note, setNote] = React.useState("");
@@ -45,11 +48,13 @@ export function QuoteAuthorizeForm({
       if (result.success) {
         setOpen(false);
         setNote("");
+        router.refresh();
       } else {
         setError(result.error ?? "No se pudo autorizar la cotización.");
       }
     });
-  }, [action, note]);
+  }, [action, note, router]);
+
 
   const handleOpenChange = React.useCallback(
     (newOpen: boolean) => {

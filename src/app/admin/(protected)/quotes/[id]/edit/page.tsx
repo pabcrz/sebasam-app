@@ -5,9 +5,7 @@ import { requireOperationalRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { listCustomers } from "@/features/customers/queries";
 import { searchCustomersForQuote } from "@/features/customers/actions";
-import {
-  updateDraftQuoteFromForm,
-} from "@/features/quotes/actions";
+import { updateDraftQuoteFromForm } from "@/features/quotes/actions";
 import { EditDraftQuoteForm } from "@/features/quotes/components/edit-draft-quote-form";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import type { QuoteBuilderInitialData } from "@/features/quotes/components/quote-builder";
@@ -43,13 +41,18 @@ function extractVehicleData(quote: Awaited<ReturnType<typeof loadQuote>>): Quote
   return { plate: "", brand: "", model: "", year: "" };
 }
 
-function toItemFormValues(items: Array<{ type: QuoteItem["type"]; description: string; quantity: unknown; unitPriceCents: unknown }>): QuoteBuilderInitialData["items"] {
-  return items.map((item) => ({
+function toItemFormValue(item: {
+  type: QuoteItem["type"];
+  description: string;
+  quantity: unknown;
+  unitPriceCents: unknown;
+}) {
+  return {
     type: item.type,
     description: item.description,
     quantity: String(Number(item.quantity)),
     unitPrice: String(Number(item.unitPriceCents) / 100),
-  }));
+  };
 }
 
 async function loadQuote(quoteId: string) {
@@ -58,7 +61,10 @@ async function loadQuote(quoteId: string) {
     include: {
       customer: true,
       vehicle: true,
-      items: { orderBy: { sortOrder: "asc" } },
+      sections: {
+        orderBy: { sortOrder: "asc" },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      },
       workOrder: true,
     },
   });
@@ -77,6 +83,14 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
 
   const saveAction = updateDraftQuoteFromForm.bind(null, id);
 
+  // Map DB sections → QuoteBuilderInitialData sections
+  const sections: QuoteBuilderInitialData["sections"] = quote.sections.length > 0
+    ? quote.sections.map((section) => ({
+        name: section.name,
+        items: section.items.map(toItemFormValue),
+      }))
+    : [{ name: "General", items: [] }];
+
   const initialData: QuoteBuilderInitialData = {
     customerId: quote.customerId,
     vehicle: extractVehicleData(quote),
@@ -84,8 +98,10 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
     description: quote.description ?? "",
     administrative: quote.administrative,
     taxEnabled: quote.taxEnabled,
-    items: toItemFormValues(quote.items),
+    discountCents: quote.discountCents,
+    sections,
   };
+
   const customerOptions = customers.some((customer) => customer.id === quote.customerId)
     ? customers
     : [{ id: quote.customer.id, name: quote.customer.name }, ...customers];

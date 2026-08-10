@@ -16,7 +16,8 @@ const initialData = {
   description: "",
   administrative: false,
   taxEnabled: true,
-  items: [{ type: "LABOR" as const, description: "Trabajo", quantity: "1", unitPrice: "100" }],
+  discountCents: 0,
+  sections: [{ name: "", items: [{ type: "LABOR" as const, description: "Trabajo", quantity: "1", unitPrice: "100" }] }],
 };
 
 function renderForm() {

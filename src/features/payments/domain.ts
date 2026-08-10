@@ -13,6 +13,7 @@ export class PaymentOperationError extends Error {
 export type RecordCashPaymentInput = {
   amountCents: number;
   operationKey: string;
+  method?: PaymentMethod;
   quoteId?: string;
   paymentRequestId?: string;
 };
@@ -228,7 +229,7 @@ export async function recordCashPayment(input: RecordCashPaymentInput): Promise<
         operationKey: input.operationKey,
         quoteId: quote.id,
         paymentRequestId: input.paymentRequestId,
-        method: PaymentMethod.CASH,
+        method: input.method ?? PaymentMethod.CASH,
         amountCents: input.amountCents,
         status: PaymentStatus.PAID,
       },

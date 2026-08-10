@@ -1,4 +1,4 @@
-import { Prisma, QuoteStatus } from "@prisma/client";
+import { Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { endOfDay } from "@/lib/filters";
@@ -29,12 +29,20 @@ function findActiveSharedQuote(sharedQuotes: { expiresAt: Date; revokedAt: Date 
   return sharedQuotes.find((sharedQuote) => sharedQuote.revokedAt === null && sharedQuote.expiresAt >= now) ?? null;
 }
 
-export async function listQuotes(input: unknown = {}) {
+export async function listQuotes(input: unknown = {}, options: { excludeWithActiveWorkOrder?: boolean } = {}) {
   await requireOperationalRole();
 
   const parsed = quoteFilterSchema.safeParse(input);
   const filters = parsed.success ? parsed.data : ({} as QuoteFilterInput);
   const where: Prisma.QuoteWhereInput = {};
+
+  // Exclude quotes that live in Trabajos (ASSIGNED) or Notas (COMPLETED)
+  if (options.excludeWithActiveWorkOrder) {
+    where.NOT = {
+      workOrder: { status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.COMPLETED] } },
+    };
+  }
+
 
   if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
     where.status = filters.status as QuoteStatus;
@@ -80,6 +88,10 @@ export async function listQuotes(input: unknown = {}) {
       },
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
+      sections: {
+        orderBy: { sortOrder: "asc" },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      },
       workOrder: {
         include: {
           assignments: { include: { worker: true } },
@@ -126,6 +138,15 @@ export async function listQuotes(input: unknown = {}) {
         quantity: Number(item.quantity),
         unitPriceCents: Number(item.unitPriceCents),
         totalCents: Number(item.totalCents),
+      })),
+      sections: quote.sections.map((section) => ({
+        ...section,
+        items: section.items.map((item) => ({
+          ...item,
+          quantity: Number(item.quantity),
+          unitPriceCents: Number(item.unitPriceCents),
+          totalCents: Number(item.totalCents),
+        })),
       })),
       activeSharedQuote: findActiveSharedQuote(quote.sharedQuotes),
     };

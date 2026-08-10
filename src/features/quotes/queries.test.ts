@@ -113,6 +113,7 @@ describe("listQuotes filters", () => {
       totalCents: 10000,
       subtotalCents: 10000,
       taxCents: 0,
+      sections: [],
       items: [],
       sharedQuotes: [],
     }]);
@@ -134,6 +135,7 @@ describe("listQuotes filters", () => {
       totalCents: 10000,
       subtotalCents: 10000,
       taxCents: 0,
+      sections: [],
       items: [],
       sharedQuotes: [],
     }]);
@@ -155,6 +157,7 @@ describe("listQuotes filters", () => {
       totalCents: 10000,
       subtotalCents: 10000,
       taxCents: 0,
+      sections: [],
       items: [],
       sharedQuotes: [],
     }]);
