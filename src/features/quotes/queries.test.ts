@@ -5,7 +5,7 @@ import { getQuotePaidTotals } from "@/features/payments/queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    quote: { findMany: vi.fn() },
+    quote: { findMany: vi.fn(), findUnique: vi.fn() },
   },
 }));
 
@@ -79,6 +79,14 @@ describe("listQuotes filters", () => {
     });
     expect(result).toMatchObject({ page: 2, hasNextPage: true });
     expect(result.quotes).toHaveLength(20);
+  });
+
+  it("excludes root and section items from the paginated summary payload", async () => {
+    await listPaginatedQuotes();
+
+    const call = getFindManyCall();
+    expect(call.include.items).toBeUndefined();
+    expect(call.include.sections).toBeUndefined();
   });
 
   it("filters by customerId", async () => {

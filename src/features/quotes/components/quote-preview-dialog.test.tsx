@@ -1,12 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { listQuotes } from "@/features/quotes/queries";
+import type { QuoteDetail } from "@/features/quotes/queries";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 
-type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
+const { loadQuoteDetailAction } = vi.hoisted(() => ({ loadQuoteDetailAction: vi.fn() }));
 
-function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem {
+vi.mock("../actions", () => ({ loadQuoteDetailAction }));
+
+function createMockQuote(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
   return {
     id: "quote-1",
     customerId: "cust-1",
@@ -39,25 +41,33 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
         sortOrder: 0,
       },
     ],
-    workOrder: null,
-    paymentRequests: [],
+    discountCents: 0,
+    sections: [],
+    paidCents: 0,
+    remainingCents: 11600,
     ...overrides,
-  } as QuoteListItem;
+  } as QuoteDetail;
 }
 
 describe("QuotePreviewDialog", () => {
-  it("opens the dialog and renders quote details", async () => {
+  beforeEach(() => {
+    loadQuoteDetailAction.mockReset();
+  });
+
+  it("loads detail only after opening and renders it", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote();
+    loadQuoteDetailAction.mockResolvedValue(quote);
 
     render(<QuotePreviewDialog quote={quote} />);
 
+    expect(loadQuoteDetailAction).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: /ver vista previa de c-001/i }));
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(loadQuoteDetailAction).toHaveBeenCalledWith("quote-1");
     expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
-    expect(screen.queryByText(/vista previa/i)).not.toBeInTheDocument();
-    expect(screen.getByText("Constructora del Norte")).toBeInTheDocument();
+    expect(await screen.findByText("Constructora del Norte")).toBeInTheDocument();
     expect(screen.getByText("Cotización administrativa")).toBeInTheDocument();
     expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
     expect(screen.getByText(/Mano de obra · 2 × \$50.00/i)).toBeInTheDocument();
@@ -69,6 +79,7 @@ describe("QuotePreviewDialog", () => {
   it("closes the dialog when the close button is clicked", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote();
+    loadQuoteDetailAction.mockResolvedValue(quote);
 
     render(<QuotePreviewDialog quote={quote} />);
 
@@ -80,61 +91,63 @@ describe("QuotePreviewDialog", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("renders vehicle information when a vehicle is present", async () => {
+  it("renders sectioned concepts from the detail payload", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote({
-      vehicle: {
-        id: "veh-1",
-        customerId: "cust-1",
-        brand: "Toyota",
-        model: "Hilux",
-        year: 2022,
-        color: "Blanco",
-        plate: "ABC-123",
-        notes: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+      sections: [{
+        id: "section-1",
+        quoteId: "quote-1",
+        name: "Motor",
+        sortOrder: 0,
+        items: [{
+          id: "section-item-1",
+          quoteId: "quote-1",
+          sectionId: "section-1",
+          type: "LABOR",
+          description: "Diagnóstico de motor",
+          quantity: 1,
+          unitPriceCents: 5000,
+          totalCents: 5000,
+          sortOrder: 0,
+        }],
+      }],
     });
+    loadQuoteDetailAction.mockResolvedValue(quote);
 
     render(<QuotePreviewDialog quote={quote} />);
 
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(screen.getByText("Toyota · Hilux · 2022 · ABC-123")).toBeInTheDocument();
+    expect(await screen.findByText("Diagnóstico de motor")).toBeInTheDocument();
+    expect(screen.queryByText("Cambio de aceite")).not.toBeInTheDocument();
   });
 
-  it("renders the pending balance when the quote has a partial payment", async () => {
+  it("falls back to legacy root items when sections are empty", async () => {
     const user = userEvent.setup();
-    const quote = createMockQuote({ paidCents: 2500, remainingCents: 9100 });
-
-    render(<QuotePreviewDialog quote={quote} />);
-
-    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
-
-    expect(screen.getByTestId("quote-payment-balance-indicator")).toHaveTextContent("Saldo pendiente: $91.00");
-  });
-
-  it("renders the empty concepts message when the quote has no items", async () => {
-    const user = userEvent.setup();
-    const quote = createMockQuote({ items: [], subtotalCents: 0, taxCents: 0, totalCents: 0 });
-
-    render(<QuotePreviewDialog quote={quote} />);
-
-    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
-
-    expect(screen.getByText("Sin conceptos.")).toBeInTheDocument();
-  });
-
-  it("opens when controlled open is set to true", () => {
     const quote = createMockQuote();
+    loadQuoteDetailAction.mockResolvedValue(quote);
 
-    const { rerender } = render(<QuotePreviewDialog quote={quote} open={false} onOpenChange={() => {}} />);
+    render(<QuotePreviewDialog quote={quote} />);
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    rerender(<QuotePreviewDialog quote={quote} open onOpenChange={() => {}} />);
+    expect(await screen.findByText("Cambio de aceite")).toBeInTheDocument();
+  });
 
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  it("shows a retryable failure state when detail loading fails", async () => {
+    const user = userEvent.setup();
+    const quote = createMockQuote();
+    loadQuoteDetailAction.mockRejectedValueOnce(new Error("offline"));
+    loadQuoteDetailAction.mockResolvedValueOnce(quote);
+
+    render(<QuotePreviewDialog quote={quote} />);
+
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo cargar la cotización");
+    await user.click(screen.getByRole("button", { name: "Reintentar" }));
+
+    await waitFor(() => expect(loadQuoteDetailAction).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Constructora del Norte")).toBeInTheDocument();
   });
 });

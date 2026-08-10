@@ -14,21 +14,21 @@ import {
 } from "@/components/ui";
 import type { ButtonVariant } from "@/components/ui";
 import { QuoteBuilder, type QuoteBuilderInitialData } from "./quote-builder";
-import type { QuoteFormActionState } from "../actions";
-import type { listQuotes } from "../queries";
+import { loadQuoteDetailAction, type QuoteFormActionState } from "../actions";
+import type { QuoteDetail, QuoteListSummary } from "../queries";
 
 type CustomerOption = {
   id: string;
   name: string;
 };
-type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
+type QuoteReference = Pick<QuoteListSummary, "id" | "number">;
 
 type QuoteBuilderDialogProps = {
   customers: CustomerOption[];
   createAction?: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   saveAction?: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   initialData?: QuoteBuilderInitialData;
-  quote?: QuoteListItem;
+  quote?: QuoteReference;
   quoteNumber?: string;
   triggerClassName?: string;
   triggerSize?: "default" | "sm";
@@ -45,29 +45,39 @@ type QuoteBuilderDialogProps = {
 export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, triggerVariant, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  const [detail, setDetail] = React.useState<QuoteDetail | null>(null);
+  const [detailFailure, setDetailFailure] = React.useState<{ quoteId: string; retry: number; message: string } | null>(null);
+  const [detailRetry, setDetailRetry] = React.useState(0);
   const [confirmCloseOpen, setConfirmCloseOpen] = React.useState(false);
   const [dirty, setDirty] = React.useState(false);
   const [builderKey, setBuilderKey] = React.useState(0);
   const closeRequestFocusRef = React.useRef<HTMLElement | null>(null);
   const isEdit = saveAction != null;
-  const snapshot = quote?.vehicleSnapshot && typeof quote.vehicleSnapshot === "object" && !Array.isArray(quote.vehicleSnapshot)
-    ? quote.vehicleSnapshot as Record<string, unknown>
+  const quoteId = quote?.id;
+  const quoteDetail = detail?.id === quote?.id ? detail : null;
+  const needsDetail = open && isEdit && quoteId != null && initialDataProp == null;
+  const detailError = detailFailure?.quoteId === quoteId && detailFailure?.retry === detailRetry
+    ? detailFailure.message
+    : null;
+  const loadingDetail = needsDetail && !detailError && quoteDetail == null;
+  const snapshot = quoteDetail?.vehicleSnapshot && typeof quoteDetail.vehicleSnapshot === "object" && !Array.isArray(quoteDetail.vehicleSnapshot)
+    ? quoteDetail.vehicleSnapshot as Record<string, unknown>
     : undefined;
-  const initialData = initialDataProp ?? (quote ? {
-    customerId: quote.customerId,
+  const initialData = initialDataProp ?? (quoteDetail ? {
+    customerId: quoteDetail.customerId,
     vehicle: {
-      plate: quote.vehicle?.plate ?? String(snapshot?.plate ?? ""),
-      brand: quote.vehicle?.brand ?? String(snapshot?.brand ?? ""),
-      model: quote.vehicle?.model ?? String(snapshot?.model ?? ""),
-      year: quote.vehicle?.year != null ? String(quote.vehicle.year) : String(snapshot?.year ?? ""),
+      plate: quoteDetail.vehicle?.plate ?? String(snapshot?.plate ?? ""),
+      brand: quoteDetail.vehicle?.brand ?? String(snapshot?.brand ?? ""),
+      model: quoteDetail.vehicle?.model ?? String(snapshot?.model ?? ""),
+      year: quoteDetail.vehicle?.year != null ? String(quoteDetail.vehicle.year) : String(snapshot?.year ?? ""),
     },
-    title: quote.title,
-    description: quote.description ?? "",
-    administrative: quote.administrative,
-    taxEnabled: quote.taxEnabled,
-    discountCents: Number(quote.discountCents ?? 0),
-    sections: quote.sections && quote.sections.length > 0
-      ? quote.sections.map((section) => ({
+    title: quoteDetail.title,
+    description: quoteDetail.description ?? "",
+    administrative: quoteDetail.administrative,
+    taxEnabled: quoteDetail.taxEnabled,
+    discountCents: Number(quoteDetail.discountCents ?? 0),
+    sections: quoteDetail.sections.length > 0
+      ? quoteDetail.sections.map((section) => ({
           name: section.name,
           items: section.items.map((item) => ({
             type: item.type,
@@ -78,7 +88,7 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
         }))
       : [{
           name: "General",
-          items: quote.items.map((item) => ({
+          items: quoteDetail.items.map((item) => ({
             type: item.type,
             description: item.description,
             quantity: String(Number(item.quantity)),
@@ -87,15 +97,38 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
         }],
   } : undefined);
 
+  React.useEffect(() => {
+    if (!needsDetail || !quoteId) return;
+
+    let active = true;
+
+    void loadQuoteDetailAction(quoteId)
+      .then((result) => {
+        if (active) setDetail(result);
+      })
+      .catch(() => {
+        if (active) setDetailFailure({ quoteId, retry: detailRetry, message: "No se pudo cargar la cotización. Intenta de nuevo." });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [detailRetry, needsDetail, quoteId]);
+
+  const resetDetail = React.useCallback(() => {
+    setDetail(null);
+    setDetailFailure(null);
+  }, []);
 
   const requestClose = React.useCallback(() => {
     if (!dirty) {
+      resetDetail();
       setOpen(false);
       return;
     }
     closeRequestFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setConfirmCloseOpen(true);
-  }, [dirty]);
+  }, [dirty, resetDetail]);
 
   const handleConfirmCloseOpenChange = React.useCallback((nextOpen: boolean) => {
     setConfirmCloseOpen(nextOpen);
@@ -106,17 +139,24 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
 
   const discardChanges = React.useCallback(() => {
     setConfirmCloseOpen(false);
+    resetDetail();
     setOpen(false);
     setDirty(false);
     setBuilderKey((current) => current + 1);
-  }, []);
+  }, [resetDetail]);
 
   const handleSuccess = React.useCallback(() => {
     setDirty(false);
+    resetDetail();
     setOpen(false);
     setBuilderKey((current) => current + 1);
     router.refresh();
-  }, [router]);
+  }, [resetDetail, router]);
+
+  const retryDetail = () => {
+    resetDetail();
+    setDetailRetry((attempt) => attempt + 1);
+  };
 
   return (
     <>
@@ -124,6 +164,7 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
         open={open}
         onOpenChange={(nextOpen) => {
           if (nextOpen) {
+            resetDetail();
             setOpen(true);
           } else {
             requestClose();
@@ -160,19 +201,30 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </DialogHeader>
-          <QuoteBuilder
-            key={builderKey}
-            customers={customers}
-            createAction={createAction}
-            saveAction={saveAction}
-            initialData={initialData}
-            createCustomerAction={createCustomerAction}
-            searchCustomersAction={searchCustomersAction}
-            layout="dialog"
-            onCancel={requestClose}
-            onDirtyChange={setDirty}
-            onSuccess={handleSuccess}
-          />
+          {loadingDetail ? <p role="status" className="py-8 text-center text-sm text-[var(--color-text-muted)]">Cargando cotización...</p> : null}
+          {detailError ? (
+            <div role="alert" className="grid gap-3 py-4 text-sm text-[var(--color-status-danger-fg)]">
+              <p>{detailError}</p>
+              <Button type="button" variant="outline" size="sm" className="w-fit" onClick={retryDetail}>
+                Reintentar
+              </Button>
+            </div>
+          ) : null}
+          {!loadingDetail && !detailError ? (
+            <QuoteBuilder
+              key={builderKey}
+              customers={customers}
+              createAction={createAction}
+              saveAction={saveAction}
+              initialData={initialData}
+              createCustomerAction={createCustomerAction}
+              searchCustomersAction={searchCustomersAction}
+              layout="dialog"
+              onCancel={requestClose}
+              onDirtyChange={setDirty}
+              onSuccess={handleSuccess}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
       <ConfirmDialog
