@@ -30,6 +30,7 @@ enum QuoteStatus {
   APPROVED
   REJECTED
   CANCELLED
+  ARCHIVED
 }
 
 enum QuoteItemType {
@@ -106,6 +107,7 @@ model UserProfile {
 
   assignments      WorkAssignment[]
   executionRecords ExecutionRecord[]
+  quoteLifecycleEvents QuoteLifecycleEvent[]
 }
 
 model Customer {
@@ -175,6 +177,7 @@ model Quote {
   payments        Payment[]
   sharedQuotes    SharedQuote[]
   decisions       QuoteDecision[]
+  lifecycleEvents QuoteLifecycleEvent[]
 }
 
 model SharedQuote {
@@ -203,6 +206,22 @@ model QuoteDecision {
   quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
   @@index([quoteId])
+}
+
+model QuoteLifecycleEvent {
+  id            String      @id @default(cuid())
+  quoteId       String
+  previousState QuoteStatus
+  nextState     QuoteStatus
+  actorId       String      @db.Uuid
+  reason        String
+  createdAt     DateTime    @default(now())
+
+  quote Quote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  actor UserProfile @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([quoteId, createdAt])
+  @@index([actorId])
 }
 
 model QuoteSection {

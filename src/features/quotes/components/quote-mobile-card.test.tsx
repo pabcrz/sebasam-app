@@ -20,6 +20,7 @@ const quoteStatusLabels = {
   APPROVED: "Aprobada",
   REJECTED: "Rechazada",
   CANCELLED: "Cancelada",
+  ARCHIVED: "Archivada",
 } as const;
 
 const quoteStatusBadgeVariant = {
@@ -28,6 +29,7 @@ const quoteStatusBadgeVariant = {
   APPROVED: "success" as const,
   REJECTED: "danger" as const,
   CANCELLED: "warning" as const,
+  ARCHIVED: "default" as const,
 };
 
 function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem {
@@ -118,6 +120,8 @@ function renderCard(quote: QuoteListItem) {
       }))}
       duplicateAction={vi.fn()}
       deleteAction={vi.fn()}
+      archiveAction={vi.fn()}
+      restoreAction={vi.fn()}
       customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
       saveAction={vi.fn()}
       searchCustomersAction={vi.fn()}
@@ -167,5 +171,11 @@ describe("QuoteListCard", () => {
 
     expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /autorizar cotización/i })).not.toBeInTheDocument();
+  });
+
+  it("renders the restore control for archived quotes", () => {
+    renderCard(createMockQuote({ status: "ARCHIVED" }));
+
+    expect(screen.getByRole("button", { name: /restaurar cotización c-001/i })).toBeInTheDocument();
   });
 });

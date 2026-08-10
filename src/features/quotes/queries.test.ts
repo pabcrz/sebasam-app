@@ -28,11 +28,11 @@ describe("listQuotes filters", () => {
     (getQuotePaidTotals as ReturnType<typeof vi.fn>).mockResolvedValue(new Map());
   });
 
-  it("returns quotes without cancelled when no filters are provided", async () => {
+  it("returns quotes without cancelled or archived when no filters are provided", async () => {
     await listQuotes();
 
     const call = getFindManyCall();
-    expect(call.where).toEqual({ status: { not: "CANCELLED" } });
+    expect(call.where).toEqual({ status: { notIn: ["CANCELLED", "ARCHIVED"] } });
   });
 
   it("filters by status", async () => {
@@ -46,14 +46,20 @@ describe("listQuotes filters", () => {
     await listQuotes({ status: "INVALID" });
 
     const call = getFindManyCall();
-    expect(call.where).toEqual({ status: { not: "CANCELLED" } });
+    expect(call.where).toEqual({ status: { notIn: ["CANCELLED", "ARCHIVED"] } });
   });
 
   it("shows cancelled when showCancelled is true", async () => {
     await listQuotes({ showCancelled: true });
 
     const call = getFindManyCall();
-    expect(call.where).toBeUndefined();
+    expect(call.where).toEqual({ status: { notIn: ["ARCHIVED"] } });
+  });
+
+  it("shows archived without changing the cancelled filter", async () => {
+    await listQuotes({ showArchived: true });
+
+    expect(getFindManyCall().where).toEqual({ status: { notIn: ["CANCELLED"] } });
   });
 
   it("paginates newest-first while preserving filters", async () => {
@@ -72,7 +78,7 @@ describe("listQuotes filters", () => {
     const result = await listPaginatedQuotes({ page: "2", customerId: "cust-1", showCancelled: true });
 
     expect(getFindManyCall()).toMatchObject({
-      where: { customerId: "cust-1" },
+      where: { customerId: "cust-1", status: { notIn: ["ARCHIVED"] } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       skip: 20,
       take: 21,
@@ -95,7 +101,7 @@ describe("listQuotes filters", () => {
     const call = getFindManyCall();
     expect(call.where).toEqual({
       customerId: "cust-1",
-      status: { not: "CANCELLED" },
+      status: { notIn: ["CANCELLED", "ARCHIVED"] },
     });
   });
 
@@ -105,7 +111,7 @@ describe("listQuotes filters", () => {
     const call = getFindManyCall();
     expect(call.where).toEqual({
       number: { contains: "C-001", mode: "insensitive" },
-      status: { not: "CANCELLED" },
+      status: { notIn: ["CANCELLED", "ARCHIVED"] },
     });
   });
 
@@ -118,7 +124,7 @@ describe("listQuotes filters", () => {
         { vehicle: { plate: { contains: "ABC-123", mode: "insensitive" } } },
         { vehicleSnapshot: { path: ["plate"], string_contains: "ABC-123", mode: "insensitive" } },
       ],
-      status: { not: "CANCELLED" },
+      status: { notIn: ["CANCELLED", "ARCHIVED"] },
     });
   });
 

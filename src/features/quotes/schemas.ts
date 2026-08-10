@@ -153,7 +153,10 @@ export const quoteFilterSchema = z.object({
   dateFrom: optionalDate(),
   dateTo: optionalDate(),
   showCancelled: z.coerce.boolean().default(false),
+  showArchived: z.coerce.boolean().default(false),
 });
+
+export const quoteLifecycleReasonSchema = z.string().trim().min(3).max(500);
 
 export const quoteListPageSchema = z.coerce.number().int().min(1).default(1);
 
