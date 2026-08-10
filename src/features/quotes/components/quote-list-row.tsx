@@ -10,6 +10,8 @@ import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteApprovalForm } from "./quote-approval-form";
 import { QuoteCancelForm } from "./quote-cancel-form";
+import { QuoteDuplicateForm } from "./quote-duplicate-form";
+import { QuoteDeleteForm } from "./quote-delete-form";
 import { ShareQuoteButton } from "./share-quote-button";
 import { ShareQuoteLinkDialog } from "./share-quote-link-dialog";
 import { QuoteAuthorizeForm } from "./quote-authorize-form";
@@ -36,6 +38,7 @@ interface QuoteListRowProps {
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
   duplicateAction: (formData: FormData) => void | Promise<void>;
+  deleteAction: (formData: FormData) => void | Promise<void>;
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
@@ -54,6 +57,7 @@ export function QuoteListRow({
   paymentRequestAction,
   paymentRequestBankAccounts,
   duplicateAction,
+  deleteAction,
   customers,
   saveAction,
   searchCustomersAction,
@@ -123,13 +127,11 @@ export function QuoteListRow({
             />
           ) : null}
 
-          <form action={duplicateAction}>
-            <input type="hidden" name="quoteId" value={quote.id} />
-            <Button type="submit" variant="outline" size="sm" title="Duplicar cotización">
-              <Copy className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Duplicar</span>
-            </Button>
-          </form>
+          <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} />
+
+          {quote.status === "DRAFT" ? (
+            <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
+          ) : null}
 
           {quote.activeSharedQuote ? (
             <ShareQuoteLinkDialog

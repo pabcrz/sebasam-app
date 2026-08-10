@@ -6,6 +6,7 @@ import {
   shareQuoteFromForm,
   authorizeQuoteAction,
   duplicateQuoteFromForm,
+  deleteDraftQuoteFromForm,
   createQuoteFromWorkspace,
   updateDraftQuoteFromWorkspace,
 } from "@/features/quotes/actions";
@@ -116,6 +117,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 paymentRequestBankAccounts={eligiblePaymentRequestBankAccounts}
                 cashPaymentAction={recordCashPaymentAction.bind(null, quote.id)}
                 duplicateAction={duplicateQuoteFromForm}
+                deleteAction={deleteDraftQuoteFromForm}
                 customers={customers}
                 saveAction={updateDraftQuoteFromWorkspace.bind(null, quote.id)}
                 searchCustomersAction={searchCustomersForQuote}

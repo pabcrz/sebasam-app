@@ -139,6 +139,15 @@ export async function listQuotes(input: unknown = {}, options: { excludeWithActi
         unitPriceCents: Number(item.unitPriceCents),
         totalCents: Number(item.totalCents),
       })),
+      sections: quote.sections.map((section) => ({
+        ...section,
+        items: section.items.map((item) => ({
+          ...item,
+          quantity: Number(item.quantity),
+          unitPriceCents: Number(item.unitPriceCents),
+          totalCents: Number(item.totalCents),
+        })),
+      })),
       activeSharedQuote: findActiveSharedQuote(quote.sharedQuotes),
     };
   });

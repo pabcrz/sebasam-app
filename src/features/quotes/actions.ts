@@ -437,6 +437,48 @@ export async function cancelDraftQuoteFromForm(formData: FormData) {
   redirect(`${quotesPath}?cancelled=1`);
 }
 
+export async function deleteDraftQuote(quoteId: string) {
+  await requireOperationalRole();
+
+  return prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({ where: { id: quoteId } });
+
+    if (!quote) {
+      throw new Error("Quote not found.");
+    }
+
+    if (quote.status !== QuoteStatus.DRAFT) {
+      throw new Error("Only draft quotes can be deleted.");
+    }
+
+    await tx.quote.delete({ where: { id: quoteId } });
+    return quote;
+  });
+}
+
+export async function deleteDraftQuoteFromForm(formData: FormData) {
+  await requireOperationalRole();
+
+  const quoteId = formData.get("quoteId");
+
+  if (typeof quoteId !== "string" || quoteId.trim() === "") {
+    redirect(`${quotesPath}?error=invalid-deletion`);
+  }
+
+  try {
+    await deleteDraftQuote(quoteId);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Only draft quotes can be deleted.") {
+      redirect(`${quotesPath}?error=not-draft-delete`);
+    }
+
+    redirect(`${quotesPath}?error=deletion-failed`);
+  }
+
+  revalidatePath(quotesPath);
+  redirect(`${quotesPath}?deleted=1`);
+}
+
 export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
   await requireOperationalRole();
 

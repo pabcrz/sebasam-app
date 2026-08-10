@@ -123,6 +123,7 @@ function renderRow(quote: QuoteListItem) {
           ]}
 
           duplicateAction={vi.fn()}
+          deleteAction={vi.fn()}
           customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
           saveAction={vi.fn()}
           searchCustomersAction={vi.fn()}
