@@ -11,7 +11,7 @@ import {
   updateDraftQuoteFromWorkspace,
 } from "@/features/quotes/actions";
 import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
-import { listQuotes } from "@/features/quotes/queries";
+import { listPaginatedQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
 import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
 import { recordCashPaymentAction } from "@/features/payments/actions";
@@ -58,20 +58,37 @@ type QuotesPageProps = {
     plate?: string;
     dateFrom?: string;
     dateTo?: string;
+    showCancelled?: string;
+    page?: string;
   }>;
 };
+
+function quotesPageHref(filters: QuoteFilterInput, page: number) {
+  const searchParams = new URLSearchParams({ page: String(page) });
+
+  if (filters.status) searchParams.set("status", filters.status);
+  if (filters.customerId) searchParams.set("customerId", filters.customerId);
+  if (filters.number) searchParams.set("number", filters.number);
+  if (filters.plate) searchParams.set("plate", filters.plate);
+  if (filters.dateFrom) searchParams.set("dateFrom", filters.dateFrom.toISOString().slice(0, 10));
+  if (filters.dateTo) searchParams.set("dateTo", filters.dateTo.toISOString().slice(0, 10));
+  if (filters.showCancelled) searchParams.set("showCancelled", "true");
+
+  return `/admin/quotes?${searchParams.toString()}`;
+}
 
 export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const params = await searchParams;
   const parsedFilters = quoteFilterSchema.safeParse(params);
   const filters = parsedFilters.success ? parsedFilters.data : {} as QuoteFilterInput;
-  const hasFilters = hasFilterValue(filters);
-  const [customers, quotes, paymentSettings, workers] = await Promise.all([
+  const hasFilters = hasFilterValue({ ...filters, showCancelled: filters.showCancelled || undefined });
+  const [customers, quotePage, paymentSettings, workers] = await Promise.all([
     listCustomers(),
-    listQuotes(filters, { excludeWithActiveWorkOrder: true }),
+    listPaginatedQuotes(params, { excludeWithActiveWorkOrder: true }),
     getPaymentSettings(),
     listActiveWorkers(),
   ]);
+  const { quotes, page, hasNextPage } = quotePage;
   const eligiblePaymentRequestBankAccounts = filterPaymentRequestDialogBankAccounts(paymentSettings.bankAccounts);
 
   return (
@@ -149,6 +166,29 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
               </div>
             ) : null}
           </div>
+          {quotes.length > 0 || page > 1 ? (
+            <nav aria-label="Paginación de cotizaciones" className="mt-6 flex items-center justify-between gap-3">
+              {page > 1 ? (
+                <Link href={quotesPageHref(filters, page - 1)} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">
+                  Anterior
+                </Link>
+              ) : (
+                <button type="button" disabled className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-muted)] disabled:cursor-not-allowed disabled:opacity-60">
+                  Anterior
+                </button>
+              )}
+              <span aria-live="polite" className="text-sm text-[var(--color-text-muted)]">Página {page}</span>
+              {hasNextPage ? (
+                <Link href={quotesPageHref(filters, page + 1)} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">
+                  Siguiente
+                </Link>
+              ) : (
+                <button type="button" disabled className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-muted)] disabled:cursor-not-allowed disabled:opacity-60">
+                  Siguiente
+                </button>
+              )}
+            </nav>
+          ) : null}
         </CardContent>
       </Card>
     </section>

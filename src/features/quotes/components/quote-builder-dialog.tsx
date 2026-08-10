@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Pencil, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   Button,
   ConfirmDialog,
@@ -42,6 +43,7 @@ type QuoteBuilderDialogProps = {
 };
 
 export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, triggerVariant, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = React.useState(false);
   const [dirty, setDirty] = React.useState(false);
@@ -113,7 +115,8 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
     setDirty(false);
     setOpen(false);
     setBuilderKey((current) => current + 1);
-  }, []);
+    router.refresh();
+  }, [router]);
 
   return (
     <>

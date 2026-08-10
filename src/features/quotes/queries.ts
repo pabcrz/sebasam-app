@@ -2,7 +2,7 @@ import { Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { endOfDay } from "@/lib/filters";
-import { quoteFilterSchema, type QuoteFilterInput } from "./schemas";
+import { quoteFilterSchema, quoteListPageSchema, type QuoteFilterInput } from "./schemas";
 import { getQuotePaidTotals } from "@/features/payments/queries";
 
 export async function getQuoteById(quoteId: string) {
@@ -29,9 +29,7 @@ function findActiveSharedQuote(sharedQuotes: { expiresAt: Date; revokedAt: Date 
   return sharedQuotes.find((sharedQuote) => sharedQuote.revokedAt === null && sharedQuote.expiresAt >= now) ?? null;
 }
 
-export async function listQuotes(input: unknown = {}, options: { excludeWithActiveWorkOrder?: boolean } = {}) {
-  await requireOperationalRole();
-
+function buildQuoteWhere(input: unknown, options: { excludeWithActiveWorkOrder?: boolean }): Prisma.QuoteWhereInput | undefined {
   const parsed = quoteFilterSchema.safeParse(input);
   const filters = parsed.success ? parsed.data : ({} as QuoteFilterInput);
   const where: Prisma.QuoteWhereInput = {};
@@ -72,50 +70,59 @@ export async function listQuotes(input: unknown = {}, options: { excludeWithActi
     if (filters.dateTo) where.createdAt.lte = endOfDay(filters.dateTo);
   }
 
-  const quotes = await prisma.quote.findMany({
-    where: Object.keys(where).length > 0 ? where : undefined,
+  return Object.keys(where).length > 0 ? where : undefined;
+}
+
+const quoteListInclude = {
+  customer: {
     include: {
-      customer: {
-        include: {
-          fiscalProfiles: {
-            orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
-            take: 1,
-            select: {
-              id: true,
-              businessName: true,
-              taxId: true,
-            },
-          },
-        },
-      },
-      vehicle: true,
-      items: { orderBy: { sortOrder: "asc" } },
-      sections: {
-        orderBy: { sortOrder: "asc" },
-        include: { items: { orderBy: { sortOrder: "asc" } } },
-      },
-      workOrder: {
-        include: {
-          assignments: { include: { worker: true } },
-          executionRecords: { include: { worker: true }, orderBy: { happenedAt: "desc" } },
-        },
-      },
-      sharedQuotes: true,
-      paymentRequests: {
-        orderBy: { createdAt: "desc" },
+      fiscalProfiles: {
+        orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
         take: 1,
         select: {
           id: true,
-          status: true,
-          requiresInvoice: true,
-          customerFiscalProfileId: true,
-          fiscalSnapshot: true,
+          businessName: true,
+          taxId: true,
         },
       },
     },
+  },
+  vehicle: true,
+  items: { orderBy: { sortOrder: "asc" } },
+  sections: {
+    orderBy: { sortOrder: "asc" },
+    include: { items: { orderBy: { sortOrder: "asc" } } },
+  },
+  workOrder: {
+    include: {
+      assignments: { include: { worker: true } },
+      executionRecords: { include: { worker: true }, orderBy: { happenedAt: "desc" } },
+    },
+  },
+  sharedQuotes: true,
+  paymentRequests: {
     orderBy: { createdAt: "desc" },
-  });
+    take: 1,
+    select: {
+      id: true,
+      status: true,
+      requiresInvoice: true,
+      customerFiscalProfileId: true,
+      fiscalSnapshot: true,
+    },
+  },
+} satisfies Prisma.QuoteInclude;
 
+async function findQuotes(where: Prisma.QuoteWhereInput | undefined, pagination?: { skip: number; take: number }) {
+  return prisma.quote.findMany({
+    where,
+    include: quoteListInclude,
+    orderBy: pagination ? [{ createdAt: "desc" }, { id: "desc" }] : { createdAt: "desc" },
+    ...pagination,
+  });
+}
+
+async function serializeQuotes(quotes: Awaited<ReturnType<typeof findQuotes>>) {
   const paidTotals = await getQuotePaidTotals(quotes.map((quote) => quote.id));
 
   // Serialize Prisma Decimal fields to plain numbers so Next.js Server→Client Component
@@ -153,4 +160,30 @@ export async function listQuotes(input: unknown = {}, options: { excludeWithActi
       activeSharedQuote: findActiveSharedQuote(quote.sharedQuotes),
     };
   });
+}
+
+export async function listQuotes(input: unknown = {}, options: { excludeWithActiveWorkOrder?: boolean } = {}) {
+  await requireOperationalRole();
+  return serializeQuotes(await findQuotes(buildQuoteWhere(input, options)));
+}
+
+export async function listPaginatedQuotes(input: unknown = {}, options: { excludeWithActiveWorkOrder?: boolean } = {}) {
+  await requireOperationalRole();
+
+  const pageInput = input && typeof input === "object" && !Array.isArray(input)
+    ? (input as Record<string, unknown>).page
+    : undefined;
+  const parsedPage = quoteListPageSchema.safeParse(pageInput);
+  const page = parsedPage.success ? parsedPage.data : 1;
+  const pageSize = 20;
+  const quotes = await findQuotes(buildQuoteWhere(input, options), {
+    skip: (page - 1) * pageSize,
+    take: pageSize + 1,
+  });
+
+  return {
+    quotes: await serializeQuotes(quotes.slice(0, pageSize)),
+    page,
+    hasNextPage: quotes.length > pageSize,
+  };
 }
