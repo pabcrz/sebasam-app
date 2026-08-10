@@ -27,8 +27,9 @@ const customers = [
   { id: "cust-2", name: "Talleres Unidos" },
 ];
 
-function renderFilters(filters = {}) {
-  return render(<QuoteFilters filters={filters} customers={customers} />);
+function renderFilters(filters: any = {}) {
+  const mergedFilters = { showCancelled: false, ...filters };
+  return render(<QuoteFilters filters={mergedFilters} customers={customers} />);
 }
 
 describe("QuoteFilters", () => {
@@ -59,11 +60,15 @@ describe("QuoteFilters", () => {
   });
 
   it("shows the clear button only when filters are active", () => {
-    const { rerender } = renderFilters();
+    const { getByRole, getByText } = renderFilters({ showCancelled: false });
 
-    expect(screen.queryByRole("button", { name: /limpiar/i })).not.toBeInTheDocument();
+    expect(getByText("Sin filtros activos")).toBeInTheDocument();
+    // "Limpiar" button should not be present when there are no active filters
+    expect(() => getByRole("button", { name: /limpiar/i })).toThrow();
+  });
 
-    rerender(<QuoteFilters filters={{ status: "DRAFT" }} customers={customers} />);
+  it("shows active filter count and 'Limpiar' button when filters are active", () => {
+    const { getByRole, getByText } = renderFilters({ status: "DRAFT", showCancelled: false });
 
     expect(screen.getByRole("button", { name: /limpiar/i })).toBeInTheDocument();
   });

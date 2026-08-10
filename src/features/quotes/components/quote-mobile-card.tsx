@@ -160,10 +160,10 @@ export function QuoteListCard({
             />
           ) : null}
 
-          <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} />
+          <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} iconOnly />
 
-          {quote.status === "DRAFT" ? (
-            <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
+          {quote.status === "DRAFT" || quote.status === "CANCELLED" ? (
+            <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} iconOnly />
           ) : null}
 
           {quote.activeSharedQuote ? (
@@ -176,6 +176,7 @@ export function QuoteListCard({
               action={shareAction}
               quoteId={quote.id}
               quoteNumber={quote.number}
+              iconOnly
             />
           ) : null}
 
@@ -185,6 +186,7 @@ export function QuoteListCard({
               quoteNumber={quote.number}
               variant="outline"
               size="sm"
+              iconOnly
             />
           ) : null}
 
@@ -199,7 +201,7 @@ export function QuoteListCard({
           ) : null}
 
           {quote.status === "DRAFT" || quote.status === "SENT" ? (
-            <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant="outline" size="sm" />
+            <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant="outline" size="sm" iconOnly />
           ) : null}
 
           {canUsePaymentActions ? (

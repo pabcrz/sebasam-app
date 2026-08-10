@@ -11,6 +11,7 @@ export interface QuoteDeleteFormProps {
   quoteNumber: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
+  iconOnly?: boolean;
 }
 
 export function QuoteDeleteForm({
@@ -19,6 +20,7 @@ export function QuoteDeleteForm({
   quoteNumber,
   variant = "danger",
   size = "sm",
+  iconOnly = false,
 }: QuoteDeleteFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
@@ -45,8 +47,8 @@ export function QuoteDeleteForm({
       <Button
         type="button"
         variant={variant}
-        size={size}
-        className="w-full"
+        size={iconOnly ? "icon" : size}
+        className={iconOnly ? "" : "w-full"}
         loading={isPending}
         disabled={isPending}
         onClick={(event) => {
@@ -55,8 +57,8 @@ export function QuoteDeleteForm({
         }}
         aria-label={`Eliminar cotización ${quoteNumber}`}
       >
-        <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
-        Eliminar
+        <Trash2 className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} aria-hidden="true" />
+        {!iconOnly && "Eliminar"}
       </Button>
 
       <ConfirmDialog

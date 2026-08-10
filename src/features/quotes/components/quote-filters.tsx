@@ -146,13 +146,29 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Todos</SelectItem>
-                  {Object.entries(quoteStatusLabels).map(([value, label]) => (
+                  {Object.entries(quoteStatusLabels)
+                    .filter(([value]) => value !== "CANCELLED")
+                    .map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="flex items-center gap-2 pt-8 sm:pt-0 sm:self-end sm:pb-2 lg:col-start-3">
+              <input
+                type="checkbox"
+                id="showCancelled"
+                name="showCancelled"
+                value="true"
+                defaultChecked={filters.showCancelled}
+                className="h-4 w-4 rounded border-[var(--color-border-light)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+              />
+              <Label htmlFor="showCancelled" className="text-sm font-medium">
+                Mostrar canceladas
+              </Label>
             </div>
 
             <div className="grid gap-1.5">

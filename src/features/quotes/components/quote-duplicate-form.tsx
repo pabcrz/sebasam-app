@@ -7,9 +7,10 @@ import { Copy } from "lucide-react";
 export interface QuoteDuplicateFormProps {
   action: (formData: FormData) => void | Promise<void>;
   quoteId: string;
+  iconOnly?: boolean;
 }
 
-export function QuoteDuplicateForm({ action, quoteId }: QuoteDuplicateFormProps) {
+export function QuoteDuplicateForm({ action, quoteId, iconOnly = false }: QuoteDuplicateFormProps) {
   const [isPending, startTransition] = React.useTransition();
 
   const handleDuplicate = React.useCallback(
@@ -36,16 +37,19 @@ export function QuoteDuplicateForm({ action, quoteId }: QuoteDuplicateFormProps)
     <Button
       type="button"
       variant="outline"
-      size="sm"
+      size={iconOnly ? "icon" : "sm"}
+      className={iconOnly ? "" : "w-full sm:w-auto"}
       title="Duplicar cotización"
       loading={isPending}
       disabled={isPending}
       onClick={handleDuplicate}
     >
-      <Copy className="h-4 w-4" aria-hidden="true" />
-      <span className="hidden sm:inline">
-        {isPending ? "Duplicando..." : "Duplicar"}
-      </span>
+      <Copy className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} aria-hidden="true" />
+      {!iconOnly && (
+        <span className="hidden sm:inline">
+          {isPending ? "Duplicando..." : "Duplicar"}
+        </span>
+      )}
     </Button>
   );
 }

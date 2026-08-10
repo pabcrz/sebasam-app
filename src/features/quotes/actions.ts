@@ -468,7 +468,7 @@ export async function deleteDraftQuoteFromForm(formData: FormData) {
   try {
     await deleteDraftQuote(quoteId);
   } catch (error) {
-    if (error instanceof Error && error.message === "Only draft quotes can be deleted.") {
+    if (error instanceof Error && error.message.includes("deleted")) {
       redirect(`${quotesPath}?error=not-draft-delete`);
     }
 

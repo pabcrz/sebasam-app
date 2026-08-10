@@ -46,6 +46,8 @@ export async function listQuotes(input: unknown = {}, options: { excludeWithActi
 
   if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
     where.status = filters.status as QuoteStatus;
+  } else if (!filters.showCancelled) {
+    where.status = { not: QuoteStatus.CANCELLED };
   }
 
   if (filters.customerId) {
