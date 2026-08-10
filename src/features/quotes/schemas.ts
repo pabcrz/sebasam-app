@@ -155,6 +155,8 @@ export const quoteFilterSchema = z.object({
   showCancelled: z.coerce.boolean().default(false),
 });
 
+export const quoteListPageSchema = z.coerce.number().int().min(1).default(1);
+
 export type QuoteFilterInput = z.infer<typeof quoteFilterSchema>;
 export type QuoteInput = z.infer<typeof quoteInputSchema>;
 export type QuoteVehicleInput = z.infer<typeof quoteVehicleInputSchema>;

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Pencil, Copy } from "lucide-react";
 import type { PaymentRequest, QuoteStatus, SharedQuote } from "@prisma/client";
-import type { listQuotes } from "@/features/quotes/queries";
+import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, Button, TableCell, TableRow } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
@@ -25,7 +25,7 @@ import type { QuoteFormActionState } from "../actions";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 
-type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
+type QuoteListItem = QuoteListSummary;
 
 interface QuoteListRowProps {
   quote: QuoteListItem;

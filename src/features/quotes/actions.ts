@@ -351,8 +351,8 @@ export async function updateDraftQuoteFromForm(
       return { error: "Esta cotización ya no se puede editar." };
     }
 
-    if (error instanceof Error && error.message === "This quote has paid payments and cannot be edited.") {
-      return { error: "Esta cotización ya tiene pagos registrados y no se puede editar." };
+    if (error instanceof Error && error.message.startsWith("Esta cotización ya tiene ")) {
+      return { error: error.message };
     }
 
     return { error: "No se pudo guardar la cotización. Intenta de nuevo." };
@@ -377,8 +377,8 @@ export async function updateDraftQuoteFromWorkspace(
     if (error instanceof Error && error.message === "This quote is not editable.") {
       return { error: "Esta cotización ya no se puede editar." };
     }
-    if (error instanceof Error && error.message === "This quote has paid payments and cannot be edited.") {
-      return { error: "Esta cotización ya tiene pagos registrados y no se puede editar." };
+    if (error instanceof Error && error.message.startsWith("Esta cotización ya tiene ")) {
+      return { error: error.message };
     }
     return { error: "No se pudo guardar la cotización. Intenta de nuevo." };
   }

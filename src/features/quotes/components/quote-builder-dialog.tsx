@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Pencil, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   Button,
   ConfirmDialog,
@@ -14,20 +15,18 @@ import {
 import type { ButtonVariant } from "@/components/ui";
 import { QuoteBuilder, type QuoteBuilderInitialData } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
-import type { listQuotes } from "../queries";
+import type { QuoteListSummary } from "../queries";
 
 type CustomerOption = {
   id: string;
   name: string;
 };
-type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
-
 type QuoteBuilderDialogProps = {
   customers: CustomerOption[];
   createAction?: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   saveAction?: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   initialData?: QuoteBuilderInitialData;
-  quote?: QuoteListItem;
+  quote?: QuoteListSummary;
   quoteNumber?: string;
   triggerClassName?: string;
   triggerSize?: "default" | "sm";
@@ -42,6 +41,7 @@ type QuoteBuilderDialogProps = {
 };
 
 export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, triggerVariant, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = React.useState(false);
   const [dirty, setDirty] = React.useState(false);
@@ -85,7 +85,6 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
         }],
   } : undefined);
 
-
   const requestClose = React.useCallback(() => {
     if (!dirty) {
       setOpen(false);
@@ -113,7 +112,8 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
     setDirty(false);
     setOpen(false);
     setBuilderKey((current) => current + 1);
-  }, []);
+    router.refresh();
+  }, [router]);
 
   return (
     <>

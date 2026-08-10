@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Eye, X } from "lucide-react";
-import type { listQuotes } from "@/features/quotes/queries";
+import type { QuoteListSummary } from "@/features/quotes/queries";
 import {
   Button,
   Dialog,
@@ -13,16 +13,14 @@ import {
 } from "@/components/ui";
 import { QuotePreviewCard, type QuotePreviewCardProps } from "./quote-preview-card";
 
-type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
-
 interface QuotePreviewDialogProps {
-  quote: QuoteListItem;
+  quote: QuoteListSummary;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   showTrigger?: boolean;
 }
 
-export function toQuotePreviewCardProps(quote: QuoteListItem): QuotePreviewCardProps {
+export function toQuotePreviewCardProps(quote: QuoteListSummary): QuotePreviewCardProps {
   const snapshot = quote.vehicleSnapshot && typeof quote.vehicleSnapshot === "object" && !Array.isArray(quote.vehicleSnapshot)
     ? quote.vehicleSnapshot as Record<string, unknown>
     : {};

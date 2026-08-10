@@ -1,11 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { listQuotes } from "./queries";
+import { listPaginatedQuotes, listQuotes } from "./queries";
 import { getQuotePaidTotals } from "@/features/payments/queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    quote: { findMany: vi.fn() },
+    quote: { findMany: vi.fn(), findUnique: vi.fn() },
   },
 }));
 
@@ -54,6 +54,39 @@ describe("listQuotes filters", () => {
 
     const call = getFindManyCall();
     expect(call.where).toBeUndefined();
+  });
+
+  it("paginates newest-first while preserving filters", async () => {
+    (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(
+      Array.from({ length: 21 }, (_, index) => ({
+        id: `quote-${index}`,
+        totalCents: 10000,
+        subtotalCents: 10000,
+        taxCents: 0,
+        sections: [],
+        items: [],
+        sharedQuotes: [],
+      })),
+    );
+
+    const result = await listPaginatedQuotes({ page: "2", customerId: "cust-1", showCancelled: true });
+
+    expect(getFindManyCall()).toMatchObject({
+      where: { customerId: "cust-1" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: 20,
+      take: 21,
+    });
+    expect(result).toMatchObject({ page: 2, hasNextPage: true });
+    expect(result.quotes).toHaveLength(20);
+  });
+
+  it("includes root and section items in the paginated list payload", async () => {
+    await listPaginatedQuotes();
+
+    const call = getFindManyCall();
+    expect(call.include.items).toBeDefined();
+    expect(call.include.sections).toBeDefined();
   });
 
   it("filters by customerId", async () => {

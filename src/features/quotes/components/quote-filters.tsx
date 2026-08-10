@@ -46,6 +46,7 @@ function getActiveFilterSummary(filters: QuoteFilterInput, customers: QuoteFilte
   if (filters.plate) summary.push(`Placas: ${filters.plate}`);
   if (filters.dateFrom) summary.push(`Desde: ${formatDateValue(filters.dateFrom)}`);
   if (filters.dateTo) summary.push(`Hasta: ${formatDateValue(filters.dateTo)}`);
+  if (filters.showCancelled) summary.push("Mostrar canceladas");
 
   return summary;
 }
@@ -59,7 +60,8 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
     Boolean(filters.number) ||
     Boolean(filters.plate) ||
     Boolean(filters.dateFrom) ||
-    Boolean(filters.dateTo);
+    Boolean(filters.dateTo) ||
+    filters.showCancelled;
   const activeFilterSummary = getActiveFilterSummary(filters, customers);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {

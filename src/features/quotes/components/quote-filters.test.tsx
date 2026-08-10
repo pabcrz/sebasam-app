@@ -2,6 +2,7 @@ import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { QuoteFilterInput } from "@/features/quotes/schemas";
 import { QuoteFilters } from "./quote-filters";
 
 const push = vi.fn();
@@ -27,7 +28,7 @@ const customers = [
   { id: "cust-2", name: "Talleres Unidos" },
 ];
 
-function renderFilters(filters: any = {}) {
+function renderFilters(filters: Partial<QuoteFilterInput> = {}) {
   const mergedFilters = { showCancelled: false, ...filters };
   return render(<QuoteFilters filters={mergedFilters} customers={customers} />);
 }
@@ -82,6 +83,16 @@ describe("QuoteFilters", () => {
     await user.click(screen.getByRole("button", { name: /filtrar/i }));
 
     expect(push).toHaveBeenCalledWith("/admin/quotes?number=C-001");
+  });
+
+  it("preserves an explicit cancelled filter and resets pagination on submit", async () => {
+    const user = userEvent.setup();
+    renderFilters({ showCancelled: true });
+
+    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
+    await user.click(screen.getByRole("button", { name: /filtrar/i }));
+
+    expect(push).toHaveBeenCalledWith("/admin/quotes?showCancelled=true");
   });
 
   it("clears filters when the clear button is clicked", async () => {

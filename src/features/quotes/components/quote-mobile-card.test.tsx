@@ -12,7 +12,6 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
 const quoteStatusLabels = {

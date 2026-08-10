@@ -1,11 +1,27 @@
-import type { listQuotes } from "@/features/quotes/queries";
+import type { PaymentRequestStatus } from "@prisma/client";
 import type {
   PaymentRequestDialogBankAccount,
   PaymentRequestDialogContext,
 } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { formatSnapshotVehicle, formatVehicle } from "./format";
 
-type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
+type QuoteForPaymentRequestDialog = {
+  number: string;
+  title: string;
+  customer: {
+    id: string;
+    name: string;
+    fiscalProfiles: Array<{ businessName: string; taxId: string }>;
+  };
+  vehicle: Parameters<typeof formatVehicle>[0] | null;
+  vehicleSnapshot: Parameters<typeof formatSnapshotVehicle>[0];
+  workOrder: { number: string } | null;
+  subtotalCents: number;
+  taxCents: number;
+  totalCents: number;
+  taxEnabled: boolean;
+  paymentRequests: Array<{ requiresInvoice: boolean; status: PaymentRequestStatus }>;
+};
 type PaymentRequestDialogBankAccountCandidate = PaymentRequestDialogBankAccount & {
   isForInvoicing?: boolean | null;
 };
@@ -57,7 +73,7 @@ export function selectPaymentRequestDialogBankAccount(
 }
 
 export function createPaymentRequestDialogContext(
-  quote: QuoteListItem,
+  quote: QuoteForPaymentRequestDialog,
   bankAccounts: PaymentRequestDialogBankAccountCandidate[],
 ): PaymentRequestDialogContext {
   const latestRequest = quote.paymentRequests[0] ?? null;

@@ -302,6 +302,21 @@ describe("updateDraftQuoteFromForm", () => {
       .resolves.toEqual({ error: "Esta cotización ya no se puede editar." });
   });
 
+  it("returns the specific paid-total error", async () => {
+    const tx = mockTx(QuoteStatus.APPROVED);
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      status: QuoteStatus.APPROVED,
+      items: [],
+      workOrder: null,
+    });
+    tx.payment.aggregate.mockResolvedValue({ _sum: { amountCents: 250000 } });
+
+    await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData() as unknown as FormData)).resolves.toEqual({
+      error: "Esta cotización ya tiene 2500 abonados, el nuevo total no puede ser menor a esa cantidad.",
+    });
+  });
+
   it("updates form successfully when the quote has a COMPLETED work order", async () => {
     const tx = mockTx();
     tx.quote.findUnique.mockResolvedValue({
@@ -377,6 +392,21 @@ it("returns the non-editable state from the update workspace action", async () =
   mockTx(QuoteStatus.CANCELLED);
   await expect(updateDraftQuoteFromWorkspace("quote-1", {}, buildFormData() as unknown as FormData))
     .resolves.toEqual({ error: "Esta cotización ya no se puede editar." });
+});
+
+it("returns the specific paid-total error from the update workspace action", async () => {
+  const tx = mockTx(QuoteStatus.APPROVED);
+  tx.quote.findUnique.mockResolvedValue({
+    id: "quote-1",
+    status: QuoteStatus.APPROVED,
+    items: [],
+    workOrder: null,
+  });
+  tx.payment.aggregate.mockResolvedValue({ _sum: { amountCents: 250000 } });
+
+  await expect(updateDraftQuoteFromWorkspace("quote-1", {}, buildFormData() as unknown as FormData)).resolves.toEqual({
+    error: "Esta cotización ya tiene 2500 abonados, el nuevo total no puede ser menor a esa cantidad.",
+  });
 });
 
 describe("duplicateQuote", () => {
