@@ -9,9 +9,10 @@ export interface ShareQuoteButtonProps {
   quoteId: string;
   quoteNumber: string;
   className?: string;
+  iconOnly?: boolean;
 }
 
-export function ShareQuoteButton({ action, quoteId, quoteNumber, className }: ShareQuoteButtonProps) {
+export function ShareQuoteButton({ action, quoteId, quoteNumber, className, iconOnly = false }: ShareQuoteButtonProps) {
   const [isPending, startTransition] = React.useTransition();
 
   const handleShare = React.useCallback(
@@ -38,15 +39,15 @@ export function ShareQuoteButton({ action, quoteId, quoteNumber, className }: Sh
     <Button
       type="button"
       variant="outline"
-      size="sm"
+      size={iconOnly ? "icon" : "sm"}
       aria-label={`Compartir cotización ${quoteNumber}`}
       className={className}
       loading={isPending}
       disabled={isPending}
       onClick={handleShare}
     >
-      <Share2 className="h-4 w-4" aria-hidden="true" />
-      <span>{isPending ? "Compartiendo..." : "Compartir"}</span>
+      <Share2 className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} aria-hidden="true" />
+      {!iconOnly && <span>{isPending ? "Compartiendo..." : "Compartir"}</span>}
     </Button>
   );
 }

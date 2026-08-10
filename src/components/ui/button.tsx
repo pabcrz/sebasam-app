@@ -6,7 +6,7 @@ import { clsx } from "clsx";
 import { Spinner } from "./spinner";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
-export type ButtonSize = "default" | "sm" | "lg";
+export type ButtonSize = "default" | "sm" | "lg" | "icon";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -33,6 +33,7 @@ const sizeClasses: Record<ButtonSize, string> = {
   default: "min-h-[var(--tap-min-height)] px-4 py-2 text-base",
   sm: "h-9 px-3 text-sm",
   lg: "min-h-[var(--tap-min-height)] px-6 py-3 text-lg",
+  icon: "h-9 w-9 px-0",
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(

@@ -28,11 +28,11 @@ describe("listQuotes filters", () => {
     (getQuotePaidTotals as ReturnType<typeof vi.fn>).mockResolvedValue(new Map());
   });
 
-  it("returns all quotes when no filters are provided", async () => {
+  it("returns quotes without cancelled when no filters are provided", async () => {
     await listQuotes();
 
     const call = getFindManyCall();
-    expect(call.where).toBeUndefined();
+    expect(call.where).toEqual({ status: { not: "CANCELLED" } });
   });
 
   it("filters by status", async () => {
@@ -42,8 +42,15 @@ describe("listQuotes filters", () => {
     expect(call.where).toEqual({ status: "APPROVED" });
   });
 
-  it("ignores invalid status values", async () => {
+  it("ignores invalid status values but still hides cancelled by default", async () => {
     await listQuotes({ status: "INVALID" });
+
+    const call = getFindManyCall();
+    expect(call.where).toEqual({ status: { not: "CANCELLED" } });
+  });
+
+  it("shows cancelled when showCancelled is true", async () => {
+    await listQuotes({ showCancelled: true });
 
     const call = getFindManyCall();
     expect(call.where).toBeUndefined();
@@ -53,7 +60,10 @@ describe("listQuotes filters", () => {
     await listQuotes({ customerId: "cust-1" });
 
     const call = getFindManyCall();
-    expect(call.where).toEqual({ customerId: "cust-1" });
+    expect(call.where).toEqual({
+      customerId: "cust-1",
+      status: { not: "CANCELLED" },
+    });
   });
 
   it("filters by number with insensitive contains", async () => {
@@ -62,6 +72,7 @@ describe("listQuotes filters", () => {
     const call = getFindManyCall();
     expect(call.where).toEqual({
       number: { contains: "C-001", mode: "insensitive" },
+      status: { not: "CANCELLED" },
     });
   });
 
@@ -74,6 +85,7 @@ describe("listQuotes filters", () => {
         { vehicle: { plate: { contains: "ABC-123", mode: "insensitive" } } },
         { vehicleSnapshot: { path: ["plate"], string_contains: "ABC-123", mode: "insensitive" } },
       ],
+      status: { not: "CANCELLED" },
     });
   });
 

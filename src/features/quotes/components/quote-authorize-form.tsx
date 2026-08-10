@@ -22,6 +22,7 @@ export interface QuoteAuthorizeFormProps {
   quoteNumber: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
+  iconOnly?: boolean;
 }
 
 export function QuoteAuthorizeForm({
@@ -29,6 +30,7 @@ export function QuoteAuthorizeForm({
   quoteNumber,
   variant = "outline",
   size = "sm",
+  iconOnly = false,
 }: QuoteAuthorizeFormProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -72,16 +74,16 @@ export function QuoteAuthorizeForm({
       <Button
         type="button"
         variant={variant}
-        size={size}
-        className="w-full"
+        size={iconOnly ? "icon" : size}
+        className={iconOnly ? "" : "w-full"}
         onClick={(event) => {
           event.stopPropagation();
           setOpen(true);
         }}
         aria-label={`Autorizar cotización ${quoteNumber}`}
       >
-        <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-        <span>Autorizar</span>
+        <ShieldCheck className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} aria-hidden="true" />
+        {!iconOnly && <span>Autorizar</span>}
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>

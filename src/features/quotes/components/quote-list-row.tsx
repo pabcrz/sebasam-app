@@ -129,7 +129,7 @@ export function QuoteListRow({
 
           <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} />
 
-          {quote.status === "DRAFT" ? (
+          {quote.status === "DRAFT" || quote.status === "CANCELLED" ? (
             <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
           ) : null}
 

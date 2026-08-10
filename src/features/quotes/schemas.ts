@@ -152,6 +152,7 @@ export const quoteFilterSchema = z.object({
   plate: optionalFilterString(),
   dateFrom: optionalDate(),
   dateTo: optionalDate(),
+  showCancelled: z.coerce.boolean().default(false),
 });
 
 export type QuoteFilterInput = z.infer<typeof quoteFilterSchema>;
