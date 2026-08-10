@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui";
 import { ListChecks, NotebookText, Truck, UserRound } from "lucide-react";
 import { formatCents } from "@/features/quotes/lib/format";
-import { formatQuantity, itemTypeLabels, ItemFormValue } from "./quote-builder-shared";
+import { formatQuantity, itemTypeLabels, ItemFormValue, SectionFormValue } from "./quote-builder-shared";
 import { QuoteTotalsCard } from "./quote-totals-card";
 
 export interface QuoteSummaryCardProps {
@@ -12,10 +12,34 @@ export interface QuoteSummaryCardProps {
   title: string;
   description: string;
   administrative: boolean;
-  items: ItemFormValue[];
+  /** Sections with items. Pass `sections` from the builder. */
+  sections: SectionFormValue[];
   subtotalCents: number;
+  discountCents?: number;
   taxCents: number;
   totalCents: number;
+}
+
+function ItemRow({ item, index }: { item: ItemFormValue; index: number }) {
+  const quantityNum = Number(item.quantity);
+  const lineTotalCents = Math.round(quantityNum * Number(item.unitPrice) * 100);
+  return (
+    <li
+      key={index}
+      className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-3 text-sm text-[var(--color-text-main)]"
+    >
+      <span className="grid gap-1">
+        <span className="font-medium">{item.description}</span>
+        <span className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
+          <Badge variant="default">{itemTypeLabels[item.type]}</Badge>
+          {formatQuantity(item.quantity)} × {formatCents(Number(item.unitPrice) * 100)}
+        </span>
+      </span>
+      <strong className="whitespace-nowrap text-right text-[var(--color-text-main)]">
+        {formatCents(lineTotalCents)}
+      </strong>
+    </li>
+  );
 }
 
 export function QuoteSummaryCard({
@@ -24,11 +48,15 @@ export function QuoteSummaryCard({
   title,
   description,
   administrative,
-  items,
+  sections,
   subtotalCents,
+  discountCents,
   taxCents,
   totalCents,
 }: QuoteSummaryCardProps) {
+  const hasMultipleSections = sections.length > 1;
+  let globalIndex = 0;
+
   return (
     <div className="grid gap-4">
       <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
@@ -51,42 +79,51 @@ export function QuoteSummaryCard({
       </div>
 
       <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-        <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]"><ListChecks className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-items-icon" />Conceptos</h3>
-        {items.length === 0 ? (
+        <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]">
+          <ListChecks className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-items-icon" />
+          Conceptos
+        </h3>
+
+        {sections.every((s) => s.items.length === 0) ? (
           <p className="text-sm text-[var(--color-text-muted)]">Sin conceptos.</p>
         ) : (
-          <ul className="grid gap-2 divide-y divide-gray-300">
-            {items.map((item, index) => {
-              const quantityNum = Number(item.quantity);
-              const lineTotalCents = Math.round(quantityNum * Number(item.unitPrice) * 100);
-
+          <div className="grid gap-4">
+            {sections.map((section, sIndex) => {
+              const completeItems = section.items.filter(
+                (item) => item.description.trim() && Number(item.unitPrice) >= 0,
+              );
+              if (completeItems.length === 0) return null;
               return (
-                <li
-                  key={index}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-3 text-sm text-[var(--color-text-main)]"
-                >
-                  <span className="grid gap-1">
-                    <span className="font-medium">{item.description}</span>
-                    <span className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]"><Badge variant="default">{itemTypeLabels[item.type]}</Badge>{formatQuantity(item.quantity)} × {formatCents(Number(item.unitPrice) * 100)}</span>
-                  </span>
-                  <strong className="whitespace-nowrap text-right text-[var(--color-text-main)]">
-                    {formatCents(lineTotalCents)}
-                  </strong>
-                </li>
+                <div key={sIndex}>
+                  {hasMultipleSections && (
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                      {section.name || `Sección ${sIndex + 1}`}
+                    </p>
+                  )}
+                  <ul className="grid gap-0 divide-y divide-[var(--color-border-light)]">
+                    {completeItems.map((item) => {
+                      const idx = globalIndex++;
+                      return <ItemRow key={idx} item={item} index={idx} />;
+                    })}
+                  </ul>
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
       </div>
 
       <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
-        <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]"><NotebookText className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-notes-icon" />Notas</h3>
+        <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]">
+          <NotebookText className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-notes-icon" />
+          Notas
+        </h3>
         <p className="text-sm text-[var(--color-text-main)]">{title || "Sin título"}</p>
         {description ? <p className="text-sm text-[var(--color-text-muted)]">{description}</p> : null}
         {administrative ? <Badge variant="info">Administrativa</Badge> : null}
       </div>
 
-      <QuoteTotalsCard subtotalCents={subtotalCents} taxCents={taxCents} totalCents={totalCents} />
+      <QuoteTotalsCard subtotalCents={subtotalCents} discountCents={discountCents} taxCents={taxCents} totalCents={totalCents} />
     </div>
   );
 }

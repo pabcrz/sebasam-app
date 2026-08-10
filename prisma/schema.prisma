@@ -156,6 +156,7 @@ model Quote {
   description     String?
   vehicleSnapshot Json?
   subtotalCents   Int         @default(0)
+  discountCents   Int         @default(0)
   taxCents        Int         @default(0)
   totalCents      Int         @default(0)
   taxEnabled      Boolean     @default(true)
@@ -167,6 +168,7 @@ model Quote {
 
   customer        Customer         @relation(fields: [customerId], references: [id])
   vehicle         Vehicle?         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  sections        QuoteSection[]
   items           QuoteItem[]
   workOrder       WorkOrder?
   paymentRequests PaymentRequest[]
@@ -203,9 +205,22 @@ model QuoteDecision {
   @@index([quoteId])
 }
 
+model QuoteSection {
+  id        String      @id @default(cuid())
+  quoteId   String
+  name      String
+  sortOrder Int         @default(0)
+  items     QuoteItem[]
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+}
+
 model QuoteItem {
   id             String        @id @default(cuid())
   quoteId        String
+  sectionId      String?
   type           QuoteItemType
   description    String
   quantity       Decimal       @db.Decimal(10, 2)
@@ -213,7 +228,10 @@ model QuoteItem {
   totalCents     Int
   sortOrder      Int           @default(0)
 
-  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quote   Quote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  section QuoteSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  
+  @@index([sectionId])
 }
 
 model WorkOrder {

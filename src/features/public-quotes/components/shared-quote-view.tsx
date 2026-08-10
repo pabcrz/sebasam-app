@@ -77,12 +77,18 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
     year: vehicleParts[3] ?? "",
   };
 
-  const items = quote.items.map((item) => ({
-    type: item.type,
-    description: item.description,
-    quantity: String(Number(item.quantity)),
-    unitPrice: String(item.unitPriceCents / 100),
-  }));
+  const sections = [
+    {
+      name: "General",
+      items: quote.items.map((item) => ({
+        type: item.type,
+        description: item.description,
+        quantity: String(Number(item.quantity)),
+        unitPrice: String(item.unitPriceCents / 100),
+      })),
+      rowIds: [],
+    },
+  ];
 
   const showDecisionControls = quote.status === "SENT" && !hasDecided;
 
@@ -101,8 +107,9 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
         title={quote.title}
         description={quote.description ?? ""}
         administrative={quote.administrative}
-        items={items}
+        sections={sections}
         subtotalCents={Number(quote.subtotalCents)}
+        discountCents={Number(quote.discountCents)}
         taxCents={Number(quote.taxCents)}
         totalCents={Number(quote.totalCents)}
         validUntil={quote.validUntil}

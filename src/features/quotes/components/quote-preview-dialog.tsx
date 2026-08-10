@@ -28,6 +28,30 @@ export function toQuotePreviewCardProps(quote: QuoteListItem): QuotePreviewCardP
     : {};
   const snapshotValue = (key: string) => snapshot[key] == null ? "" : String(snapshot[key]);
 
+  // Build sections from DB items — group by section if available, else one default section
+  const sections = quote.sections && quote.sections.length > 0
+    ? quote.sections.map((section) => ({
+        name: section.name,
+        items: section.items.map((item) => ({
+          type: item.type,
+          description: item.description,
+          quantity: String(Number(item.quantity)),
+          unitPrice: String(Number(item.unitPriceCents) / 100),
+          rowIds: [],
+        })),
+        rowIds: [],
+      }))
+    : [{
+        name: "General",
+        items: quote.items.map((item) => ({
+          type: item.type,
+          description: item.description,
+          quantity: String(Number(item.quantity)),
+          unitPrice: String(Number(item.unitPriceCents) / 100),
+        })),
+        rowIds: [],
+      }];
+
   return {
     customerName: quote.customer.name,
     vehicle: {
@@ -39,13 +63,9 @@ export function toQuotePreviewCardProps(quote: QuoteListItem): QuotePreviewCardP
     title: quote.title,
     description: quote.description ?? "",
     administrative: quote.administrative,
-    items: quote.items.map((item) => ({
-      type: item.type,
-      description: item.description,
-      quantity: String(Number(item.quantity)),
-      unitPrice: String(Number(item.unitPriceCents) / 100),
-    })),
+    sections,
     subtotalCents: Number(quote.subtotalCents),
+    discountCents: Number(quote.discountCents),
     taxCents: Number(quote.taxCents),
     totalCents: Number(quote.totalCents),
     paidCents: quote.paidCents,
@@ -53,6 +73,7 @@ export function toQuotePreviewCardProps(quote: QuoteListItem): QuotePreviewCardP
     validUntil: quote.validUntil,
   };
 }
+
 
 export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true }: QuotePreviewDialogProps) {
   const [openInternal, setOpenInternal] = React.useState(false);

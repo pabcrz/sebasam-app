@@ -44,6 +44,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     description: null,
     vehicleSnapshot: null,
     subtotalCents: 10000,
+    discountCents: 0,
     taxCents: 1600,
     totalCents: 11600,
     taxEnabled: true,
@@ -53,6 +54,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     administrative: false,
     createdAt: new Date("2026-07-01"),
     updatedAt: new Date("2026-07-01"),
+    sections: [],
     customer: {
       id: "cust-1",
       name: "Constructora del Norte",
@@ -70,6 +72,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
       {
         id: "item-1",
         quoteId: "quote-1",
+        sectionId: null,
         type: "SERVICE",
         description: "Cambio de aceite",
         quantity: 1,

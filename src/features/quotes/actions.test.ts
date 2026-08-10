@@ -54,20 +54,22 @@ class MockFormData {
 
 type MockTx = {
   quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
-  quoteItem: { deleteMany: ReturnType<typeof vi.fn> };
+  quoteItem: { deleteMany: ReturnType<typeof vi.fn>; createMany: ReturnType<typeof vi.fn> };
+  quoteSection: { deleteMany: ReturnType<typeof vi.fn> };
   payment: { count: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   const tx: MockTx = {
     quote: {
-      create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200 }),
-      findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, items: [] }),
-      update: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200 }),
+      create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] }),
+      findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, items: [], sections: [{ id: "sec-1", sortOrder: 0 }] }),
+      update: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] }),
       findUniqueOrThrow: vi.fn(),
       updateMany: vi.fn(),
     },
-    quoteItem: { deleteMany: vi.fn() },
+    quoteItem: { deleteMany: vi.fn(), createMany: vi.fn() },
+    quoteSection: { deleteMany: vi.fn() },
     payment: { count: vi.fn().mockResolvedValue(0), aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: null } }) },
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
@@ -83,7 +85,8 @@ function validInput() {
     description: "Notas actualizadas",
     administrative: false,
     taxEnabled: true,
-    items: [{ type: "SERVICE" as const, description: "Cambio de aceite", quantity: 2, unitPriceCents: 85000 }],
+    discountCents: 0,
+    sections: [{ name: "General", items: [{ type: "SERVICE" as const, description: "Cambio de aceite", quantity: 2, unitPriceCents: 85000 }] }],
   };
 }
 
@@ -91,8 +94,9 @@ function buildFormData(overrides: Record<string, string> = {}) {
   const formData = new MockFormData();
   const defaults: Record<string, string> = {
     customerId: "cust-1", plate: "", brand: "", model: "Hilux", color: "", year: "",
-    title: "Servicio", description: "", taxEnabled: "on",
-    "items.0.type": "SERVICE", "items.0.description": "Cambio de aceite", "items.0.quantity": "1", "items.0.unitPrice": "100",
+    title: "Servicio", description: "", taxEnabled: "on", discount: "0",
+    "sections.0.name": "General",
+    "sections.0.items.0.type": "SERVICE", "sections.0.items.0.description": "Cambio de aceite", "sections.0.items.0.quantity": "1", "sections.0.items.0.unitPrice": "100",
   };
   for (const [key, value] of Object.entries({ ...defaults, ...overrides })) {
     formData.set(key, value);
@@ -108,7 +112,7 @@ function validInputWithoutVehicle() {
     description: "",
     administrative: true,
     taxEnabled: false,
-    items: [{ type: "SERVICE" as const, description: "Asesoría", quantity: 1, unitPriceCents: 50000 }],
+    sections: [{ name: "General", items: [{ type: "SERVICE" as const, description: "Asesoría", quantity: 1, unitPriceCents: 50000 }] }],
   };
 }
 
@@ -156,7 +160,7 @@ describe("updateDraftQuote", () => {
     expect(updateData.subtotalCents).toBe(170000);
     expect(updateData.taxCents).toBe(27200);
     expect(updateData.totalCents).toBe(197200);
-    expect(updateData.items.create).toHaveLength(1);
+    expect(updateData.sections.create).toHaveLength(1);
     expect(result.totalCents).toBe(197200);
   });
 
@@ -191,7 +195,7 @@ describe("updateDraftQuote", () => {
       items: [],
       workOrder: { id: "wo-1", status: "PLANNED" },
     });
-    tx.quote.update.mockResolvedValue({ id: "quote-1", totalCents: 197200 });
+    tx.quote.update.mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] });
 
     const result = await updateDraftQuote("quote-1", validInput());
 
@@ -201,7 +205,7 @@ describe("updateDraftQuote", () => {
 
   it("allows updating a SENT quote when not expired and work order is not terminal", async () => {
     const tx = mockTx(QuoteStatus.SENT);
-    tx.quote.update.mockResolvedValue({ id: "quote-1", totalCents: 197200 });
+    tx.quote.update.mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] });
 
     const result = await updateDraftQuote("quote-1", validInput());
 
@@ -210,7 +214,7 @@ describe("updateDraftQuote", () => {
 
   it("allows updating an APPROVED quote when not expired and work order is not terminal", async () => {
     const tx = mockTx(QuoteStatus.APPROVED);
-    tx.quote.update.mockResolvedValue({ id: "quote-1", totalCents: 197200 });
+    tx.quote.update.mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] });
 
     const result = await updateDraftQuote("quote-1", validInput());
 
@@ -242,7 +246,7 @@ describe("updateDraftQuote", () => {
 
   it("allows updating a REJECTED quote when not expired and work order is not terminal", async () => {
     const tx = mockTx(QuoteStatus.REJECTED);
-    tx.quote.update.mockResolvedValue({ id: "quote-1", totalCents: 197200 });
+    tx.quote.update.mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] });
 
     const result = await updateDraftQuote("quote-1", validInput());
 
@@ -283,7 +287,7 @@ describe("updateDraftQuoteFromForm", () => {
 
   it("parses valid form data and redirects on success", async () => {
     mockTx();
-    await updateDraftQuoteFromForm("quote-1", {}, buildFormData({ "items.0.unitPrice": "850" }) as unknown as FormData);
+    await updateDraftQuoteFromForm("quote-1", {}, buildFormData({ "sections.0.items.0.unitPrice": "850" }) as unknown as FormData);
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?updated=1");
   });
 
@@ -306,7 +310,7 @@ describe("updateDraftQuoteFromForm", () => {
       items: [],
       workOrder: { id: "wo-1", status: "COMPLETED" },
     });
-    await updateDraftQuoteFromForm("quote-1", {}, buildFormData({ "items.0.unitPrice": "850" }) as unknown as FormData);
+    await updateDraftQuoteFromForm("quote-1", {}, buildFormData({ "sections.0.items.0.unitPrice": "850" }) as unknown as FormData);
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?updated=1");
   });
 });
@@ -330,16 +334,17 @@ describe("createQuoteFromForm", () => {
   it("submits exactly the normalized non-empty concepts", async () => {
     const tx = mockTx();
     const formData = buildFormData({
-      "items.1.type": "EQUIPMENT",
-      "items.1.description": "",
-      "items.1.quantity": "1",
-      "items.1.unitPrice": "",
+      "sections.0.items.1.type": "EQUIPMENT",
+      "sections.0.items.1.description": "",
+      "sections.0.items.1.quantity": "1",
+      "sections.0.items.1.unitPrice": "",
     });
 
     await createQuoteFromForm({}, formData as unknown as FormData);
 
-    expect(tx.quote.create.mock.calls[0][0].data.items.create).toHaveLength(1);
-    expect(tx.quote.create.mock.calls[0][0].data.items.create[0].description).toBe("Cambio de aceite");
+    expect(tx.quote.create.mock.calls[0][0].data.sections.create).toHaveLength(1);
+    expect(tx.quoteItem.createMany.mock.calls[0][0].data).toHaveLength(1);
+    expect(tx.quoteItem.createMany.mock.calls[0][0].data[0].description).toBe("Cambio de aceite");
   });
 });
 
@@ -405,30 +410,40 @@ describe("duplicateQuote", () => {
       workOrder: { id: "wo-source" },
       sharedQuotes: [{ id: "shared-source" }],
       paymentRequests: [{ id: "payment-source" }],
-      items: [
+      sections: [
         {
-          id: "item-2",
+          id: "section-1",
           quoteId: "quote-source",
-          type: "PART",
-          description: "Filtro",
-          quantity: 1,
-          unitPriceCents: 20000,
-          totalCents: 20000,
-          sortOrder: 2,
-        },
-        {
-          id: "item-1",
-          quoteId: "quote-source",
-          type: "SERVICE",
-          description: "Cambio de aceite",
-          quantity: 2,
-          unitPriceCents: 85000,
-          totalCents: 170000,
-          sortOrder: 5,
+          name: "General",
+          sortOrder: 0,
+          items: [
+            {
+              id: "item-2",
+              quoteId: "quote-source",
+              sectionId: "section-1",
+              type: "PART",
+              description: "Filtro",
+              quantity: 1,
+              unitPriceCents: 20000,
+              totalCents: 20000,
+              sortOrder: 2,
+            },
+            {
+              id: "item-1",
+              quoteId: "quote-source",
+              sectionId: "section-1",
+              type: "SERVICE",
+              description: "Cambio de aceite",
+              quantity: 2,
+              unitPriceCents: 85000,
+              totalCents: 170000,
+              sortOrder: 5,
+            },
+          ],
         },
       ],
     });
-    tx.quote.create.mockResolvedValue({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT });
+    tx.quote.create.mockResolvedValue({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT, sections: [{ id: "section-copy-1", sortOrder: 0 }] });
 
     const result = await duplicateQuote("quote-source");
 
@@ -436,7 +451,7 @@ describe("duplicateQuote", () => {
       where: { id: "quote-source" },
       include: {
         vehicle: true,
-        items: { orderBy: { sortOrder: "asc" } },
+        sections: { include: { items: { orderBy: { sortOrder: "asc" } } }, orderBy: { sortOrder: "asc" } },
       },
     });
     expect(findOrCreateVehicle).toHaveBeenCalledWith(tx, {
@@ -448,7 +463,7 @@ describe("duplicateQuote", () => {
       year: 2022,
       notes: "Source vehicle notes",
     });
-    expect(result).toEqual({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT });
+    expect(result).toEqual({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT, sections: [{ id: "section-copy-1", sortOrder: 0 }] });
 
     const createData = tx.quote.create.mock.calls[0][0].data;
     expect(createData).toMatchObject({
@@ -465,8 +480,16 @@ describe("duplicateQuote", () => {
       totalCents: 197200,
       validUntil: new Date("2026-07-15T00:00:00.000Z"),
     });
-    expect(createData.items.create).toEqual([
+    expect(createData.sections.create).toEqual([
       {
+        name: "General",
+        sortOrder: 0,
+      },
+    ]);
+    expect(tx.quoteItem.createMany.mock.calls[0][0].data).toEqual([
+      {
+        quoteId: "quote-copy",
+        sectionId: "section-copy-1",
         type: "PART",
         description: "Filtro",
         quantity: 1,
@@ -475,6 +498,8 @@ describe("duplicateQuote", () => {
         sortOrder: 0,
       },
       {
+        quoteId: "quote-copy",
+        sectionId: "section-copy-1",
         type: "SERVICE",
         description: "Cambio de aceite",
         quantity: 2,
@@ -501,7 +526,7 @@ describe("duplicateQuote", () => {
       subtotalCents: 50000,
       taxCents: 0,
       totalCents: 50000,
-      items: [],
+      sections: [],
     });
 
     await duplicateQuote("quote-source");
@@ -536,7 +561,7 @@ describe("duplicateQuoteFromForm", () => {
       subtotalCents: 50000,
       taxCents: 0,
       totalCents: 50000,
-      items: [],
+      sections: [],
     });
 
     const formData = new MockFormData();

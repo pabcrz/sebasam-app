@@ -63,13 +63,28 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
     description: quote.description ?? "",
     administrative: quote.administrative,
     taxEnabled: quote.taxEnabled,
-    items: quote.items.map((item) => ({
-      type: item.type,
-      description: item.description,
-      quantity: String(Number(item.quantity)),
-      unitPrice: String(Number(item.unitPriceCents) / 100),
-    })),
+    discountCents: Number(quote.discountCents ?? 0),
+    sections: quote.sections && quote.sections.length > 0
+      ? quote.sections.map((section) => ({
+          name: section.name,
+          items: section.items.map((item) => ({
+            type: item.type,
+            description: item.description,
+            quantity: String(Number(item.quantity)),
+            unitPrice: String(Number(item.unitPriceCents) / 100),
+          })),
+        }))
+      : [{
+          name: "General",
+          items: quote.items.map((item) => ({
+            type: item.type,
+            description: item.description,
+            quantity: String(Number(item.quantity)),
+            unitPrice: String(Number(item.unitPriceCents) / 100),
+          })),
+        }],
   } : undefined);
+
 
   const requestClose = React.useCallback(() => {
     if (!dirty) {

@@ -88,6 +88,10 @@ export async function listQuotes(input: unknown = {}, options: { excludeWithActi
       },
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
+      sections: {
+        orderBy: { sortOrder: "asc" },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      },
       workOrder: {
         include: {
           assignments: { include: { worker: true } },

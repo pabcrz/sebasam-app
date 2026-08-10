@@ -129,6 +129,12 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
               <span>Subtotal:</span>
               <span className="font-mono">{formatCents(Number(quote.subtotalCents))}</span>
             </div>
+            {quote.discountCents > 0 ? (
+              <div className="flex justify-between text-[var(--color-status-success-fg)]">
+                <span>Descuento:</span>
+                <span className="font-mono">-{formatCents(Number(quote.discountCents))}</span>
+              </div>
+            ) : null}
             {quote.taxEnabled ? (
               <div className="flex justify-between text-gray-600">
                 <span>IVA (16%):</span>

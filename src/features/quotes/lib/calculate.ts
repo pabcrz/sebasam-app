@@ -13,13 +13,15 @@ export function calculateQuoteTaxCents(
   return taxEnabled ? Math.round(subtotalCents * taxRate) : 0;
 }
 
-export function calculateQuoteTotals(subtotalCents: number, taxEnabled: boolean) {
-  const taxCents = calculateQuoteTaxCents(subtotalCents, taxEnabled);
+export function calculateQuoteTotals(subtotalCents: number, taxEnabled: boolean, discountCents = 0) {
+  const taxableCents = Math.max(0, subtotalCents - discountCents);
+  const taxCents = calculateQuoteTaxCents(taxableCents, taxEnabled);
 
   return {
     subtotalCents,
+    discountCents,
     taxCents,
-    totalCents: subtotalCents + taxCents,
+    totalCents: taxableCents + taxCents,
   };
 }
 
