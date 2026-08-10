@@ -4,13 +4,10 @@ import userEvent from "@testing-library/user-event";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
 
 const refresh = vi.fn();
-const { loadQuoteDetailAction } = vi.hoisted(() => ({ loadQuoteDetailAction: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
 }));
-
-vi.mock("../actions", () => ({ loadQuoteDetailAction }));
 
 const customers = [{ id: "1", name: "Acme" }];
 const editInitialData = { customerId: "1", vehicle: { plate: "ABC123", brand: "Ford", model: "Transit", year: "2024" }, title: "Servicio", description: "", administrative: false, taxEnabled: true, discountCents: 0, sections: [{ name: "", items: [{ type: "LABOR" as const, description: "Frenos", quantity: "1", unitPrice: "100" }] }] };
@@ -90,50 +87,6 @@ function expectRepresentativeQuoteState() {
 }
 
 describe("QuoteBuilderDialog", () => {
-  it("loads edit detail only when the dialog opens", async () => {
-    const user = userEvent.setup();
-    const detail = {
-      id: "quote-1",
-      customerId: "1",
-      vehicleId: null,
-      number: "C-001",
-      status: "DRAFT",
-      title: "Servicio",
-      description: "",
-      vehicleSnapshot: null,
-      subtotalCents: 10000,
-      discountCents: 0,
-      taxCents: 1600,
-      totalCents: 11600,
-      taxEnabled: true,
-      validUntil: null,
-      approvedAt: null,
-      administrative: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      customer: { id: "1", name: "Acme" },
-      vehicle: null,
-      items: [],
-      sections: [],
-      paidCents: 0,
-      remainingCents: 11600,
-    };
-    let resolveDetail: ((value: typeof detail) => void) | undefined;
-    loadQuoteDetailAction.mockReturnValueOnce(new Promise<typeof detail>((resolve) => {
-      resolveDetail = resolve;
-    }));
-
-    render(<QuoteBuilderDialog customers={customers} saveAction={vi.fn()} quote={{ id: "quote-1", number: "C-001" }} quoteNumber="C-001" />);
-
-    expect(loadQuoteDetailAction).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Editar" }));
-
-    expect(await screen.findByRole("status")).toHaveTextContent("Cargando cotización");
-    resolveDetail?.(detail);
-    expect(await screen.findByLabelText("Cliente")).toHaveValue("Acme");
-    expect(loadQuoteDetailAction).toHaveBeenCalledWith("quote-1");
-  });
-
   it.each([
     ["short", 1],
     ["long", 12],

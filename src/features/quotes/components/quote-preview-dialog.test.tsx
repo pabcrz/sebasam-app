@@ -1,14 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { QuoteDetail } from "@/features/quotes/queries";
+import type { QuoteListSummary } from "@/features/quotes/queries";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 
-const { loadQuoteDetailAction } = vi.hoisted(() => ({ loadQuoteDetailAction: vi.fn() }));
-
-vi.mock("../actions", () => ({ loadQuoteDetailAction }));
-
-function createMockQuote(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
+function createMockQuote(overrides: Partial<QuoteListSummary> = {}): QuoteListSummary {
   return {
     id: "quote-1",
     customerId: "cust-1",
@@ -46,28 +42,22 @@ function createMockQuote(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     paidCents: 0,
     remainingCents: 11600,
     ...overrides,
-  } as QuoteDetail;
+  } as QuoteListSummary;
 }
 
 describe("QuotePreviewDialog", () => {
-  beforeEach(() => {
-    loadQuoteDetailAction.mockReset();
-  });
-
-  it("loads detail only after opening and renders it", async () => {
+  it("renders the supplied quote content immediately when opened", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote();
-    loadQuoteDetailAction.mockResolvedValue(quote);
 
     render(<QuotePreviewDialog quote={quote} />);
 
-    expect(loadQuoteDetailAction).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: /ver vista previa de c-001/i }));
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(loadQuoteDetailAction).toHaveBeenCalledWith("quote-1");
     expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
-    expect(await screen.findByText("Constructora del Norte")).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByText("Constructora del Norte")).toBeInTheDocument();
     expect(screen.getByText("Cotización administrativa")).toBeInTheDocument();
     expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
     expect(screen.getByText(/Mano de obra · 2 × \$50.00/i)).toBeInTheDocument();
@@ -79,7 +69,6 @@ describe("QuotePreviewDialog", () => {
   it("closes the dialog when the close button is clicked", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote();
-    loadQuoteDetailAction.mockResolvedValue(quote);
 
     render(<QuotePreviewDialog quote={quote} />);
 
@@ -91,7 +80,7 @@ describe("QuotePreviewDialog", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("renders sectioned concepts from the detail payload", async () => {
+  it("renders sectioned concepts from the supplied payload", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote({
       sections: [{
@@ -112,42 +101,22 @@ describe("QuotePreviewDialog", () => {
         }],
       }],
     });
-    loadQuoteDetailAction.mockResolvedValue(quote);
-
     render(<QuotePreviewDialog quote={quote} />);
 
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(await screen.findByText("Diagnóstico de motor")).toBeInTheDocument();
+    expect(screen.getByText("Diagnóstico de motor")).toBeInTheDocument();
     expect(screen.queryByText("Cambio de aceite")).not.toBeInTheDocument();
   });
 
   it("falls back to legacy root items when sections are empty", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote();
-    loadQuoteDetailAction.mockResolvedValue(quote);
 
     render(<QuotePreviewDialog quote={quote} />);
 
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(await screen.findByText("Cambio de aceite")).toBeInTheDocument();
-  });
-
-  it("shows a retryable failure state when detail loading fails", async () => {
-    const user = userEvent.setup();
-    const quote = createMockQuote();
-    loadQuoteDetailAction.mockRejectedValueOnce(new Error("offline"));
-    loadQuoteDetailAction.mockResolvedValueOnce(quote);
-
-    render(<QuotePreviewDialog quote={quote} />);
-
-    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo cargar la cotización");
-    await user.click(screen.getByRole("button", { name: "Reintentar" }));
-
-    await waitFor(() => expect(loadQuoteDetailAction).toHaveBeenCalledTimes(2));
-    expect(await screen.findByText("Constructora del Norte")).toBeInTheDocument();
+    expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
   });
 });

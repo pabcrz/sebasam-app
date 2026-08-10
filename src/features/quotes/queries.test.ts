@@ -81,12 +81,12 @@ describe("listQuotes filters", () => {
     expect(result.quotes).toHaveLength(20);
   });
 
-  it("excludes root and section items from the paginated summary payload", async () => {
+  it("includes root and section items in the paginated list payload", async () => {
     await listPaginatedQuotes();
 
     const call = getFindManyCall();
-    expect(call.include.items).toBeUndefined();
-    expect(call.include.sections).toBeUndefined();
+    expect(call.include.items).toBeDefined();
+    expect(call.include.sections).toBeDefined();
   });
 
   it("filters by customerId", async () => {

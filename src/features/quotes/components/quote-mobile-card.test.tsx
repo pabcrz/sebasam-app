@@ -5,17 +5,12 @@ import { QuoteListCard } from "./quote-mobile-card";
 import type { listQuotes } from "@/features/quotes/queries";
 import type { PaymentRequest } from "@prisma/client";
 
-const { loadQuoteDetailAction } = vi.hoisted(() => ({ loadQuoteDetailAction: vi.fn() }));
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     refresh: vi.fn(),
     push: vi.fn(),
   }),
 }));
-
-vi.mock("../actions", () => ({ loadQuoteDetailAction }));
-
 
 type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
 
@@ -100,8 +95,6 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
 }
 
 function renderCard(quote: QuoteListItem) {
-  loadQuoteDetailAction.mockResolvedValue(quote);
-
   return render(
     <QuoteListCard
       quote={quote}
@@ -141,7 +134,7 @@ describe("QuoteListCard", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
-    expect(await screen.findByText(/cambio de aceite/i)).toBeInTheDocument();
+    expect(screen.getByText(/cambio de aceite/i)).toBeInTheDocument();
   });
 
   it("opens the preview dialog from the keyboard", async () => {

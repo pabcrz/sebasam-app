@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { Eye, X } from "lucide-react";
-import { loadQuoteDetailAction } from "@/features/quotes/actions";
-import type { QuoteDetail, QuoteListSummary } from "@/features/quotes/queries";
+import type { QuoteListSummary } from "@/features/quotes/queries";
 import {
   Button,
   Dialog,
@@ -14,16 +13,14 @@ import {
 } from "@/components/ui";
 import { QuotePreviewCard, type QuotePreviewCardProps } from "./quote-preview-card";
 
-type QuoteReference = Pick<QuoteListSummary, "id" | "number">;
-
 interface QuotePreviewDialogProps {
-  quote: QuoteReference;
+  quote: QuoteListSummary;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   showTrigger?: boolean;
 }
 
-export function toQuotePreviewCardProps(quote: QuoteDetail): QuotePreviewCardProps {
+export function toQuotePreviewCardProps(quote: QuoteListSummary): QuotePreviewCardProps {
   const snapshot = quote.vehicleSnapshot && typeof quote.vehicleSnapshot === "object" && !Array.isArray(quote.vehicleSnapshot)
     ? quote.vehicleSnapshot as Record<string, unknown>
     : {};
@@ -78,47 +75,15 @@ export function toQuotePreviewCardProps(quote: QuoteDetail): QuotePreviewCardPro
 
 export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true }: QuotePreviewDialogProps) {
   const [openInternal, setOpenInternal] = React.useState(false);
-  const [detail, setDetail] = React.useState<QuoteDetail | null>(null);
-  const [failure, setFailure] = React.useState<{ quoteId: string; message: string } | null>(null);
-  const [retry, setRetry] = React.useState(0);
   const open = openProp ?? openInternal;
-  const error = failure?.quoteId === quote.id ? failure.message : null;
-  const loading = open && !error && detail?.id !== quote.id;
-  const resetDetail = React.useCallback(() => {
-    setDetail(null);
-    setFailure(null);
-  }, []);
   const setOpen = React.useCallback(
     (value: boolean) => {
-      resetDetail();
       setOpenInternal(value);
       onOpenChange?.(value);
     },
-    [onOpenChange, resetDetail],
+    [onOpenChange],
   );
-  React.useEffect(() => {
-    if (!open) return;
-
-    let active = true;
-
-    void loadQuoteDetailAction(quote.id)
-      .then((result) => {
-        if (active) setDetail(result);
-      })
-      .catch(() => {
-        if (active) setFailure({ quoteId: quote.id, message: "No se pudo cargar la cotización. Intenta de nuevo." });
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [open, quote.id, retry]);
-
-  const preview = detail?.id === quote.id ? toQuotePreviewCardProps(detail) : null;
-  const retryDetail = () => {
-    resetDetail();
-    setRetry((attempt) => attempt + 1);
-  };
+  const preview = toQuotePreviewCardProps(quote);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -149,16 +114,7 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
           </button>
         </DialogHeader>
 
-        {loading ? <p role="status" className="py-8 text-center text-sm text-[var(--color-text-muted)]">Cargando cotización...</p> : null}
-        {error ? (
-          <div role="alert" className="grid gap-3 py-4 text-sm text-[var(--color-status-danger-fg)]">
-            <p>{error}</p>
-            <Button type="button" variant="outline" size="sm" className="w-fit" onClick={retryDetail}>
-              Reintentar
-            </Button>
-          </div>
-        ) : null}
-        {preview ? <QuotePreviewCard {...preview} /> : null}
+        <QuotePreviewCard {...preview} />
       </DialogContent>
     </Dialog>
   );

@@ -26,7 +26,6 @@ import {
   SharedQuoteRevokedError,
   SharedQuoteNotFoundError,
 } from "./domain";
-import { getQuoteDetail } from "./queries";
 
 const quotesPath = "/admin/quotes";
 
@@ -195,19 +194,6 @@ export async function createQuote(input: unknown) {
 }
 
 export type QuoteFormActionState = { error?: string; success?: boolean };
-
-export async function loadQuoteDetailAction(quoteId: string) {
-  if (typeof quoteId !== "string" || !quoteId.trim()) {
-    throw new Error("Identificador de cotización inválido.");
-  }
-
-  const quote = await getQuoteDetail(quoteId);
-  if (!quote) {
-    throw new Error("No se encontró la cotización.");
-  }
-
-  return quote;
-}
 
 export async function createQuoteFromWorkspace(
   _previousState: QuoteFormActionState,
