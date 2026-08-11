@@ -39,6 +39,7 @@ import { filterPaymentRequestDialogBankAccounts } from "@/features/quotes/lib/pa
 import {
   createAndAssignWorkOrderAction,
   completeWorkOrderAction,
+  rollbackWorkOrderAction,
 } from "@/features/work-orders/actions";
 
 import { listActiveWorkers } from "@/features/work-orders/queries";
@@ -88,7 +89,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const hasFilters = hasFilterValue({ ...filters, showCancelled: filters.showCancelled || undefined, showArchived: filters.showArchived || undefined });
   const [customers, quotePage, paymentSettings, workers] = await Promise.all([
     listCustomers(),
-    listPaginatedQuotes(params, { excludeWithActiveWorkOrder: true }),
+    listPaginatedQuotes(params, { excludeWithActiveWorkOrder: false }),
     getPaymentSettings(),
     listActiveWorkers(),
   ]);
@@ -148,6 +149,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 workOrderActions={{
                   assign: createAndAssignWorkOrderAction.bind(null, quote.id),
                   complete: completeWorkOrderAction,
+                  rollback: rollbackWorkOrderAction,
                 }}
 
               />

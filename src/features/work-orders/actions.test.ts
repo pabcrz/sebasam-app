@@ -7,6 +7,8 @@ import {
   createAndAssignWorkOrder,
   completeWorkOrder,
   recordExecution,
+  rollbackWorkOrder,
+  rollbackWorkOrderAction,
 } from "./actions";
 import { WorkerUnavailableError } from "./domain";
 
@@ -16,7 +18,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
     userProfile: { findFirst: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
-    workAssignment: { create: vi.fn(), createMany: vi.fn() },
+  workAssignment: { create: vi.fn(), createMany: vi.fn() },
     workOrder: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findUniqueOrThrow: vi.fn() },
     executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
   },
@@ -31,20 +33,30 @@ function worker(id: string, workerKind: WorkerKind) {
 }
 
 type MockTx = {
-  quote: { findUnique: ReturnType<typeof vi.fn> };
+  quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   workOrder: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn> };
   userProfile: { findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
-  workAssignment: { createMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
+  workAssignment: { createMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   executionRecord: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
+  payment: { count: ReturnType<typeof vi.fn> };
+  ledgerEntry: { count: ReturnType<typeof vi.fn> };
+  sharedQuote: { updateMany: ReturnType<typeof vi.fn> };
+  paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
+  quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
 };
 
 function createTx(): MockTx {
   const tx = {
-    quote: { findUnique: vi.fn() },
+    quote: { findUnique: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     workOrder: { create: vi.fn().mockResolvedValue({ id: "wo-new" }), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: vi.fn() },
     userProfile: { findMany: vi.fn(), findUnique: vi.fn() },
-    workAssignment: { createMany: vi.fn(), deleteMany: vi.fn() },
+    workAssignment: { createMany: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
     executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
+    payment: { count: vi.fn().mockResolvedValue(0) },
+    ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
+    sharedQuote: { updateMany: vi.fn() },
+    paymentRequest: { updateMany: vi.fn() },
+    quoteLifecycleEvent: { create: vi.fn() },
   };
   vi.mocked(prisma.$transaction).mockImplementation(
     // @ts-expect-error Mock
@@ -199,6 +211,72 @@ describe("work order actions", () => {
       tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.CANCELLED, quote: { status: QuoteStatus.APPROVED } });
       tx.userProfile.findUnique.mockResolvedValue(worker(workerId, WorkerKind.HELPER));
       await expect(recordExecution({ workOrderId: "wo-1", workerId, summary: "No debe guardarse" })).rejects.toThrow("no permite");
+    });
+  });
+
+  describe("rollbackWorkOrder", () => {
+    it("cancels operational records and returns the quote without touching money", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      tx.workOrder.findUnique.mockResolvedValue({
+        id: "wo-1",
+        quoteId: "quote-1",
+        status: WorkOrderStatus.COMPLETED,
+        quote: { status: QuoteStatus.APPROVED },
+      });
+
+      await rollbackWorkOrder({ workOrderId: "wo-1", targetQuoteStatus: "SENT", reason: "Captura equivocada" });
+
+      expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: WorkOrderStatus.CANCELLED } }));
+      expect(tx.workAssignment.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: "CANCELLED" } }));
+      expect(tx.sharedQuote.updateMany).toHaveBeenCalled();
+      expect(tx.paymentRequest.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: "CANCELLED" } }));
+      expect(tx.quote.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: QuoteStatus.SENT } }));
+      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ actorId: workerId, reason: "Captura equivocada" }) }));
+    });
+
+    it("blocks the rollback when the quote has payments", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      tx.workOrder.findUnique.mockResolvedValue({ id: "wo-1", quoteId: "quote-1", status: WorkOrderStatus.ASSIGNED, quote: { status: QuoteStatus.APPROVED } });
+      tx.payment.count.mockResolvedValue(1);
+
+      await expect(rollbackWorkOrder({ workOrderId: "wo-1", targetQuoteStatus: "DRAFT", reason: "Corrección" })).rejects.toThrow("tiene pagos");
+      expect(tx.workOrder.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("blocks the rollback when the quote has ledger history", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      tx.workOrder.findUnique.mockResolvedValue({ id: "wo-1", quoteId: "quote-1", status: WorkOrderStatus.ASSIGNED, quote: { status: QuoteStatus.APPROVED } });
+      tx.ledgerEntry.count.mockResolvedValue(1);
+
+      await expect(rollbackWorkOrder({ workOrderId: "wo-1", targetQuoteStatus: "DRAFT", reason: "Corrección" })).rejects.toThrow("movimientos en el ledger");
+      expect(tx.workOrder.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("rollbackWorkOrderAction", () => {
+    it("returns known validation and operation errors", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      tx.workOrder.findUnique.mockResolvedValue(null);
+
+      await expect(rollbackWorkOrderAction({ workOrderId: "wo-1", targetQuoteStatus: "SENT", reason: "Corrección" }))
+        .resolves.toEqual({ success: false, error: "Orden de trabajo no encontrada." });
+      await expect(rollbackWorkOrderAction({ workOrderId: "wo-1", targetQuoteStatus: "SENT", reason: "" }))
+        .resolves.toEqual({ success: false, error: "Indica el motivo de la corrección." });
+    });
+
+    it("logs unexpected errors and returns a recovery message", async () => {
+      const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      vi.mocked(prisma.$transaction).mockRejectedValueOnce(new Error("database unavailable"));
+
+      await expect(rollbackWorkOrderAction({ workOrderId: "wo-1", targetQuoteStatus: "SENT", reason: "Corrección" }))
+        .resolves.toEqual({ success: false, error: "No se pudo corregir la orden. Recarga la página e inténtalo de nuevo." });
+      expect(log).toHaveBeenCalledWith("Work order rollback failed", expect.objectContaining({ input: expect.any(Object) }));
+      log.mockRestore();
     });
   });
 });

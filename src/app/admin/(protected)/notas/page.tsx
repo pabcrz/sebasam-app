@@ -11,6 +11,7 @@ import {
 } from "@/components/ui";
 import { WorkOrderCompletedList } from "@/features/work-orders/components/work-order-completed-list";
 import { recordPaymentAction } from "@/features/payments/actions";
+import { rollbackWorkOrderAction } from "@/features/work-orders/actions";
 
 export const metadata: Metadata = {
   title: "Notas de remisión",
@@ -63,6 +64,7 @@ export default async function NotasPage() {
                 workOrderId: wo.id,
                 action: recordPaymentAction.bind(null, wo.quote.id),
               }))}
+              rollbackAction={rollbackWorkOrderAction}
             />
           )}
         </CardContent>

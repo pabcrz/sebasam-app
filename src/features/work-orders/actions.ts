@@ -2,7 +2,9 @@
 
 import {
   AssignmentStatus,
+  PaymentRequestStatus,
   Prisma,
+  QuoteStatus,
   UserRole,
   WorkOrderStatus,
   WorkerKind,
@@ -15,6 +17,7 @@ import {
   assignWorkOrderInputSchema,
   completeWorkOrderInputSchema,
   executionRecordInputSchema,
+  rollbackWorkOrderInputSchema,
   workAssignmentInputSchema,
   workOrderInputSchema,
   type WorkOrderInput,
@@ -30,10 +33,18 @@ import {
   WorkOrderOperationError,
   WorkerUnavailableError,
 } from "./domain";
+import { ZodError } from "zod";
 
 const quotesPath = "/admin/quotes";
 const workOrdersPath = "/admin/work-orders";
 const notasPath = "/admin/notas";
+const rollbackableWorkOrderStatuses: WorkOrderStatus[] = [
+  WorkOrderStatus.PLANNED,
+  WorkOrderStatus.ASSIGNED,
+  WorkOrderStatus.IN_PROGRESS,
+  WorkOrderStatus.COMPLETED,
+];
+const inactivePaymentRequestStatuses = [PaymentRequestStatus.CANCELLED, PaymentRequestStatus.EXPIRED];
 
 type ActionResult = { success: boolean; error?: string };
 
@@ -112,7 +123,7 @@ export async function assignWorkOrder(input: unknown) {
 
   return prisma.$transaction(async (tx) => {
     // Ensure the work order exists (create if needed)
-    let workOrder = await tx.workOrder.findFirst({
+    const workOrder = await tx.workOrder.findFirst({
       where: { id: data.workOrderId },
       include: { quote: true },
     });
@@ -334,6 +345,77 @@ export async function completeWorkOrder(input: unknown) {
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
+export async function rollbackWorkOrder(input: unknown) {
+  const { profile } = await requireOperationalRole();
+  const data = rollbackWorkOrderInputSchema.parse(input);
+
+  return prisma.$transaction(async (tx) => {
+    const workOrder = await tx.workOrder.findUnique({
+      where: { id: data.workOrderId },
+      include: { quote: true },
+    });
+
+    if (!workOrder) {
+      throw new WorkOrderOperationError("Orden de trabajo no encontrada.");
+    }
+    if (!rollbackableWorkOrderStatuses.includes(workOrder.status)) {
+      throw new WorkOrderOperationError("La orden ya fue cancelada. Recarga la página para ver su estado actual.");
+    }
+    if (workOrder.quote.status !== QuoteStatus.APPROVED) {
+      throw new WorkOrderOperationError("La cotización ya no está aceptada. Recarga la página antes de corregir la orden.");
+    }
+
+    const [paymentCount, ledgerEntryCount] = await Promise.all([
+      tx.payment.count({ where: { quoteId: workOrder.quoteId } }),
+      tx.ledgerEntry.count({ where: { payment: { quoteId: workOrder.quoteId } } }),
+    ]);
+    if (paymentCount > 0) {
+      throw new WorkOrderOperationError("No se puede cancelar esta orden porque la cotización tiene pagos. La corrección financiera requiere otro proceso.");
+    }
+    if (ledgerEntryCount > 0) {
+      throw new WorkOrderOperationError("No se puede cancelar esta orden porque la cotización tiene movimientos en el ledger. La corrección financiera requiere otro proceso.");
+    }
+
+    const cancelled = await tx.workOrder.updateMany({
+      where: { id: workOrder.id, status: workOrder.status },
+      data: { status: WorkOrderStatus.CANCELLED },
+    });
+    if (cancelled.count !== 1) {
+      throw new WorkOrderOperationError("El estado de la orden cambió. Recarga e intenta de nuevo.");
+    }
+
+    const now = new Date();
+    await tx.workAssignment.updateMany({
+      where: { workOrderId: workOrder.id, status: { notIn: [AssignmentStatus.DONE, AssignmentStatus.CANCELLED] } },
+      data: { status: AssignmentStatus.CANCELLED },
+    });
+    await tx.sharedQuote.updateMany({ where: { quoteId: workOrder.quoteId, revokedAt: null }, data: { revokedAt: now } });
+    await tx.paymentRequest.updateMany({
+      where: {
+        OR: [{ quoteId: workOrder.quoteId }, { workOrderId: workOrder.id }],
+        status: { notIn: inactivePaymentRequestStatuses },
+      },
+      data: { status: PaymentRequestStatus.CANCELLED },
+    });
+    const restored = await tx.quote.updateMany({
+      where: { id: workOrder.quoteId, status: QuoteStatus.APPROVED },
+      data: { status: data.targetQuoteStatus },
+    });
+    if (restored.count !== 1) {
+      throw new WorkOrderOperationError("El estado de la cotización cambió. Recarga e intenta de nuevo.");
+    }
+    await tx.quoteLifecycleEvent.create({
+      data: {
+        quoteId: workOrder.quoteId,
+        previousState: QuoteStatus.APPROVED,
+        nextState: data.targetQuoteStatus,
+        actorId: profile.id,
+        reason: data.reason,
+      },
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
 // ─── Internal / future use: execution tracking ──────────────────────────────
 // These actions are kept for the future execution tracking feature (progress + photos
 // visible to the customer). They are not exposed in the UI yet.
@@ -412,6 +494,25 @@ export async function completeWorkOrderAction(input: unknown): Promise<ActionRes
   }
 }
 
+export async function rollbackWorkOrderAction(input: unknown): Promise<ActionResult> {
+  try {
+    await rollbackWorkOrder(input);
+    revalidatePath(quotesPath);
+    revalidatePath(workOrdersPath);
+    revalidatePath(notasPath);
+    return { success: true };
+  } catch (error) {
+    if (error instanceof WorkOrderOperationError) {
+      return { success: false, error: error.message };
+    }
+    if (error instanceof ZodError) {
+      return { success: false, error: error.issues[0]?.message ?? "Revisa los datos de la corrección." };
+    }
+    console.error("Work order rollback failed", { input, error });
+    return { success: false, error: "No se pudo corregir la orden. Recarga la página e inténtalo de nuevo." };
+  }
+}
+
 export async function ensureWorkOrderWaitingAction(quoteId: string): Promise<ActionResult> {
   return createAndAssignWorkOrderAction(quoteId, { isSpecial: true, specialAssigneeName: "Pendiente" });
 }
@@ -449,4 +550,3 @@ export async function assignWorker(input: unknown) {
     data,
   });
 }
-

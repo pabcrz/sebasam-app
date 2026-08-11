@@ -16,7 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
-import { createAndAssignWorkOrderAction, completeWorkOrderAction } from "@/features/work-orders/actions";
+import { createAndAssignWorkOrderAction, completeWorkOrderAction, rollbackWorkOrderAction } from "@/features/work-orders/actions";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { formatCents, formatDate, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
@@ -49,6 +49,7 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
   const dialogActions = {
     assign: createAndAssignWorkOrderAction.bind(null, quote.id),
     complete: completeWorkOrderAction,
+    rollback: rollbackWorkOrderAction,
   };
 
   return (

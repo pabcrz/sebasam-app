@@ -30,6 +30,12 @@ export const completeWorkOrderInputSchema = z.object({
   workOrderId: z.string().min(1),
 });
 
+export const rollbackWorkOrderInputSchema = z.object({
+  workOrderId: z.string().min(1),
+  targetQuoteStatus: z.enum(["SENT", "DRAFT"]),
+  reason: z.string().trim().min(1, "Indica el motivo de la corrección."),
+});
+
 export const startWorkOrderInputSchema = z.object({
   workOrderId: z.string().min(1),
 });
@@ -53,6 +59,7 @@ export const workAssignmentInputSchema = z.object({
 export type WorkOrderInput = z.infer<typeof workOrderInputSchema>;
 export type AssignWorkOrderInput = z.infer<typeof assignWorkOrderInputSchema>;
 export type CompleteWorkOrderInput = z.infer<typeof completeWorkOrderInputSchema>;
+export type RollbackWorkOrderInput = z.infer<typeof rollbackWorkOrderInputSchema>;
 export type StartWorkOrderInput = z.infer<typeof startWorkOrderInputSchema>;
 export type ExecutionRecordInput = z.infer<typeof executionRecordInputSchema>;
 export type WorkAssignmentInput = z.infer<typeof workAssignmentInputSchema>;
