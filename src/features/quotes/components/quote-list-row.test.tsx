@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from "@testing-library/react";
 import { QuoteListRow } from "./quote-list-row";
 import type { listQuotes } from "@/features/quotes/queries";
 
@@ -121,7 +120,7 @@ function renderRow(quote: QuoteListItem) {
           authorizeAction={vi.fn().mockResolvedValue({ success: true })}
           paymentRequestAction={vi.fn()}
           paymentRequestBankAccounts={[
-            { id: "acc-1", accountHolder: "SEBASAM", bankName: "Santander", accountNumber: "1234", clabe: "5678", isDefault: true, isActive: true } as any,
+            { id: "acc-1", accountHolder: "SEBASAM", bankName: "Santander", accountNumber: "1234", clabe: "5678", isDefault: true, isActive: true },
           ]}
 
           duplicateAction={vi.fn()}
@@ -135,24 +134,7 @@ function renderRow(quote: QuoteListItem) {
   );
 }
 
-function createInProgressWorkOrder(): NonNullable<QuoteListItem["workOrder"]> {
-  return {
-    id: "work-order-active",
-    quoteId: "quote-1",
-    number: "T-002",
-    status: "ASSIGNED",
-    notes: null,
-    scheduledFor: null,
-    siteAddress: null,
-    completedAt: null,
-    isSpecial: false,
-    specialAssigneeName: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    assignments: [],
-    executionRecords: [],
-  };
-}
+
 
 describe("QuoteListRow", () => {
   it("renders quote details correctly", () => {

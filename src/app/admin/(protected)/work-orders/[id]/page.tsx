@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ClipboardList } from "lucide-react";
 import { getWorkOrderById } from "@/features/work-orders/queries";
 import { listActiveWorkers } from "@/features/workers/queries";
-import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
+import { searchCustomersForQuote } from "@/features/customers/actions";
 import { updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
 import { listCustomers } from "@/features/customers/queries";
 import {
@@ -18,7 +18,7 @@ import {
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import { createAndAssignWorkOrderAction, completeWorkOrderAction, rollbackWorkOrderAction } from "@/features/work-orders/actions";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
-import { formatCents, formatDate, formatVehicle } from "@/features/quotes/lib/format";
+import { formatCents, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 
 export const metadata: Metadata = {

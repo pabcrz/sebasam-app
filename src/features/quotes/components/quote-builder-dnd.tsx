@@ -6,7 +6,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 
 type SortableContextType = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   attributes: Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   listeners: Record<string, any> | undefined;
   setActivatorNodeRef: (node: HTMLElement | null) => void;
 };
@@ -14,13 +16,15 @@ type SortableContextType = {
 const SortableItemContext = createContext<SortableContextType | null>(null);
 
 export function DragHandle({ className }: { className?: string }) {
-  const context = useContext(SortableItemContext);
-  if (!context) return <GripVertical className={`size-4 shrink-0 text-[var(--color-text-muted)] ${className || ""}`} aria-hidden="true" />;
+  const ctx = useContext(SortableItemContext);
+  if (!ctx) return <GripVertical className={`size-4 shrink-0 text-[var(--color-text-muted)] ${className || ""}`} aria-hidden="true" />;
+  
+  const { setActivatorNodeRef, attributes, listeners } = ctx;
   return (
     <div
-      ref={context.setActivatorNodeRef}
-      {...context.attributes}
-      {...context.listeners}
+      ref={setActivatorNodeRef}
+      {...attributes}
+      {...listeners}
       className={`flex items-center justify-center touch-none cursor-grab text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] ${className || ""}`}
     >
       <GripVertical className="size-4 shrink-0" aria-hidden="true" />
@@ -28,7 +32,7 @@ export function DragHandle({ className }: { className?: string }) {
   );
 }
 
-export function SortableItem({ id, children, isDragOverlay = false }: { id: string; children: React.ReactNode; isDragOverlay?: boolean }) {
+export function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
   const {
     attributes,
     listeners,

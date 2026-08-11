@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Copy } from "lucide-react";
 import type { listActiveWorkOrders } from "@/features/work-orders/queries";
-import type { listActiveWorkers } from "@/features/workers/queries";
+
 import type { listQuotes } from "@/features/quotes/queries";
 import { Badge, Button } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";

@@ -112,7 +112,8 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
 
   // Reset global pending indicator when pathname changes
   React.useEffect(() => {
-    setGlobalPending(false);
+    const timer = setTimeout(() => setGlobalPending(false), 0);
+    return () => clearTimeout(timer);
   }, [pathname]);
 
   return (
