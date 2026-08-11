@@ -20,6 +20,7 @@ const quoteStatusLabels = {
   APPROVED: "Aprobada",
   REJECTED: "Rechazada",
   CANCELLED: "Cancelada",
+  ARCHIVED: "Archivada",
 } as const;
 
 const quoteStatusBadgeVariant = {
@@ -28,6 +29,7 @@ const quoteStatusBadgeVariant = {
   APPROVED: "success" as const,
   REJECTED: "danger" as const,
   CANCELLED: "warning" as const,
+  ARCHIVED: "default" as const,
 };
 
 function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem {

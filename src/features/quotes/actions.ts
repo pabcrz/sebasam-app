@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
+import { PaymentRequestStatus, PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { createVehicleSnapshot, type VehicleInput } from "@/features/vehicles/schemas";
-import { quoteFormInputSchema, quoteInputSchema, type QuoteVehicleInput } from "./schemas";
+import { quoteFormInputSchema, quoteInputSchema, quoteLifecycleReasonSchema, type QuoteVehicleInput } from "./schemas";
 import {
   calculateItemTotalCents,
   calculateQuoteTotals,
@@ -435,6 +435,61 @@ export async function cancelDraftQuoteFromForm(formData: FormData) {
 
   revalidatePath(quotesPath);
   redirect(`${quotesPath}?cancelled=1`);
+}
+
+const archivableQuoteStatuses: QuoteStatus[] = [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.REJECTED, QuoteStatus.CANCELLED];
+const inactivePaymentRequestStatuses = [PaymentRequestStatus.CANCELLED, PaymentRequestStatus.EXPIRED];
+
+export async function archiveQuote(quoteId: string, reason: string) {
+  const { profile } = await requireOperationalRole();
+  const parsedReason = quoteLifecycleReasonSchema.safeParse(reason);
+  if (!parsedReason.success) throw new Error("Archive reason is required.");
+
+  await prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true } });
+    if (!quote) throw new Error("Quote not found.");
+    if (!archivableQuoteStatuses.includes(quote.status) || quote.workOrder) {
+      throw new Error("This quote has active operational work and cannot be archived.");
+    }
+    if (await tx.payment.count({ where: { quoteId } })) {
+      throw new Error("This quote has financial activity and cannot be archived.");
+    }
+
+    const archived = await tx.quote.updateMany({
+      where: { id: quoteId, status: quote.status },
+      data: { status: QuoteStatus.ARCHIVED },
+    });
+    if (archived.count !== 1) throw new Error("Quote archive state changed. Reload and try again.");
+
+    const now = new Date();
+    await tx.sharedQuote.updateMany({ where: { quoteId, revokedAt: null }, data: { revokedAt: now } });
+    await tx.paymentRequest.updateMany({
+      where: { quoteId, status: { notIn: inactivePaymentRequestStatuses } },
+      data: { status: PaymentRequestStatus.CANCELLED },
+    });
+    await tx.quoteLifecycleEvent.create({
+      data: { quoteId, previousState: quote.status, nextState: QuoteStatus.ARCHIVED, actorId: profile.id, reason: parsedReason.data },
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  revalidatePath(quotesPath);
+}
+
+export async function restoreArchivedQuote(quoteId: string, reason: string) {
+  const { profile } = await requireOperationalRole();
+  const parsedReason = quoteLifecycleReasonSchema.safeParse(reason);
+  if (!parsedReason.success) throw new Error("Restore reason is required.");
+
+  await prisma.$transaction(async (tx) => {
+    const restored = await tx.quote.updateMany({
+      where: { id: quoteId, status: QuoteStatus.ARCHIVED },
+      data: { status: QuoteStatus.DRAFT },
+    });
+    if (restored.count !== 1) throw new Error("Only archived quotes can be restored.");
+    await tx.quoteLifecycleEvent.create({
+      data: { quoteId, previousState: QuoteStatus.ARCHIVED, nextState: QuoteStatus.DRAFT, actorId: profile.id, reason: parsedReason.data },
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  revalidatePath(quotesPath);
 }
 
 export async function deleteDraftQuote(quoteId: string) {

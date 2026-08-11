@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
 import {
   cancelDraftQuote,
+  archiveQuote,
   cancelDraftQuoteFromForm,
   createQuote,
   createQuoteFromForm,
@@ -9,6 +10,7 @@ import {
   duplicateQuote,
   duplicateQuoteFromForm,
   shareQuoteFromForm,
+  restoreArchivedQuote,
   updateDraftQuote,
   updateDraftQuoteFromForm,
   updateDraftQuoteFromWorkspace,
@@ -17,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { requireOperationalRole } from "@/lib/auth/session";
 
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), quote: { findUnique: vi.fn() } } }));
 vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
@@ -57,6 +60,9 @@ type MockTx = {
   quoteItem: { deleteMany: ReturnType<typeof vi.fn>; createMany: ReturnType<typeof vi.fn> };
   quoteSection: { deleteMany: ReturnType<typeof vi.fn> };
   payment: { count: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn> };
+  sharedQuote: { updateMany: ReturnType<typeof vi.fn> };
+  paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
+  quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
@@ -71,6 +77,9 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
     quoteItem: { deleteMany: vi.fn(), createMany: vi.fn() },
     quoteSection: { deleteMany: vi.fn() },
     payment: { count: vi.fn().mockResolvedValue(0), aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: null } }) },
+    sharedQuote: { updateMany: vi.fn() },
+    paymentRequest: { updateMany: vi.fn() },
+    quoteLifecycleEvent: { create: vi.fn() },
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
   (findOrCreateVehicle as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "vehicle-1" });
@@ -679,6 +688,48 @@ describe("cancelDraftQuoteFromForm", () => {
     await cancelDraftQuoteFromForm(formData as unknown as FormData);
 
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=not-draft");
+  });
+});
+
+describe("quote lifecycle", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({ profile: { id: "actor-1" } });
+  });
+
+  it("archives only an eligible quote while revoking links, cancelling requests, and recording the event", async () => {
+    const tx = mockTx();
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+
+    await archiveQuote("quote-1", "Reference quote retained for future pricing.");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({ where: { id: "quote-1", status: QuoteStatus.DRAFT }, data: { status: QuoteStatus.ARCHIVED } });
+    expect(tx.sharedQuote.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { revokedAt: expect.any(Date) } }));
+    expect(tx.paymentRequest.updateMany).toHaveBeenCalledWith({
+      where: { quoteId: "quote-1", status: { notIn: ["CANCELLED", "EXPIRED"] } },
+      data: { status: "CANCELLED" },
+    });
+    expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({ previousState: QuoteStatus.DRAFT, nextState: QuoteStatus.ARCHIVED, actorId: "actor-1", reason: "Reference quote retained for future pricing." }) });
+  });
+
+  it("rejects a missing reason and quotes with financial activity", async () => {
+    await expect(archiveQuote("quote-1", " ")).rejects.toThrow("Archive reason is required.");
+    const tx = mockTx();
+    tx.payment.count.mockResolvedValue(1);
+    await expect(archiveQuote("quote-1", "Keep for reference")).rejects.toThrow("financial activity");
+    expect(tx.quote.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("restores only an archived quote to draft and records a separate event", async () => {
+    const tx = mockTx();
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+
+    await restoreArchivedQuote("quote-1", "Customer requested a revised estimate.");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({ where: { id: "quote-1", status: QuoteStatus.ARCHIVED }, data: { status: QuoteStatus.DRAFT } });
+    expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({ previousState: QuoteStatus.ARCHIVED, nextState: QuoteStatus.DRAFT }) });
+    expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
+    expect(tx.paymentRequest.updateMany).not.toHaveBeenCalled();
   });
 });
 

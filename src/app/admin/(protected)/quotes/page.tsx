@@ -9,6 +9,8 @@ import {
   deleteDraftQuoteFromForm,
   createQuoteFromWorkspace,
   updateDraftQuoteFromWorkspace,
+  archiveQuote,
+  restoreArchivedQuote,
 } from "@/features/quotes/actions";
 import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
 import { listPaginatedQuotes } from "@/features/quotes/queries";
@@ -59,6 +61,7 @@ type QuotesPageProps = {
     dateFrom?: string;
     dateTo?: string;
     showCancelled?: string;
+    showArchived?: string;
     page?: string;
   }>;
 };
@@ -73,6 +76,7 @@ function quotesPageHref(filters: QuoteFilterInput, page: number) {
   if (filters.dateFrom) searchParams.set("dateFrom", filters.dateFrom.toISOString().slice(0, 10));
   if (filters.dateTo) searchParams.set("dateTo", filters.dateTo.toISOString().slice(0, 10));
   if (filters.showCancelled) searchParams.set("showCancelled", "true");
+  if (filters.showArchived) searchParams.set("showArchived", "true");
 
   return `/admin/quotes?${searchParams.toString()}`;
 }
@@ -81,7 +85,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const params = await searchParams;
   const parsedFilters = quoteFilterSchema.safeParse(params);
   const filters = parsedFilters.success ? parsedFilters.data : {} as QuoteFilterInput;
-  const hasFilters = hasFilterValue({ ...filters, showCancelled: filters.showCancelled || undefined });
+  const hasFilters = hasFilterValue({ ...filters, showCancelled: filters.showCancelled || undefined, showArchived: filters.showArchived || undefined });
   const [customers, quotePage, paymentSettings, workers] = await Promise.all([
     listCustomers(),
     listPaginatedQuotes(params, { excludeWithActiveWorkOrder: true }),
@@ -135,6 +139,8 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 cashPaymentAction={recordCashPaymentAction.bind(null, quote.id)}
                 duplicateAction={duplicateQuoteFromForm}
                 deleteAction={deleteDraftQuoteFromForm}
+                archiveAction={archiveQuote.bind(null, quote.id)}
+                restoreAction={restoreArchivedQuote.bind(null, quote.id)}
                 customers={customers}
                 saveAction={updateDraftQuoteFromWorkspace.bind(null, quote.id)}
                 searchCustomersAction={searchCustomersForQuote}

@@ -13,6 +13,7 @@ const quoteStatusLabels: Record<QuoteStatus, string> = {
   APPROVED: "Aceptada",
   REJECTED: "Declinada",
   CANCELLED: "Cancelada",
+  ARCHIVED: "Archivada",
 };
 
 type QuoteFiltersCustomer = {
@@ -47,6 +48,7 @@ function getActiveFilterSummary(filters: QuoteFilterInput, customers: QuoteFilte
   if (filters.dateFrom) summary.push(`Desde: ${formatDateValue(filters.dateFrom)}`);
   if (filters.dateTo) summary.push(`Hasta: ${formatDateValue(filters.dateTo)}`);
   if (filters.showCancelled) summary.push("Mostrar canceladas");
+  if (filters.showArchived) summary.push("Mostrar archivadas");
 
   return summary;
 }
@@ -61,7 +63,8 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
     Boolean(filters.plate) ||
     Boolean(filters.dateFrom) ||
     Boolean(filters.dateTo) ||
-    filters.showCancelled;
+    filters.showCancelled ||
+    filters.showArchived;
   const activeFilterSummary = getActiveFilterSummary(filters, customers);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -149,7 +152,7 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
                 <SelectContent>
                   <SelectItem value="">Todos</SelectItem>
                   {Object.entries(quoteStatusLabels)
-                    .filter(([value]) => value !== "CANCELLED")
+                    .filter(([value]) => value !== "CANCELLED" && value !== "ARCHIVED")
                     .map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
@@ -170,6 +173,17 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
               />
               <Label htmlFor="showCancelled" className="text-sm font-medium">
                 Mostrar canceladas
+              </Label>
+              <input
+                type="checkbox"
+                id="showArchived"
+                name="showArchived"
+                value="true"
+                defaultChecked={filters.showArchived}
+                className="ml-3 h-4 w-4 rounded border-[var(--color-border-light)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+              />
+              <Label htmlFor="showArchived" className="text-sm font-medium">
+                Mostrar archivadas
               </Label>
             </div>
 

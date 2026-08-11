@@ -44,8 +44,11 @@ function buildQuoteWhere(input: unknown, options: { excludeWithActiveWorkOrder?:
 
   if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
     where.status = filters.status as QuoteStatus;
-  } else if (!filters.showCancelled) {
-    where.status = { not: QuoteStatus.CANCELLED };
+  } else {
+    const hiddenStatuses: QuoteStatus[] = [];
+    if (!filters.showCancelled) hiddenStatuses.push(QuoteStatus.CANCELLED);
+    if (!filters.showArchived) hiddenStatuses.push(QuoteStatus.ARCHIVED);
+    if (hiddenStatuses.length > 0) where.status = { notIn: hiddenStatuses };
   }
 
   if (filters.customerId) {

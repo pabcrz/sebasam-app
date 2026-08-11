@@ -29,7 +29,7 @@ const customers = [
 ];
 
 function renderFilters(filters: Partial<QuoteFilterInput> = {}) {
-  const mergedFilters = { showCancelled: false, ...filters };
+  const mergedFilters = { showCancelled: false, showArchived: false, ...filters };
   return render(<QuoteFilters filters={mergedFilters} customers={customers} />);
 }
 
@@ -93,6 +93,16 @@ describe("QuoteFilters", () => {
     await user.click(screen.getByRole("button", { name: /filtrar/i }));
 
     expect(push).toHaveBeenCalledWith("/admin/quotes?showCancelled=true");
+  });
+
+  it("submits the explicit archived filter", async () => {
+    const user = userEvent.setup();
+    renderFilters({ showArchived: true });
+
+    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
+    await user.click(screen.getByRole("button", { name: /filtrar/i }));
+
+    expect(push).toHaveBeenCalledWith("/admin/quotes?showArchived=true");
   });
 
   it("clears filters when the clear button is clicked", async () => {

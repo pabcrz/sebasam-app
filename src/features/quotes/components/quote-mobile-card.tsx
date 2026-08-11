@@ -20,6 +20,7 @@ import type { PaymentRequestDialogBankAccount } from "@/features/payment-request
 import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
 import { QuoteActionsMenu } from "./quote-actions-menu";
+import { QuoteLifecycleForm } from "./quote-lifecycle-form";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
@@ -45,6 +46,8 @@ interface QuoteListCardProps {
   }>;
   duplicateAction: (formData: FormData) => void | Promise<void>;
   deleteAction: (formData: FormData) => void | Promise<void>;
+  archiveAction: (reason: string) => Promise<void>;
+  restoreAction: (reason: string) => Promise<void>;
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
@@ -65,6 +68,8 @@ export function QuoteListCard({
   cashPaymentAction,
   duplicateAction,
   deleteAction,
+  archiveAction,
+  restoreAction,
   customers,
   saveAction,
   searchCustomersAction,
@@ -202,6 +207,12 @@ export function QuoteListCard({
 
           {quote.status === "DRAFT" || quote.status === "SENT" ? (
             <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant="outline" size="sm" iconOnly />
+          ) : null}
+
+          {quote.status === "ARCHIVED" ? (
+            <QuoteLifecycleForm action={restoreAction} mode="restore" quoteNumber={quote.number} iconOnly />
+          ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "REJECTED" || quote.status === "CANCELLED" ? (
+            <QuoteLifecycleForm action={archiveAction} mode="archive" quoteNumber={quote.number} iconOnly />
           ) : null}
 
           {canUsePaymentActions ? (
