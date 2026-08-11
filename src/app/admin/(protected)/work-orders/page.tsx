@@ -14,7 +14,7 @@ import { listCustomers } from "@/features/customers/queries";
 import { listQuotes } from "@/features/quotes/queries";
 import { searchCustomersForQuote } from "@/features/customers/actions";
 import { duplicateQuoteFromForm, shareQuoteFromForm, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
-import { assignWorkOrderAction, completeWorkOrderAction } from "@/features/work-orders/actions";
+import { assignWorkOrderAction, completeWorkOrderAction, rollbackWorkOrderAction } from "@/features/work-orders/actions";
 
 export const metadata: Metadata = {
   title: "Trabajos en proceso",
@@ -94,6 +94,7 @@ export default async function WorkOrdersPage() {
               workOrderActions={{
                 assign: assignWorkOrderAction,
                 complete: completeWorkOrderAction,
+                rollback: rollbackWorkOrderAction,
               }}
             />
           )}

@@ -8,6 +8,7 @@ import { formatCents } from "@/features/quotes/lib/format";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import type { listQuotes } from "@/features/quotes/queries";
+import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 
 type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>[number];
 
@@ -26,6 +27,7 @@ interface WorkOrderCompletedListProps {
   workOrders: WorkOrderItem[];
   quoteMap?: Map<string, Awaited<ReturnType<typeof listQuotes>>[number]>;
   recordPaymentActions?: WorkOrderPaymentAction[];
+  rollbackAction?: WorkOrderActions["rollback"];
 }
 
 function formatDate(date: Date | null) {
@@ -39,7 +41,7 @@ function formatVehicle(wo: WorkOrderItem) {
   return [v.brand, v.model, v.year, v.plate ? `· ${v.plate}` : null].filter(Boolean).join(" ");
 }
 
-export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActions = [] }: WorkOrderCompletedListProps) {
+export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActions = [], rollbackAction }: WorkOrderCompletedListProps) {
   const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
   const [selectedQuoteId, setSelectedQuoteId] = React.useState<string | null>(null);
 
@@ -121,6 +123,12 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                 <Printer className="h-4 w-4" aria-hidden="true" />
                 Imprimir nota
               </Button>
+              <WorkOrderOperationsDialog
+                quoteNumber={wo.quote.number}
+                quoteStatus="APPROVED"
+                workOrder={wo}
+                actions={{ rollback: rollbackAction }}
+              />
             </div>
           </div>
           </div>

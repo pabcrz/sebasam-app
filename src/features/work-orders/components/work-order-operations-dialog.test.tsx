@@ -95,4 +95,37 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.queryByRole("button", { name: /asignar e iniciar trabajo/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /imprimir nota de remisión/i })).toBeInTheDocument();
   });
+
+  it("announces and locks assignment inputs while assigning", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn(() => new Promise<{ success: boolean }>(() => undefined));
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-1", number: "T-001", status: "PLANNED" }} actions={{ assign }} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
+    await user.click(screen.getByLabelText(/trabajo especial/i));
+    await user.type(screen.getByLabelText(/nombre del responsable/i), "Externo");
+    await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("Asignando...");
+    expect(screen.getByLabelText(/nombre del responsable/i)).toBeDisabled();
+  });
+
+  it("requires a reason and an explicit rollback target", async () => {
+    const user = userEvent.setup();
+    const rollback = vi.fn(() => Promise.resolve({ success: false, error: "Bloqueada" }));
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-1", number: "T-001", status: "COMPLETED" }} actions={{ rollback }} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
+    await user.click(screen.getByRole("button", { name: /cancelar orden y regresar cotización/i }));
+    await user.click(screen.getByRole("button", { name: /confirmar corrección/i }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Indica el motivo");
+
+    await user.type(screen.getByLabelText(/motivo de la corrección/i), "Se registró por error");
+    await user.click(screen.getByRole("button", { name: /confirmar corrección/i }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Selecciona el estado");
+    await user.click(screen.getByLabelText(/regresar cotización a/i));
+    await user.click(screen.getByRole("option", { name: "Borrador" }));
+    await user.click(screen.getByRole("button", { name: /confirmar corrección/i }));
+    expect(rollback).toHaveBeenCalledWith({ workOrderId: "wo-1", targetQuoteStatus: "DRAFT", reason: "Se registró por error" });
+  });
 });
