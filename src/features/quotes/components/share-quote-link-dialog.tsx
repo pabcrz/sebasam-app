@@ -16,9 +16,10 @@ import {
 export interface ShareQuoteLinkDialogProps {
   sharedQuote: SharedQuote;
   quoteNumber: string;
+  triggerClassName?: string;
 }
 
-export function ShareQuoteLinkDialog({ sharedQuote, quoteNumber }: ShareQuoteLinkDialogProps) {
+export function ShareQuoteLinkDialog({ sharedQuote, quoteNumber, triggerClassName }: ShareQuoteLinkDialogProps) {
   const [open, setOpen] = React.useState(false);
 
   const shareUrl = `/cotizacion/${sharedQuote.token}`;
@@ -31,6 +32,7 @@ export function ShareQuoteLinkDialog({ sharedQuote, quoteNumber }: ShareQuoteLin
         type="button"
         variant="outline"
         size="sm"
+        className={triggerClassName}
         onClick={() => setOpen(true)}
         aria-label={`Compartir cotización ${quoteNumber}`}
       >

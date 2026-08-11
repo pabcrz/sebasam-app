@@ -24,6 +24,7 @@ describe("recordCashPaymentAction", () => {
       quoteId: "quote-1",
       amountCents: 12345,
       operationKey: "payment-operation-1",
+      method: "CASH",
     });
     expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
   });

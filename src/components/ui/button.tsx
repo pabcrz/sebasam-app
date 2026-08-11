@@ -6,7 +6,7 @@ import { clsx } from "clsx";
 import { Spinner } from "./spinner";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
-export type ButtonSize = "default" | "sm" | "lg";
+export type ButtonSize = "default" | "sm" | "lg" | "icon";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -20,18 +20,20 @@ const baseClasses =
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-[image:var(--gradient-primary)] text-white shadow-sm hover:bg-[image:var(--gradient-primary-hover)]",
-  secondary: "bg-[var(--color-blue-tint)] text-[var(--color-text-main)] hover:bg-[#d9e7f7] dark:hover:bg-[#00366b]",
+    "bg-[image:var(--gradient-primary)] text-white shadow-sm hover:bg-[image:var(--gradient-primary-hover)] dark:bg-[var(--color-primary)] dark:bg-none dark:hover:bg-[var(--color-primary-hover)]",
+  secondary:
+    "bg-[var(--color-blue-tint)] text-[var(--color-text-main)] shadow-sm hover:bg-[var(--color-blue-tint-strong)] hover:text-[var(--color-text-main)] hover:shadow-md dark:hover:bg-[var(--color-navy-600)] dark:hover:text-white",
   outline:
     "border border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]",
   ghost: "text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]",
-  danger: "bg-[var(--color-status-danger)] text-white hover:bg-[#dc2626] shadow-sm",
+  danger: "bg-[var(--color-status-danger)] text-white hover:bg-[var(--color-status-danger-hover)] shadow-sm",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
   default: "min-h-[var(--tap-min-height)] px-4 py-2 text-base",
   sm: "h-9 px-3 text-sm",
   lg: "min-h-[var(--tap-min-height)] px-6 py-3 text-lg",
+  icon: "h-9 w-9 px-0",
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(

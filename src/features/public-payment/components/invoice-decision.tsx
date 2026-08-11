@@ -26,7 +26,7 @@ export function InvoiceDecision({ onDecision, isPending = false }: InvoiceDecisi
           onClick={() => onDecision(false)}
           className={clsx(
             "flex w-full items-center gap-4 rounded-xl border bg-[var(--color-blue-tint)] p-4 text-left transition-colors",
-            "border-[var(--color-primary)] hover:bg-[#d9e7f7]",
+            "border-[var(--color-primary)] hover:bg-[var(--color-blue-tint-strong)]",
             "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]",
             "disabled:opacity-60",
           )}

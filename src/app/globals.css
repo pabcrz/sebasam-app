@@ -8,12 +8,16 @@
   /* Brand */
   --color-primary: #004aad;
   --color-primary-hover: #003e91;
+  --color-navy-600: #00366b;
   --color-navy-700: #002b68;
   --color-navy-800: #001b3f;
   --color-navy-900: #001024;
   --color-white: #ffffff;
   --color-blue-tint: #e6f1fb;
+  --color-blue-tint-hover: #d9e7f7;
+  --color-blue-tint-strong: #cfe4f7;
   --color-on-navy-tint: #e6f1fb;
+  --color-nav-active-text: #004aad;
 
   /* Surfaces */
   --color-bg-soft: #f3f6fa;
@@ -29,7 +33,9 @@
   --color-status-success: #22c55e;
   --color-status-warning: #f59e0b;
   --color-status-danger: #ef4444;
+  --color-status-danger-hover: #dc2626;
   --color-status-info: #004aad;
+  --color-total-emphasis: #004aad;
 
   /* Status foreground: WCAG AA on surface for small text */
   --color-status-success-fg: #15803d;
@@ -75,17 +81,19 @@
 
   /* Touch */
   --tap-min-height: 44px;
+  --screen-padding-x: 16px;
 }
 
 .dark {
-  --background: #001024;
-  --foreground: #ffffff;
+  --background: #071a2f;
+  --foreground: #f8fafc;
 
   /* Surfaces */
-  --color-bg-soft: #001024;
-  --color-surface: #001b3f;
-  --color-border-light: #002b68;
-  --color-blue-tint: #002b68;
+  --color-bg-soft: #0a2038;
+  --color-surface: #0d2744;
+  --color-border-light: #1a4166;
+  --color-blue-tint: #123b62;
+  --color-nav-active-text: #e6f1fb;
 
   /* Text */
   --color-text-main: #ffffff;
@@ -97,6 +105,7 @@
   --color-status-warning-fg: #fcd34d;
   --color-status-danger-fg: #fca5a5;
   --color-status-info-fg: #93c5fd;
+  --color-total-emphasis: #93c5fd;
 
   /* Status pastel backgrounds / borders: slightly stronger on dark */
   --color-status-success-bg: rgba(74, 222, 128, 0.14);
@@ -115,18 +124,22 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-dm-mono);
 
   /* Brand */
   --color-primary: var(--color-primary);
   --color-primary-hover: var(--color-primary-hover);
+  --color-navy-600: var(--color-navy-600);
   --color-navy-700: var(--color-navy-700);
   --color-navy-800: var(--color-navy-800);
   --color-navy-900: var(--color-navy-900);
   --color-white: var(--color-white);
   --color-blue-tint: var(--color-blue-tint);
+  --color-blue-tint-hover: var(--color-blue-tint-hover);
+  --color-blue-tint-strong: var(--color-blue-tint-strong);
   --color-on-navy-tint: var(--color-on-navy-tint);
+  --color-nav-active-text: var(--color-nav-active-text);
 
   /* Surfaces */
   --color-bg-soft: var(--color-bg-soft);
@@ -142,7 +155,9 @@
   --color-status-success: var(--color-status-success);
   --color-status-warning: var(--color-status-warning);
   --color-status-danger: var(--color-status-danger);
+  --color-status-danger-hover: var(--color-status-danger-hover);
   --color-status-info: var(--color-status-info);
+  --color-total-emphasis: var(--color-total-emphasis);
   --color-status-success-bg: var(--color-status-success-bg);
   --color-status-success-border: var(--color-status-success-border);
   --color-status-warning-bg: var(--color-status-warning-bg);
@@ -174,6 +189,9 @@
 
   /* Touch */
   --spacing-tap: var(--tap-min-height);
+
+  /* Screen padding */
+  --screen-padding-x: var(--screen-padding-x);
 }
 
 body {

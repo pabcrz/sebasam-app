@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Eye, X } from "lucide-react";
-import type { listQuotes } from "@/features/quotes/queries";
+import type { QuoteListSummary } from "@/features/quotes/queries";
 import {
   Button,
   Dialog,
@@ -13,20 +13,42 @@ import {
 } from "@/components/ui";
 import { QuotePreviewCard, type QuotePreviewCardProps } from "./quote-preview-card";
 
-type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
-
 interface QuotePreviewDialogProps {
-  quote: QuoteListItem;
+  quote: QuoteListSummary;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   showTrigger?: boolean;
 }
 
-export function toQuotePreviewCardProps(quote: QuoteListItem): QuotePreviewCardProps {
+export function toQuotePreviewCardProps(quote: QuoteListSummary): QuotePreviewCardProps {
   const snapshot = quote.vehicleSnapshot && typeof quote.vehicleSnapshot === "object" && !Array.isArray(quote.vehicleSnapshot)
     ? quote.vehicleSnapshot as Record<string, unknown>
     : {};
   const snapshotValue = (key: string) => snapshot[key] == null ? "" : String(snapshot[key]);
+
+  // Build sections from DB items — group by section if available, else one default section
+  const sections = quote.sections && quote.sections.length > 0
+    ? quote.sections.map((section) => ({
+        name: section.name,
+        items: section.items.map((item) => ({
+          type: item.type,
+          description: item.description,
+          quantity: String(Number(item.quantity)),
+          unitPrice: String(Number(item.unitPriceCents) / 100),
+          rowIds: [],
+        })),
+        rowIds: [],
+      }))
+    : [{
+        name: "General",
+        items: quote.items.map((item) => ({
+          type: item.type,
+          description: item.description,
+          quantity: String(Number(item.quantity)),
+          unitPrice: String(Number(item.unitPriceCents) / 100),
+        })),
+        rowIds: [],
+      }];
 
   return {
     customerName: quote.customer.name,
@@ -39,18 +61,17 @@ export function toQuotePreviewCardProps(quote: QuoteListItem): QuotePreviewCardP
     title: quote.title,
     description: quote.description ?? "",
     administrative: quote.administrative,
-    items: quote.items.map((item) => ({
-      type: item.type,
-      description: item.description,
-      quantity: String(Number(item.quantity)),
-      unitPrice: String(Number(item.unitPriceCents) / 100),
-    })),
+    sections,
     subtotalCents: Number(quote.subtotalCents),
+    discountCents: Number(quote.discountCents),
     taxCents: Number(quote.taxCents),
     totalCents: Number(quote.totalCents),
+    paidCents: quote.paidCents,
+    remainingCents: quote.remainingCents,
     validUntil: quote.validUntil,
   };
 }
+
 
 export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true }: QuotePreviewDialogProps) {
   const [openInternal, setOpenInternal] = React.useState(false);

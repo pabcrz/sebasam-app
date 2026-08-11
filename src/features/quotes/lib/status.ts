@@ -6,6 +6,7 @@ export const quoteStatusLabels: Record<QuoteStatus, string> = {
   APPROVED: "Aceptada",
   REJECTED: "Declinada",
   CANCELLED: "Cancelada",
+  ARCHIVED: "Archivada",
 };
 
 export const quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info"> = {
@@ -14,10 +15,11 @@ export const quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" 
   APPROVED: "success",
   REJECTED: "danger",
   CANCELLED: "danger",
+  ARCHIVED: "default",
 };
 
 export const workOrderStatusLabels: Record<WorkOrderStatus, string> = {
-  PLANNED: "Planeada",
+  PLANNED: "En espera",
   ASSIGNED: "Asignada",
   IN_PROGRESS: "En proceso",
   COMPLETED: "Completada",

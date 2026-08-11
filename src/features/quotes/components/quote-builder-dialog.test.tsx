@@ -3,8 +3,14 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
 
+const refresh = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
+
 const customers = [{ id: "1", name: "Acme" }];
-const editInitialData = { customerId: "1", vehicle: { plate: "ABC123", brand: "Ford", model: "Transit", year: "2024" }, title: "Servicio", description: "", administrative: false, taxEnabled: true, items: [{ type: "LABOR" as const, description: "Frenos", quantity: "1", unitPrice: "100" }] };
+const editInitialData = { customerId: "1", vehicle: { plate: "ABC123", brand: "Ford", model: "Transit", year: "2024" }, title: "Servicio", description: "", administrative: false, taxEnabled: true, discountCents: 0, sections: [{ name: "", items: [{ type: "LABOR" as const, description: "Frenos", quantity: "1", unitPrice: "100" }] }] };
 
 function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   const dialogStyle = getComputedStyle(dialog);
@@ -95,7 +101,7 @@ describe("QuoteBuilderDialog", () => {
     render(
       <QuoteBuilderDialog
         customers={customers}
-        initialData={{ ...editInitialData, items }}
+        initialData={{ ...editInitialData, sections: [{ name: "", items }] }}
         quoteNumber="C-001"
         saveAction={vi.fn()}
       />,
@@ -106,8 +112,8 @@ describe("QuoteBuilderDialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Editar cotización C-001" });
     expectStableDialogLayout(dialog, itemCount > 1);
     expect(screen.getAllByLabelText("Descripción", { selector: "input" })).toHaveLength(itemCount);
-    expect(screen.getByTestId("concept-list")).toHaveClass("grid", "gap-3");
-    expect(screen.getByTestId("concept-list")).not.toHaveClass("max-h-[45dvh]", "overflow-y-auto");
+    expect(screen.getByTestId("concept-list-0")).toHaveClass("grid", "gap-3");
+    expect(screen.getByTestId("concept-list-0")).not.toHaveClass("max-h-[45dvh]", "overflow-y-auto");
   });
 
   it("requests confirmation via the X button", async () => {
@@ -320,6 +326,7 @@ describe("QuoteBuilderDialog", () => {
   it("closes on success and keeps state open on a server error", async () => {
     const user = userEvent.setup();
     const createAction = vi.fn().mockResolvedValueOnce({ error: "Error del servidor" }).mockResolvedValueOnce({ success: true });
+    refresh.mockClear();
     render(<QuoteBuilderDialog customers={customers} createAction={createAction} />);
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
@@ -333,5 +340,6 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Crear cotización" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Crear cotización" })).not.toBeInTheDocument());
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 });

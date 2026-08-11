@@ -11,11 +11,13 @@ import {
 } from "@/components/ui";
 import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
 import {
-  calculateTotals,
+  calculateSectionsTotals,
   emptyItem,
   getStepError,
   isItemComplete,
-  normalizeItems,
+  makeEmptySection,
+  normalizeSections,
+  SectionFormValue,
   ItemFormValue,
   getMaxQuantityForType,
   Step,
@@ -59,7 +61,9 @@ export type QuoteBuilderInitialData = {
   description: string;
   administrative: boolean;
   taxEnabled: boolean;
-  items: ItemFormValue[];
+  discountCents: number;
+  /** Sections with items. Each section has a name and an array of ItemFormValues. */
+  sections: Array<{ name: string; items: ItemFormValue[] }>;
 };
 
 type QuoteBuilderProps = {
@@ -126,19 +130,32 @@ export function QuoteBuilder({
   const [description, setDescription] = React.useState(initialData?.description ?? "");
   const [administrative, setAdministrative] = React.useState(initialData?.administrative ?? false);
   const [taxEnabled, setTaxEnabled] = React.useState(initialData?.taxEnabled ?? true);
-  const initialItemCount = initialData?.items.length || 1;
-  const nextItemRowId = React.useRef(initialItemCount);
-  const [items, setItems] = React.useState<ItemFormValue[]>(() =>
-    initialData?.items.length ? initialData.items : [{ ...emptyItem }],
+  const [discount, setDiscount] = React.useState(initialData?.discountCents ? String(initialData.discountCents / 100) : "");
+
+  // ── Sections / Items state ─────────────────────────────────────────────────
+  const [initialSections] = React.useState<SectionFormValue[]>(() => {
+    let idCounter = 0;
+    return initialData?.sections?.length
+      ? initialData.sections.map((sec) => ({
+          name: sec.name,
+          items: sec.items,
+          rowIds: sec.items.map(() => `quote-item-${idCounter++}`),
+        }))
+      : [makeEmptySection(idCounter++)];
+  });
+
+  const nextItemRowId = React.useRef(
+    initialSections.reduce((acc, sec) => acc + sec.items.length, 0)
   );
-  const [itemRowIds, setItemRowIds] = React.useState(() =>
-    Array.from({ length: initialItemCount }, (_, index) => `quote-item-${index}`),
-  );
+
+  const [sections, setSections] = React.useState<SectionFormValue[]>(initialSections);
+
   const [animatedItemRowId, setAnimatedItemRowId] = React.useState<string | null>(null);
   const pendingItemRowId = React.useRef<string | null>(null);
   const itemRowRefs = React.useRef(new Map<string, HTMLDivElement>());
   const itemDescriptionRefs = React.useRef(new Map<string, HTMLInputElement>());
-  const initialFormState = React.useRef(JSON.stringify({
+
+  const [initialFormState] = React.useState(() => JSON.stringify({
     customerId: initialData?.customerId ?? "",
     customerSearch: initialSelectedCustomer?.name ?? "",
     vehicle: initialData?.vehicle ?? { plate: "", brand: "", model: "", year: "" },
@@ -146,14 +163,16 @@ export function QuoteBuilder({
     description: initialData?.description ?? "",
     administrative: initialData?.administrative ?? false,
     taxEnabled: initialData?.taxEnabled ?? true,
-    items: initialData?.items.length ? initialData.items : [{ ...emptyItem }],
+    discount: initialData?.discountCents ? String(initialData.discountCents / 100) : "",
+    sections: initialSections,
     newCustomer: ["", "", ""],
   }));
 
   const currentStepIndex = steps.indexOf(step);
-  const { subtotalCents, taxCents, totalCents } = calculateTotals(items, taxEnabled);
+  const discountCents = discount.trim() ? Math.round(Number(discount.trim()) * 100) : 0;
+  const { subtotalCents, taxCents, totalCents } = calculateSectionsTotals(sections, taxEnabled, discountCents);
   const selectedCustomer = customerOptions.find((customer) => customer.id === customerId);
-  const completeItems = items.filter(isItemComplete);
+  const completeItems = sections.flatMap((s) => s.items).filter(isItemComplete);
   const validUntil = createQuoteValidUntil();
 
   React.useEffect(() => {
@@ -161,9 +180,9 @@ export function QuoteBuilder({
   }, [actionState.success, onSuccess]);
 
   React.useEffect(() => {
-    const current = JSON.stringify({ customerId, customerSearch, vehicle, title, description, administrative, taxEnabled, items, newCustomer: [newCustomerName, newCustomerEmail, newCustomerPhone] });
-    onDirtyChange?.(current !== initialFormState.current);
-  }, [administrative, customerId, customerSearch, description, items, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, taxEnabled, title, vehicle]);
+    const current = JSON.stringify({ customerId, customerSearch, vehicle, title, description, administrative, taxEnabled, discount, sections, newCustomer: [newCustomerName, newCustomerEmail, newCustomerPhone] });
+    onDirtyChange?.(current !== initialFormState);
+  }, [administrative, customerId, customerSearch, description, discount, sections, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, taxEnabled, title, vehicle, initialFormState]);
 
   React.useEffect(() => {
     if (!hasChangedStep.current) {
@@ -183,13 +202,13 @@ export function QuoteBuilder({
     if (!rowId) return;
 
     const row = itemRowRefs.current.get(rowId);
-    const description = itemDescriptionRefs.current.get(rowId);
-    if (!row || !description) return;
+    const descriptionInput = itemDescriptionRefs.current.get(rowId);
+    if (!row || !descriptionInput) return;
 
     row.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    description.focus({ preventScroll: true });
+    descriptionInput.focus({ preventScroll: true });
     pendingItemRowId.current = null;
-  }, [itemRowIds]);
+  }, [sections]);
 
   React.useEffect(() => {
     if (!isCustomerListOpen) return;
@@ -367,74 +386,182 @@ export function QuoteBuilder({
     );
   }
 
-  function addItem(type: ItemFormValue["type"]) {
-    const firstInvalidIndex = items.findIndex((item, index) => validateItemValue(item, index));
+  // ── Section / Item handlers ────────────────────────────────────────────────
 
-    if (firstInvalidIndex !== -1) {
-      setShowItemValidation(true);
-      return;
-    }
-
-    setShowItemValidation(false);
-    setStepError(null);
+  function addSection() {
     const rowId = `quote-item-${nextItemRowId.current++}`;
-    pendingItemRowId.current = rowId;
-    setAnimatedItemRowId(rowId);
-    setItemRowIds((current) => [...current, rowId]);
-    setItems((prev) => [...prev, { ...emptyItem, type }]);
+    setSections((prev) => [
+      ...prev,
+      { name: "Nueva sección", items: [{ ...emptyItem }], rowIds: [rowId] },
+    ]);
   }
 
-  function removeItem(index: number) {
-    const next = items.filter((_, i) => i !== index);
-    setItems(next);
-    setItemRowIds((current) => current.filter((_, i) => i !== index));
-    setStepError((current) =>
-      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
-    );
+  function removeSection(sectionIndex: number) {
+    setSections((prev) => prev.filter((_, i) => i !== sectionIndex));
   }
 
-  function updateItem(index: number, patch: Partial<ItemFormValue>) {
-    const next = [...items];
-    next[index] = { ...next[index], ...patch };
-    setItems(next);
-    setStepError((current) =>
-      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
-    );
-  }
-
-  function adjustItemQuantity(index: number, delta: number) {
-    const next = [...items];
-    const currentQuantity = Number(next[index]?.quantity);
-    const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
-    const limit = getMaxQuantityForType(next[index]?.type ?? "LABOR");
-    const nextQuantity = Math.min(limit, Math.max(1, baseQuantity + delta));
-    next[index] = { ...next[index], quantity: String(nextQuantity) };
-    setItems(next);
-    setStepError((current) =>
-      current ? getStepError("items", { customerId, vehicle, title, items: next }) : null,
-    );
-  }
-
-  function duplicateItem(index: number) {
-    const firstInvalidIndex = items.findIndex((item, index) => validateItemValue(item, index));
-
-    if (firstInvalidIndex !== -1) {
-      setShowItemValidation(true);
-      return;
-    }
-
-    setShowItemValidation(false);
-    setStepError(null);
-    const rowId = `quote-item-${nextItemRowId.current++}`;
-    pendingItemRowId.current = rowId;
-    setAnimatedItemRowId(rowId);
-    setItemRowIds((current) => {
-      const next = [...current];
-      next.splice(index + 1, 0, rowId);
+  function updateSectionName(sectionIndex: number, name: string) {
+    setSections((prev) => {
+      const next = [...prev];
+      next[sectionIndex] = { ...next[sectionIndex]!, name };
       return next;
     });
-    setItems((prev) => {
-      const source = prev[index];
+  }
+
+  function reorderSection(oldIndex: number, newIndex: number) {
+    setSections((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(oldIndex, 1);
+      next.splice(newIndex, 0, moved!);
+      return next;
+    });
+  }
+
+  function reorderItem(activeSectionIndex: number, activeItemIndex: number, overSectionIndex: number, overItemIndex: number) {
+    setSections((prev) => {
+      const next = [...prev];
+      
+      if (activeSectionIndex === overSectionIndex) {
+        // Same section
+        const section = { ...next[activeSectionIndex]! };
+        const newItems = [...section.items];
+        const newRowIds = [...section.rowIds];
+        
+        const [movedItem] = newItems.splice(activeItemIndex, 1);
+        newItems.splice(overItemIndex, 0, movedItem!);
+        
+        const [movedRowId] = newRowIds.splice(activeItemIndex, 1);
+        newRowIds.splice(overItemIndex, 0, movedRowId!);
+        
+        section.items = newItems;
+        section.rowIds = newRowIds;
+        next[activeSectionIndex] = section;
+      } else {
+        // Different section
+        const activeSection = { ...next[activeSectionIndex]! };
+        const overSection = { ...next[overSectionIndex]! };
+        
+        const activeItems = [...activeSection.items];
+        const activeRowIds = [...activeSection.rowIds];
+        const [movedItem] = activeItems.splice(activeItemIndex, 1);
+        const [movedRowId] = activeRowIds.splice(activeItemIndex, 1);
+        
+        const overItems = [...overSection.items];
+        const overRowIds = [...overSection.rowIds];
+        overItems.splice(overItemIndex, 0, movedItem!);
+        overRowIds.splice(overItemIndex, 0, movedRowId!);
+        
+        // Ensure active section doesn't end up completely empty
+        if (activeItems.length === 0) {
+          activeItems.push({ ...emptyItem });
+          activeRowIds.push(`quote-item-${nextItemRowId.current++}`);
+        }
+        
+        activeSection.items = activeItems;
+        activeSection.rowIds = activeRowIds;
+        overSection.items = overItems;
+        overSection.rowIds = overRowIds;
+        
+        next[activeSectionIndex] = activeSection;
+        next[overSectionIndex] = overSection;
+      }
+      return next;
+    });
+  }
+
+  function addItem(sectionIndex: number, type: ItemFormValue["type"]) {
+    const allItems = sections.flatMap((s) => s.items);
+    const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
+
+    if (firstInvalidIndex !== -1) {
+      setShowItemValidation(true);
+      return;
+    }
+
+    setShowItemValidation(false);
+    setStepError(null);
+    const rowId = `quote-item-${nextItemRowId.current++}`;
+    pendingItemRowId.current = rowId;
+    setAnimatedItemRowId(rowId);
+    setSections((prev) => {
+      const next = [...prev];
+      const section = next[sectionIndex]!;
+      next[sectionIndex] = {
+        ...section,
+        items: [...section.items, { ...emptyItem, type }],
+        rowIds: [...section.rowIds, rowId],
+      };
+      return next;
+    });
+  }
+
+  function removeItem(sectionIndex: number, itemIndex: number) {
+    setSections((prev) => {
+      const next = [...prev];
+      const section = next[sectionIndex]!;
+      const nextItems = section.items.filter((_, i) => i !== itemIndex);
+      const nextRowIds = section.rowIds.filter((_, i) => i !== itemIndex);
+      // Keep at least one empty item per section
+      const finalItems = nextItems.length > 0 ? nextItems : [{ ...emptyItem }];
+      const rowId = nextItems.length > 0 ? nextRowIds : [`quote-item-${nextItemRowId.current++}`];
+      next[sectionIndex] = { ...section, items: finalItems, rowIds: rowId };
+      return next;
+    });
+    setStepError((current) =>
+      current ? getStepError("items", { customerId, vehicle, title, sections }) : null,
+    );
+  }
+
+  function updateItem(sectionIndex: number, itemIndex: number, patch: Partial<ItemFormValue>) {
+    setSections((prev) => {
+      const next = [...prev];
+      const section = next[sectionIndex]!;
+      const nextItems = [...section.items];
+      nextItems[itemIndex] = { ...nextItems[itemIndex]!, ...patch };
+      next[sectionIndex] = { ...section, items: nextItems };
+      return next;
+    });
+    setStepError((current) =>
+      current ? getStepError("items", { customerId, vehicle, title, sections }) : null,
+    );
+  }
+
+  function adjustItemQuantity(sectionIndex: number, itemIndex: number, delta: number) {
+    setSections((prev) => {
+      const next = [...prev];
+      const section = next[sectionIndex]!;
+      const nextItems = [...section.items];
+      const currentQuantity = Number(nextItems[itemIndex]?.quantity);
+      const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
+      const limit = getMaxQuantityForType(nextItems[itemIndex]?.type ?? "LABOR");
+      const nextQuantity = Math.min(limit, Math.max(1, baseQuantity + delta));
+      nextItems[itemIndex] = { ...nextItems[itemIndex]!, quantity: String(nextQuantity) };
+      next[sectionIndex] = { ...section, items: nextItems };
+      return next;
+    });
+    setStepError((current) =>
+      current ? getStepError("items", { customerId, vehicle, title, sections }) : null,
+    );
+  }
+
+  function duplicateItem(sectionIndex: number, itemIndex: number) {
+    const allItems = sections.flatMap((s) => s.items);
+    const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
+
+    if (firstInvalidIndex !== -1) {
+      setShowItemValidation(true);
+      return;
+    }
+
+    setShowItemValidation(false);
+    setStepError(null);
+    const rowId = `quote-item-${nextItemRowId.current++}`;
+    pendingItemRowId.current = rowId;
+    setAnimatedItemRowId(rowId);
+    setSections((prev) => {
+      const next = [...prev];
+      const section = next[sectionIndex]!;
+      const source = section.items[itemIndex];
       if (!source) return prev;
 
       const duplicated: ItemFormValue = {
@@ -444,16 +571,19 @@ export function QuoteBuilder({
         unitPrice: source.unitPrice,
       };
 
-      const next = [...prev];
-      next.splice(index + 1, 0, duplicated);
+      const nextItems = [...section.items];
+      nextItems.splice(itemIndex + 1, 0, duplicated);
+      const nextRowIds = [...section.rowIds];
+      nextRowIds.splice(itemIndex + 1, 0, rowId);
+      next[sectionIndex] = { ...section, items: nextItems, rowIds: nextRowIds };
       return next;
     });
   }
 
   function goToNext() {
     if (step === "items") {
-      const normalizedItems = normalizeItems(items);
-      const firstInvalidIndex = normalizedItems.findIndex((item, index) => validateItemValue(item, index));
+      const allItems = sections.flatMap((s) => s.items);
+      const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
 
       if (firstInvalidIndex !== -1) {
         setShowItemValidation(true);
@@ -461,7 +591,9 @@ export function QuoteBuilder({
         return;
       }
 
-      if (normalizedItems.length === 0) {
+      const normalizedSecs = normalizeSections(sections);
+
+      if (normalizedSecs.length === 0 || normalizedSecs.every((s) => s.items.length === 0)) {
         setStepError("Ingresa al menos un concepto completo.");
         setShowItemValidation(false);
         return;
@@ -469,12 +601,9 @@ export function QuoteBuilder({
 
       setShowItemValidation(false);
       setStepError(null);
-      setItemRowIds((current) =>
-        current.filter((_, index) => normalizedItems.includes(items[index]!)),
-      );
-      setItems(normalizedItems);
+      setSections(normalizedSecs);
     } else {
-      const error = getStepError(step, { customerId, vehicle, title, items });
+      const error = getStepError(step, { customerId, vehicle, title, sections });
 
       if (error) {
         setStepError(error);
@@ -528,7 +657,7 @@ export function QuoteBuilder({
           event.preventDefault();
           setStepError("Avanza al último paso antes de enviar la cotización.");
         } else {
-          setItems((current) => normalizeItems(current));
+          setSections((current) => normalizeSections(current));
         }
       }}
     >
@@ -761,8 +890,7 @@ export function QuoteBuilder({
               Conceptos
             </h2>
             <QuoteBuilderItemsStep
-              items={items}
-              rowIds={itemRowIds}
+              sections={sections}
               animatedRowId={animatedItemRowId}
               showItemValidation={showItemValidation}
               completeItemsCount={completeItems.length}
@@ -771,6 +899,11 @@ export function QuoteBuilder({
               onDuplicateItem={duplicateItem}
               onUpdateItem={updateItem}
               onAdjustQuantity={adjustItemQuantity}
+              onAddSection={addSection}
+              onRemoveSection={removeSection}
+              onUpdateSectionName={updateSectionName}
+              onReorderSection={reorderSection}
+              onReorderItem={reorderItem}
               onRowRef={(rowId, node) => {
                 if (node) itemRowRefs.current.set(rowId, node);
                 else itemRowRefs.current.delete(rowId);
@@ -799,7 +932,7 @@ export function QuoteBuilder({
                   setTitle(nextTitle);
                   setStepError((current) =>
                     current
-                      ? getStepError("notes", { customerId, vehicle, title: nextTitle, items })
+                      ? getStepError("notes", { customerId, vehicle, title: nextTitle, sections })
                       : null,
                   );
                 }}
@@ -836,14 +969,36 @@ export function QuoteBuilder({
             <h2 className="sr-only" tabIndex={-1} data-step-heading="summary">
               Resumen
             </h2>
+            <div className="grid gap-2">
+              <Label htmlFor="discount">Descuento Global (Opcional)</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--color-text-muted)]">$</span>
+                <Input
+                  id="discount"
+                  name="discount"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  className="pl-7"
+                  value={discount}
+                  onChange={(event) => setDiscount(event.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                Este descuento se aplicará al subtotal, reduciendo el total sin alterar los costos individuales (ej. nómina).
+              </p>
+            </div>
             <QuoteSummaryCard
               customerName={selectedCustomer?.name ?? ""}
               vehicle={vehicle}
               title={title}
               description={description}
               administrative={administrative}
-              items={completeItems}
+              sections={sections}
               subtotalCents={subtotalCents}
+              discountCents={discountCents}
               taxCents={taxCents}
               totalCents={totalCents}
             />
@@ -860,8 +1015,9 @@ export function QuoteBuilder({
               title={title}
               description={description}
               administrative={administrative}
-              items={completeItems}
+              sections={sections}
               subtotalCents={subtotalCents}
+              discountCents={discountCents}
               taxCents={taxCents}
               totalCents={totalCents}
               validUntil={validUntil}

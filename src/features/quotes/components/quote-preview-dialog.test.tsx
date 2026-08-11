@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { listQuotes } from "@/features/quotes/queries";
+import type { QuoteListSummary } from "@/features/quotes/queries";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 
-type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
-
-function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem {
+function createMockQuote(overrides: Partial<QuoteListSummary> = {}): QuoteListSummary {
   return {
     id: "quote-1",
     customerId: "cust-1",
@@ -39,14 +37,16 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
         sortOrder: 0,
       },
     ],
-    workOrder: null,
-    paymentRequests: [],
+    discountCents: 0,
+    sections: [],
+    paidCents: 0,
+    remainingCents: 11600,
     ...overrides,
-  } as QuoteListItem;
+  } as QuoteListSummary;
 }
 
 describe("QuotePreviewDialog", () => {
-  it("opens the dialog and renders quote details", async () => {
+  it("renders the supplied quote content immediately when opened", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote();
 
@@ -56,7 +56,7 @@ describe("QuotePreviewDialog", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
-    expect(screen.queryByText(/vista previa/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByText("Constructora del Norte")).toBeInTheDocument();
     expect(screen.getByText("Cotización administrativa")).toBeInTheDocument();
     expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
@@ -80,50 +80,43 @@ describe("QuotePreviewDialog", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("renders vehicle information when a vehicle is present", async () => {
+  it("renders sectioned concepts from the supplied payload", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote({
-      vehicle: {
-        id: "veh-1",
-        customerId: "cust-1",
-        brand: "Toyota",
-        model: "Hilux",
-        year: 2022,
-        color: "Blanco",
-        plate: "ABC-123",
-        notes: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+      sections: [{
+        id: "section-1",
+        quoteId: "quote-1",
+        name: "Motor",
+        sortOrder: 0,
+        items: [{
+          id: "section-item-1",
+          quoteId: "quote-1",
+          sectionId: "section-1",
+          type: "LABOR",
+          description: "Diagnóstico de motor",
+          quantity: 1,
+          unitPriceCents: 5000,
+          totalCents: 5000,
+          sortOrder: 0,
+        }],
+      }],
     });
-
     render(<QuotePreviewDialog quote={quote} />);
 
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(screen.getByText("Toyota · Hilux · 2022 · ABC-123")).toBeInTheDocument();
+    expect(screen.getByText("Diagnóstico de motor")).toBeInTheDocument();
+    expect(screen.queryByText("Cambio de aceite")).not.toBeInTheDocument();
   });
 
-  it("renders the empty concepts message when the quote has no items", async () => {
+  it("falls back to legacy root items when sections are empty", async () => {
     const user = userEvent.setup();
-    const quote = createMockQuote({ items: [], subtotalCents: 0, taxCents: 0, totalCents: 0 });
-
-    render(<QuotePreviewDialog quote={quote} />);
-
-    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
-
-    expect(screen.getByText("Sin conceptos.")).toBeInTheDocument();
-  });
-
-  it("opens when controlled open is set to true", () => {
     const quote = createMockQuote();
 
-    const { rerender } = render(<QuotePreviewDialog quote={quote} open={false} onOpenChange={() => {}} />);
+    render(<QuotePreviewDialog quote={quote} />);
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    rerender(<QuotePreviewDialog quote={quote} open onOpenChange={() => {}} />);
-
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
   });
 });

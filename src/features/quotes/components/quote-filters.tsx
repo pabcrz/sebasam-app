@@ -13,6 +13,7 @@ const quoteStatusLabels: Record<QuoteStatus, string> = {
   APPROVED: "Aceptada",
   REJECTED: "Declinada",
   CANCELLED: "Cancelada",
+  ARCHIVED: "Archivada",
 };
 
 type QuoteFiltersCustomer = {
@@ -46,6 +47,8 @@ function getActiveFilterSummary(filters: QuoteFilterInput, customers: QuoteFilte
   if (filters.plate) summary.push(`Placas: ${filters.plate}`);
   if (filters.dateFrom) summary.push(`Desde: ${formatDateValue(filters.dateFrom)}`);
   if (filters.dateTo) summary.push(`Hasta: ${formatDateValue(filters.dateTo)}`);
+  if (filters.showCancelled) summary.push("Mostrar canceladas");
+  if (filters.showArchived) summary.push("Mostrar archivadas");
 
   return summary;
 }
@@ -59,7 +62,9 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
     Boolean(filters.number) ||
     Boolean(filters.plate) ||
     Boolean(filters.dateFrom) ||
-    Boolean(filters.dateTo);
+    Boolean(filters.dateTo) ||
+    filters.showCancelled ||
+    filters.showArchived;
   const activeFilterSummary = getActiveFilterSummary(filters, customers);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -146,13 +151,40 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Todos</SelectItem>
-                  {Object.entries(quoteStatusLabels).map(([value, label]) => (
+                  {Object.entries(quoteStatusLabels)
+                    .filter(([value]) => value !== "CANCELLED" && value !== "ARCHIVED")
+                    .map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="flex items-center gap-2 pt-8 sm:pt-0 sm:self-end sm:pb-2 lg:col-start-3">
+              <input
+                type="checkbox"
+                id="showCancelled"
+                name="showCancelled"
+                value="true"
+                defaultChecked={filters.showCancelled}
+                className="h-4 w-4 rounded border-[var(--color-border-light)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+              />
+              <Label htmlFor="showCancelled" className="text-sm font-medium">
+                Mostrar canceladas
+              </Label>
+              <input
+                type="checkbox"
+                id="showArchived"
+                name="showArchived"
+                value="true"
+                defaultChecked={filters.showArchived}
+                className="ml-3 h-4 w-4 rounded border-[var(--color-border-light)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+              />
+              <Label htmlFor="showArchived" className="text-sm font-medium">
+                Mostrar archivadas
+              </Label>
             </div>
 
             <div className="grid gap-1.5">

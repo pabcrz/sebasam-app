@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Button, ConfirmDialog } from "@/components/ui";
+import { Ban } from "lucide-react";
 import type { ButtonVariant, ButtonSize } from "@/components/ui";
 
 export interface QuoteCancelFormProps {
@@ -10,6 +11,7 @@ export interface QuoteCancelFormProps {
   quoteNumber: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
+  iconOnly?: boolean;
 }
 
 export function QuoteCancelForm({
@@ -18,6 +20,7 @@ export function QuoteCancelForm({
   quoteNumber,
   variant = "outline",
   size = "sm",
+  iconOnly = false,
 }: QuoteCancelFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
@@ -47,8 +50,8 @@ export function QuoteCancelForm({
       <Button
         type="button"
         variant={variant}
-        size={size}
-        className="w-full"
+        size={iconOnly ? "icon" : size}
+        className={iconOnly ? "" : "w-full"}
         loading={isPending}
         disabled={isPending}
         onClick={(event) => {
@@ -57,7 +60,8 @@ export function QuoteCancelForm({
         }}
         aria-label={`Cancelar cotización ${quoteNumber}`}
       >
-        Cancelar
+        <Ban className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} aria-hidden="true" />
+        {!iconOnly && "Cancelar"}
       </Button>
 
       <ConfirmDialog

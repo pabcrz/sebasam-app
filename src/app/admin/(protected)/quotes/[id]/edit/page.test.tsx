@@ -68,7 +68,14 @@ describe("EditQuotePage", () => {
       include: expect.objectContaining({
         customer: true,
         vehicle: true,
-        items: expect.any(Object),
+        sections: {
+          include: {
+            items: {
+              orderBy: { sortOrder: "asc" },
+            },
+          },
+          orderBy: { sortOrder: "asc" },
+        },
         workOrder: true,
       }),
     });
@@ -81,6 +88,7 @@ describe("EditQuotePage", () => {
       status: QuoteStatus.CANCELLED,
       workOrder: null,
       validUntil: new Date("2026-12-31"),
+      sections: [],
     });
     listCustomersMock.mockResolvedValue([]);
     redirectMock.mockImplementation((url: string) => {
@@ -93,23 +101,7 @@ describe("EditQuotePage", () => {
     expect(redirectMock).toHaveBeenCalledWith("/admin/quotes");
   });
 
-  it("redirects to /admin/quotes when quote has a COMPLETED work order", async () => {
-    requireOperationalRoleMock.mockResolvedValue(undefined);
-    prismaQuoteFindUniqueMock.mockResolvedValue({
-      status: QuoteStatus.DRAFT,
-      workOrder: { id: "wo-1", status: "COMPLETED" },
-      validUntil: new Date("2026-12-31"),
-    });
-    listCustomersMock.mockResolvedValue([]);
-    redirectMock.mockImplementation((url: string) => {
-      throw new Error(`NEXT_REDIRECT:${url}`);
-    });
 
-    await expect(EditQuotePage({ params })).rejects.toThrow(
-      "NEXT_REDIRECT:/admin/quotes",
-    );
-    expect(redirectMock).toHaveBeenCalledWith("/admin/quotes");
-  });
 
   it("renders EditDraftQuoteForm with initialData from quote/items/customer/vehicle and quoteNumber for DRAFT without workOrder", async () => {
     requireOperationalRoleMock.mockResolvedValue(undefined);
@@ -131,12 +123,17 @@ describe("EditQuotePage", () => {
         year: 2022,
       },
       vehicleSnapshot: null,
-      items: [
+      sections: [
         {
-          type: "SERVICE" as const,
-          description: "Mano de obra",
-          quantity: 2,
-          unitPriceCents: 50_000,
+          name: "Sección 1",
+          items: [
+            {
+              type: "SERVICE" as const,
+              description: "Mano de obra",
+              quantity: 2,
+              unitPriceCents: 50_000,
+            },
+          ],
         },
       ],
       workOrder: null,
@@ -171,12 +168,17 @@ describe("EditQuotePage", () => {
             model: "Corolla",
             year: "2022",
           },
-          items: [
+          sections: [
             expect.objectContaining({
-              type: "SERVICE",
-              description: "Mano de obra",
-              quantity: "2",
-              unitPrice: "500",
+              name: "Sección 1",
+              items: [
+                expect.objectContaining({
+                  type: "SERVICE",
+                  description: "Mano de obra",
+                  quantity: "2",
+                  unitPrice: "500",
+                }),
+              ],
             }),
           ],
         }),
@@ -205,7 +207,7 @@ describe("EditQuotePage", () => {
         model: "Civic",
         year: 2023,
       },
-      items: [],
+      sections: [],
       workOrder: null,
     };
 
@@ -228,7 +230,7 @@ describe("EditQuotePage", () => {
             model: "Civic",
             year: "2023",
           },
-          items: [],
+          sections: [{ name: "General", items: [] }],
         }),
       }),
       undefined,

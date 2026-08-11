@@ -1,11 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { listQuotes } from "./queries";
+import { listPaginatedQuotes, listQuotes } from "./queries";
 import { getQuotePaidTotals } from "@/features/payments/queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    quote: { findMany: vi.fn() },
+    quote: { findMany: vi.fn(), findUnique: vi.fn() },
   },
 }));
 
@@ -28,11 +28,11 @@ describe("listQuotes filters", () => {
     (getQuotePaidTotals as ReturnType<typeof vi.fn>).mockResolvedValue(new Map());
   });
 
-  it("returns all quotes when no filters are provided", async () => {
+  it("returns quotes without cancelled or archived when no filters are provided", async () => {
     await listQuotes();
 
     const call = getFindManyCall();
-    expect(call.where).toBeUndefined();
+    expect(call.where).toEqual({ status: { notIn: ["CANCELLED", "ARCHIVED"] } });
   });
 
   it("filters by status", async () => {
@@ -42,18 +42,67 @@ describe("listQuotes filters", () => {
     expect(call.where).toEqual({ status: "APPROVED" });
   });
 
-  it("ignores invalid status values", async () => {
+  it("ignores invalid status values but still hides cancelled by default", async () => {
     await listQuotes({ status: "INVALID" });
 
     const call = getFindManyCall();
-    expect(call.where).toBeUndefined();
+    expect(call.where).toEqual({ status: { notIn: ["CANCELLED", "ARCHIVED"] } });
+  });
+
+  it("shows cancelled when showCancelled is true", async () => {
+    await listQuotes({ showCancelled: true });
+
+    const call = getFindManyCall();
+    expect(call.where).toEqual({ status: { notIn: ["ARCHIVED"] } });
+  });
+
+  it("shows archived without changing the cancelled filter", async () => {
+    await listQuotes({ showArchived: true });
+
+    expect(getFindManyCall().where).toEqual({ status: { notIn: ["CANCELLED"] } });
+  });
+
+  it("paginates newest-first while preserving filters", async () => {
+    (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(
+      Array.from({ length: 21 }, (_, index) => ({
+        id: `quote-${index}`,
+        totalCents: 10000,
+        subtotalCents: 10000,
+        taxCents: 0,
+        sections: [],
+        items: [],
+        sharedQuotes: [],
+      })),
+    );
+
+    const result = await listPaginatedQuotes({ page: "2", customerId: "cust-1", showCancelled: true });
+
+    expect(getFindManyCall()).toMatchObject({
+      where: { customerId: "cust-1", status: { notIn: ["ARCHIVED"] } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: 20,
+      take: 21,
+    });
+    expect(result).toMatchObject({ page: 2, hasNextPage: true });
+    expect(result.quotes).toHaveLength(20);
+  });
+
+  it("includes root and section items in the paginated list payload", async () => {
+    await listPaginatedQuotes();
+
+    const call = getFindManyCall();
+    expect(call.include.items).toBeDefined();
+    expect(call.include.sections).toBeDefined();
   });
 
   it("filters by customerId", async () => {
     await listQuotes({ customerId: "cust-1" });
 
     const call = getFindManyCall();
-    expect(call.where).toEqual({ customerId: "cust-1" });
+    expect(call.where).toEqual({
+      customerId: "cust-1",
+      status: { notIn: ["CANCELLED", "ARCHIVED"] },
+    });
   });
 
   it("filters by number with insensitive contains", async () => {
@@ -62,6 +111,7 @@ describe("listQuotes filters", () => {
     const call = getFindManyCall();
     expect(call.where).toEqual({
       number: { contains: "C-001", mode: "insensitive" },
+      status: { notIn: ["CANCELLED", "ARCHIVED"] },
     });
   });
 
@@ -74,6 +124,7 @@ describe("listQuotes filters", () => {
         { vehicle: { plate: { contains: "ABC-123", mode: "insensitive" } } },
         { vehicleSnapshot: { path: ["plate"], string_contains: "ABC-123", mode: "insensitive" } },
       ],
+      status: { notIn: ["CANCELLED", "ARCHIVED"] },
     });
   });
 
@@ -113,6 +164,7 @@ describe("listQuotes filters", () => {
       totalCents: 10000,
       subtotalCents: 10000,
       taxCents: 0,
+      sections: [],
       items: [],
       sharedQuotes: [],
     }]);
@@ -134,6 +186,7 @@ describe("listQuotes filters", () => {
       totalCents: 10000,
       subtotalCents: 10000,
       taxCents: 0,
+      sections: [],
       items: [],
       sharedQuotes: [],
     }]);
@@ -155,6 +208,7 @@ describe("listQuotes filters", () => {
       totalCents: 10000,
       subtotalCents: 10000,
       taxCents: 0,
+      sections: [],
       items: [],
       sharedQuotes: [],
     }]);

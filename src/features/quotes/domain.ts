@@ -266,12 +266,12 @@ export async function authorizeQuote(quoteId: string, note: string, actorId?: st
     }
 
     const result = await tx.quote.updateMany({
-      where: { id: quoteId, status: QuoteStatus.SENT },
+      where: { id: quoteId, status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT] } },
       data: { status: QuoteStatus.APPROVED, approvedAt: new Date() },
     });
 
     if (result.count !== 1) {
-      throw new QuoteDecisionError("Solo se puede autorizar una cotización en estado enviado.");
+      throw new QuoteDecisionError("Solo se puede autorizar una cotización en borrador o enviada.");
     }
 
     return tx.quoteDecision.create({

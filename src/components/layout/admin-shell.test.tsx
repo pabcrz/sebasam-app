@@ -6,7 +6,12 @@ let mockPathname = "/admin";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname,
+  useRouter: () => ({
+    refresh: vi.fn(),
+    push: vi.fn(),
+  }),
 }));
+
 
 vi.mock("@/features/auth/actions", () => ({
   logoutAdmin: vi.fn(),
@@ -48,8 +53,9 @@ describe("AdminShell", () => {
       </AdminShell>,
     );
 
-    const mobileNav = screen.getByRole("navigation", { name: "Navegación móvil" });
-    const current = mobileNav.querySelectorAll('[aria-current="page"]');
+    const desktopNav = screen.getByRole("navigation", { name: "Navegación principal" });
+    const current = desktopNav.querySelectorAll('[aria-current="page"]');
+
     expect(current).toHaveLength(1);
     expect(current[0]).toHaveAttribute("href", "/admin/customers");
     expect(current[0]).toHaveTextContent("Clientes");

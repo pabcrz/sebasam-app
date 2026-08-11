@@ -35,15 +35,15 @@ describe("CashPaymentDialog", () => {
     });
     renderDialog(action);
 
-    await user.click(screen.getByRole("button", { name: /registrar pago en efectivo/i }));
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
     const amount = screen.getByRole("textbox", { name: /monto recibido/i });
     expect(amount).toHaveValue("75.00");
     await user.clear(amount);
     await user.type(amount, "12.50");
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
 
-    await waitFor(() => expect(action).toHaveBeenCalledWith("12.50", expect.any(String)));
-    expect(screen.getByRole("status")).toHaveTextContent("Pago en efectivo registrado por $12.50.");
+    await waitFor(() => expect(action).toHaveBeenCalledWith("12.50", expect.any(String), expect.any(String)));
+    expect(screen.getByRole("status")).toHaveTextContent("$12.50");
     expect(screen.getAllByText("$62.50")).toHaveLength(2);
   });
 
@@ -52,7 +52,7 @@ describe("CashPaymentDialog", () => {
     const action = vi.fn().mockRejectedValue(new Error("El pago no puede exceder el saldo pendiente."));
     renderDialog(action);
 
-    await user.click(screen.getByRole("button", { name: /registrar pago en efectivo/i }));
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("El pago no puede exceder el saldo pendiente.");
@@ -70,13 +70,14 @@ describe("CashPaymentDialog", () => {
       });
     renderDialog(action);
 
-    await user.click(screen.getByRole("button", { name: /registrar pago en efectivo/i }));
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await screen.findByRole("alert");
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
 
     await waitFor(() => expect(action).toHaveBeenCalledTimes(2));
-    expect(action.mock.calls[1]).toEqual(action.mock.calls[0]);
+    // Same operationKey (index 1) on retry
+    expect(action.mock.calls[1][1]).toBe(action.mock.calls[0][1]);
   });
 
   it("starts a new operation only after a successful payment", async () => {
@@ -94,12 +95,13 @@ describe("CashPaymentDialog", () => {
       });
     renderDialog(action);
 
-    await user.click(screen.getByRole("button", { name: /registrar pago en efectivo/i }));
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await screen.findByRole("status");
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
 
     await waitFor(() => expect(action).toHaveBeenCalledTimes(2));
+    // New operationKey (index 1) after success
     expect(action.mock.calls[1][1]).not.toBe(action.mock.calls[0][1]);
   });
 });

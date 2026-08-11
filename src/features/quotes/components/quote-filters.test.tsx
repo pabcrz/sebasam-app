@@ -2,6 +2,7 @@ import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { QuoteFilterInput } from "@/features/quotes/schemas";
 import { QuoteFilters } from "./quote-filters";
 
 const push = vi.fn();
@@ -27,8 +28,9 @@ const customers = [
   { id: "cust-2", name: "Talleres Unidos" },
 ];
 
-function renderFilters(filters = {}) {
-  return render(<QuoteFilters filters={filters} customers={customers} />);
+function renderFilters(filters: Partial<QuoteFilterInput> = {}) {
+  const mergedFilters = { showCancelled: false, showArchived: false, ...filters };
+  return render(<QuoteFilters filters={mergedFilters} customers={customers} />);
 }
 
 describe("QuoteFilters", () => {
@@ -59,11 +61,15 @@ describe("QuoteFilters", () => {
   });
 
   it("shows the clear button only when filters are active", () => {
-    const { rerender } = renderFilters();
+    const { getByText } = renderFilters({ showCancelled: false });
 
-    expect(screen.queryByRole("button", { name: /limpiar/i })).not.toBeInTheDocument();
+    expect(getByText("Sin filtros activos")).toBeInTheDocument();
+    // "Limpiar" button should not be present when there are no active filters
+    expect(() => getByRole("button", { name: /limpiar/i })).toThrow();
+  });
 
-    rerender(<QuoteFilters filters={{ status: "DRAFT" }} customers={customers} />);
+  it("shows active filter count and 'Limpiar' button when filters are active", () => {
+    renderFilters({ status: "DRAFT", showCancelled: false });
 
     expect(screen.getByRole("button", { name: /limpiar/i })).toBeInTheDocument();
   });
@@ -77,6 +83,26 @@ describe("QuoteFilters", () => {
     await user.click(screen.getByRole("button", { name: /filtrar/i }));
 
     expect(push).toHaveBeenCalledWith("/admin/quotes?number=C-001");
+  });
+
+  it("preserves an explicit cancelled filter and resets pagination on submit", async () => {
+    const user = userEvent.setup();
+    renderFilters({ showCancelled: true });
+
+    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
+    await user.click(screen.getByRole("button", { name: /filtrar/i }));
+
+    expect(push).toHaveBeenCalledWith("/admin/quotes?showCancelled=true");
+  });
+
+  it("submits the explicit archived filter", async () => {
+    const user = userEvent.setup();
+    renderFilters({ showArchived: true });
+
+    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
+    await user.click(screen.getByRole("button", { name: /filtrar/i }));
+
+    expect(push).toHaveBeenCalledWith("/admin/quotes?showArchived=true");
   });
 
   it("clears filters when the clear button is clicked", async () => {

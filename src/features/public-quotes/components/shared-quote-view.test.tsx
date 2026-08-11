@@ -24,6 +24,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps
     description: "Servicio completo",
     administrative: false,
     subtotalCents: 100_00,
+    discountCents: 0,
     taxCents: 16_00,
     totalCents: 116_00,
     taxEnabled: true,
@@ -50,6 +51,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps
       {
         id: "item-1",
         quoteId: "quote-1",
+        sectionId: null,
         type: QuoteItemType.SERVICE,
         description: "Mano de obra",
         quantity: "1",

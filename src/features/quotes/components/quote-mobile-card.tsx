@@ -1,15 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { CalendarDays, Car, ClipboardList, Copy, Pencil } from "lucide-react";
-import type { PaymentRequest, QuoteStatus, SharedQuote, WorkOrderStatus } from "@prisma/client";
-import type { listQuotes } from "@/features/quotes/queries";
-import { Badge, Button } from "@/components/ui";
+import { CalendarDays, Car, ClipboardList } from "lucide-react";
+import type { PaymentRequest, QuoteStatus, SharedQuote } from "@prisma/client";
+import type { QuoteListSummary } from "@/features/quotes/queries";
+import { Badge } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
-import { QuoteApprovalForm } from "./quote-approval-form";
 import { QuoteCancelForm } from "./quote-cancel-form";
+import { QuoteDuplicateForm } from "./quote-duplicate-form";
+import { QuoteDeleteForm } from "./quote-delete-form";
 import { ShareQuoteButton } from "./share-quote-button";
 import { ShareQuoteLinkDialog } from "./share-quote-link-dialog";
 import { QuoteAuthorizeForm } from "./quote-authorize-form";
@@ -17,52 +18,60 @@ import { PaymentRequestLinkDialog } from "@/features/payment-requests/components
 import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
-import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
+import { QuoteLifecycleForm } from "./quote-lifecycle-form";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
+import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
+import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 
-type QuoteListItem = Awaited<ReturnType<typeof listQuotes>>[number];
+type QuoteListItem = QuoteListSummary;
 
 interface QuoteListCardProps {
   quote: QuoteListItem;
   quoteStatusLabels: Record<QuoteStatus, string>;
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
-  workOrderStatusLabels: Record<WorkOrderStatus, string>;
-  workOrderStatusBadgeVariant: Record<WorkOrderStatus, "default" | "success" | "warning" | "danger" | "info">;
-  approveAction: (formData: FormData) => void | Promise<void>;
+  _approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
   shareAction: (formData: FormData) => void | Promise<void>;
   authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
-  cashPaymentAction: (amount: string, operationKey: string) => Promise<{
+  _cashPaymentAction: (amount: string, operationKey: string) => Promise<{
     payment: { amountCents: number };
     paidCents: number;
     remainingCents: number;
   }>;
   duplicateAction: (formData: FormData) => void | Promise<void>;
+  deleteAction: (formData: FormData) => void | Promise<void>;
+  archiveAction: (reason: string) => Promise<void>;
+  restoreAction: (reason: string) => Promise<void>;
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
+  workers?: WorkerOption[];
+  workOrderActions?: WorkOrderActions;
 }
 
 export function QuoteListCard({
   quote,
   quoteStatusLabels,
   quoteStatusBadgeVariant,
-  workOrderStatusLabels,
-  workOrderStatusBadgeVariant,
-  approveAction,
+  _approveAction,
   cancelAction,
   shareAction,
   authorizeAction,
   paymentRequestAction,
   paymentRequestBankAccounts,
-  cashPaymentAction,
+  _cashPaymentAction,
   duplicateAction,
+  deleteAction,
+  archiveAction,
+  restoreAction,
   customers,
   saveAction,
   searchCustomersAction,
+  workers,
+  workOrderActions,
 }: QuoteListCardProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
@@ -71,6 +80,7 @@ export function QuoteListCard({
   const vehicleDescription = quote.vehicle
     ? formatVehicle(quote.vehicle)
     : formatSnapshotVehicle(quote.vehicleSnapshot);
+  const canUsePaymentActions = quote.status === "APPROVED" && quote.workOrder?.status === "IN_PROGRESS";
 
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm">
@@ -90,7 +100,7 @@ export function QuoteListCard({
               <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
             </div>
           </div>
-          <p className="shrink-0 text-xl font-bold tabular-nums text-[var(--color-primary)]">
+          <p className="shrink-0 text-2xl font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
             {formatCents(quote.totalCents)}
           </p>
         </div>
@@ -115,9 +125,7 @@ export function QuoteListCard({
                   </span>
                 </span>
               </span>
-              <Badge variant={workOrderStatusBadgeVariant[quote.workOrder.status]}>
-                {workOrderStatusLabels[quote.workOrder.status]}
-              </Badge>
+              <span className="text-sm font-medium text-[var(--color-text-main)]">{quote.workOrder.number}</span>
             </div>
           ) : (
             <span className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
@@ -141,63 +149,73 @@ export function QuoteListCard({
 
       <div className="mt-4 grid gap-2">
         <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
-        {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
-          <div className="[&_button]:w-full [&_button]:border-[var(--color-primary)] [&_button]:text-[var(--color-primary)]">
-            {quote.activeSharedQuote ? (
-              <ShareQuoteLinkDialog sharedQuote={quote.activeSharedQuote as SharedQuote} quoteNumber={quote.number} />
-            ) : (
-              <ShareQuoteButton action={shareAction} quoteId={quote.id} quoteNumber={quote.number} />
-            )}
-          </div>
-        ) : null}
-        <div data-testid="quote-primary-actions" className="grid grid-cols-2 gap-2 [&_button]:h-9 [&_button]:w-full">
-          <div className="min-w-0">
-            {editable ? (
-              <QuoteBuilderDialog customers={customers} saveAction={saveAction} searchCustomersAction={searchCustomersAction} quote={quote} quoteNumber={quote.number} triggerClassName="h-9 w-full" triggerSize="sm" />
-            ) : (
-              <Button variant="outline" size="sm" disabled className="h-9 w-full">
-                <Pencil className="h-4 w-4" aria-hidden="true" />
-                <span>Editar</span>
-              </Button>
-            )}
-          </div>
-          <form action={duplicateAction} className="min-w-0 w-full">
-            <input type="hidden" name="quoteId" value={quote.id} />
-            <Button type="submit" variant="outline" size="sm" className="h-9 w-full">
-              <Copy className="h-4 w-4" aria-hidden="true" />
-              <span>Duplicar</span>
-            </Button>
-          </form>
-        </div>
-        {quote.status === "DRAFT" && !quote.workOrder ? (
-          <>
-            <QuoteApprovalForm
-              action={approveAction}
-              quoteId={quote.id}
+        <div className="flex flex-wrap items-center gap-2">
+          {editable ? (
+            <QuoteBuilderDialog
+              customers={customers}
+              saveAction={saveAction}
+              searchCustomersAction={searchCustomersAction}
+              quote={quote}
+              quoteNumber={quote.number}
+              triggerSize="sm"
+              triggerVariant="outline"
+            />
+          ) : null}
+
+          <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} iconOnly />
+
+          {quote.status === "DRAFT" || quote.status === "CANCELLED" ? (
+            <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} iconOnly />
+          ) : null}
+
+          {quote.activeSharedQuote ? (
+            <ShareQuoteLinkDialog
+              sharedQuote={quote.activeSharedQuote as SharedQuote}
               quoteNumber={quote.number}
             />
-            <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} />
-          </>
-        ) : null}
-        {quote.status === "SENT" || quote.status === "APPROVED" ? (
-          <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
-        ) : null}
-        {quote.status === "SENT" || quote.status === "APPROVED" ? (
-          <CashPaymentDialog
-            action={cashPaymentAction}
-            quoteNumber={quote.number}
-            totalCents={quote.totalCents}
-            paidCents={quote.paidCents}
-            remainingCents={quote.remainingCents}
-          />
-        ) : null}
-        {quote.status === "SENT" ? (
-          <QuoteAuthorizeForm
-            action={authorizeAction}
-            quoteNumber={quote.number}
-            size="sm"
-          />
-        ) : null}
+          ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
+            <ShareQuoteButton
+              action={shareAction}
+              quoteId={quote.id}
+              quoteNumber={quote.number}
+              iconOnly
+            />
+          ) : null}
+
+          {quote.status === "DRAFT" || quote.status === "SENT" ? (
+            <QuoteAuthorizeForm
+              action={authorizeAction}
+              quoteNumber={quote.number}
+              variant="outline"
+              size="sm"
+              iconOnly
+            />
+          ) : null}
+
+          {quote.status === "APPROVED" ? (
+            <WorkOrderOperationsDialog
+              quoteNumber={quote.number}
+              quoteStatus={quote.status}
+              workOrder={quote.workOrder}
+              workers={workers}
+              actions={workOrderActions}
+            />
+          ) : null}
+
+          {quote.status === "DRAFT" || quote.status === "SENT" ? (
+            <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant="outline" size="sm" iconOnly />
+          ) : null}
+
+          {quote.status === "ARCHIVED" ? (
+            <QuoteLifecycleForm action={restoreAction} mode="restore" quoteNumber={quote.number} iconOnly />
+          ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "REJECTED" || quote.status === "CANCELLED" ? (
+            <QuoteLifecycleForm action={archiveAction} mode="archive" quoteNumber={quote.number} iconOnly />
+          ) : null}
+
+          {canUsePaymentActions ? (
+            <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
+          ) : null}
+        </div>
       </div>
     </div>
   );
