@@ -406,6 +406,67 @@ export function QuoteBuilder({
     });
   }
 
+  function reorderSection(oldIndex: number, newIndex: number) {
+    setSections((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(oldIndex, 1);
+      next.splice(newIndex, 0, moved!);
+      return next;
+    });
+  }
+
+  function reorderItem(activeSectionIndex: number, activeItemIndex: number, overSectionIndex: number, overItemIndex: number) {
+    setSections((prev) => {
+      const next = [...prev];
+      
+      if (activeSectionIndex === overSectionIndex) {
+        // Same section
+        const section = { ...next[activeSectionIndex]! };
+        const newItems = [...section.items];
+        const newRowIds = [...section.rowIds];
+        
+        const [movedItem] = newItems.splice(activeItemIndex, 1);
+        newItems.splice(overItemIndex, 0, movedItem!);
+        
+        const [movedRowId] = newRowIds.splice(activeItemIndex, 1);
+        newRowIds.splice(overItemIndex, 0, movedRowId!);
+        
+        section.items = newItems;
+        section.rowIds = newRowIds;
+        next[activeSectionIndex] = section;
+      } else {
+        // Different section
+        const activeSection = { ...next[activeSectionIndex]! };
+        const overSection = { ...next[overSectionIndex]! };
+        
+        const activeItems = [...activeSection.items];
+        const activeRowIds = [...activeSection.rowIds];
+        const [movedItem] = activeItems.splice(activeItemIndex, 1);
+        const [movedRowId] = activeRowIds.splice(activeItemIndex, 1);
+        
+        const overItems = [...overSection.items];
+        const overRowIds = [...overSection.rowIds];
+        overItems.splice(overItemIndex, 0, movedItem!);
+        overRowIds.splice(overItemIndex, 0, movedRowId!);
+        
+        // Ensure active section doesn't end up completely empty
+        if (activeItems.length === 0) {
+          activeItems.push({ ...emptyItem });
+          activeRowIds.push(`quote-item-${nextItemRowId.current++}`);
+        }
+        
+        activeSection.items = activeItems;
+        activeSection.rowIds = activeRowIds;
+        overSection.items = overItems;
+        overSection.rowIds = overRowIds;
+        
+        next[activeSectionIndex] = activeSection;
+        next[overSectionIndex] = overSection;
+      }
+      return next;
+    });
+  }
+
   function addItem(sectionIndex: number, type: ItemFormValue["type"]) {
     const allItems = sections.flatMap((s) => s.items);
     const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
@@ -839,6 +900,8 @@ export function QuoteBuilder({
               onAddSection={addSection}
               onRemoveSection={removeSection}
               onUpdateSectionName={updateSectionName}
+              onReorderSection={reorderSection}
+              onReorderItem={reorderItem}
               onRowRef={(rowId, node) => {
                 if (node) itemRowRefs.current.set(rowId, node);
                 else itemRowRefs.current.delete(rowId);
