@@ -1,14 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { CalendarDays, Car, ClipboardList, Copy, Pencil } from "lucide-react";
+import { CalendarDays, Car, ClipboardList } from "lucide-react";
 import type { PaymentRequest, QuoteStatus, SharedQuote } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, Button } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
-import { QuoteApprovalForm } from "./quote-approval-form";
 import { QuoteCancelForm } from "./quote-cancel-form";
 import { QuoteDuplicateForm } from "./quote-duplicate-form";
 import { QuoteDeleteForm } from "./quote-delete-form";
@@ -19,9 +18,7 @@ import { PaymentRequestLinkDialog } from "@/features/payment-requests/components
 import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
-import { QuoteActionsMenu } from "./quote-actions-menu";
 import { QuoteLifecycleForm } from "./quote-lifecycle-form";
-import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
@@ -33,13 +30,13 @@ interface QuoteListCardProps {
   quote: QuoteListItem;
   quoteStatusLabels: Record<QuoteStatus, string>;
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
-  approveAction: (formData: FormData) => void | Promise<void>;
+  _approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
   shareAction: (formData: FormData) => void | Promise<void>;
   authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
-  cashPaymentAction: (amount: string, operationKey: string) => Promise<{
+  _cashPaymentAction: (amount: string, operationKey: string) => Promise<{
     payment: { amountCents: number };
     paidCents: number;
     remainingCents: number;
@@ -59,13 +56,13 @@ export function QuoteListCard({
   quote,
   quoteStatusLabels,
   quoteStatusBadgeVariant,
-  approveAction,
+  _approveAction,
   cancelAction,
   shareAction,
   authorizeAction,
   paymentRequestAction,
   paymentRequestBankAccounts,
-  cashPaymentAction,
+  _cashPaymentAction,
   duplicateAction,
   deleteAction,
   archiveAction,

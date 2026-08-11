@@ -61,7 +61,7 @@ describe("QuoteFilters", () => {
   });
 
   it("shows the clear button only when filters are active", () => {
-    const { getByRole, getByText } = renderFilters({ showCancelled: false });
+    const { getByText } = renderFilters({ showCancelled: false });
 
     expect(getByText("Sin filtros activos")).toBeInTheDocument();
     // "Limpiar" button should not be present when there are no active filters
@@ -69,7 +69,7 @@ describe("QuoteFilters", () => {
   });
 
   it("shows active filter count and 'Limpiar' button when filters are active", () => {
-    const { getByRole, getByText } = renderFilters({ status: "DRAFT", showCancelled: false });
+    renderFilters({ status: "DRAFT", showCancelled: false });
 
     expect(screen.getByRole("button", { name: /limpiar/i })).toBeInTheDocument();
   });
