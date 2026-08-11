@@ -135,7 +135,7 @@ export async function assignWorkOrder(input: unknown) {
     assertApprovedQuote(workOrder.quote.status);
     assertWorkOrderCanBeAssigned(workOrder.status);
 
-    const now = new Date();
+
 
     if (data.isSpecial) {
       // Special order: no UserProfile assignment
@@ -527,15 +527,15 @@ export async function assignWorkOrderAction(input: unknown): Promise<ActionResul
   }
 }
 
-export async function startWorkOrderAction(input: unknown): Promise<ActionResult> {
+export async function startWorkOrderAction(_input: unknown): Promise<ActionResult> {
   return { success: true };
 }
 
-export async function recordExecutionAction(input: unknown): Promise<ActionResult> {
+export async function recordExecutionAction(_input: unknown): Promise<ActionResult> {
   return { success: true };
 }
 
-export async function removeExecutionRecordAction(executionRecordId: string): Promise<ActionResult> {
+export async function removeExecutionRecordAction(_executionRecordId: string): Promise<ActionResult> {
   return { success: true };
 }
 

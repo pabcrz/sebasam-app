@@ -1,7 +1,7 @@
 "use client";
 
 import { QuoteItemType } from "@prisma/client";
-import { Copy, Minus, Plus, Trash2, GripVertical, PlusCircle } from "lucide-react";
+import { Copy, Minus, Plus, Trash2, PlusCircle } from "lucide-react";
 import {
   Badge,
   Button,
@@ -31,7 +31,6 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-  DragOverEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -77,7 +76,6 @@ export function QuoteBuilderItemsStep({
   onDescriptionRef,
 }: QuoteBuilderItemsStepProps) {
   // Offset for display numbering across sections
-  let globalItemIndex = 0;
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -172,8 +170,9 @@ export function QuoteBuilderItemsStep({
             <div className="grid gap-3" data-testid={`concept-list-${sectionIndex}`}>
               {section.items.map((item, itemIndex) => {
                 const rowId = section.rowIds[itemIndex]!;
-                const displayIndex = globalItemIndex;
-                globalItemIndex += 1;
+                const displayIndex = sections
+                  .slice(0, sectionIndex)
+                  .reduce((acc, s) => acc + s.items.length, 0) + itemIndex;
                 const itemError = showItemValidation ? validateItemValue(item, displayIndex) : null;
                 const lineTotalCents = Math.round(Number(item.quantity) * Number(item.unitPrice) * 100);
                 const typeQuantityLimit = getMaxQuantityForType(item.type);

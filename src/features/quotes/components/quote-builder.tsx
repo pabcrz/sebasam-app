@@ -133,27 +133,29 @@ export function QuoteBuilder({
   const [discount, setDiscount] = React.useState(initialData?.discountCents ? String(initialData.discountCents / 100) : "");
 
   // ── Sections / Items state ─────────────────────────────────────────────────
-  const nextItemRowId = React.useRef(0);
-
-  const initialSections = React.useRef<SectionFormValue[] | null>(null);
-  if (initialSections.current === null) {
-    initialSections.current = initialData?.sections?.length
+  const [initialSections] = React.useState<SectionFormValue[]>(() => {
+    let idCounter = 0;
+    return initialData?.sections?.length
       ? initialData.sections.map((sec) => ({
           name: sec.name,
           items: sec.items,
-          rowIds: sec.items.map(() => `quote-item-${nextItemRowId.current++}`),
+          rowIds: sec.items.map(() => `quote-item-${idCounter++}`),
         }))
-      : [makeEmptySection(nextItemRowId.current++)];
-  }
+      : [makeEmptySection(idCounter++)];
+  });
 
-  const [sections, setSections] = React.useState<SectionFormValue[]>(() => initialSections.current!);
+  const nextItemRowId = React.useRef(
+    initialSections.reduce((acc, sec) => acc + sec.items.length, 0)
+  );
+
+  const [sections, setSections] = React.useState<SectionFormValue[]>(initialSections);
 
   const [animatedItemRowId, setAnimatedItemRowId] = React.useState<string | null>(null);
   const pendingItemRowId = React.useRef<string | null>(null);
   const itemRowRefs = React.useRef(new Map<string, HTMLDivElement>());
   const itemDescriptionRefs = React.useRef(new Map<string, HTMLInputElement>());
 
-  const initialFormState = React.useRef(JSON.stringify({
+  const [initialFormState] = React.useState(() => JSON.stringify({
     customerId: initialData?.customerId ?? "",
     customerSearch: initialSelectedCustomer?.name ?? "",
     vehicle: initialData?.vehicle ?? { plate: "", brand: "", model: "", year: "" },
@@ -162,7 +164,7 @@ export function QuoteBuilder({
     administrative: initialData?.administrative ?? false,
     taxEnabled: initialData?.taxEnabled ?? true,
     discount: initialData?.discountCents ? String(initialData.discountCents / 100) : "",
-    sections: initialSections.current,
+    sections: initialSections,
     newCustomer: ["", "", ""],
   }));
 
@@ -179,8 +181,8 @@ export function QuoteBuilder({
 
   React.useEffect(() => {
     const current = JSON.stringify({ customerId, customerSearch, vehicle, title, description, administrative, taxEnabled, discount, sections, newCustomer: [newCustomerName, newCustomerEmail, newCustomerPhone] });
-    onDirtyChange?.(current !== initialFormState.current);
-  }, [administrative, customerId, customerSearch, description, discount, sections, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, taxEnabled, title, vehicle]);
+    onDirtyChange?.(current !== initialFormState);
+  }, [administrative, customerId, customerSearch, description, discount, sections, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, taxEnabled, title, vehicle, initialFormState]);
 
   React.useEffect(() => {
     if (!hasChangedStep.current) {
