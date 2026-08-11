@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
 import {
-  cancelDraftQuote,
+  cancelQuote,
   archiveQuote,
-  cancelDraftQuoteFromForm,
+  cancelQuoteFromForm,
   createQuote,
   createQuoteFromForm,
   createQuoteFromWorkspace,
@@ -630,7 +630,7 @@ describe("duplicateQuoteFromForm", () => {
   });
 });
 
-describe("cancelDraftQuote", () => {
+describe("cancelQuote", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("cancels a DRAFT quote without deleting it", async () => {
@@ -638,7 +638,7 @@ describe("cancelDraftQuote", () => {
     tx.quote.updateMany.mockResolvedValue({ count: 1 });
     tx.quote.findUniqueOrThrow.mockResolvedValue({ id: "quote-1", status: QuoteStatus.CANCELLED });
 
-    const result = await cancelDraftQuote("quote-1");
+    const result = await cancelQuote("quote-1");
 
     expect(tx.quote.updateMany).toHaveBeenCalledWith({
       where: { id: "quote-1", status: QuoteStatus.DRAFT },
@@ -650,16 +650,16 @@ describe("cancelDraftQuote", () => {
   it("throws when the quote is not found", async () => {
     const tx = mockTx();
     tx.quote.findUnique.mockResolvedValue(null);
-    await expect(cancelDraftQuote("quote-1")).rejects.toThrow("Quote not found.");
+    await expect(cancelQuote("quote-1")).rejects.toThrow("Quote not found.");
   });
 
   it("throws when the quote is not in DRAFT status", async () => {
     mockTx(QuoteStatus.APPROVED);
-    await expect(cancelDraftQuote("quote-1")).rejects.toThrow("Only draft quotes can be cancelled.");
+    await expect(cancelQuote("quote-1")).rejects.toThrow("Only draft quotes can be cancelled.");
   });
 });
 
-describe("cancelDraftQuoteFromForm", () => {
+describe("cancelQuoteFromForm", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("cancels a draft quote from form data and redirects", async () => {
@@ -670,13 +670,13 @@ describe("cancelDraftQuoteFromForm", () => {
     const formData = new MockFormData();
     formData.set("quoteId", "quote-1");
 
-    await cancelDraftQuoteFromForm(formData as unknown as FormData);
+    await cancelQuoteFromForm(formData as unknown as FormData);
 
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?cancelled=1");
   });
 
   it("redirects with invalid-cancellation when quoteId is missing", async () => {
-    await cancelDraftQuoteFromForm(new MockFormData() as unknown as FormData);
+    await cancelQuoteFromForm(new MockFormData() as unknown as FormData);
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid-cancellation");
   });
 
@@ -685,7 +685,7 @@ describe("cancelDraftQuoteFromForm", () => {
     const formData = new MockFormData();
     formData.set("quoteId", "quote-1");
 
-    await cancelDraftQuoteFromForm(formData as unknown as FormData);
+    await cancelQuoteFromForm(formData as unknown as FormData);
 
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=not-draft");
   });

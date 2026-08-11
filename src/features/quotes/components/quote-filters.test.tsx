@@ -37,7 +37,7 @@ describe("QuoteFilters", () => {
   it("keeps filter fields collapsed by default", () => {
     renderFilters();
 
-    expect(screen.getByRole("button", { name: /mostrar filtros/i })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.screen.getByRole("button", { name: /mostrar filtros/i })).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByLabelText("Estatus")).not.toBeInTheDocument();
   });
 
@@ -45,9 +45,9 @@ describe("QuoteFilters", () => {
     const user = userEvent.setup();
     renderFilters();
 
-    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
+    await user.click(screen.screen.getByRole("button", { name: /mostrar filtros/i }));
 
-    expect(screen.getByRole("button", { name: /ocultar filtros/i })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.screen.getByRole("button", { name: /ocultar filtros/i })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByLabelText("Estatus")).toBeInTheDocument();
     expect(screen.getByLabelText("Cliente")).toBeInTheDocument();
     expect(screen.getByLabelText("Folio")).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe("QuoteFilters", () => {
     expect(screen.getByLabelText("Desde")).toBeInTheDocument();
     expect(screen.getByLabelText("Hasta")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /ocultar filtros/i }));
+    await user.click(screen.screen.getByRole("button", { name: /ocultar filtros/i }));
 
     expect(screen.queryByLabelText("Estatus")).not.toBeInTheDocument();
   });
@@ -65,22 +65,22 @@ describe("QuoteFilters", () => {
 
     expect(getByText("Sin filtros activos")).toBeInTheDocument();
     // "Limpiar" button should not be present when there are no active filters
-    expect(() => getByRole("button", { name: /limpiar/i })).toThrow();
+    expect(() => screen.getByRole("button", { name: /limpiar/i })).toThrow();
   });
 
   it("shows active filter count and 'Limpiar' button when filters are active", () => {
     renderFilters({ status: "DRAFT", showCancelled: false });
 
-    expect(screen.getByRole("button", { name: /limpiar/i })).toBeInTheDocument();
+    expect(screen.screen.getByRole("button", { name: /limpiar/i })).toBeInTheDocument();
   });
 
   it("pushes filter params to the router on submit", async () => {
     const user = userEvent.setup();
     renderFilters();
 
-    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
+    await user.click(screen.screen.getByRole("button", { name: /mostrar filtros/i }));
     await user.type(screen.getByLabelText("Folio"), "C-001");
-    await user.click(screen.getByRole("button", { name: /filtrar/i }));
+    await user.click(screen.screen.getByRole("button", { name: /filtrar/i }));
 
     expect(push).toHaveBeenCalledWith("/admin/quotes?number=C-001");
   });
@@ -89,8 +89,8 @@ describe("QuoteFilters", () => {
     const user = userEvent.setup();
     renderFilters({ showCancelled: true });
 
-    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
-    await user.click(screen.getByRole("button", { name: /filtrar/i }));
+    await user.click(screen.screen.getByRole("button", { name: /mostrar filtros/i }));
+    await user.click(screen.screen.getByRole("button", { name: /filtrar/i }));
 
     expect(push).toHaveBeenCalledWith("/admin/quotes?showCancelled=true");
   });
@@ -99,8 +99,8 @@ describe("QuoteFilters", () => {
     const user = userEvent.setup();
     renderFilters({ showArchived: true });
 
-    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
-    await user.click(screen.getByRole("button", { name: /filtrar/i }));
+    await user.click(screen.screen.getByRole("button", { name: /mostrar filtros/i }));
+    await user.click(screen.screen.getByRole("button", { name: /filtrar/i }));
 
     expect(push).toHaveBeenCalledWith("/admin/quotes?showArchived=true");
   });
@@ -109,7 +109,7 @@ describe("QuoteFilters", () => {
     const user = userEvent.setup();
     renderFilters({ status: "DRAFT" });
 
-    await user.click(screen.getByRole("button", { name: /limpiar/i }));
+    await user.click(screen.screen.getByRole("button", { name: /limpiar/i }));
 
     expect(push).toHaveBeenCalledWith("/admin/quotes");
   });
@@ -118,7 +118,7 @@ describe("QuoteFilters", () => {
     const user = userEvent.setup();
     renderFilters();
 
-    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
+    await user.click(screen.screen.getByRole("button", { name: /mostrar filtros/i }));
     await user.click(screen.getByLabelText("Cliente"));
 
     expect(screen.getAllByText("Constructora del Norte").length).toBeGreaterThanOrEqual(1);

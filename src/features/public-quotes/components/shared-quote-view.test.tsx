@@ -22,7 +22,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps
     status,
     title: "Servicio general",
     description: "Servicio completo",
-    administrative: false,
+    administrative: false, deletedAt: null,
     subtotalCents: 100_00,
     discountCents: 0,
     taxCents: 16_00,

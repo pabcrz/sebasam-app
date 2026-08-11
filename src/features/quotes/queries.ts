@@ -41,6 +41,8 @@ function buildQuoteWhere(input: unknown, options: { excludeWithActiveWorkOrder?:
     };
   }
 
+  where.deletedAt = null;
+
 
   if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
     where.status = filters.status as QuoteStatus;

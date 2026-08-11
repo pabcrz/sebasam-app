@@ -167,6 +167,7 @@ model Quote {
   administrative  Boolean     @default(false)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  deletedAt       DateTime?
 
   customer        Customer         @relation(fields: [customerId], references: [id])
   vehicle         Vehicle?         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)

@@ -52,7 +52,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     validUntil: new Date("2026-12-31"),
 
     approvedAt: null,
-    administrative: false,
+    administrative: false, deletedAt: null,
     createdAt: new Date("2026-07-01"),
     updatedAt: new Date("2026-07-01"),
     sections: [],

@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   approveQuoteAndCreateWorkOrderFromForm,
-  cancelDraftQuoteFromForm,
+  cancelQuoteFromForm,
   shareQuoteFromForm,
   authorizeQuoteAction,
   duplicateQuoteFromForm,
-  deleteDraftQuoteFromForm,
+  deleteQuoteFromForm,
   createQuoteFromWorkspace,
   updateDraftQuoteFromWorkspace,
   archiveQuote,
@@ -132,14 +132,14 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 quoteStatusLabels={quoteStatusLabels}
                 quoteStatusBadgeVariant={quoteStatusBadgeVariant}
                 approveAction={approveQuoteAndCreateWorkOrderFromForm}
-                cancelAction={cancelDraftQuoteFromForm}
+                cancelAction={cancelQuoteFromForm}
                 shareAction={shareQuoteFromForm}
                 authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
                 paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
                 paymentRequestBankAccounts={eligiblePaymentRequestBankAccounts}
                 cashPaymentAction={recordCashPaymentAction.bind(null, quote.id)}
                 duplicateAction={duplicateQuoteFromForm}
-                deleteAction={deleteDraftQuoteFromForm}
+                deleteAction={deleteQuoteFromForm}
                 archiveAction={archiveQuote.bind(null, quote.id)}
                 restoreAction={restoreArchivedQuote.bind(null, quote.id)}
                 customers={customers}

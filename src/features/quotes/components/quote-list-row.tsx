@@ -28,14 +28,21 @@ interface QuoteListRowProps {
   quote: QuoteListItem;
   quoteStatusLabels: Record<QuoteStatus, string>;
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
-  _approveAction: (formData: FormData) => void | Promise<void>;
+  approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
   shareAction: (formData: FormData) => void | Promise<void>;
   authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
+  cashPaymentAction: (amount: string, operationKey: string) => Promise<{
+    payment: { amountCents: number };
+    paidCents: number;
+    remainingCents: number;
+  }>;
   duplicateAction: (formData: FormData) => void | Promise<void>;
   deleteAction: (formData: FormData) => void | Promise<void>;
+  archiveAction: (reason: string) => Promise<void>;
+  restoreAction: (reason: string) => Promise<void>;
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
@@ -47,14 +54,17 @@ export function QuoteListRow({
   quote,
   quoteStatusLabels,
   quoteStatusBadgeVariant,
-  _approveAction,
+  approveAction: _approveAction,
   cancelAction,
   shareAction,
   authorizeAction,
   paymentRequestAction,
   paymentRequestBankAccounts,
+  cashPaymentAction: _cashPaymentAction,
   duplicateAction,
   deleteAction,
+  archiveAction,
+  restoreAction,
   customers,
   saveAction,
   searchCustomersAction,
@@ -78,6 +88,9 @@ export function QuoteListRow({
           <Badge variant={quoteStatusBadgeVariant[quote.status]} className="w-fit">
             {quoteStatusLabels[quote.status]}
           </Badge>
+          {quote.status === "DRAFT" && quote.submissionKey ? (
+            <Badge variant="warning" className="w-fit">Editada</Badge>
+          ) : null}
         </div>
       </TableCell>
       <TableCell>{quote.customer.name}</TableCell>

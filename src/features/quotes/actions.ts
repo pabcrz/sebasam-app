@@ -262,6 +262,8 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       throw new Error("This quote is not editable.");
     }
 
+    const isRevertingFromSent = quote.status === QuoteStatus.SENT;
+
     const paidTotals = await tx.payment.aggregate({
       where: { quoteId, status: PaymentStatus.PAID },
       _sum: { amountCents: true },
@@ -288,6 +290,7 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
     const updatedQuote = await tx.quote.update({
       where: { id: quoteId },
       data: {
+        status: isRevertingFromSent ? QuoteStatus.DRAFT : undefined,
         customerId: data.customerId,
         vehicleId: vehicle?.id ?? null,
         vehicleSnapshot,
@@ -387,7 +390,7 @@ export async function updateDraftQuoteFromWorkspace(
   return { success: true };
 }
 
-export async function cancelDraftQuote(quoteId: string) {
+export async function cancelQuote(quoteId: string) {
   await requireOperationalRole();
 
   return prisma.$transaction(async (tx) => {
@@ -397,12 +400,12 @@ export async function cancelDraftQuote(quoteId: string) {
       throw new Error("Quote not found.");
     }
 
-    if (quote.status !== QuoteStatus.DRAFT) {
-      throw new Error("Only draft quotes can be cancelled.");
+    if (quote.status !== QuoteStatus.DRAFT && quote.status !== QuoteStatus.SENT) {
+      throw new Error("Only draft or sent quotes can be cancelled.");
     }
 
     const updated = await tx.quote.updateMany({
-      where: { id: quoteId, status: QuoteStatus.DRAFT },
+      where: { id: quoteId, status: quote.status },
       data: { status: QuoteStatus.CANCELLED },
     });
 
@@ -414,7 +417,7 @@ export async function cancelDraftQuote(quoteId: string) {
   });
 }
 
-export async function cancelDraftQuoteFromForm(formData: FormData) {
+export async function cancelQuoteFromForm(formData: FormData) {
   await requireOperationalRole();
 
   const quoteId = formData.get("quoteId");
@@ -424,10 +427,10 @@ export async function cancelDraftQuoteFromForm(formData: FormData) {
   }
 
   try {
-    await cancelDraftQuote(quoteId);
+    await cancelQuote(quoteId);
   } catch (error) {
-    if (error instanceof Error && error.message === "Only draft quotes can be cancelled.") {
-      redirect(`${quotesPath}?error=not-draft`);
+    if (error instanceof Error && error.message.includes("cancelled")) {
+      redirect(`${quotesPath}?error=not-draft-sent`);
     }
 
     redirect(`${quotesPath}?error=cancellation-failed`);
@@ -492,7 +495,7 @@ export async function restoreArchivedQuote(quoteId: string, reason: string) {
   revalidatePath(quotesPath);
 }
 
-export async function deleteDraftQuote(quoteId: string) {
+export async function deleteQuote(quoteId: string) {
   await requireOperationalRole();
 
   return prisma.$transaction(async (tx) => {
@@ -502,16 +505,24 @@ export async function deleteDraftQuote(quoteId: string) {
       throw new Error("Quote not found.");
     }
 
-    if (quote.status !== QuoteStatus.DRAFT) {
-      throw new Error("Only draft quotes can be deleted.");
+    const deletableStatuses: QuoteStatus[] = [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.CANCELLED, QuoteStatus.REJECTED, QuoteStatus.ARCHIVED];
+    if (!deletableStatuses.includes(quote.status)) {
+      throw new Error("This quote cannot be deleted in its current state.");
     }
 
-    await tx.quote.delete({ where: { id: quoteId } });
+    if (await tx.payment.count({ where: { quoteId } })) {
+      throw new Error("This quote has financial activity and cannot be deleted.");
+    }
+
+    await tx.quote.update({
+      where: { id: quoteId },
+      data: { deletedAt: new Date() },
+    });
     return quote;
   });
 }
 
-export async function deleteDraftQuoteFromForm(formData: FormData) {
+export async function deleteQuoteFromForm(formData: FormData) {
   await requireOperationalRole();
 
   const quoteId = formData.get("quoteId");
@@ -521,10 +532,10 @@ export async function deleteDraftQuoteFromForm(formData: FormData) {
   }
 
   try {
-    await deleteDraftQuote(quoteId);
+    await deleteQuote(quoteId);
   } catch (error) {
     if (error instanceof Error && error.message.includes("deleted")) {
-      redirect(`${quotesPath}?error=not-draft-delete`);
+      redirect(`${quotesPath}?error=cannot-delete`);
     }
 
     redirect(`${quotesPath}?error=deletion-failed`);

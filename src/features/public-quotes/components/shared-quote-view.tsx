@@ -96,7 +96,7 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-[var(--color-text-muted)]">
         <p>Folio {quote.number}</p>
-        {quote.status !== "SENT" ? (
+        {quote.status !== "SENT" && quote.status !== "DRAFT" ? (
           <p className="font-medium">{quoteStatusLabels[quote.status]}</p>
         ) : null}
       </div>
