@@ -7,7 +7,7 @@ import { GripVertical } from "lucide-react";
 
 type SortableContextType = {
   attributes: Record<string, any>;
-  listeners: Record<string, any>;
+  listeners: Record<string, any> | undefined;
   setActivatorNodeRef: (node: HTMLElement | null) => void;
 };
 
@@ -16,15 +16,15 @@ const SortableItemContext = createContext<SortableContextType | null>(null);
 export function DragHandle({ className }: { className?: string }) {
   const context = useContext(SortableItemContext);
   if (!context) return <GripVertical className={`size-4 shrink-0 text-[var(--color-text-muted)] ${className || ""}`} aria-hidden="true" />;
-  
   return (
-    <GripVertical
+    <div
       ref={context.setActivatorNodeRef}
       {...context.attributes}
       {...context.listeners}
-      className={`size-4 shrink-0 text-[var(--color-text-muted)] touch-none cursor-grab ${className || ""}`}
-      aria-hidden="true"
-    />
+      className={`flex items-center justify-center touch-none cursor-grab text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] ${className || ""}`}
+    >
+      <GripVertical className="size-4 shrink-0" aria-hidden="true" />
+    </div>
   );
 }
 
