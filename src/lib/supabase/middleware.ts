@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { measureServerTiming } from "@/lib/server-timing";
 
 const protectedAdminPrefix = "/admin";
 const loginPath = "/admin/login";
@@ -26,16 +27,17 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data, error } = await measureServerTiming("auth", "proxy.claims", () =>
+    supabase.auth.getClaims(),
+  );
+  const hasIdentity = !error && typeof data?.claims?.sub === "string";
 
   const isProtectedAdminRoute =
     request.nextUrl.pathname === protectedAdminPrefix ||
     (request.nextUrl.pathname.startsWith(`${protectedAdminPrefix}/`) &&
       request.nextUrl.pathname !== loginPath);
 
-  if (isProtectedAdminRoute && !user) {
+  if (isProtectedAdminRoute && !hasIdentity) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = loginPath;
     redirectUrl.search = "";

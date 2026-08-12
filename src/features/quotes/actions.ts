@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { PaymentRequestStatus, PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
+import { measureServerTiming, recordServerTiming } from "@/lib/server-timing";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { createVehicleSnapshot, type VehicleInput } from "@/features/vehicles/schemas";
 import { quoteFormInputSchema, quoteInputSchema, quoteLifecycleReasonSchema, type QuoteVehicleInput } from "./schemas";
@@ -691,7 +692,9 @@ export async function authorizeQuoteAction(quoteId: string, note: string) {
   }
 
   try {
-    await authorizeQuote(quoteId, note, profile.id);
+    await measureServerTiming("action", "quote.authorize", () =>
+      authorizeQuote(quoteId, note, profile.id),
+    );
   } catch (error) {
     if (error instanceof QuoteDecisionError) {
       return { success: false, error: error.message };
@@ -700,7 +703,13 @@ export async function authorizeQuoteAction(quoteId: string, note: string) {
     return { success: false, error: "No se pudo autorizar la cotización." };
   }
 
+  const revalidationStartedAt = performance.now();
   revalidatePath(quotesPath);
+  recordServerTiming(
+    "post-action",
+    "quote.authorize.revalidate",
+    performance.now() - revalidationStartedAt,
+  );
   return { success: true };
 }
 

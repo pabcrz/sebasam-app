@@ -22,8 +22,6 @@ import {
 } from "@/components/ui/select";
 import type { ButtonVariant, ButtonSize } from "@/components/ui";
 
-import { useRouter } from "next/navigation";
-
 export interface QuoteAuthorizeFormProps {
   action: (note: string) => Promise<{ success: boolean; error?: string }>;
   quoteNumber: string;
@@ -39,6 +37,27 @@ const AUTHORIZATION_METHODS = [
   "Otro",
 ];
 
+const clientTimingOptInKey = "SEBASAM_PERF_TIMINGS";
+
+function startClientActionTiming() {
+  try {
+    return window.localStorage.getItem(clientTimingOptInKey) === "1" ? performance.now() : null;
+  } catch {
+    return null;
+  }
+}
+
+function recordClientActionTiming(startedAt: number | null, outcome: "success" | "failure") {
+  if (startedAt === null) return;
+
+  console.info("[client-timing]", {
+    stage: "client",
+    operation: "quote.authorize.action-round-trip",
+    durationMs: Math.round(Math.max(0, performance.now() - startedAt) * 100) / 100,
+    outcome,
+  });
+}
+
 export function QuoteAuthorizeForm({
   action,
   quoteNumber,
@@ -46,7 +65,6 @@ export function QuoteAuthorizeForm({
   size = "sm",
   iconOnly = false,
 }: QuoteAuthorizeFormProps) {
-  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const [method, setMethod] = React.useState<string>("");
@@ -69,18 +87,27 @@ export function QuoteAuthorizeForm({
       : method;
 
     setError(null);
+    const timingStartedAt = startClientActionTiming();
     startTransition(async () => {
-      const result = await action(finalNote);
+      let result: Awaited<ReturnType<QuoteAuthorizeFormProps["action"]>>;
+
+      try {
+        result = await action(finalNote);
+      } catch (error) {
+        recordClientActionTiming(timingStartedAt, "failure");
+        throw error;
+      }
+
+      recordClientActionTiming(timingStartedAt, result.success ? "success" : "failure");
       if (result.success) {
         setOpen(false);
         setMethod("");
         setNote("");
-        router.refresh();
       } else {
         setError(result.error ?? "No se pudo autorizar la cotización.");
       }
     });
-  }, [action, method, note, router]);
+  }, [action, method, note]);
 
 
   const handleOpenChange = React.useCallback(

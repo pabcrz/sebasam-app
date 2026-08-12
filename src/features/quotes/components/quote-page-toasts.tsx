@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 
 const errorMessages: Record<string, string> = {
@@ -22,10 +22,14 @@ const errorMessages: Record<string, string> = {
 
 export function QuotePageToasts() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const processedSearchRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
+    const search = searchParams.toString();
+    if (processedSearchRef.current === search) return;
+    processedSearchRef.current = search;
+
+    const params = new URLSearchParams(search);
     let changed = false;
 
     if (params.get("created")) {
@@ -73,9 +77,10 @@ export function QuotePageToasts() {
 
     if (changed) {
       const query = params.toString();
-      router.replace(`/admin/quotes${query ? `?${query}` : ""}`, { scroll: false });
+      const url = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+      window.history.replaceState(window.history.state, "", url);
     }
-  }, [searchParams, router]);
+  }, [searchParams]);
 
   return null;
 }
