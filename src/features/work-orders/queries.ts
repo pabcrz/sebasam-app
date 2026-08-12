@@ -61,12 +61,12 @@ export async function listWorkOrders() {
   return workOrders.map(serializeWorkOrder);
 }
 
-/** Returns active work orders (ASSIGNED) — shown in the Trabajos section. */
+/** Returns active work orders shown in the Trabajos section. */
 export async function listActiveWorkOrders() {
   await requireOperationalRole();
 
   const workOrders = await prisma.workOrder.findMany({
-    where: { status: WorkOrderStatus.ASSIGNED },
+    where: { status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] } },
     include: workOrderInclude,
     orderBy: { createdAt: "desc" },
   });

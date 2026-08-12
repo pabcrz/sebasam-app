@@ -62,6 +62,20 @@ describe("listQuotes filters", () => {
     expect(getFindManyCall().where).toEqual({ status: { notIn: ["CANCELLED"] } });
   });
 
+  it("keeps PLANNED work in Cotizaciones and excludes later operational queues", async () => {
+    await listPaginatedQuotes({}, { operationalQueue: "quotes" });
+
+    expect(getFindManyCall().where).toMatchObject({
+      status: { in: ["DRAFT", "SENT", "APPROVED"] },
+      NOT: {
+        workOrder: {
+          status: { in: ["ASSIGNED", "IN_PROGRESS", "COMPLETED"] },
+        },
+      },
+    });
+    expect(getFindManyCall().where.NOT.workOrder.status.in).not.toContain("PLANNED");
+  });
+
   it("paginates newest-first while preserving filters", async () => {
     (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(
       Array.from({ length: 21 }, (_, index) => ({

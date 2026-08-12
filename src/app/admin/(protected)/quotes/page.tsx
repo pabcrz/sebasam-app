@@ -89,7 +89,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const hasFilters = hasFilterValue({ ...filters, showCancelled: filters.showCancelled || undefined, showArchived: filters.showArchived || undefined });
   const [customers, quotePage, paymentSettings, workers] = await Promise.all([
     listCustomers(),
-    listPaginatedQuotes(params, { excludeWithActiveWorkOrder: false }),
+    listPaginatedQuotes(params, { operationalQueue: "quotes" }),
     getPaymentSettings(),
     listActiveWorkers(),
   ]);
