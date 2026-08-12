@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CustomerStatus, QuoteItemType, QuoteStatus } from "@prisma/client";
+import { CustomerStatus, QuoteItemType, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { SharedQuoteView, type SharedQuoteViewProps } from "./shared-quote-view";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
 
@@ -13,7 +14,7 @@ vi.mock("@/features/quotes/actions", () => ({
 const acceptSharedQuoteActionMock = vi.mocked(acceptSharedQuoteAction);
 const declineSharedQuoteActionMock = vi.mocked(declineSharedQuoteAction);
 
-function makeQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps["quote"] {
+function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: WorkOrderStatus): SharedQuoteViewProps["quote"] {
   const quote: SharedQuoteViewProps["quote"] = {
     id: "quote-1",
     submissionKey: null,
@@ -47,6 +48,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps
       updatedAt: new Date("2026-07-01T12:00:00.000Z"),
     },
     vehicle: null,
+    workOrder: workOrderStatus ? { status: workOrderStatus } : null,
     items: [
       {
         id: "item-1",
@@ -86,13 +88,25 @@ describe("SharedQuoteView", () => {
     expect(screen.getByRole("button", { name: "Aceptar cotización" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Declinar cotización" })).toBeInTheDocument();
     expect(screen.queryByText(/partida/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Progreso de la cotización" })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [undefined, "Aceptada"],
+    [WorkOrderStatus.ASSIGNED, "Orden asignada / En proceso"],
+    [WorkOrderStatus.IN_PROGRESS, "Orden asignada / En proceso"],
+    [WorkOrderStatus.COMPLETED, "Finalizada"],
+  ])("derives approved progress from work order status %s", (workOrderStatus, currentStage) => {
+    render(<SharedQuoteView quote={makeQuote(QuoteStatus.APPROVED, workOrderStatus)} token="token-123" />);
+    const progress = screen.getByRole("list", { name: "Progreso de la cotización" });
+    expect(within(progress).getByText(currentStage)).toHaveAttribute("aria-current", "step");
   });
 
   it("keeps final status as secondary feedback without decision controls", () => {
     render(<SharedQuoteView quote={makeQuote(QuoteStatus.APPROVED)} token="token-123" />);
 
     expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
-    expect(screen.getByText("Aceptada")).toBeInTheDocument();
+    expect(screen.getAllByText("Aceptada")).toHaveLength(2);
     expect(screen.queryByRole("button", { name: "Aceptar cotización" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Declinar cotización" })).not.toBeInTheDocument();
   });

@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   approveQuoteAndCreateWorkOrderFromForm,
   cancelQuoteFromForm,
-  shareQuoteFromForm,
+  publishSharedQuote,
   authorizeQuoteAction,
   duplicateQuoteFromForm,
   deleteQuoteFromForm,
@@ -133,7 +133,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 quoteStatusBadgeVariant={quoteStatusBadgeVariant}
                 approveAction={approveQuoteAndCreateWorkOrderFromForm}
                 cancelAction={cancelQuoteFromForm}
-                shareAction={shareQuoteFromForm}
+                shareAction={publishSharedQuote.bind(null, quote.id)}
                 authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
                 paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
                 paymentRequestBankAccounts={eligiblePaymentRequestBankAccounts}
