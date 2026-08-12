@@ -1,12 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
-  quote: {
-    findMany: vi.fn(),
-  },
-  workOrder: {
-    findMany: vi.fn(),
-  },
+  $queryRaw: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -19,8 +14,7 @@ describe("sequential quote/work-order numbers", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-27T12:00:00Z"));
-    prismaMock.quote.findMany.mockReset();
-    prismaMock.workOrder.findMany.mockReset();
+    prismaMock.$queryRaw.mockReset();
   });
 
   afterEach(() => {
@@ -28,51 +22,69 @@ describe("sequential quote/work-order numbers", () => {
   });
 
   it("starts quote numbers at C-MMYY-001 for an empty month", async () => {
-    prismaMock.quote.findMany.mockResolvedValue([]);
+    prismaMock.$queryRaw.mockResolvedValue([{ highestSequence: "0" }]);
 
     await expect(nextQuoteNumber()).resolves.toBe("C-0626-001");
-    expect(prismaMock.quote.findMany).toHaveBeenCalledWith({
-      where: { number: { startsWith: "C-0626-" } },
-      select: { number: true },
-    });
+    expect(prismaMock.$queryRaw).toHaveBeenCalledOnce();
   });
 
-  it("increments quote numbers using numeric suffixes, not string order", async () => {
-    prismaMock.quote.findMany.mockResolvedValue([
-      { number: "C-0626-99" },
-      { number: "C-0626-100" },
-      { number: "C-0626-invalid" },
-    ]);
+  it("increments quote numbers from the highest numeric suffix", async () => {
+    prismaMock.$queryRaw.mockResolvedValue([{ highestSequence: "41" }]);
 
-    await expect(nextQuoteNumber()).resolves.toBe("C-0626-101");
+    await expect(nextQuoteNumber()).resolves.toBe("C-0626-042");
   });
 
-  it("keeps compatibility with existing two-digit quote numbers", async () => {
-    prismaMock.quote.findMany.mockResolvedValue([
-      { number: "C-0626-03" },
-      { number: "C-0626-004" },
-    ]);
+  it.each([
+    ["100", "C-0626-101"],
+    ["1000", "C-0626-1001"],
+  ])("orders quote suffix %s numerically beyond fixed width", async (highestSequence, expected) => {
+    prismaMock.$queryRaw.mockResolvedValue([{ highestSequence }]);
 
-    await expect(nextQuoteNumber()).resolves.toBe("C-0626-005");
+    await expect(nextQuoteNumber()).resolves.toBe(expected);
   });
 
   it("starts work order numbers at T-MMYY-01 for an empty month", async () => {
-    prismaMock.workOrder.findMany.mockResolvedValue([]);
+    prismaMock.$queryRaw.mockResolvedValue([{ highestSequence: "0" }]);
 
     await expect(nextWorkOrderNumber()).resolves.toBe("T-0626-01");
-    expect(prismaMock.workOrder.findMany).toHaveBeenCalledWith({
-      where: { number: { startsWith: "T-0626-" } },
-      select: { number: true },
-    });
   });
 
-  it("increments work order numbers using numeric suffixes, not string order", async () => {
-    prismaMock.workOrder.findMany.mockResolvedValue([
-      { number: "T-0626-99" },
-      { number: "T-0626-100" },
-      { number: "T-0626-invalid" },
-    ]);
+  it("keeps work order numeric ordering correct beyond its fixed width", async () => {
+    prismaMock.$queryRaw.mockResolvedValue([{ highestSequence: "100" }]);
 
     await expect(nextWorkOrderNumber()).resolves.toBe("T-0626-101");
+  });
+
+  it("uses a bounded aggregate query with parseInt-compatible malformed handling", async () => {
+    prismaMock.$queryRaw.mockResolvedValue([{ highestSequence: "7" }]);
+
+    await nextQuoteNumber();
+
+    const [strings, suffixStart, prefixPattern] = prismaMock.$queryRaw.mock.calls[0];
+    const query = Array.from(strings as TemplateStringsArray).join("?");
+
+    expect(query).toContain("MAX(parsed_suffix)");
+    expect(query).toContain('FROM "Quote"');
+    expect(query).toContain("substring(\"number\" FROM ?::integer)");
+    expect(query).toContain("WHERE suffix !~ '-'");
+    expect(query).toContain("regexp_match(suffix, '^[[:space:]]*[+]?[0-9]+'");
+    expect(query).toContain("parsed_suffix <= '1.7976931348623157e308'::numeric");
+    expect(suffixStart).toBe(8);
+    expect(prefixPattern).toBe("C-0626-%");
+    expect(query).not.toContain("C-0626-");
+  });
+
+  it("queries the work order table with separately bound parameters", async () => {
+    prismaMock.$queryRaw.mockResolvedValue([{ highestSequence: "1" }]);
+
+    await nextWorkOrderNumber();
+
+    const [strings, suffixStart, prefixPattern] = prismaMock.$queryRaw.mock.calls[0];
+    const query = Array.from(strings as TemplateStringsArray).join("?");
+
+    expect(query).toContain('FROM "WorkOrder"');
+    expect(query).toContain("substring(\"number\" FROM ?::integer)");
+    expect(suffixStart).toBe(8);
+    expect(prefixPattern).toBe("T-0626-%");
   });
 });
