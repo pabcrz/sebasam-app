@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PaymentRequestStatus, PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
@@ -121,15 +122,8 @@ function buildVehicleInput(customerId: string, vehicle: QuoteVehicleInput): Vehi
   };
 }
 
-export async function createQuote(input: unknown) {
-  await requireOperationalRole();
-
+async function createQuoteAuthorized(input: unknown) {
   const data = quoteInputSchema.parse(input);
-  const quoteNumber = await nextQuoteNumber();
-  const sectionData = data.sections.map((section, sIndex) => ({
-    name: section.name,
-    sortOrder: sIndex,
-  }));
   const subtotalCents = data.sections.reduce(
     (total, section) => total + section.items.reduce((secTotal, item) => secTotal + calculateItemTotalCents(item.quantity, item.unitPriceCents), 0),
     0
@@ -138,6 +132,8 @@ export async function createQuote(input: unknown) {
   const validUntil = createQuoteValidUntil();
 
   return prisma.$transaction(async (tx) => {
+    const quoteId = randomUUID();
+    const quoteNumber = await nextQuoteNumber(tx);
     const shouldLinkVehicle = hasVehicleData(data.vehicle);
     const vehicle = shouldLinkVehicle
       ? await findOrCreateVehicle(tx, buildVehicleInput(data.customerId, data.vehicle))
@@ -146,8 +142,9 @@ export async function createQuote(input: unknown) {
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
 
-    const quote = await tx.quote.create({
+    return tx.quote.create({
       data: {
+        id: quoteId,
         customerId: data.customerId,
         vehicleId: vehicle?.id ?? null,
         vehicleSnapshot,
@@ -162,36 +159,32 @@ export async function createQuote(input: unknown) {
         taxCents,
         totalCents,
         validUntil,
-        sections: { create: sectionData },
+        sections: {
+          create: data.sections.map((section, sectionIndex) => ({
+            name: section.name,
+            sortOrder: sectionIndex,
+            items: {
+              create: section.items.map((item, itemIndex) => ({
+                quote: { connect: { id: quoteId } },
+                type: item.type,
+                description: item.description,
+                quantity: item.quantity,
+                unitPriceCents: item.unitPriceCents,
+                totalCents: calculateItemTotalCents(item.quantity, item.unitPriceCents),
+                sortOrder: itemIndex,
+              })),
+            },
+          })),
+        },
       },
       include: { sections: true },
     });
-
-    const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
-    data.sections.forEach((sectionInput, sIndex) => {
-      const createdSection = quote.sections.find((s) => s.sortOrder === sIndex);
-      if (createdSection) {
-        sectionInput.items.forEach((item, iIndex) => {
-          itemsToCreate.push({
-            quoteId: quote.id,
-            sectionId: createdSection.id,
-            type: item.type,
-            description: item.description,
-            quantity: item.quantity,
-            unitPriceCents: item.unitPriceCents,
-            totalCents: calculateItemTotalCents(item.quantity, item.unitPriceCents),
-            sortOrder: iIndex,
-          });
-        });
-      }
-    });
-
-    if (itemsToCreate.length > 0) {
-      await tx.quoteItem.createMany({ data: itemsToCreate });
-    }
-
-    return quote;
   });
+}
+
+export async function createQuote(input: unknown) {
+  await requireOperationalRole();
+  return createQuoteAuthorized(input);
 }
 
 export type QuoteFormActionState = { error?: string; success?: boolean };
@@ -226,11 +219,10 @@ export async function createQuoteFromForm(
   }
 
   try {
-    await createQuote(parsed.data);
+    await createQuoteAuthorized(parsed.data);
   } catch {
     return { error: "No se pudo crear la cotización. Intenta de nuevo." };
   }
-  revalidatePath(quotesPath);
   redirect(`${quotesPath}?created=1`);
 }
 
@@ -496,9 +488,7 @@ export async function restoreArchivedQuote(quoteId: string, reason: string) {
   revalidatePath(quotesPath);
 }
 
-export async function deleteQuote(quoteId: string) {
-  await requireOperationalRole();
-
+async function deleteQuoteAuthorized(quoteId: string) {
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({ where: { id: quoteId } });
 
@@ -523,6 +513,11 @@ export async function deleteQuote(quoteId: string) {
   });
 }
 
+export async function deleteQuote(quoteId: string) {
+  await requireOperationalRole();
+  return deleteQuoteAuthorized(quoteId);
+}
+
 export async function deleteQuoteFromForm(formData: FormData) {
   await requireOperationalRole();
 
@@ -533,7 +528,7 @@ export async function deleteQuoteFromForm(formData: FormData) {
   }
 
   try {
-    await deleteQuote(quoteId);
+    await deleteQuoteAuthorized(quoteId);
   } catch (error) {
     if (error instanceof Error && error.message.includes("deleted")) {
       redirect(`${quotesPath}?error=cannot-delete`);
@@ -542,7 +537,6 @@ export async function deleteQuoteFromForm(formData: FormData) {
     redirect(`${quotesPath}?error=deletion-failed`);
   }
 
-  revalidatePath(quotesPath);
   redirect(`${quotesPath}?deleted=1`);
 }
 
@@ -713,13 +707,12 @@ export async function authorizeQuoteAction(quoteId: string, note: string) {
   return { success: true };
 }
 
-export async function duplicateQuote(quoteId: string) {
-  await requireOperationalRole();
-
+async function duplicateQuoteAuthorized(quoteId: string) {
   const original = await prisma.quote.findUnique({
     where: { id: quoteId },
+    relationLoadStrategy: "join",
     include: {
-      vehicle: true,
+      items: { where: { sectionId: null }, orderBy: { sortOrder: "asc" } },
       sections: { include: { items: { orderBy: { sortOrder: "asc" } } }, orderBy: { sortOrder: "asc" } },
     },
   });
@@ -728,35 +721,18 @@ export async function duplicateQuote(quoteId: string) {
     throw new Error("Quote not found.");
   }
 
-  const quoteNumber = await nextQuoteNumber();
   const validUntil = createQuoteValidUntil();
 
-  const sectionData = original.sections.map((section, sIndex) => ({
-    name: section.name,
-    sortOrder: sIndex,
-  }));
-
   return prisma.$transaction(async (tx) => {
-    const shouldLinkVehicle = original.vehicle !== null;
-    const vehicleInput = shouldLinkVehicle
-      ? {
-          customerId: original.customerId,
-          plate: original.vehicle!.plate ?? undefined,
-          brand: original.vehicle!.brand ?? undefined,
-          model: original.vehicle!.model ?? undefined,
-          color: original.vehicle!.color ?? undefined,
-          year: original.vehicle!.year ?? undefined,
-          notes: original.vehicle!.notes ?? undefined,
-        }
-      : null;
-    const vehicle = vehicleInput ? await findOrCreateVehicle(tx, vehicleInput) : null;
-    const vehicleSnapshot = vehicleInput ? createVehicleSnapshot(vehicleInput) : Prisma.JsonNull;
+    const duplicatedQuoteId = randomUUID();
+    const quoteNumber = await nextQuoteNumber(tx);
 
-    const duplicatedQuote = await tx.quote.create({
+    return tx.quote.create({
       data: {
+        id: duplicatedQuoteId,
         customerId: original.customerId,
-        vehicleId: vehicle?.id ?? null,
-        vehicleSnapshot,
+        vehicleId: original.vehicleId,
+        vehicleSnapshot: original.vehicleSnapshot ?? Prisma.JsonNull,
         number: quoteNumber,
         status: "DRAFT",
         title: original.title,
@@ -768,36 +744,42 @@ export async function duplicateQuote(quoteId: string) {
         taxCents: original.taxCents,
         totalCents: original.totalCents,
         validUntil,
-        sections: { create: sectionData },
-      },
-      include: { sections: true },
-    });
-
-    const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
-    original.sections.forEach((sectionInput, sIndex) => {
-      const createdSection = duplicatedQuote.sections.find((s) => s.sortOrder === sIndex);
-      if (createdSection) {
-        sectionInput.items.forEach((item, iIndex) => {
-          itemsToCreate.push({
-            quoteId: duplicatedQuote.id,
-            sectionId: createdSection.id,
+        items: {
+          create: original.items.map((item, itemIndex) => ({
             type: item.type,
             description: item.description,
             quantity: item.quantity,
             unitPriceCents: item.unitPriceCents,
             totalCents: item.totalCents,
-            sortOrder: iIndex,
-          });
-        });
-      }
+            sortOrder: itemIndex,
+          })),
+        },
+        sections: {
+          create: original.sections.map((section, sectionIndex) => ({
+            name: section.name,
+            sortOrder: sectionIndex,
+            items: {
+              create: section.items.map((item, itemIndex) => ({
+                quote: { connect: { id: duplicatedQuoteId } },
+                type: item.type,
+                description: item.description,
+                quantity: item.quantity,
+                unitPriceCents: item.unitPriceCents,
+                totalCents: item.totalCents,
+                sortOrder: itemIndex,
+              })),
+            },
+          })),
+        },
+      },
+      include: { sections: true },
     });
-
-    if (itemsToCreate.length > 0) {
-      await tx.quoteItem.createMany({ data: itemsToCreate });
-    }
-
-    return duplicatedQuote;
   });
+}
+
+export async function duplicateQuote(quoteId: string) {
+  await requireOperationalRole();
+  return duplicateQuoteAuthorized(quoteId);
 }
 
 export async function duplicateQuoteFromForm(formData: FormData) {
@@ -811,12 +793,11 @@ export async function duplicateQuoteFromForm(formData: FormData) {
   }
 
   try {
-    await duplicateQuote(quoteId);
+    await duplicateQuoteAuthorized(quoteId);
   } catch {
     redirect(`${quotesPath}?error=duplicate-failed`);
     return;
   }
 
-  revalidatePath(quotesPath);
   redirect(`${quotesPath}?duplicated=1`);
 }

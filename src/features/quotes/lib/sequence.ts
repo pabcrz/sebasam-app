@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
-type SequenceClient = Pick<PrismaClient, "quote" | "workOrder">;
+type SequenceClient = Pick<Prisma.TransactionClient, "$queryRaw">;
+type HighestSequenceRow = { highestSequence: string };
 
 function formatSequentialNumber(prefix: string, sequence: number, sequenceWidth: number): string {
   const now = new Date();
@@ -22,33 +23,34 @@ async function getNextNumber(
   const year = String(now.getFullYear()).slice(-2);
   const prefixPattern = `${prefix}-${month}${year}-`;
 
-  // Read all numbers for this prefix/month and parse the numeric suffix.
-  // String ordering breaks after 99 (e.g. "99" sorts after "100"), so compute max numerically.
-  const records = await (table === "quote"
-    ? client.quote.findMany({
-        where: { number: { startsWith: prefixPattern } },
-        select: { number: true },
-      })
-    : client.workOrder.findMany({
-        where: { number: { startsWith: prefixPattern } },
-        select: { number: true },
-      }));
-
-  if (records.length === 0) {
-    return formatSequentialNumber(prefix, 1, sequenceWidth);
-  }
-
-  const highestSequence = records.reduce((highest, record) => {
-    const parts = record.number.split("-");
-
-    if (parts.length !== 3) {
-      return highest;
-    }
-
-    const sequence = Number.parseInt(parts[2], 10);
-
-    return Number.isFinite(sequence) ? Math.max(highest, sequence) : highest;
-  }, 0);
+  const rows = table === "quote"
+    ? await client.$queryRaw<HighestSequenceRow[]>`
+        SELECT COALESCE(MAX(parsed_suffix), 0)::text AS "highestSequence"
+        FROM (
+          SELECT (regexp_match(suffix, '^[[:space:]]*[+]?[0-9]+'))[1]::numeric AS parsed_suffix
+          FROM (
+            SELECT substring("number" FROM ${prefixPattern.length + 1}::integer) AS suffix
+            FROM "Quote"
+            WHERE "number" LIKE ${`${prefixPattern}%`}
+          ) AS matching
+          WHERE suffix !~ '-'
+        ) AS parsed
+        WHERE parsed_suffix <= '1.7976931348623157e308'::numeric
+      `
+    : await client.$queryRaw<HighestSequenceRow[]>`
+        SELECT COALESCE(MAX(parsed_suffix), 0)::text AS "highestSequence"
+        FROM (
+          SELECT (regexp_match(suffix, '^[[:space:]]*[+]?[0-9]+'))[1]::numeric AS parsed_suffix
+          FROM (
+            SELECT substring("number" FROM ${prefixPattern.length + 1}::integer) AS suffix
+            FROM "WorkOrder"
+            WHERE "number" LIKE ${`${prefixPattern}%`}
+          ) AS matching
+          WHERE suffix !~ '-'
+        ) AS parsed
+        WHERE parsed_suffix <= '1.7976931348623157e308'::numeric
+      `;
+  const highestSequence = Number.parseInt(rows[0]?.highestSequence ?? "0", 10);
 
   return formatSequentialNumber(prefix, highestSequence + 1, sequenceWidth);
 }

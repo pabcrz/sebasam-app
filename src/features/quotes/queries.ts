@@ -122,6 +122,7 @@ const quoteListInclude = {
 async function findQuotes(where: Prisma.QuoteWhereInput | undefined, pagination?: { skip: number; take: number }) {
   return prisma.quote.findMany({
     where,
+    relationLoadStrategy: "join",
     include: quoteListInclude,
     orderBy: pagination ? [{ createdAt: "desc" }, { id: "desc" }] : { createdAt: "desc" },
     ...pagination,
