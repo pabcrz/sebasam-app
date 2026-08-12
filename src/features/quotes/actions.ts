@@ -18,8 +18,8 @@ import {
 import { isQuoteEditable } from "./lib/editability";
 import { nextQuoteNumber, nextWorkOrderNumber } from "./lib/sequence";
 import {
-  getOrCreateSharedQuoteForQuote,
-  SharedQuoteOperationError,
+  createSharedQuoteExpirationDate,
+  createSharedQuoteToken,
   QuoteDecisionError,
   acceptSharedQuote,
   declineSharedQuote,
@@ -159,6 +159,12 @@ async function createQuoteAuthorized(input: unknown) {
         taxCents,
         totalCents,
         validUntil,
+        sharedQuotes: {
+          create: {
+            token: createSharedQuoteToken(),
+            expiresAt: createSharedQuoteExpirationDate(),
+          },
+        },
         sections: {
           create: data.sections.map((section, sectionIndex) => ({
             name: section.name,
@@ -255,8 +261,6 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       throw new Error("This quote is not editable.");
     }
 
-    const isRevertingFromSent = quote.status === QuoteStatus.SENT;
-
     const paidTotals = await tx.payment.aggregate({
       where: { quoteId, status: PaymentStatus.PAID },
       _sum: { amountCents: true },
@@ -283,7 +287,6 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
     const updatedQuote = await tx.quote.update({
       where: { id: quoteId },
       data: {
-        status: isRevertingFromSent ? QuoteStatus.DRAFT : undefined,
         customerId: data.customerId,
         vehicleId: vehicle?.id ?? null,
         vehicleSnapshot,
@@ -603,27 +606,13 @@ export async function approveQuoteAndCreateWorkOrderFromForm(formData: FormData)
   redirect(`${quotesPath}?approved=1`);
 }
 
-export async function shareQuoteFromForm(formData: FormData) {
+export async function publishSharedQuote(quoteId: string) {
   await requireOperationalRole();
-
-  const quoteId = formData.get("quoteId");
-
-  if (typeof quoteId !== "string" || quoteId.trim() === "") {
-    redirect(`${quotesPath}?error=invalid-share`);
-  }
-
-  try {
-    await getOrCreateSharedQuoteForQuote(quoteId);
-  } catch (error) {
-    if (error instanceof SharedQuoteOperationError) {
-      redirect(`${quotesPath}?error=share-failed`);
-    }
-
-    redirect(`${quotesPath}?error=share-failed`);
-  }
-
-  revalidatePath(quotesPath);
-  redirect(`${quotesPath}?shared=1`);
+  await prisma.quote.updateMany({
+    where: { id: quoteId, status: QuoteStatus.DRAFT },
+    data: { status: QuoteStatus.SENT },
+  });
+  return { success: true };
 }
 
 // --- Public accept / decline (no auth required; token is the authorization) ---
@@ -744,6 +733,12 @@ async function duplicateQuoteAuthorized(quoteId: string) {
         taxCents: original.taxCents,
         totalCents: original.totalCents,
         validUntil,
+        sharedQuotes: {
+          create: {
+            token: createSharedQuoteToken(),
+            expiresAt: createSharedQuoteExpirationDate(),
+          },
+        },
         items: {
           create: original.items.map((item, itemIndex) => ({
             type: item.type,

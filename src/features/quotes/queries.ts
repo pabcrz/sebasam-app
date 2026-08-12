@@ -24,7 +24,7 @@ export async function getQuoteById(quoteId: string) {
   });
 }
 
-function findActiveSharedQuote(sharedQuotes: { expiresAt: Date; revokedAt: Date | null }[]) {
+function findActiveSharedQuote<T extends { expiresAt: Date; revokedAt: Date | null }>(sharedQuotes: T[]): T | null {
   const now = new Date();
   return sharedQuotes.find((sharedQuote) => sharedQuote.revokedAt === null && sharedQuote.expiresAt >= now) ?? null;
 }

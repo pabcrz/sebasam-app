@@ -8,7 +8,7 @@ import { QuotePreviewCard } from "@/features/quotes/components/quote-preview-car
 import { formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { quoteStatusLabels } from "@/features/quotes/lib/status";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
-import type { Quote, QuoteItem, Customer, Vehicle } from "@prisma/client";
+import type { Quote, QuoteItem, Customer, Vehicle, WorkOrderStatus } from "@prisma/client";
 
 type SerializableQuoteItem = Omit<QuoteItem, "quantity"> & {
   quantity: string;
@@ -18,6 +18,7 @@ export type SharedQuoteViewQuote = Quote & {
   customer: Customer;
   vehicle: Vehicle | null;
   items: SerializableQuoteItem[];
+  workOrder: { status: WorkOrderStatus } | null;
 };
 
 export interface SharedQuoteViewProps {
@@ -91,6 +92,10 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
   ];
 
   const showDecisionControls = quote.status === "SENT" && !hasDecided;
+  const progressStatus = decision === "accepted" ? "accepted" : quote.status === "APPROVED"
+    ? quote.workOrder?.status === "COMPLETED" ? "completed"
+      : quote.workOrder?.status === "ASSIGNED" || quote.workOrder?.status === "IN_PROGRESS" ? "active" : "accepted"
+    : null;
 
   return (
     <div className="grid gap-4">
@@ -114,6 +119,8 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
         totalCents={Number(quote.totalCents)}
         validUntil={quote.validUntil}
       />
+
+      {progressStatus ? <QuoteProgress status={progressStatus} /> : null}
 
       {decision === "accepted" ? (
         <div
@@ -178,5 +185,17 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+function QuoteProgress({ status }: { status: "accepted" | "active" | "completed" }) {
+  const activeIndex = status === "completed" ? 2 : status === "active" ? 1 : 0;
+  const stages = ["Aceptada", "Orden asignada / En proceso", "Finalizada"];
+  return (
+    <ol aria-label="Progreso de la cotización" className="grid grid-cols-3 gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-center text-xs">
+      {stages.map((stage, index) => (
+        <li key={stage} aria-current={index === activeIndex ? "step" : undefined} className={index <= activeIndex ? "font-semibold text-[var(--color-text-main)]" : "text-[var(--color-text-muted)]"}>{stage}</li>
+      ))}
+    </ol>
   );
 }

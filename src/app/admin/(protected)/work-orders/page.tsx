@@ -13,7 +13,7 @@ import { WorkOrderActiveList } from "@/features/work-orders/components/work-orde
 import { listCustomers } from "@/features/customers/queries";
 import { listQuotes } from "@/features/quotes/queries";
 import { searchCustomersForQuote } from "@/features/customers/actions";
-import { duplicateQuoteFromForm, shareQuoteFromForm, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
+import { duplicateQuoteFromForm, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
 import { assignWorkOrderAction, completeWorkOrderAction, rollbackWorkOrderAction } from "@/features/work-orders/actions";
 
 export const metadata: Metadata = {
@@ -90,7 +90,6 @@ export default async function WorkOrdersPage() {
               saveQuoteActions={workOrders.map((wo) => updateDraftQuoteFromWorkspace.bind(null, wo.quote.id))}
               searchCustomersAction={searchCustomersForQuote}
               duplicateQuoteAction={duplicateQuoteFromForm}
-              shareQuoteAction={shareQuoteFromForm}
               workOrderActions={{
                 assign: assignWorkOrderAction,
                 complete: completeWorkOrderAction,

@@ -10,10 +10,8 @@ import { formatCents } from "@/features/quotes/lib/format";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
-import { ShareQuoteLinkDialog } from "@/features/quotes/components/share-quote-link-dialog";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
-import type { SharedQuote } from "@prisma/client";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 
@@ -30,7 +28,6 @@ interface WorkOrderActiveListProps {
   saveQuoteActions: Array<(state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
   duplicateQuoteAction: (formData: FormData) => void | Promise<void>;
-  shareQuoteAction: (formData: FormData) => void | Promise<void>;
   workOrderActions: WorkOrderActions;
 }
 
@@ -63,7 +60,6 @@ export function WorkOrderActiveList({
   saveQuoteActions,
   searchCustomersAction,
   duplicateQuoteAction,
-  shareQuoteAction,
   workOrderActions,
 }: WorkOrderActiveListProps) {
   const [previewOpenId, setPreviewOpenId] = React.useState<string | null>(null);
@@ -151,17 +147,12 @@ export function WorkOrderActiveList({
 
               {/* Compartir */}
               {fullQuote?.activeSharedQuote ? (
-                <ShareQuoteLinkDialog
-                  sharedQuote={fullQuote.activeSharedQuote as SharedQuote}
-                  quoteNumber={wo.quote.number}
-                />
-              ) : (
                 <ShareQuoteButton
-                  action={shareQuoteAction}
-                  quoteId={wo.quote.id}
+                  sharedQuote={fullQuote.activeSharedQuote}
+                  status={fullQuote.status}
                   quoteNumber={wo.quote.number}
                 />
-              )}
+              ) : null}
             </div>
 
             {/* Preview dialog (triggered by clicking the card body) */}

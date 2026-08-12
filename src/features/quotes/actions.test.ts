@@ -12,7 +12,7 @@ import {
   deleteQuoteFromForm,
   duplicateQuote,
   duplicateQuoteFromForm,
-  shareQuoteFromForm,
+  publishSharedQuote,
   restoreArchivedQuote,
   updateDraftQuote,
   updateDraftQuoteFromForm,
@@ -25,7 +25,7 @@ import { revalidatePath } from "next/cache";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { nextQuoteNumber } from "./lib/sequence";
 
-vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), quote: { findUnique: vi.fn() } } }));
+vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), quote: { findUnique: vi.fn(), updateMany: vi.fn() } } }));
 vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
 vi.mock("@/features/vehicles/actions", () => ({ findOrCreateVehicle: vi.fn() }));
 vi.mock("@/features/vehicles/schemas", async () => ({
@@ -42,7 +42,8 @@ vi.mock("./lib/calculate", async () => ({
 vi.mock("./domain", () => ({
   authorizeQuote: vi.fn(),
   QuoteDecisionError: class QuoteDecisionError extends Error {},
-  getOrCreateSharedQuoteForQuote: vi.fn(),
+  createSharedQuoteExpirationDate: vi.fn(() => new Date("2026-08-31T00:00:00.000Z")),
+  createSharedQuoteToken: vi.fn(() => "stable-token"),
   SharedQuoteOperationError: class SharedQuoteOperationError extends Error {
     constructor(message: string) {
       super(message);
@@ -53,7 +54,7 @@ vi.mock("./domain", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
-import { authorizeQuote, getOrCreateSharedQuoteForQuote } from "./domain";
+import { authorizeQuote } from "./domain";
 
 class MockFormData {
   private data = new Map<string, string>();
@@ -154,6 +155,11 @@ describe("createQuote", () => {
       year: null,
     });
     expect(createData.id).toEqual(expect.any(String));
+    expect(createData.status).toBe("DRAFT");
+    expect(createData.sharedQuotes.create).toEqual({
+      token: "stable-token",
+      expiresAt: new Date("2026-08-31T00:00:00.000Z"),
+    });
     expect(createData.sections.create).toEqual([{
       name: "General",
       sortOrder: 0,
@@ -246,6 +252,7 @@ describe("updateDraftQuote", () => {
     const result = await updateDraftQuote("quote-1", validInput());
 
     expect(result.totalCents).toBe(197200);
+    expect(tx.quote.update.mock.calls[0][0].data.status).toBeUndefined();
   });
 
   it("allows updating an APPROVED quote when not expired and work order is not terminal", async () => {
@@ -608,7 +615,10 @@ describe("duplicateQuote", () => {
       },
     }]);
     expect(createData).not.toHaveProperty("workOrder");
-    expect(createData).not.toHaveProperty("sharedQuotes");
+    expect(createData.sharedQuotes.create).toEqual({
+      token: "stable-token",
+      expiresAt: new Date("2026-08-31T00:00:00.000Z"),
+    });
     expect(createData).not.toHaveProperty("paymentRequests");
   });
 
@@ -833,38 +843,21 @@ describe("quote lifecycle", () => {
   });
 });
 
-describe("shareQuoteFromForm", () => {
+describe("publishSharedQuote", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("creates a shared quote and redirects with shared param", async () => {
-    const sharedQuote = { id: "sq-1", token: "token-1", quoteId: "quote-1", expiresAt: new Date() };
-    (getOrCreateSharedQuoteForQuote as ReturnType<typeof vi.fn>).mockResolvedValue(sharedQuote);
+  it("conditionally publishes a draft without reading or creating a token", async () => {
+    const updateMany = prisma.quote.updateMany as ReturnType<typeof vi.fn>;
+    updateMany.mockResolvedValue({ count: 1 });
 
-    const formData = new MockFormData();
-    formData.set("quoteId", "quote-1");
+    await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: true });
 
-    await shareQuoteFromForm(formData as unknown as FormData);
-
-    expect(getOrCreateSharedQuoteForQuote).toHaveBeenCalledWith("quote-1");
-    expect(redirect).toHaveBeenCalledWith("/admin/quotes?shared=1");
-  });
-
-  it("redirects with invalid-share when quoteId is missing", async () => {
-    await shareQuoteFromForm(new MockFormData() as unknown as FormData);
-
-    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid-share");
-  });
-
-  it("redirects with share-failed when sharing is not allowed", async () => {
-    (getOrCreateSharedQuoteForQuote as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error("Quote must have at least one complete item to be shared."),
-    );
-
-    const formData = new MockFormData();
-    formData.set("quoteId", "quote-1");
-
-    await shareQuoteFromForm(formData as unknown as FormData);
-
-    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=share-failed");
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "quote-1", status: QuoteStatus.DRAFT },
+      data: { status: QuoteStatus.SENT },
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

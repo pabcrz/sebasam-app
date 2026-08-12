@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CalendarDays, Car, ClipboardList } from "lucide-react";
-import type { PaymentRequest, QuoteStatus, SharedQuote } from "@prisma/client";
+import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
@@ -12,7 +12,6 @@ import { QuoteCancelForm } from "./quote-cancel-form";
 import { QuoteDuplicateForm } from "./quote-duplicate-form";
 import { QuoteDeleteForm } from "./quote-delete-form";
 import { ShareQuoteButton } from "./share-quote-button";
-import { ShareQuoteLinkDialog } from "./share-quote-link-dialog";
 import { QuoteAuthorizeForm } from "./quote-authorize-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
@@ -32,7 +31,7 @@ interface QuoteListCardProps {
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
-  shareAction: (formData: FormData) => void | Promise<void>;
+  shareAction: () => Promise<{ success: boolean; error?: string }>;
   authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
@@ -171,15 +170,11 @@ export function QuoteListCard({
             <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} iconOnly />
           ) : null}
 
-          {quote.activeSharedQuote ? (
-            <ShareQuoteLinkDialog
-              sharedQuote={quote.activeSharedQuote as SharedQuote}
-              quoteNumber={quote.number}
-            />
-          ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
+          {quote.activeSharedQuote && (quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED") ? (
             <ShareQuoteButton
-              action={shareAction}
-              quoteId={quote.id}
+              action={quote.status === "DRAFT" ? shareAction : undefined}
+              sharedQuote={quote.activeSharedQuote}
+              status={quote.status}
               quoteNumber={quote.number}
               iconOnly
             />
