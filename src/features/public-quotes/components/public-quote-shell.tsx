@@ -19,15 +19,18 @@ export function PublicQuoteShell({ children, business }: PublicQuoteShellProps) 
       <header className="relative isolate overflow-hidden bg-[image:var(--gradient-primary)] px-6 pb-6 pt-8 text-white md:rounded-b-[22px] md:px-8 md:pb-8 md:pt-10">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[size:32px_32px] opacity-60" />
         <div className="relative mx-auto max-w-3xl">
-          <div className="flex items-start">
+          <div className="flex items-center gap-3">
             <Image
-              src="/logo-white.png"
-              alt="SEBASAM"
-              width={220}
-              height={70}
-              className="h-auto w-[180px] object-contain md:w-[220px]"
+              src="/logo-white-short.png"
+              alt="Logo de SEBASAM"
+              width={52}
+              height={52}
+              className="h-13 w-13 object-contain"
               priority
             />
+            <h1 className="text-3xl font-extrabold leading-none tracking-[-0.05em] md:text-4xl">
+              {resolvedBusiness.name}
+            </h1>
           </div>
           <p className="mt-4 max-w-2xl text-sm text-[var(--color-on-navy-tint)] opacity-90 md:text-base">
             {resolvedBusiness.fullName}
