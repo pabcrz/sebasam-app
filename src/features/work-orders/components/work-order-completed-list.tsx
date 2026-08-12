@@ -7,10 +7,9 @@ import { Badge, Button } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
-import type { listQuotes } from "@/features/quotes/queries";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 
-type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>[number];
+type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>["workOrders"][number];
 
 type PaymentResult = {
   payment: { amountCents: number };
@@ -25,7 +24,7 @@ type WorkOrderPaymentAction = {
 
 interface WorkOrderCompletedListProps {
   workOrders: WorkOrderItem[];
-  quoteMap?: Map<string, Awaited<ReturnType<typeof listQuotes>>[number]>;
+  quoteMap?: Map<string, WorkOrderItem["quote"]>;
   recordPaymentActions?: WorkOrderPaymentAction[];
   rollbackAction?: WorkOrderActions["rollback"];
 }

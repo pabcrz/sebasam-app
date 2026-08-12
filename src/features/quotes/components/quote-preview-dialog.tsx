@@ -13,14 +13,21 @@ import {
 } from "@/components/ui";
 import { QuotePreviewCard, type QuotePreviewCardProps } from "./quote-preview-card";
 
+export type QuotePreviewSummary = Pick<QuoteListSummary, "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & {
+  customer: Pick<QuoteListSummary["customer"], "name">;
+  vehicle: Pick<NonNullable<QuoteListSummary["vehicle"]>, "plate" | "brand" | "model" | "year"> | null;
+  items: Array<{ type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }>;
+  sections: Array<{ name: string; items: Array<{ type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }> }>;
+};
+
 interface QuotePreviewDialogProps {
-  quote: QuoteListSummary;
+  quote: QuotePreviewSummary;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   showTrigger?: boolean;
 }
 
-export function toQuotePreviewCardProps(quote: QuoteListSummary): QuotePreviewCardProps {
+export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePreviewCardProps {
   const snapshot = quote.vehicleSnapshot && typeof quote.vehicleSnapshot === "object" && !Array.isArray(quote.vehicleSnapshot)
     ? quote.vehicleSnapshot as Record<string, unknown>
     : {};

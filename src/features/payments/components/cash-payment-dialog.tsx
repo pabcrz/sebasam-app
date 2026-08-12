@@ -13,6 +13,7 @@ import {
   Input,
 } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
+import { useRouter } from "next/navigation";
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH: "Efectivo",
@@ -49,6 +50,7 @@ export function CashPaymentDialog({
   paidCents,
   remainingCents,
 }: CashPaymentDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [amount, setAmount] = React.useState(centsToInput(remainingCents));
   const [method, setMethod] = React.useState("CASH");
@@ -78,6 +80,7 @@ export function CashPaymentDialog({
       setSuccess(
         `Pago por ${PAYMENT_METHOD_LABELS[method] ?? method} registrado por ${formatCents(result.payment.amountCents)}.`,
       );
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo registrar el pago.");
     } finally {
