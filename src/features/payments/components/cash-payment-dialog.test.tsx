@@ -3,6 +3,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CashPaymentDialog } from "./cash-payment-dialog";
 
+const refresh = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+
 function renderDialog(action = vi.fn()) {
   return render(
     <CashPaymentDialog
@@ -16,6 +19,17 @@ function renderDialog(action = vi.fn()) {
 }
 
 describe("CashPaymentDialog", () => {
+  it("refreshes membership once after success but not after failure", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn().mockRejectedValueOnce(new Error("Falló")).mockResolvedValueOnce({ payment: { amountCents: 7500 }, paidCents: 10000, remainingCents: 0 });
+    renderDialog(action);
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    await screen.findByRole("alert");
+    expect(refresh).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
   it("shows the quote total, paid amount, and remaining balance", () => {
     renderDialog();
 
