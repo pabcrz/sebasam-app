@@ -11,7 +11,7 @@
 
 export const businessPaymentConfig = {
   name: "SEBASAM",
-  fullName: "Servicio Básico a Suspensiones y Aire y Muelles",
+  fullName: "Servicio y Refacciones para Suspenciones de Aire y Muelles",
   address: "Batalla de Casa Blanca 1719B, Leyes de Reforma, Iztapalapa, 09310 Ciudad de México, CDMX",
   mapsUrl: "https://maps.app.goo.gl/MYuGBKwabPGbea7y7",
   bank: {
