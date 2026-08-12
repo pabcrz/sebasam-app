@@ -4,6 +4,7 @@ import {
   cancelQuote,
   archiveQuote,
   cancelQuoteFromForm,
+  authorizeQuoteAction,
   createQuote,
   createQuoteFromForm,
   createQuoteFromWorkspace,
@@ -36,6 +37,8 @@ vi.mock("./lib/calculate", async () => ({
   createQuoteValidUntil: vi.fn(() => new Date("2026-07-15T00:00:00.000Z")),
 }));
 vi.mock("./domain", () => ({
+  authorizeQuote: vi.fn(),
+  QuoteDecisionError: class QuoteDecisionError extends Error {},
   getOrCreateSharedQuoteForQuote: vi.fn(),
   SharedQuoteOperationError: class SharedQuoteOperationError extends Error {
     constructor(message: string) {
@@ -47,7 +50,7 @@ vi.mock("./domain", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
-import { getOrCreateSharedQuoteForQuote } from "./domain";
+import { authorizeQuote, getOrCreateSharedQuoteForQuote } from "./domain";
 
 class MockFormData {
   private data = new Map<string, string>();
@@ -394,6 +397,25 @@ describe.each([
     tx.quote.create.mockRejectedValue(new Error("database unavailable"));
     tx.quote.update.mockRejectedValue(new Error("database unavailable"));
     await expect(action(buildFormData() as unknown as FormData)).resolves.toEqual({ error: persistenceError });
+  });
+});
+
+describe("authorizeQuoteAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(requireOperationalRole).mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1" },
+    } as unknown as Awaited<ReturnType<typeof requireOperationalRole>>);
+  });
+
+  it("revalidates the quotes route after authorization", async () => {
+    await expect(authorizeQuoteAction("quote-1", "Llamada telefónica")).resolves.toEqual({
+      success: true,
+    });
+
+    expect(authorizeQuote).toHaveBeenCalledWith("quote-1", "Llamada telefónica", "user-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
   });
 });
 
