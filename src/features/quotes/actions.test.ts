@@ -1,12 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
 import {
-  cancelDraftQuote,
+  cancelQuote,
   archiveQuote,
-  cancelDraftQuoteFromForm,
+  cancelQuoteFromForm,
+  authorizeQuoteAction,
   createQuote,
   createQuoteFromForm,
   createQuoteFromWorkspace,
+  deleteQuote,
+  deleteQuoteFromForm,
   duplicateQuote,
   duplicateQuoteFromForm,
   shareQuoteFromForm,
@@ -20,6 +23,7 @@ import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireOperationalRole } from "@/lib/auth/session";
+import { nextQuoteNumber } from "./lib/sequence";
 
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), quote: { findUnique: vi.fn() } } }));
 vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
@@ -36,6 +40,8 @@ vi.mock("./lib/calculate", async () => ({
   createQuoteValidUntil: vi.fn(() => new Date("2026-07-15T00:00:00.000Z")),
 }));
 vi.mock("./domain", () => ({
+  authorizeQuote: vi.fn(),
+  QuoteDecisionError: class QuoteDecisionError extends Error {},
   getOrCreateSharedQuoteForQuote: vi.fn(),
   SharedQuoteOperationError: class SharedQuoteOperationError extends Error {
     constructor(message: string) {
@@ -47,7 +53,7 @@ vi.mock("./domain", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
-import { getOrCreateSharedQuoteForQuote } from "./domain";
+import { authorizeQuote, getOrCreateSharedQuoteForQuote } from "./domain";
 
 class MockFormData {
   private data = new Map<string, string>();
@@ -133,15 +139,36 @@ describe("createQuote", () => {
     const result = await createQuote(validInput());
 
     expect(findOrCreateVehicle).toHaveBeenCalledTimes(1);
+    expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    expect(nextQuoteNumber).toHaveBeenCalledWith(tx);
     expect(tx.quote.create).toHaveBeenCalledTimes(1);
-    expect(tx.quote.create.mock.calls[0][0].data.vehicleId).toBe("vehicle-1");
-    expect(tx.quote.create.mock.calls[0][0].data.vehicleSnapshot).toEqual({
+    expect(tx.quoteItem.createMany).not.toHaveBeenCalled();
+    expect(tx.quote.create.mock.calls[0][0].include).toEqual({ sections: true });
+    const createData = tx.quote.create.mock.calls[0][0].data;
+    expect(createData.vehicleId).toBe("vehicle-1");
+    expect(createData.vehicleSnapshot).toEqual({
       plate: null,
       brand: "Toyota",
       model: "Hilux",
       color: null,
       year: null,
     });
+    expect(createData.id).toEqual(expect.any(String));
+    expect(createData.sections.create).toEqual([{
+      name: "General",
+      sortOrder: 0,
+      items: {
+        create: [{
+          quote: { connect: { id: createData.id } },
+          type: "SERVICE",
+          description: "Cambio de aceite",
+          quantity: 2,
+          unitPriceCents: 85000,
+          totalCents: 170000,
+          sortOrder: 0,
+        }],
+      },
+    }]);
     expect(result.totalCents).toBe(197200);
   });
 
@@ -366,9 +393,14 @@ describe("createQuoteFromForm", () => {
 
     await createQuoteFromForm({}, formData as unknown as FormData);
 
-    expect(tx.quote.create.mock.calls[0][0].data.sections.create).toHaveLength(1);
-    expect(tx.quoteItem.createMany.mock.calls[0][0].data).toHaveLength(1);
-    expect(tx.quoteItem.createMany.mock.calls[0][0].data[0].description).toBe("Cambio de aceite");
+    expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    const sections = tx.quote.create.mock.calls[0][0].data.sections.create;
+    expect(sections).toHaveLength(1);
+    expect(sections[0].items.create).toHaveLength(1);
+    expect(sections[0].items.create[0].description).toBe("Cambio de aceite");
+    expect(tx.quoteItem.createMany).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?created=1");
   });
 });
 
@@ -394,6 +426,25 @@ describe.each([
     tx.quote.create.mockRejectedValue(new Error("database unavailable"));
     tx.quote.update.mockRejectedValue(new Error("database unavailable"));
     await expect(action(buildFormData() as unknown as FormData)).resolves.toEqual({ error: persistenceError });
+  });
+});
+
+describe("authorizeQuoteAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(requireOperationalRole).mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1" },
+    } as unknown as Awaited<ReturnType<typeof requireOperationalRole>>);
+  });
+
+  it("revalidates the quotes route after authorization", async () => {
+    await expect(authorizeQuoteAction("quote-1", "Llamada telefónica")).resolves.toEqual({
+      success: true,
+    });
+
+    expect(authorizeQuote).toHaveBeenCalledWith("quote-1", "Llamada telefónica", "user-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
   });
 });
 
@@ -426,16 +477,8 @@ describe("duplicateQuote", () => {
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "quote-source",
       customerId: "cust-1",
-      vehicle: {
-        id: "vehicle-source",
-        customerId: "cust-1",
-        plate: "ABC123",
-        brand: "Toyota",
-        model: "Hilux",
-        color: "Blanco",
-        year: 2022,
-        notes: "Source vehicle notes",
-      },
+      vehicleId: "vehicle-source",
+      vehicleSnapshot: { plate: "ABC123", brand: "Historical Toyota", model: "Hilux", color: "Blanco", year: 2022 },
       number: "C-0625-99",
       status: QuoteStatus.APPROVED,
       title: "Servicio original",
@@ -449,6 +492,17 @@ describe("duplicateQuote", () => {
       workOrder: { id: "wo-source" },
       sharedQuotes: [{ id: "shared-source" }],
       paymentRequests: [{ id: "payment-source" }],
+      items: [{
+        id: "legacy-item",
+        quoteId: "quote-source",
+        sectionId: null,
+        type: "SERVICE",
+        description: "Legacy alignment",
+        quantity: new Prisma.Decimal("1.50"),
+        unitPriceCents: 10000,
+        totalCents: 15000,
+        sortOrder: 4,
+      }],
       sections: [
         {
           id: "section-1",
@@ -462,7 +516,7 @@ describe("duplicateQuote", () => {
               sectionId: "section-1",
               type: "PART",
               description: "Filtro",
-              quantity: 1,
+              quantity: new Prisma.Decimal("1.00"),
               unitPriceCents: 20000,
               totalCents: 20000,
               sortOrder: 2,
@@ -473,7 +527,7 @@ describe("duplicateQuote", () => {
               sectionId: "section-1",
               type: "SERVICE",
               description: "Cambio de aceite",
-              quantity: 2,
+              quantity: new Prisma.Decimal("2.00"),
               unitPriceCents: 85000,
               totalCents: 170000,
               sortOrder: 5,
@@ -482,32 +536,31 @@ describe("duplicateQuote", () => {
         },
       ],
     });
-    tx.quote.create.mockResolvedValue({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT, sections: [{ id: "section-copy-1", sortOrder: 0 }] });
+    tx.quote.create.mockResolvedValue({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT });
 
     const result = await duplicateQuote("quote-source");
 
     expect(prisma.quote.findUnique).toHaveBeenCalledWith({
       where: { id: "quote-source" },
+      relationLoadStrategy: "join",
       include: {
-        vehicle: true,
+        items: { where: { sectionId: null }, orderBy: { sortOrder: "asc" } },
         sections: { include: { items: { orderBy: { sortOrder: "asc" } } }, orderBy: { sortOrder: "asc" } },
       },
     });
-    expect(findOrCreateVehicle).toHaveBeenCalledWith(tx, {
-      customerId: "cust-1",
-      plate: "ABC123",
-      brand: "Toyota",
-      model: "Hilux",
-      color: "Blanco",
-      year: 2022,
-      notes: "Source vehicle notes",
-    });
-    expect(result).toEqual({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT, sections: [{ id: "section-copy-1", sortOrder: 0 }] });
+    expect(nextQuoteNumber).toHaveBeenCalledWith(tx);
+    expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    expect(findOrCreateVehicle).not.toHaveBeenCalled();
+    expect(tx.quote.create).toHaveBeenCalledTimes(1);
+    expect(tx.quoteItem.createMany).not.toHaveBeenCalled();
+    expect(tx.quote.create.mock.calls[0][0].include).toEqual({ sections: true });
+    expect(result).toEqual({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT });
 
     const createData = tx.quote.create.mock.calls[0][0].data;
     expect(createData).toMatchObject({
       customerId: "cust-1",
-      vehicleId: "vehicle-1",
+      vehicleId: "vehicle-source",
+      vehicleSnapshot: { plate: "ABC123", brand: "Historical Toyota", model: "Hilux", color: "Blanco", year: 2022 },
       number: "C-0626-01",
       status: QuoteStatus.DRAFT,
       title: "Servicio original",
@@ -519,34 +572,41 @@ describe("duplicateQuote", () => {
       totalCents: 197200,
       validUntil: new Date("2026-07-15T00:00:00.000Z"),
     });
-    expect(createData.sections.create).toEqual([
-      {
-        name: "General",
-        sortOrder: 0,
+    expect(createData.id).toEqual(expect.any(String));
+    expect(createData.items.create).toEqual([{
+      type: "SERVICE",
+      description: "Legacy alignment",
+      quantity: new Prisma.Decimal("1.50"),
+      unitPriceCents: 10000,
+      totalCents: 15000,
+      sortOrder: 0,
+    }]);
+    expect(createData.sections.create).toEqual([{
+      name: "General",
+      sortOrder: 0,
+      items: {
+        create: [
+          {
+            quote: { connect: { id: createData.id } },
+            type: "PART",
+            description: "Filtro",
+            quantity: new Prisma.Decimal("1.00"),
+            unitPriceCents: 20000,
+            totalCents: 20000,
+            sortOrder: 0,
+          },
+          {
+            quote: { connect: { id: createData.id } },
+            type: "SERVICE",
+            description: "Cambio de aceite",
+            quantity: new Prisma.Decimal("2.00"),
+            unitPriceCents: 85000,
+            totalCents: 170000,
+            sortOrder: 1,
+          },
+        ],
       },
-    ]);
-    expect(tx.quoteItem.createMany.mock.calls[0][0].data).toEqual([
-      {
-        quoteId: "quote-copy",
-        sectionId: "section-copy-1",
-        type: "PART",
-        description: "Filtro",
-        quantity: 1,
-        unitPriceCents: 20000,
-        totalCents: 20000,
-        sortOrder: 0,
-      },
-      {
-        quoteId: "quote-copy",
-        sectionId: "section-copy-1",
-        type: "SERVICE",
-        description: "Cambio de aceite",
-        quantity: 2,
-        unitPriceCents: 85000,
-        totalCents: 170000,
-        sortOrder: 1,
-      },
-    ]);
+    }]);
     expect(createData).not.toHaveProperty("workOrder");
     expect(createData).not.toHaveProperty("sharedQuotes");
     expect(createData).not.toHaveProperty("paymentRequests");
@@ -557,7 +617,8 @@ describe("duplicateQuote", () => {
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "quote-source",
       customerId: "cust-1",
-      vehicle: null,
+      vehicleId: null,
+      vehicleSnapshot: null,
       title: "Servicio sin vehículo",
       description: null,
       administrative: false,
@@ -565,6 +626,7 @@ describe("duplicateQuote", () => {
       subtotalCents: 50000,
       taxCents: 0,
       totalCents: 50000,
+      items: [],
       sections: [],
     });
 
@@ -592,7 +654,8 @@ describe("duplicateQuoteFromForm", () => {
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "quote-source",
       customerId: "cust-1",
-      vehicle: null,
+      vehicleId: null,
+      vehicleSnapshot: null,
       title: "Servicio",
       description: null,
       administrative: false,
@@ -600,6 +663,7 @@ describe("duplicateQuoteFromForm", () => {
       subtotalCents: 50000,
       taxCents: 0,
       totalCents: 50000,
+      items: [],
       sections: [],
     });
 
@@ -609,6 +673,8 @@ describe("duplicateQuoteFromForm", () => {
     await duplicateQuoteFromForm(formData as unknown as FormData);
 
     expect(tx.quote.create).toHaveBeenCalledTimes(1);
+    expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    expect(revalidatePath).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?duplicated=1");
   });
 
@@ -630,7 +696,41 @@ describe("duplicateQuoteFromForm", () => {
   });
 });
 
-describe("cancelDraftQuote", () => {
+describe("deleteQuote", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("authorizes direct deletion and soft-deletes once", async () => {
+    const tx = mockTx();
+
+    await deleteQuote("quote-1");
+
+    expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    expect(tx.quote.update).toHaveBeenCalledTimes(1);
+    expect(tx.quote.update).toHaveBeenCalledWith({
+      where: { id: "quote-1" },
+      data: { deletedAt: expect.any(Date) },
+    });
+  });
+});
+
+describe("deleteQuoteFromForm", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("authorizes and soft-deletes once before redirecting without revalidation", async () => {
+    const tx = mockTx();
+    const formData = new MockFormData();
+    formData.set("quoteId", "quote-1");
+
+    await deleteQuoteFromForm(formData as unknown as FormData);
+
+    expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    expect(tx.quote.update).toHaveBeenCalledTimes(1);
+    expect(revalidatePath).not.toHaveBeenCalled();
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?deleted=1");
+  });
+});
+
+describe("cancelQuote", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("cancels a DRAFT quote without deleting it", async () => {
@@ -638,7 +738,7 @@ describe("cancelDraftQuote", () => {
     tx.quote.updateMany.mockResolvedValue({ count: 1 });
     tx.quote.findUniqueOrThrow.mockResolvedValue({ id: "quote-1", status: QuoteStatus.CANCELLED });
 
-    const result = await cancelDraftQuote("quote-1");
+    const result = await cancelQuote("quote-1");
 
     expect(tx.quote.updateMany).toHaveBeenCalledWith({
       where: { id: "quote-1", status: QuoteStatus.DRAFT },
@@ -650,16 +750,16 @@ describe("cancelDraftQuote", () => {
   it("throws when the quote is not found", async () => {
     const tx = mockTx();
     tx.quote.findUnique.mockResolvedValue(null);
-    await expect(cancelDraftQuote("quote-1")).rejects.toThrow("Quote not found.");
+    await expect(cancelQuote("quote-1")).rejects.toThrow("Quote not found.");
   });
 
   it("throws when the quote is not in DRAFT status", async () => {
     mockTx(QuoteStatus.APPROVED);
-    await expect(cancelDraftQuote("quote-1")).rejects.toThrow("Only draft quotes can be cancelled.");
+    await expect(cancelQuote("quote-1")).rejects.toThrow("Only draft quotes can be cancelled.");
   });
 });
 
-describe("cancelDraftQuoteFromForm", () => {
+describe("cancelQuoteFromForm", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("cancels a draft quote from form data and redirects", async () => {
@@ -670,13 +770,13 @@ describe("cancelDraftQuoteFromForm", () => {
     const formData = new MockFormData();
     formData.set("quoteId", "quote-1");
 
-    await cancelDraftQuoteFromForm(formData as unknown as FormData);
+    await cancelQuoteFromForm(formData as unknown as FormData);
 
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?cancelled=1");
   });
 
   it("redirects with invalid-cancellation when quoteId is missing", async () => {
-    await cancelDraftQuoteFromForm(new MockFormData() as unknown as FormData);
+    await cancelQuoteFromForm(new MockFormData() as unknown as FormData);
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid-cancellation");
   });
 
@@ -685,7 +785,7 @@ describe("cancelDraftQuoteFromForm", () => {
     const formData = new MockFormData();
     formData.set("quoteId", "quote-1");
 
-    await cancelDraftQuoteFromForm(formData as unknown as FormData);
+    await cancelQuoteFromForm(formData as unknown as FormData);
 
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=not-draft");
   });

@@ -30,13 +30,13 @@ interface QuoteListCardProps {
   quote: QuoteListItem;
   quoteStatusLabels: Record<QuoteStatus, string>;
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
-  _approveAction: (formData: FormData) => void | Promise<void>;
+  approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
   shareAction: (formData: FormData) => void | Promise<void>;
   authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
-  _cashPaymentAction: (amount: string, operationKey: string) => Promise<{
+  cashPaymentAction: (amount: string, operationKey: string) => Promise<{
     payment: { amountCents: number };
     paidCents: number;
     remainingCents: number;
@@ -56,13 +56,13 @@ export function QuoteListCard({
   quote,
   quoteStatusLabels,
   quoteStatusBadgeVariant,
-  _approveAction,
+  approveAction: _approveAction,
   cancelAction,
   shareAction,
   authorizeAction,
   paymentRequestAction,
   paymentRequestBankAccounts,
-  _cashPaymentAction,
+  cashPaymentAction: _cashPaymentAction,
   duplicateAction,
   deleteAction,
   archiveAction,
@@ -98,6 +98,9 @@ export function QuoteListCard({
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
               <span>Folio {quote.number}</span>
               <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
+              {quote.status === "DRAFT" && quote.submissionKey ? (
+                <Badge variant="warning">Editada</Badge>
+              ) : null}
             </div>
           </div>
           <p className="shrink-0 text-2xl font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
@@ -164,7 +167,7 @@ export function QuoteListCard({
 
           <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} iconOnly />
 
-          {quote.status === "DRAFT" || quote.status === "CANCELLED" ? (
+          {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "CANCELLED" || quote.status === "REJECTED" || quote.status === "ARCHIVED" ? (
             <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} iconOnly />
           ) : null}
 

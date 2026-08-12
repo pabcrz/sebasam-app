@@ -31,7 +31,7 @@ export default async function WorkOrdersPage() {
   // work-order builder dialogs. We filter by the quote IDs that have active work orders.
   const activeQuoteIds = new Set(workOrders.map((wo) => wo.quote.id));
   const allQuotes = activeQuoteIds.size > 0
-    ? await listQuotes({}, { excludeWithActiveWorkOrder: false })
+    ? await listQuotes()
     : [];
   const activeQuotes = allQuotes.filter((q) => activeQuoteIds.has(q.id));
   const quoteMap = new Map(activeQuotes.map((q) => [q.id, q]));

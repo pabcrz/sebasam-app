@@ -29,20 +29,32 @@ function findActiveSharedQuote(sharedQuotes: { expiresAt: Date; revokedAt: Date 
   return sharedQuotes.find((sharedQuote) => sharedQuote.revokedAt === null && sharedQuote.expiresAt >= now) ?? null;
 }
 
-function buildQuoteWhere(input: unknown, options: { excludeWithActiveWorkOrder?: boolean }): Prisma.QuoteWhereInput | undefined {
+type QuoteListOptions = { operationalQueue?: "quotes" };
+
+function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.QuoteWhereInput | undefined {
   const parsed = quoteFilterSchema.safeParse(input);
   const filters = parsed.success ? parsed.data : ({} as QuoteFilterInput);
   const where: Prisma.QuoteWhereInput = {};
+  const quoteQueueStatuses: QuoteStatus[] = [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.APPROVED];
 
-  // Exclude quotes that live in Trabajos (ASSIGNED) or Notas (COMPLETED)
-  if (options.excludeWithActiveWorkOrder) {
+  if (options.operationalQueue === "quotes") {
     where.NOT = {
-      workOrder: { status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.COMPLETED] } },
+      workOrder: {
+        status: {
+          in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED],
+        },
+      },
     };
   }
 
+  where.deletedAt = null;
 
-  if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
+
+  if (options.operationalQueue === "quotes") {
+    where.status = filters.status && quoteQueueStatuses.includes(filters.status as QuoteStatus)
+      ? filters.status as QuoteStatus
+      : { in: quoteQueueStatuses };
+  } else if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
     where.status = filters.status as QuoteStatus;
   } else {
     const hiddenStatuses: QuoteStatus[] = [];
@@ -120,6 +132,7 @@ const quoteListInclude = {
 async function findQuotes(where: Prisma.QuoteWhereInput | undefined, pagination?: { skip: number; take: number }) {
   return prisma.quote.findMany({
     where,
+    relationLoadStrategy: "join",
     include: quoteListInclude,
     orderBy: pagination ? [{ createdAt: "desc" }, { id: "desc" }] : { createdAt: "desc" },
     ...pagination,
@@ -166,12 +179,12 @@ async function serializeQuotes(quotes: Awaited<ReturnType<typeof findQuotes>>) {
   });
 }
 
-export async function listQuotes(input: unknown = {}, options: { excludeWithActiveWorkOrder?: boolean } = {}) {
+export async function listQuotes(input: unknown = {}, options: QuoteListOptions = {}) {
   await requireOperationalRole();
   return serializeQuotes(await findQuotes(buildQuoteWhere(input, options)));
 }
 
-export async function listPaginatedQuotes(input: unknown = {}, options: { excludeWithActiveWorkOrder?: boolean } = {}) {
+export async function listPaginatedQuotes(input: unknown = {}, options: QuoteListOptions = {}) {
   await requireOperationalRole();
 
   const pageInput = input && typeof input === "object" && !Array.isArray(input)

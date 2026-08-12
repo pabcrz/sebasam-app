@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import type { UserProfile, UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { measureServerTiming } from "@/lib/server-timing";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type CurrentProfile = {
@@ -38,13 +39,27 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = await measureServerTiming("auth", "session.user", () => supabase.auth.getUser());
 
   if (error || !user) {
     return null;
   }
 
   return user;
+});
+
+const resolveCurrentProfile = cache(async () => {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return { user: null, profile: null };
+  }
+
+  const profile = await measureServerTiming("profile", "session.profile", () =>
+    prisma.userProfile.findUnique({ where: { id: user.id } }),
+  );
+
+  return { user, profile };
 });
 
 export async function requireUser(): Promise<User> {
@@ -58,28 +73,21 @@ export async function requireUser(): Promise<User> {
 }
 
 export async function getCurrentProfile(): Promise<CurrentProfile | null> {
-  const user = await getCurrentUser();
+  const { user, profile } = await resolveCurrentProfile();
 
-  if (!user) {
-    return null;
-  }
-
-  const profile = await prisma.userProfile.findUnique({
-    where: { id: user.id },
-  });
-
-  if (!profile || !profile.isActive) {
+  if (!user || !profile || !profile.isActive) {
     return null;
   }
 
   return { user, profile };
 }
 
-export const requireProfile = cache(async (): Promise<CurrentProfile> => {
-  const user = await requireUser();
-  const profile = await prisma.userProfile.findUnique({
-    where: { id: user.id },
-  });
+export async function requireProfile(): Promise<CurrentProfile> {
+  const { user, profile } = await resolveCurrentProfile();
+
+  if (!user) {
+    redirect("/admin/login");
+  }
 
   if (!profile) {
     throw new MissingUserProfileError(user.id);
@@ -90,13 +98,14 @@ export const requireProfile = cache(async (): Promise<CurrentProfile> => {
   }
 
   return { user, profile };
-});
+}
 
 export async function requireProfileForPage(): Promise<CurrentProfile> {
-  const user = await requireUser();
-  const profile = await prisma.userProfile.findUnique({
-    where: { id: user.id },
-  });
+  const { user, profile } = await resolveCurrentProfile();
+
+  if (!user) {
+    redirect("/admin/login");
+  }
 
   if (!profile || !profile.isActive) {
     redirect("/admin/setup-required");
@@ -122,4 +131,3 @@ export async function requireAdmin(): Promise<CurrentProfile> {
 export async function requireOperationalRole(): Promise<CurrentProfile> {
   return requireRole(["ADMIN", "ADMIN_ASSISTANT"]);
 }
-

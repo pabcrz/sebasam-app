@@ -13,9 +13,14 @@ import {
 } from "@/components/ui";
 import { Textarea } from "@/components/ui";
 import { Label } from "@/components/ui";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { ButtonVariant, ButtonSize } from "@/components/ui";
-
-import { useRouter } from "next/navigation";
 
 export interface QuoteAuthorizeFormProps {
   action: (note: string) => Promise<{ success: boolean; error?: string }>;
@@ -25,6 +30,34 @@ export interface QuoteAuthorizeFormProps {
   iconOnly?: boolean;
 }
 
+const AUTHORIZATION_METHODS = [
+  "Confirmación por WhatsApp",
+  "Llamada telefónica",
+  "Autorización presencial / Verbal",
+  "Otro",
+];
+
+const clientTimingOptInKey = "SEBASAM_PERF_TIMINGS";
+
+function startClientActionTiming() {
+  try {
+    return window.localStorage.getItem(clientTimingOptInKey) === "1" ? performance.now() : null;
+  } catch {
+    return null;
+  }
+}
+
+function recordClientActionTiming(startedAt: number | null, outcome: "success" | "failure") {
+  if (startedAt === null) return;
+
+  console.info("[client-timing]", {
+    stage: "client",
+    operation: "quote.authorize.action-round-trip",
+    durationMs: Math.round(Math.max(0, performance.now() - startedAt) * 100) / 100,
+    outcome,
+  });
+}
+
 export function QuoteAuthorizeForm({
   action,
   quoteNumber,
@@ -32,35 +65,55 @@ export function QuoteAuthorizeForm({
   size = "sm",
   iconOnly = false,
 }: QuoteAuthorizeFormProps) {
-  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
+  const [method, setMethod] = React.useState<string>("");
   const [note, setNote] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
 
   const handleConfirm = React.useCallback(() => {
-    if (note.trim().length === 0) {
-      setError("La nota de autorización es obligatoria.");
+    if (!method) {
+      setError("Debes seleccionar un método de autorización.");
+      return;
+    }
+    
+    if (method === "Otro" && note.trim().length === 0) {
+      setError("La nota es obligatoria si seleccionas 'Otro'.");
       return;
     }
 
+    const finalNote = note.trim() 
+      ? (method === "Otro" ? note.trim() : `${method} - ${note.trim()}`) 
+      : method;
+
     setError(null);
+    const timingStartedAt = startClientActionTiming();
     startTransition(async () => {
-      const result = await action(note);
+      let result: Awaited<ReturnType<QuoteAuthorizeFormProps["action"]>>;
+
+      try {
+        result = await action(finalNote);
+      } catch (error) {
+        recordClientActionTiming(timingStartedAt, "failure");
+        throw error;
+      }
+
+      recordClientActionTiming(timingStartedAt, result.success ? "success" : "failure");
       if (result.success) {
         setOpen(false);
+        setMethod("");
         setNote("");
-        router.refresh();
       } else {
         setError(result.error ?? "No se pudo autorizar la cotización.");
       }
     });
-  }, [action, note, router]);
+  }, [action, method, note]);
 
 
   const handleOpenChange = React.useCallback(
     (newOpen: boolean) => {
       if (!newOpen) {
+        setMethod("");
         setNote("");
         setError(null);
       }
@@ -95,19 +148,46 @@ export function QuoteAuthorizeForm({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-2">
-            <Label htmlFor="authorize-note">Nota de autorización</Label>
-            <Textarea
-              id="authorize-note"
-              placeholder="Ej. Cliente confirmó por WhatsApp, aceptó por teléfono, autorización presencial…"
-              value={note}
-              onChange={(event) => {
-                setNote(event.target.value);
-                if (error) setError(null);
-              }}
-              disabled={isPending}
-              rows={3}
-            />
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="authorize-method">Medio de confirmación *</Label>
+              <Select
+                value={method}
+                onValueChange={(val) => {
+                  setMethod(val);
+                  if (error) setError(null);
+                }}
+                disabled={isPending}
+              >
+                <SelectTrigger id="authorize-method">
+                  <SelectValue placeholder="Selecciona el método..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {AUTHORIZATION_METHODS.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="authorize-note">
+                Detalles u observaciones {method === "Otro" ? "*" : "(opcional)"}
+              </Label>
+              <Textarea
+                id="authorize-note"
+                placeholder={method === "Otro" ? "Especifica cómo autorizó el cliente..." : "Ej. Dejó anticipo en efectivo..."}
+                value={note}
+                onChange={(event) => {
+                  setNote(event.target.value);
+                  if (error) setError(null);
+                }}
+                disabled={isPending}
+                rows={3}
+              />
+            </div>
           </div>
 
           {error ? (

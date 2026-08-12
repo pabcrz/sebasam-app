@@ -62,6 +62,20 @@ describe("listQuotes filters", () => {
     expect(getFindManyCall().where).toEqual({ status: { notIn: ["CANCELLED"] } });
   });
 
+  it("keeps PLANNED work in Cotizaciones and excludes later operational queues", async () => {
+    await listPaginatedQuotes({}, { operationalQueue: "quotes" });
+
+    expect(getFindManyCall().where).toMatchObject({
+      status: { in: ["DRAFT", "SENT", "APPROVED"] },
+      NOT: {
+        workOrder: {
+          status: { in: ["ASSIGNED", "IN_PROGRESS", "COMPLETED"] },
+        },
+      },
+    });
+    expect(getFindManyCall().where.NOT.workOrder.status.in).not.toContain("PLANNED");
+  });
+
   it("paginates newest-first while preserving filters", async () => {
     (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(
       Array.from({ length: 21 }, (_, index) => ({
@@ -87,12 +101,92 @@ describe("listQuotes filters", () => {
     expect(result.quotes).toHaveLength(20);
   });
 
-  it("includes root and section items in the paginated list payload", async () => {
-    await listPaginatedQuotes();
+  it("hydrates the complete quote payload with one joined relation query and one paid-total query", async () => {
+    const relationPayload = {
+      customer: { id: "cust-1", fiscalProfiles: [{ id: "fiscal-1" }] },
+      vehicle: { id: "vehicle-1", plate: "ABC-123" },
+      workOrder: {
+        id: "work-order-1",
+        assignments: [{ id: "assignment-1", worker: { id: "worker-1" } }],
+        executionRecords: [{ id: "execution-1", worker: { id: "worker-1" } }],
+      },
+      sharedQuotes: [{ id: "shared-1", expiresAt: new Date("2099-01-01"), revokedAt: null }],
+      paymentRequests: [{ id: "request-1", status: "PENDING" }],
+    };
+    (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{
+      id: "quote-1",
+      number: "C-001",
+      subtotalCents: 10000,
+      taxCents: 1600,
+      totalCents: 11600,
+      items: [{ id: "root-item", quantity: 1, unitPriceCents: 1000, totalCents: 1000 }],
+      sections: [{
+        id: "section-1",
+        items: [{ id: "section-item", quantity: 2, unitPriceCents: 4500, totalCents: 9000 }],
+      }],
+      ...relationPayload,
+    }]);
+    (getQuotePaidTotals as ReturnType<typeof vi.fn>).mockResolvedValue(new Map([["quote-1", 1600]]));
+
+    const result = await listPaginatedQuotes();
 
     const call = getFindManyCall();
-    expect(call.include.items).toBeDefined();
-    expect(call.include.sections).toBeDefined();
+    expect(prisma.quote.findMany).toHaveBeenCalledTimes(1);
+    expect(getQuotePaidTotals).toHaveBeenCalledTimes(1);
+    expect(call.relationLoadStrategy).toBe("join");
+    expect(call.include).toMatchObject({
+      customer: {
+        include: {
+          fiscalProfiles: {
+            orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+            take: 1,
+            select: { id: true, businessName: true, taxId: true },
+          },
+        },
+      },
+      vehicle: true,
+      items: { orderBy: { sortOrder: "asc" } },
+      sections: {
+        orderBy: { sortOrder: "asc" },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      },
+      workOrder: {
+        include: {
+          assignments: { include: { worker: true } },
+          executionRecords: {
+            include: { worker: true },
+            orderBy: { happenedAt: "desc" },
+          },
+        },
+      },
+      sharedQuotes: true,
+      paymentRequests: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          requiresInvoice: true,
+          customerFiscalProfileId: true,
+          fiscalSnapshot: true,
+        },
+      },
+    });
+    expect(getQuotePaidTotals).toHaveBeenCalledWith(["quote-1"]);
+    expect(result.quotes[0]).toMatchObject({
+      ...relationPayload,
+      subtotalCents: 10000,
+      taxCents: 1600,
+      totalCents: 11600,
+      paidCents: 1600,
+      remainingCents: 10000,
+      items: [{ id: "root-item", quantity: 1, unitPriceCents: 1000, totalCents: 1000 }],
+      sections: [{
+        id: "section-1",
+        items: [{ id: "section-item", quantity: 2, unitPriceCents: 4500, totalCents: 9000 }],
+      }],
+      activeSharedQuote: relationPayload.sharedQuotes[0],
+    });
   });
 
   it("filters by customerId", async () => {
