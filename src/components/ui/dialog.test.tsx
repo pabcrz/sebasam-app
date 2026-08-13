@@ -70,6 +70,32 @@ describe("DialogContent", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toHaveAttribute("data-state", "open");
+    expect(screen.getByRole("combobox", { name: "Choose" })).toHaveTextContent("Option A");
+    expect(screen.queryByRole("option", { name: "Option A" })).not.toBeInTheDocument();
+  });
+
+  it("closes an open Select before dismissing the dialog on the next overlay click", async () => {
+    const user = userEvent.setup();
+    render(<TestDialog />);
+
+    await user.click(screen.getByRole("button", { name: "Open dialog" }));
+    await user.click(screen.getByRole("combobox", { name: "Choose" }));
+    expect(await screen.findByRole("option", { name: "Option A" })).toBeInTheDocument();
+
+    const overlay = document.querySelector("[data-dialog-overlay]");
+    expect(overlay).toBeInstanceOf(HTMLElement);
+    if (!(overlay instanceof HTMLElement)) throw new Error("Dialog overlay not found");
+
+    await user.click(overlay);
+    await waitFor(() => {
+      expect(screen.queryByRole("option", { name: "Option A" })).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    await user.click(overlay);
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 
   it("closes the dialog when clicking the overlay", async () => {

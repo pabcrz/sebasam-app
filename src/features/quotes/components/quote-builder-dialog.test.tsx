@@ -279,6 +279,8 @@ describe("QuoteBuilderDialog", () => {
     await user.click(await screen.findByRole("option", { name: "Material" }));
 
     expect(screen.getByRole("dialog", { name: "Crear cotización" })).toHaveAttribute("data-state", "open");
+    expect(itemTypeSelect).toHaveTextContent("Material");
+    expect(screen.queryByRole("option", { name: "Material" })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "¿Descartar la cotización?" })).not.toBeInTheDocument();
   });
 

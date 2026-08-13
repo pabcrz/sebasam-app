@@ -283,8 +283,13 @@ function checkQuotesPage() {
   );
   assertIncludes(
     selectSource,
+    "onPointerDownOutside",
+    "Select content must coordinate its accepted outside pointer events with a parent dialog",
+  );
+  assertIncludes(
+    selectSource,
     "stopImmediatePropagation",
-    "Select content must stop pointerdown propagation so portaled items are not seen as outside the dialog",
+    "Select content must stop option pointerdown propagation before it reaches a parent dialog",
   );
 
   // Dialog must ignore outside interactions that target portaled Select content.
@@ -304,6 +309,11 @@ function checkQuotesPage() {
     dialogSource,
     "onPointerDownOutside",
     "Dialog must hook into pointer-down-outside events to protect select content",
+  );
+  assertIncludes(
+    dialogSource,
+    "consumePointerDownOutside",
+    "Dialog must consume the matching Select outside pointer event exactly once",
   );
   assertIncludes(
     dialogSource,

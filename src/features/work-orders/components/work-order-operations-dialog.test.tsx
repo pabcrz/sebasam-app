@@ -54,6 +54,28 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
   });
 
+  it("keeps assignment open when selecting a master from its portaled Select", async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkOrderOperationsDialog
+        quoteNumber="C-001"
+        quoteStatus="APPROVED"
+        workOrder={{ id: "wo-1", number: "T-001", status: "PLANNED", assignments: [] }}
+        workers={workers}
+        actions={actions}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo t-001/i }));
+    await user.click(screen.getByLabelText(/maestro responsable/i));
+    expect(await screen.findByRole("option", { name: "Maestro Uno" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("option", { name: "Maestro Uno" }));
+    expect(screen.getByLabelText(/maestro responsable/i)).toHaveTextContent("Maestro Uno");
+    expect(screen.queryByRole("option", { name: "Maestro Uno" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
   it("allows completing an assigned work order", async () => {
     const user = userEvent.setup();
     render(
