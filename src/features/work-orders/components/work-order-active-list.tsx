@@ -4,7 +4,7 @@ import * as React from "react";
 import type { listActiveWorkOrders } from "@/features/work-orders/queries";
 
 import type { listQuotes } from "@/features/quotes/queries";
-import { Badge, OperationalCard } from "@/components/ui";
+import { Badge, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
@@ -71,15 +71,14 @@ export function WorkOrderActiveList({
             key={wo.id}
             onOpen={() => setPreviewOpenId(wo.quote.id)}
             openLabel={`Ver detalle de cotización ${wo.quote.number}`}
-            footerClassName="flex flex-wrap gap-2"
             footer={
-              <>
+              <OperationalActionRow>
                 <WorkOrderOperationsDialog
                   quoteNumber={wo.quote.number}
                   quoteStatus="APPROVED"
                   workOrder={wo}
                   workers={workers}
-                  triggerIconOnlyDesktop
+                  triggerIconOnlyMobile
                   actions={{
                     ...workOrderActions,
                     assign: workOrderActions.assign
@@ -97,14 +96,16 @@ export function WorkOrderActiveList({
                     quoteNumber={wo.quote.number}
                     triggerSize="sm"
                     triggerVariant="outline"
-                    triggerIconOnlyDesktop
+                    triggerIconOnlyMobile
                   />
                 ) : null}
 
-                <QuoteDuplicateForm action={duplicateQuoteAction} quoteId={wo.quote.id} />
+                <QuoteDuplicateForm action={duplicateQuoteAction} quoteId={wo.quote.id} actionLabelClassName="sr-only sm:not-sr-only" />
 
-                {fullQuote?.activeSharedQuote ? <ShareQuoteButton sharedQuote={fullQuote.activeSharedQuote} status={fullQuote.status} quoteNumber={wo.quote.number} /> : null}
-              </>
+                {fullQuote?.activeSharedQuote ? (
+                  <ShareQuoteButton sharedQuote={fullQuote.activeSharedQuote} status={fullQuote.status} quoteNumber={wo.quote.number} actionLabelClassName="sr-only sm:not-sr-only" />
+                ) : null}
+              </OperationalActionRow>
             }
           >
               {/* Header */}

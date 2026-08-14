@@ -9,9 +9,10 @@ type QuoteLifecycleFormProps = {
   mode: "archive" | "restore";
   quoteNumber: string;
   iconOnly?: boolean;
+  actionLabelClassName?: string;
 };
 
-export function QuoteLifecycleForm({ action, mode, quoteNumber, iconOnly = false }: QuoteLifecycleFormProps) {
+export function QuoteLifecycleForm({ action, mode, quoteNumber, iconOnly = false, actionLabelClassName }: QuoteLifecycleFormProps) {
   const [open, setOpen] = React.useState(false);
   const [reason, setReason] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -40,10 +41,11 @@ export function QuoteLifecycleForm({ action, mode, quoteNumber, iconOnly = false
         variant={archive ? "outline" : "primary"}
         size={iconOnly ? "icon" : "sm"}
         aria-label={`${label} cotización ${quoteNumber}`}
+        title={`${label} cotización ${quoteNumber}`}
         onClick={(event) => { event.stopPropagation(); setOpen(true); }}
       >
-        {archive ? <Archive className="h-4 w-4" aria-hidden="true" /> : <RotateCcw className="h-4 w-4" aria-hidden="true" />}
-        {!iconOnly ? label : null}
+        {archive ? <Archive className="h-5 w-5" aria-hidden="true" /> : <RotateCcw className="h-5 w-5" aria-hidden="true" />}
+        {!iconOnly ? <span className={actionLabelClassName}>{label}</span> : null}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">

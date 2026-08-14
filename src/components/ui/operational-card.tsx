@@ -12,11 +12,21 @@ type OperationalCardProps = {
   footerClassName?: string;
 };
 
+export function OperationalActionRow({ children }: React.PropsWithChildren) {
+  return (
+    <div className="flex w-full flex-wrap items-center gap-3 [&_button]:h-10 [&_button]:w-10 sm:gap-2 sm:[&_button]:h-9 sm:[&_button]:w-auto">
+      {React.Children.map(children, (child) => child == null ? null : (
+        <div className="grid w-10 sm:block sm:w-auto">{child}</div>
+      ))}
+    </div>
+  );
+}
+
 export function OperationalCard({ children, footer, onOpen, openLabel, className, footerClassName }: OperationalCardProps) {
-  const bodyClassName = "w-full p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-inset";
+  const bodyClassName = "w-full rounded-[var(--radius-sm)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2";
 
   return (
-    <div className={clsx("overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm", className)}>
+    <div className={clsx("rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm", className)}>
       {onOpen ? (
         <button type="button" onClick={onOpen} aria-label={openLabel} className={clsx(bodyClassName, "cursor-pointer hover:bg-[var(--color-bg-soft)]")}>
           {children}
@@ -24,7 +34,7 @@ export function OperationalCard({ children, footer, onOpen, openLabel, className
       ) : (
         <div className={bodyClassName}>{children}</div>
       )}
-      <div className={clsx("border-t border-[var(--color-border-light)] bg-[var(--color-bg-soft)] px-4 py-3", footerClassName)}>{footer}</div>
+      <div className={clsx("mt-4", footerClassName)}>{footer}</div>
     </div>
   );
 }

@@ -12,6 +12,7 @@ export interface QuoteCancelFormProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
   iconOnly?: boolean;
+  actionLabelClassName?: string;
 }
 
 export function QuoteCancelForm({
@@ -21,6 +22,7 @@ export function QuoteCancelForm({
   variant = "outline",
   size = "sm",
   iconOnly = false,
+  actionLabelClassName,
 }: QuoteCancelFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
@@ -59,9 +61,10 @@ export function QuoteCancelForm({
           setOpen(true);
         }}
         aria-label={`Cancelar cotización ${quoteNumber}`}
+        title={`Cancelar cotización ${quoteNumber}`}
       >
-        <Ban className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} aria-hidden="true" />
-        {!iconOnly && "Cancelar"}
+        {!isPending ? <Ban className="h-5 w-5" aria-hidden="true" /> : null}
+        {!iconOnly && !isPending ? <span className={actionLabelClassName}>Cancelar</span> : null}
       </Button>
 
       <ConfirmDialog

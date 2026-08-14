@@ -83,4 +83,13 @@ describe("WorkOrderActiveList", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo duplicar la cotización");
   });
+
+  it("uses accessible responsive action controls", () => {
+    renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }));
+
+    const duplicate = screen.getByRole("button", { name: "Duplicar cotización" });
+    expect(duplicate).toHaveAttribute("title", "Duplicar cotización");
+    expect(duplicate.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
+    expect(duplicate.parentElement?.parentElement).toHaveClass("flex", "w-full", "flex-wrap", "items-center", "gap-3", "[&_button]:h-10", "[&_button]:w-10", "sm:gap-2", "sm:[&_button]:h-9", "sm:[&_button]:w-auto");
+  });
 });

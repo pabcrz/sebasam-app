@@ -31,7 +31,7 @@ type QuoteBuilderDialogProps = {
   triggerClassName?: string;
   triggerSize?: "default" | "sm";
   triggerVariant?: ButtonVariant;
-  triggerIconOnlyDesktop?: boolean;
+  triggerIconOnlyMobile?: boolean;
   createCustomerAction?: (input: unknown) => Promise<{
     success: boolean;
     customer?: CustomerOption;
@@ -41,7 +41,7 @@ type QuoteBuilderDialogProps = {
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
 };
 
-export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, triggerVariant, triggerIconOnlyDesktop = false, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
+export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, triggerVariant, triggerIconOnlyMobile = false, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = React.useState(false);
@@ -133,12 +133,12 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
             type="button"
             variant={triggerVariant ?? "primary"}
             size={triggerSize}
-            className={triggerIconOnlyDesktop ? `sm:w-9 sm:px-0 ${triggerClassName ?? ""}` : triggerClassName}
-            title={triggerIconOnlyDesktop && isEdit ? `Editar cotización ${quoteNumber}` : undefined}
-            aria-label={triggerIconOnlyDesktop && isEdit ? `Editar cotización ${quoteNumber}` : undefined}
+            className={triggerIconOnlyMobile ? `h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3 ${triggerClassName ?? ""}` : triggerClassName}
+            title={triggerIconOnlyMobile && isEdit ? `Editar cotización ${quoteNumber}` : undefined}
+            aria-label={triggerIconOnlyMobile && isEdit ? `Editar cotización ${quoteNumber}` : undefined}
           >
-            {isEdit ? <Pencil className="h-4 w-4" aria-hidden="true" /> : null}
-            <span className={triggerIconOnlyDesktop ? "sm:sr-only" : undefined}>{isEdit ? "Editar" : "Nueva cotización"}</span>
+            {isEdit ? <Pencil className="h-5 w-5" aria-hidden="true" /> : null}
+            <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{isEdit ? "Editar" : "Nueva cotización"}</span>
           </Button>
         </DialogTrigger>
         <DialogContent

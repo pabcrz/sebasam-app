@@ -28,6 +28,7 @@ export interface QuoteAuthorizeFormProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
   iconOnly?: boolean;
+  actionLabelClassName?: string;
 }
 
 const AUTHORIZATION_METHODS = [
@@ -64,6 +65,7 @@ export function QuoteAuthorizeForm({
   variant = "outline",
   size = "sm",
   iconOnly = false,
+  actionLabelClassName,
 }: QuoteAuthorizeFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
@@ -134,9 +136,10 @@ export function QuoteAuthorizeForm({
           setOpen(true);
         }}
         aria-label={`Autorizar cotización ${quoteNumber}`}
+        title={`Autorizar cotización ${quoteNumber}`}
       >
-        <ShieldCheck className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} aria-hidden="true" />
-        {!iconOnly && <span>Autorizar</span>}
+        <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+        {!iconOnly && <span className={actionLabelClassName}>Autorizar</span>}
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>

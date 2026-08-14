@@ -8,9 +8,10 @@ export interface QuoteDuplicateFormProps {
   action: (formData: FormData) => void | Promise<void>;
   quoteId: string;
   iconOnly?: boolean;
+  actionLabelClassName?: string;
 }
 
-export function QuoteDuplicateForm({ action, quoteId, iconOnly = false }: QuoteDuplicateFormProps) {
+export function QuoteDuplicateForm({ action, quoteId, iconOnly = false, actionLabelClassName }: QuoteDuplicateFormProps) {
   const [isPending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
 
@@ -49,8 +50,8 @@ export function QuoteDuplicateForm({ action, quoteId, iconOnly = false }: QuoteD
         disabled={isPending}
         onClick={handleDuplicate}
       >
-        {!isPending ? <Copy className={iconOnly ? "h-4 w-4" : "mr-2 h-4 w-4"} aria-hidden="true" /> : null}
-        {!iconOnly ? <span>{isPending ? "Duplicando..." : "Duplicar"}</span> : null}
+        {!isPending ? <Copy className="h-5 w-5" aria-hidden="true" /> : null}
+        {!iconOnly && !isPending ? <span className={actionLabelClassName}>Duplicar</span> : null}
       </Button>
       {error ? <p role="alert" className="basis-full text-xs text-[var(--color-status-danger-fg)]">{error}</p> : null}
     </>
