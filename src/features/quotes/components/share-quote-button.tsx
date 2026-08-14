@@ -12,9 +12,10 @@ export interface ShareQuoteButtonProps {
   quoteNumber: string;
   className?: string;
   iconOnly?: boolean;
+  actionLabelClassName?: string;
 }
 
-export function ShareQuoteButton({ action, sharedQuote, status, quoteNumber, className, iconOnly = false }: ShareQuoteButtonProps) {
+export function ShareQuoteButton({ action, sharedQuote, status, quoteNumber, className, iconOnly = false, actionLabelClassName }: ShareQuoteButtonProps) {
   const [isPending, startTransition] = React.useTransition();
   const [published, setPublished] = React.useState(status !== "DRAFT");
   const [feedback, setFeedback] = React.useState<"copied" | "manual" | "error" | null>(null);
@@ -65,13 +66,14 @@ export function ShareQuoteButton({ action, sharedQuote, status, quoteNumber, cla
       variant="outline"
       size={iconOnly ? "icon" : "sm"}
       aria-label={`Compartir cotización ${quoteNumber}`}
+      title={`Compartir cotización ${quoteNumber}`}
       className={className}
       loading={isPending}
       disabled={isPending}
       onClick={handleShare}
     >
-      {feedback === "copied" ? <Check className="h-4 w-4" aria-hidden="true" /> : <Share2 className="h-4 w-4" aria-hidden="true" />}
-      {!iconOnly ? <span>{feedback === "copied" ? "Link copiado" : isPending ? "Compartiendo..." : "Compartir"}</span> : null}
+      {!isPending ? (feedback === "copied" ? <Check className="h-5 w-5" aria-hidden="true" /> : <Share2 className="h-5 w-5" aria-hidden="true" />) : null}
+      {!iconOnly && !isPending ? <span className={actionLabelClassName}>{feedback === "copied" ? "Link copiado" : "Compartir"}</span> : null}
     </Button>
     {feedback === "manual" ? (
       <p role="alert" className="basis-full text-xs text-[var(--color-text-muted)]">

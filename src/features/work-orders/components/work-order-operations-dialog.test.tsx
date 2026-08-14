@@ -39,6 +39,31 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
   });
 
+  it("keeps work actions icon-only on mobile and labeled on desktop", async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkOrderOperationsDialog
+        quoteNumber="C-001"
+        quoteStatus="APPROVED"
+        workOrder={{ id: "wo-1", number: "T-001", status: "COMPLETED" }}
+        actions={{}}
+        triggerIconOnlyMobile
+      />,
+    );
+
+    const viewOrder = screen.getByRole("button", { name: "Gestionar orden de trabajo T-001" });
+    expect(viewOrder).toHaveAttribute("title", "Gestionar orden de trabajo T-001");
+    expect(viewOrder).toHaveClass("h-10", "w-10", "sm:h-9", "sm:w-auto");
+    expect(viewOrder.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
+    expect(viewOrder).toHaveTextContent("Ver orden");
+
+    await user.click(viewOrder);
+    const printNote = screen.getByRole("button", { name: "Imprimir nota de remisión T-001" });
+    expect(printNote).toHaveAttribute("title", "Imprimir nota de remisión T-001");
+    expect(printNote).toHaveClass("w-9", "sm:w-auto");
+    expect(printNote.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
+  });
+
   it("shows assignment controls including special order toggle", async () => {
     const user = userEvent.setup();
     render(

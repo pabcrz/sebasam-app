@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Printer } from "lucide-react";
 import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
-import { Badge, Button, OperationalCard } from "@/components/ui";
+import { Badge, Button, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
@@ -73,21 +73,21 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     remainingCents={wo.quote.remainingCents ?? totalCents}
                   />
                 ) : null}
-                <div className="flex flex-wrap gap-2">
+                <OperationalActionRow>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="flex-1 sm:w-9 sm:flex-none sm:px-0"
+                    className="h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
                     title={`Imprimir nota de remisión ${wo.number}`}
                     aria-label={`Imprimir nota de remisión ${wo.number}`}
                     onClick={() => window.open(`/admin/notas/${wo.id}/print`, "_blank")}
                   >
-                    <Printer className="h-4 w-4" aria-hidden="true" />
-                    <span className="sm:sr-only">Imprimir nota</span>
+                    <Printer className="h-5 w-5" aria-hidden="true" />
+                    <span className="sr-only sm:not-sr-only">Imprimir nota</span>
                   </Button>
-                  <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyDesktop />
-                </div>
+                  <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile />
+                </OperationalActionRow>
               </>
             }
           >

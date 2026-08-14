@@ -121,9 +121,11 @@ export function CashPaymentDialog({
             size="sm"
             onClick={handleOpen}
             aria-label={`Registrar pago para ${quoteNumber}`}
+            title={`Registrar pago para ${quoteNumber}`}
+            className="h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
           >
-            <CreditCard className="h-4 w-4" aria-hidden="true" />
-            <span>Registrar pago</span>
+            <CreditCard className="h-5 w-5" aria-hidden="true" />
+            <span className="sr-only sm:not-sr-only">Registrar pago</span>
           </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogContent className="max-w-md">
