@@ -92,7 +92,7 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
               <span className="font-medium">Cot. {wo.quote.number}</span>
               {" · "}
               {wo.isSpecial
-                ? `Trabajo especial: ${wo.specialAssigneeName ?? "—"}`
+                ? "Taller"
                 : wo.assignments.find((a) => a.worker.workerKind === "MASTER")?.worker.displayName ?? "Sin maestro"}
             </div>
           </div>
