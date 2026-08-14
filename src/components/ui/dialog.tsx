@@ -9,13 +9,9 @@ export const DialogTrigger = DialogPrimitive.Trigger;
 export const DialogPortal = DialogPrimitive.Portal;
 export const DialogClose = DialogPrimitive.Close;
 
-type DialogPointerDownOutsideEvent = Parameters<
-  NonNullable<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>["onPointerDownOutside"]>
->[0];
-
 type DialogPointerDownOutsideGuard = {
   registerPointerDownOutside: (event: PointerEvent) => void;
-  consumePointerDownOutside: (event: PointerEvent) => boolean;
+  consumePointerDownOutside: (event: Event) => boolean;
 };
 
 const DialogPointerDownOutsideContext = React.createContext<DialogPointerDownOutsideGuard | null>(null);
@@ -81,17 +77,16 @@ export const DialogContent = React.forwardRef<
               className,
             )}
             onInteractOutside={(event) => {
+              if (pointerDownOutsideGuard.consumePointerDownOutside(event.detail.originalEvent)) {
+                event.preventDefault();
+              }
               if (isDialogPortalTarget(event.target)) {
                 event.preventDefault();
                 return;
               }
               onInteractOutside?.(event);
             }}
-            onPointerDownOutside={(event: DialogPointerDownOutsideEvent) => {
-              if (pointerDownOutsideGuard.consumePointerDownOutside(event.detail.originalEvent)) {
-                event.preventDefault();
-                return;
-              }
+            onPointerDownOutside={(event) => {
               if (isDialogPortalTarget(event.target)) {
                 event.preventDefault();
                 return;
