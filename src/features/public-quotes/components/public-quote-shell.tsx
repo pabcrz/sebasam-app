@@ -8,7 +8,14 @@ import { formatDate } from "@/features/quotes/lib/format";
 
 export interface PublicQuoteShellProps {
   children: React.ReactNode;
-  business?: ShellBusinessSettings;
+  business?: {
+    name: string;
+    fullName: string;
+    address: string;
+    mapsUrl: string;
+    contactPhone: string;
+    contactWhatsapp: string;
+  };
   documentType?: string;
   documentNumber?: string;
   date?: Date | null;
