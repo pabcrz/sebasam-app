@@ -24,6 +24,7 @@ export interface QuotePreviewCardProps {
   remainingCents?: number;
   validUntil: Date | null;
   isNote?: boolean;
+  compactHeader?: boolean;
 }
 
 // PreviewItemRow is removed because we use a <table> directly
@@ -43,6 +44,7 @@ export function QuotePreviewCard({
   remainingCents,
   validUntil,
   isNote,
+  compactHeader,
 }: QuotePreviewCardProps) {
   const vehicleDescription = [vehicle.brand, vehicle.model, vehicle.year, vehicle.plate]
     .filter(Boolean)
@@ -54,47 +56,45 @@ export function QuotePreviewCard({
   return (
     <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm print:border-none print:shadow-none print:bg-white print:rounded-none">
       <div className="grid gap-6 p-4 md:p-6 print:p-0 print:pt-2">
-        <div className="flex flex-col rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 print:border-gray-200 print:bg-gray-50">
-          {title && (
-            <div className="mb-3">
-              <p className="text-base font-semibold text-[var(--color-text-main)] print:text-black">
-                {title}
-              </p>
-            </div>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
-            <div>
-              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
-                <UserRound className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Cliente
-              </p>
-              <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
-                {customerName || "Sin cliente"}
-              </p>
-            </div>
-            <div>
-              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
-                <Truck className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Unidad
-              </p>
-              <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
-                {vehicleDescription || "Sin vehículo"}
-              </p>
+        {!compactHeader && (
+          <div className="flex flex-col rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 print:border-gray-200 print:bg-gray-50">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
+              <div>
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
+                  <UserRound className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Cliente
+                </p>
+                <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
+                  {customerName || "Sin cliente"}
+                </p>
+              </div>
+              <div>
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
+                  <Truck className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Unidad
+                </p>
+                <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
+                  {vehicleDescription || "Sin vehículo"}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
         {administrative ? <Badge variant="info">Cotización administrativa</Badge> : null}
 
         <div className="grid gap-2">
-          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500">
-            Desglose de Trabajos y Conceptos
-          </p>
+          {title && (
+            <h2 className="text-sm font-bold text-[var(--color-text-main)] print:text-black">
+              {title}
+            </h2>
+          )}
+
 
           {sections.every((s) => s.items.length === 0) ? (
             <p className="text-sm text-[var(--color-text-muted)]">Sin conceptos.</p>
           ) : (
-            <div className="overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--color-primary)]/10 print:border-blue-200 print:rounded-[var(--radius-sm)]">
+            <div className="overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--color-border-light)] print:border-gray-200 print:rounded-[var(--radius-sm)]">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-[var(--color-primary)]/20 bg-[var(--color-blue-tint)] text-[10px] text-[var(--color-navy-700)] uppercase tracking-wider print:border-blue-200 print:bg-blue-50/50 print:text-blue-900">
+                  <tr className="border-b border-[var(--color-border-light)] bg-transparent text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider print:border-gray-200 print:text-gray-500">
                     <th className="px-3 py-2 font-bold whitespace-nowrap w-1 text-center">C.</th>
                     <th className="px-3 py-2 font-bold w-full">Concepto / Servicio Realizado</th>
                     <th className="px-3 py-2 font-bold text-right whitespace-nowrap">P. Unitario</th>
@@ -116,8 +116,8 @@ export function QuotePreviewCard({
                     return (
                       <React.Fragment key={sIndex}>
                         {hasMultipleSections && (
-                          <tr className="bg-[var(--color-blue-tint)]/50 print:bg-blue-50/30">
-                            <td colSpan={4} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-primary)] print:text-blue-700">
+                          <tr className="bg-[var(--color-bg-soft)]/60 print:bg-gray-50/80 border-b border-[var(--color-border-light)]/50 print:border-gray-100">
+                            <td colSpan={4} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)] print:text-gray-800">
                               {section.name || `Sección ${sIndex + 1}`}
                             </td>
                           </tr>
@@ -142,7 +142,7 @@ export function QuotePreviewCard({
                         {hasMultipleSections && (
                           <tr className="bg-[var(--color-bg-soft)]/50 print:bg-gray-50/50">
                             <td colSpan={3} className="px-3 py-1.5 text-right text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-600">
-                              Subtotal {section.name || `Sección ${sIndex + 1}`}
+                              Subtotal
                             </td>
                             <td className="px-3 py-1.5 text-right text-xs font-bold text-[var(--color-text-main)] print:text-black">
                               {formatCents(sectionSubtotalCents)}

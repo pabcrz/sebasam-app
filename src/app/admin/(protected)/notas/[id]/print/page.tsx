@@ -4,6 +4,7 @@ import { getWorkOrderById } from "@/features/work-orders/queries";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
 import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
+import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { PrintControls } from "./print-controls";
 
 export const metadata: Metadata = {
@@ -54,6 +55,13 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
         documentType={documentType}
         documentNumber={quote.number}
         date={quote.createdAt}
+        title={quote.title}
+        customerName={quote.customer.name}
+        vehicleDescription={
+          quote.vehicle
+            ? formatVehicle(quote.vehicle)
+            : formatSnapshotVehicle(quote.vehicleSnapshot)
+        }
       >
         <SharedQuoteView quote={viewQuote} token="" isNote={true} />
       </PublicQuoteShell>

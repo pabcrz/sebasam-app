@@ -126,6 +126,7 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
         totalCents={Number(quote.totalCents)}
         validUntil={quote.validUntil}
         isNote={isNote}
+        compactHeader={true}
       />
 
       {progressStatus ? <QuoteProgress status={progressStatus} /> : null}
