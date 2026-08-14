@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { X, Printer } from "lucide-react";
 import { Button } from "@/components/ui";
+import Link from "next/link";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuoteBuilder } from "./quote-builder";
 import type { CustomerOption, QuoteBuilderInitialData } from "./quote-builder";
@@ -13,6 +14,7 @@ type EditDraftQuoteFormProps = {
   customers: CustomerOption[];
   saveAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   initialData: QuoteBuilderInitialData;
+  quoteId: string;
   quoteNumber: string;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
 };
@@ -21,6 +23,7 @@ export function EditDraftQuoteForm({
   customers,
   saveAction,
   initialData,
+  quoteId,
   quoteNumber,
   searchCustomersAction,
 }: EditDraftQuoteFormProps) {
@@ -33,15 +36,27 @@ export function EditDraftQuoteForm({
         <h1 className="text-2xl font-semibold text-[var(--color-text-main)]">
           Editar cotización {quoteNumber}
         </h1>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowConfirmClose(true)}
-          aria-label="Cerrar edición"
-        >
-          <X className="h-5 w-5" aria-hidden="true" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href={`/admin/quotes/${quoteId}/print`} target="_blank">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+            >
+              <Printer className="mr-2 h-4 w-4" aria-hidden="true" />
+              Imprimir PDF
+            </Button>
+          </Link>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowConfirmClose(true)}
+            aria-label="Cerrar edición"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </Button>
+        </div>
       </div>
       <QuoteBuilder
         customers={customers}

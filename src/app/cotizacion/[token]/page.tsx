@@ -7,6 +7,7 @@ import {
 import { SharedQuoteErrorState } from "@/features/public-quotes/components/shared-quote-error-state";
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
 import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
+import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
@@ -23,6 +24,13 @@ function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQu
       ...item,
       quantity: item.quantity.toString(),
     })),
+    sections: quote.sections ? quote.sections.map((section) => ({
+      ...section,
+      items: section.items.map((item) => ({
+        ...item,
+        quantity: item.quantity.toString(),
+      })),
+    })) : [],
   };
 }
 
@@ -67,9 +75,22 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
     );
   }
 
+  const isNote = result.quote.workOrder !== null;
+
   return (
-    <PublicQuoteShell>
-      <SharedQuoteView quote={result.quote} token={token} />
+    <PublicQuoteShell
+      documentType={isNote ? "Nota" : "Cotización"}
+      documentNumber={result.quote.number}
+      date={result.quote.createdAt}
+      title={result.quote.title}
+      customerName={result.quote.customer.name}
+      vehicleDescription={
+        result.quote.vehicle
+          ? formatVehicle(result.quote.vehicle)
+          : formatSnapshotVehicle(result.quote.vehicleSnapshot)
+      }
+    >
+      <SharedQuoteView quote={result.quote} token={token} isNote={isNote} />
     </PublicQuoteShell>
   );
 }

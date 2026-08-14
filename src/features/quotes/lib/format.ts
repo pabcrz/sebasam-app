@@ -28,12 +28,12 @@ export function formatSnapshotVehicle(snapshot: unknown) {
   const model = typeof vehicle.model === "string" ? vehicle.model : "";
   const description = [brand, model].filter(Boolean).join(" ");
 
-  return description ? `${plate} — ${description}` : plate;
+  return description ? `${description} - ${plate}` : plate;
 }
 
 export function formatVehicle(vehicle: { plate: string | null; brand: string | null; model: string | null }) {
   const plate = vehicle.plate?.trim() || "Sin placas";
   const description = [vehicle.brand, vehicle.model].filter(Boolean).join(" ");
 
-  return description ? `${plate} — ${description}` : plate;
+  return description ? `${description} - ${plate}` : plate;
 }
