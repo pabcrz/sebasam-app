@@ -1,15 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Copy } from "lucide-react";
 import type { listActiveWorkOrders } from "@/features/work-orders/queries";
 
 import type { listQuotes } from "@/features/quotes/queries";
-import { Badge, Button } from "@/components/ui";
+import { Badge, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
+import { QuoteDuplicateForm } from "@/features/quotes/components/quote-duplicate-form";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder";
@@ -37,17 +37,13 @@ function formatVehicle(wo: WorkOrderItem) {
   return [v.brand, v.model, v.year, v.plate ? `· ${v.plate}` : null].filter(Boolean).join(" ");
 }
 
-function AssigneeBadge({ wo }: { wo: WorkOrderItem }) {
+function AssigneeText({ wo }: { wo: WorkOrderItem }) {
   if (wo.isSpecial) {
-    return (
-      <Badge variant="warning" className="w-fit">
-        {wo.specialAssigneeName ?? "Orden especial"}
-      </Badge>
-    );
+    return <span>Taller</span>;
   }
   const master = wo.assignments.find((a) => a.worker.workerKind === "MASTER");
   if (master) {
-    return <span className="text-sm font-medium">{master.worker.displayName}</span>;
+    return <span>{master.worker.displayName}</span>;
   }
   return <span className="text-sm text-[var(--color-text-muted)]">Sin asignar</span>;
 }
@@ -71,14 +67,46 @@ export function WorkOrderActiveList({
         const saveAction = saveQuoteActions[index];
 
         return (
-          <div key={wo.id} className="grid">
-            {/* Clickable card body */}
-            <button
-              type="button"
-              onClick={() => setPreviewOpenId(wo.quote.id)}
-              className="rounded-t-[var(--radius-md)] border border-b-0 border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 text-left shadow-sm hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2"
-              aria-label={`Ver detalle de cotización ${wo.quote.number}`}
-            >
+          <OperationalCard
+            key={wo.id}
+            onOpen={() => setPreviewOpenId(wo.quote.id)}
+            openLabel={`Ver detalle de cotización ${wo.quote.number}`}
+            footerClassName="flex flex-wrap gap-2"
+            footer={
+              <>
+                <WorkOrderOperationsDialog
+                  quoteNumber={wo.quote.number}
+                  quoteStatus="APPROVED"
+                  workOrder={wo}
+                  workers={workers}
+                  triggerIconOnlyDesktop
+                  actions={{
+                    ...workOrderActions,
+                    assign: workOrderActions.assign
+                      ? (input) => workOrderActions.assign!({ ...(input as Record<string, unknown>), workOrderId: wo.id })
+                      : undefined,
+                  }}
+                />
+
+                {fullQuote && saveAction ? (
+                  <QuoteBuilderDialog
+                    customers={customers}
+                    saveAction={saveAction}
+                    searchCustomersAction={searchCustomersAction}
+                    quote={fullQuote}
+                    quoteNumber={wo.quote.number}
+                    triggerSize="sm"
+                    triggerVariant="outline"
+                    triggerIconOnlyDesktop
+                  />
+                ) : null}
+
+                <QuoteDuplicateForm action={duplicateQuoteAction} quoteId={wo.quote.id} />
+
+                {fullQuote?.activeSharedQuote ? <ShareQuoteButton sharedQuote={fullQuote.activeSharedQuote} status={fullQuote.status} quoteNumber={wo.quote.number} /> : null}
+              </>
+            }
+          >
               {/* Header */}
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div>
@@ -99,62 +127,13 @@ export function WorkOrderActiveList({
 
               {/* Assignee */}
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-[var(--color-text-muted)]">Maestro:</span>
-                <AssigneeBadge wo={wo} />
+                <AssigneeText wo={wo} />
                 {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length > 0 ? (
                   <span className="text-xs text-[var(--color-text-muted)]">
                     + {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length} ayudante(s)
                   </span>
                 ) : null}
               </div>
-            </button>
-
-            {/* Action bar — separate from the clickable area */}
-            <div
-              className="flex flex-wrap gap-2 rounded-b-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] px-4 py-3"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Gestionar → opens WorkOrderOperationsDialog directly */}
-              <WorkOrderOperationsDialog
-                quoteNumber={wo.quote.number}
-                quoteStatus="APPROVED"
-                workOrder={wo}
-                workers={workers}
-                actions={workOrderActions}
-              />
-
-              {/* Editar cotización */}
-              {fullQuote && saveAction ? (
-                <QuoteBuilderDialog
-                  customers={customers}
-                  saveAction={saveAction}
-                  searchCustomersAction={searchCustomersAction}
-                  quote={fullQuote}
-                  quoteNumber={wo.quote.number}
-                  triggerSize="sm"
-                  triggerVariant="outline"
-                />
-              ) : null}
-
-              {/* Duplicar */}
-              <form action={duplicateQuoteAction}>
-                <input type="hidden" name="quoteId" value={wo.quote.id} />
-                <Button type="submit" variant="outline" size="sm" title="Duplicar como nueva cotización">
-                  <Copy className="h-4 w-4" aria-hidden="true" />
-                  Duplicar
-                </Button>
-              </form>
-
-              {/* Compartir */}
-              {fullQuote?.activeSharedQuote ? (
-                <ShareQuoteButton
-                  sharedQuote={fullQuote.activeSharedQuote}
-                  status={fullQuote.status}
-                  quoteNumber={wo.quote.number}
-                />
-              ) : null}
-            </div>
-
             {/* Preview dialog (triggered by clicking the card body) */}
             {fullQuote ? (
               <QuotePreviewDialog
@@ -164,7 +143,7 @@ export function WorkOrderActiveList({
                 showTrigger={false}
               />
             ) : null}
-          </div>
+          </OperationalCard>
         );
       })}
     </div>

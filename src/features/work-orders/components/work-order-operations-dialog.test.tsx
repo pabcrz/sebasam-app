@@ -60,6 +60,20 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
   });
 
+  it("assigns special work to Taller with only the special-work toggle", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn(() => Promise.resolve({ success: true }));
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={null} actions={{ assign }} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización/i }));
+    await user.click(screen.getByLabelText(/trabajo especial/i));
+
+    expect(screen.queryByLabelText(/nombre del responsable/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith({ isSpecial: true }));
+  });
+
   it("keeps assignment open when selecting a master from its portaled Select", async () => {
     const user = userEvent.setup();
     render(
@@ -133,6 +147,29 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("reassigns special work to Taller with only the special-work toggle", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn(() => Promise.resolve({ success: true }));
+    render(
+      <WorkOrderOperationsDialog
+        quoteNumber="C-001"
+        quoteStatus="APPROVED"
+        workOrder={{ id: "wo-1", number: "T-001", status: "ASSIGNED", assignments: [{ id: "assignment-1", workerId: "master-1", status: "ASSIGNED", worker: workers[0] }] }}
+        workers={workers}
+        actions={{ assign }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
+    await user.click(screen.getByRole("button", { name: /cambiar maestro o asignación/i }));
+    await user.click(screen.getByLabelText(/trabajo especial/i));
+
+    expect(screen.queryByLabelText(/nombre del responsable/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /confirmar reasignación/i }));
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith({ isSpecial: true }));
+  });
+
   it("shows completed status view for a finished work order", async () => {
     const user = userEvent.setup();
     render(
@@ -159,11 +196,11 @@ describe("WorkOrderOperationsDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
     await user.click(screen.getByLabelText(/trabajo especial/i));
-    await user.type(screen.getByLabelText(/nombre del responsable/i), "Externo");
     await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("Asignando...");
-    expect(screen.getByLabelText(/nombre del responsable/i)).toBeDisabled();
+    expect(screen.getAllByRole("status")[0]).toHaveTextContent("Asignando...");
+    expect(document.querySelector(".lucide-user-check")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/trabajo especial/i)).toBeDisabled();
     expect(document.querySelector('button[aria-label="Asignando trabajo..."]')).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: /asignando/i }));
@@ -187,7 +224,6 @@ describe("WorkOrderOperationsDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
     await user.click(screen.getByLabelText(/trabajo especial/i));
-    await user.type(screen.getByLabelText(/nombre del responsable/i), "Externo");
     await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
 
     await user.keyboard("{Escape}");
@@ -208,11 +244,10 @@ describe("WorkOrderOperationsDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
     await user.click(screen.getByLabelText(/trabajo especial/i));
-    await user.type(screen.getByLabelText(/nombre del responsable/i), "Externo");
     await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("No disponible");
-    await waitFor(() => expect(screen.getByLabelText(/nombre del responsable/i)).toBeEnabled());
+    await waitFor(() => expect(screen.getByLabelText(/trabajo especial/i)).toBeEnabled());
     expect(document.querySelector('button[aria-label="Gestionar orden de trabajo T-001"]')).toBeEnabled();
 
     await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
@@ -226,11 +261,10 @@ describe("WorkOrderOperationsDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
     await user.click(screen.getByLabelText(/trabajo especial/i));
-    await user.type(screen.getByLabelText(/nombre del responsable/i), "Externo");
     await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo completar la acción");
-    await waitFor(() => expect(screen.getByLabelText(/nombre del responsable/i)).toBeEnabled());
+    await waitFor(() => expect(screen.getByLabelText(/trabajo especial/i)).toBeEnabled());
   });
 
   it("refreshes once and renders the updated work-order management state after assignment", async () => {
@@ -242,7 +276,6 @@ describe("WorkOrderOperationsDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
     await user.click(screen.getByLabelText(/trabajo especial/i));
-    await user.type(screen.getByLabelText(/nombre del responsable/i), "Externo");
     await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
 
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));

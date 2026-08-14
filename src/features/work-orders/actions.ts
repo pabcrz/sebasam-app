@@ -144,7 +144,7 @@ export async function assignWorkOrder(input: unknown) {
         data: {
           status: WorkOrderStatus.ASSIGNED,
           isSpecial: true,
-          specialAssigneeName: data.specialAssigneeName,
+          specialAssigneeName: null,
         },
       });
 
@@ -253,7 +253,7 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
         data: {
           status: WorkOrderStatus.ASSIGNED,
           isSpecial: true,
-          specialAssigneeName: inputWithId.specialAssigneeName,
+          specialAssigneeName: null,
         },
       });
 
@@ -440,6 +440,10 @@ export async function recordExecution(input: unknown) {
     assertApprovedQuote(workOrder.quote.status);
     assertExecutionCanBeRecorded(workOrder.status);
 
+    if (workOrder.isSpecial) {
+      throw new WorkOrderOperationError("Los trabajos especiales del Taller no admiten registros de ejecución vinculados a trabajadores.");
+    }
+
     const worker = await tx.userProfile.findUnique({
       where: { id: data.workerId },
       select: { id: true, role: true, workerKind: true, isActive: true },
@@ -514,7 +518,7 @@ export async function rollbackWorkOrderAction(input: unknown): Promise<ActionRes
 }
 
 export async function ensureWorkOrderWaitingAction(quoteId: string): Promise<ActionResult> {
-  return createAndAssignWorkOrderAction(quoteId, { isSpecial: true, specialAssigneeName: "Pendiente" });
+  return createAndAssignWorkOrderAction(quoteId, { isSpecial: true });
 }
 
 export async function assignWorkOrderAction(input: unknown): Promise<ActionResult> {
