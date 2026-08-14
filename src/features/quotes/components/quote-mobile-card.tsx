@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { CalendarDays, Car, ClipboardList } from "lucide-react";
-import type { PaymentRequest, QuoteStatus, SharedQuote } from "@prisma/client";
+import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge } from "@/components/ui";
+import { Badge, OperationalActionRow } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
@@ -12,7 +12,6 @@ import { QuoteCancelForm } from "./quote-cancel-form";
 import { QuoteDuplicateForm } from "./quote-duplicate-form";
 import { QuoteDeleteForm } from "./quote-delete-form";
 import { ShareQuoteButton } from "./share-quote-button";
-import { ShareQuoteLinkDialog } from "./share-quote-link-dialog";
 import { QuoteAuthorizeForm } from "./quote-authorize-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
@@ -32,7 +31,7 @@ interface QuoteListCardProps {
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
-  shareAction: (formData: FormData) => void | Promise<void>;
+  shareAction: () => Promise<{ success: boolean; error?: string }>;
   authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
@@ -81,6 +80,7 @@ export function QuoteListCard({
     ? formatVehicle(quote.vehicle)
     : formatSnapshotVehicle(quote.vehicleSnapshot);
   const canUsePaymentActions = quote.status === "APPROVED" && quote.workOrder?.status === "IN_PROGRESS";
+  const actionLabelClassName = "sr-only sm:not-sr-only";
 
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm">
@@ -152,7 +152,7 @@ export function QuoteListCard({
 
       <div className="mt-4 grid gap-2">
         <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
-        <div className="flex flex-wrap items-center gap-2">
+        <OperationalActionRow>
           {editable ? (
             <QuoteBuilderDialog
               customers={customers}
@@ -162,26 +162,23 @@ export function QuoteListCard({
               quoteNumber={quote.number}
               triggerSize="sm"
               triggerVariant="outline"
+              triggerIconOnlyMobile
             />
           ) : null}
 
-          <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} iconOnly />
+          <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} actionLabelClassName={actionLabelClassName} />
 
           {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "CANCELLED" || quote.status === "REJECTED" || quote.status === "ARCHIVED" ? (
-            <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} iconOnly />
+            <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} actionLabelClassName={actionLabelClassName} />
           ) : null}
 
-          {quote.activeSharedQuote ? (
-            <ShareQuoteLinkDialog
-              sharedQuote={quote.activeSharedQuote as SharedQuote}
-              quoteNumber={quote.number}
-            />
-          ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
+          {quote.activeSharedQuote && (quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED") ? (
             <ShareQuoteButton
-              action={shareAction}
-              quoteId={quote.id}
+              action={quote.status === "DRAFT" ? shareAction : undefined}
+              sharedQuote={quote.activeSharedQuote}
+              status={quote.status}
               quoteNumber={quote.number}
-              iconOnly
+              actionLabelClassName={actionLabelClassName}
             />
           ) : null}
 
@@ -191,7 +188,7 @@ export function QuoteListCard({
               quoteNumber={quote.number}
               variant="outline"
               size="sm"
-              iconOnly
+              actionLabelClassName={actionLabelClassName}
             />
           ) : null}
 
@@ -202,23 +199,24 @@ export function QuoteListCard({
               workOrder={quote.workOrder}
               workers={workers}
               actions={workOrderActions}
+              triggerIconOnlyMobile
             />
           ) : null}
 
           {quote.status === "DRAFT" || quote.status === "SENT" ? (
-            <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant="outline" size="sm" iconOnly />
+            <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant="outline" size="sm" actionLabelClassName={actionLabelClassName} />
           ) : null}
 
           {quote.status === "ARCHIVED" ? (
-            <QuoteLifecycleForm action={restoreAction} mode="restore" quoteNumber={quote.number} iconOnly />
+            <QuoteLifecycleForm action={restoreAction} mode="restore" quoteNumber={quote.number} actionLabelClassName={actionLabelClassName} />
           ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "REJECTED" || quote.status === "CANCELLED" ? (
-            <QuoteLifecycleForm action={archiveAction} mode="archive" quoteNumber={quote.number} iconOnly />
+            <QuoteLifecycleForm action={archiveAction} mode="archive" quoteNumber={quote.number} actionLabelClassName={actionLabelClassName} />
           ) : null}
 
           {canUsePaymentActions ? (
-            <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
+            <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} actionLabelClassName={actionLabelClassName} />
           ) : null}
-        </div>
+        </OperationalActionRow>
       </div>
     </div>
   );

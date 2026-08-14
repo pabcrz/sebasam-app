@@ -3,14 +3,13 @@
 import * as React from "react";
 import { Printer } from "lucide-react";
 import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
-import { Badge, Button } from "@/components/ui";
+import { Badge, Button, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
-import type { listQuotes } from "@/features/quotes/queries";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 
-type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>[number];
+type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>["workOrders"][number];
 
 type PaymentResult = {
   payment: { amountCents: number };
@@ -25,7 +24,7 @@ type WorkOrderPaymentAction = {
 
 interface WorkOrderCompletedListProps {
   workOrders: WorkOrderItem[];
-  quoteMap?: Map<string, Awaited<ReturnType<typeof listQuotes>>[number]>;
+  quoteMap?: Map<string, WorkOrderItem["quote"]>;
   recordPaymentActions?: WorkOrderPaymentAction[];
   rollbackAction?: WorkOrderActions["rollback"];
 }
@@ -58,18 +57,40 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
         const totalCents = Number(wo.quote.totalCents);
 
         return (
-          <div
+          <OperationalCard
             key={wo.id}
-            className="flex flex-col rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm overflow-hidden"
+            onOpen={quoteMap?.has(wo.quote.id) ? () => setSelectedQuoteId(wo.quote.id) : undefined}
+            openLabel={`Ver detalle de cotización ${wo.quote.number}`}
+            footerClassName="grid gap-3"
+            footer={
+              <>
+                {paymentAction ? (
+                  <CashPaymentDialog
+                    action={paymentAction}
+                    quoteNumber={wo.quote.number}
+                    totalCents={totalCents}
+                    paidCents={wo.quote.paidCents ?? 0}
+                    remainingCents={wo.quote.remainingCents ?? totalCents}
+                  />
+                ) : null}
+                <OperationalActionRow>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
+                    title={`Imprimir nota de remisión ${wo.number}`}
+                    aria-label={`Imprimir nota de remisión ${wo.number}`}
+                    onClick={() => window.open(`/admin/notas/${wo.id}/print`, "_blank")}
+                  >
+                    <Printer className="h-5 w-5" aria-hidden="true" />
+                    <span className="sr-only sm:not-sr-only">Imprimir nota</span>
+                  </Button>
+                  <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile />
+                </OperationalActionRow>
+              </>
+            }
           >
-            <div
-              className="flex-1 cursor-pointer p-4 hover:bg-[var(--color-bg-soft)] transition-colors"
-              onClick={() => {
-                if (quoteMap?.has(wo.quote.id)) {
-                  setSelectedQuoteId(wo.quote.id);
-                }
-              }}
-            >
             <div className="mb-3 flex items-start justify-between gap-2">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -93,45 +114,10 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
               <span className="font-medium">Cot. {wo.quote.number}</span>
               {" · "}
               {wo.isSpecial
-                ? `Trabajo especial: ${wo.specialAssigneeName ?? "—"}`
+                ? "Taller"
                 : wo.assignments.find((a) => a.worker.workerKind === "MASTER")?.worker.displayName ?? "Sin maestro"}
             </div>
-          </div>
-
-          <div className="border-t border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
-
-            {paymentAction ? (
-              <div className="mb-3">
-                <CashPaymentDialog
-                  action={paymentAction}
-                  quoteNumber={wo.quote.number}
-                  totalCents={totalCents}
-                  paidCents={wo.quote.paidCents ?? 0}
-                  remainingCents={wo.quote.remainingCents ?? totalCents}
-                />
-              </div>
-            ) : null}
-
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="flex-1"
-                onClick={() => window.open(`/admin/notas/${wo.id}/print`, "_blank")}
-              >
-                <Printer className="h-4 w-4" aria-hidden="true" />
-                Imprimir nota
-              </Button>
-              <WorkOrderOperationsDialog
-                quoteNumber={wo.quote.number}
-                quoteStatus="APPROVED"
-                workOrder={wo}
-                actions={{ rollback: rollbackAction }}
-              />
-            </div>
-          </div>
-          </div>
+          </OperationalCard>
         );
       })}
     </div>

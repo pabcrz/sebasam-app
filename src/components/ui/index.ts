@@ -6,6 +6,7 @@ export * from "./confirm-dialog";
 export * from "./dialog";
 export * from "./input";
 export * from "./label";
+export * from "./operational-card";
 export * from "./select";
 export * from "./skeleton";
 export * from "./spinner";

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import {
   assignWorker,
+  assignWorkOrder,
   createAndAssignWorkOrder,
   completeWorkOrder,
   recordExecution,
@@ -34,7 +35,7 @@ function worker(id: string, workerKind: WorkerKind) {
 
 type MockTx = {
   quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
-  workOrder: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn> };
+  workOrder: { create: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn> };
   userProfile: { findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
   workAssignment: { createMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   executionRecord: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
@@ -48,7 +49,7 @@ type MockTx = {
 function createTx(): MockTx {
   const tx = {
     quote: { findUnique: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
-    workOrder: { create: vi.fn().mockResolvedValue({ id: "wo-new" }), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: vi.fn() },
+    workOrder: { create: vi.fn().mockResolvedValue({ id: "wo-new" }), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: vi.fn() },
     userProfile: { findMany: vi.fn(), findUnique: vi.fn() },
     workAssignment: { createMany: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
     executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
@@ -126,7 +127,7 @@ describe("work order actions", () => {
       });
       expect(tx.workOrder.update).toHaveBeenCalledWith(expect.objectContaining({
         where: { id: "wo-new" },
-        data: expect.objectContaining({ status: WorkOrderStatus.ASSIGNED, isSpecial: false }),
+        data: expect.objectContaining({ status: WorkOrderStatus.ASSIGNED, isSpecial: false, specialAssigneeName: null }),
       }));
       expect(tx.workAssignment.createMany).toHaveBeenCalledWith({
         data: [
@@ -137,19 +138,18 @@ describe("work order actions", () => {
       });
     });
 
-    it("creates and assigns a special order without validating master/helpers", async () => {
+    it("creates and assigns a special order without validating master/helpers or creating worker assignments", async () => {
       const tx = createTx();
       tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.APPROVED, workOrder: { id: "wo-existing", status: WorkOrderStatus.PLANNED } });
 
       await createAndAssignWorkOrder("quote-1", {
         isSpecial: true,
-        specialAssigneeName: "Juan Perez (Externo)",
       });
 
       expect(tx.workOrder.create).not.toHaveBeenCalled();
       expect(tx.workOrder.update).toHaveBeenCalledWith(expect.objectContaining({
         where: { id: "wo-existing" },
-        data: expect.objectContaining({ status: WorkOrderStatus.ASSIGNED, isSpecial: true, specialAssigneeName: "Juan Perez (Externo)" }),
+        data: expect.objectContaining({ status: WorkOrderStatus.ASSIGNED, isSpecial: true, specialAssigneeName: null }),
       }));
       expect(tx.workAssignment.createMany).not.toHaveBeenCalled();
     });
@@ -160,8 +160,23 @@ describe("work order actions", () => {
 
       await expect(createAndAssignWorkOrder("quote-1", {
         isSpecial: true,
-        specialAssigneeName: "Juan",
       })).rejects.toThrow("aceptada");
+    });
+  });
+
+  describe("assignWorkOrder", () => {
+    it("reassigns special work to Taller without creating worker assignments", async () => {
+      const tx = createTx();
+      tx.workOrder.findUniqueOrThrow.mockResolvedValue({ id: "wo-1" });
+      tx.workOrder.findFirst.mockResolvedValue({ id: "wo-1", status: WorkOrderStatus.ASSIGNED, quote: { status: QuoteStatus.APPROVED } });
+
+      await assignWorkOrder({ workOrderId: "wo-1", isSpecial: true });
+
+      expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        data: { status: WorkOrderStatus.ASSIGNED, isSpecial: true, specialAssigneeName: null },
+      }));
+      expect(tx.workAssignment.deleteMany).toHaveBeenCalledWith({ where: { workOrderId: "wo-1" } });
+      expect(tx.workAssignment.createMany).not.toHaveBeenCalled();
     });
   });
 
@@ -211,6 +226,15 @@ describe("work order actions", () => {
       tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.CANCELLED, quote: { status: QuoteStatus.APPROVED } });
       tx.userProfile.findUnique.mockResolvedValue(worker(workerId, WorkerKind.HELPER));
       await expect(recordExecution({ workOrderId: "wo-1", workerId, summary: "No debe guardarse" })).rejects.toThrow("no permite");
+    });
+
+    it("blocks worker-linked execution records for special Taller work", async () => {
+      const tx = createTx();
+      tx.workOrder.findUnique.mockResolvedValue({ isSpecial: true, status: WorkOrderStatus.IN_PROGRESS, quote: { status: QuoteStatus.APPROVED } });
+
+      await expect(recordExecution({ workOrderId: "wo-1", workerId, summary: "No debe guardarse" }))
+        .rejects.toThrow("Taller no admiten registros de ejecución");
+      expect(tx.executionRecord.create).not.toHaveBeenCalled();
     });
   });
 

@@ -85,8 +85,10 @@ function NavLink({
       onClick={handleClick}
       className={
         mobile
-          ? `flex min-h-[var(--tap-min-height)] flex-col items-center justify-center gap-0.5 px-3 py-1 text-xs font-medium transition-colors ${
-              active ? "text-white" : "text-white/70 hover:text-white"
+          ? `group flex min-h-[var(--tap-min-height)] flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] px-2 py-1.5 text-[0.68rem] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-900)] ${
+              active
+                ? "bg-white/14 text-white shadow-sm"
+                : "text-[var(--color-on-navy-tint)] hover:bg-white/8 hover:text-white"
             } ${isPending ? "opacity-75" : ""}`
           : `flex min-h-[var(--tap-min-height)] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               active
@@ -117,8 +119,8 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
   }, [pathname]);
 
   return (
-    <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(var(--tap-min-height)+env(safe-area-inset-bottom))] md:pb-0">
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 text-[var(--color-text-main)] md:flex overflow-y-auto">
+    <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 print:bg-transparent print:pb-0">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 text-[var(--color-text-main)] md:flex overflow-y-auto print:hidden">
         <div className="border-b border-[var(--color-border-light)] px-3 pb-5">
           <p className="text-xl font-extrabold tracking-[-0.04em]">SEBASAM</p>
           <p className="mt-1 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
@@ -139,7 +141,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 border-b border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)]">
+        <header className="sticky top-0 z-40 border-b border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] print:hidden">
           {isGlobalPending ? (
             <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--color-primary)] animate-pulse" />
           ) : null}
@@ -204,10 +206,10 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
 
       <nav
         aria-label="Navegación móvil"
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] text-white md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] text-white md:hidden print:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="grid grid-cols-4">
+        <div className="mx-auto grid max-w-md grid-cols-4 gap-1 px-2 pt-2">
           {mobileNavItems.map((item) => (
             <NavLink key={item.href} {...item} mobile onNavStart={() => setGlobalPending(true)} />
           ))}

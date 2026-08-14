@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { clsx } from "clsx";
+import { useDialogPointerDownOutsideGuard } from "./dialog";
 
 export const Select = SelectPrimitive.Root;
 export const SelectGroup = SelectPrimitive.Group;
@@ -37,7 +38,9 @@ export type SelectContentProps = React.ComponentPropsWithoutRef<typeof SelectPri
 export const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   SelectContentProps
->(({ className, children, position = "popper", ...props }, ref) => {
+>(({ className, children, position = "popper", onPointerDown, onPointerDownOutside, ...props }, ref) => {
+  const dialogPointerDownOutsideGuard = useDialogPointerDownOutsideGuard();
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -45,10 +48,16 @@ export const SelectContent = React.forwardRef<
         position={position}
         data-select-content
         onPointerDown={(event) => {
-          // Stop the event from reaching the Dialog's document-level outside
-          // interaction listener, which would otherwise close the dialog when a
-          // portaled Select item is clicked.
+          onPointerDown?.(event);
+          // A portaled item is outside the Dialog DOM tree. Keep its native
+          // pointer event from reaching the Dialog's document listener.
           event.nativeEvent.stopImmediatePropagation();
+        }}
+        onPointerDownOutside={(event) => {
+          onPointerDownOutside?.(event);
+          if (!event.defaultPrevented) {
+            dialogPointerDownOutsideGuard?.registerPointerDownOutside(event.detail.originalEvent);
+          }
         }}
         className={clsx(
           "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-md",

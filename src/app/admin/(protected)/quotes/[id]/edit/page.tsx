@@ -111,6 +111,7 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
       customers={customerOptions}
       saveAction={saveAction}
       initialData={initialData}
+      quoteId={quote.id}
       quoteNumber={quote.number}
       searchCustomersAction={searchCustomersForQuote}
     />

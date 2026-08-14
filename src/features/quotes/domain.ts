@@ -67,6 +67,11 @@ const sharedQuoteInclude = {
       customer: true,
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
+      sections: { 
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+        orderBy: { sortOrder: "asc" } 
+      },
+      workOrder: { select: { status: true } },
     },
   },
 } as const;

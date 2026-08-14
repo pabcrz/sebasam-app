@@ -1,11 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 
+const refresh = vi.fn();
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    refresh: vi.fn(),
+    refresh,
     push: vi.fn(),
   }),
 }));
@@ -23,6 +25,10 @@ const workers = [
 ];
 
 describe("WorkOrderOperationsDialog", () => {
+  beforeEach(() => {
+    refresh.mockReset();
+  });
+
   it("exposes the assignment dialog for an approved quote", async () => {
     const user = userEvent.setup();
     render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={null} actions={actions} />);
@@ -31,6 +37,31 @@ describe("WorkOrderOperationsDialog", () => {
 
     expect(screen.getByRole("dialog")).toHaveTextContent("Asignar trabajo");
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
+  });
+
+  it("keeps work actions icon-only on mobile and labeled on desktop", async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkOrderOperationsDialog
+        quoteNumber="C-001"
+        quoteStatus="APPROVED"
+        workOrder={{ id: "wo-1", number: "T-001", status: "COMPLETED" }}
+        actions={{}}
+        triggerIconOnlyMobile
+      />,
+    );
+
+    const viewOrder = screen.getByRole("button", { name: "Gestionar orden de trabajo T-001" });
+    expect(viewOrder).toHaveAttribute("title", "Gestionar orden de trabajo T-001");
+    expect(viewOrder).toHaveClass("h-10", "w-10", "sm:h-9", "sm:w-auto");
+    expect(viewOrder.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
+    expect(viewOrder).toHaveTextContent("Ver orden");
+
+    await user.click(viewOrder);
+    const printNote = screen.getByRole("button", { name: "Imprimir nota de remisión T-001" });
+    expect(printNote).toHaveAttribute("title", "Imprimir nota de remisión T-001");
+    expect(printNote).toHaveClass("w-9", "sm:w-auto");
+    expect(printNote.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
   });
 
   it("shows assignment controls including special order toggle", async () => {
@@ -52,6 +83,42 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByText("Ayudantes opcionales")).toBeInTheDocument();
     expect(screen.queryByText("Marco Administrativo")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
+  });
+
+  it("assigns special work to Taller with only the special-work toggle", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn(() => Promise.resolve({ success: true }));
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={null} actions={{ assign }} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización/i }));
+    await user.click(screen.getByLabelText(/trabajo especial/i));
+
+    expect(screen.queryByLabelText(/nombre del responsable/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith({ isSpecial: true }));
+  });
+
+  it("keeps assignment open when selecting a master from its portaled Select", async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkOrderOperationsDialog
+        quoteNumber="C-001"
+        quoteStatus="APPROVED"
+        workOrder={{ id: "wo-1", number: "T-001", status: "PLANNED", assignments: [] }}
+        workers={workers}
+        actions={actions}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo t-001/i }));
+    await user.click(screen.getByLabelText(/maestro responsable/i));
+    expect(await screen.findByRole("option", { name: "Maestro Uno" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("option", { name: "Maestro Uno" }));
+    expect(screen.getByLabelText(/maestro responsable/i)).toHaveTextContent("Maestro Uno");
+    expect(screen.queryByRole("option", { name: "Maestro Uno" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("allows completing an assigned work order", async () => {
@@ -77,6 +144,57 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("button", { name: /finalizar trabajo/i })).toBeInTheDocument();
   });
 
+  it("keeps the assigned work-order dialog open when reassigning a master from its portaled Select", async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkOrderOperationsDialog
+        quoteNumber="C-001"
+        quoteStatus="APPROVED"
+        workOrder={{
+          id: "wo-1",
+          number: "T-001",
+          status: "ASSIGNED",
+          assignments: [{ id: "assignment-1", workerId: "master-1", status: "ASSIGNED", worker: workers[0] }],
+        }}
+        workers={workers}
+        actions={actions}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo t-001/i }));
+    await user.click(screen.getByRole("button", { name: /cambiar maestro o asignación/i }));
+    await user.click(screen.getByLabelText(/maestro responsable/i));
+    expect(await screen.findByRole("option", { name: "Maestro Uno" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("option", { name: "Maestro Uno" }));
+    expect(screen.getByLabelText(/maestro responsable/i)).toHaveTextContent("Maestro Uno");
+    expect(screen.queryByRole("option", { name: "Maestro Uno" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("reassigns special work to Taller with only the special-work toggle", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn(() => Promise.resolve({ success: true }));
+    render(
+      <WorkOrderOperationsDialog
+        quoteNumber="C-001"
+        quoteStatus="APPROVED"
+        workOrder={{ id: "wo-1", number: "T-001", status: "ASSIGNED", assignments: [{ id: "assignment-1", workerId: "master-1", status: "ASSIGNED", worker: workers[0] }] }}
+        workers={workers}
+        actions={{ assign }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
+    await user.click(screen.getByRole("button", { name: /cambiar maestro o asignación/i }));
+    await user.click(screen.getByLabelText(/trabajo especial/i));
+
+    expect(screen.queryByLabelText(/nombre del responsable/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /confirmar reasignación/i }));
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith({ isSpecial: true }));
+  });
+
   it("shows completed status view for a finished work order", async () => {
     const user = userEvent.setup();
     render(
@@ -96,18 +214,107 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("button", { name: /imprimir nota de remisión/i })).toBeInTheDocument();
   });
 
-  it("announces and locks assignment inputs while assigning", async () => {
+  it("locks the assignment form and trigger while an assignment is pending", async () => {
     const user = userEvent.setup();
     const assign = vi.fn(() => new Promise<{ success: boolean }>(() => undefined));
     render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-1", number: "T-001", status: "PLANNED" }} actions={{ assign }} />);
 
     await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
     await user.click(screen.getByLabelText(/trabajo especial/i));
-    await user.type(screen.getByLabelText(/nombre del responsable/i), "Externo");
     await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("Asignando...");
-    expect(screen.getByLabelText(/nombre del responsable/i)).toBeDisabled();
+    expect(screen.getAllByRole("status")[0]).toHaveTextContent("Asignando...");
+    expect(document.querySelector(".lucide-user-check")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/trabajo especial/i)).toBeDisabled();
+    expect(document.querySelector('button[aria-label="Asignando trabajo..."]')).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: /asignando/i }));
+    expect(assign).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows closing normally when no assignment is pending", async () => {
+    const user = userEvent.setup();
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-1", number: "T-001", status: "PLANNED" }} actions={actions} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("rejects Escape and overlay dismissal while an assignment is pending", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn(() => new Promise<{ success: boolean }>(() => undefined));
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-1", number: "T-001", status: "PLANNED" }} actions={{ assign }} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
+    await user.click(screen.getByLabelText(/trabajo especial/i));
+    await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
+
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    const overlay = document.querySelector("[data-dialog-overlay]");
+    expect(overlay).toBeTruthy();
+    await user.click(overlay!);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("restores assignment controls and permits retry after a failed assignment", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn()
+      .mockResolvedValueOnce({ success: false, error: "No disponible" })
+      .mockResolvedValueOnce({ success: false, error: "No disponible" });
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-1", number: "T-001", status: "PLANNED" }} actions={{ assign }} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
+    await user.click(screen.getByLabelText(/trabajo especial/i));
+    await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No disponible");
+    await waitFor(() => expect(screen.getByLabelText(/trabajo especial/i)).toBeEnabled());
+    expect(document.querySelector('button[aria-label="Gestionar orden de trabajo T-001"]')).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
+    expect(assign).toHaveBeenCalledTimes(2);
+  });
+
+  it("restores assignment controls after a thrown assignment error", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn().mockRejectedValueOnce(new Error("Network error"));
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-1", number: "T-001", status: "PLANNED" }} actions={{ assign }} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
+    await user.click(screen.getByLabelText(/trabajo especial/i));
+    await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo completar la acción");
+    await waitFor(() => expect(screen.getByLabelText(/trabajo especial/i)).toBeEnabled());
+  });
+
+  it("refreshes once and renders the updated work-order management state after assignment", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn().mockResolvedValue({ success: true });
+    const { rerender } = render(
+      <WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-1", number: "T-001", status: "PLANNED" }} actions={{ assign }} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
+    await user.click(screen.getByLabelText(/trabajo especial/i));
+    await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
+
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    rerender(
+      <WorkOrderOperationsDialog
+        quoteNumber="C-001"
+        quoteStatus="APPROVED"
+        workOrder={{ id: "wo-1", number: "T-001", status: "ASSIGNED", assignments: [] }}
+        actions={{ assign }}
+      />,
+    );
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("Personal asignado");
+    expect(screen.queryByRole("button", { name: /asignar e iniciar trabajo/i })).not.toBeInTheDocument();
   });
 
   it("requires a reason and an explicit rollback target", async () => {

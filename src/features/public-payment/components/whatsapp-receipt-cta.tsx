@@ -13,7 +13,7 @@ export function WhatsAppReceiptCta({ reference }: WhatsAppReceiptCtaProps) {
     ? `Hola, envío comprobante de pago correspondiente a ${reference}.`
     : "Hola, envío comprobante de pago.";
 
-  const href = `https://wa.me/52${businessPaymentConfig.contact.whatsapp}?text=${encodeURIComponent(message)}`;
+  const href = `https://wa.me/52${businessPaymentConfig.contactWhatsapp}?text=${encodeURIComponent(message)}`;
 
   return (
     <Card>

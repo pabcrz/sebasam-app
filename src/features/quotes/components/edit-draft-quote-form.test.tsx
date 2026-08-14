@@ -26,6 +26,7 @@ function renderForm() {
       customers={[{ id: "customer-1", name: "Cliente" }]}
       saveAction={vi.fn()}
       initialData={initialData}
+      quoteId="quote-1"
       quoteNumber="COT-122"
       searchCustomersAction={vi.fn().mockResolvedValue([])}
     />,

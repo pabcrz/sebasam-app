@@ -13,6 +13,7 @@ import {
   Input,
 } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
+import { useRouter } from "next/navigation";
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH: "Efectivo",
@@ -49,6 +50,7 @@ export function CashPaymentDialog({
   paidCents,
   remainingCents,
 }: CashPaymentDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [amount, setAmount] = React.useState(centsToInput(remainingCents));
   const [method, setMethod] = React.useState("CASH");
@@ -78,6 +80,7 @@ export function CashPaymentDialog({
       setSuccess(
         `Pago por ${PAYMENT_METHOD_LABELS[method] ?? method} registrado por ${formatCents(result.payment.amountCents)}.`,
       );
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo registrar el pago.");
     } finally {
@@ -118,9 +121,11 @@ export function CashPaymentDialog({
             size="sm"
             onClick={handleOpen}
             aria-label={`Registrar pago para ${quoteNumber}`}
+            title={`Registrar pago para ${quoteNumber}`}
+            className="h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
           >
-            <CreditCard className="h-4 w-4" aria-hidden="true" />
-            <span>Registrar pago</span>
+            <CreditCard className="h-5 w-5" aria-hidden="true" />
+            <span className="sr-only sm:not-sr-only">Registrar pago</span>
           </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogContent className="max-w-md">

@@ -14,6 +14,10 @@ export async function getQuoteById(quoteId: string) {
       customer: true,
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
+      sections: { 
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+        orderBy: { sortOrder: "asc" } 
+      },
       workOrder: {
         include: {
           assignments: { include: { worker: true } },
@@ -24,7 +28,7 @@ export async function getQuoteById(quoteId: string) {
   });
 }
 
-function findActiveSharedQuote(sharedQuotes: { expiresAt: Date; revokedAt: Date | null }[]) {
+function findActiveSharedQuote<T extends { expiresAt: Date; revokedAt: Date | null }>(sharedQuotes: T[]): T | null {
   const now = new Date();
   return sharedQuotes.find((sharedQuote) => sharedQuote.revokedAt === null && sharedQuote.expiresAt >= now) ?? null;
 }

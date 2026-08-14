@@ -87,6 +87,24 @@ function expectRepresentativeQuoteState() {
 }
 
 describe("QuoteBuilderDialog", () => {
+  it("keeps the active-work edit trigger icon-only on mobile and labeled on desktop", () => {
+    render(
+      <QuoteBuilderDialog
+        customers={customers}
+        saveAction={vi.fn()}
+        quoteNumber="C-001"
+        initialData={editInitialData}
+        triggerIconOnlyMobile
+      />,
+    );
+
+    const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
+    expect(edit).toHaveAttribute("title", "Editar cotización C-001");
+    expect(edit).toHaveClass("h-10", "w-10", "sm:h-9", "sm:w-auto");
+    expect(edit.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
+    expect(edit).toHaveTextContent("Editar");
+  });
+
   it.each([
     ["short", 1],
     ["long", 12],
@@ -279,6 +297,8 @@ describe("QuoteBuilderDialog", () => {
     await user.click(await screen.findByRole("option", { name: "Material" }));
 
     expect(screen.getByRole("dialog", { name: "Crear cotización" })).toHaveAttribute("data-state", "open");
+    expect(itemTypeSelect).toHaveTextContent("Material");
+    expect(screen.queryByRole("option", { name: "Material" })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "¿Descartar la cotización?" })).not.toBeInTheDocument();
   });
 

@@ -9,6 +9,17 @@ export const DialogTrigger = DialogPrimitive.Trigger;
 export const DialogPortal = DialogPrimitive.Portal;
 export const DialogClose = DialogPrimitive.Close;
 
+type DialogPointerDownOutsideGuard = {
+  registerPointerDownOutside: (event: PointerEvent) => void;
+  consumePointerDownOutside: (event: Event) => boolean;
+};
+
+const DialogPointerDownOutsideContext = React.createContext<DialogPointerDownOutsideGuard | null>(null);
+
+export function useDialogPointerDownOutsideGuard() {
+  return React.useContext(DialogPointerDownOutsideContext);
+}
+
 export const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
@@ -40,41 +51,61 @@ export const DialogContent = React.forwardRef<
     { className, children, onInteractOutside, onPointerDownOutside, onFocusOutside, ...props },
     ref,
   ) => {
+    const pointerDownOutsideEventRef = React.useRef<PointerEvent | null>(null);
+    const pointerDownOutsideGuard = React.useMemo<DialogPointerDownOutsideGuard>(
+      () => ({
+        registerPointerDownOutside: (event) => {
+          pointerDownOutsideEventRef.current = event;
+        },
+        consumePointerDownOutside: (event) => {
+          if (pointerDownOutsideEventRef.current !== event) return false;
+          pointerDownOutsideEventRef.current = null;
+          return true;
+        },
+      }),
+      [],
+    );
+
     return (
-      <DialogPortal>
-        <DialogOverlay />
-        <DialogPrimitive.Content
-          ref={ref}
-          className={clsx(
-            "fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh_-_2rem)] w-[calc(100vw_-_2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-[var(--space-md)] shadow-lg",
-            className,
-          )}
-          onInteractOutside={(event) => {
-            if (isDialogPortalTarget(event.target)) {
-              event.preventDefault();
-              return;
-            }
-            onInteractOutside?.(event);
-          }}
-          onPointerDownOutside={(event) => {
-            if (isDialogPortalTarget(event.target)) {
-              event.preventDefault();
-              return;
-            }
-            onPointerDownOutside?.(event);
-          }}
-          onFocusOutside={(event) => {
-            if (isDialogPortalTarget(event.target)) {
-              event.preventDefault();
-              return;
-            }
-            onFocusOutside?.(event);
-          }}
-          {...props}
-        >
-          {children}
-        </DialogPrimitive.Content>
-      </DialogPortal>
+      <DialogPointerDownOutsideContext.Provider value={pointerDownOutsideGuard}>
+        <DialogPortal>
+          <DialogOverlay />
+          <DialogPrimitive.Content
+            ref={ref}
+            className={clsx(
+              "fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh_-_2rem)] w-[calc(100vw_-_2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-[var(--space-md)] shadow-lg",
+              className,
+            )}
+            onInteractOutside={(event) => {
+              if (pointerDownOutsideGuard.consumePointerDownOutside(event.detail.originalEvent)) {
+                event.preventDefault();
+              }
+              if (isDialogPortalTarget(event.target)) {
+                event.preventDefault();
+                return;
+              }
+              onInteractOutside?.(event);
+            }}
+            onPointerDownOutside={(event) => {
+              if (isDialogPortalTarget(event.target)) {
+                event.preventDefault();
+                return;
+              }
+              onPointerDownOutside?.(event);
+            }}
+            onFocusOutside={(event) => {
+              if (isDialogPortalTarget(event.target)) {
+                event.preventDefault();
+                return;
+              }
+              onFocusOutside?.(event);
+            }}
+            {...props}
+          >
+            {children}
+          </DialogPrimitive.Content>
+        </DialogPortal>
+      </DialogPointerDownOutsideContext.Provider>
     );
   },
 );

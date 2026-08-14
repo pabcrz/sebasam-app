@@ -42,6 +42,7 @@ export type PaymentRequestDialogContext = {
 export interface PaymentRequestLinkDialogProps {
   action: () => Promise<PaymentRequest>;
   context: PaymentRequestDialogContext;
+  actionLabelClassName?: string;
 }
 
 const paymentRequestStatusLabels: Partial<Record<PaymentRequestStatus, string>> = {
@@ -53,7 +54,7 @@ const paymentRequestStatusLabels: Partial<Record<PaymentRequestStatus, string>> 
   CANCELLED: "Cancelado",
 };
 
-export function PaymentRequestLinkDialog({ action, context }: PaymentRequestLinkDialogProps) {
+export function PaymentRequestLinkDialog({ action, context, actionLabelClassName }: PaymentRequestLinkDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [request, setRequest] = React.useState<PaymentRequest | null>(null);
@@ -94,9 +95,10 @@ export function PaymentRequestLinkDialog({ action, context }: PaymentRequestLink
         size="sm"
         onClick={handleOpen}
         aria-label="Link de pago"
+        title="Link de pago"
       >
-        <LinkIcon className="h-4 w-4" aria-hidden="true" />
-        <span>Link de pago</span>
+        <LinkIcon className="h-5 w-5" aria-hidden="true" />
+        <span className={actionLabelClassName}>Link de pago</span>
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
