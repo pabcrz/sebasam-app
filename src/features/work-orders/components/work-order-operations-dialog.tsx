@@ -109,21 +109,22 @@ export function WorkOrderOperationsDialog({
     (action: () => Promise<ActionResult>, kind: "assign" | "rollback" | null = null) => {
       setError(null);
       setPendingAction(kind);
-      startTransition(async () => {
+      void (async () => {
         try {
           const result = await action();
           if (!result.success) {
             setError(result.error ?? "No se pudo completar la acción.");
             return;
           }
-          setOpen(false);
-          router.refresh();
+          startTransition(() => {
+            router.refresh();
+          });
         } catch {
           setError("No se pudo completar la acción. Recarga e inténtalo de nuevo.");
         } finally {
           setPendingAction(null);
         }
-      });
+      })();
     },
     [router],
   );
@@ -220,7 +221,7 @@ export function WorkOrderOperationsDialog({
   const isAssigned = workOrder?.status === "ASSIGNED";
   const isCompleted = workOrder?.status === "COMPLETED";
   const canRollback = workOrder && ["PLANNED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"].includes(workOrder.status);
-  const isAssignmentPending = pendingAction === "assign";
+  const isAssignmentBusy = pendingAction === "assign" || isPending;
 
   return (
     <>
@@ -236,14 +237,20 @@ export function WorkOrderOperationsDialog({
           setShowRollback(false);
           setOpen(true);
         }}
-        aria-label={workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : `Gestionar trabajo de cotización ${quoteNumber}`}
+        aria-label={isAssignmentBusy ? "Asignando trabajo..." : workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : `Gestionar trabajo de cotización ${quoteNumber}`}
+        disabled={isAssignmentBusy}
+        loading={isAssignmentBusy}
       >
         <ClipboardList className="h-4 w-4" aria-hidden="true" />
-        <span>{isCompleted ? "Ver orden" : isAssigned ? "Gestionar trabajo" : "Asignar trabajo"}</span>
+        <span>{isAssignmentBusy ? "Asignando trabajo..." : isCompleted ? "Ver orden" : isAssigned ? "Gestionar trabajo" : "Asignar trabajo"}</span>
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-xl">
+      <Dialog open={open} onOpenChange={(nextOpen) => { if (!isAssignmentBusy) setOpen(nextOpen); }}>
+        <DialogContent
+          className="max-w-xl"
+          onEscapeKeyDown={(event) => { if (isAssignmentBusy) event.preventDefault(); }}
+          onPointerDownOutside={(event) => { if (isAssignmentBusy) event.preventDefault(); }}
+        >
           <DialogHeader>
             <DialogTitle>
               {workOrder ? `Orden de trabajo ${workOrder.number}` : `Asignar trabajo — Cotización ${quoteNumber}`}
@@ -279,7 +286,7 @@ export function WorkOrderOperationsDialog({
                   label="Trabajo especial (Patrón o personal no registrado)"
                   checked={isSpecial}
                   onCheckedChange={(checked) => setIsSpecial(checked === true)}
-                  disabled={isAssignmentPending}
+                  disabled={isAssignmentBusy}
                 />
 
                 {isSpecial ? (
@@ -290,7 +297,7 @@ export function WorkOrderOperationsDialog({
                       placeholder="Ej. Patrón, Sebastián, Externo..."
                       value={specialAssigneeName}
                       onChange={(e) => setSpecialAssigneeName(e.target.value)}
-                      disabled={isAssignmentPending}
+                      disabled={isAssignmentBusy}
                     />
                     <p className="text-xs text-[var(--color-text-muted)]">
                       Se registrará en la nota sin vincular a la nómina de trabajadores.
@@ -300,8 +307,8 @@ export function WorkOrderOperationsDialog({
                   <>
                     <div className="grid gap-2">
                       <Label htmlFor="master-select">Maestro responsable *</Label>
-                      <Select value={masterId} onValueChange={setMasterId} disabled={isAssignmentPending}>
-                        <SelectTrigger id="master-select" disabled={isAssignmentPending}>
+                      <Select value={masterId} onValueChange={setMasterId} disabled={isAssignmentBusy}>
+                        <SelectTrigger id="master-select" disabled={isAssignmentBusy}>
                           <SelectValue placeholder="Selecciona un maestro" />
                         </SelectTrigger>
                         <SelectContent>
@@ -325,7 +332,7 @@ export function WorkOrderOperationsDialog({
                               label={w.displayName}
                               checked={helperIds.includes(w.id)}
                               onCheckedChange={(checked) => toggleHelper(w.id, checked)}
-                              disabled={isAssignmentPending}
+                              disabled={isAssignmentBusy}
                             />
                           ))}
                         </div>
@@ -334,10 +341,10 @@ export function WorkOrderOperationsDialog({
                   </>
                 )}
 
-                <p role="status" className="sr-only">{isAssignmentPending ? "Asignando..." : ""}</p>
-                <Button type="button" variant="primary" disabled={!actions.assign || isAssignmentPending} onClick={handleAssign}>
+                <p role="status" className="sr-only">{isAssignmentBusy ? "Asignando..." : ""}</p>
+                <Button type="button" variant="primary" disabled={!actions.assign || isAssignmentBusy} onClick={handleAssign}>
                   <UserCheck className="h-4 w-4" aria-hidden="true" />
-                  {isAssignmentPending ? "Asignando..." : "Asignar e iniciar trabajo"}
+                  {isAssignmentBusy ? "Asignando..." : "Asignar e iniciar trabajo"}
                 </Button>
               </section>
             ) : null}
@@ -374,18 +381,18 @@ export function WorkOrderOperationsDialog({
                 ) : (
                   <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
                     <h4 className="text-sm font-semibold text-[var(--color-text-main)]">Reasignar personal</h4>
-                    <Checkbox id="reassign-special-toggle" label="Trabajo especial (Patrón o personal no registrado)" checked={reassignSpecial} onCheckedChange={(checked) => setReassignSpecial(checked === true)} disabled={isAssignmentPending} />
+                    <Checkbox id="reassign-special-toggle" label="Trabajo especial (Patrón o personal no registrado)" checked={reassignSpecial} onCheckedChange={(checked) => setReassignSpecial(checked === true)} disabled={isAssignmentBusy} />
                     {reassignSpecial ? (
                       <div className="grid gap-2">
                         <Label htmlFor="reassign-special-name">Nombre del responsable *</Label>
-                        <Input id="reassign-special-name" placeholder="Ej. Patrón, Sebastián, Externo..." value={reassignSpecialName} onChange={(e) => setReassignSpecialName(e.target.value)} disabled={isAssignmentPending} />
+                        <Input id="reassign-special-name" placeholder="Ej. Patrón, Sebastián, Externo..." value={reassignSpecialName} onChange={(e) => setReassignSpecialName(e.target.value)} disabled={isAssignmentBusy} />
                       </div>
                     ) : (
                       <>
                         <div className="grid gap-2">
                           <Label htmlFor="reassign-master-select">Maestro responsable *</Label>
-                          <Select value={reassignMasterId} onValueChange={setReassignMasterId} disabled={isAssignmentPending}>
-                            <SelectTrigger id="reassign-master-select" disabled={isAssignmentPending}><SelectValue placeholder="Selecciona un maestro" /></SelectTrigger>
+                          <Select value={reassignMasterId} onValueChange={setReassignMasterId} disabled={isAssignmentBusy}>
+                            <SelectTrigger id="reassign-master-select" disabled={isAssignmentBusy}><SelectValue placeholder="Selecciona un maestro" /></SelectTrigger>
                             <SelectContent>{masters.map((w) => (<SelectItem key={w.id} value={w.id}>{w.displayName}</SelectItem>))}</SelectContent>
                           </Select>
                         </div>
@@ -398,7 +405,7 @@ export function WorkOrderOperationsDialog({
                                   onCheckedChange={(checked) => {
                                    if (checked === true) setReassignHelperIds((c) => [...c, w.id]);
                                    if (checked === false) setReassignHelperIds((c) => c.filter((id) => id !== w.id));
-                                  }} disabled={isAssignmentPending} />
+                                  }} disabled={isAssignmentBusy} />
                               ))}
                             </div>
                           </div>
@@ -406,9 +413,9 @@ export function WorkOrderOperationsDialog({
                       </>
                     )}
                     <div className="flex gap-2">
-                      <Button type="button" variant="primary" size="sm" disabled={!actions.assign || isAssignmentPending} onClick={handleReassign} className="flex-1">
+                      <Button type="button" variant="primary" size="sm" disabled={!actions.assign || isAssignmentBusy} onClick={handleReassign} className="flex-1">
                         <UserCheck className="h-4 w-4" aria-hidden="true" />
-                        {isAssignmentPending ? "Asignando..." : "Confirmar reasignación"}
+                        {isAssignmentBusy ? "Asignando..." : "Confirmar reasignación"}
                       </Button>
                       <Button type="button" variant="outline" size="sm" disabled={isPending} onClick={() => setReassigning(false)}>Cancelar</Button>
                     </div>
@@ -489,7 +496,7 @@ export function WorkOrderOperationsDialog({
           ) : null}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isAssignmentBusy}>
               Cerrar
             </Button>
           </DialogFooter>
