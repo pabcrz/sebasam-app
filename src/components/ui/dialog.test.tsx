@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as React from "react";
@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "./select";
 
-function TestDialog() {
+function TestDialog({ onInteractOutside }: Pick<React.ComponentPropsWithoutRef<typeof DialogContent>, "onInteractOutside">) {
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -26,7 +26,7 @@ function TestDialog() {
           Open dialog
         </button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent onInteractOutside={onInteractOutside}>
         <DialogTitle>Test dialog</DialogTitle>
         <Select>
           <SelectTrigger aria-label="Choose">
@@ -74,7 +74,7 @@ describe("DialogContent", () => {
     expect(screen.queryByRole("option", { name: "Option A" })).not.toBeInTheDocument();
   });
 
-  it("closes an open Select before dismissing the dialog on the next overlay click", async () => {
+  it("closes only an open Select on the first outside interaction and the dialog on the second", async () => {
     const user = userEvent.setup();
     render(<TestDialog />);
 
@@ -96,6 +96,26 @@ describe("DialogContent", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
+  });
+
+  it("passes the consumed Select interaction to the Dialog consumer", async () => {
+    const user = userEvent.setup();
+    const onInteractOutside = vi.fn();
+    render(<TestDialog onInteractOutside={onInteractOutside} />);
+
+    await user.click(screen.getByRole("button", { name: "Open dialog" }));
+    await user.click(screen.getByRole("combobox", { name: "Choose" }));
+
+    const overlay = document.querySelector("[data-dialog-overlay]");
+    expect(overlay).toBeInstanceOf(HTMLElement);
+    if (!(overlay instanceof HTMLElement)) throw new Error("Dialog overlay not found");
+
+    await user.click(overlay);
+    await waitFor(() => {
+      expect(onInteractOutside).toHaveBeenCalledTimes(1);
+    });
+    expect(onInteractOutside.mock.calls[0][0].defaultPrevented).toBe(true);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("closes the dialog when clicking the overlay", async () => {
