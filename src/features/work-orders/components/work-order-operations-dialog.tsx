@@ -43,7 +43,6 @@ type WorkOrder = {
   number: string;
   status: WorkOrderStatus;
   isSpecial?: boolean;
-  specialAssigneeName?: string | null;
   assignments?: Assignment[];
 };
 
@@ -87,7 +86,6 @@ export function WorkOrderOperationsDialog({
 
   // Form state for assignment
   const [isSpecial, setIsSpecial] = React.useState(false);
-  const [specialAssigneeName, setSpecialAssigneeName] = React.useState("");
   const [masterId, setMasterId] = React.useState("");
   const [helperIds, setHelperIds] = React.useState<string[]>([]);
   const [confirmComplete, setConfirmComplete] = React.useState(false);
@@ -95,7 +93,6 @@ export function WorkOrderOperationsDialog({
   const [reassignMasterId, setReassignMasterId] = React.useState("");
   const [reassignHelperIds, setReassignHelperIds] = React.useState<string[]>([]);
   const [reassignSpecial, setReassignSpecial] = React.useState(false);
-  const [reassignSpecialName, setReassignSpecialName] = React.useState("");
   const [showRollback, setShowRollback] = React.useState(false);
   const [rollbackReason, setRollbackReason] = React.useState("");
   const [rollbackTarget, setRollbackTarget] = React.useState<"" | "SENT" | "DRAFT">("");
@@ -139,17 +136,7 @@ export function WorkOrderOperationsDialog({
     const assign = actions.assign;
     if (!assign) return;
     if (isSpecial) {
-      if (!specialAssigneeName.trim()) {
-        setError("Indica el nombre de quien realiza el trabajo especial.");
-        return;
-      }
-      runAction(() =>
-        assign({
-          workOrderId: workOrder?.id || "pending",
-          isSpecial: true,
-          specialAssigneeName: specialAssigneeName.trim(),
-        }), "assign",
-      );
+      runAction(() => assign({ isSpecial: true }), "assign");
     } else {
       if (!masterId) {
         setError("Selecciona un maestro para el trabajo.");
@@ -157,7 +144,6 @@ export function WorkOrderOperationsDialog({
       }
       runAction(() =>
         assign({
-          workOrderId: workOrder?.id || "pending",
           isSpecial: false,
           masterId,
           helperIds,
@@ -170,17 +156,7 @@ export function WorkOrderOperationsDialog({
     const assign = actions.assign;
     if (!assign) return;
     if (reassignSpecial) {
-      if (!reassignSpecialName.trim()) {
-        setError("Indica el nombre de quien realiza el trabajo especial.");
-        return;
-      }
-      runAction(() =>
-        assign({
-          workOrderId: workOrder?.id || "pending",
-          isSpecial: true,
-          specialAssigneeName: reassignSpecialName.trim(),
-        }), "assign",
-      );
+      runAction(() => assign({ isSpecial: true }), "assign");
     } else {
       if (!reassignMasterId) {
         setError("Selecciona un maestro para el trabajo.");
@@ -188,7 +164,6 @@ export function WorkOrderOperationsDialog({
       }
       runAction(() =>
         assign({
-          workOrderId: workOrder?.id || "pending",
           isSpecial: false,
           masterId: reassignMasterId,
           helperIds: reassignHelperIds,
@@ -283,27 +258,13 @@ export function WorkOrderOperationsDialog({
 
                 <Checkbox
                   id="special-order-toggle"
-                  label="Trabajo especial (Patrón o personal no registrado)"
+                  label="Trabajo especial (Taller)"
                   checked={isSpecial}
                   onCheckedChange={(checked) => setIsSpecial(checked === true)}
                   disabled={isAssignmentBusy}
                 />
 
-                {isSpecial ? (
-                  <div className="grid gap-2">
-                    <Label htmlFor="special-name">Nombre del responsable *</Label>
-                    <Input
-                      id="special-name"
-                      placeholder="Ej. Patrón, Sebastián, Externo..."
-                      value={specialAssigneeName}
-                      onChange={(e) => setSpecialAssigneeName(e.target.value)}
-                      disabled={isAssignmentBusy}
-                    />
-                    <p className="text-xs text-[var(--color-text-muted)]">
-                      Se registrará en la nota sin vincular a la nómina de trabajadores.
-                    </p>
-                  </div>
-                ) : (
+                {!isSpecial ? (
                   <>
                     <div className="grid gap-2">
                       <Label htmlFor="master-select">Maestro responsable *</Label>
@@ -339,7 +300,7 @@ export function WorkOrderOperationsDialog({
                       </div>
                     ) : null}
                   </>
-                )}
+                ) : null}
 
                 <p role="status" className="sr-only">{isAssignmentBusy ? "Asignando..." : ""}</p>
                 <Button type="button" variant="primary" disabled={!actions.assign || isAssignmentBusy} onClick={handleAssign}>
@@ -357,7 +318,7 @@ export function WorkOrderOperationsDialog({
                   {workOrder.isSpecial ? (
                     <p className="text-sm">
                       <span className="font-medium text-[var(--color-text-main)]">Trabajo especial: </span>
-                      <span className="text-[var(--color-text-muted)]">{workOrder.specialAssigneeName ?? "Sin nombre"}</span>
+                      <span className="text-[var(--color-text-muted)]">Taller</span>
                     </p>
                   ) : assignedWorkers.length > 0 ? (
                     <ul className="grid gap-1 text-sm text-[var(--color-text-muted)]">
@@ -381,13 +342,8 @@ export function WorkOrderOperationsDialog({
                 ) : (
                   <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
                     <h4 className="text-sm font-semibold text-[var(--color-text-main)]">Reasignar personal</h4>
-                    <Checkbox id="reassign-special-toggle" label="Trabajo especial (Patrón o personal no registrado)" checked={reassignSpecial} onCheckedChange={(checked) => setReassignSpecial(checked === true)} disabled={isAssignmentBusy} />
-                    {reassignSpecial ? (
-                      <div className="grid gap-2">
-                        <Label htmlFor="reassign-special-name">Nombre del responsable *</Label>
-                        <Input id="reassign-special-name" placeholder="Ej. Patrón, Sebastián, Externo..." value={reassignSpecialName} onChange={(e) => setReassignSpecialName(e.target.value)} disabled={isAssignmentBusy} />
-                      </div>
-                    ) : (
+                    <Checkbox id="reassign-special-toggle" label="Trabajo especial (Taller)" checked={reassignSpecial} onCheckedChange={(checked) => setReassignSpecial(checked === true)} disabled={isAssignmentBusy} />
+                    {!reassignSpecial ? (
                       <>
                         <div className="grid gap-2">
                           <Label htmlFor="reassign-master-select">Maestro responsable *</Label>
@@ -411,7 +367,7 @@ export function WorkOrderOperationsDialog({
                           </div>
                         ) : null}
                       </>
-                    )}
+                    ) : null}
                     <div className="flex gap-2">
                       <Button type="button" variant="primary" size="sm" disabled={!actions.assign || isAssignmentBusy} onClick={handleReassign} className="flex-1">
                         <UserCheck className="h-4 w-4" aria-hidden="true" />

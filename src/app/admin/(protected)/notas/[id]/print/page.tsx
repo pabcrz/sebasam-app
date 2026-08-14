@@ -78,7 +78,7 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
             <p className="mt-1 text-gray-600">
               <span className="font-semibold">Responsable del trabajo: </span>
               {workOrder.isSpecial ? (
-                <span>{workOrder.specialAssigneeName ?? "Trabajo especial"} (Especial)</span>
+                <span>Taller</span>
               ) : master ? (
                 <span>{master.worker.displayName} (Maestro)</span>
               ) : (
@@ -153,7 +153,7 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
           <div>
             <div className="border-b border-gray-400 mb-2 h-12"></div>
             <p className="font-semibold text-gray-700">Firma del Maestro / Taller</p>
-            <p className="text-gray-500 text-[0.65rem]">{master?.worker.displayName ?? workOrder.specialAssigneeName ?? paymentSettings.name}</p>
+            <p className="text-gray-500 text-[0.65rem]">{workOrder.isSpecial ? "Taller" : master?.worker.displayName ?? paymentSettings.name}</p>
           </div>
           <div>
             <div className="border-b border-gray-400 mb-2 h-12"></div>

@@ -37,17 +37,13 @@ function formatVehicle(wo: WorkOrderItem) {
   return [v.brand, v.model, v.year, v.plate ? `· ${v.plate}` : null].filter(Boolean).join(" ");
 }
 
-function AssigneeBadge({ wo }: { wo: WorkOrderItem }) {
+function AssigneeText({ wo }: { wo: WorkOrderItem }) {
   if (wo.isSpecial) {
-    return (
-      <Badge variant="warning" className="w-fit">
-        {wo.specialAssigneeName ?? "Orden especial"}
-      </Badge>
-    );
+    return <span>Taller</span>;
   }
   const master = wo.assignments.find((a) => a.worker.workerKind === "MASTER");
   if (master) {
-    return <span className="text-sm font-medium">{master.worker.displayName}</span>;
+    return <span>{master.worker.displayName}</span>;
   }
   return <span className="text-sm text-[var(--color-text-muted)]">Sin asignar</span>;
 }
@@ -99,8 +95,7 @@ export function WorkOrderActiveList({
 
               {/* Assignee */}
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-[var(--color-text-muted)]">Maestro:</span>
-                <AssigneeBadge wo={wo} />
+                <AssigneeText wo={wo} />
                 {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length > 0 ? (
                   <span className="text-xs text-[var(--color-text-muted)]">
                     + {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length} ayudante(s)
@@ -120,7 +115,12 @@ export function WorkOrderActiveList({
                 quoteStatus="APPROVED"
                 workOrder={wo}
                 workers={workers}
-                actions={workOrderActions}
+                actions={{
+                  ...workOrderActions,
+                  assign: workOrderActions.assign
+                    ? (input) => workOrderActions.assign!({ ...(input as Record<string, unknown>), workOrderId: wo.id })
+                    : undefined,
+                }}
               />
 
               {/* Editar cotización */}

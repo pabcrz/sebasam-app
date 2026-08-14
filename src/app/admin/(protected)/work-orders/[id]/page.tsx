@@ -101,7 +101,7 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
               <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider font-semibold">Personal asignado</p>
               <p className="mt-1 text-[var(--color-text-main)]">
                 {workOrder.isSpecial ? (
-                  <span>Trabajo especial: {workOrder.specialAssigneeName ?? "Sin nombre"}</span>
+                  <span>Taller</span>
                 ) : master ? (
                   <span>Maestro: {master.worker.displayName}</span>
                 ) : (

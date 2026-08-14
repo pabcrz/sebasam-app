@@ -22,7 +22,6 @@ export const assignWorkOrderInputSchema = z
     z.object({
       workOrderId: z.string().min(1),
       isSpecial: z.literal(true),
-      specialAssigneeName: z.string().trim().min(1, "Indica quién realizó el trabajo."),
     }),
   ]);
 
