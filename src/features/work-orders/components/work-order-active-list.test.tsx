@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { WorkOrderActiveList } from "./work-order-active-list";
 
 vi.mock("@/features/work-orders/components/work-order-operations-dialog", () => ({
@@ -9,7 +10,7 @@ vi.mock("@/features/work-orders/components/work-order-operations-dialog", () => 
 
 type ActiveListProps = ComponentProps<typeof WorkOrderActiveList>;
 
-function renderActiveList(workOrder: ActiveListProps["workOrders"][number]) {
+function renderActiveList(workOrder: ActiveListProps["workOrders"][number], input: { duplicateQuoteAction?: ActiveListProps["duplicateQuoteAction"] } = {}) {
   render(
     <WorkOrderActiveList
       workOrders={[workOrder]}
@@ -18,7 +19,7 @@ function renderActiveList(workOrder: ActiveListProps["workOrders"][number]) {
       quoteMap={new Map()}
       saveQuoteActions={[]}
       searchCustomersAction={async () => []}
-      duplicateQuoteAction={vi.fn()}
+      duplicateQuoteAction={input.duplicateQuoteAction ?? vi.fn()}
       workOrderActions={{}}
     />,
   );
@@ -71,5 +72,15 @@ describe("WorkOrderActiveList", () => {
     expect(screen.getByText("Ana López")).not.toHaveClass("inline-flex");
     expect(screen.queryByText("Maestro:", { exact: true })).not.toBeInTheDocument();
     expect(screen.getByText("+ 1 ayudante(s)")).toBeInTheDocument();
+  });
+
+  it("keeps duplicate failure feedback in the active-work footer", async () => {
+    const user = userEvent.setup();
+    const duplicateQuoteAction = vi.fn().mockRejectedValue(new Error("offline"));
+    renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { duplicateQuoteAction });
+
+    await user.click(screen.getByRole("button", { name: "Duplicar cotización" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo duplicar la cotización");
   });
 });

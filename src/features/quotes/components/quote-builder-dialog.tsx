@@ -31,6 +31,7 @@ type QuoteBuilderDialogProps = {
   triggerClassName?: string;
   triggerSize?: "default" | "sm";
   triggerVariant?: ButtonVariant;
+  triggerIconOnlyDesktop?: boolean;
   createCustomerAction?: (input: unknown) => Promise<{
     success: boolean;
     customer?: CustomerOption;
@@ -40,7 +41,7 @@ type QuoteBuilderDialogProps = {
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
 };
 
-export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, triggerVariant, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
+export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, triggerVariant, triggerIconOnlyDesktop = false, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = React.useState(false);
@@ -128,9 +129,16 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
         }}
       >
         <DialogTrigger asChild>
-          <Button type="button" variant={triggerVariant ?? "primary"} size={triggerSize} className={triggerClassName}>
+          <Button
+            type="button"
+            variant={triggerVariant ?? "primary"}
+            size={triggerSize}
+            className={triggerIconOnlyDesktop ? `sm:w-9 sm:px-0 ${triggerClassName ?? ""}` : triggerClassName}
+            title={triggerIconOnlyDesktop && isEdit ? `Editar cotización ${quoteNumber}` : undefined}
+            aria-label={triggerIconOnlyDesktop && isEdit ? `Editar cotización ${quoteNumber}` : undefined}
+          >
             {isEdit ? <Pencil className="h-4 w-4" aria-hidden="true" /> : null}
-            {isEdit ? "Editar" : "Nueva cotización"}
+            <span className={triggerIconOnlyDesktop ? "sm:sr-only" : undefined}>{isEdit ? "Editar" : "Nueva cotización"}</span>
           </Button>
         </DialogTrigger>
         <DialogContent
