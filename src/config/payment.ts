@@ -20,10 +20,8 @@ export const businessPaymentConfig = {
     accountNumber: "123456",
     clabe: "4444 4444 4444 4444",
   },
-  contact: {
-    phone: "5556007675",
-    whatsapp: "5536239346",
-  },
+  contactPhone: "5556007675",
+  contactWhatsapp: "5536239346",
 };
 
 export type BusinessPaymentConfig = typeof businessPaymentConfig;

@@ -48,13 +48,12 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
       updatedAt: new Date("2026-07-01T12:00:00.000Z"),
     },
     vehicle: null,
-    workOrder: workOrderStatus ? { status: workOrderStatus } : null,
     items: [
       {
         id: "item-1",
         quoteId: "quote-1",
         sectionId: null,
-        type: QuoteItemType.SERVICE,
+        type: "SERVICE" as any,
         description: "Mano de obra",
         quantity: "1",
         unitPriceCents: 100_00,
@@ -62,6 +61,8 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
         sortOrder: 0,
       },
     ],
+    sections: [],
+    workOrder: workOrderStatus ? { status: workOrderStatus } : null,
   };
 
   return quote;

@@ -2,13 +2,13 @@
 
 import * as React from "react";
 import { useTransition } from "react";
-import { Check, X } from "lucide-react";
+import { Check, X, Printer } from "lucide-react";
 import { Button } from "@/components/ui";
 import { QuotePreviewCard } from "@/features/quotes/components/quote-preview-card";
 import { formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { quoteStatusLabels } from "@/features/quotes/lib/status";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
-import type { Quote, QuoteItem, Customer, Vehicle, WorkOrderStatus } from "@prisma/client";
+import type { Quote, QuoteItem, Customer, Vehicle, WorkOrderStatus, QuoteSection } from "@prisma/client";
 
 type SerializableQuoteItem = Omit<QuoteItem, "quantity"> & {
   quantity: string;
@@ -18,15 +18,17 @@ export type SharedQuoteViewQuote = Quote & {
   customer: Customer;
   vehicle: Vehicle | null;
   items: SerializableQuoteItem[];
+  sections: (QuoteSection & { items: SerializableQuoteItem[] })[];
   workOrder: { status: WorkOrderStatus } | null;
 };
 
 export interface SharedQuoteViewProps {
   quote: SharedQuoteViewQuote;
   token: string;
+  isNote?: boolean;
 }
 
-export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
+export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) {
   const [decision, setDecision] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const decisionFeedbackRef = React.useRef<HTMLDivElement>(null);
@@ -78,18 +80,29 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
     year: vehicleParts[3] ?? "",
   };
 
-  const sections = [
-    {
-      name: "General",
-      items: quote.items.map((item) => ({
-        type: item.type,
-        description: item.description,
-        quantity: String(Number(item.quantity)),
-        unitPrice: String(item.unitPriceCents / 100),
-      })),
-      rowIds: [],
-    },
-  ];
+  const sections = quote.sections && quote.sections.length > 0
+    ? quote.sections.map((section) => ({
+        name: section.name,
+        items: section.items.map((item) => ({
+          type: item.type,
+          description: item.description,
+          quantity: String(Number(item.quantity)),
+          unitPrice: String(item.unitPriceCents / 100),
+        })),
+        rowIds: [],
+      }))
+    : [
+        {
+          name: "General",
+          items: quote.items.map((item) => ({
+            type: item.type,
+            description: item.description,
+            quantity: String(Number(item.quantity)),
+            unitPrice: String(item.unitPriceCents / 100),
+          })),
+          rowIds: [],
+        },
+      ];
 
   const showDecisionControls = quote.status === "SENT" && !hasDecided;
   const progressStatus = decision === "accepted" ? "accepted" : quote.status === "APPROVED"
@@ -98,13 +111,7 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
     : null;
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-[var(--color-text-muted)]">
-        <p>Folio {quote.number}</p>
-        {quote.status !== "SENT" && quote.status !== "DRAFT" ? (
-          <p className="font-medium">{quoteStatusLabels[quote.status]}</p>
-        ) : null}
-      </div>
+    <div className="grid gap-4 print:gap-2">
 
       <QuotePreviewCard
         customerName={quote.customer.name}
@@ -118,6 +125,7 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
         taxCents={Number(quote.taxCents)}
         totalCents={Number(quote.totalCents)}
         validUntil={quote.validUntil}
+        isNote={isNote}
       />
 
       {progressStatus ? <QuoteProgress status={progressStatus} /> : null}
@@ -127,7 +135,7 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
           ref={decisionFeedbackRef}
           role="status"
           tabIndex={-1}
-          className="rounded-[var(--radius-md)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] p-4 text-center"
+          className="rounded-[var(--radius-md)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] p-4 text-center print:hidden"
         >
           <Check className="mx-auto h-8 w-8 text-[var(--color-status-success-fg)]" aria-hidden="true" />
           <p className="mt-2 font-semibold text-[var(--color-status-success-fg)]">Cotización aceptada</p>
@@ -140,7 +148,7 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
           ref={decisionFeedbackRef}
           role="status"
           tabIndex={-1}
-          className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4 text-center"
+          className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4 text-center print:hidden"
         >
           <X className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" aria-hidden="true" />
           <p className="mt-2 font-semibold text-[var(--color-text-main)]">Cotización declinada</p>
@@ -157,7 +165,7 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
       ) : null}
 
       {showDecisionControls ? (
-        <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 sm:flex-row">
+        <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 sm:flex-row print:hidden">
           <Button
             variant="primary"
             size="default"
@@ -184,6 +192,18 @@ export function SharedQuoteView({ quote, token }: SharedQuoteViewProps) {
           </Button>
         </div>
       ) : null}
+
+      <div className="flex justify-center mt-2 print:hidden">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => window.print()}
+          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-border-light)]/50"
+        >
+          <Printer className="w-4 h-4 mr-2" />
+          Imprimir documento
+        </Button>
+      </div>
     </div>
   );
 }
@@ -192,7 +212,7 @@ function QuoteProgress({ status }: { status: "accepted" | "active" | "completed"
   const activeIndex = status === "completed" ? 2 : status === "active" ? 1 : 0;
   const stages = ["Aceptada", "Orden asignada / En proceso", "Finalizada"];
   return (
-    <ol aria-label="Progreso de la cotización" className="grid grid-cols-3 gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-center text-xs">
+    <ol aria-label="Progreso de la cotización" className="grid grid-cols-3 gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-center text-xs print:hidden">
       {stages.map((stage, index) => (
         <li key={stage} aria-current={index === activeIndex ? "step" : undefined} className={index <= activeIndex ? "font-semibold text-[var(--color-text-main)]" : "text-[var(--color-text-muted)]"}>{stage}</li>
       ))}

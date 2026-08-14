@@ -14,6 +14,10 @@ export async function getQuoteById(quoteId: string) {
       customer: true,
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
+      sections: { 
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+        orderBy: { sortOrder: "asc" } 
+      },
       workOrder: {
         include: {
           assignments: { include: { worker: true } },

@@ -120,7 +120,7 @@ function renderRow(quote: QuoteListItem) {
           authorizeAction={vi.fn().mockResolvedValue({ success: true })}
           paymentRequestAction={vi.fn()}
           paymentRequestBankAccounts={[
-            { id: "acc-1", accountHolder: "SEBASAM", bankName: "Santander", accountNumber: "1234", clabe: "5678", isDefault: true, isActive: true },
+            { accountHolder: "SEBASAM", bankName: "Santander", accountNumber: "1234", clabe: "5678" },
           ]}
 
           duplicateAction={vi.fn()}

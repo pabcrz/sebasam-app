@@ -11,6 +11,8 @@ export interface ShellBusinessSettings {
   fullName: string;
   address: string;
   mapsUrl: string;
+  contactPhone?: string;
+  contactWhatsapp?: string;
 }
 
 export interface PublicPaymentShellProps {
@@ -86,7 +88,6 @@ export function PublicPaymentShell({ children, badge = "payment-and-invoice", bu
           >
             {resolvedBusiness.address}
           </a>
-          <p className="mt-1 text-xs opacity-70">Dirección del taller · confirmar antes de visitar.</p>
         </div>
       </footer>
     </div>

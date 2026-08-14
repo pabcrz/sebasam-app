@@ -23,6 +23,13 @@ function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQu
       ...item,
       quantity: item.quantity.toString(),
     })),
+    sections: quote.sections ? quote.sections.map((section) => ({
+      ...section,
+      items: section.items.map((item) => ({
+        ...item,
+        quantity: item.quantity.toString(),
+      })),
+    })) : [],
   };
 }
 
@@ -67,9 +74,15 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
     );
   }
 
+  const isNote = result.quote.workOrder !== null;
+
   return (
-    <PublicQuoteShell>
-      <SharedQuoteView quote={result.quote} token={token} />
+    <PublicQuoteShell
+      documentType={isNote ? "Nota" : "Cotización"}
+      documentNumber={result.quote.number}
+      date={result.quote.createdAt}
+    >
+      <SharedQuoteView quote={result.quote} token={token} isNote={isNote} />
     </PublicQuoteShell>
   );
 }
