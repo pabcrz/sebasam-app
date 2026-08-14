@@ -198,7 +198,8 @@ describe("WorkOrderOperationsDialog", () => {
     await user.click(screen.getByLabelText(/trabajo especial/i));
     await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("Asignando...");
+    expect(screen.getAllByRole("status")[0]).toHaveTextContent("Asignando...");
+    expect(document.querySelector(".lucide-user-check")).not.toBeInTheDocument();
     expect(screen.getByLabelText(/trabajo especial/i)).toBeDisabled();
     expect(document.querySelector('button[aria-label="Asignando trabajo..."]')).toBeDisabled();
 
