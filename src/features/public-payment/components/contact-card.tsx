@@ -14,7 +14,10 @@ export interface ContactCardProps {
 }
 
 export function ContactCard({ contact }: ContactCardProps) {
-  const resolvedContact = contact ?? businessPaymentConfig.contact;
+  const resolvedContact = contact ?? {
+    phone: businessPaymentConfig.contactPhone,
+    whatsapp: businessPaymentConfig.contactWhatsapp,
+  };
 
   return (
     <Card>
