@@ -7,6 +7,7 @@ describe("Notas periods", () => {
     expect(value).toMatchObject({
       mode: "week",
       payment: "all",
+      assignee: "all",
       page: 1,
       anchor: "2026-08-12",
       rangeLabel: "10–15 de agosto de 2026",
@@ -36,6 +37,12 @@ describe("Notas periods", () => {
     expect(parseNotasParams({ payment: "pending" }).payment).toBe("pending");
   });
 
+  it("canonicalizes an assignee UUID and normalizes invalid values to all", () => {
+    expect(parseNotasParams({ assignee: "A0B1C2D3-1234-4ABC-8DEF-1234567890AB" }).assignee).toBe("a0b1c2d3-1234-4abc-8def-1234567890ab");
+    expect(parseNotasParams({ assignee: "workshop" }).assignee).toBe("workshop");
+    expect(parseNotasParams({ assignee: "helper" }).assignee).toBe("all");
+  });
+
   it("uses inclusive/exclusive month boundaries at Mexico City midnight", () => {
     const value = parseNotasParams({ mode: "month", anchor: "2026-04", payment: "paid" });
     expect(value.start.toISOString()).toBe("2026-04-01T06:00:00.000Z");
@@ -46,7 +53,8 @@ describe("Notas periods", () => {
     expect(historicalDst.end.toISOString()).toBe("2021-05-01T05:00:00.000Z");
   });
 
-  it("preserves mode, anchor, and payment while omitting page one", () => {
-    expect(notasHref({ mode: "month", anchor: "2026-08-12", payment: "paid", page: 1 })).toBe("/admin/notas?mode=month&anchor=2026-08&payment=paid");
+  it("preserves mode, anchor, payment, and assignee while omitting page one", () => {
+    expect(notasHref({ mode: "month", anchor: "2026-08-12", payment: "paid", assignee: "workshop", page: 1 })).toBe("/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=workshop");
+    expect(notasHref({ mode: "week", anchor: "2026-08-12", payment: "pending", assignee: "A0B1C2D3-1234-4ABC-8DEF-1234567890AB", page: 2 })).toBe("/admin/notas?mode=week&anchor=2026-08-12&payment=pending&assignee=a0b1c2d3-1234-4abc-8def-1234567890ab&page=2");
   });
 });

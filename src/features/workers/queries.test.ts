@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { listActiveWorkers, listWorkers } from "./queries";
+import { listActiveMasters, listActiveWorkers, listWorkers } from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -56,6 +56,16 @@ describe("worker queries", () => {
         role: true,
         workerKind: true,
       },
+    });
+  });
+
+  it("lists active masters for the Notas assignee filter", async () => {
+    await listActiveMasters();
+
+    expect(prisma.userProfile.findMany).toHaveBeenCalledWith({
+      where: { role: "WORKER", isActive: true, workerKind: "MASTER" },
+      orderBy: { displayName: "asc" },
+      select: { id: true, displayName: true },
     });
   });
 });
