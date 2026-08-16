@@ -15,6 +15,7 @@ import {
 import { WorkOrderCompletedList } from "@/features/work-orders/components/work-order-completed-list";
 import { recordPaymentAction } from "@/features/payments/actions";
 import { rollbackWorkOrderAction } from "@/features/work-orders/actions";
+import { listActiveMasters } from "@/features/workers/queries";
 
 export const metadata: Metadata = {
   title: "Notas de remisión",
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
 
 export default async function NotasPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const filters = parseNotasParams(await searchParams);
-  const result = await listCompletedWorkOrders(filters);
+  const [result, masters] = await Promise.all([listCompletedWorkOrders(filters), listActiveMasters()]);
   const { workOrders } = result;
   const quoteMap = new Map(workOrders.map((wo) => [wo.quote.id, wo.quote]));
 
@@ -47,7 +48,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         </CardContent>
       </Card>
 
-      <NotasFilters mode={filters.mode} payment={filters.payment} anchor={filters.anchor} rangeLabel={filters.rangeLabel} isCurrentWeek={filters.isCurrentWeek} />
+      <NotasFilters mode={filters.mode} payment={filters.payment} assignee={filters.assignee} anchor={filters.anchor} rangeLabel={filters.rangeLabel} isCurrentWeek={filters.isCurrentWeek} masters={masters} />
 
       <Card className="min-w-0">
         <CardHeader>

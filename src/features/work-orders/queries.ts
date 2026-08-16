@@ -1,4 +1,4 @@
-import { PaymentStatus, Prisma, WorkOrderStatus } from "@prisma/client";
+import { AssignmentStatus, PaymentStatus, Prisma, WorkerKind, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 export { listActiveWorkers } from "@/features/workers/queries";
@@ -80,15 +80,27 @@ export async function listActiveWorkOrders() {
 }
 
 /** Returns completed work orders (COMPLETED) — shown in the Notas section. */
-export async function listCompletedWorkOrders(input: { start: Date; end: Date; payment: "all" | "pending" | "paid"; page: number }) {
+export async function listCompletedWorkOrders(input: { start: Date; end: Date; payment: "all" | "pending" | "paid"; assignee: "all" | "workshop" | string; page: number }) {
   await requireOperationalRole();
   const pageSize = 20;
   const balance = Prisma.sql`q."totalCents" - COALESCE(SUM(p."amountCents") FILTER (WHERE p.status::text = ${PaymentStatus.PAID}), 0)`;
   const paymentFilter = input.payment === "pending" ? Prisma.sql`HAVING ${balance} > 0` : input.payment === "paid" ? Prisma.sql`HAVING ${balance} = 0` : Prisma.empty;
+  const assigneeFilter = input.assignee === "all"
+    ? Prisma.empty
+    : input.assignee === "workshop"
+      ? Prisma.sql`AND wo."isSpecial" = true`
+      : Prisma.sql`AND EXISTS (
+        SELECT 1 FROM "WorkAssignment" wa
+        JOIN "UserProfile" worker ON worker.id = wa."workerId"
+        WHERE wa."workOrderId" = wo.id
+          AND wa.status::text <> ${AssignmentStatus.CANCELLED}
+          AND worker."workerKind"::text = ${WorkerKind.MASTER}
+          AND worker.id = ${input.assignee}
+      )`;
   const eligible = await prisma.$queryRaw<Array<{ id: string; paidCents: bigint }>>(Prisma.sql`
     SELECT wo.id, COALESCE(SUM(p."amountCents") FILTER (WHERE p.status::text = ${PaymentStatus.PAID}), 0) AS "paidCents"
     FROM "WorkOrder" wo JOIN "Quote" q ON q.id = wo."quoteId" LEFT JOIN "Payment" p ON p."quoteId" = q.id
-    WHERE wo.status::text = ${WorkOrderStatus.COMPLETED} AND wo."completedAt" >= ${input.start} AND wo."completedAt" < ${input.end}
+    WHERE wo.status::text = ${WorkOrderStatus.COMPLETED} AND wo."completedAt" >= ${input.start} AND wo."completedAt" < ${input.end} ${assigneeFilter}
     GROUP BY wo.id, wo."completedAt", q."totalCents" ${paymentFilter}
     ORDER BY wo."completedAt" DESC, wo.id DESC LIMIT ${pageSize + 1} OFFSET ${(input.page - 1) * pageSize}`);
   const pageRows = eligible.slice(0, pageSize);

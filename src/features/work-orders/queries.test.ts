@@ -26,7 +26,7 @@ describe("work order operational queues", () => {
   });
 
   it.each(["all", "pending", "paid"] as const)("filters and paginates %s Notas before hydration", async (payment) => {
-    await listCompletedWorkOrders({ start: new Date("2026-08-03T06:00:00Z"), end: new Date("2026-08-10T06:00:00Z"), payment, page: 2 });
+    await listCompletedWorkOrders({ start: new Date("2026-08-03T06:00:00Z"), end: new Date("2026-08-10T06:00:00Z"), payment, assignee: "all", page: 2 });
     const query = (prisma.$queryRaw as ReturnType<typeof vi.fn>).mock.calls[0][0];
     const sql = query.strings.join("?");
     expect(sql).toContain('wo.status::text = ?');
@@ -36,12 +36,29 @@ describe("work order operational queues", () => {
     expect(sql.includes("HAVING")).toBe(payment !== "all");
     if (payment === "pending") expect(sql).toMatch(/HAVING .* > 0/);
     if (payment === "paid") expect(sql).toMatch(/HAVING .* = 0/);
+    expect(sql).not.toContain('FROM "WorkAssignment"');
     expect(query.values).toEqual(expect.arrayContaining(["PAID", "COMPLETED", 21, 20]));
     expect(prisma.workOrder.findMany).not.toHaveBeenCalled();
   });
 
-  it("reports an empty page and detects the next page without unbounded hydration", async () => {
+  it("applies workshop and master predicates before pagination", async () => {
     const input = { start: new Date("2026-08-03T06:00:00Z"), end: new Date("2026-08-10T06:00:00Z"), payment: "all" as const, page: 1 };
+
+    await listCompletedWorkOrders({ ...input, assignee: "workshop" });
+    const workshopQuery = (prisma.$queryRaw as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(workshopQuery.strings.join("?")).toContain('wo."isSpecial" = true');
+
+    await listCompletedWorkOrders({ ...input, assignee: "a0b1c2d3-1234-4abc-8def-1234567890ab" });
+    const masterQuery = (prisma.$queryRaw as ReturnType<typeof vi.fn>).mock.calls[1][0];
+    const sql = masterQuery.strings.join("?");
+    expect(sql).toContain('FROM "WorkAssignment" wa');
+    expect(sql).toContain('wa.status::text <> ?');
+    expect(sql).toContain('worker."workerKind"::text = ?');
+    expect(masterQuery.values).toEqual(expect.arrayContaining(["CANCELLED", "MASTER", "a0b1c2d3-1234-4abc-8def-1234567890ab", 21, 0]));
+  });
+
+  it("reports an empty page and detects the next page without unbounded hydration", async () => {
+    const input = { start: new Date("2026-08-03T06:00:00Z"), end: new Date("2026-08-10T06:00:00Z"), payment: "all" as const, assignee: "all", page: 1 };
     const empty = await listCompletedWorkOrders(input);
     expect(empty).toMatchObject({ workOrders: [], hasNextPage: false });
     (prisma.$queryRaw as ReturnType<typeof vi.fn>).mockResolvedValue(Array.from({ length: 21 }, (_, index) => ({ id: String(index), paidCents: BigInt(0) })));

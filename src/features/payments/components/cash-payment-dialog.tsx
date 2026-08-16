@@ -43,6 +43,19 @@ function centsToInput(cents: number) {
   return (cents / 100).toFixed(2);
 }
 
+function validateAmount(value: string, remainingCents: number) {
+  if (!/^\d+(?:\.\d{1,2})?$/.test(value.trim())) {
+    return "Ingresa un monto válido con hasta dos decimales.";
+  }
+
+  const [whole, fractional = ""] = value.trim().split(".");
+  const cents = Number(whole) * 100 + Number(fractional.padEnd(2, "0"));
+
+  if (!Number.isSafeInteger(cents) || cents <= 0) return "El pago debe ser mayor que cero.";
+  if (cents > remainingCents) return "El pago no puede exceder el saldo pendiente.";
+  return null;
+}
+
 export function CashPaymentDialog({
   action,
   quoteNumber,
@@ -55,6 +68,7 @@ export function CashPaymentDialog({
   const [amount, setAmount] = React.useState(centsToInput(remainingCents));
   const [method, setMethod] = React.useState("CASH");
   const [summary, setSummary] = React.useState({ paidCents, remainingCents });
+  const [amountError, setAmountError] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -64,6 +78,13 @@ export function CashPaymentDialog({
     event.preventDefault();
     setError(null);
     setSuccess(null);
+
+    const validationError = validateAmount(amount, summary.remainingCents);
+    if (validationError) {
+      setAmountError(validationError);
+      return;
+    }
+    setAmountError(null);
 
     if (!operationKey) {
       setError("No se pudo iniciar la operación de pago. Cierra y vuelve a abrir el formulario.");
@@ -92,8 +113,15 @@ export function CashPaymentDialog({
     setOpen(true);
     setAmount(centsToInput(summary.remainingCents));
     setError(null);
+    setAmountError(null);
     setSuccess(null);
     setOperationKey(crypto.randomUUID());
+  }
+
+  function handleAmountChange(value: string) {
+    setAmount(value);
+    setAmountError(validateAmount(value, summary.remainingCents));
+    setError(null);
   }
 
   return (
@@ -176,10 +204,11 @@ export function CashPaymentDialog({
                   <Input
                     id={`cash-amount-${quoteNumber}`}
                     value={amount}
-                    onChange={(event) => setAmount(event.target.value)}
+                    onChange={(event) => handleAmountChange(event.target.value)}
                     inputMode="decimal"
                     pattern="[0-9]+([.][0-9]{1,2})?"
-                    aria-describedby={`cash-amount-help-${quoteNumber}`}
+                    aria-describedby={`cash-amount-help-${quoteNumber}${amountError ? ` cash-amount-error-${quoteNumber}` : ""}`}
+                    aria-invalid={amountError ? true : undefined}
                     disabled={isLoading}
                     required
                   />
@@ -189,13 +218,20 @@ export function CashPaymentDialog({
                   >
                     Ingresa un pago parcial o usa el saldo pendiente para liquidar.
                   </span>
+                  <span
+                    id={`cash-amount-error-${quoteNumber}`}
+                    role={amountError ? "alert" : undefined}
+                    className="min-h-4 text-xs font-normal text-[var(--color-status-danger-fg)]"
+                  >
+                    {amountError}
+                  </span>
                 </label>
 
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setAmount(centsToInput(summary.remainingCents))}
+                  onClick={() => handleAmountChange(centsToInput(summary.remainingCents))}
                   disabled={isLoading}
                 >
                   Pagar saldo completo
@@ -227,7 +263,7 @@ export function CashPaymentDialog({
                   >
                     Cancelar
                   </Button>
-                  <Button type="submit" loading={isLoading}>
+                  <Button type="submit" loading={isLoading} disabled={Boolean(amountError)}>
                     Registrar pago
                   </Button>
                 </DialogFooter>
