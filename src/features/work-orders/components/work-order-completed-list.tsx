@@ -5,6 +5,7 @@ import { Printer } from "lucide-react";
 import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
 import { Badge, Button, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
+import { derivePaymentState } from "@/features/work-orders/payment-state";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
@@ -55,6 +56,11 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
       {workOrders.map((wo) => {
         const paymentAction = paymentActionMap.get(wo.id);
         const totalCents = Number(wo.quote.totalCents);
+        const paymentState = derivePaymentState({
+          completedAt: wo.completedAt,
+          paidCents: wo.quote.paidCents ?? 0,
+          remainingCents: wo.quote.remainingCents ?? totalCents,
+        });
 
         return (
           <OperationalCard
@@ -95,7 +101,9 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
-                  <Badge variant="success" className="w-fit">Completada</Badge>
+                  <Badge variant={paymentState.variant} className="w-fit">
+                    {paymentState.label}{paymentState.label === "Pago parcial" || paymentState.label === "Cobro urgente" ? ` · Saldo ${formatCents(paymentState.balanceCents!)}` : ""}
+                  </Badge>
                 </div>
                 <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer.name}</p>
                 <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>

@@ -119,6 +119,7 @@ Este es el modelo de dominio que soporta el flujo. Las primeras entidades existe
 - [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — reglas de arquitectura, capas y dominio.
 - [`docs/GITFLOW.md`](./docs/GITFLOW.md) — flujo de ramas y PRs.
 - [`docs/AI_WORKFLOW.md`](./docs/AI_WORKFLOW.md) — protocolo de trabajo con asistentes de IA.
+- [`docs/DATABASE_SAFETY.md`](./docs/DATABASE_SAFETY.md) — flujo seguro de migraciones y respaldos de `public`.
 - [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) — borrador de backlog del MVP (solo lectura; no mover ni renombrar).
 - [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md) — estado actual del MVP y brechas pendientes.
 - [`DESIGN.md`](./DESIGN.md) — sistema de diseño, tokens y componentes basado en Figma.
@@ -184,6 +185,7 @@ pnpm build
 pnpm prisma:generate
 pnpm db:migrate:dev
 pnpm db:migrate:deploy
+pnpm db:backup:public -- --destination /Volumes/SEBASAM-BACKUPS
 pnpm db:seed
 pnpm bootstrap:admin-profile
 pnpm auth:set-password

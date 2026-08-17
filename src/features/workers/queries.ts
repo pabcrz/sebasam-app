@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import { UserRole, WorkerKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { workerSearchSchema } from "./schemas";
@@ -53,5 +53,15 @@ export async function listActiveWorkers() {
       role: true,
       workerKind: true,
     },
+  });
+}
+
+export async function listActiveMasters() {
+  await requireOperationalRole();
+
+  return prisma.userProfile.findMany({
+    where: { role: UserRole.WORKER, isActive: true, workerKind: WorkerKind.MASTER },
+    orderBy: { displayName: "asc" },
+    select: { id: true, displayName: true },
   });
 }

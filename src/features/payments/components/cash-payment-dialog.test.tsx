@@ -40,7 +40,7 @@ describe("CashPaymentDialog", () => {
     expect(screen.getByText("$75.00")).toBeInTheDocument();
   });
 
-  it("uses the remaining balance for a full payment and accepts a partial amount", async () => {
+  it("blocks an overpayment immediately and accepts a corrected partial amount", async () => {
     const user = userEvent.setup();
     const action = vi.fn().mockResolvedValue({
       payment: { amountCents: 1250 },
@@ -51,14 +51,51 @@ describe("CashPaymentDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
     const amount = screen.getByRole("textbox", { name: /monto recibido/i });
+    const errorSlot = document.getElementById("cash-amount-error-C-001");
     expect(amount).toHaveValue("75.00");
+    expect(errorSlot).toBeEmptyDOMElement();
+    expect(errorSlot).toHaveClass("min-h-4", "text-xs");
+    expect(errorSlot).not.toHaveAttribute("role");
+    await user.clear(amount);
+    await user.type(amount, "75.01");
+    expect(screen.getByRole("alert")).toHaveTextContent("El pago no puede exceder el saldo pendiente.");
+    expect(errorSlot).toHaveAttribute("role", "alert");
+    expect(amount).toHaveAttribute("aria-invalid", "true");
+    expect(amount).toHaveAttribute("aria-describedby", expect.stringContaining("cash-amount-error-C-001"));
+    expect(screen.getByRole("button", { name: "Registrar pago" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    expect(action).not.toHaveBeenCalled();
+
     await user.clear(amount);
     await user.type(amount, "12.50");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(errorSlot).toBeEmptyDOMElement();
+    expect(errorSlot).not.toHaveAttribute("role");
+    expect(amount).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByRole("button", { name: "Registrar pago" })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
 
     await waitFor(() => expect(action).toHaveBeenCalledWith("12.50", expect.any(String), expect.any(String)));
     expect(screen.getByRole("status")).toHaveTextContent("$12.50");
     expect(screen.getAllByText("$62.50")).toHaveLength(2);
+  });
+
+  it("rejects invalid formatting and non-positive values before submit", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn();
+    renderDialog(action);
+
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    const amount = screen.getByRole("textbox", { name: /monto recibido/i });
+    await user.clear(amount);
+    await user.type(amount, "0");
+    expect(screen.getByRole("alert")).toHaveTextContent("El pago debe ser mayor que cero.");
+    expect(screen.getByRole("button", { name: "Registrar pago" })).toBeDisabled();
+
+    await user.clear(amount);
+    await user.type(amount, "12.345");
+    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa un monto válido con hasta dos decimales.");
+    expect(action).not.toHaveBeenCalled();
   });
 
   it("shows an action error and keeps the dialog open", async () => {
