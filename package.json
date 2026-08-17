@@ -12,8 +12,9 @@
     "test:ui-contract": "tsx scripts/verify-ui-contract.ts",
     "test:ui": "vitest run",
     "prisma:generate": "prisma generate",
-    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:dev": "tsx scripts/db-migrate-dev.ts",
     "db:migrate:deploy": "prisma migrate deploy",
+    "db:backup:public": "tsx scripts/backup-public.ts",
     "db:seed": "tsx prisma/seed.ts",
     "bootstrap:admin-profile": "tsx scripts/bootstrap-admin-profile.ts",
     "auth:set-password": "tsx scripts/set-auth-password.ts"
