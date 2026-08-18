@@ -88,6 +88,7 @@ describe("EditQuotePage", () => {
       status: QuoteStatus.CANCELLED,
       workOrder: null,
       validUntil: new Date("2026-12-31"),
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       sections: [],
     });
     listCustomersMock.mockResolvedValue([]);
@@ -114,6 +115,7 @@ describe("EditQuotePage", () => {
       description: "Descripción de prueba",
       administrative: false,
       taxEnabled: true,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       customerId: "customer-1",
       customer: { id: "customer-1", name: "Cliente Demo" },
       vehicle: {
@@ -162,6 +164,8 @@ describe("EditQuotePage", () => {
           description: "Descripción de prueba",
           administrative: false,
           taxEnabled: true,
+          operationalDate: "2026-07-14",
+          isOperationalDateEditable: true,
           vehicle: {
             plate: "ABC123",
             brand: "Toyota",
@@ -198,6 +202,7 @@ describe("EditQuotePage", () => {
       description: null,
       administrative: true,
       taxEnabled: false,
+      operationalDate: new Date("2026-07-13T00:00:00.000Z"),
       customerId: "customer-2",
       customer: { id: "customer-2", name: "Otro Cliente" },
       vehicle: null,
@@ -224,6 +229,7 @@ describe("EditQuotePage", () => {
           description: "",
           administrative: true,
           taxEnabled: false,
+          operationalDate: "2026-07-13",
           vehicle: {
             plate: "XYZ789",
             brand: "Honda",

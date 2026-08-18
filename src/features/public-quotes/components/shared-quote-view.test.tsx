@@ -34,6 +34,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
     customerId: "customer-1",
     vehicleId: null,
     vehicleSnapshot: null,
+    operationalDate: new Date("2026-07-01T00:00:00.000Z"),
     createdAt: new Date("2026-07-01T12:00:00.000Z"),
     updatedAt: new Date("2026-07-01T12:00:00.000Z"),
     customer: {
@@ -53,7 +54,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
         id: "item-1",
         quoteId: "quote-1",
         sectionId: null,
-        type: "SERVICE" as any,
+        type: QuoteItemType.SERVICE,
         description: "Mano de obra",
         quantity: "1",
         unitPriceCents: 100_00,

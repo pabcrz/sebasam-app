@@ -21,6 +21,7 @@ function createMockQuote(overrides: Partial<QuoteListSummary> = {}): QuoteListSu
     validUntil: new Date("2026-12-31T00:00:00.000Z"),
     approvedAt: null,
     administrative: true,
+    operationalDate: new Date("2026-07-01T00:00:00.000Z"),
     createdAt: new Date(),
     updatedAt: new Date(),
     customer: { id: "cust-1", name: "Constructora del Norte" },

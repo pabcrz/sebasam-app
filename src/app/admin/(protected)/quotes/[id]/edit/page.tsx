@@ -99,6 +99,8 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
     administrative: quote.administrative,
     taxEnabled: quote.taxEnabled,
     discountCents: quote.discountCents,
+    operationalDate: quote.operationalDate.toISOString().slice(0, 10),
+    isOperationalDateEditable: quote.status === "DRAFT",
     sections,
   };
 

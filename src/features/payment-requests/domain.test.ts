@@ -41,6 +41,7 @@ async function createTestQuote(customerId: string, opts?: { taxEnabled?: boolean
       number: `Q-TEST-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       title: "Test Quote",
       taxEnabled: opts?.taxEnabled ?? false,
+      operationalDate: new Date("2026-07-01T00:00:00.000Z"),
     },
   });
   createdQuoteIds.push(quote.id);

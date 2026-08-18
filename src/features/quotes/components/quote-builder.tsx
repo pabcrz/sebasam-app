@@ -10,6 +10,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
+import { mexicoCityCalendarDate } from "@/features/quotes/lib/operational-date";
 import {
   calculateSectionsTotals,
   emptyItem,
@@ -62,6 +63,8 @@ export type QuoteBuilderInitialData = {
   administrative: boolean;
   taxEnabled: boolean;
   discountCents: number;
+  operationalDate?: string;
+  isOperationalDateEditable?: boolean;
   /** Sections with items. Each section has a name and an array of ItemFormValues. */
   sections: Array<{ name: string; items: ItemFormValue[] }>;
 };
@@ -131,6 +134,8 @@ export function QuoteBuilder({
   const [administrative, setAdministrative] = React.useState(initialData?.administrative ?? false);
   const [taxEnabled, setTaxEnabled] = React.useState(initialData?.taxEnabled ?? true);
   const [discount, setDiscount] = React.useState(initialData?.discountCents ? String(initialData.discountCents / 100) : "");
+  const [operationalDate, setOperationalDate] = React.useState(initialData?.operationalDate ?? mexicoCityCalendarDate());
+  const isOperationalDateEditable = initialData?.isOperationalDateEditable ?? true;
 
   // ── Sections / Items state ─────────────────────────────────────────────────
   const [initialSections] = React.useState<SectionFormValue[]>(() => {
@@ -164,6 +169,7 @@ export function QuoteBuilder({
     administrative: initialData?.administrative ?? false,
     taxEnabled: initialData?.taxEnabled ?? true,
     discount: initialData?.discountCents ? String(initialData.discountCents / 100) : "",
+    operationalDate: initialData?.operationalDate ?? mexicoCityCalendarDate(),
     sections: initialSections,
     newCustomer: ["", "", ""],
   }));
@@ -180,9 +186,9 @@ export function QuoteBuilder({
   }, [actionState.success, onSuccess]);
 
   React.useEffect(() => {
-    const current = JSON.stringify({ customerId, customerSearch, vehicle, title, description, administrative, taxEnabled, discount, sections, newCustomer: [newCustomerName, newCustomerEmail, newCustomerPhone] });
+    const current = JSON.stringify({ customerId, customerSearch, vehicle, title, description, administrative, taxEnabled, discount, operationalDate, sections, newCustomer: [newCustomerName, newCustomerEmail, newCustomerPhone] });
     onDirtyChange?.(current !== initialFormState);
-  }, [administrative, customerId, customerSearch, description, discount, sections, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, taxEnabled, title, vehicle, initialFormState]);
+  }, [administrative, customerId, customerSearch, description, discount, operationalDate, sections, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, taxEnabled, title, vehicle, initialFormState]);
 
   React.useEffect(() => {
     if (!hasChangedStep.current) {
@@ -938,6 +944,19 @@ export function QuoteBuilder({
                 }}
                 placeholder="Ej. Servicio general"
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="operationalDate">Fecha de cotización</Label>
+              <Input
+                id="operationalDate"
+                name={isOperationalDateEditable ? "operationalDate" : undefined}
+                type="date"
+                max={mexicoCityCalendarDate()}
+                value={operationalDate}
+                disabled={!isOperationalDateEditable}
+                onChange={(event) => setOperationalDate(event.target.value)}
+              />
+              {!isOperationalDateEditable ? <input type="hidden" name="operationalDate" value={operationalDate} /> : null}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Descripción</Label>

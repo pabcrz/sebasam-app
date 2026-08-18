@@ -1,7 +1,6 @@
 import { Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { endOfDay } from "@/lib/filters";
 import { quoteFilterSchema, quoteListPageSchema, type QuoteFilterInput } from "./schemas";
 import { getQuotePaidTotals } from "@/features/payments/queries";
 
@@ -85,9 +84,9 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
   }
 
   if (filters.dateFrom || filters.dateTo) {
-    where.createdAt = {};
-    if (filters.dateFrom) where.createdAt.gte = filters.dateFrom;
-    if (filters.dateTo) where.createdAt.lte = endOfDay(filters.dateTo);
+    where.operationalDate = {};
+    if (filters.dateFrom) where.operationalDate.gte = filters.dateFrom;
+    if (filters.dateTo) where.operationalDate.lte = filters.dateTo;
   }
 
   return Object.keys(where).length > 0 ? where : undefined;
@@ -138,7 +137,7 @@ async function findQuotes(where: Prisma.QuoteWhereInput | undefined, pagination?
     where,
     relationLoadStrategy: "join",
     include: quoteListInclude,
-    orderBy: pagination ? [{ createdAt: "desc" }, { id: "desc" }] : { createdAt: "desc" },
+    orderBy: pagination ? [{ operationalDate: "desc" }, { id: "desc" }] : { operationalDate: "desc" },
     ...pagination,
   });
 }

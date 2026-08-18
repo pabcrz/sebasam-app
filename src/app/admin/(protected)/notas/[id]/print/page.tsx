@@ -54,7 +54,7 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
         business={paymentSettings}
         documentType={documentType}
         documentNumber={quote.number}
-        date={quote.createdAt}
+        date={quote.operationalDate}
         title={quote.title}
         customerName={quote.customer.name}
         vehicleDescription={

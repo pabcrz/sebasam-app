@@ -53,6 +53,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
 
     approvedAt: null,
     administrative: false, deletedAt: null,
+    operationalDate: new Date("2026-06-15T00:00:00.000Z"),
     createdAt: new Date("2026-07-01"),
     updatedAt: new Date("2026-07-01"),
     sections: [],
@@ -139,6 +140,16 @@ describe("QuoteListCard", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
     expect(screen.getByText(/cambio de aceite/i)).toBeInTheDocument();
+  });
+
+  it("shows the operational quote date instead of the audit creation timestamp", () => {
+    renderCard(createMockQuote({
+      createdAt: new Date("2026-07-01T12:00:00.000Z"),
+      operationalDate: new Date("2026-06-15T00:00:00.000Z"),
+    }));
+
+    expect(screen.getByText(/fecha de cotización: 15 de junio de 2026/i)).toBeInTheDocument();
+    expect(screen.queryByText(/creada el/i)).not.toBeInTheDocument();
   });
 
   it("opens the preview dialog from the keyboard", async () => {

@@ -52,6 +52,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
 
     approvedAt: null,
     administrative: false, deletedAt: null,
+    operationalDate: new Date("2026-06-15T00:00:00.000Z"),
     createdAt: new Date("2026-06-15"),
     updatedAt: new Date("2026-06-15"),
     sections: [],
@@ -122,9 +123,12 @@ function renderRow(quote: QuoteListItem) {
           paymentRequestBankAccounts={[
             { accountHolder: "SEBASAM", bankName: "Santander", accountNumber: "1234", clabe: "5678" },
           ]}
+          cashPaymentAction={vi.fn()}
 
           duplicateAction={vi.fn()}
           deleteAction={vi.fn()}
+          archiveAction={vi.fn()}
+          restoreAction={vi.fn()}
           customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
           saveAction={vi.fn()}
           searchCustomersAction={vi.fn()}
