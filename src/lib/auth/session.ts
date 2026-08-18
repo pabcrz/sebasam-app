@@ -27,6 +27,13 @@ export class InactiveUserProfileError extends Error {
   }
 }
 
+export class PasswordChangeRequiredError extends Error {
+  constructor(userId: string) {
+    super(`UserProfile ${userId} must change its password.`);
+    this.name = "PasswordChangeRequiredError";
+  }
+}
+
 export class UnauthorizedRoleError extends Error {
   constructor(role: UserRole, allowedRoles: UserRole[]) {
     super(`Role ${role} cannot perform this action. Allowed roles: ${allowedRoles.join(", ")}.`);
@@ -97,6 +104,10 @@ export async function requireProfile(): Promise<CurrentProfile> {
     throw new InactiveUserProfileError(user.id);
   }
 
+  if (profile.mustChangePassword) {
+    throw new PasswordChangeRequiredError(user.id);
+  }
+
   return { user, profile };
 }
 
@@ -109,6 +120,50 @@ export async function requireProfileForPage(): Promise<CurrentProfile> {
 
   if (!profile || !profile.isActive) {
     redirect("/admin/setup-required");
+  }
+
+  if (profile.mustChangePassword) {
+    redirect("/admin/change-password");
+  }
+
+  return { user, profile };
+}
+
+export async function requireProfileForPasswordChange(): Promise<CurrentProfile> {
+  const { user, profile } = await resolveCurrentProfile();
+
+  if (!user) {
+    redirect("/admin/login");
+  }
+
+  if (!profile) {
+    throw new MissingUserProfileError(user.id);
+  }
+
+  if (!profile.isActive) {
+    throw new InactiveUserProfileError(user.id);
+  }
+
+  if (!profile.mustChangePassword) {
+    redirect("/admin");
+  }
+
+  return { user, profile };
+}
+
+export async function requireProfileForPasswordChangePage(): Promise<CurrentProfile> {
+  const { user, profile } = await resolveCurrentProfile();
+
+  if (!user) {
+    redirect("/admin/login");
+  }
+
+  if (!profile || !profile.isActive) {
+    redirect("/admin/setup-required");
+  }
+
+  if (!profile.mustChangePassword) {
+    redirect("/admin");
   }
 
   return { user, profile };
