@@ -47,6 +47,8 @@ function getActiveFilterSummary(filters: QuoteFilterInput, customers: QuoteFilte
   if (filters.plate) summary.push(`Placas: ${filters.plate}`);
   if (filters.dateFrom) summary.push(`Desde: ${formatDateValue(filters.dateFrom)}`);
   if (filters.dateTo) summary.push(`Hasta: ${formatDateValue(filters.dateTo)}`);
+  if (filters.hasWorkOrder === true) summary.push("Con Orden");
+  if (filters.hasWorkOrder === false) summary.push("Sin Orden");
   if (filters.showCancelled) summary.push("Mostrar canceladas");
   if (filters.showArchived) summary.push("Mostrar archivadas");
 
@@ -63,6 +65,7 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
     Boolean(filters.plate) ||
     Boolean(filters.dateFrom) ||
     Boolean(filters.dateTo) ||
+    filters.hasWorkOrder !== undefined ||
     filters.showCancelled ||
     filters.showArchived;
   const activeFilterSummary = getActiveFilterSummary(filters, customers);
@@ -158,6 +161,22 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
                       {label}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="hasWorkOrder" className="text-sm">
+                Orden de Trabajo
+              </Label>
+              <Select name="hasWorkOrder" defaultValue={filters.hasWorkOrder === true ? "true" : filters.hasWorkOrder === false ? "false" : ""}>
+                <SelectTrigger id="hasWorkOrder" aria-label="Orden de Trabajo">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="true">Con orden</SelectItem>
+                  <SelectItem value="false">Sin orden</SelectItem>
                 </SelectContent>
               </Select>
             </div>

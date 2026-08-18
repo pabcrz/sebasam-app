@@ -61,7 +61,7 @@ export function QuotePreviewCard({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
-                  <UserRound className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Cliente
+                  <UserRound data-testid="preview-customer-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Cliente
                 </p>
                 <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
                   {customerName || "Sin cliente"}
@@ -69,7 +69,7 @@ export function QuotePreviewCard({
               </div>
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
-                  <Truck className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Unidad
+                  <Truck data-testid="preview-vehicle-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Unidad
                 </p>
                 <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
                   {vehicleDescription || "Sin vehículo"}

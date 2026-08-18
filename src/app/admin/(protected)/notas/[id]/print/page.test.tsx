@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 const { getWorkOrderById, getPaymentSettings } = vi.hoisted(() => ({
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
+
   getWorkOrderById: vi.fn(),
   getPaymentSettings: vi.fn(),
 }));
@@ -45,7 +49,7 @@ describe("WorkOrderPrintPage", () => {
 
     render(await WorkOrderPrintPage({ params: Promise.resolve({ id: "wo-1" }) }));
 
-    expect(screen.getAllByText("Taller")).toHaveLength(2);
+    expect(screen.getAllByText(/Taller/)).toHaveLength(2);
     expect(screen.queryByText("Nombre heredado")).not.toBeInTheDocument();
   });
 });

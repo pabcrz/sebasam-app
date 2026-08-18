@@ -164,6 +164,7 @@ describe("createQuote", () => {
       expiresAt: new Date("2026-08-31T00:00:00.000Z"),
     });
     expect(createData.sections.create).toEqual([{
+      isAuthorized: false,
       name: "General",
       sortOrder: 0,
       items: {
@@ -278,7 +279,7 @@ describe("updateDraftQuote", () => {
     const result = await updateDraftQuote("quote-1", validInput());
 
     expect(result.totalCents).toBe(197200);
-    expect(tx.quote.update.mock.calls[0][0].data.status).toBeUndefined();
+    expect(tx.quote.update.mock.calls[0][0].data.status).toBe("DRAFT");
   });
 
   it("rejects an operational date change after a quote leaves DRAFT", async () => {
@@ -489,7 +490,7 @@ describe("authorizeQuoteAction", () => {
       success: true,
     });
 
-    expect(authorizeQuote).toHaveBeenCalledWith("quote-1", "Llamada telefónica", "user-1");
+    expect(authorizeQuote).toHaveBeenCalledWith("quote-1", "Llamada telefónica", "user-1", undefined);
     expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
   });
 });
@@ -810,7 +811,7 @@ describe("cancelQuote", () => {
 
   it("throws when the quote is not in DRAFT status", async () => {
     mockTx(QuoteStatus.APPROVED);
-    await expect(cancelQuote("quote-1")).rejects.toThrow("Only draft quotes can be cancelled.");
+    await expect(cancelQuote("quote-1")).rejects.toThrow("Only draft or sent quotes can be cancelled.");
   });
 });
 
@@ -842,7 +843,7 @@ describe("cancelQuoteFromForm", () => {
 
     await cancelQuoteFromForm(formData as unknown as FormData);
 
-    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=not-draft");
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=cancellation-failed");
   });
 });
 

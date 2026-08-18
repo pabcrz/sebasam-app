@@ -5,6 +5,7 @@ import { Copy, Minus, Plus, Trash2, PlusCircle } from "lucide-react";
 import {
   Badge,
   Button,
+  Checkbox,
   Input,
   Label,
   Select,
@@ -51,6 +52,7 @@ export interface QuoteBuilderItemsStepProps {
   onAddSection: () => void;
   onRemoveSection: (sectionIndex: number) => void;
   onUpdateSectionName: (sectionIndex: number, name: string) => void;
+  onUpdateSectionAuthorized?: (sectionIndex: number, isAuthorized: boolean) => void;
   onReorderSection: (oldIndex: number, newIndex: number) => void;
   onReorderItem: (activeSectionIndex: number, activeItemIndex: number, overSectionIndex: number, overItemIndex: number) => void;
   onRowRef: (rowId: string, node: HTMLDivElement | null) => void;
@@ -70,6 +72,7 @@ export function QuoteBuilderItemsStep({
   onAddSection,
   onRemoveSection,
   onUpdateSectionName,
+  onUpdateSectionAuthorized,
   onReorderSection,
   onReorderItem,
   onRowRef,
@@ -151,6 +154,23 @@ export function QuoteBuilderItemsStep({
                 name={`sections.${sectionIndex}.name`}
               />
             </div>
+            
+            {onUpdateSectionAuthorized && (
+              <div className="flex items-center gap-2 pr-2">
+                <Checkbox
+                  id={`sections-${sectionIndex}-authorized`}
+                  checked={section.isAuthorized ?? false}
+                  onCheckedChange={(checked) => onUpdateSectionAuthorized(sectionIndex, checked === true)}
+                />
+                <Label
+                  htmlFor={`sections-${sectionIndex}-authorized`}
+                  className="text-sm font-medium text-[var(--color-text-muted)] cursor-pointer"
+                >
+                  Autorizado
+                </Label>
+              </div>
+            )}
+
             {sections.length > 1 ? (
               <Button
                 type="button"

@@ -10,7 +10,9 @@ export type ItemFormValue = {
 };
 
 export type SectionFormValue = {
+  id?: string;
   name: string;
+  isAuthorized?: boolean;
   items: ItemFormValue[];
   /** stable row IDs parallel to items */
   rowIds: string[];
@@ -55,6 +57,7 @@ export const DEFAULT_SECTION_NAME = "General";
 export function makeEmptySection(rowIdBase: number): SectionFormValue {
   return {
     name: DEFAULT_SECTION_NAME,
+    isAuthorized: false,
     items: [{ ...emptyItem }],
     rowIds: [`quote-item-${rowIdBase}`],
   };

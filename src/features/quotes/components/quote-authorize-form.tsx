@@ -23,7 +23,8 @@ import {
 import type { ButtonVariant, ButtonSize } from "@/components/ui";
 
 export interface QuoteAuthorizeFormProps {
-  action: (note: string) => Promise<{ success: boolean; error?: string }>;
+  action: (note: string, authorizedSectionIds?: string[]) => Promise<{ success: boolean; error?: string }>;
+  sections?: { id: string; name: string }[];
   quoteNumber: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -66,14 +67,23 @@ export function QuoteAuthorizeForm({
   size = "sm",
   iconOnly = false,
   actionLabelClassName,
+  sections,
 }: QuoteAuthorizeFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const [method, setMethod] = React.useState<string>("");
   const [note, setNote] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+  const [selectedSectionIds, setSelectedSectionIds] = React.useState<string[]>(
+    sections?.map((s) => s.id) ?? []
+  );
 
   const handleConfirm = React.useCallback(() => {
+    if (sections && sections.length > 1 && selectedSectionIds.length === 0) {
+      setError("Debes seleccionar al menos una sección para autorizar.");
+      return;
+    }
+    
     if (!method) {
       setError("Debes seleccionar un método de autorización.");
       return;
@@ -94,7 +104,7 @@ export function QuoteAuthorizeForm({
       let result: Awaited<ReturnType<QuoteAuthorizeFormProps["action"]>>;
 
       try {
-        result = await action(finalNote);
+        result = await action(finalNote, sections && sections.length > 1 ? selectedSectionIds : undefined);
       } catch (error) {
         recordClientActionTiming(timingStartedAt, "failure");
         throw error;
@@ -105,11 +115,12 @@ export function QuoteAuthorizeForm({
         setOpen(false);
         setMethod("");
         setNote("");
+        if (sections) setSelectedSectionIds(sections.map(s => s.id));
       } else {
         setError(result.error ?? "No se pudo autorizar la cotización.");
       }
     });
-  }, [action, method, note]);
+  }, [action, method, note, selectedSectionIds, sections]);
 
 
   const handleOpenChange = React.useCallback(
@@ -152,6 +163,31 @@ export function QuoteAuthorizeForm({
           </DialogHeader>
 
           <div className="grid gap-4 py-2">
+            {sections && sections.length > 1 ? (
+              <div className="grid gap-2">
+                <Label>Secciones a autorizar *</Label>
+                <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-3">
+                  {sections.map((section, index) => (
+                    <Label key={section.id} className="flex items-center gap-2 font-normal cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-[var(--color-border-light)] text-[var(--color-primary)] focus:ring-[var(--color-focus-ring)]"
+                        checked={selectedSectionIds.includes(section.id)}
+                        disabled={isPending}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setSelectedSectionIds(prev => 
+                            checked ? [...prev, section.id] : prev.filter(id => id !== section.id)
+                          );
+                          if (error) setError(null);
+                        }}
+                      />
+                      <span>{section.name || `Sección ${index + 1}`}</span>
+                    </Label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="grid gap-2">
               <Label htmlFor="authorize-method">Medio de confirmación *</Label>
               <Select

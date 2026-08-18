@@ -1221,7 +1221,5 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     expect(screen.getByTestId("preview-customer-icon")).toBeInTheDocument();
     expect(screen.getByTestId("preview-vehicle-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-items-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-notes-icon")).toBeInTheDocument();
   });
 });

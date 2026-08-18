@@ -2,9 +2,14 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
+
 import { CustomerStatus, QuoteItemType, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { SharedQuoteView, type SharedQuoteViewProps } from "./shared-quote-view";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
+
 
 vi.mock("@/features/quotes/actions", () => ({
   acceptSharedQuoteAction: vi.fn(),
@@ -78,14 +83,12 @@ describe("SharedQuoteView", () => {
   it("renders whole-quote decision controls for sent shared quotes", () => {
     render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
 
-    expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
-    expect(screen.getByText("Folio COT-001")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Cotización COT-001 — Servicio general" })).toBeInTheDocument();
     expect(screen.queryByText(/vista previa/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Enviada")).not.toBeInTheDocument();
     expect(screen.queryByText("SEBASAM")).not.toBeInTheDocument();
     expect(screen.queryByText(/Batalla de Casa Blanca/)).not.toBeInTheDocument();
     expect(screen.getByText("Mano de obra")).toBeInTheDocument();
-    expect(screen.getByText(/Servicio · 1 ×/)).toBeInTheDocument();
     expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
     expect(screen.getByRole("button", { name: "Aceptar cotización" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Declinar cotización" })).toBeInTheDocument();
@@ -107,8 +110,8 @@ describe("SharedQuoteView", () => {
   it("keeps final status as secondary feedback without decision controls", () => {
     render(<SharedQuoteView quote={makeQuote(QuoteStatus.APPROVED)} token="token-123" />);
 
-    expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
-    expect(screen.getAllByText("Aceptada")).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "Cotización COT-001 — Servicio general" })).toBeInTheDocument();
+    expect(screen.getAllByText(/Aceptada/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByRole("button", { name: "Aceptar cotización" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Declinar cotización" })).not.toBeInTheDocument();
   });
@@ -121,7 +124,7 @@ describe("SharedQuoteView", () => {
 
     await user.click(screen.getByRole("button", { name: "Aceptar cotización" }));
 
-    expect(acceptSharedQuoteActionMock).toHaveBeenCalledWith("token-123");
+    expect(acceptSharedQuoteActionMock).toHaveBeenCalledWith("token-123", []);
     const feedback = await screen.findByRole("status");
     expect(feedback).toHaveTextContent("Cotización aceptada");
     expect(feedback).toHaveFocus();

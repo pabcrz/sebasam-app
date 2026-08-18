@@ -87,6 +87,7 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
   const sections: QuoteBuilderInitialData["sections"] = quote.sections.length > 0
     ? quote.sections.map((section) => ({
         name: section.name,
+        isAuthorized: section.isAuthorized,
         items: section.items.map(toItemFormValue),
       }))
     : [{ name: "General", items: [] }];

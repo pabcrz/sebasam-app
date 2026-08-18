@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Check, X, Printer } from "lucide-react";
 import { Button } from "@/components/ui";
 import { QuotePreviewCard } from "@/features/quotes/components/quote-preview-card";
@@ -29,8 +30,32 @@ export interface SharedQuoteViewProps {
 }
 
 export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) {
+  const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    // Refresh the quote data every 5 seconds if no decision has been made
+    // and only if the browser tab is actually visible.
+    if (decision !== null) return;
+    
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [router, decision]);
   const [error, setError] = React.useState<string | null>(null);
+  const [selectedSectionIds, setSelectedSectionIds] = React.useState<string[]>(
+    quote.sections.map((s) => s.id)
+  );
+
+  const handleSectionToggle = React.useCallback((sectionId: string, selected: boolean) => {
+    setSelectedSectionIds((prev) =>
+      selected ? [...prev, sectionId] : prev.filter((id) => id !== sectionId)
+    );
+  }, []);
   const decisionFeedbackRef = React.useRef<HTMLDivElement>(null);
   const [acceptPending, startAccept] = useTransition();
   const [declinePending, startDecline] = useTransition();
@@ -46,14 +71,14 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
   const handleAccept = React.useCallback(() => {
     setError(null);
     startAccept(async () => {
-      const result = await acceptSharedQuoteAction(token);
+      const result = await acceptSharedQuoteAction(token, selectedSectionIds);
       if (result.success) {
         setDecision("accepted");
       } else {
         setError(result.error ?? "No se pudo aceptar la cotización.");
       }
     });
-  }, [token]);
+  }, [token, selectedSectionIds]);
 
   const handleDecline = React.useCallback(() => {
     setError(null);
@@ -82,6 +107,7 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
 
   const sections = quote.sections && quote.sections.length > 0
     ? quote.sections.map((section) => ({
+        id: section.id,
         name: section.name,
         items: section.items.map((item) => ({
           type: item.type,
@@ -104,7 +130,26 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
         },
       ];
 
-  const showDecisionControls = quote.status === "SENT" && !hasDecided;
+  const showDecisionControls = (quote.status === "SENT" || quote.status === "DRAFT") && !hasDecided;
+
+  const calculateSelectedTotals = () => {
+    let subtotalCents = 0;
+    const sectionsToSum = quote.sections.filter((s) => selectedSectionIds.includes(s.id));
+    for (const section of sectionsToSum) {
+      for (const item of section.items) {
+        subtotalCents += Math.round(Number(item.quantity) * item.unitPriceCents);
+      }
+    }
+    const taxableCents = Math.max(0, subtotalCents - Number(quote.discountCents));
+    const hasTax = Number(quote.taxCents) > 0;
+    const taxCents = hasTax ? Math.round(taxableCents * 0.16) : 0;
+    const totalCents = taxableCents + taxCents;
+    return { subtotalCents, taxCents, totalCents };
+  };
+
+  const totals = quote.sections.length > 1 && selectedSectionIds.length !== quote.sections.length
+    ? calculateSelectedTotals()
+    : { subtotalCents: Number(quote.subtotalCents), taxCents: Number(quote.taxCents), totalCents: Number(quote.totalCents) };
   const progressStatus = decision === "accepted" ? "accepted" : quote.status === "APPROVED"
     ? quote.workOrder?.status === "COMPLETED" ? "completed"
       : quote.workOrder?.status === "ASSIGNED" || quote.workOrder?.status === "IN_PROGRESS" ? "active" : "accepted"
@@ -114,16 +159,18 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
     <div className="grid gap-4 print:gap-2">
 
       <QuotePreviewCard
-        customerName={quote.customer.name}
+        customerName={quote.customer?.name ?? ""}
         vehicle={vehicle}
-        title={quote.title}
+        title={quote.title ? `Cotización ${quote.number} — ${quote.title}` : `Cotización ${quote.number}`}
         description={quote.description ?? ""}
         administrative={quote.administrative}
         sections={sections}
-        subtotalCents={Number(quote.subtotalCents)}
+        subtotalCents={totals.subtotalCents}
         discountCents={Number(quote.discountCents)}
-        taxCents={Number(quote.taxCents)}
-        totalCents={Number(quote.totalCents)}
+        taxCents={totals.taxCents}
+        totalCents={totals.totalCents}
+        selectableSectionIds={showDecisionControls && quote.sections.length > 1 ? selectedSectionIds : undefined}
+        onSectionToggle={showDecisionControls && quote.sections.length > 1 ? handleSectionToggle : undefined}
         validUntil={quote.validUntil}
         isNote={isNote}
         compactHeader={true}
@@ -172,12 +219,18 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
             size="default"
             className="flex-1"
             loading={acceptPending}
-            disabled={isPending}
+            disabled={isPending || (quote.sections.length > 0 && selectedSectionIds.length === 0)}
             onClick={handleAccept}
             aria-label="Aceptar cotización"
           >
             <Check className="h-4 w-4" aria-hidden="true" />
-            <span>Aceptar cotización</span>
+            <span>
+              {quote.sections.length > 0 && selectedSectionIds.length === 0
+                ? "Seleccione al menos una sección"
+                : selectedSectionIds.length === quote.sections.length || quote.sections.length <= 1
+                  ? "Aceptar cotización"
+                  : `Aceptar ${selectedSectionIds.length} seccion${selectedSectionIds.length > 1 ? "es" : ""}`}
+            </span>
           </Button>
           <Button
             variant="outline"

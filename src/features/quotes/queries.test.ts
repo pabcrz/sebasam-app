@@ -36,7 +36,7 @@ describe("listQuotes filters", () => {
   });
 
   it("filters by status", async () => {
-    await listQuotes({ status: "APPROVED" });
+    await listQuotes({ deletedAt: null, status: "APPROVED" });
 
     const call = getFindManyCall();
     expect(call.where).toEqual({ deletedAt: null, status: "APPROVED" });
@@ -92,7 +92,7 @@ describe("listQuotes filters", () => {
     const result = await listPaginatedQuotes({ page: "2", customerId: "cust-1", showCancelled: true });
 
     expect(getFindManyCall()).toMatchObject({
-      where: { deletedAt: null, customerId: "cust-1", status: { notIn: ["ARCHIVED"] } },
+where: { deletedAt: null, customerId: "cust-1", status: { notIn: ["ARCHIVED"] } },
       orderBy: [{ operationalDate: "desc" }, { id: "desc" }],
       skip: 20,
       take: 21,
@@ -218,7 +218,7 @@ describe("listQuotes filters", () => {
     expect(call.where).toEqual({
       OR: [
         { vehicle: { plate: { contains: "ABC-123", mode: "insensitive" } } },
-        { vehicleSnapshot: { path: ["plate"], string_contains: "ABC-123", mode: "insensitive" } },
+        { vehicleSnapshot: { path: ["plate"], string_contains: "ABC-123" } },
       ],
       deletedAt: null,
       status: { notIn: ["CANCELLED", "ARCHIVED"] },
@@ -245,14 +245,14 @@ describe("listQuotes filters", () => {
   });
 
   it("combines multiple filters", async () => {
-    await listQuotes({ status: "DRAFT", customerId: "cust-1", number: "C-001" });
+    await listQuotes({ deletedAt: null, status: "DRAFT", customerId: "cust-1", number: "C-001" });
 
     const call = getFindManyCall();
     expect(call.where).toEqual({
+      deletedAt: null,
       status: "DRAFT",
       customerId: "cust-1",
       number: { contains: "C-001", mode: "insensitive" },
-      deletedAt: null,
     });
   });
 

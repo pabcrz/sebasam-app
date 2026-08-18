@@ -66,7 +66,7 @@ export type QuoteBuilderInitialData = {
   operationalDate?: string;
   isOperationalDateEditable?: boolean;
   /** Sections with items. Each section has a name and an array of ItemFormValues. */
-  sections: Array<{ name: string; items: ItemFormValue[] }>;
+  sections: Array<{ name: string; isAuthorized?: boolean; items: ItemFormValue[] }>;
 };
 
 type QuoteBuilderProps = {
@@ -143,6 +143,7 @@ export function QuoteBuilder({
     return initialData?.sections?.length
       ? initialData.sections.map((sec) => ({
           name: sec.name,
+          isAuthorized: sec.isAuthorized,
           items: sec.items,
           rowIds: sec.items.map(() => `quote-item-${idCounter++}`),
         }))
@@ -410,6 +411,14 @@ export function QuoteBuilder({
     setSections((prev) => {
       const next = [...prev];
       next[sectionIndex] = { ...next[sectionIndex]!, name };
+      return next;
+    });
+  }
+
+  function updateSectionAuthorized(sectionIndex: number, isAuthorized: boolean) {
+    setSections((prev) => {
+      const next = [...prev];
+      next[sectionIndex] = { ...next[sectionIndex]!, isAuthorized };
       return next;
     });
   }
@@ -908,6 +917,7 @@ export function QuoteBuilder({
               onAddSection={addSection}
               onRemoveSection={removeSection}
               onUpdateSectionName={updateSectionName}
+              onUpdateSectionAuthorized={updateSectionAuthorized}
               onReorderSection={reorderSection}
               onReorderItem={reorderItem}
               onRowRef={(rowId, node) => {

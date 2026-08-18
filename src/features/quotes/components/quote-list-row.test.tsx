@@ -113,6 +113,9 @@ function renderRow(quote: QuoteListItem) {
       <tbody>
         <QuoteListRow
           quote={quote}
+          cashPaymentAction={vi.fn()}
+          archiveAction={vi.fn()}
+          restoreAction={vi.fn()}
           quoteStatusLabels={quoteStatusLabels}
           quoteStatusBadgeVariant={quoteStatusBadgeVariant}
           approveAction={vi.fn()}
@@ -123,12 +126,9 @@ function renderRow(quote: QuoteListItem) {
           paymentRequestBankAccounts={[
             { accountHolder: "SEBASAM", bankName: "Santander", accountNumber: "1234", clabe: "5678" },
           ]}
-          cashPaymentAction={vi.fn()}
 
           duplicateAction={vi.fn()}
           deleteAction={vi.fn()}
-          archiveAction={vi.fn()}
-          restoreAction={vi.fn()}
           customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
           saveAction={vi.fn()}
           searchCustomersAction={vi.fn()}
@@ -146,7 +146,7 @@ describe("QuoteListRow", () => {
 
     expect(screen.getByText("C-001")).toBeInTheDocument();
     expect(screen.getByText("Constructora del Norte")).toBeInTheDocument();
-    expect(screen.getByText("ABC-123 — Ford F-150")).toBeInTheDocument();
+    expect(screen.getByText("Ford F-150 - ABC-123")).toBeInTheDocument();
 
     expect(screen.getByText("Mantenimiento preventivo")).toBeInTheDocument();
   });

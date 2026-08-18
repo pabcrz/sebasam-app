@@ -141,7 +141,7 @@ describe("acceptSharedQuote", () => {
     const result = await acceptSharedQuote("token-valid");
 
     expect(tx.quote.updateMany).toHaveBeenCalledWith({
-      where: { id: "q-1", status: QuoteStatus.SENT },
+      where: { id: "q-1", status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT] } },
       data: { status: QuoteStatus.APPROVED, approvedAt: expect.any(Date) },
     });
     expect(tx.quoteDecision.create).toHaveBeenCalledWith({
@@ -149,6 +149,7 @@ describe("acceptSharedQuote", () => {
         quoteId: "q-1",
         status: QuoteStatus.APPROVED,
         origin: QuoteDecisionOrigin.CUSTOMER,
+        authorizedSectionIds: [],
       },
     });
     expect(result.status).toBe(QuoteStatus.APPROVED);
@@ -222,7 +223,7 @@ describe("declineSharedQuote", () => {
     const result = await declineSharedQuote("token-valid");
 
     expect(tx.quote.updateMany).toHaveBeenCalledWith({
-      where: { id: "q-1", status: QuoteStatus.SENT },
+      where: { id: "q-1", status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT] } },
       data: { status: QuoteStatus.REJECTED },
     });
     expect(tx.quoteDecision.create).toHaveBeenCalledWith({
@@ -281,7 +282,7 @@ describe("authorizeQuote", () => {
 
     const result = await authorizeQuote("q-1", "Cliente confirmó por WhatsApp", "actor-1");
 
-    expect(tx.quote.findUnique).toHaveBeenCalledWith({ where: { id: "q-1" } });
+    expect(tx.quote.findUnique).toHaveBeenCalledWith({ include: { sections: true }, where: { id: "q-1" } });
     expect(tx.quote.updateMany).toHaveBeenCalledWith({
       where: { id: "q-1", status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT] } },
       data: { status: QuoteStatus.APPROVED, approvedAt: expect.any(Date) },
@@ -290,9 +291,10 @@ describe("authorizeQuote", () => {
     expect(tx.quoteDecision.create).toHaveBeenCalledWith({
       data: {
         quoteId: "q-1",
+        actorId: "actor-1",
         status: QuoteStatus.APPROVED,
         origin: QuoteDecisionOrigin.ADMIN,
-        actorId: "actor-1",
+        authorizedSectionIds: [],
         note: "Cliente confirmó por WhatsApp",
       },
     });
