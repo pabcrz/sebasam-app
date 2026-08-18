@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import { PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
 import {
   cancelQuote,
@@ -76,7 +76,7 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   const tx: MockTx = {
     quote: {
       create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] }),
-      findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, items: [], sections: [{ id: "sec-1", sortOrder: 0 }] }),
+      findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, operationalDate: new Date("2026-07-14T00:00:00.000Z"), items: [], sections: [{ id: "sec-1", sortOrder: 0 }] }),
       update: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] }),
       findUniqueOrThrow: vi.fn(),
       updateMany: vi.fn(),
@@ -102,6 +102,7 @@ function validInput() {
     administrative: false,
     taxEnabled: true,
     discountCents: 0,
+    operationalDate: "2026-07-14",
     sections: [{ name: "General", items: [{ type: "SERVICE" as const, description: "Cambio de aceite", quantity: 2, unitPriceCents: 85000 }] }],
   };
 }
@@ -110,7 +111,7 @@ function buildFormData(overrides: Record<string, string> = {}) {
   const formData = new MockFormData();
   const defaults: Record<string, string> = {
     customerId: "cust-1", plate: "", brand: "", model: "Hilux", color: "", year: "",
-    title: "Servicio", description: "", taxEnabled: "on", discount: "0",
+    title: "Servicio", description: "", taxEnabled: "on", discount: "0", operationalDate: "2026-07-14",
     "sections.0.name": "General",
     "sections.0.items.0.type": "SERVICE", "sections.0.items.0.description": "Cambio de aceite", "sections.0.items.0.quantity": "1", "sections.0.items.0.unitPrice": "100",
   };
@@ -134,6 +135,7 @@ function validInputWithoutVehicle() {
 
 describe("createQuote", () => {
   beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.useRealTimers());
 
   it("creates a quote linked to a vehicle when vehicle data is provided", async () => {
     const tx = mockTx();
@@ -156,6 +158,7 @@ describe("createQuote", () => {
     });
     expect(createData.id).toEqual(expect.any(String));
     expect(createData.status).toBe("DRAFT");
+    expect(createData.operationalDate).toEqual(new Date("2026-07-14T00:00:00.000Z"));
     expect(createData.sharedQuotes.create).toEqual({
       token: "stable-token",
       expiresAt: new Date("2026-08-31T00:00:00.000Z"),
@@ -189,6 +192,26 @@ describe("createQuote", () => {
     expect(tx.quote.create.mock.calls[0][0].data.vehicleSnapshot).toBe(Prisma.JsonNull);
     expect(tx.quote.create.mock.calls[0][0].data.totalCents).toBe(50000);
   });
+
+  it("defaults a missing operational date to Mexico City server today", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T01:30:00.000Z"));
+    const tx = mockTx();
+
+    await createQuote({ ...validInput(), operationalDate: undefined });
+
+    expect(tx.quote.create.mock.calls[0][0].data.operationalDate)
+      .toEqual(new Date("2026-07-14T00:00:00.000Z"));
+  });
+
+  it("rejects a future operational date before creating a quote", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T18:00:00.000Z"));
+    const tx = mockTx();
+
+    await expect(createQuote({ ...validInput(), operationalDate: "2026-07-16" })).rejects.toThrow();
+    expect(tx.quote.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("updateDraftQuote", () => {
@@ -202,6 +225,7 @@ describe("updateDraftQuote", () => {
     expect(updateData.subtotalCents).toBe(170000);
     expect(updateData.taxCents).toBe(27200);
     expect(updateData.totalCents).toBe(197200);
+    expect(updateData.operationalDate).toEqual(new Date("2026-07-14T00:00:00.000Z"));
     expect(updateData.sections.create).toHaveLength(1);
     expect(result.totalCents).toBe(197200);
   });
@@ -222,6 +246,7 @@ describe("updateDraftQuote", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.DRAFT,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       workOrder: { id: "wo-1", status: "COMPLETED" },
     });
@@ -234,6 +259,7 @@ describe("updateDraftQuote", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.DRAFT,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       workOrder: { id: "wo-1", status: "PLANNED" },
     });
@@ -255,6 +281,14 @@ describe("updateDraftQuote", () => {
     expect(tx.quote.update.mock.calls[0][0].data.status).toBeUndefined();
   });
 
+  it("rejects an operational date change after a quote leaves DRAFT", async () => {
+    const tx = mockTx(QuoteStatus.SENT);
+
+    await expect(updateDraftQuote("quote-1", { ...validInput(), operationalDate: "2026-07-13" }))
+      .rejects.toThrow("Only draft quotes can change their operational date.");
+    expect(tx.quote.update).not.toHaveBeenCalled();
+  });
+
   it("allows updating an APPROVED quote when not expired and work order is not terminal", async () => {
     const tx = mockTx(QuoteStatus.APPROVED);
     tx.quote.update.mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] });
@@ -269,6 +303,7 @@ describe("updateDraftQuote", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.APPROVED,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       totalCents: 250000,
       items: [],
       workOrder: null,
@@ -301,6 +336,7 @@ describe("updateDraftQuote", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.DRAFT,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       validUntil: new Date("2020-01-01T00:00:00.000Z"),
       workOrder: null,
@@ -315,6 +351,7 @@ describe("updateDraftQuote", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.SENT,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       validUntil: new Date("2026-12-31T00:00:00.000Z"),
       workOrder: { id: "wo-1", status: "COMPLETED" },
@@ -350,6 +387,7 @@ describe("updateDraftQuoteFromForm", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.APPROVED,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       workOrder: null,
     });
@@ -365,6 +403,7 @@ describe("updateDraftQuoteFromForm", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.DRAFT,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       workOrder: { id: "wo-1", status: "COMPLETED" },
     });
@@ -466,6 +505,7 @@ it("returns the specific paid-total error from the update workspace action", asy
   tx.quote.findUnique.mockResolvedValue({
     id: "quote-1",
     status: QuoteStatus.APPROVED,
+    operationalDate: new Date("2026-07-14T00:00:00.000Z"),
     items: [],
     workOrder: null,
   });
@@ -478,9 +518,12 @@ it("returns the specific paid-total error from the update workspace action", asy
 
 describe("duplicateQuote", () => {
   beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.useRealTimers());
 
   it("creates a new DRAFT quote with a fresh number and validity while copying quote fields and items", async () => {
     const tx = mockTx();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T18:00:00.000Z"));
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "quote-source",
       customerId: "cust-1",
@@ -496,6 +539,7 @@ describe("duplicateQuote", () => {
       taxCents: 27200,
       totalCents: 197200,
       validUntil: new Date("2026-06-30T00:00:00.000Z"),
+      operationalDate: new Date("2026-06-01T00:00:00.000Z"),
       workOrder: { id: "wo-source" },
       sharedQuotes: [{ id: "shared-source" }],
       paymentRequests: [{ id: "payment-source" }],
@@ -578,6 +622,7 @@ describe("duplicateQuote", () => {
       taxCents: 27200,
       totalCents: 197200,
       validUntil: new Date("2026-07-15T00:00:00.000Z"),
+      operationalDate: new Date("2026-07-15T00:00:00.000Z"),
     });
     expect(createData.id).toEqual(expect.any(String));
     expect(createData.items.create).toEqual([{

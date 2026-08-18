@@ -32,34 +32,34 @@ describe("listQuotes filters", () => {
     await listQuotes();
 
     const call = getFindManyCall();
-    expect(call.where).toEqual({ status: { notIn: ["CANCELLED", "ARCHIVED"] } });
+    expect(call.where).toEqual({ deletedAt: null, status: { notIn: ["CANCELLED", "ARCHIVED"] } });
   });
 
   it("filters by status", async () => {
     await listQuotes({ status: "APPROVED" });
 
     const call = getFindManyCall();
-    expect(call.where).toEqual({ status: "APPROVED" });
+    expect(call.where).toEqual({ deletedAt: null, status: "APPROVED" });
   });
 
   it("ignores invalid status values but still hides cancelled by default", async () => {
     await listQuotes({ status: "INVALID" });
 
     const call = getFindManyCall();
-    expect(call.where).toEqual({ status: { notIn: ["CANCELLED", "ARCHIVED"] } });
+    expect(call.where).toEqual({ deletedAt: null, status: { notIn: ["CANCELLED", "ARCHIVED"] } });
   });
 
   it("shows cancelled when showCancelled is true", async () => {
     await listQuotes({ showCancelled: true });
 
     const call = getFindManyCall();
-    expect(call.where).toEqual({ status: { notIn: ["ARCHIVED"] } });
+    expect(call.where).toEqual({ deletedAt: null, status: { notIn: ["ARCHIVED"] } });
   });
 
   it("shows archived without changing the cancelled filter", async () => {
     await listQuotes({ showArchived: true });
 
-    expect(getFindManyCall().where).toEqual({ status: { notIn: ["CANCELLED"] } });
+    expect(getFindManyCall().where).toEqual({ deletedAt: null, status: { notIn: ["CANCELLED"] } });
   });
 
   it("keeps PLANNED work in Cotizaciones and excludes later operational queues", async () => {
@@ -92,8 +92,8 @@ describe("listQuotes filters", () => {
     const result = await listPaginatedQuotes({ page: "2", customerId: "cust-1", showCancelled: true });
 
     expect(getFindManyCall()).toMatchObject({
-      where: { customerId: "cust-1", status: { notIn: ["ARCHIVED"] } },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      where: { deletedAt: null, customerId: "cust-1", status: { notIn: ["ARCHIVED"] } },
+      orderBy: [{ operationalDate: "desc" }, { id: "desc" }],
       skip: 20,
       take: 21,
     });
@@ -195,6 +195,7 @@ describe("listQuotes filters", () => {
     const call = getFindManyCall();
     expect(call.where).toEqual({
       customerId: "cust-1",
+      deletedAt: null,
       status: { notIn: ["CANCELLED", "ARCHIVED"] },
     });
   });
@@ -205,6 +206,7 @@ describe("listQuotes filters", () => {
     const call = getFindManyCall();
     expect(call.where).toEqual({
       number: { contains: "C-001", mode: "insensitive" },
+      deletedAt: null,
       status: { notIn: ["CANCELLED", "ARCHIVED"] },
     });
   });
@@ -218,6 +220,7 @@ describe("listQuotes filters", () => {
         { vehicle: { plate: { contains: "ABC-123", mode: "insensitive" } } },
         { vehicleSnapshot: { path: ["plate"], string_contains: "ABC-123", mode: "insensitive" } },
       ],
+      deletedAt: null,
       status: { notIn: ["CANCELLED", "ARCHIVED"] },
     });
   });
@@ -226,19 +229,19 @@ describe("listQuotes filters", () => {
     await listQuotes({ dateFrom: "2026-07-01", dateTo: "2026-07-31" });
 
     const call = getFindManyCall();
-    const gte = call.where.createdAt.gte as Date;
-    expect(gte.getFullYear()).toBe(2026);
-    expect(gte.getMonth()).toBe(6);
-    expect(gte.getDate()).toBe(1);
-    expect(gte.getHours()).toBe(0);
-    const lte = call.where.createdAt.lte as Date;
-    expect(lte.getFullYear()).toBe(2026);
-    expect(lte.getMonth()).toBe(6);
-    expect(lte.getDate()).toBe(31);
-    expect(lte.getHours()).toBe(23);
-    expect(lte.getMinutes()).toBe(59);
-    expect(lte.getSeconds()).toBe(59);
-    expect(lte.getMilliseconds()).toBe(999);
+    const gte = call.where.operationalDate.gte as Date;
+    expect(gte.getUTCFullYear()).toBe(2026);
+    expect(gte.getUTCMonth()).toBe(6);
+    expect(gte.getUTCDate()).toBe(1);
+    expect(gte.getUTCHours()).toBe(0);
+    const lte = call.where.operationalDate.lte as Date;
+    expect(lte.getUTCFullYear()).toBe(2026);
+    expect(lte.getUTCMonth()).toBe(6);
+    expect(lte.getUTCDate()).toBe(31);
+    expect(lte.getUTCHours()).toBe(0);
+    expect(lte.getUTCMinutes()).toBe(0);
+    expect(lte.getUTCSeconds()).toBe(0);
+    expect(lte.getUTCMilliseconds()).toBe(0);
   });
 
   it("combines multiple filters", async () => {
@@ -249,6 +252,7 @@ describe("listQuotes filters", () => {
       status: "DRAFT",
       customerId: "cust-1",
       number: { contains: "C-001", mode: "insensitive" },
+      deletedAt: null,
     });
   });
 

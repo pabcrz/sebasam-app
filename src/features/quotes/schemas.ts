@@ -1,6 +1,7 @@
 import { QuoteItemType } from "@prisma/client";
 import { z } from "zod";
-import { optionalTrimmedString as optionalFilterString, optionalDate } from "@/lib/filters";
+import { normalizeOperationalDate } from "./lib/operational-date";
+import { optionalTrimmedString as optionalFilterString } from "@/lib/filters";
 
 const optionalTrimmedString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -95,8 +96,34 @@ const quoteInputBaseSchema = z.object({
   administrative: z.boolean().default(false),
   taxEnabled: z.boolean().default(true),
   discountCents: z.number().int().nonnegative().default(0),
+  operationalDate: z.preprocess(
+    (value) => value === "" ? undefined : value,
+    z.string().optional().superRefine((value, context) => {
+      if (!value) return;
+      try {
+        normalizeOperationalDate(value);
+      } catch {
+        context.addIssue({ code: "custom", message: "Operational date must be today or earlier." });
+      }
+    }),
+  ),
   sections: z.array(quoteSectionInputSchema).min(1, "At least one quote section is required").max(10),
 });
+
+const quoteFilterDateSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string" || value.trim() === "") return undefined;
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+    if (!match) return undefined;
+    const [year, month, day] = match.slice(1).map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+      ? date
+      : undefined;
+  },
+  z.date().optional(),
+);
 
 function validateQuoteTotals(
   quote: z.infer<typeof quoteInputBaseSchema>,
@@ -150,8 +177,8 @@ export const quoteFilterSchema = z.object({
   customerId: optionalFilterString(),
   number: optionalFilterString(),
   plate: optionalFilterString(),
-  dateFrom: optionalDate(),
-  dateTo: optionalDate(),
+  dateFrom: quoteFilterDateSchema,
+  dateTo: quoteFilterDateSchema,
   showCancelled: z.coerce.boolean().default(false),
   showArchived: z.coerce.boolean().default(false),
 });

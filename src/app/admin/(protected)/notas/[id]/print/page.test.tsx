@@ -32,6 +32,7 @@ describe("WorkOrderPrintPage", () => {
         taxEnabled: false,
         taxCents: 0,
         totalCents: 0,
+        operationalDate: new Date("2026-08-14T00:00:00.000Z"),
       },
     });
     getPaymentSettings.mockResolvedValue({

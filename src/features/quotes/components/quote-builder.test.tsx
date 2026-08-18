@@ -68,6 +68,7 @@ describe("QuoteBuilder", () => {
     expect(screen.getByLabelText("Marca (opcional)")).toHaveAttribute("name", "brand");
     expect(screen.queryByLabelText("Color")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Año (opcional)")).toHaveAttribute("name", "year");
+    expect(screen.getByLabelText("Fecha de cotización")).toHaveAttribute("name", "operationalDate");
 
     // Hidden item type inputs are rendered even while step is hidden.
     expect(document.querySelector('input[name="sections.0.items.0.type"]')).toHaveAttribute("value", "LABOR");
@@ -566,6 +567,30 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="customerId"]')).toHaveValue("cust-old");
   });
 
+  it("keeps the operational date read-only outside DRAFT while preserving it for form submission", () => {
+    render(
+      <QuoteBuilder
+        customers={[{ id: "cust-old", name: "Cliente histórico" }]}
+        saveAction={vi.fn()}
+        initialData={{
+          customerId: "cust-old",
+          vehicle: { plate: "", brand: "", model: "", year: "" },
+          title: "Cotización existente",
+          description: "",
+          administrative: false,
+          taxEnabled: true,
+          discountCents: 0,
+          operationalDate: "2026-07-14",
+          isOperationalDateEditable: false,
+          sections: [{ name: "", items: [] }],
+        }}
+      />,
+    );
+
+    expect(screen.getByLabelText("Fecha de cotización")).toBeDisabled();
+    expect(document.querySelector('input[type="hidden"][name="operationalDate"]')).toHaveValue("2026-07-14");
+  });
+
   it("recovers when customer creation fails unexpectedly", async () => {
     const user = userEvent.setup();
     const createCustomerAction = vi.fn().mockRejectedValue(new Error("Unauthorized"));
@@ -619,6 +644,7 @@ describe("QuoteBuilder", () => {
 
     expect(entries.customerId).toBe("cust-1");
     expect(entries.title).toBe("Servicio general");
+    expect(entries.operationalDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(entries["sections.0.items.0.description"]).toBe("Cambio de aceite");
     expect(entries["sections.0.items.0.quantity"]).toBe("1");
     expect(entries["sections.0.items.0.unitPrice"]).toBe("850");

@@ -16,6 +16,7 @@ import {
   createQuoteValidUntil,
 } from "./lib/calculate";
 import { isQuoteEditable } from "./lib/editability";
+import { normalizeOperationalDate } from "./lib/operational-date";
 import { nextQuoteNumber, nextWorkOrderNumber } from "./lib/sequence";
 import {
   createSharedQuoteExpirationDate,
@@ -92,6 +93,7 @@ function quoteFormDataToInput(formData: FormData) {
     administrative: formData.get("administrative") === "on",
     taxEnabled: formData.get("taxEnabled") === "on",
     discountCents: formData.get("discount") || "0",
+    operationalDate: formData.get("operationalDate"),
     sections,
   };
 }
@@ -130,6 +132,7 @@ async function createQuoteAuthorized(input: unknown) {
   );
   const { taxCents, totalCents, discountCents } = calculateQuoteTotals(subtotalCents, data.taxEnabled, data.discountCents);
   const validUntil = createQuoteValidUntil();
+  const operationalDate = normalizeOperationalDate(data.operationalDate);
 
   return prisma.$transaction(async (tx) => {
     const quoteId = randomUUID();
@@ -158,6 +161,7 @@ async function createQuoteAuthorized(input: unknown) {
         discountCents,
         taxCents,
         totalCents,
+        operationalDate,
         validUntil,
         sharedQuotes: {
           create: {
@@ -236,6 +240,9 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
   await requireOperationalRole();
 
   const data = quoteInputSchema.parse(input);
+  const requestedOperationalDate = data.operationalDate === undefined
+    ? undefined
+    : normalizeOperationalDate(data.operationalDate);
   const sectionData = data.sections.map((section, sIndex) => ({
     name: section.name,
     sortOrder: sIndex,
@@ -259,6 +266,14 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
 
     if (!isQuoteEditable(quote)) {
       throw new Error("This quote is not editable.");
+    }
+
+    if (
+      requestedOperationalDate &&
+      quote.status !== QuoteStatus.DRAFT &&
+      requestedOperationalDate.getTime() !== quote.operationalDate.getTime()
+    ) {
+      throw new Error("Only draft quotes can change their operational date.");
     }
 
     const paidTotals = await tx.payment.aggregate({
@@ -298,6 +313,7 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
         discountCents,
         taxCents,
         totalCents,
+        ...(quote.status === QuoteStatus.DRAFT && requestedOperationalDate ? { operationalDate: requestedOperationalDate } : {}),
         sections: { create: sectionData },
       },
       include: { sections: true },
@@ -711,6 +727,7 @@ async function duplicateQuoteAuthorized(quoteId: string) {
   }
 
   const validUntil = createQuoteValidUntil();
+  const operationalDate = normalizeOperationalDate(undefined);
 
   return prisma.$transaction(async (tx) => {
     const duplicatedQuoteId = randomUUID();
@@ -732,6 +749,7 @@ async function duplicateQuoteAuthorized(quoteId: string) {
         discountCents: original.discountCents,
         taxCents: original.taxCents,
         totalCents: original.totalCents,
+        operationalDate,
         validUntil,
         sharedQuotes: {
           create: {

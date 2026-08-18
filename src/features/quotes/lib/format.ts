@@ -11,6 +11,13 @@ export function formatDate(date: Date) {
   }).format(date);
 }
 
+export function formatOperationalDate(date: Date) {
+  return new Intl.DateTimeFormat("es-MX", {
+    dateStyle: "long",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 type VehicleSnapshotView = {
   plate?: unknown;
   brand?: unknown;
