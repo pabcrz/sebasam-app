@@ -47,6 +47,21 @@ describe("auth session resolution", () => {
     expect(findUnique).toHaveBeenCalledTimes(1);
   });
 
+  it("allows SUPER_ADMIN wherever ADMIN or operational access is required", async () => {
+    findUnique.mockResolvedValue(activeProfile("SUPER_ADMIN"));
+    const { requireAdmin, requireOperationalRole, requireSuperAdmin } = await loadSession();
+
+    await expect(requireAdmin()).resolves.toMatchObject({ profile: { role: "SUPER_ADMIN" } });
+    await expect(requireOperationalRole()).resolves.toMatchObject({ profile: { role: "SUPER_ADMIN" } });
+    await expect(requireSuperAdmin()).resolves.toMatchObject({ profile: { role: "SUPER_ADMIN" } });
+  });
+
+  it("keeps SUPER_ADMIN access exclusive", async () => {
+    const { UnauthorizedRoleError, requireSuperAdmin } = await loadSession();
+
+    await expect(requireSuperAdmin()).rejects.toBeInstanceOf(UnauthorizedRoleError);
+  });
+
   it("preserves the page redirect for a missing profile", async () => {
     findUnique.mockResolvedValue(null);
     const { requireProfileForPage } = await loadSession();
@@ -59,6 +74,13 @@ describe("auth session resolution", () => {
     const { MissingUserProfileError, requireProfile } = await loadSession();
 
     await expect(requireProfile()).rejects.toBeInstanceOf(MissingUserProfileError);
+  });
+
+  it("preserves the action error for an inactive profile", async () => {
+    findUnique.mockResolvedValue({ ...activeProfile(), isActive: false });
+    const { InactiveUserProfileError, requireSuperAdmin } = await loadSession();
+
+    await expect(requireSuperAdmin()).rejects.toBeInstanceOf(InactiveUserProfileError);
   });
 
   it("preserves the login redirect for an unauthenticated user", async () => {

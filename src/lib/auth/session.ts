@@ -125,9 +125,13 @@ export async function requireRole(allowedRoles: UserRole[]): Promise<CurrentProf
 }
 
 export async function requireAdmin(): Promise<CurrentProfile> {
-  return requireRole(["ADMIN"]);
+  return requireRole(["SUPER_ADMIN", "ADMIN"]);
+}
+
+export async function requireSuperAdmin(): Promise<CurrentProfile> {
+  return requireRole(["SUPER_ADMIN"]);
 }
 
 export async function requireOperationalRole(): Promise<CurrentProfile> {
-  return requireRole(["ADMIN", "ADMIN_ASSISTANT"]);
+  return requireRole(["SUPER_ADMIN", "ADMIN", "ADMIN_ASSISTANT"]);
 }
