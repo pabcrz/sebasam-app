@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { requireProfileForPasswordChange } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const loginPath = "/admin/login";
@@ -41,4 +43,32 @@ export async function logoutAdmin() {
   await supabase.auth.signOut();
 
   redirect(loginPath);
+}
+
+export async function changePassword(formData: FormData): Promise<{ error?: string }> {
+  const password = String(formData.get("password") ?? "");
+  const confirmation = String(formData.get("confirmation") ?? "");
+
+  if (password.length < 8) {
+    return { error: "La contraseña debe tener al menos 8 caracteres." };
+  }
+
+  if (password !== confirmation) {
+    return { error: "Las contraseñas no coinciden." };
+  }
+
+  const { user } = await requireProfileForPasswordChange();
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    return { error: "No se pudo actualizar la contraseña. Inténtalo de nuevo." };
+  }
+
+  await prisma.userProfile.update({
+    where: { id: user.id },
+    data: { mustChangePassword: false },
+  });
+
+  redirect("/admin");
 }

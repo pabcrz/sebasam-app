@@ -69,6 +69,29 @@ describe("auth session resolution", () => {
     await expect(requireProfileForPage()).rejects.toThrow("redirect:/admin/setup-required");
   });
 
+  it("redirects flagged users from ordinary pages to password change", async () => {
+    findUnique.mockResolvedValue({ ...activeProfile(), mustChangePassword: true });
+    const { requireProfileForPage } = await loadSession();
+
+    await expect(requireProfileForPage()).rejects.toThrow("redirect:/admin/change-password");
+  });
+
+  it("allows only flagged active users to reach the password-change page", async () => {
+    findUnique.mockResolvedValue({ ...activeProfile(), mustChangePassword: true });
+    const { requireProfileForPasswordChangePage } = await loadSession();
+
+    await expect(requireProfileForPasswordChangePage()).resolves.toMatchObject({
+      profile: { mustChangePassword: true },
+    });
+  });
+
+  it("blocks flagged users from ordinary actions", async () => {
+    findUnique.mockResolvedValue({ ...activeProfile(), mustChangePassword: true });
+    const { PasswordChangeRequiredError, requireOperationalRole } = await loadSession();
+
+    await expect(requireOperationalRole()).rejects.toBeInstanceOf(PasswordChangeRequiredError);
+  });
+
   it("preserves the action error for a missing profile", async () => {
     findUnique.mockResolvedValue(null);
     const { MissingUserProfileError, requireProfile } = await loadSession();
