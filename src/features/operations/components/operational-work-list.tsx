@@ -1,0 +1,6 @@
+import Link from "next/link";
+import { Badge, Button, Card, CardContent } from "@/components/ui";
+
+export function OperationalWorkList({ works }: { works: Array<{ id: string; number: string; status: string; plate: string | null; brand: string | null; model: string | null; master: { displayName: string }; customer: { name: string } | null; concepts: Array<unknown> }> }) {
+  return <Card><CardContent className="divide-y divide-[var(--color-border-light)] p-0">{works.map((work) => <Link key={work.id} href={`/admin/operations/${work.id}`} className="flex flex-wrap items-center justify-between gap-3 p-4 transition-colors hover:bg-[var(--color-bg-soft)]"><div><p className="font-semibold">{work.number}</p><p className="text-sm text-[var(--color-text-muted)]">{work.plate ?? `${work.brand ?? ""} ${work.model ?? ""}`} · {work.customer?.name ?? "Sin cliente"} · {work.master.displayName}</p></div><div className="flex items-center gap-2"><Badge variant={work.status === "OPEN" ? "warning" : "success"}>{work.status === "OPEN" ? "Abierto" : "Convertido"}</Badge><Button type="button" variant="outline" size="sm">Ver</Button></div></Link>)}{works.length === 0 ? <p className="p-8 text-center text-sm text-[var(--color-text-muted)]">No hay trabajos operativos.</p> : null}</CardContent></Card>;
+}

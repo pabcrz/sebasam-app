@@ -51,6 +51,12 @@ enum WorkOrderStatus {
   CANCELLED
 }
 
+enum OperationalWorkStatus {
+  OPEN
+  CONVERTED
+  CANCELLED
+}
+
 enum AssignmentStatus {
   ASSIGNED
   ACCEPTED
@@ -111,6 +117,7 @@ model UserProfile {
   assignments      WorkAssignment[]
   executionRecords ExecutionRecord[]
   quoteLifecycleEvents QuoteLifecycleEvent[]
+  operationalWorks OperationalWork[]
 }
 
 model Customer {
@@ -125,6 +132,7 @@ model Customer {
   updatedAt DateTime       @updatedAt
 
   quotes          Quote[]
+  operationalWorks OperationalWork[]
   vehicles        Vehicle[]
   fiscalProfiles  CustomerFiscalProfile[]
   paymentRequests PaymentRequest[]
@@ -178,6 +186,7 @@ model Quote {
   sections        QuoteSection[]
   items           QuoteItem[]
   workOrder       WorkOrder?
+  operationalWork OperationalWork?
   paymentRequests PaymentRequest[]
   payments        Payment[]
   sharedQuotes    SharedQuote[]
@@ -185,6 +194,43 @@ model Quote {
   lifecycleEvents QuoteLifecycleEvent[]
 
   @@index([operationalDate])
+}
+
+model OperationalWork {
+  id               String                @id @default(cuid())
+  number           String                @unique
+  status           OperationalWorkStatus @default(OPEN)
+  masterId         String                @db.Uuid
+  customerId       String?
+  plate            String?
+  brand            String?
+  model            String?
+  report           String?
+  notes            String?
+  convertedQuoteId String?               @unique
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  master         UserProfile        @relation(fields: [masterId], references: [id], onDelete: Restrict)
+  customer       Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  convertedQuote Quote?             @relation(fields: [convertedQuoteId], references: [id], onDelete: SetNull)
+  concepts       OperationalConcept[]
+
+  @@index([masterId])
+  @@index([customerId])
+  @@index([status, createdAt])
+}
+
+model OperationalConcept {
+  id                String   @id @default(cuid())
+  operationalWorkId String
+  description       String
+  quantity          Decimal  @db.Decimal(10, 2)
+  sortOrder         Int      @default(0)
+
+  operationalWork OperationalWork @relation(fields: [operationalWorkId], references: [id], onDelete: Cascade)
+
+  @@index([operationalWorkId, sortOrder])
 }
 
 model SharedQuote {

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 
-type SequenceClient = Pick<Prisma.TransactionClient, "$queryRaw">;
+export type SequenceClient = Pick<Prisma.TransactionClient, "$queryRaw">;
 type HighestSequenceRow = { highestSequence: string };
 
 function formatSequentialNumber(prefix: string, sequence: number, sequenceWidth: number): string {
@@ -13,7 +13,7 @@ function formatSequentialNumber(prefix: string, sequence: number, sequenceWidth:
 }
 
 async function getNextNumber(
-  table: "quote" | "workOrder",
+  table: "quote" | "workOrder" | "operationalWork",
   prefix: string,
   sequenceWidth: number,
   client: SequenceClient = prisma,
@@ -37,13 +37,27 @@ async function getNextNumber(
         ) AS parsed
         WHERE parsed_suffix <= '1.7976931348623157e308'::numeric
       `
-    : await client.$queryRaw<HighestSequenceRow[]>`
+    : table === "workOrder"
+      ? await client.$queryRaw<HighestSequenceRow[]>`
         SELECT COALESCE(MAX(parsed_suffix), 0)::text AS "highestSequence"
         FROM (
           SELECT (regexp_match(suffix, '^[[:space:]]*[+]?[0-9]+'))[1]::numeric AS parsed_suffix
           FROM (
             SELECT substring("number" FROM ${prefixPattern.length + 1}::integer) AS suffix
-            FROM "WorkOrder"
+          FROM "WorkOrder"
+            WHERE "number" LIKE ${`${prefixPattern}%`}
+          ) AS matching
+          WHERE suffix !~ '-'
+        ) AS parsed
+        WHERE parsed_suffix <= '1.7976931348623157e308'::numeric
+      `
+      : await client.$queryRaw<HighestSequenceRow[]>`
+        SELECT COALESCE(MAX(parsed_suffix), 0)::text AS "highestSequence"
+        FROM (
+          SELECT (regexp_match(suffix, '^[[:space:]]*[+]?[0-9]+'))[1]::numeric AS parsed_suffix
+          FROM (
+            SELECT substring("number" FROM ${prefixPattern.length + 1}::integer) AS suffix
+            FROM "OperationalWork"
             WHERE "number" LIKE ${`${prefixPattern}%`}
           ) AS matching
           WHERE suffix !~ '-'
@@ -61,4 +75,8 @@ export async function nextQuoteNumber(client?: SequenceClient): Promise<string> 
 
 export async function nextWorkOrderNumber(client?: SequenceClient): Promise<string> {
   return getNextNumber("workOrder", "T", 2, client);
+}
+
+export async function nextOperationalWorkNumber(client?: SequenceClient): Promise<string> {
+  return getNextNumber("operationalWork", "O", 3, client);
 }

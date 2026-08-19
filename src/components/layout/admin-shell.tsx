@@ -15,6 +15,7 @@ import {
   UserCog,
   Users,
   Shield,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { logoutAdmin } from "@/features/auth/actions";
@@ -40,6 +41,7 @@ const navItems: NavItem[] = [
   { href: "/admin/workers", label: "Trabajadores", icon: UserCog },
   { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
   { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
+  { href: "/admin/operations", label: "Operativos", icon: Wrench },
   { href: "/admin/notas", label: "Notas", icon: FileCheck },
   { href: "/admin/configuracion-pago", label: "Configuración", icon: Bolt },
   { href: "/admin/users", label: "Usuarios", icon: Shield }, // Added for SUPER_ADMIN

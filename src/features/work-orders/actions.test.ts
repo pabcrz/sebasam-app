@@ -113,7 +113,17 @@ describe("work order actions", () => {
   describe("createAndAssignWorkOrder", () => {
     it("creates and assigns a regular work order in one step", async () => {
       const tx = createTx();
-      tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.APPROVED, workOrder: null });
+      tx.quote.findUnique.mockResolvedValue({
+        status: QuoteStatus.APPROVED,
+        workOrder: null,
+        customerId: "customer-1",
+        subtotalCents: 1000,
+        discountCents: 0,
+        taxCents: 160,
+        totalCents: 1160,
+        taxEnabled: true,
+        items: [{ description: "Servicio de taller", quantity: 1, unitPriceCents: 1000 }],
+      });
       tx.userProfile.findMany.mockResolvedValue([worker(masterId, WorkerKind.MASTER), worker(helperId, WorkerKind.HELPER)]);
 
       await createAndAssignWorkOrder("quote-1", {
@@ -140,7 +150,17 @@ describe("work order actions", () => {
 
     it("creates and assigns a special order without validating master/helpers or creating worker assignments", async () => {
       const tx = createTx();
-      tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.APPROVED, workOrder: { id: "wo-existing", status: WorkOrderStatus.PLANNED } });
+      tx.quote.findUnique.mockResolvedValue({
+        status: QuoteStatus.APPROVED,
+        workOrder: { id: "wo-existing", status: WorkOrderStatus.PLANNED },
+        customerId: "customer-1",
+        subtotalCents: 1000,
+        discountCents: 0,
+        taxCents: 160,
+        totalCents: 1160,
+        taxEnabled: true,
+        items: [{ description: "Servicio de taller", quantity: 1, unitPriceCents: 1000 }],
+      });
 
       await createAndAssignWorkOrder("quote-1", {
         isSpecial: true,
