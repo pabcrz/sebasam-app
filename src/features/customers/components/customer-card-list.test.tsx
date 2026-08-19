@@ -23,6 +23,19 @@ function buildCustomer(overrides: Partial<CustomerCardListItem> = {}): CustomerC
 }
 
 describe("CustomerCardList contact display", () => {
+  it("opens the customer account from the card while keeping edit as an explicit action", () => {
+    render(<CustomerCardList customers={[buildCustomer()]} />);
+
+    expect(screen.getByRole("link", { name: "Ver cuenta de Constructora del Norte" })).toHaveAttribute(
+      "href",
+      "/admin/customers/cust-1",
+    );
+    expect(screen.getByRole("link", { name: "Editar" })).toHaveAttribute(
+      "href",
+      "/admin/customers/cust-1/edit",
+    );
+  });
+
   it("renders email and phone when both exist", () => {
     render(<CustomerCardList customers={[buildCustomer()]} />);
 
