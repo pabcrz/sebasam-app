@@ -5,6 +5,7 @@ import {
   acceptSharedQuote,
   declineSharedQuote,
   authorizeQuote,
+  correctQuoteDecision,
   getSharedQuoteByToken,
   SharedQuoteExpiredError,
   SharedQuoteRevokedError,
@@ -459,5 +460,91 @@ describe("createSharedQuoteForQuote", () => {
     const result = await createSharedQuoteForQuote("q-1");
 
     expect(result.token).toMatch(/^C-0726-03-[0-9A-Za-z]{8}$/);
+  });
+});
+
+
+describe("correctQuoteDecision", () => {
+  it("allows correcting APPROVED to REJECTED with history and clears approvedAt", async () => {
+    const actorId = "user-1";
+    await prisma.quote.create({
+      data: {
+        id: "q-corr-1",
+        number: "Q-100",
+        customerId: "c-1",
+        title: "Test Quote",
+        status: "APPROVED",
+        approvedAt: new Date("2024-01-01T10:00:00Z"),
+        operationalDate: new Date(),
+      },
+    });
+
+    await correctQuoteDecision("q-corr-1", "REJECTED", "Mistake by client", actorId);
+
+    const quote = await prisma.quote.findUnique({ where: { id: "q-corr-1" }, include: { lifecycleEvents: true, decisions: true } });
+    expect(quote?.status).toBe("REJECTED");
+    expect(quote?.approvedAt).toBeNull();
+    
+    expect(quote?.lifecycleEvents).toHaveLength(1);
+    expect(quote?.lifecycleEvents[0].previousState).toBe("APPROVED");
+    expect(quote?.lifecycleEvents[0].nextState).toBe("REJECTED");
+    expect(quote?.lifecycleEvents[0].reason).toBe("Mistake by client");
+
+    expect(quote?.decisions).toHaveLength(1);
+    expect(quote?.decisions[0].status).toBe("REJECTED");
+    expect(quote?.decisions[0].note).toBe("Corrección de decisión: Mistake by client");
+  });
+
+  it("allows correcting REJECTED to APPROVED with history and sets approvedAt", async () => {
+    const actorId = "user-1";
+    await prisma.quote.create({
+      data: {
+        id: "q-corr-2",
+        number: "Q-101",
+        customerId: "c-1",
+        title: "Test Quote",
+        status: "REJECTED",
+        operationalDate: new Date(),
+      },
+    });
+
+    await correctQuoteDecision("q-corr-2", "APPROVED", "Client called to accept", actorId);
+
+    const quote = await prisma.quote.findUnique({ where: { id: "q-corr-2" } });
+    expect(quote?.status).toBe("APPROVED");
+    expect(quote?.approvedAt).toBeInstanceOf(Date);
+  });
+
+  it("fails if quote has a WorkOrder", async () => {
+    await prisma.quote.create({
+      data: {
+        id: "q-corr-3",
+        number: "Q-102",
+        customerId: "c-1",
+        title: "Test Quote",
+        status: "APPROVED",
+        operationalDate: new Date(),
+        workOrder: {
+          create: { number: "WO-1" }
+        }
+      },
+    });
+
+    await expect(correctQuoteDecision("q-corr-3", "REJECTED", "Reason", "user-1")).rejects.toThrow(/orden de trabajo/);
+  });
+
+  it("fails if reason is empty", async () => {
+    await prisma.quote.create({
+      data: {
+        id: "q-corr-4",
+        number: "Q-103",
+        customerId: "c-1",
+        title: "Test Quote",
+        status: "APPROVED",
+        operationalDate: new Date(),
+      },
+    });
+
+    await expect(correctQuoteDecision("q-corr-4", "REJECTED", "   ", "user-1")).rejects.toThrow(/obligatorio/);
   });
 });

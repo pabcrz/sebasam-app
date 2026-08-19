@@ -13,6 +13,7 @@ import { QuoteDuplicateForm } from "./quote-duplicate-form";
 import { QuoteDeleteForm } from "./quote-delete-form";
 import { ShareQuoteButton } from "./share-quote-button";
 import { QuoteAuthorizeForm } from "./quote-authorize-form";
+import { QuoteCorrectDecisionForm } from "./quote-correct-decision-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
@@ -33,6 +34,7 @@ interface QuoteListCardProps {
   cancelAction: (formData: FormData) => void | Promise<void>;
   shareAction: () => Promise<{ success: boolean; error?: string }>;
   authorizeAction: (note: string, authorizedSectionIds?: string[]) => Promise<{ success: boolean; error?: string }>;
+  correctDecisionAction: (quoteId: string, nextStatus: "APPROVED" | "REJECTED", reason: string) => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
   cashPaymentAction: (amount: string, operationKey: string) => Promise<{
@@ -59,6 +61,7 @@ export function QuoteListCard({
   cancelAction,
   shareAction,
   authorizeAction,
+  correctDecisionAction,
   paymentRequestAction,
   paymentRequestBankAccounts,
   cashPaymentAction: _cashPaymentAction,
@@ -190,6 +193,17 @@ export function QuoteListCard({
               variant="outline"
               size="sm"
               actionLabelClassName={actionLabelClassName}
+            />
+          ) : null}
+
+          {(quote.status === "APPROVED" || quote.status === "REJECTED") && !quote.workOrder ? (
+            <QuoteCorrectDecisionForm
+              action={correctDecisionAction}
+              quoteId={quote.id}
+              quoteNumber={quote.number}
+              currentStatus={quote.status}
+              variant="outline"
+              size="sm"
             />
           ) : null}
 

@@ -122,6 +122,7 @@ function renderRow(quote: QuoteListItem) {
           cancelAction={vi.fn()}
           shareAction={vi.fn()}
           authorizeAction={vi.fn().mockResolvedValue({ success: true })}
+          correctDecisionAction={vi.fn().mockResolvedValue({ success: true })}
           paymentRequestAction={vi.fn()}
           paymentRequestBankAccounts={[
             { accountHolder: "SEBASAM", bankName: "Santander", accountNumber: "1234", clabe: "5678" },

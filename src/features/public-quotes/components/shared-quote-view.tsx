@@ -26,6 +26,7 @@ export interface SharedQuoteViewProps {
   quote: SharedQuoteViewQuote;
   token: string;
   isNote?: boolean;
+  business?: { contactPhone: string; contactWhatsapp: string };
 }
 
 function initialSelectedSectionIds(sections: SharedQuoteViewQuote["sections"]) {
@@ -37,7 +38,7 @@ function initialSelectedSectionIds(sections: SharedQuoteViewQuote["sections"]) {
     : sections.map((section) => section.id);
 }
 
-export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) {
+export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteViewProps) {
   const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
 
@@ -208,7 +209,10 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
           <X className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" aria-hidden="true" />
           <p className="mt-2 font-semibold text-[var(--color-text-main)]">Cotización declinada</p>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-            Has declinado esta cotización. Si cambias de opinión, contacta al taller.
+            Has declinado esta cotización. Si cambias de opinión, contacta al taller
+            {business?.contactPhone || business?.contactWhatsapp ? (
+              <span> al {business.contactPhone ? <a href={`tel:${business.contactPhone}`} className="underline hover:text-[var(--color-text-main)]">{business.contactPhone}</a> : null}{business.contactPhone && business.contactWhatsapp ? " o por WhatsApp al " : business.contactWhatsapp ? " por WhatsApp al " : ""}{business.contactWhatsapp ? <a href={`https://wa.me/52${business.contactWhatsapp}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--color-text-main)]">{business.contactWhatsapp}</a> : null}</span>
+            ) : null}.
           </p>
         </div>
       ) : null}
