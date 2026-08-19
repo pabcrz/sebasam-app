@@ -14,7 +14,7 @@ import {
 import { QuotePreviewCard, type QuotePreviewCardProps } from "./quote-preview-card";
 
 export type QuotePreviewSummary = Pick<QuoteListSummary, "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & {
-  customer: Pick<QuoteListSummary["customer"], "name">;
+  customer: Pick<NonNullable<QuoteListSummary["customer"]>, "name"> | null;
   vehicle: Pick<NonNullable<QuoteListSummary["vehicle"]>, "plate" | "brand" | "model" | "year"> | null;
   items: Array<{ type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }>;
   sections: Array<{ name: string; items: Array<{ type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }> }>;
@@ -41,7 +41,7 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
           type: item.type,
           description: item.description,
           quantity: String(Number(item.quantity)),
-          unitPrice: String(Number(item.unitPriceCents) / 100),
+          unitPrice: item.unitPriceCents == null ? "" : String(Number(item.unitPriceCents) / 100),
           rowIds: [],
         })),
         rowIds: [],
@@ -52,13 +52,13 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
           type: item.type,
           description: item.description,
           quantity: String(Number(item.quantity)),
-          unitPrice: String(Number(item.unitPriceCents) / 100),
+          unitPrice: item.unitPriceCents == null ? "" : String(Number(item.unitPriceCents) / 100),
         })),
         rowIds: [],
       }];
 
   return {
-    customerName: quote.customer.name,
+    customerName: quote.customer?.name ?? "",
     vehicle: {
       plate: quote.vehicle?.plate ?? snapshotValue("plate"),
       brand: quote.vehicle?.brand ?? snapshotValue("brand"),
@@ -69,10 +69,10 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
     description: quote.description ?? "",
     administrative: quote.administrative,
     sections,
-    subtotalCents: Number(quote.subtotalCents),
+    subtotalCents: quote.subtotalCents == null ? null : Number(quote.subtotalCents),
     discountCents: Number(quote.discountCents),
-    taxCents: Number(quote.taxCents),
-    totalCents: Number(quote.totalCents),
+    taxCents: quote.taxCents == null ? null : Number(quote.taxCents),
+    totalCents: quote.totalCents == null ? null : Number(quote.totalCents),
     paidCents: quote.paidCents,
     remainingCents: quote.remainingCents,
     validUntil: quote.validUntil,

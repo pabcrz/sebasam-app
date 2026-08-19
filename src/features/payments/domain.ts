@@ -1,5 +1,6 @@
 import { LedgerEntryType, PaymentMethod, PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
 
 const CASH_PAYMENT_QUOTE_STATUSES: QuoteStatus[] = [QuoteStatus.APPROVED];
 
@@ -73,12 +74,14 @@ function validatePaymentReference(input: RecordCashPaymentInput) {
 async function getPaymentBalance(tx: Prisma.TransactionClient, quoteId: string): Promise<QuotePaymentBalance> {
   const quote = await tx.quote.findUnique({
     where: { id: quoteId },
-    select: { customerId: true, totalCents: true },
+    include: { items: true, sections: { include: { items: true } } },
   });
 
   if (!quote) {
     throw new PaymentOperationError("La cotización no existe.");
   }
+
+  assertCommercialQuote(quote);
 
   const paid = await tx.payment.aggregate({
     where: { quoteId, status: PaymentStatus.PAID },
@@ -86,11 +89,11 @@ async function getPaymentBalance(tx: Prisma.TransactionClient, quoteId: string):
   });
   const paidCents = paid._sum.amountCents ?? 0;
 
-  if (paidCents > quote.totalCents) {
+  if (paidCents > quote.totalCents!) {
     throw new PaymentOperationError("Los pagos registrados exceden el total de la cotización.");
   }
 
-  return { customerId: quote.customerId, paidCents, remainingCents: quote.totalCents - paidCents };
+  return { customerId: quote.customerId!, paidCents, remainingCents: quote.totalCents! - paidCents };
 }
 
 async function getCustomerOutstandingBalance(tx: Prisma.TransactionClient, customerId: string): Promise<number> {
@@ -207,12 +210,14 @@ export async function recordCashPayment(input: RecordCashPaymentInput): Promise<
 
     const quote = await tx.quote.findUnique({
       where: { id: quoteId },
-      select: { id: true, customerId: true, status: true, totalCents: true },
+      include: { items: true, sections: { include: { items: true } } },
     });
 
     if (!quote) {
       throw new PaymentOperationError("La cotización no existe.");
     }
+
+    assertCommercialQuote(quote);
 
     if (!CASH_PAYMENT_QUOTE_STATUSES.includes(quote.status)) {
       throw new PaymentOperationError("Solo se pueden registrar pagos en cotizaciones aprobadas.");
@@ -243,9 +248,9 @@ export async function recordCashPayment(input: RecordCashPaymentInput): Promise<
 
     await ensurePaymentLedgerEntry(tx, {
       paymentId: payment.id,
-      customerId: quote.customerId,
+          customerId: quote.customerId!,
       amountCents: payment.amountCents,
-      resultingBalanceCents: await getCustomerOutstandingBalance(tx, quote.customerId),
+      resultingBalanceCents: await getCustomerOutstandingBalance(tx, quote.customerId!),
     });
 
     return recordedPaymentResult(payment, resultingBalance);

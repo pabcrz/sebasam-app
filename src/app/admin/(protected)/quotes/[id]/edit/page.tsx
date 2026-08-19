@@ -105,9 +105,9 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
     sections,
   };
 
-  const customerOptions = customers.some((customer) => customer.id === quote.customerId)
+  const customerOptions = quote.customer && customers.some((customer) => customer.id === quote.customerId)
     ? customers
-    : [{ id: quote.customer.id, name: quote.customer.name }, ...customers];
+    : quote.customer ? [{ id: quote.customer.id, name: quote.customer.name }, ...customers] : customers;
 
   return (
     <EditDraftQuoteForm

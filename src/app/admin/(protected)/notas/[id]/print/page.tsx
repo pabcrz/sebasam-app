@@ -56,7 +56,7 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
         documentNumber={quote.number}
         date={quote.operationalDate}
         title={quote.title}
-        customerName={quote.customer.name}
+        customerName={quote.customer?.name ?? "Sin cliente"}
         vehicleDescription={
           workOrder.isSpecial
             ? "Taller"

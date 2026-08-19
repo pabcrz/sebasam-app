@@ -44,6 +44,7 @@ vi.mock("./domain", () => ({
   QuoteDecisionError: class QuoteDecisionError extends Error {},
   createSharedQuoteExpirationDate: vi.fn(() => new Date("2026-08-31T00:00:00.000Z")),
   createSharedQuoteToken: vi.fn(() => "stable-token"),
+  getOrCreateSharedQuoteForQuote: vi.fn(),
   SharedQuoteOperationError: class SharedQuoteOperationError extends Error {
     constructor(message: string) {
       super(message);
@@ -54,7 +55,7 @@ vi.mock("./domain", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
-import { authorizeQuote } from "./domain";
+import { authorizeQuote, getOrCreateSharedQuoteForQuote } from "./domain";
 
 class MockFormData {
   private data = new Map<string, string>();
@@ -77,7 +78,7 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   const tx: MockTx = {
     quote: {
       create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", isAuthorized: false, sortOrder: 0 }] }),
-      findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, operationalDate: new Date("2026-07-14T00:00:00.000Z"), items: [], sections: [{ id: "sec-1", sortOrder: 0 }] }),
+      findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, customerId: "cust-1", subtotalCents: 10000, discountCents: 0, taxCents: 1600, totalCents: 11600, taxEnabled: true, operationalDate: new Date("2026-07-14T00:00:00.000Z"), items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }], sections: [{ id: "sec-1", sortOrder: 0, items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }] }] }),
       update: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] }),
       findUniqueOrThrow: vi.fn(),
       updateMany: vi.fn(),
@@ -161,10 +162,7 @@ describe("createQuote", () => {
     expect(createData.id).toEqual(expect.any(String));
     expect(createData.status).toBe("DRAFT");
     expect(createData.operationalDate).toEqual(new Date("2026-07-14T00:00:00.000Z"));
-    expect(createData.sharedQuotes.create).toEqual({
-      token: "stable-token",
-      expiresAt: new Date("2026-08-31T00:00:00.000Z"),
-    });
+    expect(createData).not.toHaveProperty("sharedQuotes");
     expect(createData.sections.create).toEqual([{
       isAuthorized: false,
       name: "General",
@@ -452,13 +450,9 @@ describe("createQuoteFromForm", () => {
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?created=1");
   });
 
-  it("persists section authorization submitted from form data", async () => {
+  it("keeps section authorization and approval out of draft persistence", async () => {
     const tx = mockTx();
-    tx.quote.create.mockResolvedValue({
-      id: "quote-1",
-      totalCents: 11600,
-      sections: [{ id: "sec-1", isAuthorized: true, sortOrder: 0 }],
-    });
+    tx.quote.create.mockResolvedValue({ id: "quote-1", totalCents: 11600, sections: [{ id: "sec-1", isAuthorized: false, sortOrder: 0 }] });
     vi.mocked(requireOperationalRole).mockResolvedValue({
       user: { id: "user-1" },
       profile: { id: "user-1" },
@@ -467,11 +461,9 @@ describe("createQuoteFromForm", () => {
     await createQuoteFromForm({}, buildFormData({ "sections.0.isAuthorized": "on" }) as unknown as FormData);
 
     const createData = tx.quote.create.mock.calls[0][0].data;
-    expect(createData.status).toBe(QuoteStatus.APPROVED);
-    expect(createData.sections.create[0].isAuthorized).toBe(true);
-    expect(tx.quoteDecision.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ authorizedSectionIds: ["sec-1"] }),
-    }));
+    expect(createData.status).toBe(QuoteStatus.DRAFT);
+    expect(createData.sections.create[0].isAuthorized).toBe(false);
+    expect(tx.quoteDecision.create).not.toHaveBeenCalled();
   });
 });
 
@@ -685,10 +677,7 @@ describe("duplicateQuote", () => {
       },
     }]);
     expect(createData).not.toHaveProperty("workOrder");
-    expect(createData.sharedQuotes.create).toEqual({
-      token: "stable-token",
-      expiresAt: new Date("2026-08-31T00:00:00.000Z"),
-    });
+    expect(createData).not.toHaveProperty("sharedQuotes");
     expect(createData).not.toHaveProperty("paymentRequests");
   });
 
@@ -916,18 +905,26 @@ describe("quote lifecycle", () => {
 describe("publishSharedQuote", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("conditionally publishes a draft without reading or creating a token", async () => {
-    const updateMany = prisma.quote.updateMany as ReturnType<typeof vi.fn>;
-    updateMany.mockResolvedValue({ count: 1 });
+  it("returns failure for a stale non-DRAFT quote without creating a shared link", async () => {
+    const tx = mockTx(QuoteStatus.SENT);
+    tx.quote.updateMany.mockResolvedValue({ count: 0 });
 
-    await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: true });
+    await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: false, error: "Only draft quotes can be published." });
 
-    expect(updateMany).toHaveBeenCalledWith({
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
       where: { id: "quote-1", status: QuoteStatus.DRAFT },
       data: { status: QuoteStatus.SENT },
     });
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-    expect(redirect).not.toHaveBeenCalled();
-    expect(revalidatePath).not.toHaveBeenCalled();
+    expect(getOrCreateSharedQuoteForQuote).not.toHaveBeenCalled();
+  });
+
+  it("returns failure for a missing quote without creating a shared link", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue(null);
+
+    await expect(publishSharedQuote("missing-quote")).resolves.toEqual({ success: false, error: "Quote not found." });
+
+    expect(tx.quote.updateMany).not.toHaveBeenCalled();
+    expect(getOrCreateSharedQuoteForQuote).not.toHaveBeenCalled();
   });
 });

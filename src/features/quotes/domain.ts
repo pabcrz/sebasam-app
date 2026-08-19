@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { QuoteDecisionOrigin, QuoteStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateSlug, generateUniqueSlug } from "@/lib/slug";
+import { assertCommercialQuote, CommercialQuoteValidationError } from "./lib/commercial-validation";
 
 const SHARED_QUOTE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -110,20 +111,18 @@ export async function getActiveSharedQuoteForQuote(quoteId: string) {
 
 type TransactionClient = Prisma.TransactionClient;
 
-function assertQuoteCanBeShared(quote: { status: QuoteStatus; items: { description: string; quantity: unknown; unitPriceCents: number }[] }) {
-  if (quote.status !== QuoteStatus.DRAFT && quote.status !== QuoteStatus.SENT && quote.status !== QuoteStatus.APPROVED) {
+function assertQuoteCanBeShared(quote: { status: QuoteStatus; customerId: string | null; subtotalCents: number | null; discountCents: number | null; taxCents: number | null; totalCents: number | null; taxEnabled: boolean; items: { description: string; quantity: unknown; unitPriceCents: number | null }[] }) {
+  if (quote.status !== QuoteStatus.SENT && quote.status !== QuoteStatus.APPROVED) {
     throw new SharedQuoteOperationError("Quote cannot be shared in its current status.");
   }
 
-  const hasCompleteItem = quote.items.some(
-    (item) =>
-      item.description.trim() !== "" &&
-      Number(item.quantity) > 0 &&
-      item.unitPriceCents >= 0,
-  );
-
-  if (!hasCompleteItem) {
-    throw new SharedQuoteOperationError("Quote must have at least one complete item to be shared.");
+  try {
+    assertCommercialQuote(quote);
+  } catch (error) {
+    if (error instanceof CommercialQuoteValidationError) {
+      throw new SharedQuoteOperationError(error.message);
+    }
+    throw error;
   }
 }
 
@@ -139,30 +138,18 @@ async function createSharedQuoteInTransaction(tx: TransactionClient, quoteId: st
 
   assertQuoteCanBeShared(quote);
 
-  const nextStatus = quote.status === QuoteStatus.DRAFT ? QuoteStatus.SENT : quote.status;
-
   const token = await generateUniqueSlug(quote.number, async (slug) => {
     const existing = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
     return existing !== null;
   });
 
-  const [sharedQuote] = await Promise.all([
-    tx.sharedQuote.create({
-      data: {
-        token,
-        quoteId: quote.id,
-        expiresAt: createSharedQuoteExpirationDate(),
-      },
-    }),
-    quote.status === QuoteStatus.DRAFT
-      ? tx.quote.update({
-          where: { id: quote.id },
-          data: { status: nextStatus },
-        })
-      : Promise.resolve(),
-  ]);
-
-  return sharedQuote;
+  return tx.sharedQuote.create({
+    data: {
+      token,
+      quoteId: quote.id,
+      expiresAt: createSharedQuoteExpirationDate(),
+    },
+  });
 }
 
 export async function createSharedQuoteForQuote(quoteId: string) {
@@ -194,7 +181,7 @@ export async function acceptSharedQuote(token: string, authorizedSectionIds?: st
   return prisma.$transaction(async (tx) => {
     const sharedQuote = await tx.sharedQuote.findFirst({
       where: { token, revokedAt: null, expiresAt: { gte: new Date() } },
-      include: { quote: { include: { sections: true } } },
+      include: { quote: { include: { items: true, sections: { include: { items: true } } } } },
     });
 
     if (!sharedQuote) {
@@ -202,6 +189,13 @@ export async function acceptSharedQuote(token: string, authorizedSectionIds?: st
       if (!existing) throw new SharedQuoteNotFoundError();
       if (existing.revokedAt) throw new SharedQuoteRevokedError();
       throw new SharedQuoteExpiredError();
+    }
+
+    try {
+      assertCommercialQuote(sharedQuote.quote);
+    } catch (error) {
+      if (error instanceof CommercialQuoteValidationError) throw new QuoteDecisionError(error.message);
+      throw error;
     }
 
     const result = await tx.quote.updateMany({
@@ -237,7 +231,7 @@ export async function declineSharedQuote(token: string) {
   return prisma.$transaction(async (tx) => {
     const sharedQuote = await tx.sharedQuote.findFirst({
       where: { token, revokedAt: null, expiresAt: { gte: new Date() } },
-      include: { quote: true },
+      include: { quote: { include: { items: true, sections: { include: { items: true } } } } },
     });
 
     if (!sharedQuote) {
@@ -245,6 +239,10 @@ export async function declineSharedQuote(token: string) {
       if (!existing) throw new SharedQuoteNotFoundError();
       if (existing.revokedAt) throw new SharedQuoteRevokedError();
       throw new SharedQuoteExpiredError();
+    }
+
+    if (sharedQuote.quote.status !== QuoteStatus.SENT) {
+      throw new QuoteDecisionError("Solo se puede declinar una cotización enviada.");
     }
 
     const result = await tx.quote.updateMany({
@@ -274,10 +272,17 @@ export async function authorizeQuote(quoteId: string, note: string, actorId?: st
   }
 
   return prisma.$transaction(async (tx) => {
-    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { sections: true } });
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { items: true, sections: { include: { items: true } } } });
 
     if (!quote) {
       throw new QuoteDecisionError("Cotización no encontrada.");
+    }
+
+    try {
+      assertCommercialQuote(quote);
+    } catch (error) {
+      if (error instanceof CommercialQuoteValidationError) throw new QuoteDecisionError(error.message);
+      throw error;
     }
 
     const result = await tx.quote.updateMany({

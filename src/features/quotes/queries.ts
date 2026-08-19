@@ -160,33 +160,33 @@ async function serializeQuotes(quotes: Awaited<ReturnType<typeof findQuotes>>) {
   // Serialize Prisma Decimal fields to plain numbers so Next.js Server→Client Component
   // serialization does not break with Turbopack.
   return quotes.map((quote) => {
-    const totalCents = Number(quote.totalCents);
+    const totalCents = quote.totalCents === null ? null : Number(quote.totalCents);
     const paidCents = paidTotals.get(quote.id) ?? 0;
 
-    if (paidCents > totalCents) {
+    if (totalCents !== null && paidCents > totalCents) {
       throw new Error(`Los pagos registrados exceden el total de la cotización ${quote.number}.`);
     }
 
     return {
       ...quote,
-      subtotalCents: Number(quote.subtotalCents),
-      taxCents: Number(quote.taxCents),
+       subtotalCents: quote.subtotalCents === null ? null : Number(quote.subtotalCents),
+       taxCents: quote.taxCents === null ? null : Number(quote.taxCents),
       totalCents,
       paidCents,
-      remainingCents: totalCents - paidCents,
+       remainingCents: totalCents === null ? null : totalCents - paidCents,
       items: quote.items.map((item) => ({
         ...item,
         quantity: Number(item.quantity),
-        unitPriceCents: Number(item.unitPriceCents),
-        totalCents: Number(item.totalCents),
+         unitPriceCents: item.unitPriceCents === null ? null : Number(item.unitPriceCents),
+         totalCents: item.totalCents === null ? null : Number(item.totalCents),
       })),
       sections: quote.sections.map((section) => ({
         ...section,
         items: section.items.map((item) => ({
           ...item,
           quantity: Number(item.quantity),
-          unitPriceCents: Number(item.unitPriceCents),
-          totalCents: Number(item.totalCents),
+           unitPriceCents: item.unitPriceCents === null ? null : Number(item.unitPriceCents),
+           totalCents: item.totalCents === null ? null : Number(item.totalCents),
         })),
       })),
       activeSharedQuote: findActiveSharedQuote(quote.sharedQuotes),

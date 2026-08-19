@@ -61,6 +61,7 @@ function mockTx(): MockTransaction {
 }
 
 function mockSharedQuote(overrides: Record<string, unknown> = {}) {
+  const quoteOverrides = (overrides.quote ?? {}) as Record<string, unknown>;
   const mock = {
     id: "sq-1",
     token: "token-valid",
@@ -71,6 +72,15 @@ function mockSharedQuote(overrides: Record<string, unknown> = {}) {
     quote: {
       id: "q-1",
       status: QuoteStatus.SENT,
+      customerId: "customer-1",
+      subtotalCents: 1000,
+      discountCents: 0,
+      taxCents: 160,
+      totalCents: 1160,
+      taxEnabled: true,
+      items: [{ description: "Repair", quantity: 1, unitPriceCents: 1000 }],
+      sections: undefined,
+      ...quoteOverrides,
     },
     ...overrides,
   };
@@ -85,9 +95,37 @@ function stubTxSharedQuote(tx: MockTransaction, overrides: Record<string, unknow
     id: "sq-1",
     token: "token-valid",
     quoteId: "q-1",
-    quote: { id: "q-1", status: QuoteStatus.SENT, ...overrides },
+    quote: {
+      id: "q-1",
+      status: QuoteStatus.SENT,
+      customerId: "customer-1",
+      subtotalCents: 1000,
+      discountCents: 0,
+      taxCents: 160,
+      totalCents: 1160,
+      taxEnabled: true,
+      items: [{ description: "Repair", quantity: 1, unitPriceCents: 1000 }],
+      sections: undefined,
+      ...overrides,
+    },
     ...overrides,
   });
+}
+
+function commercialQuote(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "q-1",
+    status: QuoteStatus.SENT,
+    customerId: "customer-1",
+    subtotalCents: 1000,
+    discountCents: 0,
+    taxCents: 160,
+    totalCents: 1160,
+    taxEnabled: true,
+    items: [{ description: "Repair", quantity: 1, unitPriceCents: 1000 }],
+    sections: undefined,
+    ...overrides,
+  };
 }
 
 describe("getSharedQuoteByToken", () => {
@@ -285,11 +323,11 @@ describe("authorizeQuote", () => {
 
   it("updates quote to APPROVED and creates an ADMIN decision with note and actorId", async () => {
     const tx = mockTx();
-    tx.quote.findUnique.mockResolvedValue({ id: "q-1", status: QuoteStatus.SENT });
+    tx.quote.findUnique.mockResolvedValue(commercialQuote());
 
     const result = await authorizeQuote("q-1", "Cliente confirmó por WhatsApp", "actor-1");
 
-    expect(tx.quote.findUnique).toHaveBeenCalledWith({ include: { sections: true }, where: { id: "q-1" } });
+    expect(tx.quote.findUnique).toHaveBeenCalledWith({ where: { id: "q-1" }, include: { items: true, sections: { include: { items: true } } } });
     expect(tx.quote.updateMany).toHaveBeenCalledWith({
       where: { id: "q-1", status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT] } },
       data: { status: QuoteStatus.APPROVED, approvedAt: expect.any(Date) },
@@ -313,7 +351,7 @@ describe("authorizeQuote", () => {
 
   it("decision audit captures status, origin, actor, note, and date", async () => {
     const tx = mockTx();
-    tx.quote.findUnique.mockResolvedValue({ id: "q-1", status: QuoteStatus.SENT });
+    tx.quote.findUnique.mockResolvedValue(commercialQuote());
 
     const result = await authorizeQuote("q-1", "Nota de auditoría", "actor-audit");
 
@@ -345,7 +383,7 @@ describe("authorizeQuote", () => {
 
   it("throws QuoteDecisionError when quote status is not SENT", async () => {
     const tx = mockTx();
-    tx.quote.findUnique.mockResolvedValue({ id: "q-1", status: QuoteStatus.DRAFT });
+    tx.quote.findUnique.mockResolvedValue(commercialQuote({ status: QuoteStatus.DRAFT }));
     tx.quote.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(authorizeQuote("q-1", "Nota")).rejects.toThrow(QuoteDecisionError);
@@ -353,7 +391,7 @@ describe("authorizeQuote", () => {
 
   it("allows actorId to be undefined", async () => {
     const tx = mockTx();
-    tx.quote.findUnique.mockResolvedValue({ id: "q-1", status: QuoteStatus.SENT });
+    tx.quote.findUnique.mockResolvedValue(commercialQuote());
 
     const result = await authorizeQuote("q-1", "Nota sin actor");
 
@@ -406,6 +444,12 @@ describe("getOrCreateSharedQuoteForQuote", () => {
       id: "q-1",
       number: "C-0726-03",
       status: QuoteStatus.SENT,
+      customerId: "customer-1",
+      subtotalCents: 1000,
+      discountCents: 0,
+      taxCents: 160,
+      totalCents: 1160,
+      taxEnabled: true,
       items: [{ description: "Repair", quantity: { toString: () => "1" }, unitPriceCents: 1000 }],
     });
     // No slug collision
@@ -433,6 +477,12 @@ describe("getOrCreateSharedQuoteForQuote", () => {
       id: "q-1",
       number: "C-0726-03",
       status: QuoteStatus.SENT,
+      customerId: "customer-1",
+      subtotalCents: 1000,
+      discountCents: 0,
+      taxCents: 160,
+      totalCents: 1160,
+      taxEnabled: true,
       items: [{ description: "Repair", quantity: { toString: () => "1" }, unitPriceCents: 1000 }],
     });
     // First slug collides, second is free
@@ -459,6 +509,12 @@ describe("createSharedQuoteForQuote", () => {
       id: "q-1",
       number: "C-0726-03",
       status: QuoteStatus.SENT,
+      customerId: "customer-1",
+      subtotalCents: 1000,
+      discountCents: 0,
+      taxCents: 160,
+      totalCents: 1160,
+      taxEnabled: true,
       items: [{ description: "Repair", quantity: { toString: () => "1" }, unitPriceCents: 1000 }],
     });
     tx.sharedQuote.findUnique.mockResolvedValue(null);

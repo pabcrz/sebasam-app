@@ -115,7 +115,7 @@ export function WorkOrderActiveList({
                     <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
                     <Badge variant="info" className="w-fit">En proceso</Badge>
                   </div>
-                  <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer.name}</p>
+                  <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer?.name ?? "Sin cliente"}</p>
                   <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
                 </div>
                 <div className="text-right">

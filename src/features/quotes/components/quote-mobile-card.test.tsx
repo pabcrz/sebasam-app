@@ -178,11 +178,11 @@ describe("QuoteListCard", () => {
     const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
     const duplicate = screen.getByRole("button", { name: "Duplicar cotización" });
     const remove = screen.getByRole("button", { name: "Eliminar cotización C-001" });
-    const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
-    const authorize = screen.getByRole("button", { name: "Autorizar cotización C-001" });
     const cancel = screen.getByRole("button", { name: "Cancelar cotización C-001" });
     const archive = screen.getByRole("button", { name: "Archivar cotización C-001" });
-    const actions = [edit, duplicate, remove, share, authorize, cancel, archive];
+    const actions = [edit, duplicate, remove, cancel, archive];
+    expect(screen.queryByRole("button", { name: "Compartir cotización C-001" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Autorizar cotización C-001" })).not.toBeInTheDocument();
     const actionRow = edit.parentElement?.parentElement;
 
     expect(actionRow).toHaveClass(
@@ -205,8 +205,6 @@ describe("QuoteListCard", () => {
     expect(edit).toHaveAttribute("title", "Editar cotización C-001");
     expect(duplicate).toHaveAttribute("title", "Duplicar cotización");
     expect(remove).toHaveAttribute("title", "Eliminar cotización C-001");
-    expect(share).toHaveAttribute("title", "Compartir cotización C-001");
-    expect(authorize).toHaveAttribute("title", "Autorizar cotización C-001");
     expect(cancel).toHaveAttribute("title", "Cancelar cotización C-001");
     expect(archive).toHaveAttribute("title", "Archivar cotización C-001");
   });

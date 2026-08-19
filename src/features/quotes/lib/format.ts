@@ -1,4 +1,5 @@
-export function formatCents(cents: number) {
+export function formatCents(cents: number | null | undefined) {
+  if (cents === null || cents === undefined) return "Pendiente";
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency: "MXN",

@@ -12,13 +12,13 @@ type QuoteForPaymentRequestDialog = {
     id: string;
     name: string;
     fiscalProfiles: Array<{ businessName: string; taxId: string }>;
-  };
+  } | null;
   vehicle: Parameters<typeof formatVehicle>[0] | null;
   vehicleSnapshot: Parameters<typeof formatSnapshotVehicle>[0];
   workOrder: { number: string } | null;
-  subtotalCents: number;
-  taxCents: number;
-  totalCents: number;
+  subtotalCents: number | null;
+  taxCents: number | null;
+  totalCents: number | null;
   taxEnabled: boolean;
   paymentRequests: Array<{ requiresInvoice: boolean; status: PaymentRequestStatus }>;
 };
@@ -76,6 +76,10 @@ export function createPaymentRequestDialogContext(
   quote: QuoteForPaymentRequestDialog,
   bankAccounts: PaymentRequestDialogBankAccountCandidate[],
 ): PaymentRequestDialogContext {
+  if (!quote.customer) throw new Error("A customer is required for payment requests.");
+  if (quote.subtotalCents === null || quote.taxCents === null || quote.totalCents === null) {
+    throw new Error("Quote totals are required for payment requests.");
+  }
   const latestRequest = quote.paymentRequests[0] ?? null;
   const fiscalProfile = quote.customer.fiscalProfiles[0] ?? null;
   const requiresInvoice = latestRequest?.requiresInvoice ?? quote.taxEnabled;

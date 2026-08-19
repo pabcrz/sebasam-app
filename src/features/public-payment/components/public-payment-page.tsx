@@ -11,9 +11,9 @@ type PaymentRequestWithRelations = PaymentRequest & {
   quote: {
     id: string;
     number: string;
-    subtotalCents: number;
-    taxCents: number;
-    totalCents: number;
+    subtotalCents: number | null;
+    taxCents: number | null;
+    totalCents: number | null;
     taxEnabled: boolean;
     validUntil: Date | null;
   } | null;
@@ -28,7 +28,8 @@ export interface PublicPaymentPageProps {
   contact?: ContactSettings;
 }
 
-function formatCurrency(cents: number) {
+function formatCurrency(cents: number | null) {
+  if (cents === null) return "Pendiente";
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency: "MXN",

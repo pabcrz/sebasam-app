@@ -34,6 +34,7 @@ import {
   WorkerUnavailableError,
 } from "./domain";
 import { ZodError } from "zod";
+import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
 
 const quotesPath = "/admin/quotes";
 const workOrdersPath = "/admin/work-orders";
@@ -86,13 +87,14 @@ async function ensureWorkOrderPlanned(
   await requireOperationalRole();
 
   return prisma.$transaction(async (tx) => {
-    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true } });
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true, items: true, sections: { include: { items: true } } } });
 
     if (!quote) {
       throw new WorkOrderOperationError("Cotización no encontrada.");
     }
 
     assertApprovedQuote(quote.status);
+    assertCommercialQuote(quote);
 
     if (quote.workOrder) {
       assertWorkOrderCanBeChanged(quote.workOrder.status);
@@ -219,13 +221,14 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
   await requireOperationalRole();
 
   return prisma.$transaction(async (tx) => {
-    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true } });
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true, items: true, sections: { include: { items: true } } } });
 
     if (!quote) {
       throw new WorkOrderOperationError("Cotización no encontrada.");
     }
 
     assertApprovedQuote(quote.status);
+    assertCommercialQuote(quote);
 
     let workOrderId: string;
 

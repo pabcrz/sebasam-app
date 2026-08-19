@@ -73,7 +73,7 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
               </div>
               <div>
                 <CardDescription>Orden de Trabajo {workOrder.number}</CardDescription>
-                <CardTitle as="h1">{quote.customer.name}</CardTitle>
+                <CardTitle as="h1">{quote.customer?.name ?? "Sin cliente"}</CardTitle>
               </div>
             </div>
             <Badge
