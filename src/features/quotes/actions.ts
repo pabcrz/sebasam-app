@@ -41,6 +41,7 @@ type QuoteItemFormInput = {
 
 type QuoteSectionFormInput = {
   name: FormDataEntryValue | null;
+  isAuthorized: boolean;
   items: QuoteItemFormInput[];
 };
 
@@ -49,6 +50,7 @@ function quoteFormDataToInput(formData: FormData) {
 
   for (let sIndex = 0; true; sIndex += 1) {
     const sectionName = formData.get(`sections.${sIndex}.name`);
+    const isAuthorized = formData.get(`sections.${sIndex}.isAuthorized`) === "on";
     const items: QuoteItemFormInput[] = [];
 
     for (let index = 0; true; index += 1) {
@@ -76,7 +78,7 @@ function quoteFormDataToInput(formData: FormData) {
       break;
     }
 
-    sections.push({ name: sectionName ?? "General", items });
+    sections.push({ name: sectionName ?? "General", isAuthorized, items });
   }
 
   return {

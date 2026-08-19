@@ -90,7 +90,7 @@ function makeMultiSectionQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQu
             id: "item-1",
             quoteId: "quote-1",
             sectionId: "sec-1",
-            type: "SERVICE" as any,
+            type: QuoteItemType.SERVICE,
             description: "Cambio de aceite",
             quantity: "1",
             unitPriceCents: 40_00,
@@ -110,7 +110,7 @@ function makeMultiSectionQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQu
             id: "item-2",
             quoteId: "quote-1",
             sectionId: "sec-2",
-            type: "SERVICE" as any,
+            type: QuoteItemType.SERVICE,
             description: "Cambio de balatas",
             quantity: "1",
             unitPriceCents: 60_00,
@@ -121,6 +121,31 @@ function makeMultiSectionQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQu
       },
     ],
   };
+}
+
+function makePartiallyAuthorizedQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps["quote"] {
+  const quote = makeMultiSectionQuote(status);
+
+  return {
+    ...quote,
+    sections: quote.sections.map((section) => ({
+      ...section,
+      isAuthorized: section.id === "sec-1",
+    })),
+  };
+}
+
+function makeLegacyMultiSectionQuote(): SharedQuoteViewProps["quote"] {
+  const quote = makeMultiSectionQuote();
+
+  return {
+    ...quote,
+    sections: quote.sections.map((section) => {
+      const legacySection: Omit<typeof section, "isAuthorized"> & { isAuthorized?: boolean } = { ...section };
+      delete legacySection.isAuthorized;
+      return legacySection;
+    }),
+  } as SharedQuoteViewProps["quote"];
 }
 
 describe("SharedQuoteView", () => {
@@ -163,6 +188,19 @@ describe("SharedQuoteView", () => {
     expect(screen.getAllByText(/Aceptada/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByRole("button", { name: "Aceptar cotización" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Declinar cotización" })).not.toBeInTheDocument();
+  });
+
+  it("shows all sections with authorization status after partial approval", () => {
+    render(<SharedQuoteView quote={makePartiallyAuthorizedQuote(QuoteStatus.APPROVED)} token="token-123" />);
+
+    expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
+    const pendingItem = screen.getByText("Cambio de balatas").closest("tr");
+    if (!pendingItem) throw new Error("Pending section item row was not rendered.");
+    expect(pendingItem).toHaveClass("opacity-40");
+    expect(screen.getByText("Autorizada")).toBeInTheDocument();
+    expect(screen.getByText("Pendiente de autorización")).toBeInTheDocument();
+    expect(screen.queryByTestId("section-toggle-sec-1")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("section-toggle-sec-2")).not.toBeInTheDocument();
   });
 
   it("accepts the full quote and shows the success state", async () => {
@@ -209,48 +247,51 @@ describe("SharedQuoteView", () => {
   });
 
   describe("partial authorization by sections", () => {
-    it("renders every section selected by default and keeps whole-quote totals", () => {
-      render(<SharedQuoteView quote={makeMultiSectionQuote()} token="token-123" />);
+    it("selects only sections with persisted authorization", () => {
+      render(<SharedQuoteView quote={makePartiallyAuthorizedQuote()} token="token-123" />);
 
       expect(screen.getByTestId("section-toggle-sec-1")).toBeChecked();
+      expect(screen.getByTestId("section-toggle-sec-2")).not.toBeChecked();
+      expect(screen.getByRole("button", { name: "Aceptar 1 sección" })).toBeInTheDocument();
+      expect(screen.getByTestId("quote-total")).toHaveTextContent("$46.40");
+    });
+
+    it("allows the customer to change the initially authorized selection", async () => {
+      const user = userEvent.setup();
+      render(<SharedQuoteView quote={makePartiallyAuthorizedQuote()} token="token-123" />);
+
+      await user.click(screen.getByTestId("section-toggle-sec-2"));
+
       expect(screen.getByTestId("section-toggle-sec-2")).toBeChecked();
       expect(screen.getByRole("button", { name: "Aceptar cotización" })).toBeInTheDocument();
       expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
     });
 
-    it("recomputes totals and accept label when a section is deselected", async () => {
-      const user = userEvent.setup();
+    it("disables accept when no section has persisted authorization", () => {
       render(<SharedQuoteView quote={makeMultiSectionQuote()} token="token-123" />);
-
-      await user.click(screen.getByTestId("section-toggle-sec-2"));
-
-      expect(screen.getByTestId("section-toggle-sec-2")).not.toBeChecked();
-      expect(screen.getByText("Excluida")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Aceptar 1 sección" })).toBeInTheDocument();
-      expect(screen.getByTestId("quote-total")).toHaveTextContent("$46.40");
-    });
-
-    it("disables accept when every section is deselected", async () => {
-      const user = userEvent.setup();
-      render(<SharedQuoteView quote={makeMultiSectionQuote()} token="token-123" />);
-
-      await user.click(screen.getByTestId("section-toggle-sec-1"));
-      await user.click(screen.getByTestId("section-toggle-sec-2"));
 
       const accept = screen.getByRole("button", { name: "Seleccione al menos una sección" });
       expect(accept).toBeDisabled();
     });
 
-    it("sends only the selected section ids when accepting partially", async () => {
+    it("sends only initially authorized section ids when accepting", async () => {
       const user = userEvent.setup();
       acceptSharedQuoteActionMock.mockResolvedValue({ success: true });
 
-      render(<SharedQuoteView quote={makeMultiSectionQuote()} token="token-123" />);
+      render(<SharedQuoteView quote={makePartiallyAuthorizedQuote()} token="token-123" />);
 
-      await user.click(screen.getByTestId("section-toggle-sec-2"));
       await user.click(screen.getByRole("button", { name: "Aceptar 1 sección" }));
 
       expect(acceptSharedQuoteActionMock).toHaveBeenCalledWith("token-123", ["sec-1"]);
+    });
+
+    it("selects every section for legacy quotes without authorization state", () => {
+      render(<SharedQuoteView quote={makeLegacyMultiSectionQuote()} token="token-123" />);
+
+      expect(screen.getByTestId("section-toggle-sec-1")).toBeChecked();
+      expect(screen.getByTestId("section-toggle-sec-2")).toBeChecked();
+      expect(screen.getByRole("button", { name: "Aceptar cotización" })).toBeInTheDocument();
+      expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
     });
   });
 });

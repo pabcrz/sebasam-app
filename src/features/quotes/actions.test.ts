@@ -66,6 +66,7 @@ type MockTx = {
   quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   quoteItem: { deleteMany: ReturnType<typeof vi.fn>; createMany: ReturnType<typeof vi.fn> };
   quoteSection: { deleteMany: ReturnType<typeof vi.fn> };
+  quoteDecision: { create: ReturnType<typeof vi.fn> };
   payment: { count: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn> };
   sharedQuote: { updateMany: ReturnType<typeof vi.fn> };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
@@ -75,7 +76,7 @@ type MockTx = {
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   const tx: MockTx = {
     quote: {
-      create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] }),
+      create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", isAuthorized: false, sortOrder: 0 }] }),
       findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, operationalDate: new Date("2026-07-14T00:00:00.000Z"), items: [], sections: [{ id: "sec-1", sortOrder: 0 }] }),
       update: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] }),
       findUniqueOrThrow: vi.fn(),
@@ -83,6 +84,7 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
     },
     quoteItem: { deleteMany: vi.fn(), createMany: vi.fn() },
     quoteSection: { deleteMany: vi.fn() },
+    quoteDecision: { create: vi.fn() },
     payment: { count: vi.fn().mockResolvedValue(0), aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: null } }) },
     sharedQuote: { updateMany: vi.fn() },
     paymentRequest: { updateMany: vi.fn() },
@@ -448,6 +450,28 @@ describe("createQuoteFromForm", () => {
     expect(tx.quoteItem.createMany).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?created=1");
+  });
+
+  it("persists section authorization submitted from form data", async () => {
+    const tx = mockTx();
+    tx.quote.create.mockResolvedValue({
+      id: "quote-1",
+      totalCents: 11600,
+      sections: [{ id: "sec-1", isAuthorized: true, sortOrder: 0 }],
+    });
+    vi.mocked(requireOperationalRole).mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1" },
+    } as unknown as Awaited<ReturnType<typeof requireOperationalRole>>);
+
+    await createQuoteFromForm({}, buildFormData({ "sections.0.isAuthorized": "on" }) as unknown as FormData);
+
+    const createData = tx.quote.create.mock.calls[0][0].data;
+    expect(createData.status).toBe(QuoteStatus.APPROVED);
+    expect(createData.sections.create[0].isAuthorized).toBe(true);
+    expect(tx.quoteDecision.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ authorizedSectionIds: ["sec-1"] }),
+    }));
   });
 });
 

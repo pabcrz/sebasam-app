@@ -7,7 +7,6 @@ import { Check, X, Printer } from "lucide-react";
 import { Button } from "@/components/ui";
 import { QuotePreviewCard } from "@/features/quotes/components/quote-preview-card";
 import { formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
-import { quoteStatusLabels } from "@/features/quotes/lib/status";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
 import type { Quote, QuoteItem, Customer, Vehicle, WorkOrderStatus, QuoteSection } from "@prisma/client";
 
@@ -29,6 +28,15 @@ export interface SharedQuoteViewProps {
   isNote?: boolean;
 }
 
+function initialSelectedSectionIds(sections: SharedQuoteViewQuote["sections"]) {
+  const hasAuthorizationState = sections.some((section) => typeof section.isAuthorized === "boolean");
+
+  // Legacy quote payloads without authorization state retain whole-quote selection.
+  return hasAuthorizationState
+    ? sections.filter((section) => section.isAuthorized).map((section) => section.id)
+    : sections.map((section) => section.id);
+}
+
 export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) {
   const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
@@ -47,9 +55,7 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
     return () => clearInterval(interval);
   }, [router, decision]);
   const [error, setError] = React.useState<string | null>(null);
-  const [selectedSectionIds, setSelectedSectionIds] = React.useState<string[]>(
-    quote.sections.map((s) => s.id)
-  );
+  const [selectedSectionIds, setSelectedSectionIds] = React.useState(() => initialSelectedSectionIds(quote.sections));
 
   const handleSectionToggle = React.useCallback((sectionId: string, selected: boolean) => {
     setSelectedSectionIds((prev) =>
@@ -109,6 +115,7 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
     ? quote.sections.map((section) => ({
         id: section.id,
         name: section.name,
+        isAuthorized: decision === "accepted" ? selectedSectionIds.includes(section.id) : section.isAuthorized,
         items: section.items.map((item) => ({
           type: item.type,
           description: item.description,

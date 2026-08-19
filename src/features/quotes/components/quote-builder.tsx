@@ -28,7 +28,6 @@ import {
 import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderStepper } from "./quote-builder-stepper";
 import { QuotePreviewCard } from "./quote-preview-card";
-import { QuoteSummaryCard } from "./quote-summary-card";
 import type { QuoteFormActionState } from "../actions";
 
 export type CustomerOption = {
@@ -110,6 +109,7 @@ export function QuoteBuilder({
   const selectedCustomerRef = React.useRef<CustomerOption | undefined>(initialSelectedCustomer);
   const customerInputRef = React.useRef<HTMLInputElement>(null);
   const customerListRef = React.useRef<HTMLDivElement>(null);
+  const formRef = React.useRef<HTMLFormElement>(null);
   const knownCustomersRef = React.useRef(new Map(customers.map((customer) => [customer.id, customer])));
   const customerQueryCache = React.useRef(new Map<string, CustomerOption[]>());
   const [customerListPosition, setCustomerListPosition] = React.useState<React.CSSProperties>({});
@@ -143,7 +143,7 @@ export function QuoteBuilder({
     return initialData?.sections?.length
       ? initialData.sections.map((sec) => ({
           name: sec.name,
-          isAuthorized: sec.isAuthorized,
+          isAuthorized: sec.isAuthorized ?? false,
           items: sec.items,
           rowIds: sec.items.map(() => `quote-item-${idCounter++}`),
         }))
@@ -399,7 +399,7 @@ export function QuoteBuilder({
     const rowId = `quote-item-${nextItemRowId.current++}`;
     setSections((prev) => [
       ...prev,
-      { name: "Nueva sección", items: [{ ...emptyItem }], rowIds: [rowId] },
+      { name: "Nueva sección", isAuthorized: false, items: [{ ...emptyItem }], rowIds: [rowId] },
     ]);
   }
 
@@ -645,6 +645,15 @@ export function QuoteBuilder({
     }
   }
 
+  function submitQuote() {
+    const form = formRef.current;
+    if (!form || isSubmitting) return;
+
+    React.startTransition(() => {
+      formAction(new FormData(form));
+    });
+  }
+
   const isDialogLayout = layout === "dialog";
   const formClass = isDialogLayout
     ? "min-h-0"
@@ -655,7 +664,7 @@ export function QuoteBuilder({
 
   return (
     <form
-      action={formAction}
+      ref={formRef}
       className={formClass}
       data-testid="quote-builder-form"
       data-layout={layout}
@@ -668,12 +677,7 @@ export function QuoteBuilder({
         minHeight: 0,
       } : undefined}
       onSubmit={(event) => {
-        if (step !== "preview") {
-          event.preventDefault();
-          setStepError("Avanza al último paso antes de enviar la cotización.");
-        } else {
-          setSections((current) => normalizeSections(current));
-        }
+        event.preventDefault();
       }}
     >
           <div
@@ -909,6 +913,12 @@ export function QuoteBuilder({
               animatedRowId={animatedItemRowId}
               showItemValidation={showItemValidation}
               completeItemsCount={completeItems.length}
+              taxEnabled={taxEnabled}
+              discount={discount}
+              subtotalCents={subtotalCents}
+              discountCents={discountCents}
+              taxCents={taxCents}
+              totalCents={totalCents}
               onAddItem={addItem}
               onRemoveItem={removeItem}
               onDuplicateItem={duplicateItem}
@@ -918,6 +928,8 @@ export function QuoteBuilder({
               onRemoveSection={removeSection}
               onUpdateSectionName={updateSectionName}
               onUpdateSectionAuthorized={updateSectionAuthorized}
+              onTaxEnabledChange={setTaxEnabled}
+              onDiscountChange={setDiscount}
               onReorderSection={reorderSection}
               onReorderItem={reorderItem}
               onRowRef={(rowId, node) => {
@@ -985,58 +997,12 @@ export function QuoteBuilder({
               checked={administrative}
               onCheckedChange={(checked) => setAdministrative(checked === true)}
             />
-            <input type="hidden" name="taxEnabled" value={taxEnabled ? "on" : "off"} />
-            <Checkbox
-              label="Incluir IVA (16%)"
-              checked={taxEnabled}
-              onCheckedChange={(checked) => setTaxEnabled(checked === true)}
-            />
           </section>
 
-          {/* Step 4: Resumen */}
-          <section hidden={step !== "summary"} className="grid gap-4">
-            <h2 className="sr-only" tabIndex={-1} data-step-heading="summary">
-              Resumen
-            </h2>
-            <div className="grid gap-2">
-              <Label htmlFor="discount">Descuento Global (Opcional)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--color-text-muted)]">$</span>
-                <Input
-                  id="discount"
-                  name="discount"
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  className="pl-7"
-                  value={discount}
-                  onChange={(event) => setDiscount(event.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-              <p className="text-xs text-[var(--color-text-muted)]">
-                Este descuento se aplicará al subtotal, reduciendo el total sin alterar los costos individuales (ej. nómina).
-              </p>
-            </div>
-            <QuoteSummaryCard
-              customerName={selectedCustomer?.name ?? ""}
-              vehicle={vehicle}
-              title={title}
-              description={description}
-              administrative={administrative}
-              sections={sections}
-              subtotalCents={subtotalCents}
-              discountCents={discountCents}
-              taxCents={taxCents}
-              totalCents={totalCents}
-            />
-          </section>
-
-          {/* Step 5: Preview / Enviar */}
+          {/* Step 4: Review and submit */}
           <section hidden={step !== "preview"} className="grid gap-4">
             <h2 className="sr-only" tabIndex={-1} data-step-heading="preview">
-              Enviar cotización
+              Revisar y enviar cotización
             </h2>
             <QuotePreviewCard
               customerName={selectedCustomer?.name ?? ""}
@@ -1074,7 +1040,7 @@ export function QuoteBuilder({
             </div>
 
             {step === "preview" ? (
-              <Button type="submit" variant="primary" loading={isSubmitting} className="min-w-[160px]" aria-live="polite">
+              <Button type="button" variant="primary" loading={isSubmitting} onClick={submitQuote} className="min-w-[160px]" aria-live="polite">
                 {isSubmitting ? (isEdit ? "Guardando..." : "Creando...") : (isEdit ? "Guardar cambios" : "Crear cotización")}
               </Button>
             ) : (
