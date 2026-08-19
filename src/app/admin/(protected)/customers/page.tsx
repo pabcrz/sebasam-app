@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 import { createCustomerFromForm } from "@/features/customers/actions";
 import { listCustomers } from "@/features/customers/queries";
 import { customerSearchSchema } from "@/features/customers/schemas";
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@/components/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { CustomerCreateForm } from "@/features/customers/components/customer-create-form";
 import { CustomerCardList } from "@/features/customers/components/customer-card-list";
+import { CustomerSearch } from "@/features/customers/components/customer-search";
 
 export const metadata: Metadata = {
   title: "Clientes",
@@ -39,12 +40,12 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
       </div>
 
       {params.created ? (
-        <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]">
+        <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]" role="status">
           Cliente creado.
         </p>
       ) : null}
       {params.updated ? (
-        <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]">
+        <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]" role="status">
           Cliente actualizado.
         </p>
       ) : null}
@@ -64,25 +65,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="flex flex-col gap-3 sm:flex-row">
-            <Input
-              name="q"
-              defaultValue={query}
-              placeholder="Buscar por nombre, teléfono, correo, dirección, placas o notas"
-              className="flex-1"
-            />
-            <Button type="submit" variant="secondary" className="w-full sm:w-fit">
-              Buscar
-            </Button>
-            {query ? (
-              <Button asChild variant="outline" className="w-full sm:w-fit">
-                <Link href="/admin/customers">
-                  <X className="h-4 w-4" aria-hidden="true" />
-                  Limpiar
-                </Link>
-              </Button>
-            ) : null}
-          </form>
+          <CustomerSearch />
 
           {customers.length === 0 ? (
             <div className="py-8 text-center">
