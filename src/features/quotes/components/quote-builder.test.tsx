@@ -605,7 +605,7 @@ describe("QuoteBuilder", () => {
     expect(screen.getByRole("button", { name: "Siguiente" })).toBeDisabled();
   });
 
-  it("advances through all steps and submits the expected FormData", async () => {
+  it("submits through the native final form action with the expected FormData", async () => {
     const user = userEvent.setup();
     const action = vi.fn();
 
@@ -626,7 +626,8 @@ describe("QuoteBuilder", () => {
     expect(screen.getByText("Autorizada")).toBeInTheDocument();
     expect(action).not.toHaveBeenCalled();
 
-    fireEvent.submit(screen.getByTestId("quote-builder-form"));
+    const form = screen.getByTestId("quote-builder-form");
+    fireEvent.submit(form);
     expect(action).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Crear cotización" }));
@@ -1016,6 +1017,45 @@ describe("QuoteBuilder", () => {
 
     expect(action).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("does not dispatch a programmatic submit from the final review", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn();
+    render(<QuoteBuilder customers={customers} createAction={action} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    fireEvent.submit(screen.getByTestId("quote-builder-form"));
+
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it("blocks native final submission when local item validation fails", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn();
+    render(<QuoteBuilder customers={customers} createAction={action} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const descriptionInput = document.querySelector('input[name="sections.0.items.0.description"]') as HTMLInputElement;
+    fireEvent.change(descriptionInput, {
+      target: { value: "" },
+    });
+    await user.click(screen.getByRole("button", { name: "Crear cotización" }));
+
+    expect(action).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/concepto 1 necesita una descripción/i);
   });
 
   it("lets the user disable IVA and updates the total", async () => {

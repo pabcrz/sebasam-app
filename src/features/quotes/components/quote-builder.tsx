@@ -110,6 +110,8 @@ export function QuoteBuilder({
   const customerInputRef = React.useRef<HTMLInputElement>(null);
   const customerListRef = React.useRef<HTMLDivElement>(null);
   const formRef = React.useRef<HTMLFormElement>(null);
+  const submitButtonRef = React.useRef<HTMLButtonElement>(null);
+  const hasExplicitSubmitRequest = React.useRef(false);
   const knownCustomersRef = React.useRef(new Map(customers.map((customer) => [customer.id, customer])));
   const customerQueryCache = React.useRef(new Map<string, CustomerOption[]>());
   const [customerListPosition, setCustomerListPosition] = React.useState<React.CSSProperties>({});
@@ -645,13 +647,47 @@ export function QuoteBuilder({
     }
   }
 
-  function submitQuote() {
-    const form = formRef.current;
-    if (!form || isSubmitting) return;
+  function validateFinalSubmit() {
+    const itemError = sections
+      .flatMap((section) => section.items)
+      .map((item, index) => validateItemValue(item, index))
+      .find(Boolean);
 
-    React.startTransition(() => {
-      formAction(new FormData(form));
-    });
+    if (itemError) {
+      setShowItemValidation(true);
+      setStepError(itemError);
+      return false;
+    }
+
+    const clientError = getStepError("client", { customerId, vehicle, title, sections });
+    const itemsError = getStepError("items", { customerId, vehicle, title, sections });
+    const notesError = getStepError("notes", { customerId, vehicle, title, sections });
+    const error = clientError ?? itemsError ?? notesError;
+
+    if (error) {
+      setShowItemValidation(false);
+      setStepError(error);
+      return false;
+    }
+
+    setShowItemValidation(false);
+    setStepError(null);
+    return true;
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    const submittedByFinalAction = (event.nativeEvent as SubmitEvent).submitter === submitButtonRef.current;
+
+    if (step !== "preview" || !submittedByFinalAction || !hasExplicitSubmitRequest.current || isSubmitting) {
+      event.preventDefault();
+      return;
+    }
+
+    hasExplicitSubmitRequest.current = false;
+
+    if (!validateFinalSubmit()) {
+      event.preventDefault();
+    }
   }
 
   const isDialogLayout = layout === "dialog";
@@ -665,6 +701,7 @@ export function QuoteBuilder({
   return (
     <form
       ref={formRef}
+      action={formAction}
       className={formClass}
       data-testid="quote-builder-form"
       data-layout={layout}
@@ -676,9 +713,7 @@ export function QuoteBuilder({
         justifyContent: "flex-start",
         minHeight: 0,
       } : undefined}
-      onSubmit={(event) => {
-        event.preventDefault();
-      }}
+      onSubmit={handleSubmit}
     >
           <div
             className="shrink-0 border-b border-[var(--color-border-light)] pb-4"
@@ -1040,7 +1075,17 @@ export function QuoteBuilder({
             </div>
 
             {step === "preview" ? (
-              <Button type="button" variant="primary" loading={isSubmitting} onClick={submitQuote} className="min-w-[160px]" aria-live="polite">
+              <Button
+                ref={submitButtonRef}
+                type="submit"
+                variant="primary"
+                loading={isSubmitting}
+                onClick={() => {
+                  hasExplicitSubmitRequest.current = true;
+                }}
+                className="min-w-[160px]"
+                aria-live="polite"
+              >
                 {isSubmitting ? (isEdit ? "Guardando..." : "Creando...") : (isEdit ? "Guardar cambios" : "Crear cotización")}
               </Button>
             ) : (
