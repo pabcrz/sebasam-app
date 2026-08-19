@@ -14,6 +14,7 @@ import {
   LogOut,
   UserCog,
   Users,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 import { logoutAdmin } from "@/features/auth/actions";
@@ -41,6 +42,7 @@ const navItems: NavItem[] = [
   { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
   { href: "/admin/notas", label: "Notas", icon: FileCheck },
   { href: "/admin/configuracion-pago", label: "Configuración", icon: Bolt },
+  { href: "/admin/users", label: "Usuarios", icon: Shield }, // Added for SUPER_ADMIN
 ];
 
 /** Four main items shown in the mobile bottom nav bar. */
@@ -129,7 +131,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         </div>
 
         <nav aria-label="Navegación principal" className="mt-6 flex flex-1 flex-col gap-1">
-          {navItems.map((item) => (
+          {navItems.filter(item => item.href !== "/admin/users" || role === "SUPER_ADMIN").map((item) => (
             <NavLink key={item.href} {...item} onNavStart={() => setGlobalPending(true)} />
           ))}
         </nav>
