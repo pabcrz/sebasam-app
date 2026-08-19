@@ -16,12 +16,12 @@ export interface QuotePreviewCardProps {
   description: string;
   administrative: boolean;
   sections: SectionFormValue[];
-  subtotalCents: number;
+  subtotalCents: number | null;
   discountCents?: number;
-  taxCents: number;
-  totalCents: number;
-  paidCents?: number;
-  remainingCents?: number;
+  taxCents: number | null;
+  totalCents: number | null;
+  paidCents?: number | null;
+  remainingCents?: number | null;
   validUntil: Date | null;
   isNote?: boolean;
   compactHeader?: boolean;
@@ -56,6 +56,10 @@ export function QuotePreviewCard({
     .join(" · ");
 
   const hasMultipleSections = sections.length > 1;
+  const hasPendingPrice = sections.some((section) => section.items.some((item) => item.description.trim() && item.unitPrice.trim() === ""));
+  const displaySubtotalCents = hasPendingPrice ? null : subtotalCents;
+  const displayTaxCents = hasPendingPrice ? null : taxCents;
+  const displayTotalCents = hasPendingPrice ? null : totalCents;
   let globalIndex = 0;
 
   return (
@@ -108,10 +112,9 @@ export function QuotePreviewCard({
                 </thead>
                 <tbody className="divide-y divide-[var(--color-primary)]/10 print:divide-blue-100">
                   {sections.map((section, sIndex) => {
-                    const completeItems = section.items.filter(
-                      (item) => item.description.trim() && Number(item.unitPrice) >= 0,
-                    );
-                    if (completeItems.length === 0) return null;
+                    const displayItems = section.items.filter((item) => item.description.trim());
+                    if (displayItems.length === 0) return null;
+                    const completeItems = displayItems.filter((item) => item.unitPrice.trim() !== "" && Number(item.unitPrice) >= 0);
 
                     const isSelectable = Boolean(selectableSectionIds && section.id);
                     const isSelected = isSelectable
@@ -160,10 +163,10 @@ export function QuotePreviewCard({
                             </td>
                           </tr>
                         )}
-                        {completeItems.map((item) => {
+                         {displayItems.map((item) => {
                           const idx = globalIndex++;
                           const quantityNum = Number(item.quantity);
-                          const lineTotalCents = Math.round(quantityNum * Number(item.unitPrice) * 100);
+                           const lineTotalCents = item.unitPrice.trim() ? Math.round(quantityNum * Number(item.unitPrice) * 100) : null;
                           return (
                             <tr key={idx} className={`print:text-black hover:bg-[var(--color-bg-soft)] print:hover:bg-transparent ${isSelected ? "" : "opacity-40 print:opacity-100"}`}>
                               <td className="px-3 py-2 align-top text-[var(--color-text-muted)] print:text-gray-700 w-1 whitespace-nowrap text-center font-medium">
@@ -172,7 +175,7 @@ export function QuotePreviewCard({
                               <td className="px-3 py-2 align-top">
                                 <div className="font-medium text-[var(--color-text-main)] print:text-black">{item.description}</div>
                               </td>
-                              <td className="px-3 py-2 align-top text-right text-[var(--color-text-muted)] print:text-gray-700">{formatCents(Number(item.unitPrice) * 100)}</td>
+                              <td className="px-3 py-2 align-top text-right text-[var(--color-text-muted)] print:text-gray-700">{item.unitPrice.trim() ? formatCents(Number(item.unitPrice) * 100) : "Pendiente"}</td>
                               <td className="px-3 py-2 align-top text-right font-bold text-[var(--color-text-main)] print:text-black">{formatCents(lineTotalCents)}</td>
                             </tr>
                           );
@@ -196,7 +199,7 @@ export function QuotePreviewCard({
           )}
         </div>
 
-        <QuoteTotalsCard subtotalCents={subtotalCents} discountCents={discountCents} taxCents={taxCents} totalCents={totalCents} />
+        <QuoteTotalsCard subtotalCents={displaySubtotalCents} discountCents={discountCents} taxCents={displayTaxCents} totalCents={displayTotalCents} />
         <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} />
 
         {description ? (

@@ -78,7 +78,7 @@ export function QuoteListCard({
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
   const openPreview = React.useCallback(() => setPreviewOpen(true), []);
-  const paymentRequestContext = createPaymentRequestDialogContext(quote, paymentRequestBankAccounts);
+  const paymentRequestContext = quote.customer ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts) : null;
   const vehicleDescription = quote.vehicle
     ? formatVehicle(quote.vehicle)
     : formatSnapshotVehicle(quote.vehicleSnapshot);
@@ -112,7 +112,7 @@ export function QuoteListCard({
         </div>
 
         <p className="mt-3 text-sm font-medium text-[var(--color-text-main)]">
-          {quote.customer.name}
+            {quote.customer?.name ?? "Sin cliente"}
         </p>
         <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
           <Car className="h-3.5 w-3.5" aria-hidden="true" />
@@ -175,9 +175,9 @@ export function QuoteListCard({
             <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} actionLabelClassName={actionLabelClassName} />
           ) : null}
 
-          {quote.activeSharedQuote && (quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED") ? (
+           {quote.activeSharedQuote && (quote.status === "SENT" || quote.status === "APPROVED") ? (
             <ShareQuoteButton
-              action={quote.status === "DRAFT" ? shareAction : undefined}
+               action={shareAction}
               sharedQuote={quote.activeSharedQuote}
               status={quote.status}
               quoteNumber={quote.number}
@@ -185,7 +185,7 @@ export function QuoteListCard({
             />
           ) : null}
 
-          {quote.status === "DRAFT" || quote.status === "SENT" ? (
+           {quote.status === "SENT" ? (
             <QuoteAuthorizeForm
               action={authorizeAction}
               quoteNumber={quote.number}
@@ -228,7 +228,7 @@ export function QuoteListCard({
             <QuoteLifecycleForm action={archiveAction} mode="archive" quoteNumber={quote.number} actionLabelClassName={actionLabelClassName} />
           ) : null}
 
-          {canUsePaymentActions ? (
+           {canUsePaymentActions && paymentRequestContext ? (
             <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} actionLabelClassName={actionLabelClassName} />
           ) : null}
         </OperationalActionRow>

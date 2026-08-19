@@ -54,7 +54,7 @@ export default async function QuotePrintPage({ params }: PrintPageProps) {
         documentNumber={quote.number}
         date={quote.operationalDate}
         title={quote.title}
-        customerName={quote.customer.name}
+        customerName={quote.customer?.name ?? "Sin cliente"}
         vehicleDescription={
           quote.vehicle
             ? formatVehicle(quote.vehicle)

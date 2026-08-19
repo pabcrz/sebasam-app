@@ -33,6 +33,8 @@ const centsFromDollarInput = z.preprocess((value) => {
   return Math.round(Number(normalized) * 100);
 }, z.number().int().nonnegative("Unit price must be zero or greater").max(MAX_UNIT_PRICE_CENTS, "Unit price is too large"));
 
+const optionalCentsFromDollarInput = centsFromDollarInput.optional();
+
 const quantitySchema = z.coerce
   .number()
   .int("Quantity must be an integer")
@@ -173,6 +175,28 @@ export const quoteFormInputSchema = quoteInputBaseSchema.extend({
   sections: z.array(quoteFormSectionSchema).min(1, "At least one quote section is required").max(10),
 }).superRefine(validateQuoteTotals);
 
+const quoteDraftInputBaseSchema = quoteInputBaseSchema.extend({
+  customerId: optionalTrimmedString,
+});
+
+export const quoteDraftInputSchema = quoteDraftInputBaseSchema.extend({
+  sections: z.array(quoteSectionBaseSchema.extend({
+    items: z.array(quoteItemBaseSchema.omit({ unitPriceCents: true }).extend({ unitPriceCents: z.number().int().nonnegative().max(MAX_UNIT_PRICE_CENTS).optional() })),
+  })).min(1, "At least one quote section is required").max(10),
+});
+
+export const quoteDraftFormItemSchema = quoteItemBaseSchema.omit({ unitPriceCents: true }).extend({
+  unitPriceCents: optionalCentsFromDollarInput,
+}).superRefine((item, ctx) => {
+  if (item.unitPriceCents !== undefined) validateItemTotal({ ...item, unitPriceCents: item.unitPriceCents }, ctx);
+});
+
+export const quoteDraftFormInputSchema = quoteDraftInputBaseSchema.extend({
+  administrative: z.coerce.boolean().default(false),
+  discountCents: centsFromDollarInput.default(0),
+  sections: z.array(quoteSectionBaseSchema.extend({ items: z.array(quoteDraftFormItemSchema) })).min(1, "At least one quote section is required").max(10),
+});
+
 export const quoteFilterSchema = z.object({
   status: optionalFilterString(),
   customerId: optionalFilterString(),
@@ -191,4 +215,5 @@ export const quoteListPageSchema = z.coerce.number().int().min(1).default(1);
 
 export type QuoteFilterInput = z.infer<typeof quoteFilterSchema>;
 export type QuoteInput = z.infer<typeof quoteInputSchema>;
+export type QuoteDraftInput = z.infer<typeof quoteDraftInputSchema>;
 export type QuoteVehicleInput = z.infer<typeof quoteVehicleInputSchema>;

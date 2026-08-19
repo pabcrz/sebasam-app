@@ -15,7 +15,7 @@ type SerializableQuoteItem = Omit<QuoteItem, "quantity"> & {
 };
 
 export type SharedQuoteViewQuote = Quote & {
-  customer: Customer;
+  customer: Customer | null;
   vehicle: Vehicle | null;
   items: SerializableQuoteItem[];
   sections: (QuoteSection & { items: SerializableQuoteItem[] })[];
@@ -121,7 +121,7 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
           type: item.type,
           description: item.description,
           quantity: String(Number(item.quantity)),
-          unitPrice: String(item.unitPriceCents / 100),
+          unitPrice: item.unitPriceCents == null ? "" : String(item.unitPriceCents / 100),
         })),
         rowIds: [],
       }))
@@ -132,20 +132,20 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
             type: item.type,
             description: item.description,
             quantity: String(Number(item.quantity)),
-            unitPrice: String(item.unitPriceCents / 100),
+            unitPrice: item.unitPriceCents == null ? "" : String(item.unitPriceCents / 100),
           })),
           rowIds: [],
         },
       ];
 
-  const showDecisionControls = (quote.status === "SENT" || quote.status === "DRAFT") && !hasDecided;
+  const showDecisionControls = quote.status === "SENT" && !hasDecided;
 
   const calculateSelectedTotals = () => {
     let subtotalCents = 0;
     const sectionsToSum = quote.sections.filter((s) => selectedSectionIds.includes(s.id));
     for (const section of sectionsToSum) {
       for (const item of section.items) {
-        subtotalCents += Math.round(Number(item.quantity) * item.unitPriceCents);
+        subtotalCents += Math.round(Number(item.quantity) * item.unitPriceCents!);
       }
     }
     const taxableCents = Math.max(0, subtotalCents - Number(quote.discountCents));
@@ -157,7 +157,7 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
 
   const totals = quote.sections.length > 1 && selectedSectionIds.length !== quote.sections.length
     ? calculateSelectedTotals()
-    : { subtotalCents: Number(quote.subtotalCents), taxCents: Number(quote.taxCents), totalCents: Number(quote.totalCents) };
+    : { subtotalCents: quote.subtotalCents == null ? null : Number(quote.subtotalCents), taxCents: quote.taxCents == null ? null : Number(quote.taxCents), totalCents: quote.totalCents == null ? null : Number(quote.totalCents) };
   const progressStatus = decision === "accepted" ? "accepted" : quote.status === "APPROVED"
     ? quote.workOrder?.status === "COMPLETED" ? "completed"
       : quote.workOrder?.status === "ASSIGNED" || quote.workOrder?.status === "IN_PROGRESS" ? "active" : "accepted"

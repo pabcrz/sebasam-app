@@ -88,7 +88,7 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
       documentNumber={result.quote.number}
       date={result.quote.operationalDate}
       title={result.quote.title}
-      customerName={result.quote.customer.name}
+       customerName={result.quote.customer?.name ?? "Sin cliente"}
       vehicleDescription={
         result.quote.vehicle
           ? formatVehicle(result.quote.vehicle)

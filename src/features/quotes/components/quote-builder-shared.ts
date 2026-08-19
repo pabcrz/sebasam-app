@@ -219,7 +219,6 @@ export function getStepError(
   requirePrice = false,
 ): string | null {
   if (step === "client") {
-    if (!state.customerId) return "Selecciona un cliente.";
     return null;
   }
 

@@ -80,10 +80,10 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="taxEnabled"]')).toHaveValue("on");
   });
 
-  it("keeps the next button disabled on the first step until a customer is selected", async () => {
+  it("keeps the next button available without a customer for drafts", async () => {
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: "Siguiente" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Siguiente" })).not.toBeDisabled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -603,7 +603,7 @@ describe("QuoteBuilder", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo crear el cliente. Intenta de nuevo.");
     expect(screen.getByRole("button", { name: "Guardar y seleccionar" })).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Siguiente" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Siguiente" })).not.toBeDisabled();
   });
 
   it("submits through the native final form action with the expected FormData", async () => {
@@ -802,11 +802,11 @@ describe("QuoteBuilder", () => {
     });
   });
 
-  it("disables the next button on the first step until a customer is selected", async () => {
+  it("keeps the next button available on the first draft step", async () => {
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
     const nextButton = screen.getByRole("button", { name: "Siguiente" });
-    expect(nextButton).toBeDisabled();
+    expect(nextButton).not.toBeDisabled();
 
     // No "Anterior" button should render on the first step.
     expect(screen.queryByRole("button", { name: "Anterior" })).not.toBeInTheDocument();

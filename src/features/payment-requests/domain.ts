@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { PaymentRequestStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
 import { fiscalDataInputSchema, invoicePreferenceSchema } from "./schemas";
 import { generatePaymentSlugFromNumber, generateUniqueSlug } from "@/lib/slug";
 
@@ -157,12 +158,14 @@ async function createPaymentRequestForQuoteInTransaction(
 ) {
   const quote = await tx.quote.findUnique({
     where: { id: quoteId },
-    include: { customer: true },
+    include: { customer: true, items: true, sections: { include: { items: true } } },
   });
 
   if (!quote) {
     throw new PaymentRequestOperationError("Quote not found.");
   }
+
+  assertCommercialQuote(quote);
 
   const requiresInvoice = quote.taxEnabled;
   const initialStatus = requiresInvoice
@@ -184,7 +187,7 @@ async function createPaymentRequestForQuoteInTransaction(
     data: {
       token,
       status: initialStatus,
-      customerId: quote.customerId,
+      customerId: quote.customerId!,
       quoteId: quote.id,
       requiresInvoice,
       expiresAt: createExpirationDate(),
@@ -217,7 +220,7 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
   return prisma.$transaction(async (tx) => {
     const workOrder = await tx.workOrder.findUnique({
       where: { id: workOrderId },
-      include: { quote: { include: { customer: true } } },
+      include: { quote: { include: { customer: true, items: true, sections: { include: { items: true } } } } },
     });
 
     if (!workOrder) {
@@ -227,6 +230,8 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
     if (!workOrder.quote) {
       throw new PaymentRequestOperationError("Work order is not linked to a quote.");
     }
+
+    assertCommercialQuote(workOrder.quote);
 
     await assertNoActiveRequest(tx, { workOrderId: workOrder.id });
 
@@ -251,7 +256,7 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
       data: {
         token,
         status: initialStatus,
-        customerId: workOrder.quote.customerId,
+        customerId: workOrder.quote.customerId!,
         workOrderId: workOrder.id,
         requiresInvoice,
         expiresAt: createExpirationDate(),

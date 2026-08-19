@@ -75,7 +75,7 @@ export function QuoteListRow({
 }: QuoteListRowProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
-  const paymentRequestContext = createPaymentRequestDialogContext(quote, paymentRequestBankAccounts);
+  const paymentRequestContext = quote.customer ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts) : null;
   const canUsePaymentActions = quote.status === "APPROVED" && quote.workOrder?.status === "IN_PROGRESS";
 
   return (
@@ -95,7 +95,7 @@ export function QuoteListRow({
           ) : null}
         </div>
       </TableCell>
-      <TableCell>{quote.customer.name}</TableCell>
+      <TableCell>{quote.customer?.name ?? "Sin cliente"}</TableCell>
       <TableCell>
         {quote.vehicle ? formatVehicle(quote.vehicle) : formatSnapshotVehicle(quote.vehicleSnapshot)}
       </TableCell>
@@ -145,16 +145,16 @@ export function QuoteListRow({
             <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
           ) : null}
 
-          {quote.activeSharedQuote && (quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED") ? (
+          {quote.activeSharedQuote && (quote.status === "SENT" || quote.status === "APPROVED") ? (
             <ShareQuoteButton
-              action={quote.status === "DRAFT" ? shareAction : undefined}
+              action={shareAction}
               sharedQuote={quote.activeSharedQuote}
               status={quote.status}
               quoteNumber={quote.number}
             />
           ) : null}
 
-          {quote.status === "DRAFT" || quote.status === "SENT" ? (
+          {quote.status === "SENT" ? (
             <QuoteAuthorizeForm
               action={authorizeAction}
               quoteNumber={quote.number}
@@ -195,7 +195,7 @@ export function QuoteListRow({
             />
           ) : null}
 
-          {canUsePaymentActions ? (
+          {canUsePaymentActions && paymentRequestContext ? (
             <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
           ) : null}
         </div>

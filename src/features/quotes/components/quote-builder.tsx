@@ -55,7 +55,7 @@ type QuoteCustomerActionResult = {
 };
 
 export type QuoteBuilderInitialData = {
-  customerId: string;
+  customerId: string | null;
   vehicle: { plate: string; brand: string; model: string; year: string };
   title: string;
   description: string;
@@ -1081,7 +1081,6 @@ export function QuoteBuilder({
                 type="button"
                 variant="primary"
                 onClick={goToNext}
-                disabled={step === "client" && !customerId}
                 className="min-w-[140px]"
               >
                 Siguiente

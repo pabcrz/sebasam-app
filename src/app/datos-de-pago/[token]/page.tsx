@@ -22,9 +22,9 @@ type PublicPaymentRequest = PaymentRequest & {
   quote: {
     id: string;
     number: string;
-    subtotalCents: number;
-    taxCents: number;
-    totalCents: number;
+    subtotalCents: number | null;
+    taxCents: number | null;
+    totalCents: number | null;
     taxEnabled: boolean;
     validUntil: Date | null;
   } | null;
