@@ -213,6 +213,17 @@ describe("createQuote", () => {
     await expect(createQuote({ ...validInput(), operationalDate: "2026-07-16" })).rejects.toThrow();
     expect(tx.quote.create).not.toHaveBeenCalled();
   });
+
+  it("rejects persistence without a customer or identifiable unit", async () => {
+    const tx = mockTx();
+
+    await expect(createQuote({
+      ...validInput(),
+      customerId: "",
+      vehicle: { plate: "", brand: "Toyota", model: "", color: "", year: "" },
+    })).rejects.toThrow("Selecciona un cliente o identifica la unidad");
+    expect(tx.quote.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("updateDraftQuote", () => {
@@ -909,7 +920,7 @@ describe("publishSharedQuote", () => {
     const tx = mockTx(QuoteStatus.SENT);
     tx.quote.updateMany.mockResolvedValue({ count: 0 });
 
-    await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: false, error: "Only draft quotes can be published." });
+    await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: false, error: "La cotización cambió de estado. Recarga e intenta de nuevo." });
 
     expect(tx.quote.updateMany).toHaveBeenCalledWith({
       where: { id: "quote-1", status: QuoteStatus.DRAFT },
@@ -922,9 +933,43 @@ describe("publishSharedQuote", () => {
     const tx = mockTx();
     tx.quote.findUnique.mockResolvedValue(null);
 
-    await expect(publishSharedQuote("missing-quote")).resolves.toEqual({ success: false, error: "Quote not found." });
+    await expect(publishSharedQuote("missing-quote")).resolves.toEqual({ success: false, error: "No se encontró la cotización." });
 
     expect(tx.quote.updateMany).not.toHaveBeenCalled();
     expect(getOrCreateSharedQuoteForQuote).not.toHaveBeenCalled();
+  });
+
+  it("returns actionable validation feedback and keeps an incomplete draft unchanged", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      status: QuoteStatus.DRAFT,
+      customerId: null,
+      subtotalCents: 10000,
+      discountCents: 0,
+      taxCents: 1600,
+      totalCents: 11600,
+      taxEnabled: true,
+      sections: [{ items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }] }],
+    });
+
+    await expect(publishSharedQuote("quote-1")).resolves.toEqual({
+      success: false,
+      error: "Selecciona un cliente antes de preparar la cotización para compartir.",
+    });
+
+    expect(tx.quote.updateMany).not.toHaveBeenCalled();
+    expect(getOrCreateSharedQuoteForQuote).not.toHaveBeenCalled();
+  });
+
+  it("publishes a complete draft, creates its link, and revalidates the list", async () => {
+    const tx = mockTx();
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+    vi.mocked(getOrCreateSharedQuoteForQuote).mockResolvedValue({ id: "shared-1" } as never);
+
+    await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: true });
+
+    expect(getOrCreateSharedQuoteForQuote).toHaveBeenCalledWith("quote-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
   });
 });

@@ -80,11 +80,18 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="taxEnabled"]')).toHaveValue("on");
   });
 
-  it("keeps the next button available without a customer for drafts", async () => {
+  it("requires either a customer or identifiable unit data before leaving the first step", async () => {
+    const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: "Siguiente" })).not.toBeDisabled();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Selecciona un cliente o identifica la unidad con placas o marca y modelo.",
+    );
+
+    await user.type(screen.getByLabelText("Placas (opcional)"), "ABC-123");
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByRole("heading", { name: "Conceptos", level: 2 })).toBeInTheDocument();
   });
 
   it("creates and selects a customer without leaving the builder", async () => {
@@ -676,7 +683,7 @@ describe("QuoteBuilder", () => {
     expect(
       getStepError("items", {
         customerId: "cust-1",
-        vehicle: { model: "F-150" },
+        vehicle: { plate: "", brand: "Ford", model: "F-150" },
         title: "Servicio",
         sections: [{ name: "General", items: [{ type: "LABOR", description: "Trabajo", quantity: "1", unitPrice: "" }], rowIds: ["row-1"] }],
       }, true),

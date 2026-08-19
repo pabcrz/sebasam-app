@@ -26,19 +26,19 @@ export class CommercialQuoteValidationError extends Error {
 
 export function assertCommercialQuote(quote: CommercialQuote) {
   if (!quote.customerId) {
-    throw new CommercialQuoteValidationError("A customer is required before commercial transition.");
+    throw new CommercialQuoteValidationError("Selecciona un cliente antes de preparar la cotización para compartir.");
   }
 
   const items = quote.sections?.flatMap((section) => section.items) ?? quote.items ?? [];
   if (items.length === 0) {
-    throw new CommercialQuoteValidationError("At least one complete concept is required before commercial transition.");
+    throw new CommercialQuoteValidationError("Agrega al menos un concepto completo antes de preparar la cotización para compartir.");
   }
 
   if (items.some((item) => {
     const quantity = Number(item.quantity);
     return item.description.trim() === "" || !Number.isInteger(quantity) || quantity <= 0 || item.unitPriceCents === null || !Number.isInteger(item.unitPriceCents) || item.unitPriceCents < 0;
   })) {
-    throw new CommercialQuoteValidationError("Every concept must have a valid description, quantity, and price before commercial transition.");
+    throw new CommercialQuoteValidationError("Completa la descripción, cantidad y precio de todos los conceptos antes de compartir.");
   }
 
   const subtotalCents = items.reduce(
@@ -48,7 +48,7 @@ export function assertCommercialQuote(quote: CommercialQuote) {
   const totals = calculateQuoteTotals(subtotalCents, quote.taxEnabled, quote.discountCents ?? 0);
 
   if (quote.subtotalCents !== totals.subtotalCents || quote.taxCents !== totals.taxCents || quote.totalCents !== totals.totalCents) {
-    throw new CommercialQuoteValidationError("Quote totals must be calculable and current before commercial transition.");
+    throw new CommercialQuoteValidationError("Revisa los precios para actualizar los totales antes de compartir.");
   }
 
   return totals;

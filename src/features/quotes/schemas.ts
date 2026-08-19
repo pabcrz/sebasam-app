@@ -179,11 +179,28 @@ const quoteDraftInputBaseSchema = quoteInputBaseSchema.extend({
   customerId: optionalTrimmedString,
 });
 
+function validateDraftIdentity(
+  quote: { customerId?: string; vehicle: z.infer<typeof quoteVehicleInputSchema> },
+  ctx: z.RefinementCtx,
+) {
+  const hasIdentifiableUnit = Boolean(
+    quote.vehicle.plate || (quote.vehicle.brand && quote.vehicle.model),
+  );
+
+  if (!quote.customerId && !hasIdentifiableUnit) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Selecciona un cliente o identifica la unidad con placas o marca y modelo.",
+      path: ["vehicle"],
+    });
+  }
+}
+
 export const quoteDraftInputSchema = quoteDraftInputBaseSchema.extend({
   sections: z.array(quoteSectionBaseSchema.extend({
     items: z.array(quoteItemBaseSchema.omit({ unitPriceCents: true }).extend({ unitPriceCents: z.number().int().nonnegative().max(MAX_UNIT_PRICE_CENTS).optional() })),
   })).min(1, "At least one quote section is required").max(10),
-});
+}).superRefine(validateDraftIdentity);
 
 export const quoteDraftFormItemSchema = quoteItemBaseSchema.omit({ unitPriceCents: true }).extend({
   unitPriceCents: optionalCentsFromDollarInput,
@@ -195,7 +212,7 @@ export const quoteDraftFormInputSchema = quoteDraftInputBaseSchema.extend({
   administrative: z.coerce.boolean().default(false),
   discountCents: centsFromDollarInput.default(0),
   sections: z.array(quoteSectionBaseSchema.extend({ items: z.array(quoteDraftFormItemSchema) })).min(1, "At least one quote section is required").max(10),
-});
+}).superRefine(validateDraftIdentity);
 
 export const quoteFilterSchema = z.object({
   status: optionalFilterString(),

@@ -16,7 +16,7 @@ import {
   createQuoteValidUntil,
 } from "./lib/calculate";
 import { isQuoteEditable } from "./lib/editability";
-import { assertCommercialQuote } from "./lib/commercial-validation";
+import { assertCommercialQuote, CommercialQuoteValidationError } from "./lib/commercial-validation";
 import { normalizeOperationalDate } from "./lib/operational-date";
 import { nextQuoteNumber, nextWorkOrderNumber } from "./lib/sequence";
 import {
@@ -633,16 +633,27 @@ export async function approveQuoteAndCreateWorkOrderFromForm(formData: FormData)
 
 export async function publishSharedQuote(quoteId: string) {
   await requireOperationalRole();
-  const result = await prisma.$transaction(async (tx) => {
-    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { sections: { include: { items: true } } } });
-    if (!quote) return { success: false, error: "Quote not found." };
-    assertCommercialQuote(quote);
-    const updated = await tx.quote.updateMany({ where: { id: quoteId, status: QuoteStatus.DRAFT }, data: { status: QuoteStatus.SENT } });
-    if (updated.count !== 1) return { success: false, error: "Only draft quotes can be published." };
-    return { success: true };
-  });
+  let result: { success: boolean; error?: string };
+
+  try {
+    result = await prisma.$transaction(async (tx) => {
+      const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { sections: { include: { items: true } } } });
+      if (!quote) return { success: false, error: "No se encontró la cotización." };
+      assertCommercialQuote(quote);
+      const updated = await tx.quote.updateMany({ where: { id: quoteId, status: QuoteStatus.DRAFT }, data: { status: QuoteStatus.SENT } });
+      if (updated.count !== 1) return { success: false, error: "La cotización cambió de estado. Recarga e intenta de nuevo." };
+      return { success: true };
+    });
+  } catch (error) {
+    if (error instanceof CommercialQuoteValidationError) {
+      return { success: false, error: error.message };
+    }
+    throw error;
+  }
+
   if (!result.success) return result;
   await getOrCreateSharedQuoteForQuote(quoteId);
+  revalidatePath(quotesPath);
   return result;
 }
 
