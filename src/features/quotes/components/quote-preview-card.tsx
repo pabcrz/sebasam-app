@@ -133,7 +133,6 @@ export function QuotePreviewCard({
                                     checked={isSelected}
                                     onChange={(event) => onSectionToggle?.(section.id!, event.target.checked)}
                                     data-testid={`section-toggle-${section.id}`}
-                                    aria-label={`Seleccionar sección ${section.name || `Sección ${sIndex + 1}`}`}
                                     className="h-3.5 w-3.5 accent-[var(--color-primary)] print:hidden"
                                   />
                                   <span>{section.name || `Sección ${sIndex + 1}`}</span>

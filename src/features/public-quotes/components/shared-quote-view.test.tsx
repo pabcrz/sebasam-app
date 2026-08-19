@@ -74,6 +74,55 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
   return quote;
 }
 
+function makeMultiSectionQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps["quote"] {
+  return {
+    ...makeQuote(status),
+    items: [],
+    sections: [
+      {
+        id: "sec-1",
+        quoteId: "quote-1",
+        name: "Aceite y filtros",
+        sortOrder: 0,
+        isAuthorized: false,
+        items: [
+          {
+            id: "item-1",
+            quoteId: "quote-1",
+            sectionId: "sec-1",
+            type: "SERVICE" as any,
+            description: "Cambio de aceite",
+            quantity: "1",
+            unitPriceCents: 40_00,
+            totalCents: 40_00,
+            sortOrder: 0,
+          },
+        ],
+      },
+      {
+        id: "sec-2",
+        quoteId: "quote-1",
+        name: "Frenos",
+        sortOrder: 1,
+        isAuthorized: false,
+        items: [
+          {
+            id: "item-2",
+            quoteId: "quote-1",
+            sectionId: "sec-2",
+            type: "SERVICE" as any,
+            description: "Cambio de balatas",
+            quantity: "1",
+            unitPriceCents: 60_00,
+            totalCents: 60_00,
+            sortOrder: 0,
+          },
+        ],
+      },
+    ],
+  };
+}
+
 describe("SharedQuoteView", () => {
   beforeEach(() => {
     acceptSharedQuoteActionMock.mockReset();
@@ -157,5 +206,51 @@ describe("SharedQuoteView", () => {
     await user.click(screen.getByRole("button", { name: "Aceptar cotización" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("La cotización ya expiró.");
+  });
+
+  describe("partial authorization by sections", () => {
+    it("renders every section selected by default and keeps whole-quote totals", () => {
+      render(<SharedQuoteView quote={makeMultiSectionQuote()} token="token-123" />);
+
+      expect(screen.getByTestId("section-toggle-sec-1")).toBeChecked();
+      expect(screen.getByTestId("section-toggle-sec-2")).toBeChecked();
+      expect(screen.getByRole("button", { name: "Aceptar cotización" })).toBeInTheDocument();
+      expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
+    });
+
+    it("recomputes totals and accept label when a section is deselected", async () => {
+      const user = userEvent.setup();
+      render(<SharedQuoteView quote={makeMultiSectionQuote()} token="token-123" />);
+
+      await user.click(screen.getByTestId("section-toggle-sec-2"));
+
+      expect(screen.getByTestId("section-toggle-sec-2")).not.toBeChecked();
+      expect(screen.getByText("Excluida")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Aceptar 1 sección" })).toBeInTheDocument();
+      expect(screen.getByTestId("quote-total")).toHaveTextContent("$46.40");
+    });
+
+    it("disables accept when every section is deselected", async () => {
+      const user = userEvent.setup();
+      render(<SharedQuoteView quote={makeMultiSectionQuote()} token="token-123" />);
+
+      await user.click(screen.getByTestId("section-toggle-sec-1"));
+      await user.click(screen.getByTestId("section-toggle-sec-2"));
+
+      const accept = screen.getByRole("button", { name: "Seleccione al menos una sección" });
+      expect(accept).toBeDisabled();
+    });
+
+    it("sends only the selected section ids when accepting partially", async () => {
+      const user = userEvent.setup();
+      acceptSharedQuoteActionMock.mockResolvedValue({ success: true });
+
+      render(<SharedQuoteView quote={makeMultiSectionQuote()} token="token-123" />);
+
+      await user.click(screen.getByTestId("section-toggle-sec-2"));
+      await user.click(screen.getByRole("button", { name: "Aceptar 1 sección" }));
+
+      expect(acceptSharedQuoteActionMock).toHaveBeenCalledWith("token-123", ["sec-1"]);
+    });
   });
 });

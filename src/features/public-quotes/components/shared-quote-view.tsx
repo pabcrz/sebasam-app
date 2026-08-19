@@ -221,7 +221,6 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
             loading={acceptPending}
             disabled={isPending || (quote.sections.length > 0 && selectedSectionIds.length === 0)}
             onClick={handleAccept}
-            aria-label="Aceptar cotización"
           >
             <Check className="h-4 w-4" aria-hidden="true" />
             <span>
@@ -229,7 +228,7 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
                 ? "Seleccione al menos una sección"
                 : selectedSectionIds.length === quote.sections.length || quote.sections.length <= 1
                   ? "Aceptar cotización"
-                  : `Aceptar ${selectedSectionIds.length} seccion${selectedSectionIds.length > 1 ? "es" : ""}`}
+                  : `Aceptar ${selectedSectionIds.length} sección${selectedSectionIds.length > 1 ? "es" : ""}`}
             </span>
           </Button>
           <Button
