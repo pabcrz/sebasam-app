@@ -28,6 +28,7 @@ import {
   SharedQuoteExpiredError,
   SharedQuoteRevokedError,
   SharedQuoteNotFoundError,
+  correctQuoteDecision,
 } from "./domain";
 
 const quotesPath = "/admin/quotes";
@@ -752,6 +753,22 @@ export async function authorizeQuoteAction(quoteId: string, note: string, author
     "quote.authorize.revalidate",
     performance.now() - revalidationStartedAt,
   );
+  return { success: true };
+}
+
+export async function correctQuoteDecisionAction(quoteId: string, nextStatus: "APPROVED" | "REJECTED") {
+  const { profile } = await requireOperationalRole();
+
+  try {
+    await correctQuoteDecision(quoteId, nextStatus, profile.id);
+  } catch (error) {
+    if (error instanceof QuoteDecisionError) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "No se pudo corregir la decisión de la cotización." };
+  }
+
+  revalidatePath(quotesPath);
   return { success: true };
 }
 

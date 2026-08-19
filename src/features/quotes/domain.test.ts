@@ -5,6 +5,7 @@ import {
   acceptSharedQuote,
   declineSharedQuote,
   authorizeQuote,
+  correctQuoteDecision,
   getSharedQuoteByToken,
   SharedQuoteExpiredError,
   SharedQuoteRevokedError,
@@ -24,6 +25,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), sharedQuote: {
 type MockTransaction = {
   quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn> };
+  quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
   sharedQuote: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
 };
 
@@ -37,6 +39,11 @@ function mockTx(): MockTransaction {
     quoteDecision: {
       create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) =>
         Promise.resolve({ id: "d-1", ...args.data, createdAt: new Date() }),
+      ),
+    },
+    quoteLifecycleEvent: {
+      create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: "le-1", ...args.data, createdAt: new Date() }),
       ),
     },
     sharedQuote: {
@@ -459,5 +466,75 @@ describe("createSharedQuoteForQuote", () => {
     const result = await createSharedQuoteForQuote("q-1");
 
     expect(result.token).toMatch(/^C-0726-03-[0-9A-Za-z]{8}$/);
+  });
+});
+
+
+describe("correctQuoteDecision", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("allows correcting APPROVED to REJECTED with history and clears approvedAt", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-corr-1",
+      status: "APPROVED",
+      workOrder: null
+    });
+
+    await correctQuoteDecision("q-corr-1", "REJECTED", "user-1");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "q-corr-1", status: "APPROVED" },
+      data: { status: "REJECTED", approvedAt: null }
+    });
+    
+    expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith({
+      data: {
+        quoteId: "q-corr-1",
+        previousState: "APPROVED",
+        nextState: "REJECTED",
+        actorId: "user-1",
+        reason: "Corrección manual de decisión",
+      }
+    });
+
+    expect(tx.quoteDecision.create).toHaveBeenCalledWith({
+      data: {
+        quoteId: "q-corr-1",
+        status: "REJECTED",
+        origin: "ADMIN",
+        actorId: "user-1",
+        note: "Corrección manual de decisión",
+      }
+    });
+  });
+
+  it("allows correcting REJECTED to APPROVED with history and sets approvedAt", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-corr-2",
+      status: "REJECTED",
+      workOrder: null
+    });
+
+    await correctQuoteDecision("q-corr-2", "APPROVED", "user-1");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "q-corr-2", status: "REJECTED" },
+      data: { status: "APPROVED", approvedAt: expect.any(Date) }
+    });
+  });
+
+  it("fails if quote has a WorkOrder", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-corr-3",
+      status: "APPROVED",
+      workOrder: { id: "wo-1" }
+    });
+
+    await expect(correctQuoteDecision("q-corr-3", "REJECTED", "user-1")).rejects.toThrow(/orden de trabajo/);
   });
 });

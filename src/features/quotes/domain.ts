@@ -310,3 +310,58 @@ export async function authorizeQuote(quoteId: string, note: string, actorId?: st
     });
   });
 }
+
+export async function correctQuoteDecision(quoteId: string, nextStatus: "APPROVED" | "REJECTED", actorId: string) {
+  return prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({
+      where: { id: quoteId },
+      include: { workOrder: true }
+    });
+
+    if (!quote) throw new QuoteDecisionError("Cotización no encontrada.");
+    
+    if (quote.status !== QuoteStatus.APPROVED && quote.status !== QuoteStatus.REJECTED) {
+      throw new QuoteDecisionError("Solo se pueden corregir cotizaciones aprobadas o rechazadas.");
+    }
+
+    if (quote.status === nextStatus) {
+      throw new QuoteDecisionError(`La cotización ya está en estado ${nextStatus}.`);
+    }
+
+    if (quote.workOrder) {
+      throw new QuoteDecisionError("No se puede cambiar la decisión de una cotización con una orden de trabajo activa.");
+    }
+
+    const previousState = quote.status;
+    const approvedAt = nextStatus === QuoteStatus.APPROVED ? new Date() : null;
+
+    const result = await tx.quote.updateMany({
+      where: { id: quoteId, status: previousState },
+      data: { status: nextStatus, approvedAt },
+    });
+
+    if (result.count !== 1) {
+      throw new QuoteDecisionError("El estado de la cotización cambió. Recarga e intenta de nuevo.");
+    }
+
+    await tx.quoteLifecycleEvent.create({
+      data: {
+        quoteId,
+        previousState,
+        nextState: nextStatus,
+        actorId,
+        reason: "Corrección manual de decisión",
+      }
+    });
+
+    await tx.quoteDecision.create({
+      data: {
+        quoteId,
+        status: nextStatus,
+        origin: QuoteDecisionOrigin.ADMIN,
+        actorId,
+        note: "Corrección manual de decisión",
+      }
+    });
+  });
+}

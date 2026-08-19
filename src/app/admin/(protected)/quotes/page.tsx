@@ -5,6 +5,7 @@ import {
   cancelQuoteFromForm,
   publishSharedQuote,
   authorizeQuoteAction,
+  correctQuoteDecisionAction,
   duplicateQuoteFromForm,
   deleteQuoteFromForm,
   createQuoteFromWorkspace,
@@ -135,6 +136,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 cancelAction={cancelQuoteFromForm}
                 shareAction={publishSharedQuote.bind(null, quote.id)}
                 authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
+                correctDecisionAction={correctQuoteDecisionAction}
                 paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
                 paymentRequestBankAccounts={eligiblePaymentRequestBankAccounts}
                 cashPaymentAction={recordCashPaymentAction.bind(null, quote.id)}
