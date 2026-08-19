@@ -6,6 +6,11 @@ const optionalText = (max: number) => z.preprocess(
   z.string().trim().max(max).optional(),
 );
 
+const optionalCustomerId = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? null : value),
+  z.string().trim().min(1).nullable().optional(),
+);
+
 export const operationalConceptSchema = z.object({
   description: z.string().trim().min(1).max(500),
   quantity: z.coerce.number().positive().finite(),
@@ -13,7 +18,7 @@ export const operationalConceptSchema = z.object({
 
 export const operationalWorkInputSchema = z.object({
   masterId: z.string().uuid(),
-  customerId: z.string().trim().min(1).optional().nullable(),
+  customerId: optionalCustomerId,
   plate: optionalText(40),
   brand: optionalText(80),
   model: optionalText(80),

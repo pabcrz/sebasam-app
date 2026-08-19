@@ -22,4 +22,13 @@ describe("operational work schema", () => {
     expect(parsed.customerId).toBeNull();
     expect(parsed.concepts[0]).toEqual({ description: "Replace bushing", quantity: 1.5 });
   });
+
+  it.each([undefined, null, "", "   "])("normalizes an empty customer value (%s) to null", (customerId) => {
+    const parsed = operationalWorkInputSchema.parse({ masterId, customerId, plate: "ABC123", concepts: [{ description: "Inspection", quantity: 1 }] });
+    expect(parsed.customerId).toBeNull();
+  });
+
+  it("rejects malformed non-string customer IDs", () => {
+    expect(() => operationalWorkInputSchema.parse({ masterId, customerId: 123, plate: "ABC123", concepts: [{ description: "Inspection", quantity: 1 }] })).toThrow();
+  });
 });
