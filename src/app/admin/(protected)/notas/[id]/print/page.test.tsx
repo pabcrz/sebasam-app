@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+  notFound: vi.fn(),
+}));
+
 const { getWorkOrderById, getPaymentSettings } = vi.hoisted(() => ({
   getWorkOrderById: vi.fn(),
   getPaymentSettings: vi.fn(),
@@ -8,7 +13,6 @@ const { getWorkOrderById, getPaymentSettings } = vi.hoisted(() => ({
 
 vi.mock("@/features/work-orders/queries", () => ({ getWorkOrderById }));
 vi.mock("@/features/payment-settings/domain", () => ({ getPaymentSettings }));
-vi.mock("next/navigation", () => ({ notFound: vi.fn() }));
 vi.mock("./print-button", () => ({ PrintButton: () => <button type="button">Imprimir</button> }));
 
 import WorkOrderPrintPage from "./page";
@@ -45,7 +49,7 @@ describe("WorkOrderPrintPage", () => {
 
     render(await WorkOrderPrintPage({ params: Promise.resolve({ id: "wo-1" }) }));
 
-    expect(screen.getAllByText("Taller")).toHaveLength(2);
+    expect(screen.getAllByText(/Taller/)).toHaveLength(2);
     expect(screen.queryByText("Nombre heredado")).not.toBeInTheDocument();
   });
 });

@@ -58,9 +58,11 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
         title={quote.title}
         customerName={quote.customer.name}
         vehicleDescription={
-          quote.vehicle
-            ? formatVehicle(quote.vehicle)
-            : formatSnapshotVehicle(quote.vehicleSnapshot)
+          workOrder.isSpecial
+            ? "Taller"
+            : quote.vehicle
+              ? formatVehicle(quote.vehicle)
+              : formatSnapshotVehicle(quote.vehicleSnapshot)
         }
       >
         <SharedQuoteView quote={viewQuote} token="" isNote={true} />

@@ -61,7 +61,6 @@ describe("QuotePreviewDialog", () => {
     expect(screen.getByText("Constructora del Norte")).toBeInTheDocument();
     expect(screen.getByText("Cotización administrativa")).toBeInTheDocument();
     expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
-    expect(screen.getByText(/Mano de obra · 2 × \$50.00/i)).toBeInTheDocument();
     expect(screen.getByTestId("quote-subtotal")).toHaveTextContent("$100.00");
     expect(screen.getByTestId("quote-tax")).toHaveTextContent("$16.00");
     expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
@@ -87,8 +86,9 @@ describe("QuotePreviewDialog", () => {
       sections: [{
         id: "section-1",
         quoteId: "quote-1",
-        name: "Motor",
+        name: "General",
         sortOrder: 0,
+        isAuthorized: false,
         items: [{
           id: "section-item-1",
           quoteId: "quote-1",

@@ -79,7 +79,7 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
     const plateSearch = filters.plate;
     where.OR = [
       { vehicle: { plate: { contains: plateSearch, mode: "insensitive" } } },
-      { vehicleSnapshot: { path: ["plate"], string_contains: plateSearch, mode: "insensitive" } },
+      { vehicleSnapshot: { path: ["plate"], string_contains: plateSearch } },
     ];
   }
 
@@ -87,6 +87,18 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
     where.operationalDate = {};
     if (filters.dateFrom) where.operationalDate.gte = filters.dateFrom;
     if (filters.dateTo) where.operationalDate.lte = filters.dateTo;
+  }
+
+  if (filters.hasWorkOrder === true) {
+    where.workOrder = { isNot: null };
+  } else if (filters.hasWorkOrder === false) {
+    if (where.NOT) {
+      where.NOT = Array.isArray(where.NOT)
+        ? [...where.NOT, { workOrder: { isNot: null } }]
+        : [where.NOT, { workOrder: { isNot: null } }];
+    } else {
+      where.NOT = { workOrder: { isNot: null } };
+    }
   }
 
   return Object.keys(where).length > 0 ? where : undefined;

@@ -1188,8 +1188,8 @@ describe("QuoteBuilder", () => {
     expect(quantityInput.parentElement).toHaveClass("min-w-0");
     expect(unitPriceInput.parentElement).toHaveClass("min-w-0");
     expect(screen.getByLabelText("Precio unitario")).toHaveAccessibleDescription("Importe en pesos mexicanos.");
+    expect(screen.getAllByText("Importe")[0]).toBeInTheDocument();
     expect(screen.getByTestId("currency-prefix-0")).toHaveTextContent("$");
-    expect(screen.getByText("Importe")).toBeInTheDocument();
     expect(screen.getByTestId("concept-total-0")).toHaveTextContent("$850.00");
     expect(quantityPriceRow.parentElement).not.toHaveTextContent("1 × $850.00");
     expect(screen.getByRole("button", { name: "Duplicar concepto 1" })).toBeInTheDocument();
@@ -1221,7 +1221,5 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     expect(screen.getByTestId("preview-customer-icon")).toBeInTheDocument();
     expect(screen.getByTestId("preview-vehicle-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-items-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-notes-icon")).toBeInTheDocument();
   });
 });

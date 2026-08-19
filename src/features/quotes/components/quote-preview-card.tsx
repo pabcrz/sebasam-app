@@ -25,6 +25,9 @@ export interface QuotePreviewCardProps {
   validUntil: Date | null;
   isNote?: boolean;
   compactHeader?: boolean;
+  /** When provided, sections become selectable (partial authorization). */
+  selectableSectionIds?: string[];
+  onSectionToggle?: (sectionId: string, selected: boolean) => void;
 }
 
 // PreviewItemRow is removed because we use a <table> directly
@@ -45,6 +48,8 @@ export function QuotePreviewCard({
   validUntil,
   isNote,
   compactHeader,
+  selectableSectionIds,
+  onSectionToggle,
 }: QuotePreviewCardProps) {
   const vehicleDescription = [vehicle.brand, vehicle.model, vehicle.year, vehicle.plate]
     .filter(Boolean)
@@ -61,7 +66,7 @@ export function QuotePreviewCard({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
-                  <UserRound className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Cliente
+                  <UserRound data-testid="preview-customer-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Cliente
                 </p>
                 <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
                   {customerName || "Sin cliente"}
@@ -69,7 +74,7 @@ export function QuotePreviewCard({
               </div>
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
-                  <Truck className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Unidad
+                  <Truck data-testid="preview-vehicle-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Unidad
                 </p>
                 <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
                   {vehicleDescription || "Sin vehículo"}
@@ -107,7 +112,10 @@ export function QuotePreviewCard({
                       (item) => item.description.trim() && Number(item.unitPrice) >= 0,
                     );
                     if (completeItems.length === 0) return null;
-                    
+
+                    const isSelectable = Boolean(selectableSectionIds && section.id);
+                    const isSelected = !isSelectable || (selectableSectionIds ?? []).includes(section.id ?? "");
+
                     const sectionSubtotalCents = completeItems.reduce(
                       (acc, item) => acc + Math.round(Number(item.quantity) * Number(item.unitPrice) * 100),
                       0
@@ -118,7 +126,23 @@ export function QuotePreviewCard({
                         {hasMultipleSections && (
                           <tr className="bg-[var(--color-bg-soft)]/60 print:bg-gray-50/80 border-b border-[var(--color-border-light)]/50 print:border-gray-100">
                             <td colSpan={4} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)] print:text-gray-800">
-                              {section.name || `Sección ${sIndex + 1}`}
+                              {isSelectable ? (
+                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={(event) => onSectionToggle?.(section.id!, event.target.checked)}
+                                    data-testid={`section-toggle-${section.id}`}
+                                    className="h-3.5 w-3.5 accent-[var(--color-primary)] print:hidden"
+                                  />
+                                  <span>{section.name || `Sección ${sIndex + 1}`}</span>
+                                  <span className="ml-auto font-normal normal-case tracking-normal text-[var(--color-text-muted)] print:hidden">
+                                    {isSelected ? "Incluida" : "Excluida"}
+                                  </span>
+                                </label>
+                              ) : (
+                                section.name || `Sección ${sIndex + 1}`
+                              )}
                             </td>
                           </tr>
                         )}
@@ -127,7 +151,7 @@ export function QuotePreviewCard({
                           const quantityNum = Number(item.quantity);
                           const lineTotalCents = Math.round(quantityNum * Number(item.unitPrice) * 100);
                           return (
-                            <tr key={idx} className="print:text-black hover:bg-[var(--color-bg-soft)] print:hover:bg-transparent">
+                            <tr key={idx} className={`print:text-black hover:bg-[var(--color-bg-soft)] print:hover:bg-transparent ${isSelected ? "" : "opacity-40 print:opacity-100"}`}>
                               <td className="px-3 py-2 align-top text-[var(--color-text-muted)] print:text-gray-700 w-1 whitespace-nowrap text-center font-medium">
                                 {item.type === "LABOR" && quantityNum === 1 ? "-" : formatQuantity(item.quantity)}
                               </td>
@@ -140,7 +164,7 @@ export function QuotePreviewCard({
                           );
                         })}
                         {hasMultipleSections && (
-                          <tr className="bg-[var(--color-bg-soft)]/50 print:bg-gray-50/50">
+                          <tr className={`bg-[var(--color-bg-soft)]/50 print:bg-gray-50/50 ${isSelected ? "" : "opacity-40 print:opacity-100"}`}>
                             <td colSpan={3} className="px-3 py-1.5 text-right text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-600">
                               Subtotal
                             </td>

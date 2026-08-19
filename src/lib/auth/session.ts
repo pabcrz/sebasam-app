@@ -172,7 +172,7 @@ export async function requireProfileForPasswordChangePage(): Promise<CurrentProf
 export async function requireRole(allowedRoles: UserRole[]): Promise<CurrentProfile> {
   const current = await requireProfile();
 
-  if (!allowedRoles.includes(current.profile.role)) {
+  if (current.profile.role !== "SUPER_ADMIN" && !allowedRoles.includes(current.profile.role)) {
     throw new UnauthorizedRoleError(current.profile.role, allowedRoles);
   }
 

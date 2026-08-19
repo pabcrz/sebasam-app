@@ -61,3 +61,10 @@ if (elementPrototype) {
     });
   }
 }
+import { vi } from "vitest";
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn(), prefetch: vi.fn(), back: vi.fn(), forward: vi.fn(), pathname: "/", query: {} }),
+  usePathname: () => "/",
+  useSearchParams: () => new URLSearchParams(),
+}));
+

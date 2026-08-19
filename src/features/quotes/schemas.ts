@@ -66,6 +66,7 @@ export const quoteItemInputSchema = quoteItemBaseSchema.superRefine(validateItem
 
 const quoteSectionBaseSchema = z.object({
   name: z.string().trim().max(160),
+  isAuthorized: z.boolean().default(false),
 });
 
 export const quoteSectionInputSchema = quoteSectionBaseSchema.extend({
@@ -177,8 +178,9 @@ export const quoteFilterSchema = z.object({
   customerId: optionalFilterString(),
   number: optionalFilterString(),
   plate: optionalFilterString(),
-  dateFrom: quoteFilterDateSchema,
+dateFrom: quoteFilterDateSchema,
   dateTo: quoteFilterDateSchema,
+  hasWorkOrder: z.string().optional().transform((val) => val === "true" ? true : val === "false" ? false : undefined),
   showCancelled: z.coerce.boolean().default(false),
   showArchived: z.coerce.boolean().default(false),
 });

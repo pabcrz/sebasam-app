@@ -202,13 +202,14 @@ model SharedQuote {
 }
 
 model QuoteDecision {
-  id        String              @id @default(cuid())
-  quoteId   String
-  status    QuoteStatus
-  origin    QuoteDecisionOrigin
-  actorId   String?
-  note      String?
-  createdAt DateTime            @default(now())
+  id                   String              @id @default(cuid())
+  quoteId              String
+  status               QuoteStatus
+  origin               QuoteDecisionOrigin
+  actorId              String?
+  note                 String?
+  authorizedSectionIds String[]            @default([])
+  createdAt            DateTime            @default(now())
 
   quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
@@ -232,11 +233,12 @@ model QuoteLifecycleEvent {
 }
 
 model QuoteSection {
-  id        String      @id @default(cuid())
-  quoteId   String
-  name      String
-  sortOrder Int         @default(0)
-  items     QuoteItem[]
+  id           String      @id @default(cuid())
+  quoteId      String
+  name         String
+  sortOrder    Int         @default(0)
+  isAuthorized Boolean     @default(false)
+  items        QuoteItem[]
 
   quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 

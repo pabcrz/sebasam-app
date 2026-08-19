@@ -178,7 +178,7 @@ describe("QuoteBuilderDialog", () => {
     await user.click(closeButton);
 
     const confirmation = screen.getByRole("dialog", { name: "¿Descartar la cotización?" });
-    const hiddenBuilder = document.querySelector('[role="dialog"][aria-hidden="true"]');
+    const hiddenBuilder = screen.getByRole("dialog", { name: /Crear cotización/i, hidden: true });
     expect(hiddenBuilder).toHaveAttribute("data-state", "open");
     expect(confirmation).toContainElement(document.activeElement as HTMLElement);
     expect(hiddenBuilder).not.toContainElement(document.activeElement as HTMLElement);

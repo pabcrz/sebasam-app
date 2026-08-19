@@ -190,11 +190,11 @@ export async function getOrCreateSharedQuoteForQuote(quoteId: string) {
 
 // --- Quote decision (accept / decline / authorize) ---
 
-export async function acceptSharedQuote(token: string) {
+export async function acceptSharedQuote(token: string, authorizedSectionIds?: string[]) {
   return prisma.$transaction(async (tx) => {
     const sharedQuote = await tx.sharedQuote.findFirst({
       where: { token, revokedAt: null, expiresAt: { gte: new Date() } },
-      include: { quote: true },
+      include: { quote: { include: { sections: true } } },
     });
 
     if (!sharedQuote) {
@@ -205,12 +205,21 @@ export async function acceptSharedQuote(token: string) {
     }
 
     const result = await tx.quote.updateMany({
-      where: { id: sharedQuote.quoteId, status: QuoteStatus.SENT },
+      where: { id: sharedQuote.quoteId, status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT] } },
       data: { status: QuoteStatus.APPROVED, approvedAt: new Date() },
     });
 
     if (result.count !== 1) {
-      throw new QuoteDecisionError("Solo se puede aceptar una cotización en estado enviado.");
+      throw new QuoteDecisionError("Solo se puede aceptar una cotización en estado borrador o enviada.");
+    }
+
+    const sectionsToAuthorize = authorizedSectionIds ?? sharedQuote.quote.sections?.map(s => s.id) ?? [];
+
+    if (sectionsToAuthorize.length > 0) {
+      await tx.quoteSection.updateMany({
+        where: { quoteId: sharedQuote.quoteId, id: { in: sectionsToAuthorize } },
+        data: { isAuthorized: true },
+      });
     }
 
     return tx.quoteDecision.create({
@@ -218,6 +227,7 @@ export async function acceptSharedQuote(token: string) {
         quoteId: sharedQuote.quoteId,
         status: QuoteStatus.APPROVED,
         origin: QuoteDecisionOrigin.CUSTOMER,
+        authorizedSectionIds: sectionsToAuthorize,
       },
     });
   });
@@ -238,12 +248,12 @@ export async function declineSharedQuote(token: string) {
     }
 
     const result = await tx.quote.updateMany({
-      where: { id: sharedQuote.quoteId, status: QuoteStatus.SENT },
+      where: { id: sharedQuote.quoteId, status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT] } },
       data: { status: QuoteStatus.REJECTED },
     });
 
     if (result.count !== 1) {
-      throw new QuoteDecisionError("Solo se puede declinar una cotización en estado enviado.");
+      throw new QuoteDecisionError("Solo se puede declinar una cotización en estado borrador o enviada.");
     }
 
     return tx.quoteDecision.create({
@@ -256,7 +266,7 @@ export async function declineSharedQuote(token: string) {
   });
 }
 
-export async function authorizeQuote(quoteId: string, note: string, actorId?: string) {
+export async function authorizeQuote(quoteId: string, note: string, actorId?: string, authorizedSectionIds?: string[]) {
   const trimmedNote = note.trim();
 
   if (trimmedNote.length === 0) {
@@ -264,7 +274,7 @@ export async function authorizeQuote(quoteId: string, note: string, actorId?: st
   }
 
   return prisma.$transaction(async (tx) => {
-    const quote = await tx.quote.findUnique({ where: { id: quoteId } });
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { sections: true } });
 
     if (!quote) {
       throw new QuoteDecisionError("Cotización no encontrada.");
@@ -279,6 +289,15 @@ export async function authorizeQuote(quoteId: string, note: string, actorId?: st
       throw new QuoteDecisionError("Solo se puede autorizar una cotización en borrador o enviada.");
     }
 
+    const sectionsToAuthorize = authorizedSectionIds ?? quote.sections?.map(s => s.id) ?? [];
+
+    if (sectionsToAuthorize.length > 0) {
+      await tx.quoteSection.updateMany({
+        where: { quoteId, id: { in: sectionsToAuthorize } },
+        data: { isAuthorized: true },
+      });
+    }
+
     return tx.quoteDecision.create({
       data: {
         quoteId,
@@ -286,6 +305,7 @@ export async function authorizeQuote(quoteId: string, note: string, actorId?: st
         origin: QuoteDecisionOrigin.ADMIN,
         actorId: actorId ?? null,
         note: trimmedNote,
+        authorizedSectionIds: sectionsToAuthorize,
       },
     });
   });

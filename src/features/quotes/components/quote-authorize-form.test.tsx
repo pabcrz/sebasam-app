@@ -25,7 +25,7 @@ describe("QuoteAuthorizeForm", () => {
     await user.click(screen.getByRole("option", { name: "Llamada telefónica" }));
     await user.click(screen.getByRole("button", { name: "Autorizar cotización" }));
 
-    await waitFor(() => expect(action).toHaveBeenCalledWith("Llamada telefónica"));
+    await waitFor(() => expect(action).toHaveBeenCalledWith("Llamada telefónica", undefined));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(refresh).not.toHaveBeenCalled();
   });
@@ -50,7 +50,7 @@ describe("QuoteAuthorizeForm", () => {
       durationMs: expect.any(Number),
       outcome: "success",
     }));
-    expect(action).toHaveBeenCalledWith(`Llamada telefónica - ${sensitiveNote}`);
+    expect(action).toHaveBeenCalledWith(`Llamada telefónica - ${sensitiveNote}`, undefined);
     expect(JSON.stringify(info.mock.calls)).not.toContain(sensitiveNote);
   });
 });

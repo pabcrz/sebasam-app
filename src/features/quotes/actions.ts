@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { PaymentRequestStatus, PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
+import { PaymentRequestStatus, PaymentStatus, Prisma, QuoteStatus, QuoteDecisionOrigin } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { measureServerTiming, recordServerTiming } from "@/lib/server-timing";
@@ -145,14 +145,17 @@ async function createQuoteAuthorized(input: unknown) {
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
 
-    return tx.quote.create({
+    const hasAuthorizedSections = data.sections.some((s) => s.isAuthorized);
+
+    const createdQuote = await tx.quote.create({
       data: {
         id: quoteId,
         customerId: data.customerId,
         vehicleId: vehicle?.id ?? null,
         vehicleSnapshot,
         number: quoteNumber,
-        status: "DRAFT",
+        status: hasAuthorizedSections ? "APPROVED" : "DRAFT",
+        approvedAt: hasAuthorizedSections ? new Date() : null,
         title: data.title,
         description: nullableOptional(data.description),
         administrative: data.administrative,
@@ -172,6 +175,7 @@ async function createQuoteAuthorized(input: unknown) {
         sections: {
           create: data.sections.map((section, sectionIndex) => ({
             name: section.name,
+            isAuthorized: section.isAuthorized ?? false,
             sortOrder: sectionIndex,
             items: {
               create: section.items.map((item, itemIndex) => ({
@@ -189,6 +193,23 @@ async function createQuoteAuthorized(input: unknown) {
       },
       include: { sections: true },
     });
+
+    if (hasAuthorizedSections) {
+      const current = await requireOperationalRole();
+      const authorizedSectionIds = createdQuote.sections.filter(s => s.isAuthorized).map(s => s.id);
+      await tx.quoteDecision.create({
+        data: {
+          quoteId: createdQuote.id,
+          status: QuoteStatus.APPROVED,
+          origin: QuoteDecisionOrigin.ADMIN,
+          actorId: current.user.id,
+          note: "Autorizado directamente al crear/editar la cotización",
+          authorizedSectionIds,
+        },
+      });
+    }
+
+    return createdQuote;
   });
 }
 
@@ -245,8 +266,11 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
     : normalizeOperationalDate(data.operationalDate);
   const sectionData = data.sections.map((section, sIndex) => ({
     name: section.name,
+    isAuthorized: section.isAuthorized ?? false,
     sortOrder: sIndex,
   }));
+
+  const hasAuthorizedSections = sectionData.some((s) => s.isAuthorized);
 
   const subtotalCents = data.sections.reduce(
     (total, section) => total + section.items.reduce((secTotal, item) => secTotal + calculateItemTotalCents(item.quantity, item.unitPriceCents), 0),
@@ -313,11 +337,28 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
         discountCents,
         taxCents,
         totalCents,
-        ...(quote.status === QuoteStatus.DRAFT && requestedOperationalDate ? { operationalDate: requestedOperationalDate } : {}),
+...(quote.status === QuoteStatus.DRAFT && requestedOperationalDate ? { operationalDate: requestedOperationalDate } : {}),
+        status: hasAuthorizedSections ? QuoteStatus.APPROVED : QuoteStatus.DRAFT,
+        approvedAt: hasAuthorizedSections ? new Date() : null,
         sections: { create: sectionData },
       },
       include: { sections: true },
     });
+
+    if (hasAuthorizedSections) {
+      const current = await requireOperationalRole();
+      const authorizedSectionIds = updatedQuote.sections.filter(s => s.isAuthorized).map(s => s.id);
+      await tx.quoteDecision.create({
+        data: {
+          quoteId: updatedQuote.id,
+          status: QuoteStatus.APPROVED,
+          origin: QuoteDecisionOrigin.ADMIN,
+          actorId: current.user.id,
+          note: "Autorizado directamente al crear/editar la cotización",
+          authorizedSectionIds,
+        },
+      });
+    }
 
     const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
     data.sections.forEach((sectionInput, sIndex) => {
@@ -633,9 +674,9 @@ export async function publishSharedQuote(quoteId: string) {
 
 // --- Public accept / decline (no auth required; token is the authorization) ---
 
-export async function acceptSharedQuoteAction(token: string) {
+export async function acceptSharedQuoteAction(token: string, authorizedSectionIds?: string[]) {
   try {
-    await acceptSharedQuote(token);
+    await acceptSharedQuote(token, authorizedSectionIds);
   } catch (error) {
     if (error instanceof SharedQuoteExpiredError) {
       return { success: false, error: "El enlace de esta cotización expiró." };
@@ -683,7 +724,7 @@ export async function declineSharedQuoteAction(token: string) {
 
 // --- Admin authorization (auth required) ---
 
-export async function authorizeQuoteAction(quoteId: string, note: string) {
+export async function authorizeQuoteAction(quoteId: string, note: string, authorizedSectionIds?: string[]) {
   const { profile } = await requireOperationalRole();
 
   if (typeof note !== "string" || note.trim().length === 0) {
@@ -692,7 +733,7 @@ export async function authorizeQuoteAction(quoteId: string, note: string) {
 
   try {
     await measureServerTiming("action", "quote.authorize", () =>
-      authorizeQuote(quoteId, note, profile.id),
+      authorizeQuote(quoteId, note, profile.id, authorizedSectionIds),
     );
   } catch (error) {
     if (error instanceof QuoteDecisionError) {
