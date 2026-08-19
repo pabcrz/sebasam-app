@@ -29,8 +29,13 @@ export function CustomerCardList({ customers }: CustomerCardListProps) {
       {customers.map((customer) => (
         <div
           key={customer.id}
-          className="flex items-start justify-between gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
+          className="relative flex items-start justify-between gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
         >
+          <Link
+            href={`/admin/customers/${customer.id}`}
+            className="absolute inset-0 rounded-[var(--radius-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+            aria-label={`Ver cuenta de ${customer.name}`}
+          />
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium text-[var(--color-text-main)]">{customer.name}</p>
             <div className="mt-0.5 grid gap-0.5 text-sm text-[var(--color-text-muted)]">
@@ -44,7 +49,7 @@ export function CustomerCardList({ customers }: CustomerCardListProps) {
               </Badge>
             </div>
           </div>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="relative z-10">
             <Link href={`/admin/customers/${customer.id}/edit`}>Editar</Link>
           </Button>
         </div>

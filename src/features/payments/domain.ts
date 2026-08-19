@@ -39,6 +39,14 @@ type QuotePaymentBalance = PaymentBalance & {
   customerId: string;
 };
 
+type CustomerBalanceClient = Pick<Prisma.TransactionClient, "quote" | "payment">;
+
+export type CustomerBalanceSummary = {
+  totalContractedCents: number;
+  totalPaidCents: number;
+  pendingBalanceCents: number;
+};
+
 export function parseCashAmountCents(value: unknown): number {
   if (typeof value !== "string" || !/^\d+(?:\.\d{1,2})?$/.test(value.trim())) {
     throw new PaymentOperationError("Ingresa un monto válido con hasta dos decimales.");
@@ -96,27 +104,42 @@ async function getPaymentBalance(tx: Prisma.TransactionClient, quoteId: string):
   return { customerId: quote.customerId!, paidCents, remainingCents: quote.totalCents! - paidCents };
 }
 
+export async function getCustomerBalanceSummary(
+  client: CustomerBalanceClient,
+  customerId: string,
+): Promise<CustomerBalanceSummary> {
+  const [charges, payments] = await Promise.all([
+    client.quote.aggregate({
+      where: { customerId, status: QuoteStatus.APPROVED },
+      _sum: { totalCents: true },
+    }),
+    client.payment.aggregate({
+      where: {
+        status: PaymentStatus.PAID,
+        quote: { customerId, status: QuoteStatus.APPROVED },
+      },
+      _sum: { amountCents: true },
+    }),
+  ]);
+
+  const totalContractedCents = charges._sum.totalCents ?? 0;
+  const totalPaidCents = payments._sum.amountCents ?? 0;
+
+  return {
+    totalContractedCents,
+    totalPaidCents,
+    pendingBalanceCents: totalContractedCents - totalPaidCents,
+  };
+}
+
 async function getCustomerOutstandingBalance(tx: Prisma.TransactionClient, customerId: string): Promise<number> {
-  const charges = await tx.quote.aggregate({
-    where: { customerId, status: QuoteStatus.APPROVED },
-    _sum: { totalCents: true },
-  });
-  const payments = await tx.payment.aggregate({
-    where: {
-      status: PaymentStatus.PAID,
-      quote: { customerId, status: QuoteStatus.APPROVED },
-    },
-    _sum: { amountCents: true },
-  });
+  const summary = await getCustomerBalanceSummary(tx, customerId);
 
-  const chargedCents = charges._sum.totalCents ?? 0;
-  const paidCents = payments._sum.amountCents ?? 0;
-
-  if (paidCents > chargedCents) {
+  if (summary.totalPaidCents > summary.totalContractedCents) {
     throw new PaymentOperationError("Los pagos registrados exceden el saldo aprobado del cliente.");
   }
 
-  return chargedCents - paidCents;
+  return summary.pendingBalanceCents;
 }
 
 async function ensurePaymentLedgerEntry(
