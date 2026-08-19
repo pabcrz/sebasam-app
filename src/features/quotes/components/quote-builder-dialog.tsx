@@ -70,6 +70,7 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
     sections: quote.sections && quote.sections.length > 0
       ? quote.sections.map((section) => ({
           name: section.name,
+          isAuthorized: section.isAuthorized,
           items: section.items.map((item) => ({
             type: item.type,
             description: item.description,

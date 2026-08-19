@@ -3,9 +3,9 @@
 import * as React from "react";
 
 import { Badge } from "@/components/ui";
-import { ListChecks, NotebookText, Truck, UserRound } from "lucide-react";
+import { Truck, UserRound } from "lucide-react";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
-import { formatQuantity, itemTypeLabels, ItemFormValue, SectionFormValue } from "./quote-builder-shared";
+import { formatQuantity, SectionFormValue } from "./quote-builder-shared";
 import { QuoteTotalsCard } from "./quote-totals-card";
 import { QuotePaymentBalanceIndicator } from "./quote-payment-balance-indicator";
 
@@ -114,17 +114,22 @@ export function QuotePreviewCard({
                     if (completeItems.length === 0) return null;
 
                     const isSelectable = Boolean(selectableSectionIds && section.id);
-                    const isSelected = !isSelectable || (selectableSectionIds ?? []).includes(section.id ?? "");
+                    const isSelected = isSelectable
+                      ? (selectableSectionIds ?? []).includes(section.id ?? "")
+                      : section.isAuthorized !== false;
 
                     const sectionSubtotalCents = completeItems.reduce(
                       (acc, item) => acc + Math.round(Number(item.quantity) * Number(item.unitPrice) * 100),
                       0
                     );
 
+                    const showsAuthorization = section.isAuthorized !== undefined;
+                    const shouldShowSectionHeader = hasMultipleSections || showsAuthorization;
+
                     return (
                       <React.Fragment key={sIndex}>
-                        {hasMultipleSections && (
-                          <tr className="bg-[var(--color-bg-soft)]/60 print:bg-gray-50/80 border-b border-[var(--color-border-light)]/50 print:border-gray-100">
+                        {shouldShowSectionHeader && (
+                          <tr className={`bg-[var(--color-bg-soft)]/60 print:bg-gray-50/80 border-b border-[var(--color-border-light)]/50 print:border-gray-100 ${isSelected ? "" : "opacity-60 print:opacity-100"}`}>
                             <td colSpan={4} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)] print:text-gray-800">
                               {isSelectable ? (
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -141,7 +146,16 @@ export function QuotePreviewCard({
                                   </span>
                                 </label>
                               ) : (
-                                section.name || `Sección ${sIndex + 1}`
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span>{section.name || `Sección ${sIndex + 1}`}</span>
+                                  {showsAuthorization ? (
+                                    <span className={section.isAuthorized
+                                      ? "rounded-full border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[var(--color-status-success-fg)]"
+                                      : "rounded-full border border-[var(--color-status-warning-border)] bg-[var(--color-status-warning-bg)] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[var(--color-status-warning-fg)]"}>
+                                      {section.isAuthorized ? "Autorizada" : "Pendiente de autorización"}
+                                    </span>
+                                  ) : null}
+                                </div>
                               )}
                             </td>
                           </tr>
