@@ -1,3 +1,4 @@
+
 "use client";
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -23,27 +24,11 @@ describe("QuoteCorrectDecisionForm", () => {
     
     fireEvent.click(screen.getByRole("button", { name: /Corregir decisión de cotización Q-1/ }));
 
-    const textarea = screen.getByPlaceholderText(/por qué se está corrigiendo/i);
-    fireEvent.change(textarea, { target: { value: "Mistake" } });
-
     const confirm = screen.getByRole("button", { name: /Confirmar corrección/ });
     fireEvent.click(confirm);
 
     await waitFor(() => {
-      expect(action).toHaveBeenCalledWith("q1", "REJECTED", "Mistake");
+      expect(action).toHaveBeenCalledWith("q1", "REJECTED");
     });
-  });
-
-  it("shows error if reason is empty", async () => {
-    const action = vi.fn();
-    render(<QuoteCorrectDecisionForm action={action} quoteId="q1" quoteNumber="Q-1" currentStatus="APPROVED" />);
-    
-    fireEvent.click(screen.getByRole("button", { name: /Corregir decisión de cotización Q-1/ }));
-
-    const confirm = screen.getByRole("button", { name: /Confirmar corrección/ });
-    fireEvent.click(confirm);
-
-    expect(await screen.findByText(/motivo.*obligatorio/i)).toBeInTheDocument();
-    expect(action).not.toHaveBeenCalled();
   });
 });

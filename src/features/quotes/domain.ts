@@ -311,12 +311,7 @@ export async function authorizeQuote(quoteId: string, note: string, actorId?: st
   });
 }
 
-export async function correctQuoteDecision(quoteId: string, nextStatus: "APPROVED" | "REJECTED", reason: string, actorId: string) {
-  const trimmedReason = reason.trim();
-  if (!trimmedReason) {
-    throw new QuoteDecisionError("El motivo de la corrección es obligatorio.");
-  }
-
+export async function correctQuoteDecision(quoteId: string, nextStatus: "APPROVED" | "REJECTED", actorId: string) {
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({
       where: { id: quoteId },
@@ -355,7 +350,7 @@ export async function correctQuoteDecision(quoteId: string, nextStatus: "APPROVE
         previousState,
         nextState: nextStatus,
         actorId,
-        reason: trimmedReason,
+        reason: "Corrección manual de decisión",
       }
     });
 
@@ -365,7 +360,7 @@ export async function correctQuoteDecision(quoteId: string, nextStatus: "APPROVE
         status: nextStatus,
         origin: QuoteDecisionOrigin.ADMIN,
         actorId,
-        note: `Corrección de decisión: ${trimmedReason}`,
+        note: "Corrección manual de decisión",
       }
     });
   });

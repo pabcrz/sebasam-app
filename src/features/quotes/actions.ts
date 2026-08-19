@@ -756,11 +756,11 @@ export async function authorizeQuoteAction(quoteId: string, note: string, author
   return { success: true };
 }
 
-export async function correctQuoteDecisionAction(quoteId: string, nextStatus: "APPROVED" | "REJECTED", reason: string) {
+export async function correctQuoteDecisionAction(quoteId: string, nextStatus: "APPROVED" | "REJECTED") {
   const { profile } = await requireOperationalRole();
 
   try {
-    await correctQuoteDecision(quoteId, nextStatus, reason, profile.id);
+    await correctQuoteDecision(quoteId, nextStatus, profile.id);
   } catch (error) {
     if (error instanceof QuoteDecisionError) {
       return { success: false, error: error.message };

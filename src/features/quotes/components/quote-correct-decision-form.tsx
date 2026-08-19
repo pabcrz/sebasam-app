@@ -11,12 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui";
-import { Textarea } from "@/components/ui";
-import { Label } from "@/components/ui";
 import type { ButtonVariant, ButtonSize } from "@/components/ui";
 
 export interface QuoteCorrectDecisionFormProps {
-  action: (quoteId: string, nextStatus: "APPROVED" | "REJECTED", reason: string) => Promise<{ success: boolean; error?: string }>;
+  action: (quoteId: string, nextStatus: "APPROVED" | "REJECTED") => Promise<{ success: boolean; error?: string }>;
   quoteId: string;
   quoteNumber: string;
   currentStatus: "APPROVED" | "REJECTED";
@@ -36,34 +34,26 @@ export function QuoteCorrectDecisionForm({
 }: QuoteCorrectDecisionFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
-  const [reason, setReason] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
 
   const nextStatus = currentStatus === "APPROVED" ? "REJECTED" : "APPROVED";
 
   const handleConfirm = React.useCallback(() => {
-    if (reason.trim().length === 0) {
-      setError("El motivo de la corrección es obligatorio.");
-      return;
-    }
-
     setError(null);
     startTransition(async () => {
-      const result = await action(quoteId, nextStatus, reason.trim());
+      const result = await action(quoteId, nextStatus);
 
       if (result.success) {
         setOpen(false);
-        setReason("");
       } else {
         setError(result.error ?? "No se pudo corregir la decisión.");
       }
     });
-  }, [action, quoteId, nextStatus, reason]);
+  }, [action, quoteId, nextStatus]);
 
   const handleOpenChange = React.useCallback(
     (newOpen: boolean) => {
       if (!newOpen) {
-        setReason("");
         setError(null);
       }
       setOpen(newOpen);
@@ -100,22 +90,7 @@ export function QuoteCorrectDecisionForm({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label htmlFor="correction-reason">Motivo de la corrección *</Label>
-              <Textarea
-                id="correction-reason"
-                placeholder="Especifica por qué se está corrigiendo la decisión..."
-                value={reason}
-                onChange={(event) => {
-                  setReason(event.target.value);
-                  if (error) setError(null);
-                }}
-                disabled={isPending}
-                rows={3}
-              />
-            </div>
-          </div>
+
 
           {error ? (
             <p role="alert" className="text-sm text-[var(--color-status-danger-fg)]">

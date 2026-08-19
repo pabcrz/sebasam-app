@@ -25,6 +25,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), sharedQuote: {
 type MockTransaction = {
   quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn> };
+  quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
   sharedQuote: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
 };
 
@@ -38,6 +39,11 @@ function mockTx(): MockTransaction {
     quoteDecision: {
       create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) =>
         Promise.resolve({ id: "d-1", ...args.data, createdAt: new Date() }),
+      ),
+    },
+    quoteLifecycleEvent: {
+      create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) =>
+        Promise.resolve({ id: "le-1", ...args.data, createdAt: new Date() }),
       ),
     },
     sharedQuote: {
@@ -465,86 +471,70 @@ describe("createSharedQuoteForQuote", () => {
 
 
 describe("correctQuoteDecision", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("allows correcting APPROVED to REJECTED with history and clears approvedAt", async () => {
-    const actorId = "user-1";
-    await prisma.quote.create({
-      data: {
-        id: "q-corr-1",
-        number: "Q-100",
-        customerId: "c-1",
-        title: "Test Quote",
-        status: "APPROVED",
-        approvedAt: new Date("2024-01-01T10:00:00Z"),
-        operationalDate: new Date(),
-      },
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-corr-1",
+      status: "APPROVED",
+      workOrder: null
     });
 
-    await correctQuoteDecision("q-corr-1", "REJECTED", "Mistake by client", actorId);
+    await correctQuoteDecision("q-corr-1", "REJECTED", "user-1");
 
-    const quote = await prisma.quote.findUnique({ where: { id: "q-corr-1" }, include: { lifecycleEvents: true, decisions: true } });
-    expect(quote?.status).toBe("REJECTED");
-    expect(quote?.approvedAt).toBeNull();
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "q-corr-1", status: "APPROVED" },
+      data: { status: "REJECTED", approvedAt: null }
+    });
     
-    expect(quote?.lifecycleEvents).toHaveLength(1);
-    expect(quote?.lifecycleEvents[0].previousState).toBe("APPROVED");
-    expect(quote?.lifecycleEvents[0].nextState).toBe("REJECTED");
-    expect(quote?.lifecycleEvents[0].reason).toBe("Mistake by client");
+    expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith({
+      data: {
+        quoteId: "q-corr-1",
+        previousState: "APPROVED",
+        nextState: "REJECTED",
+        actorId: "user-1",
+        reason: "Corrección manual de decisión",
+      }
+    });
 
-    expect(quote?.decisions).toHaveLength(1);
-    expect(quote?.decisions[0].status).toBe("REJECTED");
-    expect(quote?.decisions[0].note).toBe("Corrección de decisión: Mistake by client");
+    expect(tx.quoteDecision.create).toHaveBeenCalledWith({
+      data: {
+        quoteId: "q-corr-1",
+        status: "REJECTED",
+        origin: "ADMIN",
+        actorId: "user-1",
+        note: "Corrección manual de decisión",
+      }
+    });
   });
 
   it("allows correcting REJECTED to APPROVED with history and sets approvedAt", async () => {
-    const actorId = "user-1";
-    await prisma.quote.create({
-      data: {
-        id: "q-corr-2",
-        number: "Q-101",
-        customerId: "c-1",
-        title: "Test Quote",
-        status: "REJECTED",
-        operationalDate: new Date(),
-      },
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-corr-2",
+      status: "REJECTED",
+      workOrder: null
     });
 
-    await correctQuoteDecision("q-corr-2", "APPROVED", "Client called to accept", actorId);
+    await correctQuoteDecision("q-corr-2", "APPROVED", "user-1");
 
-    const quote = await prisma.quote.findUnique({ where: { id: "q-corr-2" } });
-    expect(quote?.status).toBe("APPROVED");
-    expect(quote?.approvedAt).toBeInstanceOf(Date);
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "q-corr-2", status: "REJECTED" },
+      data: { status: "APPROVED", approvedAt: expect.any(Date) }
+    });
   });
 
   it("fails if quote has a WorkOrder", async () => {
-    await prisma.quote.create({
-      data: {
-        id: "q-corr-3",
-        number: "Q-102",
-        customerId: "c-1",
-        title: "Test Quote",
-        status: "APPROVED",
-        operationalDate: new Date(),
-        workOrder: {
-          create: { number: "WO-1" }
-        }
-      },
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-corr-3",
+      status: "APPROVED",
+      workOrder: { id: "wo-1" }
     });
 
-    await expect(correctQuoteDecision("q-corr-3", "REJECTED", "Reason", "user-1")).rejects.toThrow(/orden de trabajo/);
-  });
-
-  it("fails if reason is empty", async () => {
-    await prisma.quote.create({
-      data: {
-        id: "q-corr-4",
-        number: "Q-103",
-        customerId: "c-1",
-        title: "Test Quote",
-        status: "APPROVED",
-        operationalDate: new Date(),
-      },
-    });
-
-    await expect(correctQuoteDecision("q-corr-4", "REJECTED", "   ", "user-1")).rejects.toThrow(/obligatorio/);
+    await expect(correctQuoteDecision("q-corr-3", "REJECTED", "user-1")).rejects.toThrow(/orden de trabajo/);
   });
 });
