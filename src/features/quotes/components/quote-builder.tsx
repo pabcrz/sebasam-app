@@ -119,7 +119,6 @@ export function QuoteBuilder({
   const hasChangedStep = React.useRef(false);
   const [step, setStep] = React.useState<Step>("client");
   const [stepError, setStepError] = React.useState<string | null>(null);
-  const [showItemValidation, setShowItemValidation] = React.useState(false);
   const [showCreateCustomer, setShowCreateCustomer] = React.useState(false);
   const [newCustomerName, setNewCustomerName] = React.useState("");
   const [newCustomerEmail, setNewCustomerEmail] = React.useState("");
@@ -491,11 +490,9 @@ export function QuoteBuilder({
     const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
 
     if (firstInvalidIndex !== -1) {
-      setShowItemValidation(true);
       return;
     }
 
-    setShowItemValidation(false);
     setStepError(null);
     const rowId = `quote-item-${nextItemRowId.current++}`;
     pendingItemRowId.current = rowId;
@@ -566,11 +563,9 @@ export function QuoteBuilder({
     const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
 
     if (firstInvalidIndex !== -1) {
-      setShowItemValidation(true);
       return;
     }
 
-    setShowItemValidation(false);
     setStepError(null);
     const rowId = `quote-item-${nextItemRowId.current++}`;
     pendingItemRowId.current = rowId;
@@ -603,7 +598,6 @@ export function QuoteBuilder({
       const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
 
       if (firstInvalidIndex !== -1) {
-        setShowItemValidation(true);
         setStepError(null);
         return;
       }
@@ -612,11 +606,9 @@ export function QuoteBuilder({
 
       if (normalizedSecs.length === 0 || normalizedSecs.every((s) => s.items.length === 0)) {
         setStepError("Ingresa al menos un concepto completo.");
-        setShowItemValidation(false);
         return;
       }
 
-      setShowItemValidation(false);
       setStepError(null);
       setSections(normalizedSecs);
     } else {
@@ -639,7 +631,6 @@ export function QuoteBuilder({
 
   function goToPrevious() {
     setStepError(null);
-    setShowItemValidation(false);
     const prevIndex = currentStepIndex - 1;
 
     if (prevIndex >= 0) {
@@ -651,11 +642,11 @@ export function QuoteBuilder({
     const itemError = sections
       .flatMap((section) => section.items)
       .map((item, index) => validateItemValue(item, index))
-      .find(Boolean);
+    .find(Boolean);
 
     if (itemError) {
-      setShowItemValidation(true);
-      setStepError(itemError);
+      setStep("items");
+      setStepError(null);
       return false;
     }
 
@@ -665,12 +656,10 @@ export function QuoteBuilder({
     const error = clientError ?? itemsError ?? notesError;
 
     if (error) {
-      setShowItemValidation(false);
       setStepError(error);
       return false;
     }
 
-    setShowItemValidation(false);
     setStepError(null);
     return true;
   }
@@ -946,7 +935,6 @@ export function QuoteBuilder({
             <QuoteBuilderItemsStep
               sections={sections}
               animatedRowId={animatedItemRowId}
-              showItemValidation={showItemValidation}
               completeItemsCount={completeItems.length}
               taxEnabled={taxEnabled}
               discount={discount}

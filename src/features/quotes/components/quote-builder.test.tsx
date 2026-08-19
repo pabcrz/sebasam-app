@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteBuilder } from "./quote-builder";
+import { getStepError } from "./quote-builder-shared";
 
 const customers = [
   { id: "cust-1", name: "Constructora del Norte" },
@@ -650,6 +651,38 @@ describe("QuoteBuilder", () => {
     expect(screen.getAllByText("Cambio de aceite")).toHaveLength(1);
   }, 10_000);
 
+  it("allows draft submission with a missing price without displaying a false zero", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue({ success: true });
+
+    render(<QuoteBuilder customers={customers} createAction={action} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Precio por confirmar");
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByTestId("concept-total-0")).toHaveTextContent("Pendiente");
+    expect(screen.getByTestId("concept-total-0")).not.toHaveTextContent("$0.00");
+
+    await user.click(screen.getByRole("button", { name: "Crear cotización" }));
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    expect((action.mock.calls[0][1] as FormData).get("sections.0.items.0.unitPrice")).toBe("");
+  });
+
+  it("blocks a commercial transition when a complete concept has no price", () => {
+    expect(
+      getStepError("items", {
+        customerId: "cust-1",
+        vehicle: { model: "F-150" },
+        title: "Servicio",
+        sections: [{ name: "General", items: [{ type: "LABOR", description: "Trabajo", quantity: "1", unitPrice: "" }], rowIds: ["row-1"] }],
+      }, true),
+    ).toBe("El concepto 1 necesita un precio unitario.");
+  });
+
   it("preserves edited customer, concept, and preview step after a failed save", async () => {
     const user = userEvent.setup();
     const saveAction = vi.fn().mockResolvedValue({ error: "No se pudo guardar." });
@@ -825,7 +858,7 @@ describe("QuoteBuilder", () => {
     expect(screen.getByText(/concepto 1 necesita una cantidad/i)).toBeInTheDocument();
   });
 
-  it("blocks advancing when a row has a negative unit price", async () => {
+  it("allows draft navigation with an invalid price for later commercial validation", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -842,7 +875,7 @@ describe("QuoteBuilder", () => {
     await user.type(unitPriceInput, "-100");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByText(/precio unitario.*no puede ser negativo/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Notas", level: 2 })).toBeInTheDocument();
   });
 
   it("clamps quantity input to a maximum of 100 on blur", async () => {
@@ -881,7 +914,7 @@ describe("QuoteBuilder", () => {
     expect(quantityInput).toHaveValue("5");
   });
 
-  it("blocks advancing when a row unit price is greater than 50000", async () => {
+  it("allows draft navigation when a price exceeds the commercial limit", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -898,7 +931,7 @@ describe("QuoteBuilder", () => {
     await user.type(unitPriceInput, "50000.01");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByText(/precio unitario.*demasiado alto/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Notas", level: 2 })).toBeInTheDocument();
   });
 
   it("blocks advancing when a row has a blank description", async () => {
@@ -948,7 +981,7 @@ describe("QuoteBuilder", () => {
     expect(quantityInput).toHaveValue("1234");
   });
 
-  it("blocks advancing when a row is only partially filled", async () => {
+  it("allows advancing a draft when only description and quantity are filled", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -959,14 +992,10 @@ describe("QuoteBuilder", () => {
     await user.type(descriptionInput, "Solo descripción");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByText(/concepto 1 necesita un precio unitario/i)).toBeInTheDocument();
-
-    await user.type(screen.getByLabelText(/precio unitario/i), "850");
-
-    expect(screen.queryByText(/concepto 1 necesita un precio unitario/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Notas", level: 2 })).toBeInTheDocument();
   });
 
-  it("clears the missing-concept error as soon as a complete concept is entered", async () => {
+  it("clears the missing-concept error as soon as a draft concept is entered", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -977,14 +1006,10 @@ describe("QuoteBuilder", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Ingresa al menos un concepto completo.");
 
     const [descriptionInput] = screen.getAllByLabelText(/descripción/i);
-    const [unitPriceInput] = screen.getAllByLabelText(/precio unitario/i);
     await user.type(descriptionInput, "Cambio de aceite");
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/necesita un precio unitario/i);
-
-    await user.type(unitPriceInput, "850");
-
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("alert").filter((alert) => alert.id.endsWith("-error"))).toHaveLength(0);
+    expect(screen.queryByText(/necesita un precio unitario/i)).not.toBeInTheDocument();
   });
 
   it("keeps and then clears the missing-title error as the title becomes valid", async () => {
@@ -1165,7 +1190,7 @@ describe("QuoteBuilder", () => {
     scrollIntoView.mockRestore();
   });
 
-  it("validates before adding, then scrolls to and focuses the exact new row", async () => {
+  it("adds a row and scrolls to and focuses the exact new row", async () => {
     const user = userEvent.setup();
     const scrollIntoView = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
@@ -1173,12 +1198,6 @@ describe("QuoteBuilder", () => {
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Cambio de aceite");
-    await user.click(screen.getByRole("button", { name: "+ Material" }));
-
-    expect(screen.getByText(/concepto 1 necesita un precio unitario/i)).toBeInTheDocument();
-    expect(screen.getAllByLabelText("Descripción", { selector: "input" })).toHaveLength(1);
-
-    await user.type(screen.getByLabelText("Precio unitario"), "850");
     await user.click(screen.getByRole("button", { name: "+ Material" }));
 
     const descriptions = screen.getAllByLabelText("Descripción", { selector: "input" });
@@ -1240,5 +1259,124 @@ describe("QuoteBuilder", () => {
 
     expect(screen.getByTestId("preview-customer-icon")).toBeInTheDocument();
     expect(screen.getByTestId("preview-vehicle-icon")).toBeInTheDocument();
+  });
+
+  it("keeps inactive item error slots stable and preserves price currency help", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const description = screen.getByLabelText("Descripción", { selector: "input" });
+    const quantity = screen.getByLabelText("Cantidad");
+    const unitPrice = screen.getByLabelText("Precio unitario");
+
+    for (const errorId of [
+      "sections-0-items-0-description-error",
+      "sections-0-items-0-quantity-error",
+      "sections-0-items-0-unitPrice-error",
+    ]) {
+      const errorSlot = document.getElementById(errorId);
+      expect(errorSlot).toBeEmptyDOMElement();
+      expect(errorSlot).toHaveClass("min-h-4", "text-xs");
+      expect(errorSlot).not.toHaveAttribute("role");
+    }
+
+    expect(description).not.toHaveAttribute("aria-invalid");
+    expect(description).not.toHaveAttribute("aria-describedby");
+    expect(quantity).not.toHaveAttribute("aria-invalid");
+    expect(quantity).not.toHaveAttribute("aria-describedby");
+    expect(unitPrice).not.toHaveAttribute("aria-invalid");
+    expect(unitPrice).toHaveAttribute(
+      "aria-describedby",
+      "sections-0-items-0-unitPrice-currency",
+    );
+    expect(unitPrice).toHaveAccessibleDescription("Importe en pesos mexicanos.");
+  });
+
+  it("shows item field errors immediately and clears each one after correction", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const description = screen.getByLabelText("Descripción", { selector: "input" });
+    const quantity = screen.getByLabelText("Cantidad");
+    const unitPrice = screen.getByLabelText("Precio unitario");
+
+    await user.type(description, "Cambio de aceite");
+    expect(screen.queryByText("El concepto 1 necesita un precio unitario.")).not.toBeInTheDocument();
+    expect(unitPrice).not.toHaveAttribute("aria-invalid");
+    expect(unitPrice).toHaveAttribute("aria-describedby", "sections-0-items-0-unitPrice-currency");
+
+    await user.clear(quantity);
+    expect(document.getElementById("sections-0-items-0-quantity-error")).toHaveTextContent(
+      "El concepto 1 necesita una cantidad.",
+    );
+    expect(quantity).toHaveAttribute("aria-invalid", "true");
+    expect(quantity).toHaveAttribute("aria-describedby", "sections-0-items-0-quantity-error");
+
+    await user.type(quantity, "2");
+    expect(document.getElementById("sections-0-items-0-quantity-error")).toBeEmptyDOMElement();
+    expect(quantity).not.toHaveAttribute("aria-invalid");
+
+    await user.clear(description);
+    expect(screen.getByRole("alert")).toHaveTextContent("El concepto 1 necesita una descripción.");
+    expect(description).toHaveAttribute("aria-invalid", "true");
+
+    await user.type(description, "Cambio de aceite corregido");
+    expect(document.getElementById("sections-0-items-0-description-error")).toBeEmptyDOMElement();
+    expect(description).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("revalidates items in the final action before calling the server action", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn();
+    render(<QuoteBuilder customers={customers} createAction={action} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const description = document.querySelector('input[name="sections.0.items.0.description"]') as HTMLInputElement;
+    fireEvent.change(description, { target: { value: "" } });
+
+    await user.click(screen.getByRole("button", { name: "Crear cotización" }));
+
+    expect(action).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Paso 2: Conceptos" })).toHaveAttribute("aria-current", "step");
+    expect(screen.getByText("El concepto 1 necesita una descripción.")).toBeInTheDocument();
+  });
+
+  it("keeps a server failure global while an item field is corrected", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue({ error: "No se pudo guardar." });
+    render(<QuoteBuilder customers={customers} createAction={action} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Crear cotización" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo guardar.");
+
+    await user.click(screen.getByRole("button", { name: "Paso 2: Conceptos" }));
+    const description = screen.getByLabelText("Descripción", { selector: "input" });
+    await user.clear(description);
+    expect(screen.getByText("El concepto 1 necesita una descripción.")).toBeInTheDocument();
+    expect(screen.getByText("No se pudo guardar.")).toBeInTheDocument();
+
+    await user.type(description, "Cambio de aceite corregido");
+    expect(screen.queryByText("El concepto 1 necesita una descripción.")).not.toBeInTheDocument();
+    expect(screen.getByText("No se pudo guardar.")).toBeInTheDocument();
   });
 });

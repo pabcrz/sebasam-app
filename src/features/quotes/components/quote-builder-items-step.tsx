@@ -21,7 +21,7 @@ import {
   SectionFormValue,
   maxUnitPrice,
   getMaxQuantityForType,
-  validateItemValue,
+  validateItemFields,
 } from "./quote-builder-shared";
 import { formatCents } from "@/features/quotes/lib/format";
 import {
@@ -43,7 +43,6 @@ import { QuoteTotalsCard } from "./quote-totals-card";
 export interface QuoteBuilderItemsStepProps {
   sections: SectionFormValue[];
   animatedRowId: string | null;
-  showItemValidation: boolean;
   completeItemsCount: number;
   taxEnabled: boolean;
   discount: string;
@@ -71,7 +70,6 @@ export interface QuoteBuilderItemsStepProps {
 export function QuoteBuilderItemsStep({
   sections,
   animatedRowId,
-  showItemValidation,
   completeItemsCount,
   taxEnabled,
   discount,
@@ -211,9 +209,17 @@ export function QuoteBuilderItemsStep({
                 const displayIndex = sections
                   .slice(0, sectionIndex)
                   .reduce((acc, s) => acc + s.items.length, 0) + itemIndex;
-                const itemError = showItemValidation ? validateItemValue(item, displayIndex) : null;
-                const lineTotalCents = Math.round(Number(item.quantity) * Number(item.unitPrice) * 100);
+                const itemErrors = validateItemFields(item, displayIndex, true);
+                const unitPrice = Number(item.unitPrice);
+                const lineTotalCents = item.unitPrice.trim() !== "" && Number.isFinite(unitPrice)
+                  ? Math.round(Number(item.quantity) * unitPrice * 100)
+                  : null;
                 const typeQuantityLimit = getMaxQuantityForType(item.type);
+                const fieldId = `sections-${sectionIndex}-items-${itemIndex}`;
+                const descriptionErrorId = `${fieldId}-description-error`;
+                const quantityErrorId = `${fieldId}-quantity-error`;
+                const unitPriceCurrencyId = `${fieldId}-unitPrice-currency`;
+                const unitPriceErrorId = `${fieldId}-unitPrice-error`;
 
                 return (
                   <SortableItem key={rowId} id={rowId}>
@@ -269,22 +275,31 @@ export function QuoteBuilderItemsStep({
                       </div>
                   <input type="hidden" name={`sections.${sectionIndex}.items.${itemIndex}.type`} value={item.type} />
                   <div className="grid gap-2">
-                    <Label htmlFor={`sections-${sectionIndex}-items-${itemIndex}-description`}>Descripción</Label>
+                    <Label htmlFor={`${fieldId}-description`}>Descripción</Label>
                     <Input
                       ref={(node) => onDescriptionRef(rowId, node)}
-                      id={`sections-${sectionIndex}-items-${itemIndex}-description`}
+                      id={`${fieldId}-description`}
                       name={`sections.${sectionIndex}.items.${itemIndex}.description`}
                       value={item.description}
                       onChange={(event) => onUpdateItem(sectionIndex, itemIndex, { description: event.target.value })}
                       placeholder="Ej. Bajar dos muelles"
+                      aria-describedby={itemErrors.description ? descriptionErrorId : undefined}
+                      aria-invalid={itemErrors.description ? true : undefined}
                     />
+                    <span
+                      id={descriptionErrorId}
+                      role={itemErrors.description ? "alert" : undefined}
+                      className="min-h-4 text-xs text-[var(--color-status-danger-fg)]"
+                    >
+                      {itemErrors.description}
+                    </span>
                   </div>
                   <div
                     className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end gap-3"
                     data-testid={`quantity-price-row-${displayIndex}`}
                   >
                     <div className="grid min-w-0 gap-2">
-                      <Label htmlFor={`sections-${sectionIndex}-items-${itemIndex}-quantity`}>Cantidad</Label>
+                      <Label htmlFor={`${fieldId}-quantity`}>Cantidad</Label>
                       <div className="flex w-full min-w-0 max-w-35 items-center overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
                         <Button
                           type="button"
@@ -298,7 +313,7 @@ export function QuoteBuilderItemsStep({
                           <Minus className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Input
-                          id={`sections-${sectionIndex}-items-${itemIndex}-quantity`}
+                          id={`${fieldId}-quantity`}
                           name={`sections.${sectionIndex}.items.${itemIndex}.quantity`}
                           type="text"
                           inputMode="numeric"
@@ -317,6 +332,8 @@ export function QuoteBuilderItemsStep({
                             onUpdateItem(sectionIndex, itemIndex, { quantity: clamped });
                           }}
                           onWheel={(event) => event.currentTarget.blur()}
+                          aria-describedby={itemErrors.quantity ? quantityErrorId : undefined}
+                          aria-invalid={itemErrors.quantity ? true : undefined}
                         />
                         <Button
                           type="button"
@@ -330,10 +347,17 @@ export function QuoteBuilderItemsStep({
                           <Plus className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </div>
+                      <span
+                        id={quantityErrorId}
+                        role={itemErrors.quantity ? "alert" : undefined}
+                        className="min-h-4 text-xs text-[var(--color-status-danger-fg)]"
+                      >
+                        {itemErrors.quantity}
+                      </span>
                     </div>
                     <div className="grid min-w-0 gap-2">
-                      <Label htmlFor={`sections-${sectionIndex}-items-${itemIndex}-unitPrice`}>Precio unitario</Label>
-                      <span id={`sections-${sectionIndex}-items-${itemIndex}-unitPrice-currency`} className="sr-only">
+                      <Label htmlFor={`${fieldId}-unitPrice`}>Precio unitario</Label>
+                      <span id={unitPriceCurrencyId} className="sr-only">
                         Importe en pesos mexicanos.
                       </span>
                       <div className="flex min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
@@ -345,31 +369,34 @@ export function QuoteBuilderItemsStep({
                           $
                         </span>
                         <Input
-                          id={`sections-${sectionIndex}-items-${itemIndex}-unitPrice`}
+                          id={`${fieldId}-unitPrice`}
                           name={`sections.${sectionIndex}.items.${itemIndex}.unitPrice`}
                           type="number"
                           min="0"
                           max={maxUnitPrice}
                           step="0.01"
-                          aria-describedby={`sections-${sectionIndex}-items-${itemIndex}-unitPrice-currency`}
+                          aria-describedby={`${unitPriceCurrencyId}${itemErrors.unitPrice ? ` ${unitPriceErrorId}` : ""}`}
+                          aria-invalid={itemErrors.unitPrice ? true : undefined}
                           value={item.unitPrice}
                           onChange={(event) => onUpdateItem(sectionIndex, itemIndex, { unitPrice: event.target.value })}
                           className="min-w-0 border-0 pl-1 shadow-none focus-visible:ring-0"
                         />
                       </div>
+                      <span
+                        id={unitPriceErrorId}
+                        role={itemErrors.unitPrice ? "alert" : undefined}
+                        className="min-h-4 text-xs text-[var(--color-status-danger-fg)]"
+                      >
+                        {itemErrors.unitPrice}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-1 text-sm text-[var(--color-text-muted)]">
                     <span>Importe</span>
                     <output className="font-medium" data-testid={`concept-total-${displayIndex}`} aria-label={`Importe del concepto ${displayIndex + 1}`}>
-                      {formatCents(Number.isFinite(lineTotalCents) ? lineTotalCents : 0)}
+                      {lineTotalCents === null ? "Pendiente" : formatCents(lineTotalCents)}
                     </output>
                   </div>
-                  {itemError ? (
-                    <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-3 py-2 text-sm text-[var(--color-status-danger-fg)]" role="status" aria-live="polite">
-                      {itemError}
-                    </p>
-                  ) : null}
                   </div>
                   </SortableItem>
                 );
