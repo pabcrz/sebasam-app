@@ -210,7 +210,7 @@ export function QuoteListCard({
             />
           ) : null}
 
-          {quote.status === "APPROVED" ? (
+          {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
             <WorkOrderOperationsDialog
               quoteNumber={quote.number}
               quoteStatus={quote.status}

@@ -6,12 +6,12 @@ vi.mock("next/navigation", () => ({
   notFound: vi.fn(),
 }));
 
-const { getWorkOrderById, getPaymentSettings } = vi.hoisted(() => ({
-  getWorkOrderById: vi.fn(),
+const { getCompletedWorkOrderById, getPaymentSettings } = vi.hoisted(() => ({
+  getCompletedWorkOrderById: vi.fn(),
   getPaymentSettings: vi.fn(),
 }));
 
-vi.mock("@/features/work-orders/queries", () => ({ getWorkOrderById }));
+vi.mock("@/features/work-orders/queries", () => ({ getCompletedWorkOrderById }));
 vi.mock("@/features/payment-settings/domain", () => ({ getPaymentSettings }));
 vi.mock("./print-button", () => ({ PrintButton: () => <button type="button">Imprimir</button> }));
 
@@ -19,7 +19,7 @@ import WorkOrderPrintPage from "./page";
 
 describe("WorkOrderPrintPage", () => {
   it("identifies legacy special work as Taller in the printed note", async () => {
-    getWorkOrderById.mockResolvedValue({
+    getCompletedWorkOrderById.mockResolvedValue({
       number: "T-001",
       isSpecial: true,
       specialAssigneeName: "Nombre heredado",
