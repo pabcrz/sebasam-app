@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui";
 import { Copy } from "lucide-react";
+import toast from "react-hot-toast";
 
 export interface QuoteDuplicateFormProps {
   action: (formData: FormData) => void | Promise<void>;
@@ -13,13 +14,11 @@ export interface QuoteDuplicateFormProps {
 
 export function QuoteDuplicateForm({ action, quoteId, iconOnly = false, actionLabelClassName }: QuoteDuplicateFormProps) {
   const [isPending, startTransition] = React.useTransition();
-  const [error, setError] = React.useState<string | null>(null);
 
   const handleDuplicate = React.useCallback(
     (event: React.MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
-      setError(null);
       startTransition(async () => {
         const formData = new FormData();
         formData.set("quoteId", quoteId);
@@ -30,7 +29,9 @@ export function QuoteDuplicateForm({ action, quoteId, iconOnly = false, actionLa
           if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
             throw error;
           }
-          setError("No se pudo duplicar la cotización. Intenta de nuevo.");
+          toast.error("No se pudo duplicar la cotización. Intenta de nuevo.", {
+            id: "quote-duplicate-error",
+          });
         }
       });
     },
@@ -38,22 +39,20 @@ export function QuoteDuplicateForm({ action, quoteId, iconOnly = false, actionLa
   );
 
   return (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        size={iconOnly ? "icon" : "sm"}
-        className={iconOnly ? "" : "w-full sm:w-auto"}
-        title="Duplicar cotización"
-        aria-label="Duplicar cotización"
-        loading={isPending}
-        disabled={isPending}
-        onClick={handleDuplicate}
-      >
-        {!isPending ? <Copy className="h-5 w-5" aria-hidden="true" /> : null}
-        {!iconOnly && !isPending ? <span className={actionLabelClassName}>Duplicar</span> : null}
-      </Button>
-      {error ? <p role="alert" className="basis-full text-xs text-[var(--color-status-danger-fg)]">{error}</p> : null}
-    </>
+    <Button
+      type="button"
+      variant="outline"
+      size={iconOnly ? "icon" : "sm"}
+      className={iconOnly ? "" : "w-full sm:w-auto"}
+      title="Duplicar cotización"
+      aria-label="Duplicar cotización"
+      loading={isPending}
+      disabled={isPending}
+      onClick={handleDuplicate}
+    >
+      {!isPending ? <Copy className="h-5 w-5" aria-hidden="true" /> : null}
+      {!iconOnly && !isPending ? <span className={actionLabelClassName}>Duplicar</span> : null}
+    </Button>
   );
 }
+
