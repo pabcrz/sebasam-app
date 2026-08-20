@@ -32,6 +32,15 @@ import {
 } from "./domain";
 
 const quotesPath = "/admin/quotes";
+const genericQuoteFormValidationError = "Revisa los datos e intenta de nuevo.";
+
+function quoteFormValidationError(issues: Array<{ message: string }>) {
+  const actionableIssue = issues.find(({ message }) =>
+    message.startsWith("Selecciona ") || message.startsWith("El año "),
+  );
+
+  return actionableIssue?.message ?? genericQuoteFormValidationError;
+}
 
 type QuoteItemFormInput = {
   type: FormDataEntryValue | null;
@@ -212,7 +221,7 @@ export async function createQuoteFromWorkspace(
   formData: FormData,
 ): Promise<QuoteFormActionState> {
   const parsed = quoteDraftFormInputSchema.safeParse(quoteFormDataToInput(formData));
-  if (!parsed.success) return { error: "Revisa los datos e intenta de nuevo." };
+  if (!parsed.success) return { error: quoteFormValidationError(parsed.error.issues) };
 
   try {
     await createQuote(parsed.data);
@@ -233,7 +242,7 @@ export async function createQuoteFromForm(
   const parsed = quoteDraftFormInputSchema.safeParse(quoteFormDataToInput(formData));
 
   if (!parsed.success) {
-    return { error: "Revisa los datos e intenta de nuevo." };
+    return { error: quoteFormValidationError(parsed.error.issues) };
   }
 
   try {
@@ -363,7 +372,7 @@ export async function updateDraftQuoteFromForm(
   const parsed = quoteDraftFormInputSchema.safeParse(quoteFormDataToInput(formData));
 
   if (!parsed.success) {
-    return { error: "Revisa los datos e intenta de nuevo." };
+    return { error: quoteFormValidationError(parsed.error.issues) };
   }
 
   try {
@@ -391,7 +400,7 @@ export async function updateDraftQuoteFromWorkspace(
   formData: FormData,
 ): Promise<QuoteFormActionState> {
   const parsed = quoteDraftFormInputSchema.safeParse(quoteFormDataToInput(formData));
-  if (!parsed.success) return { error: "Revisa los datos e intenta de nuevo." };
+  if (!parsed.success) return { error: quoteFormValidationError(parsed.error.issues) };
 
   try {
     await updateDraftQuote(quoteId, parsed.data);

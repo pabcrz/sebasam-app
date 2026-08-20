@@ -33,7 +33,10 @@ const centsFromDollarInput = z.preprocess((value) => {
   return Math.round(Number(normalized) * 100);
 }, z.number().int().nonnegative("Unit price must be zero or greater").max(MAX_UNIT_PRICE_CENTS, "Unit price is too large"));
 
-const optionalCentsFromDollarInput = centsFromDollarInput.optional();
+const optionalCentsFromDollarInput = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  centsFromDollarInput.optional(),
+);
 
 const quantitySchema = z.coerce
   .number()
