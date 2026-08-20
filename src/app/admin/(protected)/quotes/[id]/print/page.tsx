@@ -61,7 +61,7 @@ export default async function QuotePrintPage({ params }: PrintPageProps) {
             : formatSnapshotVehicle(quote.vehicleSnapshot)
         }
       >
-        <SharedQuoteView quote={viewQuote} token="" isNote={documentType === "Nota"} />
+        <SharedQuoteView quote={viewQuote} token="" isNote={documentType === "Nota"} isPrint={true} />
       </PublicQuoteShell>
     </div>
   );

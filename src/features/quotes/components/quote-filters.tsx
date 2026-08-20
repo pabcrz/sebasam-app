@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Filter, X } from "lucide-react";
 import type { QuoteStatus } from "@prisma/client";
@@ -15,6 +16,16 @@ const quoteStatusLabels: Record<QuoteStatus, string> = {
   CANCELLED: "Cancelada",
   ARCHIVED: "Archivada",
 };
+
+const statusChips: Array<{ key: QuoteStatus | "ALL"; label: string }> = [
+  { key: "ALL", label: "Todas" },
+  { key: "DRAFT", label: "Borrador" },
+  { key: "SENT", label: "Enviadas" },
+  { key: "APPROVED", label: "Aceptadas" },
+  { key: "REJECTED", label: "Declinadas" },
+  { key: "CANCELLED", label: "Canceladas" },
+  { key: "ARCHIVED", label: "Archivadas" },
+];
 
 type QuoteFiltersCustomer = {
   id: string;
@@ -55,6 +66,24 @@ function getActiveFilterSummary(filters: QuoteFilterInput, customers: QuoteFilte
   return summary;
 }
 
+function buildStatusFilterHref(currentFilters: QuoteFilterInput, targetStatus: QuoteStatus | "ALL"): string {
+  const params = new URLSearchParams();
+
+  if (targetStatus !== "ALL") {
+    params.set("status", targetStatus);
+  }
+
+  if (currentFilters.customerId) params.set("customerId", currentFilters.customerId);
+  if (currentFilters.number) params.set("number", currentFilters.number);
+  if (currentFilters.plate) params.set("plate", currentFilters.plate);
+  if (currentFilters.dateFrom) params.set("dateFrom", formatDateValue(currentFilters.dateFrom));
+  if (currentFilters.dateTo) params.set("dateTo", formatDateValue(currentFilters.dateTo));
+  if (currentFilters.hasWorkOrder !== undefined) params.set("hasWorkOrder", String(currentFilters.hasWorkOrder));
+
+  const query = params.toString();
+  return query ? `/admin/quotes?${query}` : "/admin/quotes";
+}
+
 export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -69,6 +98,14 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
     filters.showCancelled ||
     filters.showArchived;
   const activeFilterSummary = getActiveFilterSummary(filters, customers);
+
+  const activeChipKey: QuoteStatus | "ALL" = filters.status && isQuoteStatus(filters.status)
+    ? filters.status
+    : filters.showCancelled && !filters.showArchived
+      ? "CANCELLED"
+      : filters.showArchived && !filters.showCancelled
+        ? "ARCHIVED"
+        : "ALL";
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -90,6 +127,28 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
 
   return (
     <div className="grid gap-4">
+      {/* Quick Direct Status Chips */}
+      <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="Filtros directos por estado">
+        {statusChips.map((chip) => {
+          const isActive = activeChipKey === chip.key;
+          const href = buildStatusFilterHref(filters, chip.key);
+          return (
+            <Link
+              key={chip.key}
+              href={href}
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                isActive
+                  ? "bg-[var(--color-primary)] text-white shadow-xs"
+                  : "border border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]"
+              }`}
+              aria-pressed={isActive}
+            >
+              {chip.label}
+            </Link>
+          );
+        })}
+      </div>
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -154,9 +213,7 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Todos</SelectItem>
-                  {Object.entries(quoteStatusLabels)
-                    .filter(([value]) => value !== "CANCELLED" && value !== "ARCHIVED")
-                    .map(([value, label]) => (
+                  {Object.entries(quoteStatusLabels).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
                     </SelectItem>

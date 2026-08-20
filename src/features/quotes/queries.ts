@@ -53,12 +53,13 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
   where.deletedAt = null;
 
 
-  if (options.operationalQueue === "quotes") {
-    where.status = filters.status && quoteQueueStatuses.includes(filters.status as QuoteStatus)
-      ? filters.status as QuoteStatus
-      : { in: quoteQueueStatuses };
-  } else if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
+  if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
     where.status = filters.status as QuoteStatus;
+  } else if (options.operationalQueue === "quotes") {
+    const includedStatuses = [...quoteQueueStatuses];
+    if (filters.showCancelled) includedStatuses.push(QuoteStatus.CANCELLED);
+    if (filters.showArchived) includedStatuses.push(QuoteStatus.ARCHIVED);
+    where.status = { in: includedStatuses };
   } else {
     const hiddenStatuses: QuoteStatus[] = [];
     if (!filters.showCancelled) hiddenStatuses.push(QuoteStatus.CANCELLED);

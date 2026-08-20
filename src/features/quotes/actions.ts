@@ -747,7 +747,7 @@ export async function authorizeQuoteAction(quoteId: string, note: string, author
   return { success: true };
 }
 
-export async function correctQuoteDecisionAction(quoteId: string, nextStatus: "APPROVED" | "REJECTED") {
+export async function correctQuoteDecisionAction(quoteId: string, nextStatus: "APPROVED" | "REJECTED" | "DRAFT") {
   const { profile } = await requireOperationalRole();
 
   try {

@@ -24,6 +24,8 @@ export interface QuotePreviewCardProps {
   remainingCents?: number | null;
   validUntil: Date | null;
   isNote?: boolean;
+  isPrint?: boolean;
+  isApproved?: boolean;
   compactHeader?: boolean;
   /** When provided, sections become selectable (partial authorization). */
   selectableSectionIds?: string[];
@@ -47,6 +49,8 @@ export function QuotePreviewCard({
   remainingCents,
   validUntil,
   isNote,
+  isPrint,
+  isApproved,
   compactHeader,
   selectableSectionIds,
   onSectionToggle,
@@ -57,9 +61,49 @@ export function QuotePreviewCard({
 
   const hasMultipleSections = sections.length > 1;
   const hasPendingPrice = sections.some((section) => section.items.some((item) => item.description.trim() && item.unitPrice.trim() === ""));
-  const displaySubtotalCents = hasPendingPrice ? null : subtotalCents;
-  const displayTaxCents = hasPendingPrice ? null : taxCents;
-  const displayTotalCents = hasPendingPrice ? null : totalCents;
+
+  const hasPartialApproval = Boolean(isApproved) && sections.some((s) => s.isAuthorized === true) && sections.some((s) => s.isAuthorized === false);
+
+  // Calculate full totals across ALL sections
+  const allSectionsSubtotalCents = sections.reduce((acc, section) => {
+    const completeItems = section.items.filter((item) => item.description.trim() && item.unitPrice.trim() !== "" && Number(item.unitPrice) >= 0);
+    return acc + completeItems.reduce((secAcc, item) => secAcc + Math.round(Number(item.quantity) * Number(item.unitPrice) * 100), 0);
+  }, 0);
+
+  // Calculate authorized-only totals when approved with partial authorization
+  const authorizedSectionsSubtotalCents = sections
+    .filter((s) => s.isAuthorized)
+    .reduce((acc, section) => {
+      const completeItems = section.items.filter((item) => item.description.trim() && item.unitPrice.trim() !== "" && Number(item.unitPrice) >= 0);
+      return acc + completeItems.reduce((secAcc, item) => secAcc + Math.round(Number(item.quantity) * Number(item.unitPrice) * 100), 0);
+    }, 0);
+
+  const discountVal = discountCents ?? 0;
+  const hasTaxEnabled = taxCents !== null && taxCents > 0;
+
+  const allTaxableCents = Math.max(0, allSectionsSubtotalCents - discountVal);
+  const allTaxCents = hasTaxEnabled ? Math.round(allTaxableCents * 0.16) : 0;
+  const allTotalCents = allTaxableCents + allTaxCents;
+
+  const authorizedTaxableCents = Math.max(0, authorizedSectionsSubtotalCents - discountVal);
+  const authorizedTaxCents = hasTaxEnabled ? Math.round(authorizedTaxableCents * 0.16) : 0;
+  const authorizedTotalCents = authorizedTaxableCents + authorizedTaxCents;
+
+  const fullSubtotalCents = hasPendingPrice ? null : (hasPartialApproval ? authorizedSectionsSubtotalCents : allSectionsSubtotalCents);
+  const fullTaxCents = hasPendingPrice ? null : (hasPartialApproval ? authorizedTaxCents : allTaxCents);
+  const fullTotalCents = hasPendingPrice ? null : (hasPartialApproval ? authorizedTotalCents : allTotalCents);
+
+  const displaySubtotalCents = isPrint || hasPartialApproval
+    ? fullSubtotalCents
+    : (hasPendingPrice ? null : subtotalCents);
+  const displayTaxCents = isPrint || hasPartialApproval
+    ? fullTaxCents
+    : (hasPendingPrice ? null : taxCents);
+  const displayTotalCents = isPrint || hasPartialApproval
+    ? fullTotalCents
+    : (hasPendingPrice ? null : totalCents);
+
+  const partialNotice = hasPartialApproval ? "Total correspondiente únicamente a los conceptos autorizados." : null;
   let globalIndex = 0;
 
   return (
@@ -119,20 +163,22 @@ export function QuotePreviewCard({
                     const isSelectable = Boolean(selectableSectionIds && section.id);
                     const isSelected = isSelectable
                       ? (selectableSectionIds ?? []).includes(section.id ?? "")
-                      : section.isAuthorized !== false;
+                      : hasPartialApproval
+                        ? section.isAuthorized === true
+                        : true;
 
                     const sectionSubtotalCents = completeItems.reduce(
                       (acc, item) => acc + Math.round(Number(item.quantity) * Number(item.unitPrice) * 100),
                       0
                     );
 
-                    const showsAuthorization = section.isAuthorized !== undefined;
-                    const shouldShowSectionHeader = hasMultipleSections || showsAuthorization;
+                    const showsBadge = hasPartialApproval && section.isAuthorized === true;
+                    const shouldShowSectionHeader = hasMultipleSections || showsBadge;
 
                     return (
                       <React.Fragment key={sIndex}>
                         {shouldShowSectionHeader && (
-                          <tr className={`bg-[var(--color-bg-soft)]/60 print:bg-gray-50/80 border-b border-[var(--color-border-light)]/50 print:border-gray-100 ${isSelected ? "" : "opacity-60 print:opacity-100"}`}>
+                          <tr className={`bg-[var(--color-bg-soft)]/60 print:bg-gray-50/80 border-b border-[var(--color-border-light)]/50 print:border-gray-100 ${isSelected ? "" : "opacity-40 print:opacity-40"}`}>
                             <td colSpan={4} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)] print:text-gray-800">
                               {isSelectable ? (
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -151,11 +197,9 @@ export function QuotePreviewCard({
                               ) : (
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span>{section.name || `Sección ${sIndex + 1}`}</span>
-                                  {showsAuthorization ? (
-                                    <span className={section.isAuthorized
-                                      ? "rounded-full border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[var(--color-status-success-fg)]"
-                                      : "rounded-full border border-[var(--color-status-warning-border)] bg-[var(--color-status-warning-bg)] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[var(--color-status-warning-fg)]"}>
-                                      {section.isAuthorized ? "Autorizada" : "Pendiente de autorización"}
+                                  {showsBadge ? (
+                                    <span className="rounded-full border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[var(--color-status-success-fg)] print:border-green-300 print:bg-green-50 print:text-green-800">
+                                      Autorizada
                                     </span>
                                   ) : null}
                                 </div>
@@ -168,7 +212,7 @@ export function QuotePreviewCard({
                           const quantityNum = Number(item.quantity);
                            const lineTotalCents = item.unitPrice.trim() ? Math.round(quantityNum * Number(item.unitPrice) * 100) : null;
                           return (
-                            <tr key={idx} className={`print:text-black hover:bg-[var(--color-bg-soft)] print:hover:bg-transparent ${isSelected ? "" : "opacity-40 print:opacity-100"}`}>
+                            <tr key={idx} className={`print:text-black hover:bg-[var(--color-bg-soft)] print:hover:bg-transparent ${isSelected ? "" : "opacity-40 print:opacity-40 text-[var(--color-text-muted)] print:text-gray-400"}`}>
                               <td className="px-3 py-2 align-top text-[var(--color-text-muted)] print:text-gray-700 w-1 whitespace-nowrap text-center font-medium">
                                 {item.type === "LABOR" && quantityNum === 1 ? "-" : formatQuantity(item.quantity)}
                               </td>
@@ -181,7 +225,7 @@ export function QuotePreviewCard({
                           );
                         })}
                         {hasMultipleSections && (
-                          <tr className={`bg-[var(--color-bg-soft)]/50 print:bg-gray-50/50 ${isSelected ? "" : "opacity-40 print:opacity-100"}`}>
+                          <tr className={`bg-[var(--color-bg-soft)]/50 print:bg-gray-50/50 ${isSelected ? "" : "opacity-40 print:opacity-40"}`}>
                             <td colSpan={3} className="px-3 py-1.5 text-right text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-600">
                               Subtotal
                             </td>
@@ -199,7 +243,16 @@ export function QuotePreviewCard({
           )}
         </div>
 
-        <QuoteTotalsCard subtotalCents={displaySubtotalCents} discountCents={discountCents} taxCents={displayTaxCents} totalCents={displayTotalCents} />
+        <QuoteTotalsCard
+          subtotalCents={displaySubtotalCents}
+          discountCents={discountCents}
+          taxCents={displayTaxCents}
+          totalCents={displayTotalCents}
+          printSubtotalCents={fullSubtotalCents}
+          printTaxCents={fullTaxCents}
+          printTotalCents={fullTotalCents}
+          partialNotice={partialNotice}
+        />
         <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} />
 
         {description ? (
