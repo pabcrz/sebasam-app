@@ -9,17 +9,27 @@ const draft = {
   description: "Observación inicial",
   taxEnabled: true,
   discountCents: "0",
-  sections: [{ name: "General", items: [{ type: QuoteItemType.SERVICE, description: "Revisar frenos", quantity: "1", unitPrice: "" }] }],
+  sections: [{ name: "General", items: [{ type: QuoteItemType.SERVICE, description: "Revisar frenos", quantity: "1", unitPriceCents: "" }] }],
 };
 
 describe("draft quote persistence contract", () => {
-  it("accepts a draft without a customer and with a pending price", () => {
-    const parsed = quoteDraftFormInputSchema.safeParse(draft);
+  it.each(["", "   "])("accepts a draft without a customer and with pending price %j", (unitPriceCents) => {
+    const parsed = quoteDraftFormInputSchema.safeParse({
+      ...draft,
+      sections: [{ ...draft.sections[0], items: [{ ...draft.sections[0].items[0], unitPriceCents }] }],
+    });
     expect(parsed.success).toBe(true);
     if (parsed.success) {
       expect(parsed.data.customerId).toBeUndefined();
       expect(parsed.data.sections[0]?.items[0]?.unitPriceCents).toBeUndefined();
     }
+  });
+
+  it.each(["not-a-price", "-0.01", "50000.01"])("rejects invalid pending-price input %j", (unitPriceCents) => {
+    expect(quoteDraftFormInputSchema.safeParse({
+      ...draft,
+      sections: [{ ...draft.sections[0], items: [{ ...draft.sections[0].items[0], unitPriceCents }] }],
+    }).success).toBe(false);
   });
 
   it.each([
