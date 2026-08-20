@@ -75,8 +75,11 @@ export function QuoteListRow({
 }: QuoteListRowProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
-  const paymentRequestContext = quote.customer ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts) : null;
   const canUsePaymentActions = quote.status === "APPROVED" && quote.workOrder?.status === "IN_PROGRESS";
+  const paymentRequestContext = canUsePaymentActions && quote.customer &&
+    quote.subtotalCents !== null && quote.taxCents !== null && quote.totalCents !== null
+    ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts)
+    : null;
 
   return (
     <TableRow

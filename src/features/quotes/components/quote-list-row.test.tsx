@@ -159,6 +159,22 @@ describe("QuoteListRow", () => {
     expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
+  it("renders a pending-price draft without payment actions", () => {
+    const quote = createMockQuote();
+
+    renderRow(createMockQuote({
+      subtotalCents: null,
+      taxCents: null,
+      totalCents: null,
+      items: quote.items.map((item) => ({ ...item, unitPriceCents: null, totalCents: null })),
+    }));
+
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /preparar y compartir cotización c-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
+  });
+
   it("renders status badge", () => {
     renderRow(createMockQuote({ status: "APPROVED" }));
 
@@ -169,6 +185,28 @@ describe("QuoteListRow", () => {
     renderRow(createMockQuote({ status }));
 
     expect(screen.getByRole("button", { name: /gestionar trabajo/i })).toBeInTheDocument();
+  });
+
+  it("preserves payment actions for approved quotes with work in progress", () => {
+    renderRow(createMockQuote({
+      status: "APPROVED",
+      workOrder: { number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+    }));
+
+    expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
+  });
+
+  it("hides payment actions when an approved in-progress quote has incomplete totals", () => {
+    renderRow(createMockQuote({
+      status: "APPROVED",
+      workOrder: { number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+      subtotalCents: null,
+      taxCents: null,
+      totalCents: null,
+    }));
+
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /gestionar orden de trabajo ot-001/i })).toBeInTheDocument();
   });
 
   it("does not render cancel action for cancelled quotes", () => {

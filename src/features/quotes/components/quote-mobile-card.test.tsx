@@ -211,6 +211,22 @@ describe("QuoteListCard", () => {
     expect(archive).toHaveAttribute("title", "Archivar cotización C-001");
   });
 
+  it("renders a pending-price draft without payment actions", () => {
+    const quote = createMockQuote();
+
+    renderCard(createMockQuote({
+      subtotalCents: null,
+      taxCents: null,
+      totalCents: null,
+      items: quote.items.map((item) => ({ ...item, unitPriceCents: null, totalCents: null })),
+    }));
+
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /editar cotización c-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /preparar y compartir cotización c-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
+  });
+
   it("keeps the work action icon-only on mobile and labeled on desktop", () => {
     renderCard(createMockQuote({ status: "DRAFT" }));
 
@@ -225,6 +241,28 @@ describe("QuoteListCard", () => {
     renderCard(createMockQuote({ status: "SENT" }));
 
     expect(screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" })).toBeInTheDocument();
+  });
+
+  it("preserves payment actions for approved quotes with work in progress", () => {
+    renderCard(createMockQuote({
+      status: "APPROVED",
+      workOrder: { number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+    }));
+
+    expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
+  });
+
+  it("hides payment actions when an approved in-progress quote has incomplete totals", () => {
+    renderCard(createMockQuote({
+      status: "APPROVED",
+      workOrder: { number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+      subtotalCents: null,
+      taxCents: null,
+      totalCents: null,
+    }));
+
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /gestionar orden de trabajo ot-001/i })).toBeInTheDocument();
   });
 
   it("renders authorize button for sent quotes", () => {

@@ -78,11 +78,14 @@ export function QuoteListCard({
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
   const openPreview = React.useCallback(() => setPreviewOpen(true), []);
-  const paymentRequestContext = quote.customer ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts) : null;
   const vehicleDescription = quote.vehicle
     ? formatVehicle(quote.vehicle)
     : formatSnapshotVehicle(quote.vehicleSnapshot);
   const canUsePaymentActions = quote.status === "APPROVED" && quote.workOrder?.status === "IN_PROGRESS";
+  const paymentRequestContext = canUsePaymentActions && quote.customer &&
+    quote.subtotalCents !== null && quote.taxCents !== null && quote.totalCents !== null
+    ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts)
+    : null;
   const actionLabelClassName = "sr-only sm:not-sr-only";
 
   return (
