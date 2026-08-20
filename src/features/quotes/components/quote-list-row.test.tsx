@@ -165,8 +165,8 @@ describe("QuoteListRow", () => {
     expect(screen.getByText("Aprobada")).toBeInTheDocument();
   });
 
-  it("renders work order operations trigger for approved quotes", () => {
-    renderRow(createMockQuote({ status: "APPROVED" }));
+  it.each(["DRAFT", "SENT", "APPROVED"] as const)("renders work order operations trigger for %s quotes", (status) => {
+    renderRow(createMockQuote({ status }));
 
     expect(screen.getByRole("button", { name: /gestionar trabajo/i })).toBeInTheDocument();
   });

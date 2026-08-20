@@ -212,13 +212,19 @@ describe("QuoteListCard", () => {
   });
 
   it("keeps the work action icon-only on mobile and labeled on desktop", () => {
-    renderCard(createMockQuote({ status: "APPROVED" }));
+    renderCard(createMockQuote({ status: "DRAFT" }));
 
     const work = screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" });
     expect(work).toHaveClass("h-10", "w-10", "px-0", "sm:h-9", "sm:w-auto", "sm:px-3");
     expect(work.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
     expect(work.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
     expect(work).toHaveAttribute("title", "Gestionar trabajo de cotización C-001");
+  });
+
+  it("keeps work-order management visible for sent quotes", () => {
+    renderCard(createMockQuote({ status: "SENT" }));
+
+    expect(screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" })).toBeInTheDocument();
   });
 
   it("renders authorize button for sent quotes", () => {

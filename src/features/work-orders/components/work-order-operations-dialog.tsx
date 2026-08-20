@@ -193,11 +193,11 @@ export function WorkOrderOperationsDialog({
     }), "rollback");
   };
 
-  if (quoteStatus !== "APPROVED") return null;
+  if (!(["DRAFT", "SENT", "APPROVED"] as QuoteStatus[]).includes(quoteStatus)) return null;
 
   const isAssigned = workOrder?.status === "ASSIGNED";
   const isCompleted = workOrder?.status === "COMPLETED";
-  const canRollback = workOrder && ["PLANNED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"].includes(workOrder.status);
+  const canRollback = quoteStatus === "APPROVED" && workOrder && ["PLANNED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"].includes(workOrder.status);
   const isAssignmentBusy = pendingAction !== null || isPending;
 
   return (

@@ -5,7 +5,7 @@ const getWorkOrderByIdMock = vi.hoisted(() => vi.fn());
 const getPaymentSettingsMock = vi.hoisted(() => vi.fn());
 const publicQuoteShellMock = vi.hoisted(() => vi.fn(({ date }: { date: Date }) => <div data-testid="public-note-date">{date.toISOString()}</div>));
 
-vi.mock("@/features/work-orders/queries", () => ({ getWorkOrderById: getWorkOrderByIdMock }));
+vi.mock("@/features/work-orders/queries", () => ({ getCompletedWorkOrderById: getWorkOrderByIdMock }));
 vi.mock("@/features/payment-settings/domain", () => ({ getPaymentSettings: getPaymentSettingsMock }));
 vi.mock("@/features/public-quotes/components/public-quote-shell", () => ({ PublicQuoteShell: publicQuoteShellMock }));
 vi.mock("@/features/public-quotes/components/shared-quote-view", () => ({ SharedQuoteView: () => null }));
