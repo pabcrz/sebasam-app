@@ -57,12 +57,6 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
 import { authorizeQuote, getOrCreateSharedQuoteForQuote } from "./domain";
 
-class MockFormData {
-  private data = new Map<string, string>();
-  get(name: string): string | null { return this.data.get(name) ?? null; }
-  set(name: string, value: string): void { this.data.set(name, value); }
-}
-
 type MockTx = {
   quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   quoteItem: { deleteMany: ReturnType<typeof vi.fn>; createMany: ReturnType<typeof vi.fn> };
@@ -111,7 +105,7 @@ function validInput() {
 }
 
 function buildFormData(overrides: Record<string, string> = {}) {
-  const formData = new MockFormData();
+  const formData = new FormData();
   const defaults: Record<string, string> = {
     customerId: "cust-1", plate: "", brand: "", model: "Hilux", color: "", year: "",
     title: "Servicio", description: "", taxEnabled: "on", discount: "0", operationalDate: "2026-07-14",
@@ -383,6 +377,21 @@ describe("updateDraftQuoteFromForm", () => {
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?updated=1");
   });
 
+  it("updates a draft through FormData with a pending price", async () => {
+    const tx = mockTx();
+
+    await updateDraftQuoteFromForm("quote-1", {}, buildFormData({ "sections.0.items.0.unitPrice": "" }));
+
+    expect(tx.quote.update.mock.calls[0][0].data).toMatchObject({
+      subtotalCents: null,
+      taxCents: null,
+      totalCents: null,
+    });
+    expect(tx.quoteItem.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ unitPriceCents: null, totalCents: null })],
+    });
+  });
+
   it("returns an error when form data is malformed", async () => {
     await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData({ title: "" }) as unknown as FormData))
       .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
@@ -437,7 +446,32 @@ describe("createQuoteFromForm", () => {
     mockTx();
     const futureYear = String(new Date().getFullYear() + 2);
     await expect(createQuoteFromForm({}, buildFormData({ year: futureYear }) as unknown as FormData))
-      .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
+      .resolves.toEqual({ error: "El año del vehículo no puede ser mayor al próximo año" });
+  });
+
+  it("creates a draft through FormData with a pending price", async () => {
+    const tx = mockTx();
+
+    await createQuoteFromForm({}, buildFormData({ "sections.0.items.0.unitPrice": "" }));
+
+    const createData = tx.quote.create.mock.calls[0][0].data;
+    expect(createData).toMatchObject({ subtotalCents: null, taxCents: null, totalCents: null });
+    expect(createData.sections.create[0].items.create[0]).toMatchObject({
+      unitPriceCents: null,
+      totalCents: null,
+    });
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?created=1");
+  });
+
+  it("returns the actionable identity issue", async () => {
+    await expect(createQuoteFromForm({}, buildFormData({
+      customerId: "",
+      plate: "",
+      brand: "",
+      model: "",
+    }))).resolves.toEqual({
+      error: "Selecciona un cliente o identifica la unidad con placas o marca y modelo.",
+    });
   });
 
   it("submits exactly the normalized non-empty concepts", async () => {
@@ -747,7 +781,7 @@ describe("duplicateQuoteFromForm", () => {
       sections: [],
     });
 
-    const formData = new MockFormData();
+    const formData = new FormData();
     formData.set("quoteId", "quote-source");
 
     await duplicateQuoteFromForm(formData as unknown as FormData);
@@ -759,7 +793,7 @@ describe("duplicateQuoteFromForm", () => {
   });
 
   it("redirects with invalid error when quoteId is missing", async () => {
-    await duplicateQuoteFromForm(new MockFormData() as unknown as FormData);
+    await duplicateQuoteFromForm(new FormData());
 
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid");
   });
@@ -767,7 +801,7 @@ describe("duplicateQuoteFromForm", () => {
   it("redirects with duplicate-failed when the original quote cannot be duplicated", async () => {
     mockTx();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-    const formData = new MockFormData();
+    const formData = new FormData();
     formData.set("quoteId", "missing-quote");
 
     await duplicateQuoteFromForm(formData as unknown as FormData);
@@ -798,7 +832,7 @@ describe("deleteQuoteFromForm", () => {
 
   it("authorizes and soft-deletes once before redirecting without revalidation", async () => {
     const tx = mockTx();
-    const formData = new MockFormData();
+    const formData = new FormData();
     formData.set("quoteId", "quote-1");
 
     await deleteQuoteFromForm(formData as unknown as FormData);
@@ -847,7 +881,7 @@ describe("cancelQuoteFromForm", () => {
     tx.quote.updateMany.mockResolvedValue({ count: 1 });
     tx.quote.findUniqueOrThrow.mockResolvedValue({ id: "quote-1", status: QuoteStatus.CANCELLED });
 
-    const formData = new MockFormData();
+    const formData = new FormData();
     formData.set("quoteId", "quote-1");
 
     await cancelQuoteFromForm(formData as unknown as FormData);
@@ -856,13 +890,13 @@ describe("cancelQuoteFromForm", () => {
   });
 
   it("redirects with invalid-cancellation when quoteId is missing", async () => {
-    await cancelQuoteFromForm(new MockFormData() as unknown as FormData);
+    await cancelQuoteFromForm(new FormData());
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid-cancellation");
   });
 
   it("redirects with not-draft error when quote is no longer draft", async () => {
     mockTx(QuoteStatus.SENT);
-    const formData = new MockFormData();
+    const formData = new FormData();
     formData.set("quoteId", "quote-1");
 
     await cancelQuoteFromForm(formData as unknown as FormData);
