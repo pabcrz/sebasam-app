@@ -76,6 +76,30 @@ describe("listQuotes filters", () => {
     expect(getFindManyCall().where.NOT.workOrder.status.in).not.toContain("PLANNED");
   });
 
+  it("respects explicit status filter in operationalQueue", async () => {
+    await listPaginatedQuotes({ status: "REJECTED" }, { operationalQueue: "quotes" });
+
+    expect(getFindManyCall().where).toMatchObject({
+      status: "REJECTED",
+    });
+  });
+
+  it("includes cancelled quotes in operationalQueue when showCancelled is true", async () => {
+    await listPaginatedQuotes({ showCancelled: true }, { operationalQueue: "quotes" });
+
+    expect(getFindManyCall().where).toMatchObject({
+      status: { in: ["DRAFT", "SENT", "APPROVED", "CANCELLED"] },
+    });
+  });
+
+  it("includes archived quotes in operationalQueue when showArchived is true", async () => {
+    await listPaginatedQuotes({ showArchived: true }, { operationalQueue: "quotes" });
+
+    expect(getFindManyCall().where).toMatchObject({
+      status: { in: ["DRAFT", "SENT", "APPROVED", "ARCHIVED"] },
+    });
+  });
+
   it("paginates newest-first while preserving filters", async () => {
     (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(
       Array.from({ length: 21 }, (_, index) => ({

@@ -316,7 +316,7 @@ export async function authorizeQuote(quoteId: string, note: string, actorId?: st
   });
 }
 
-export async function correctQuoteDecision(quoteId: string, nextStatus: "APPROVED" | "REJECTED", actorId: string) {
+export async function correctQuoteDecision(quoteId: string, nextStatus: "APPROVED" | "REJECTED" | "DRAFT", actorId: string) {
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({
       where: { id: quoteId },
@@ -347,6 +347,13 @@ export async function correctQuoteDecision(quoteId: string, nextStatus: "APPROVE
 
     if (result.count !== 1) {
       throw new QuoteDecisionError("El estado de la cotización cambió. Recarga e intenta de nuevo.");
+    }
+
+    if (nextStatus === QuoteStatus.APPROVED) {
+      await tx.quoteSection.updateMany({
+        where: { quoteId },
+        data: { isAuthorized: true },
+      });
     }
 
     await tx.quoteLifecycleEvent.create({

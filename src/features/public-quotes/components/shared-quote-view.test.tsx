@@ -293,5 +293,14 @@ describe("SharedQuoteView", () => {
       expect(screen.getByRole("button", { name: "Aceptar cotización" })).toBeInTheDocument();
       expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
     });
+
+    it("renders complete totals and hides decision controls in isPrint mode", () => {
+      render(<SharedQuoteView quote={makePartiallyAuthorizedQuote()} token="" isPrint={true} />);
+
+      expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
+      expect(screen.queryByRole("button", { name: /Aceptar/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Declinar/i })).not.toBeInTheDocument();
+      expect(screen.queryByTestId("section-toggle-sec-1")).not.toBeInTheDocument();
+    });
   });
 });

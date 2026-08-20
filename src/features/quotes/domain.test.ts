@@ -24,6 +24,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), sharedQuote: {
 
 type MockTransaction = {
   quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  quoteSection: { updateMany: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
   sharedQuote: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
@@ -35,6 +36,9 @@ function mockTx(): MockTransaction {
       findUnique: vi.fn(),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       update: vi.fn(),
+    },
+    quoteSection: {
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     quoteDecision: {
       create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) =>
@@ -580,6 +584,58 @@ describe("correctQuoteDecision", () => {
     expect(tx.quote.updateMany).toHaveBeenCalledWith({
       where: { id: "q-corr-2", status: "REJECTED" },
       data: { status: "APPROVED", approvedAt: expect.any(Date) }
+    });
+  });
+
+  it("allows correcting REJECTED to DRAFT with history and clears approvedAt", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-corr-draft-1",
+      status: "REJECTED",
+      workOrder: null
+    });
+
+    await correctQuoteDecision("q-corr-draft-1", "DRAFT", "user-1");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "q-corr-draft-1", status: "REJECTED" },
+      data: { status: "DRAFT", approvedAt: null }
+    });
+
+    expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith({
+      data: {
+        quoteId: "q-corr-draft-1",
+        previousState: "REJECTED",
+        nextState: "DRAFT",
+        actorId: "user-1",
+        reason: "Corrección manual de decisión",
+      }
+    });
+
+    expect(tx.quoteDecision.create).toHaveBeenCalledWith({
+      data: {
+        quoteId: "q-corr-draft-1",
+        status: "DRAFT",
+        origin: "ADMIN",
+        actorId: "user-1",
+        note: "Corrección manual de decisión",
+      }
+    });
+  });
+
+  it("allows correcting APPROVED to DRAFT with history and clears approvedAt", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-corr-draft-2",
+      status: "APPROVED",
+      workOrder: null
+    });
+
+    await correctQuoteDecision("q-corr-draft-2", "DRAFT", "user-1");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "q-corr-draft-2", status: "APPROVED" },
+      data: { status: "DRAFT", approvedAt: null }
     });
   });
 

@@ -32,7 +32,7 @@ interface QuoteListRowProps {
   cancelAction: (formData: FormData) => void | Promise<void>;
   shareAction: () => Promise<{ success: boolean; error?: string }>;
   authorizeAction: (note: string, authorizedSectionIds?: string[]) => Promise<{ success: boolean; error?: string }>;
-  correctDecisionAction: (quoteId: string, nextStatus: "APPROVED" | "REJECTED") => Promise<{ success: boolean; error?: string }>;
+  correctDecisionAction: (quoteId: string, nextStatus: "APPROVED" | "REJECTED" | "DRAFT") => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
   cashPaymentAction: (amount: string, operationKey: string) => Promise<{

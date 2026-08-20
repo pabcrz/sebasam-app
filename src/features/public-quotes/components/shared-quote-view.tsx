@@ -26,6 +26,7 @@ export interface SharedQuoteViewProps {
   quote: SharedQuoteViewQuote;
   token: string;
   isNote?: boolean;
+  isPrint?: boolean;
   business?: { contactPhone: string; contactWhatsapp: string };
 }
 
@@ -38,9 +39,10 @@ function initialSelectedSectionIds(sections: SharedQuoteViewQuote["sections"]) {
     : sections.map((section) => section.id);
 }
 
-export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteViewProps) {
+export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, business }: SharedQuoteViewProps) {
   const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
+  const isPrint = isPrintProp ?? (!token || Boolean(isNote));
 
   React.useEffect(() => {
     // Refresh the quote data every 5 seconds if no decision has been made
@@ -116,7 +118,11 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
     ? quote.sections.map((section) => ({
         id: section.id,
         name: section.name,
-        isAuthorized: decision === "accepted" ? selectedSectionIds.includes(section.id) : section.isAuthorized,
+        isAuthorized: isPrint
+          ? undefined
+          : decision === "accepted"
+            ? selectedSectionIds.includes(section.id)
+            : section.isAuthorized,
         items: section.items.map((item) => ({
           type: item.type,
           description: item.description,
@@ -138,7 +144,7 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
         },
       ];
 
-  const showDecisionControls = quote.status === "SENT" && !hasDecided;
+  const showDecisionControls = !isPrint && Boolean(token) && quote.status === "SENT" && !hasDecided;
 
   const calculateSelectedTotals = () => {
     let subtotalCents = 0;
@@ -155,10 +161,10 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
     return { subtotalCents, taxCents, totalCents };
   };
 
-  const totals = quote.sections.length > 1 && selectedSectionIds.length !== quote.sections.length
-    ? calculateSelectedTotals()
-    : { subtotalCents: quote.subtotalCents == null ? null : Number(quote.subtotalCents), taxCents: quote.taxCents == null ? null : Number(quote.taxCents), totalCents: quote.totalCents == null ? null : Number(quote.totalCents) };
-  const progressStatus = decision === "accepted" ? "accepted" : quote.status === "APPROVED"
+  const totals = isPrint || quote.sections.length <= 1 || selectedSectionIds.length === quote.sections.length
+    ? { subtotalCents: quote.subtotalCents == null ? null : Number(quote.subtotalCents), taxCents: quote.taxCents == null ? null : Number(quote.taxCents), totalCents: quote.totalCents == null ? null : Number(quote.totalCents) }
+    : calculateSelectedTotals();
+  const progressStatus = isPrint ? null : decision === "accepted" ? "accepted" : quote.status === "APPROVED"
     ? quote.workOrder?.status === "COMPLETED" ? "completed"
       : quote.workOrder?.status === "ASSIGNED" || quote.workOrder?.status === "IN_PROGRESS" ? "active" : "accepted"
     : null;
@@ -257,17 +263,19 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
         </div>
       ) : null}
 
-      <div className="flex justify-center mt-2 print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => window.print()}
-          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-border-light)]/50"
-        >
-          <Printer className="w-4 h-4 mr-2" />
-          Imprimir documento
-        </Button>
-      </div>
+      {!isPrint ? (
+        <div className="flex justify-center mt-2 print:hidden">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.print()}
+            className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-border-light)]/50"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Imprimir documento
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
