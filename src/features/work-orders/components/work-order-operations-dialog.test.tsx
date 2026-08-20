@@ -39,6 +39,38 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
   });
 
+  it.each(["DRAFT", "SENT"] as const)("exposes internal work-order management for a %s quote", async (quoteStatus) => {
+    const user = userEvent.setup();
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus={quoteStatus} workOrder={null} actions={actions} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i }));
+
+    expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
+  });
+
+  it("keeps server validation feedback visible and leaves the draft dialog actionable", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn().mockResolvedValue({ success: false, error: "Selecciona un cliente o identifica la unidad." });
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="DRAFT" workOrder={null} actions={{ assign }} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i }));
+    await user.click(screen.getByLabelText(/trabajo especial/i));
+    await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Selecciona un cliente o identifica la unidad.");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("does not expose approval-only rollback for a draft work order", async () => {
+    const user = userEvent.setup();
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="DRAFT" workOrder={{ id: "wo-1", number: "T-001", status: "ASSIGNED" }} actions={actions} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
+
+    expect(screen.queryByRole("button", { name: /cancelar orden y regresar cotización/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /finalizar trabajo/i })).toBeInTheDocument();
+  });
+
   it("keeps work actions icon-only on mobile and labeled on desktop", async () => {
     const user = userEvent.setup();
     render(

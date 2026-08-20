@@ -50,6 +50,7 @@ function createQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem {
     validUntil: null,
     approvedAt: null,
     administrative: true,
+    operationalDate: new Date("2026-07-01T00:00:00.000Z"),
     createdAt: new Date("2026-07-01T12:00:00.000Z"),
     updatedAt: new Date("2026-07-01T12:00:00.000Z"),
     customer: { id: "customer-1", name: "Constructora del Norte", fiscalProfiles: [] },
@@ -64,6 +65,20 @@ function createQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem {
 }
 
 describe("payment request dialog bank account context", () => {
+  it("rejects direct callers without a customer", () => {
+    expect(() => createPaymentRequestDialogContext(
+      createQuote({ customer: null }),
+      bankAccounts,
+    )).toThrow("A customer is required for payment requests.");
+  });
+
+  it("rejects direct callers without complete totals", () => {
+    expect(() => createPaymentRequestDialogContext(
+      createQuote({ subtotalCents: null, taxCents: null, totalCents: null }),
+      bankAccounts,
+    )).toThrow("Quote totals are required for payment requests.");
+  });
+
   it("uses Santander for factura quotes when Santander and Mercado Pago are configured", () => {
     const context = createPaymentRequestDialogContext(
       createQuote({ taxEnabled: true }),

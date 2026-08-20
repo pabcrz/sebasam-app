@@ -41,6 +41,8 @@ describe("AdminLoginPage", () => {
     expect(screen.getByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
     expect(screen.getByLabelText("Usuario")).toBeInTheDocument();
     expect(screen.getByLabelText("Contraseña")).toBeInTheDocument();
+    expect(screen.getByLabelText("Contraseña")).toHaveAttribute("type", "password");
+    expect(screen.getByRole("button", { name: "Mostrar contraseña" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ingresar" })).toBeInTheDocument();
   });
 

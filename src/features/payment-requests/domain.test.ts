@@ -35,16 +35,43 @@ async function createTestCustomer() {
 }
 
 async function createTestQuote(customerId: string, opts?: { taxEnabled?: boolean }) {
+  const taxEnabled = opts?.taxEnabled ?? false;
   const quote = await prisma.quote.create({
     data: {
       customerId,
       number: `Q-TEST-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       title: "Test Quote",
-      taxEnabled: opts?.taxEnabled ?? false,
+      taxEnabled,
+      operationalDate: new Date("2026-07-01T00:00:00.000Z"),
+    },
+  });
+
+  const section = await prisma.quoteSection.create({
+    data: { quoteId: quote.id, name: "General" },
+  });
+
+  await prisma.quoteItem.create({
+    data: {
+      quoteId: quote.id,
+      sectionId: section.id,
+      type: "SERVICE",
+      description: "Servicio",
+      quantity: 1,
+      unitPriceCents: 10000,
+      totalCents: 10000,
+    },
+  });
+
+  const updated = await prisma.quote.update({
+    where: { id: quote.id },
+    data: {
+      subtotalCents: 10000,
+      taxCents: taxEnabled ? 1600 : 0,
+      totalCents: taxEnabled ? 11600 : 10000,
     },
   });
   createdQuoteIds.push(quote.id);
-  return quote;
+  return updated;
 }
 
 async function createTestWorkOrder(quoteId: string) {
@@ -146,6 +173,7 @@ describe("createPaymentRequestForQuote", () => {
     expect(request.quoteId).toBe(quote.id);
     expect(request.workOrderId).toBeNull();
     expect(request.status).toBe(PaymentRequestStatus.PENDING);
+    expect(request.requiresInvoice).toBe(false);
     // New slug format: P-{numberSuffix}-{8 base62} (e.g. P-0726-03-a1B2c3D4)
     // The prefix is P + quote.number with first char dropped
     const expectedPrefix = `P${quote.number.slice(1)}`;
@@ -177,13 +205,13 @@ describe("createPaymentRequestForQuote", () => {
     expect(request.token).toBe(`P${targetQuote.number.slice(1)}-11111111`);
   });
 
-  it("sets FISCAL_DATA_REQUIRED when the quote has tax enabled", async () => {
+  it("keeps tax-enabled quote requests pending while preserving invoice metadata", async () => {
     const quote = await createTestQuote(testCustomerId, { taxEnabled: true });
 
     const request = await createPaymentRequestForQuote(quote.id);
     createdPaymentRequestIds.push(request.id);
 
-    expect(request.status).toBe(PaymentRequestStatus.FISCAL_DATA_REQUIRED);
+    expect(request.status).toBe(PaymentRequestStatus.PENDING);
     expect(request.requiresInvoice).toBe(true);
   });
 
@@ -209,6 +237,7 @@ describe("getOrCreatePaymentRequestForQuote", () => {
     expect(request.customerId).toBe(testCustomerId);
     expect(request.quoteId).toBe(quote.id);
     expect(request.status).toBe(PaymentRequestStatus.PENDING);
+    expect(request.requiresInvoice).toBe(false);
     // New slug format
     const expectedPrefix = `P${quote.number.slice(1)}`;
     const slugPattern = new RegExp(`^${expectedPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-[0-9A-Za-z]{8}$`);
@@ -244,13 +273,13 @@ describe("getOrCreatePaymentRequestForQuote", () => {
     expect(second.token).not.toBe(first.token);
   });
 
-  it("sets FISCAL_DATA_REQUIRED when the quote has tax enabled", async () => {
+  it("keeps tax-enabled get-or-create requests pending while preserving invoice metadata", async () => {
     const quote = await createTestQuote(testCustomerId, { taxEnabled: true });
 
     const request = await getOrCreatePaymentRequestForQuote(quote.id);
     createdPaymentRequestIds.push(request.id);
 
-    expect(request.status).toBe(PaymentRequestStatus.FISCAL_DATA_REQUIRED);
+    expect(request.status).toBe(PaymentRequestStatus.PENDING);
     expect(request.requiresInvoice).toBe(true);
   });
 });
@@ -267,7 +296,19 @@ describe("createPaymentRequestForWorkOrder", () => {
     expect(request.workOrderId).toBe(workOrder.id);
     expect(request.quoteId).toBeNull();
     expect(request.status).toBe(PaymentRequestStatus.PENDING);
+    expect(request.requiresInvoice).toBe(false);
     expect(request.token).toMatch(new RegExp(`^P${workOrder.number.slice(1)}-[0-9A-Za-z]{8}$`));
+  });
+
+  it("keeps tax-enabled work-order requests pending while preserving invoice metadata", async () => {
+    const quote = await createTestQuote(testCustomerId, { taxEnabled: true });
+    const workOrder = await createTestWorkOrder(quote.id);
+
+    const request = await createPaymentRequestForWorkOrder(workOrder.id);
+    createdPaymentRequestIds.push(request.id);
+
+    expect(request.status).toBe(PaymentRequestStatus.PENDING);
+    expect(request.requiresInvoice).toBe(true);
   });
 
   it("prevents duplicate active requests for the same work order", async () => {
@@ -285,14 +326,18 @@ describe("createPaymentRequestForWorkOrder", () => {
 
 describe("getPaymentRequestByToken", () => {
   it("returns the request and marks PENDING as VIEWED", async () => {
-    const quote = await createTestQuote(testCustomerId);
+    const quote = await createTestQuote(testCustomerId, { taxEnabled: true });
     const created = await createPaymentRequestForQuote(quote.id);
     createdPaymentRequestIds.push(created.id);
+
+    expect(created.status).toBe(PaymentRequestStatus.PENDING);
+    expect(created.requiresInvoice).toBe(true);
 
     const request = await getPaymentRequestByToken(created.token);
 
     expect(request.id).toBe(created.id);
     expect(request.status).toBe(PaymentRequestStatus.VIEWED);
+    expect(request.requiresInvoice).toBe(true);
     expect(request.viewedAt).not.toBeNull();
   });
 

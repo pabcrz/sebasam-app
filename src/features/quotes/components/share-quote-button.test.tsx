@@ -3,29 +3,47 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ShareQuoteButton } from "./share-quote-button";
 
+const refresh = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
+
 describe("ShareQuoteButton", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("publishes a draft before confirming clipboard success", async () => {
+  it("publishes a tokenless draft, confirms success, and refreshes the row", async () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText");
     const action = vi.fn().mockResolvedValue({ success: true });
     writeText.mockResolvedValue(undefined);
-    render(<ShareQuoteButton action={action} sharedQuote={{ token: "stable" }} status="DRAFT" quoteNumber="C-001" />);
+    render(<ShareQuoteButton action={action} status="DRAFT" quoteNumber="C-001" />);
 
-    const button = screen.getByRole("button", { name: /compartir cotización c-001/i });
+    const button = screen.getByRole("button", { name: /preparar y compartir cotización c-001/i });
     expect(button).toBeInTheDocument();
-    
+
     await user.click(button);
 
     expect(action).toHaveBeenCalledTimes(1);
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/cotizacion/stable`);
-    expect(await screen.findByRole("status")).toHaveTextContent("Link copiado");
-    await user.click(screen.getByRole("button"));
-    expect(action).toHaveBeenCalledTimes(1);
-    expect(writeText).toHaveBeenCalledTimes(2);
+    expect(writeText).not.toHaveBeenCalled();
+    expect(await screen.findByRole("status")).toHaveTextContent("Cotización preparada");
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the server validation error and does not refresh an incomplete draft", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue({
+      success: false,
+      error: "Completa la descripción, cantidad y precio de todos los conceptos antes de compartir.",
+    });
+    render(<ShareQuoteButton action={action} status="DRAFT" quoteNumber="C-001" />);
+
+    await user.click(screen.getByRole("button", { name: /preparar y compartir/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Completa la descripción, cantidad y precio");
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("copies a sent quote locally without invoking the action", async () => {

@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { FileText, Phone, MessageCircle } from "lucide-react";
+import { Phone, MessageCircle } from "lucide-react";
 import { businessPaymentConfig } from "@/config/payment";
-import { formatDate } from "@/features/quotes/lib/format";
+import { formatOperationalDate } from "@/features/quotes/lib/format";
 
 export interface PublicQuoteShellProps {
   children: React.ReactNode;
@@ -24,7 +24,7 @@ export interface PublicQuoteShellProps {
   vehicleDescription?: string;
 }
 
-export function PublicQuoteShell({ children, business, documentType = "Cotización", documentNumber, date, title, customerName, vehicleDescription }: PublicQuoteShellProps) {
+export function PublicQuoteShell({ children, business, documentType = "Cotización", documentNumber, date, customerName, vehicleDescription }: PublicQuoteShellProps) {
   const resolvedBusiness = business ?? businessPaymentConfig;
 
   return (
@@ -93,7 +93,7 @@ export function PublicQuoteShell({ children, business, documentType = "Cotizaci�
                 </div>
                 
                 <span className="text-sm font-normal text-white/90 print:text-gray-700">
-                  {date ? formatDate(date) : "—"}
+                  {date ? formatOperationalDate(date) : "—"}
                 </span>
               </div>
             </div>

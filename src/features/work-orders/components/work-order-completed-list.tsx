@@ -105,7 +105,7 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     {paymentState.label}{paymentState.label === "Pago parcial" || paymentState.label === "Cobro urgente" ? ` · Saldo ${formatCents(paymentState.balanceCents!)}` : ""}
                   </Badge>
                 </div>
-                <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer.name}</p>
+                <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer?.name ?? "Sin cliente"}</p>
                 <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
               </div>
               <div className="text-right">

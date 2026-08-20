@@ -5,6 +5,7 @@ import { Copy, Minus, Plus, Trash2, PlusCircle } from "lucide-react";
 import {
   Badge,
   Button,
+  Checkbox,
   Input,
   Label,
   Select,
@@ -20,7 +21,7 @@ import {
   SectionFormValue,
   maxUnitPrice,
   getMaxQuantityForType,
-  validateItemValue,
+  validateItemFields,
 } from "./quote-builder-shared";
 import { formatCents } from "@/features/quotes/lib/format";
 import {
@@ -38,11 +39,17 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { SortableSection, SortableItem, DragHandle } from "./quote-builder-dnd";
+import { QuoteTotalsCard } from "./quote-totals-card";
 export interface QuoteBuilderItemsStepProps {
   sections: SectionFormValue[];
   animatedRowId: string | null;
-  showItemValidation: boolean;
   completeItemsCount: number;
+  taxEnabled: boolean;
+  discount: string;
+  subtotalCents: number;
+  discountCents: number;
+  taxCents: number;
+  totalCents: number;
   onAddItem: (sectionIndex: number, type: QuoteItemType) => void;
   onRemoveItem: (sectionIndex: number, itemIndex: number) => void;
   onDuplicateItem: (sectionIndex: number, itemIndex: number) => void;
@@ -51,6 +58,9 @@ export interface QuoteBuilderItemsStepProps {
   onAddSection: () => void;
   onRemoveSection: (sectionIndex: number) => void;
   onUpdateSectionName: (sectionIndex: number, name: string) => void;
+  onUpdateSectionAuthorized?: (sectionIndex: number, isAuthorized: boolean) => void;
+  onTaxEnabledChange: (taxEnabled: boolean) => void;
+  onDiscountChange: (discount: string) => void;
   onReorderSection: (oldIndex: number, newIndex: number) => void;
   onReorderItem: (activeSectionIndex: number, activeItemIndex: number, overSectionIndex: number, overItemIndex: number) => void;
   onRowRef: (rowId: string, node: HTMLDivElement | null) => void;
@@ -60,8 +70,13 @@ export interface QuoteBuilderItemsStepProps {
 export function QuoteBuilderItemsStep({
   sections,
   animatedRowId,
-  showItemValidation,
   completeItemsCount,
+  taxEnabled,
+  discount,
+  subtotalCents,
+  discountCents,
+  taxCents,
+  totalCents,
   onAddItem,
   onRemoveItem,
   onDuplicateItem,
@@ -70,6 +85,9 @@ export function QuoteBuilderItemsStep({
   onAddSection,
   onRemoveSection,
   onUpdateSectionName,
+  onUpdateSectionAuthorized,
+  onTaxEnabledChange,
+  onDiscountChange,
   onReorderSection,
   onReorderItem,
   onRowRef,
@@ -123,8 +141,8 @@ export function QuoteBuilderItemsStep({
 
   return (
     <section className="grid gap-6">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-[var(--color-text-main)]">Conceptos</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="min-w-0 font-semibold text-[var(--color-text-main)]">Conceptos</h3>
         {completeItemsCount > 0 ? (
           <Badge variant="info">{completeItemsCount} completos</Badge>
         ) : null}
@@ -139,9 +157,9 @@ export function QuoteBuilderItemsStep({
                 data-testid={`section-${sectionIndex}`}
               >
                 {/* Section header */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <DragHandle className="size-4 shrink-0 text-[var(--color-text-muted)] touch-none cursor-grab" />
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <div className="flex min-w-0 flex-1 basis-48 items-center gap-2">
                     <Input
                       aria-label={`Nombre de la sección ${sectionIndex + 1}`}
                 placeholder="Nombre de la sección (ej. Parte delantera)"
@@ -151,6 +169,24 @@ export function QuoteBuilderItemsStep({
                 name={`sections.${sectionIndex}.name`}
               />
             </div>
+            
+            {onUpdateSectionAuthorized && (
+              <div className="flex items-center gap-2 pr-2">
+                  <Checkbox
+                  id={`sections-${sectionIndex}-authorized`}
+                  name={`sections.${sectionIndex}.isAuthorized`}
+                  checked={section.isAuthorized ?? false}
+                  onCheckedChange={(checked) => onUpdateSectionAuthorized(sectionIndex, checked === true)}
+                />
+                <Label
+                  htmlFor={`sections-${sectionIndex}-authorized`}
+                  className="text-sm font-medium text-[var(--color-text-muted)] cursor-pointer"
+                >
+                  Autorizado
+                </Label>
+              </div>
+            )}
+
             {sections.length > 1 ? (
               <Button
                 type="button"
@@ -173,9 +209,17 @@ export function QuoteBuilderItemsStep({
                 const displayIndex = sections
                   .slice(0, sectionIndex)
                   .reduce((acc, s) => acc + s.items.length, 0) + itemIndex;
-                const itemError = showItemValidation ? validateItemValue(item, displayIndex) : null;
-                const lineTotalCents = Math.round(Number(item.quantity) * Number(item.unitPrice) * 100);
+                const itemErrors = validateItemFields(item, displayIndex, true);
+                const unitPrice = Number(item.unitPrice);
+                const lineTotalCents = item.unitPrice.trim() !== "" && Number.isFinite(unitPrice)
+                  ? Math.round(Number(item.quantity) * unitPrice * 100)
+                  : null;
                 const typeQuantityLimit = getMaxQuantityForType(item.type);
+                const fieldId = `sections-${sectionIndex}-items-${itemIndex}`;
+                const descriptionErrorId = `${fieldId}-description-error`;
+                const quantityErrorId = `${fieldId}-quantity-error`;
+                const unitPriceCurrencyId = `${fieldId}-unitPrice-currency`;
+                const unitPriceErrorId = `${fieldId}-unitPrice-error`;
 
                 return (
                   <SortableItem key={rowId} id={rowId}>
@@ -184,8 +228,8 @@ export function QuoteBuilderItemsStep({
                       data-testid={`concept-row-${displayIndex}`}
                       className={`grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4${rowId === animatedRowId ? " motion-safe:animate-fade-in motion-safe:animate-duration-200" : ""}`}
                     >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 flex-1 basis-44 items-center gap-3">
                           <DragHandle className="size-4 shrink-0 text-[var(--color-text-muted)] touch-none cursor-grab" />
                           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface)] text-sm font-semibold text-[var(--color-text-main)]">
                             {displayIndex + 1}
@@ -206,7 +250,7 @@ export function QuoteBuilderItemsStep({
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="ml-auto flex shrink-0 items-center gap-1">
                           <Button
                             type="button"
                             variant="outline"
@@ -231,22 +275,31 @@ export function QuoteBuilderItemsStep({
                       </div>
                   <input type="hidden" name={`sections.${sectionIndex}.items.${itemIndex}.type`} value={item.type} />
                   <div className="grid gap-2">
-                    <Label htmlFor={`sections-${sectionIndex}-items-${itemIndex}-description`}>Descripción</Label>
+                    <Label htmlFor={`${fieldId}-description`}>Descripción</Label>
                     <Input
                       ref={(node) => onDescriptionRef(rowId, node)}
-                      id={`sections-${sectionIndex}-items-${itemIndex}-description`}
+                      id={`${fieldId}-description`}
                       name={`sections.${sectionIndex}.items.${itemIndex}.description`}
                       value={item.description}
                       onChange={(event) => onUpdateItem(sectionIndex, itemIndex, { description: event.target.value })}
                       placeholder="Ej. Bajar dos muelles"
+                      aria-describedby={itemErrors.description ? descriptionErrorId : undefined}
+                      aria-invalid={itemErrors.description ? true : undefined}
                     />
+                    <span
+                      id={descriptionErrorId}
+                      role={itemErrors.description ? "alert" : undefined}
+                      className="min-h-4 text-xs text-[var(--color-status-danger-fg)]"
+                    >
+                      {itemErrors.description}
+                    </span>
                   </div>
                   <div
                     className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end gap-3"
                     data-testid={`quantity-price-row-${displayIndex}`}
                   >
                     <div className="grid min-w-0 gap-2">
-                      <Label htmlFor={`sections-${sectionIndex}-items-${itemIndex}-quantity`}>Cantidad</Label>
+                      <Label htmlFor={`${fieldId}-quantity`}>Cantidad</Label>
                       <div className="flex w-full min-w-0 max-w-35 items-center overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
                         <Button
                           type="button"
@@ -260,7 +313,7 @@ export function QuoteBuilderItemsStep({
                           <Minus className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Input
-                          id={`sections-${sectionIndex}-items-${itemIndex}-quantity`}
+                          id={`${fieldId}-quantity`}
                           name={`sections.${sectionIndex}.items.${itemIndex}.quantity`}
                           type="text"
                           inputMode="numeric"
@@ -279,6 +332,8 @@ export function QuoteBuilderItemsStep({
                             onUpdateItem(sectionIndex, itemIndex, { quantity: clamped });
                           }}
                           onWheel={(event) => event.currentTarget.blur()}
+                          aria-describedby={itemErrors.quantity ? quantityErrorId : undefined}
+                          aria-invalid={itemErrors.quantity ? true : undefined}
                         />
                         <Button
                           type="button"
@@ -292,10 +347,17 @@ export function QuoteBuilderItemsStep({
                           <Plus className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </div>
+                      <span
+                        id={quantityErrorId}
+                        role={itemErrors.quantity ? "alert" : undefined}
+                        className="min-h-4 text-xs text-[var(--color-status-danger-fg)]"
+                      >
+                        {itemErrors.quantity}
+                      </span>
                     </div>
                     <div className="grid min-w-0 gap-2">
-                      <Label htmlFor={`sections-${sectionIndex}-items-${itemIndex}-unitPrice`}>Precio unitario</Label>
-                      <span id={`sections-${sectionIndex}-items-${itemIndex}-unitPrice-currency`} className="sr-only">
+                      <Label htmlFor={`${fieldId}-unitPrice`}>Precio unitario</Label>
+                      <span id={unitPriceCurrencyId} className="sr-only">
                         Importe en pesos mexicanos.
                       </span>
                       <div className="flex min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
@@ -307,31 +369,34 @@ export function QuoteBuilderItemsStep({
                           $
                         </span>
                         <Input
-                          id={`sections-${sectionIndex}-items-${itemIndex}-unitPrice`}
+                          id={`${fieldId}-unitPrice`}
                           name={`sections.${sectionIndex}.items.${itemIndex}.unitPrice`}
                           type="number"
                           min="0"
                           max={maxUnitPrice}
                           step="0.01"
-                          aria-describedby={`sections-${sectionIndex}-items-${itemIndex}-unitPrice-currency`}
+                          aria-describedby={`${unitPriceCurrencyId}${itemErrors.unitPrice ? ` ${unitPriceErrorId}` : ""}`}
+                          aria-invalid={itemErrors.unitPrice ? true : undefined}
                           value={item.unitPrice}
                           onChange={(event) => onUpdateItem(sectionIndex, itemIndex, { unitPrice: event.target.value })}
                           className="min-w-0 border-0 pl-1 shadow-none focus-visible:ring-0"
                         />
                       </div>
+                      <span
+                        id={unitPriceErrorId}
+                        role={itemErrors.unitPrice ? "alert" : undefined}
+                        className="min-h-4 text-xs text-[var(--color-status-danger-fg)]"
+                      >
+                        {itemErrors.unitPrice}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-1 text-sm text-[var(--color-text-muted)]">
                     <span>Importe</span>
                     <output className="font-medium" data-testid={`concept-total-${displayIndex}`} aria-label={`Importe del concepto ${displayIndex + 1}`}>
-                      {formatCents(Number.isFinite(lineTotalCents) ? lineTotalCents : 0)}
+                      {lineTotalCents === null ? "Pendiente" : formatCents(lineTotalCents)}
                     </output>
                   </div>
-                  {itemError ? (
-                    <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-3 py-2 text-sm text-[var(--color-status-danger-fg)]" role="status" aria-live="polite">
-                      {itemError}
-                    </p>
-                  ) : null}
                   </div>
                   </SortableItem>
                 );
@@ -364,6 +429,49 @@ export function QuoteBuilderItemsStep({
         <PlusCircle className="size-4" aria-hidden="true" />
         Agregar sección
       </Button>
+
+      <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h4 className="font-semibold text-[var(--color-text-main)]">Totales</h4>
+            <p className="text-sm text-[var(--color-text-muted)]">Ajusta el IVA o descuento y revisa su impacto antes de enviar.</p>
+          </div>
+          <input type="hidden" name="taxEnabled" value={taxEnabled ? "on" : "off"} />
+          <Checkbox
+            label="Incluir IVA (16%)"
+            checked={taxEnabled}
+            onCheckedChange={(checked) => onTaxEnabledChange(checked === true)}
+            className="shrink-0"
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="discount">Descuento Global (Opcional)</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--color-text-muted)]">$</span>
+            <Input
+              id="discount"
+              name="discount"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              className="pl-7"
+              value={discount}
+              onChange={(event) => onDiscountChange(event.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            Este descuento se aplicará al subtotal, reduciendo el total sin alterar los costos individuales (ej. nómina).
+          </p>
+        </div>
+        <QuoteTotalsCard
+          subtotalCents={subtotalCents}
+          discountCents={discountCents}
+          taxCents={taxCents}
+          totalCents={totalCents}
+        />
+      </div>
     </section>
   );
 }

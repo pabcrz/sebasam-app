@@ -10,6 +10,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
+import { mexicoCityCalendarDate } from "@/features/quotes/lib/operational-date";
 import {
   calculateSectionsTotals,
   emptyItem,
@@ -27,7 +28,6 @@ import {
 import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderStepper } from "./quote-builder-stepper";
 import { QuotePreviewCard } from "./quote-preview-card";
-import { QuoteSummaryCard } from "./quote-summary-card";
 import type { QuoteFormActionState } from "../actions";
 
 export type CustomerOption = {
@@ -55,15 +55,17 @@ type QuoteCustomerActionResult = {
 };
 
 export type QuoteBuilderInitialData = {
-  customerId: string;
+  customerId: string | null;
   vehicle: { plate: string; brand: string; model: string; year: string };
   title: string;
   description: string;
   administrative: boolean;
   taxEnabled: boolean;
   discountCents: number;
+  operationalDate?: string;
+  isOperationalDateEditable?: boolean;
   /** Sections with items. Each section has a name and an array of ItemFormValues. */
-  sections: Array<{ name: string; items: ItemFormValue[] }>;
+  sections: Array<{ name: string; isAuthorized?: boolean; items: ItemFormValue[] }>;
 };
 
 type QuoteBuilderProps = {
@@ -107,6 +109,9 @@ export function QuoteBuilder({
   const selectedCustomerRef = React.useRef<CustomerOption | undefined>(initialSelectedCustomer);
   const customerInputRef = React.useRef<HTMLInputElement>(null);
   const customerListRef = React.useRef<HTMLDivElement>(null);
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const submitButtonRef = React.useRef<HTMLButtonElement>(null);
+  const hasExplicitSubmitRequest = React.useRef(false);
   const knownCustomersRef = React.useRef(new Map(customers.map((customer) => [customer.id, customer])));
   const customerQueryCache = React.useRef(new Map<string, CustomerOption[]>());
   const [customerListPosition, setCustomerListPosition] = React.useState<React.CSSProperties>({});
@@ -114,7 +119,6 @@ export function QuoteBuilder({
   const hasChangedStep = React.useRef(false);
   const [step, setStep] = React.useState<Step>("client");
   const [stepError, setStepError] = React.useState<string | null>(null);
-  const [showItemValidation, setShowItemValidation] = React.useState(false);
   const [showCreateCustomer, setShowCreateCustomer] = React.useState(false);
   const [newCustomerName, setNewCustomerName] = React.useState("");
   const [newCustomerEmail, setNewCustomerEmail] = React.useState("");
@@ -131,6 +135,8 @@ export function QuoteBuilder({
   const [administrative, setAdministrative] = React.useState(initialData?.administrative ?? false);
   const [taxEnabled, setTaxEnabled] = React.useState(initialData?.taxEnabled ?? true);
   const [discount, setDiscount] = React.useState(initialData?.discountCents ? String(initialData.discountCents / 100) : "");
+  const [operationalDate, setOperationalDate] = React.useState(initialData?.operationalDate ?? mexicoCityCalendarDate());
+  const isOperationalDateEditable = initialData?.isOperationalDateEditable ?? true;
 
   // ── Sections / Items state ─────────────────────────────────────────────────
   const [initialSections] = React.useState<SectionFormValue[]>(() => {
@@ -138,6 +144,7 @@ export function QuoteBuilder({
     return initialData?.sections?.length
       ? initialData.sections.map((sec) => ({
           name: sec.name,
+          isAuthorized: sec.isAuthorized ?? false,
           items: sec.items,
           rowIds: sec.items.map(() => `quote-item-${idCounter++}`),
         }))
@@ -164,6 +171,7 @@ export function QuoteBuilder({
     administrative: initialData?.administrative ?? false,
     taxEnabled: initialData?.taxEnabled ?? true,
     discount: initialData?.discountCents ? String(initialData.discountCents / 100) : "",
+    operationalDate: initialData?.operationalDate ?? mexicoCityCalendarDate(),
     sections: initialSections,
     newCustomer: ["", "", ""],
   }));
@@ -180,9 +188,9 @@ export function QuoteBuilder({
   }, [actionState.success, onSuccess]);
 
   React.useEffect(() => {
-    const current = JSON.stringify({ customerId, customerSearch, vehicle, title, description, administrative, taxEnabled, discount, sections, newCustomer: [newCustomerName, newCustomerEmail, newCustomerPhone] });
+    const current = JSON.stringify({ customerId, customerSearch, vehicle, title, description, administrative, taxEnabled, discount, operationalDate, sections, newCustomer: [newCustomerName, newCustomerEmail, newCustomerPhone] });
     onDirtyChange?.(current !== initialFormState);
-  }, [administrative, customerId, customerSearch, description, discount, sections, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, taxEnabled, title, vehicle, initialFormState]);
+  }, [administrative, customerId, customerSearch, description, discount, operationalDate, sections, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, taxEnabled, title, vehicle, initialFormState]);
 
   React.useEffect(() => {
     if (!hasChangedStep.current) {
@@ -392,7 +400,7 @@ export function QuoteBuilder({
     const rowId = `quote-item-${nextItemRowId.current++}`;
     setSections((prev) => [
       ...prev,
-      { name: "Nueva sección", items: [{ ...emptyItem }], rowIds: [rowId] },
+      { name: "Nueva sección", isAuthorized: false, items: [{ ...emptyItem }], rowIds: [rowId] },
     ]);
   }
 
@@ -404,6 +412,14 @@ export function QuoteBuilder({
     setSections((prev) => {
       const next = [...prev];
       next[sectionIndex] = { ...next[sectionIndex]!, name };
+      return next;
+    });
+  }
+
+  function updateSectionAuthorized(sectionIndex: number, isAuthorized: boolean) {
+    setSections((prev) => {
+      const next = [...prev];
+      next[sectionIndex] = { ...next[sectionIndex]!, isAuthorized };
       return next;
     });
   }
@@ -474,11 +490,9 @@ export function QuoteBuilder({
     const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
 
     if (firstInvalidIndex !== -1) {
-      setShowItemValidation(true);
       return;
     }
 
-    setShowItemValidation(false);
     setStepError(null);
     const rowId = `quote-item-${nextItemRowId.current++}`;
     pendingItemRowId.current = rowId;
@@ -549,11 +563,9 @@ export function QuoteBuilder({
     const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
 
     if (firstInvalidIndex !== -1) {
-      setShowItemValidation(true);
       return;
     }
 
-    setShowItemValidation(false);
     setStepError(null);
     const rowId = `quote-item-${nextItemRowId.current++}`;
     pendingItemRowId.current = rowId;
@@ -586,7 +598,6 @@ export function QuoteBuilder({
       const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
 
       if (firstInvalidIndex !== -1) {
-        setShowItemValidation(true);
         setStepError(null);
         return;
       }
@@ -595,11 +606,9 @@ export function QuoteBuilder({
 
       if (normalizedSecs.length === 0 || normalizedSecs.every((s) => s.items.length === 0)) {
         setStepError("Ingresa al menos un concepto completo.");
-        setShowItemValidation(false);
         return;
       }
 
-      setShowItemValidation(false);
       setStepError(null);
       setSections(normalizedSecs);
     } else {
@@ -622,11 +631,51 @@ export function QuoteBuilder({
 
   function goToPrevious() {
     setStepError(null);
-    setShowItemValidation(false);
     const prevIndex = currentStepIndex - 1;
 
     if (prevIndex >= 0) {
       setStep(steps[prevIndex]);
+    }
+  }
+
+  function validateFinalSubmit() {
+    const itemError = sections
+      .flatMap((section) => section.items)
+      .map((item, index) => validateItemValue(item, index))
+    .find(Boolean);
+
+    if (itemError) {
+      setStep("items");
+      setStepError(null);
+      return false;
+    }
+
+    const clientError = getStepError("client", { customerId, vehicle, title, sections });
+    const itemsError = getStepError("items", { customerId, vehicle, title, sections });
+    const notesError = getStepError("notes", { customerId, vehicle, title, sections });
+    const error = clientError ?? itemsError ?? notesError;
+
+    if (error) {
+      setStepError(error);
+      return false;
+    }
+
+    setStepError(null);
+    return true;
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    const submittedByFinalAction = (event.nativeEvent as SubmitEvent).submitter === submitButtonRef.current;
+
+    if (step !== "preview" || !submittedByFinalAction || !hasExplicitSubmitRequest.current || isSubmitting) {
+      event.preventDefault();
+      return;
+    }
+
+    hasExplicitSubmitRequest.current = false;
+
+    if (!validateFinalSubmit()) {
+      event.preventDefault();
     }
   }
 
@@ -640,6 +689,7 @@ export function QuoteBuilder({
 
   return (
     <form
+      ref={formRef}
       action={formAction}
       className={formClass}
       data-testid="quote-builder-form"
@@ -652,14 +702,7 @@ export function QuoteBuilder({
         justifyContent: "flex-start",
         minHeight: 0,
       } : undefined}
-      onSubmit={(event) => {
-        if (step !== "preview") {
-          event.preventDefault();
-          setStepError("Avanza al último paso antes de enviar la cotización.");
-        } else {
-          setSections((current) => normalizeSections(current));
-        }
-      }}
+      onSubmit={handleSubmit}
     >
           <div
             className="shrink-0 border-b border-[var(--color-border-light)] pb-4"
@@ -892,8 +935,13 @@ export function QuoteBuilder({
             <QuoteBuilderItemsStep
               sections={sections}
               animatedRowId={animatedItemRowId}
-              showItemValidation={showItemValidation}
               completeItemsCount={completeItems.length}
+              taxEnabled={taxEnabled}
+              discount={discount}
+              subtotalCents={subtotalCents}
+              discountCents={discountCents}
+              taxCents={taxCents}
+              totalCents={totalCents}
               onAddItem={addItem}
               onRemoveItem={removeItem}
               onDuplicateItem={duplicateItem}
@@ -902,6 +950,9 @@ export function QuoteBuilder({
               onAddSection={addSection}
               onRemoveSection={removeSection}
               onUpdateSectionName={updateSectionName}
+              onUpdateSectionAuthorized={updateSectionAuthorized}
+              onTaxEnabledChange={setTaxEnabled}
+              onDiscountChange={setDiscount}
               onReorderSection={reorderSection}
               onReorderItem={reorderItem}
               onRowRef={(rowId, node) => {
@@ -940,6 +991,19 @@ export function QuoteBuilder({
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="operationalDate">Fecha de cotización</Label>
+              <Input
+                id="operationalDate"
+                name={isOperationalDateEditable ? "operationalDate" : undefined}
+                type="date"
+                max={mexicoCityCalendarDate()}
+                value={operationalDate}
+                disabled={!isOperationalDateEditable}
+                onChange={(event) => setOperationalDate(event.target.value)}
+              />
+              {!isOperationalDateEditable ? <input type="hidden" name="operationalDate" value={operationalDate} /> : null}
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="description">Descripción</Label>
               <Textarea
                 id="description"
@@ -956,58 +1020,12 @@ export function QuoteBuilder({
               checked={administrative}
               onCheckedChange={(checked) => setAdministrative(checked === true)}
             />
-            <input type="hidden" name="taxEnabled" value={taxEnabled ? "on" : "off"} />
-            <Checkbox
-              label="Incluir IVA (16%)"
-              checked={taxEnabled}
-              onCheckedChange={(checked) => setTaxEnabled(checked === true)}
-            />
           </section>
 
-          {/* Step 4: Resumen */}
-          <section hidden={step !== "summary"} className="grid gap-4">
-            <h2 className="sr-only" tabIndex={-1} data-step-heading="summary">
-              Resumen
-            </h2>
-            <div className="grid gap-2">
-              <Label htmlFor="discount">Descuento Global (Opcional)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--color-text-muted)]">$</span>
-                <Input
-                  id="discount"
-                  name="discount"
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  className="pl-7"
-                  value={discount}
-                  onChange={(event) => setDiscount(event.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-              <p className="text-xs text-[var(--color-text-muted)]">
-                Este descuento se aplicará al subtotal, reduciendo el total sin alterar los costos individuales (ej. nómina).
-              </p>
-            </div>
-            <QuoteSummaryCard
-              customerName={selectedCustomer?.name ?? ""}
-              vehicle={vehicle}
-              title={title}
-              description={description}
-              administrative={administrative}
-              sections={sections}
-              subtotalCents={subtotalCents}
-              discountCents={discountCents}
-              taxCents={taxCents}
-              totalCents={totalCents}
-            />
-          </section>
-
-          {/* Step 5: Preview / Enviar */}
+          {/* Step 4: Review and submit */}
           <section hidden={step !== "preview"} className="grid gap-4">
             <h2 className="sr-only" tabIndex={-1} data-step-heading="preview">
-              Enviar cotización
+              Revisar y enviar cotización
             </h2>
             <QuotePreviewCard
               customerName={selectedCustomer?.name ?? ""}
@@ -1045,7 +1063,17 @@ export function QuoteBuilder({
             </div>
 
             {step === "preview" ? (
-              <Button type="submit" variant="primary" loading={isSubmitting} className="min-w-[160px]" aria-live="polite">
+              <Button
+                ref={submitButtonRef}
+                type="submit"
+                variant="primary"
+                loading={isSubmitting}
+                onClick={() => {
+                  hasExplicitSubmitRequest.current = true;
+                }}
+                className="min-w-[160px]"
+                aria-live="polite"
+              >
                 {isSubmitting ? (isEdit ? "Guardando..." : "Creando...") : (isEdit ? "Guardar cambios" : "Crear cotización")}
               </Button>
             ) : (
@@ -1053,7 +1081,6 @@ export function QuoteBuilder({
                 type="button"
                 variant="primary"
                 onClick={goToNext}
-                disabled={step === "client" && !customerId}
                 className="min-w-[140px]"
               >
                 Siguiente

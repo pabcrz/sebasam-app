@@ -25,4 +25,10 @@ describe("PublicQuoteShell", () => {
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
+
+  it("formats a date-only operational date without shifting it to the prior day", () => {
+    render(<PublicQuoteShell date={new Date("2026-07-01T00:00:00.000Z")}>content</PublicQuoteShell>);
+
+    expect(screen.getByText(/1 de julio de 2026/i)).toBeInTheDocument();
+  });
 });

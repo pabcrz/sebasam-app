@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Check, X, Printer } from "lucide-react";
 import { Button } from "@/components/ui";
 import { QuotePreviewCard } from "@/features/quotes/components/quote-preview-card";
 import { formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
-import { quoteStatusLabels } from "@/features/quotes/lib/status";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
 import type { Quote, QuoteItem, Customer, Vehicle, WorkOrderStatus, QuoteSection } from "@prisma/client";
 
@@ -15,7 +15,7 @@ type SerializableQuoteItem = Omit<QuoteItem, "quantity"> & {
 };
 
 export type SharedQuoteViewQuote = Quote & {
-  customer: Customer;
+  customer: Customer | null;
   vehicle: Vehicle | null;
   items: SerializableQuoteItem[];
   sections: (QuoteSection & { items: SerializableQuoteItem[] })[];
@@ -26,11 +26,43 @@ export interface SharedQuoteViewProps {
   quote: SharedQuoteViewQuote;
   token: string;
   isNote?: boolean;
+  business?: { contactPhone: string; contactWhatsapp: string };
 }
 
-export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) {
+function initialSelectedSectionIds(sections: SharedQuoteViewQuote["sections"]) {
+  const hasAuthorizationState = sections.some((section) => typeof section.isAuthorized === "boolean");
+
+  // Legacy quote payloads without authorization state retain whole-quote selection.
+  return hasAuthorizationState
+    ? sections.filter((section) => section.isAuthorized).map((section) => section.id)
+    : sections.map((section) => section.id);
+}
+
+export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteViewProps) {
+  const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    // Refresh the quote data every 5 seconds if no decision has been made
+    // and only if the browser tab is actually visible.
+    if (decision !== null) return;
+    
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [router, decision]);
   const [error, setError] = React.useState<string | null>(null);
+  const [selectedSectionIds, setSelectedSectionIds] = React.useState(() => initialSelectedSectionIds(quote.sections));
+
+  const handleSectionToggle = React.useCallback((sectionId: string, selected: boolean) => {
+    setSelectedSectionIds((prev) =>
+      selected ? [...prev, sectionId] : prev.filter((id) => id !== sectionId)
+    );
+  }, []);
   const decisionFeedbackRef = React.useRef<HTMLDivElement>(null);
   const [acceptPending, startAccept] = useTransition();
   const [declinePending, startDecline] = useTransition();
@@ -46,14 +78,14 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
   const handleAccept = React.useCallback(() => {
     setError(null);
     startAccept(async () => {
-      const result = await acceptSharedQuoteAction(token);
+      const result = await acceptSharedQuoteAction(token, selectedSectionIds);
       if (result.success) {
         setDecision("accepted");
       } else {
         setError(result.error ?? "No se pudo aceptar la cotización.");
       }
     });
-  }, [token]);
+  }, [token, selectedSectionIds]);
 
   const handleDecline = React.useCallback(() => {
     setError(null);
@@ -82,12 +114,14 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
 
   const sections = quote.sections && quote.sections.length > 0
     ? quote.sections.map((section) => ({
+        id: section.id,
         name: section.name,
+        isAuthorized: decision === "accepted" ? selectedSectionIds.includes(section.id) : section.isAuthorized,
         items: section.items.map((item) => ({
           type: item.type,
           description: item.description,
           quantity: String(Number(item.quantity)),
-          unitPrice: String(item.unitPriceCents / 100),
+          unitPrice: item.unitPriceCents == null ? "" : String(item.unitPriceCents / 100),
         })),
         rowIds: [],
       }))
@@ -98,13 +132,32 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
             type: item.type,
             description: item.description,
             quantity: String(Number(item.quantity)),
-            unitPrice: String(item.unitPriceCents / 100),
+            unitPrice: item.unitPriceCents == null ? "" : String(item.unitPriceCents / 100),
           })),
           rowIds: [],
         },
       ];
 
   const showDecisionControls = quote.status === "SENT" && !hasDecided;
+
+  const calculateSelectedTotals = () => {
+    let subtotalCents = 0;
+    const sectionsToSum = quote.sections.filter((s) => selectedSectionIds.includes(s.id));
+    for (const section of sectionsToSum) {
+      for (const item of section.items) {
+        subtotalCents += Math.round(Number(item.quantity) * item.unitPriceCents!);
+      }
+    }
+    const taxableCents = Math.max(0, subtotalCents - Number(quote.discountCents));
+    const hasTax = Number(quote.taxCents) > 0;
+    const taxCents = hasTax ? Math.round(taxableCents * 0.16) : 0;
+    const totalCents = taxableCents + taxCents;
+    return { subtotalCents, taxCents, totalCents };
+  };
+
+  const totals = quote.sections.length > 1 && selectedSectionIds.length !== quote.sections.length
+    ? calculateSelectedTotals()
+    : { subtotalCents: quote.subtotalCents == null ? null : Number(quote.subtotalCents), taxCents: quote.taxCents == null ? null : Number(quote.taxCents), totalCents: quote.totalCents == null ? null : Number(quote.totalCents) };
   const progressStatus = decision === "accepted" ? "accepted" : quote.status === "APPROVED"
     ? quote.workOrder?.status === "COMPLETED" ? "completed"
       : quote.workOrder?.status === "ASSIGNED" || quote.workOrder?.status === "IN_PROGRESS" ? "active" : "accepted"
@@ -114,16 +167,18 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
     <div className="grid gap-4 print:gap-2">
 
       <QuotePreviewCard
-        customerName={quote.customer.name}
+        customerName={quote.customer?.name ?? ""}
         vehicle={vehicle}
-        title={quote.title}
+        title={quote.title ? `Cotización ${quote.number} — ${quote.title}` : `Cotización ${quote.number}`}
         description={quote.description ?? ""}
         administrative={quote.administrative}
         sections={sections}
-        subtotalCents={Number(quote.subtotalCents)}
+        subtotalCents={totals.subtotalCents}
         discountCents={Number(quote.discountCents)}
-        taxCents={Number(quote.taxCents)}
-        totalCents={Number(quote.totalCents)}
+        taxCents={totals.taxCents}
+        totalCents={totals.totalCents}
+        selectableSectionIds={showDecisionControls && quote.sections.length > 1 ? selectedSectionIds : undefined}
+        onSectionToggle={showDecisionControls && quote.sections.length > 1 ? handleSectionToggle : undefined}
         validUntil={quote.validUntil}
         isNote={isNote}
         compactHeader={true}
@@ -154,7 +209,10 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
           <X className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" aria-hidden="true" />
           <p className="mt-2 font-semibold text-[var(--color-text-main)]">Cotización declinada</p>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-            Has declinado esta cotización. Si cambias de opinión, contacta al taller.
+            Has declinado esta cotización. Si cambias de opinión, contacta al taller
+            {business?.contactPhone || business?.contactWhatsapp ? (
+              <span> al {business.contactPhone ? <a href={`tel:${business.contactPhone}`} className="underline hover:text-[var(--color-text-main)]">{business.contactPhone}</a> : null}{business.contactPhone && business.contactWhatsapp ? " o por WhatsApp al " : business.contactWhatsapp ? " por WhatsApp al " : ""}{business.contactWhatsapp ? <a href={`https://wa.me/52${business.contactWhatsapp}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--color-text-main)]">{business.contactWhatsapp}</a> : null}</span>
+            ) : null}.
           </p>
         </div>
       ) : null}
@@ -172,12 +230,17 @@ export function SharedQuoteView({ quote, token, isNote }: SharedQuoteViewProps) 
             size="default"
             className="flex-1"
             loading={acceptPending}
-            disabled={isPending}
+            disabled={isPending || (quote.sections.length > 0 && selectedSectionIds.length === 0)}
             onClick={handleAccept}
-            aria-label="Aceptar cotización"
           >
             <Check className="h-4 w-4" aria-hidden="true" />
-            <span>Aceptar cotización</span>
+            <span>
+              {quote.sections.length > 0 && selectedSectionIds.length === 0
+                ? "Seleccione al menos una sección"
+                : selectedSectionIds.length === quote.sections.length || quote.sections.length <= 1
+                  ? "Aceptar cotización"
+                  : `Aceptar ${selectedSectionIds.length} sección${selectedSectionIds.length > 1 ? "es" : ""}`}
+            </span>
           </Button>
           <Button
             variant="outline"

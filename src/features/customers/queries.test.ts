@@ -1,10 +1,14 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { listCustomers } from "./queries";
+import { requireOperationalRole } from "@/lib/auth/session";
+import { getCustomerAccountStatement, listCustomers } from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     customer: { findMany: vi.fn() },
+    quote: { aggregate: vi.fn() },
+    payment: { aggregate: vi.fn() },
+    ledgerEntry: { findMany: vi.fn() },
   },
 }));
 
@@ -50,5 +54,104 @@ describe("listCustomers search", () => {
 
     const call = getFindManyCall();
     expect(call.take).toBe(50);
+  });
+});
+
+describe("getCustomerAccountStatement", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    (prisma.quote.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { totalCents: 25000 } });
+    (prisma.payment.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { amountCents: 17500 } });
+    (prisma.ledgerEntry.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "ledger-1",
+        createdAt: new Date("2026-08-01T10:00:00.000Z"),
+        type: "CREDIT",
+        amountCents: 5000,
+        resultingBalanceCents: 20000,
+        payment: { method: "CASH", quote: { id: "quote-1", number: "COT-001" } },
+      },
+      {
+        id: "ledger-2",
+        createdAt: new Date("2026-08-02T10:00:00.000Z"),
+        type: "CREDIT",
+        amountCents: 12500,
+        resultingBalanceCents: 7500,
+        payment: { method: "TRANSFER", quote: { id: "quote-2", number: "COT-002" } },
+      },
+    ]);
+  });
+
+  it("uses approved quotes and confirmed payments for the accumulated balance", async () => {
+    const statement = await getCustomerAccountStatement("customer-1");
+
+    expect(prisma.quote.aggregate).toHaveBeenCalledWith({
+      where: { customerId: "customer-1", status: "APPROVED" },
+      _sum: { totalCents: true },
+    });
+    expect(prisma.payment.aggregate).toHaveBeenCalledWith({
+      where: {
+        status: "PAID",
+        quote: { customerId: "customer-1", status: "APPROVED" },
+      },
+      _sum: { amountCents: true },
+    });
+    expect(statement).toMatchObject({
+      totalContractedCents: 25000,
+      totalPaidCents: 17500,
+      pendingBalanceCents: 7500,
+    });
+  });
+
+  it("preserves the existing administrative authorization before reading the financial statement", async () => {
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Unauthorized"));
+
+    await expect(getCustomerAccountStatement("customer-1")).rejects.toThrow("Unauthorized");
+
+    expect(prisma.quote.aggregate).not.toHaveBeenCalled();
+    expect(prisma.payment.aggregate).not.toHaveBeenCalled();
+    expect(prisma.ledgerEntry.findMany).not.toHaveBeenCalled();
+  });
+
+  it("returns ledger movements chronologically with their reference, method, amount, and resulting balance", async () => {
+    const statement = await getCustomerAccountStatement("customer-1");
+
+    expect(prisma.ledgerEntry.findMany).toHaveBeenCalledWith({
+      where: { customerId: "customer-1" },
+      include: {
+        payment: {
+          select: {
+            method: true,
+            quote: { select: { id: true, number: true } },
+          },
+        },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+    expect(statement.movements).toEqual([
+      expect.objectContaining({
+        payment: { method: "CASH", quote: { id: "quote-1", number: "COT-001" } },
+        amountCents: 5000,
+        resultingBalanceCents: 20000,
+      }),
+      expect.objectContaining({
+        payment: { method: "TRANSFER", quote: { id: "quote-2", number: "COT-002" } },
+        amountCents: 12500,
+        resultingBalanceCents: 7500,
+      }),
+    ]);
+  });
+
+  it("allows an account with no approved quotes or movements", async () => {
+    (prisma.quote.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { totalCents: null } });
+    (prisma.payment.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { amountCents: null } });
+    (prisma.ledgerEntry.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    await expect(getCustomerAccountStatement("customer-1")).resolves.toEqual({
+      totalContractedCents: 0,
+      totalPaidCents: 0,
+      pendingBalanceCents: 0,
+      movements: [],
+    });
   });
 });

@@ -29,7 +29,7 @@ const customers = [
 ];
 
 function renderFilters(filters: Partial<QuoteFilterInput> = {}) {
-  const mergedFilters = { showCancelled: false, showArchived: false, ...filters };
+  const mergedFilters = { showCancelled: false, showArchived: false, ...filters } as QuoteFilterInput;
   return render(<QuoteFilters filters={mergedFilters} customers={customers} />);
 }
 

@@ -27,6 +27,13 @@ export function assertApprovedQuote(status: QuoteStatus) {
   }
 }
 
+export function assertOperationalQuote(status: QuoteStatus) {
+  const operationalStatuses: QuoteStatus[] = [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.APPROVED];
+  if (!operationalStatuses.includes(status)) {
+    throw new WorkOrderOperationError("La cotización debe estar en borrador, enviada o aceptada para gestionar el trabajo.");
+  }
+}
+
 export function assertWorkOrderCanBeAssigned(status: WorkOrderStatus) {
   if (status !== WorkOrderStatus.PLANNED && status !== WorkOrderStatus.ASSIGNED) {
     throw new WorkOrderOperationError("La orden solo se puede asignar o reasignar si está en proceso.");

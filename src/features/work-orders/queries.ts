@@ -1,6 +1,8 @@
 import { AssignmentStatus, PaymentStatus, Prisma, WorkerKind, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
+import { assertOperationalClosureQuote } from "./operational-validation";
+import { WorkOrderOperationError } from "./domain";
 export { listActiveWorkers } from "@/features/workers/queries";
 
 const workOrderInclude = {
@@ -37,18 +39,23 @@ function serializeWorkOrder<
     ...workOrder,
     quote: {
       ...workOrder.quote,
-      subtotalCents: Number(workOrder.quote.subtotalCents),
-      taxCents: Number(workOrder.quote.taxCents),
-      totalCents: Number(workOrder.quote.totalCents),
+      subtotalCents: workOrder.quote.subtotalCents == null ? null : Number(workOrder.quote.subtotalCents),
+      taxCents: workOrder.quote.taxCents == null ? null : Number(workOrder.quote.taxCents),
+      totalCents: workOrder.quote.totalCents == null ? null : Number(workOrder.quote.totalCents),
       items: workOrder.quote.items.map((item) => ({
         ...item,
         quantity: Number(item.quantity),
-        unitPriceCents: Number(item.unitPriceCents),
-        totalCents: Number(item.totalCents),
+        unitPriceCents: item.unitPriceCents == null ? null : Number(item.unitPriceCents),
+        totalCents: item.totalCents == null ? null : Number(item.totalCents),
       })),
       sections: workOrder.quote.sections?.map((section) => ({
         ...section,
-        items: section.items.map((item) => ({ ...item, quantity: Number(item.quantity), unitPriceCents: Number(item.unitPriceCents), totalCents: Number(item.totalCents) })),
+        items: section.items.map((item) => ({
+          ...item,
+          quantity: Number(item.quantity),
+          unitPriceCents: item.unitPriceCents == null ? null : Number(item.unitPriceCents),
+          totalCents: item.totalCents == null ? null : Number(item.totalCents),
+        })),
       })),
     },
   };
@@ -142,4 +149,24 @@ export async function getWorkOrderById(workOrderId: string) {
   });
 
   return workOrder ? serializeWorkOrder(workOrder) : null;
+}
+
+export async function getCompletedWorkOrderById(workOrderId: string) {
+  await requireOperationalRole();
+
+  const workOrder = await prisma.workOrder.findFirst({
+    where: { id: workOrderId, status: WorkOrderStatus.COMPLETED },
+    include: workOrderInclude,
+  });
+
+  if (!workOrder) return null;
+
+  try {
+    assertOperationalClosureQuote(workOrder.quote);
+  } catch (error) {
+    if (error instanceof WorkOrderOperationError) return null;
+    throw error;
+  }
+
+  return serializeWorkOrder(workOrder);
 }

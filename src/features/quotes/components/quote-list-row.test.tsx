@@ -52,6 +52,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
 
     approvedAt: null,
     administrative: false, deletedAt: null,
+    operationalDate: new Date("2026-06-15T00:00:00.000Z"),
     createdAt: new Date("2026-06-15"),
     updatedAt: new Date("2026-06-15"),
     sections: [],
@@ -112,12 +113,16 @@ function renderRow(quote: QuoteListItem) {
       <tbody>
         <QuoteListRow
           quote={quote}
+          cashPaymentAction={vi.fn()}
+          archiveAction={vi.fn()}
+          restoreAction={vi.fn()}
           quoteStatusLabels={quoteStatusLabels}
           quoteStatusBadgeVariant={quoteStatusBadgeVariant}
           approveAction={vi.fn()}
           cancelAction={vi.fn()}
           shareAction={vi.fn()}
           authorizeAction={vi.fn().mockResolvedValue({ success: true })}
+          correctDecisionAction={vi.fn().mockResolvedValue({ success: true })}
           paymentRequestAction={vi.fn()}
           paymentRequestBankAccounts={[
             { accountHolder: "SEBASAM", bankName: "Santander", accountNumber: "1234", clabe: "5678" },
@@ -142,15 +147,31 @@ describe("QuoteListRow", () => {
 
     expect(screen.getByText("C-001")).toBeInTheDocument();
     expect(screen.getByText("Constructora del Norte")).toBeInTheDocument();
-    expect(screen.getByText("ABC-123 — Ford F-150")).toBeInTheDocument();
+    expect(screen.getByText("Ford F-150 - ABC-123")).toBeInTheDocument();
 
     expect(screen.getByText("Mantenimiento preventivo")).toBeInTheDocument();
   });
 
-  it("renders authorization and cancel actions for draft quotes", () => {
+  it("renders cancellation but not commercial authorization for draft quotes", () => {
     renderRow(createMockQuote());
 
-    expect(screen.getByRole("button", { name: /autorizar cotización c-001/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /autorizar cotización c-001/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
+  });
+
+  it("renders a pending-price draft without payment actions", () => {
+    const quote = createMockQuote();
+
+    renderRow(createMockQuote({
+      subtotalCents: null,
+      taxCents: null,
+      totalCents: null,
+      items: quote.items.map((item) => ({ ...item, unitPriceCents: null, totalCents: null })),
+    }));
+
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /preparar y compartir cotización c-001/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
@@ -160,10 +181,32 @@ describe("QuoteListRow", () => {
     expect(screen.getByText("Aprobada")).toBeInTheDocument();
   });
 
-  it("renders work order operations trigger for approved quotes", () => {
-    renderRow(createMockQuote({ status: "APPROVED" }));
+  it.each(["DRAFT", "SENT", "APPROVED"] as const)("renders work order operations trigger for %s quotes", (status) => {
+    renderRow(createMockQuote({ status }));
 
     expect(screen.getByRole("button", { name: /gestionar trabajo/i })).toBeInTheDocument();
+  });
+
+  it("preserves payment actions for approved quotes with work in progress", () => {
+    renderRow(createMockQuote({
+      status: "APPROVED",
+      workOrder: { number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+    }));
+
+    expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
+  });
+
+  it("hides payment actions when an approved in-progress quote has incomplete totals", () => {
+    renderRow(createMockQuote({
+      status: "APPROVED",
+      workOrder: { number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+      subtotalCents: null,
+      taxCents: null,
+      totalCents: null,
+    }));
+
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /gestionar orden de trabajo ot-001/i })).toBeInTheDocument();
   });
 
   it("does not render cancel action for cancelled quotes", () => {
@@ -178,5 +221,6 @@ describe("QuoteListRow", () => {
 
     expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /preparar y compartir cotización c-001/i })).toBeInTheDocument();
   });
 });

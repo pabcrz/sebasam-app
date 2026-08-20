@@ -27,6 +27,7 @@ import {
   assertApprovedQuote,
   assertDistinctWorkers,
   assertExecutionCanBeRecorded,
+  assertOperationalQuote,
   assertWorkOrderCanBeAssigned,
   assertWorkOrderCanBeChanged,
   assertWorkOrderCanBeCompleted,
@@ -34,6 +35,7 @@ import {
   WorkerUnavailableError,
 } from "./domain";
 import { ZodError } from "zod";
+import { assertOperationalClosureQuote, assertOperationalStartQuote } from "./operational-validation";
 
 const quotesPath = "/admin/quotes";
 const workOrdersPath = "/admin/work-orders";
@@ -72,7 +74,7 @@ async function requireActiveWorker(workerId: string) {
 }
 
 /**
- * Creates a work order for an approved quote (idempotent — returns existing if already created).
+ * Creates a work order for an operational quote (idempotent — returns existing if already created).
  */
 export async function createWorkOrder(input: unknown) {
   const data = workOrderInputSchema.parse(input);
@@ -86,13 +88,14 @@ async function ensureWorkOrderPlanned(
   await requireOperationalRole();
 
   return prisma.$transaction(async (tx) => {
-    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true } });
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { vehicle: true, workOrder: true, items: true, sections: { include: { items: true } } } });
 
     if (!quote) {
       throw new WorkOrderOperationError("Cotización no encontrada.");
     }
 
-    assertApprovedQuote(quote.status);
+    assertOperationalQuote(quote.status);
+    assertOperationalStartQuote(quote);
 
     if (quote.workOrder) {
       assertWorkOrderCanBeChanged(quote.workOrder.status);
@@ -114,7 +117,7 @@ async function ensureWorkOrderPlanned(
 
 /**
  * Assigns a work order to a master (and optional helpers), or marks it as a special order.
- * Creates the work order if it doesn't exist yet — single step from approved quote to in-process.
+ * Creates the work order if it doesn't exist yet — single step from an operational quote to in-process.
  */
 export async function assignWorkOrder(input: unknown) {
   await requireOperationalRole();
@@ -125,14 +128,15 @@ export async function assignWorkOrder(input: unknown) {
     // Ensure the work order exists (create if needed)
     const workOrder = await tx.workOrder.findFirst({
       where: { id: data.workOrderId },
-      include: { quote: true },
+      include: { quote: { include: { vehicle: true, items: true, sections: { include: { items: true } } } } },
     });
 
     if (!workOrder) {
       throw new WorkOrderOperationError("Orden de trabajo no encontrada.");
     }
 
-    assertApprovedQuote(workOrder.quote.status);
+    assertOperationalQuote(workOrder.quote.status);
+    assertOperationalStartQuote(workOrder.quote);
     assertWorkOrderCanBeAssigned(workOrder.status);
 
 
@@ -212,20 +216,21 @@ export async function assignWorkOrder(input: unknown) {
 }
 
 /**
- * Creates a PLANNED work order for an approved quote, then immediately assigns it.
- * This is the single entry point from the UI: quote approved → assign master → done.
+ * Creates a PLANNED work order for an operational quote, then immediately assigns it.
+ * This is the single entry point from the UI: validate quote, assign master, and start work.
  */
 export async function createAndAssignWorkOrder(quoteId: string, assignInput: unknown) {
   await requireOperationalRole();
 
   return prisma.$transaction(async (tx) => {
-    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true } });
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { vehicle: true, workOrder: true, items: true, sections: { include: { items: true } } } });
 
     if (!quote) {
       throw new WorkOrderOperationError("Cotización no encontrada.");
     }
 
-    assertApprovedQuote(quote.status);
+    assertOperationalQuote(quote.status);
+    assertOperationalStartQuote(quote);
 
     let workOrderId: string;
 
@@ -319,15 +324,16 @@ export async function completeWorkOrder(input: unknown) {
   return prisma.$transaction(async (tx) => {
     const workOrder = await tx.workOrder.findUnique({
       where: { id: data.workOrderId },
-      include: { quote: true },
+      include: { quote: { include: { vehicle: true, items: true, sections: { include: { items: true } } } } },
     });
 
     if (!workOrder) {
       throw new WorkOrderOperationError("Orden de trabajo no encontrada.");
     }
 
-    assertApprovedQuote(workOrder.quote.status);
+    assertOperationalQuote(workOrder.quote.status);
     assertWorkOrderCanBeCompleted(workOrder.status);
+    assertOperationalClosureQuote(workOrder.quote);
 
     const updated = await tx.workOrder.updateMany({
       where: { id: data.workOrderId, status: WorkOrderStatus.ASSIGNED },

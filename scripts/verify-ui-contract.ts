@@ -51,8 +51,8 @@ function checkQuotesPage() {
   // Server-action wiring must remain intact.
   assertIncludes(
     pageSource,
-    "createQuoteFromForm",
-    "Create form must wire to createQuoteFromForm server action",
+    "createAction={createQuoteFromWorkspace}",
+    "Quote builder must wire to createQuoteFromWorkspace server action",
   );
   assertIncludes(
     pageSource,
@@ -61,8 +61,8 @@ function checkQuotesPage() {
   );
   assertIncludes(
     pageSource,
-    "cancelDraftQuoteFromForm",
-    "Quotes page must wire cancel draft quote server action",
+    "cancelQuoteFromForm",
+    "Quotes page must wire cancelQuoteFromForm server action",
   );
   assertIncludes(
     pageSource,
@@ -96,7 +96,12 @@ function checkQuotesPage() {
   );
   assertIncludes(
     builderDialogSource,
-    "if (nextOpen) setOpen(true)",
+    "if (nextOpen) {",
+    "Quote builder dialog must distinguish explicit open requests from outside/Escape close requests",
+  );
+  assertIncludes(
+    builderDialogSource,
+    "setOpen(true);",
     "Quote builder dialog must ignore outside/Escape-driven close requests",
   );
   const recentQuotesStart = pageSource.indexOf('<CardTitle as="h2">Cotizaciones recientes</CardTitle>');
@@ -144,8 +149,8 @@ function checkQuotesPage() {
   );
   assertIncludes(
     pageSource,
-    "cancelAction={cancelDraftQuoteFromForm}",
-    "Quotes page must wire cancel action into list row and mobile card",
+    "cancelAction={cancelQuoteFromForm}",
+    "Quotes page must wire cancelQuoteFromForm into quote cards",
   );
   assertIncludes(
     cancelFormSource,
@@ -158,16 +163,11 @@ function checkQuotesPage() {
     "Cancel form button must stop propagation to avoid triggering row/card preview",
   );
 
-  // Recent quotes rows/cards must open the preview dialog on click.
+  // Recent quote cards must open the preview dialog on click.
   assertIncludes(
     pageSource,
-    "QuoteListRow",
-    "Quotes page must render QuoteListRow for desktop recent quotes",
-  );
-  assertIncludes(
-    pageSource,
-    "QuoteMobileCard",
-    "Quotes page must render QuoteMobileCard for mobile recent quotes",
+    "QuoteListCard",
+    "Quotes page must render QuoteListCard for recent quotes",
   );
   assertIncludes(
     listRowSource,
@@ -184,10 +184,11 @@ function checkQuotesPage() {
     "setPreviewOpen(true)",
     "Mobile quote card click must open the preview dialog",
   );
-  assertIncludes(
-    mobileCardSource,
-    "event.stopPropagation()",
-    "Mobile quote action container must stop propagation to avoid triggering preview",
+  const mobilePreviewButtonEnd = mobileCardSource.indexOf("</button>");
+  const mobileActionRowStart = mobileCardSource.indexOf("<OperationalActionRow>");
+  assert(
+    mobilePreviewButtonEnd >= 0 && mobileActionRowStart > mobilePreviewButtonEnd,
+    "Mobile quote action row must remain outside the preview button",
   );
 
   // Required form field names must survive wrapper refactors.
@@ -201,10 +202,10 @@ function checkQuotesPage() {
     'name="model"',
     'name="year"',
     'name="administrative"',
-    "items.${index}.type",
-    "items.${index}.description",
-    "items.${index}.quantity",
-    "items.${index}.unitPrice",
+    "sections.${sectionIndex}.items.${itemIndex}.type",
+    "sections.${sectionIndex}.items.${itemIndex}.description",
+    "sections.${sectionIndex}.items.${itemIndex}.quantity",
+    "sections.${sectionIndex}.items.${itemIndex}.unitPrice",
   ];
 
   for (const pattern of requiredFieldPatterns) {
@@ -218,12 +219,12 @@ function checkQuotesPage() {
   const sequenceSource = readFileSync("src/features/quotes/lib/sequence.ts", "utf8");
   assertIncludes(
     sequenceSource,
-    'getNextNumber("quote", "C")',
+    'getNextNumber("quote", "C", 3',
     "Quote numbering must use C- prefix for sequential numbers",
   );
   assertIncludes(
     sequenceSource,
-    'getNextNumber("workOrder", "T")',
+    'getNextNumber("workOrder", "T", 2',
     "Work order numbering must use T- prefix for sequential numbers",
   );
 
@@ -384,8 +385,8 @@ function checkQuotesPage() {
   );
   assertIncludes(
     previewDialogSource,
-    '<Badge variant="default">{itemTypeLabels[item.type] ?? item.type}</Badge>',
-    "Quote preview dialog must render item type as a badge",
+    "<QuotePreviewCard {...preview} />",
+    "Quote preview dialog must delegate quote rendering to QuotePreviewCard",
   );
   assertIncludes(
     previewDialogSource,
@@ -428,7 +429,11 @@ function checkQuotesPage() {
   // Quote filters must be wired to URL params and render the filter controls.
   assertIncludes(pageSource, "QuoteFilters", "Quotes page must render QuoteFilters");
   assertIncludes(pageSource, "quoteFilterSchema", "Quotes page must parse filters via quoteFilterSchema");
-  assertIncludes(pageSource, "listQuotes(filters)", "Quotes page must pass parsed filters to listQuotes");
+  assertIncludes(
+    pageSource,
+    'listPaginatedQuotes(params, { operationalQueue: "quotes" })',
+    "Quotes page must pass search params to the paginated quotes query",
+  );
 
   const quoteFiltersSource = readFileSync(
     "src/features/quotes/components/quote-filters.tsx",
@@ -465,7 +470,7 @@ function checkQuotesPage() {
   const spanishLabels = [
     { label: "Cotizaciones en borrador", source: pageSource },
     { label: "Nueva cotización", source: builderDialogSource },
-    { label: "Crear cotización en borrador", source: combinedBuilderSource },
+    { label: "Crear cotización", source: combinedBuilderSource },
     { label: "Conceptos", source: combinedBuilderSource },
     { label: "Cliente", source: combinedBuilderSource },
     { label: "Título", source: combinedBuilderSource },
@@ -486,6 +491,10 @@ function checkQuotesPage() {
 function checkCustomerPages() {
   const createPageSource = readFileSync(
     "src/app/admin/(protected)/customers/page.tsx",
+    "utf8",
+  );
+  const customerSearchSource = readFileSync(
+    "src/features/customers/components/customer-search.tsx",
     "utf8",
   );
   const editPageSource = readFileSync(
@@ -535,6 +544,11 @@ function checkCustomerPages() {
   // Customer search must cover contact info and related vehicle plates.
   assertIncludes(
     createPageSource,
+    "<CustomerSearch />",
+    "Customer create page must render CustomerSearch",
+  );
+  assertIncludes(
+    customerSearchSource,
     "placas",
     "Customer search placeholder must mention vehicle plates",
   );
@@ -632,62 +646,45 @@ function checkRootPage() {
 
 function checkPublicPaymentPage() {
   const pageSource = readFileSync("src/app/datos-de-pago/[token]/page.tsx", "utf8");
+  const publicPaymentPageSource = readFileSync(
+    "src/features/public-payment/components/public-payment-page.tsx",
+    "utf8",
+  );
   const shellSource = readFileSync("src/features/public-payment/components/public-payment-shell.tsx", "utf8");
-  const invoiceDecisionSource = readFileSync(
-    "src/features/public-payment/components/invoice-decision.tsx",
-    "utf8",
-  );
-  const fiscalFormSource = readFileSync(
-    "src/features/public-payment/components/fiscal-data-form.tsx",
-    "utf8",
-  );
   const bankCardSource = readFileSync(
     "src/features/public-payment/components/bank-data-card.tsx",
     "utf8",
   );
 
   assertNoRadix(pageSource, "Public payment page");
+  assertNoRadix(publicPaymentPageSource, "Public payment component");
   assertNoRadix(shellSource, "Public payment shell");
-  assertNoRadix(invoiceDecisionSource, "Invoice decision");
-  assertNoRadix(fiscalFormSource, "Fiscal data form");
-
-  // Server-action wiring must remain intact.
   assertIncludes(
     pageSource,
+    "account.isForInvoicing === requiresInvoice",
+    "Public payment page must select only the bank account class required by the request",
+  );
+  assertIncludes(
+    pageSource,
+    "result.request.requiresInvoice",
+    "Public payment page must filter accounts using stored invoice metadata",
+  );
+
+  const publicPaymentSource = `${pageSource}\n${publicPaymentPageSource}`;
+  for (const obsoletePublicFiscalSymbol of [
     "setPaymentRequestInvoicePreference",
-    "Page must wire invoice preference server action",
-  );
-  assertIncludes(
-    pageSource,
     "savePaymentRequestFiscalData",
-    "Page must wire fiscal data server action",
-  );
-
-  // Required form field names must survive wrapper refactors.
-  const requiredFieldPatterns = [
-    'name="personType"',
-    'name="businessName"',
-    'name="taxId"',
-    'name="taxRegime"',
-    'name="cfdiUse"',
-    'name="zipCode"',
-  ];
-
-  for (const pattern of requiredFieldPatterns) {
-    assertIncludes(
-      fiscalFormSource,
-      pattern,
-      `Missing required fiscal form field pattern: ${pattern}`,
+    "InvoiceDecision",
+    "FiscalDataForm",
+  ]) {
+    assert(
+      !publicPaymentSource.includes(obsoletePublicFiscalSymbol),
+      `Public payment surface must not wire obsolete fiscal symbol: ${obsoletePublicFiscalSymbol}`,
     );
   }
 
   // User-facing copy must stay in Mexican Spanish.
   const spanishLabels = [
-    { label: "¿Qué necesitas compartir?", source: invoiceDecisionSource },
-    { label: "Solo datos de pago", source: invoiceDecisionSource },
-    { label: "Requiero factura", source: invoiceDecisionSource },
-    { label: "Captura de datos fiscales", source: fiscalFormSource },
-    { label: "Guardar datos fiscales", source: fiscalFormSource },
     { label: "Datos de pago", source: bankCardSource },
     { label: "Enviar comprobante", source: readFileSync("src/features/public-payment/components/whatsapp-receipt-cta.tsx", "utf8") },
   ];

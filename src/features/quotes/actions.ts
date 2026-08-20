@@ -9,17 +9,17 @@ import { requireOperationalRole } from "@/lib/auth/session";
 import { measureServerTiming, recordServerTiming } from "@/lib/server-timing";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { createVehicleSnapshot, type VehicleInput } from "@/features/vehicles/schemas";
-import { quoteFormInputSchema, quoteInputSchema, quoteLifecycleReasonSchema, type QuoteVehicleInput } from "./schemas";
+import { quoteDraftFormInputSchema, quoteDraftInputSchema, quoteLifecycleReasonSchema, type QuoteVehicleInput } from "./schemas";
 import {
   calculateItemTotalCents,
   calculateQuoteTotals,
   createQuoteValidUntil,
 } from "./lib/calculate";
 import { isQuoteEditable } from "./lib/editability";
+import { assertCommercialQuote, CommercialQuoteValidationError } from "./lib/commercial-validation";
+import { normalizeOperationalDate } from "./lib/operational-date";
 import { nextQuoteNumber, nextWorkOrderNumber } from "./lib/sequence";
 import {
-  createSharedQuoteExpirationDate,
-  createSharedQuoteToken,
   QuoteDecisionError,
   acceptSharedQuote,
   declineSharedQuote,
@@ -27,9 +27,20 @@ import {
   SharedQuoteExpiredError,
   SharedQuoteRevokedError,
   SharedQuoteNotFoundError,
+  correctQuoteDecision,
+  getOrCreateSharedQuoteForQuote,
 } from "./domain";
 
 const quotesPath = "/admin/quotes";
+const genericQuoteFormValidationError = "Revisa los datos e intenta de nuevo.";
+
+function quoteFormValidationError(issues: Array<{ message: string }>) {
+  const actionableIssue = issues.find(({ message }) =>
+    message.startsWith("Selecciona ") || message.startsWith("El año "),
+  );
+
+  return actionableIssue?.message ?? genericQuoteFormValidationError;
+}
 
 type QuoteItemFormInput = {
   type: FormDataEntryValue | null;
@@ -40,6 +51,7 @@ type QuoteItemFormInput = {
 
 type QuoteSectionFormInput = {
   name: FormDataEntryValue | null;
+  isAuthorized: boolean;
   items: QuoteItemFormInput[];
 };
 
@@ -48,6 +60,7 @@ function quoteFormDataToInput(formData: FormData) {
 
   for (let sIndex = 0; true; sIndex += 1) {
     const sectionName = formData.get(`sections.${sIndex}.name`);
+    const isAuthorized = formData.get(`sections.${sIndex}.isAuthorized`) === "on";
     const items: QuoteItemFormInput[] = [];
 
     for (let index = 0; true; index += 1) {
@@ -75,7 +88,7 @@ function quoteFormDataToInput(formData: FormData) {
       break;
     }
 
-    sections.push({ name: sectionName ?? "General", items });
+    sections.push({ name: sectionName ?? "General", isAuthorized, items });
   }
 
   return {
@@ -92,6 +105,7 @@ function quoteFormDataToInput(formData: FormData) {
     administrative: formData.get("administrative") === "on",
     taxEnabled: formData.get("taxEnabled") === "on",
     discountCents: formData.get("discount") || "0",
+    operationalDate: formData.get("operationalDate"),
     sections,
   };
 }
@@ -110,9 +124,9 @@ function hasVehicleData(vehicle: QuoteVehicleInput): boolean {
   );
 }
 
-function buildVehicleInput(customerId: string, vehicle: QuoteVehicleInput): VehicleInput {
+function buildVehicleInput(customerId: string | undefined, vehicle: QuoteVehicleInput): VehicleInput {
   return {
-    customerId,
+    customerId: customerId ?? "",
     plate: vehicle.plate,
     brand: vehicle.brand,
     model: vehicle.model,
@@ -122,14 +136,22 @@ function buildVehicleInput(customerId: string, vehicle: QuoteVehicleInput): Vehi
   };
 }
 
-async function createQuoteAuthorized(input: unknown) {
-  const data = quoteInputSchema.parse(input);
+function draftTotals(data: { sections: Array<{ items: Array<{ quantity: number; unitPriceCents?: number }> }>; taxEnabled: boolean; discountCents: number }) {
+  const hasPendingPrice = data.sections.some((section) => section.items.some((item) => item.unitPriceCents === undefined));
+  if (hasPendingPrice) return { subtotalCents: null, discountCents: data.discountCents, taxCents: null, totalCents: null };
+
   const subtotalCents = data.sections.reduce(
-    (total, section) => total + section.items.reduce((secTotal, item) => secTotal + calculateItemTotalCents(item.quantity, item.unitPriceCents), 0),
-    0
+    (total, section) => total + section.items.reduce((sectionTotal, item) => sectionTotal + calculateItemTotalCents(item.quantity, item.unitPriceCents!), 0),
+    0,
   );
-  const { taxCents, totalCents, discountCents } = calculateQuoteTotals(subtotalCents, data.taxEnabled, data.discountCents);
+  return calculateQuoteTotals(subtotalCents, data.taxEnabled, data.discountCents);
+}
+
+async function createQuoteAuthorized(input: unknown) {
+  const data = quoteDraftInputSchema.parse(input);
+  const totals = draftTotals(data);
   const validUntil = createQuoteValidUntil();
+  const operationalDate = normalizeOperationalDate(data.operationalDate);
 
   return prisma.$transaction(async (tx) => {
     const quoteId = randomUUID();
@@ -142,32 +164,29 @@ async function createQuoteAuthorized(input: unknown) {
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
 
-    return tx.quote.create({
+    const createdQuote = await tx.quote.create({
       data: {
         id: quoteId,
-        customerId: data.customerId,
+        customerId: data.customerId ?? null,
         vehicleId: vehicle?.id ?? null,
         vehicleSnapshot,
         number: quoteNumber,
-        status: "DRAFT",
+        status: QuoteStatus.DRAFT,
+        approvedAt: null,
         title: data.title,
         description: nullableOptional(data.description),
         administrative: data.administrative,
         taxEnabled: data.taxEnabled,
-        subtotalCents,
-        discountCents,
-        taxCents,
-        totalCents,
+        subtotalCents: totals.subtotalCents,
+        discountCents: totals.discountCents ?? data.discountCents,
+        taxCents: totals.taxCents,
+        totalCents: totals.totalCents,
+        operationalDate,
         validUntil,
-        sharedQuotes: {
-          create: {
-            token: createSharedQuoteToken(),
-            expiresAt: createSharedQuoteExpirationDate(),
-          },
-        },
         sections: {
           create: data.sections.map((section, sectionIndex) => ({
             name: section.name,
+            isAuthorized: false,
             sortOrder: sectionIndex,
             items: {
               create: section.items.map((item, itemIndex) => ({
@@ -175,8 +194,8 @@ async function createQuoteAuthorized(input: unknown) {
                 type: item.type,
                 description: item.description,
                 quantity: item.quantity,
-                unitPriceCents: item.unitPriceCents,
-                totalCents: calculateItemTotalCents(item.quantity, item.unitPriceCents),
+                unitPriceCents: item.unitPriceCents ?? null,
+                totalCents: item.unitPriceCents === undefined ? null : calculateItemTotalCents(item.quantity, item.unitPriceCents),
                 sortOrder: itemIndex,
               })),
             },
@@ -185,6 +204,8 @@ async function createQuoteAuthorized(input: unknown) {
       },
       include: { sections: true },
     });
+
+    return createdQuote;
   });
 }
 
@@ -199,8 +220,8 @@ export async function createQuoteFromWorkspace(
   _previousState: QuoteFormActionState,
   formData: FormData,
 ): Promise<QuoteFormActionState> {
-  const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
-  if (!parsed.success) return { error: "Revisa los datos e intenta de nuevo." };
+  const parsed = quoteDraftFormInputSchema.safeParse(quoteFormDataToInput(formData));
+  if (!parsed.success) return { error: quoteFormValidationError(parsed.error.issues) };
 
   try {
     await createQuote(parsed.data);
@@ -218,10 +239,10 @@ export async function createQuoteFromForm(
 ): Promise<QuoteFormActionState> {
   await requireOperationalRole();
 
-  const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
+  const parsed = quoteDraftFormInputSchema.safeParse(quoteFormDataToInput(formData));
 
   if (!parsed.success) {
-    return { error: "Revisa los datos e intenta de nuevo." };
+    return { error: quoteFormValidationError(parsed.error.issues) };
   }
 
   try {
@@ -235,17 +256,17 @@ export async function createQuoteFromForm(
 export async function updateDraftQuote(quoteId: string, input: unknown) {
   await requireOperationalRole();
 
-  const data = quoteInputSchema.parse(input);
+  const data = quoteDraftInputSchema.parse(input);
+  const requestedOperationalDate = data.operationalDate === undefined
+    ? undefined
+    : normalizeOperationalDate(data.operationalDate);
   const sectionData = data.sections.map((section, sIndex) => ({
     name: section.name,
+    isAuthorized: section.isAuthorized ?? false,
     sortOrder: sIndex,
   }));
 
-  const subtotalCents = data.sections.reduce(
-    (total, section) => total + section.items.reduce((secTotal, item) => secTotal + calculateItemTotalCents(item.quantity, item.unitPriceCents), 0),
-    0,
-  );
-  const { taxCents, totalCents, discountCents } = calculateQuoteTotals(subtotalCents, data.taxEnabled, data.discountCents);
+  const totals = draftTotals(data);
 
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({
@@ -261,6 +282,14 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       throw new Error("This quote is not editable.");
     }
 
+    if (
+      requestedOperationalDate &&
+      quote.status !== QuoteStatus.DRAFT &&
+      requestedOperationalDate.getTime() !== quote.operationalDate.getTime()
+    ) {
+      throw new Error("Only draft quotes can change their operational date.");
+    }
+
     const paidTotals = await tx.payment.aggregate({
       where: { quoteId, status: PaymentStatus.PAID },
       _sum: { amountCents: true },
@@ -269,7 +298,7 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
 
     // This form always replaces quote items and recalculates totals. We must ensure
     // the new total is not less than what has already been paid.
-    if (paidCents > totalCents) {
+    if (totals.totalCents !== null && paidCents > totals.totalCents) {
       throw new Error(`Esta cotización ya tiene ${paidCents / 100} abonados, el nuevo total no puede ser menor a esa cantidad.`);
     }
 
@@ -287,17 +316,20 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
     const updatedQuote = await tx.quote.update({
       where: { id: quoteId },
       data: {
-        customerId: data.customerId,
+        customerId: data.customerId ?? null,
         vehicleId: vehicle?.id ?? null,
         vehicleSnapshot,
         title: data.title,
         description: nullableOptional(data.description),
         administrative: data.administrative,
         taxEnabled: data.taxEnabled,
-        subtotalCents,
-        discountCents,
-        taxCents,
-        totalCents,
+        subtotalCents: totals.subtotalCents,
+        discountCents: totals.discountCents ?? data.discountCents,
+        taxCents: totals.taxCents,
+        totalCents: totals.totalCents,
+...(quote.status === QuoteStatus.DRAFT && requestedOperationalDate ? { operationalDate: requestedOperationalDate } : {}),
+        status: QuoteStatus.DRAFT,
+        approvedAt: null,
         sections: { create: sectionData },
       },
       include: { sections: true },
@@ -314,8 +346,8 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
             type: item.type,
             description: item.description,
             quantity: item.quantity,
-            unitPriceCents: item.unitPriceCents,
-            totalCents: calculateItemTotalCents(item.quantity, item.unitPriceCents),
+            unitPriceCents: item.unitPriceCents ?? null,
+            totalCents: item.unitPriceCents === undefined ? null : calculateItemTotalCents(item.quantity, item.unitPriceCents),
             sortOrder: iIndex,
           });
         });
@@ -337,10 +369,10 @@ export async function updateDraftQuoteFromForm(
 ): Promise<QuoteFormActionState> {
   await requireOperationalRole();
 
-  const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
+  const parsed = quoteDraftFormInputSchema.safeParse(quoteFormDataToInput(formData));
 
   if (!parsed.success) {
-    return { error: "Revisa los datos e intenta de nuevo." };
+    return { error: quoteFormValidationError(parsed.error.issues) };
   }
 
   try {
@@ -367,8 +399,8 @@ export async function updateDraftQuoteFromWorkspace(
   _previousState: QuoteFormActionState,
   formData: FormData,
 ): Promise<QuoteFormActionState> {
-  const parsed = quoteFormInputSchema.safeParse(quoteFormDataToInput(formData));
-  if (!parsed.success) return { error: "Revisa los datos e intenta de nuevo." };
+  const parsed = quoteDraftFormInputSchema.safeParse(quoteFormDataToInput(formData));
+  if (!parsed.success) return { error: quoteFormValidationError(parsed.error.issues) };
 
   try {
     await updateDraftQuote(quoteId, parsed.data);
@@ -549,7 +581,7 @@ export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({
       where: { id: quoteId },
-      include: { workOrder: true },
+      include: { workOrder: true, items: true, sections: { include: { items: true } } },
     });
 
     if (!quote) {
@@ -563,6 +595,8 @@ export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
     if (quote.workOrder) {
       throw new Error("This quote already has a work order.");
     }
+
+    assertCommercialQuote(quote);
 
     const approvedAt = new Date();
     const updatedQuote = await tx.quote.updateMany({
@@ -608,18 +642,35 @@ export async function approveQuoteAndCreateWorkOrderFromForm(formData: FormData)
 
 export async function publishSharedQuote(quoteId: string) {
   await requireOperationalRole();
-  await prisma.quote.updateMany({
-    where: { id: quoteId, status: QuoteStatus.DRAFT },
-    data: { status: QuoteStatus.SENT },
-  });
-  return { success: true };
+  let result: { success: boolean; error?: string };
+
+  try {
+    result = await prisma.$transaction(async (tx) => {
+      const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { sections: { include: { items: true } } } });
+      if (!quote) return { success: false, error: "No se encontró la cotización." };
+      assertCommercialQuote(quote);
+      const updated = await tx.quote.updateMany({ where: { id: quoteId, status: QuoteStatus.DRAFT }, data: { status: QuoteStatus.SENT } });
+      if (updated.count !== 1) return { success: false, error: "La cotización cambió de estado. Recarga e intenta de nuevo." };
+      return { success: true };
+    });
+  } catch (error) {
+    if (error instanceof CommercialQuoteValidationError) {
+      return { success: false, error: error.message };
+    }
+    throw error;
+  }
+
+  if (!result.success) return result;
+  await getOrCreateSharedQuoteForQuote(quoteId);
+  revalidatePath(quotesPath);
+  return result;
 }
 
 // --- Public accept / decline (no auth required; token is the authorization) ---
 
-export async function acceptSharedQuoteAction(token: string) {
+export async function acceptSharedQuoteAction(token: string, authorizedSectionIds?: string[]) {
   try {
-    await acceptSharedQuote(token);
+    await acceptSharedQuote(token, authorizedSectionIds);
   } catch (error) {
     if (error instanceof SharedQuoteExpiredError) {
       return { success: false, error: "El enlace de esta cotización expiró." };
@@ -667,7 +718,7 @@ export async function declineSharedQuoteAction(token: string) {
 
 // --- Admin authorization (auth required) ---
 
-export async function authorizeQuoteAction(quoteId: string, note: string) {
+export async function authorizeQuoteAction(quoteId: string, note: string, authorizedSectionIds?: string[]) {
   const { profile } = await requireOperationalRole();
 
   if (typeof note !== "string" || note.trim().length === 0) {
@@ -676,7 +727,7 @@ export async function authorizeQuoteAction(quoteId: string, note: string) {
 
   try {
     await measureServerTiming("action", "quote.authorize", () =>
-      authorizeQuote(quoteId, note, profile.id),
+      authorizeQuote(quoteId, note, profile.id, authorizedSectionIds),
     );
   } catch (error) {
     if (error instanceof QuoteDecisionError) {
@@ -696,6 +747,22 @@ export async function authorizeQuoteAction(quoteId: string, note: string) {
   return { success: true };
 }
 
+export async function correctQuoteDecisionAction(quoteId: string, nextStatus: "APPROVED" | "REJECTED") {
+  const { profile } = await requireOperationalRole();
+
+  try {
+    await correctQuoteDecision(quoteId, nextStatus, profile.id);
+  } catch (error) {
+    if (error instanceof QuoteDecisionError) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "No se pudo corregir la decisión de la cotización." };
+  }
+
+  revalidatePath(quotesPath);
+  return { success: true };
+}
+
 async function duplicateQuoteAuthorized(quoteId: string) {
   const original = await prisma.quote.findUnique({
     where: { id: quoteId },
@@ -711,6 +778,7 @@ async function duplicateQuoteAuthorized(quoteId: string) {
   }
 
   const validUntil = createQuoteValidUntil();
+  const operationalDate = normalizeOperationalDate(undefined);
 
   return prisma.$transaction(async (tx) => {
     const duplicatedQuoteId = randomUUID();
@@ -732,13 +800,8 @@ async function duplicateQuoteAuthorized(quoteId: string) {
         discountCents: original.discountCents,
         taxCents: original.taxCents,
         totalCents: original.totalCents,
+        operationalDate,
         validUntil,
-        sharedQuotes: {
-          create: {
-            token: createSharedQuoteToken(),
-            expiresAt: createSharedQuoteExpirationDate(),
-          },
-        },
         items: {
           create: original.items.map((item, itemIndex) => ({
             type: item.type,

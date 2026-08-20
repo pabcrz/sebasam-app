@@ -1,12 +1,17 @@
 "use client";
 
+import * as React from "react";
 import { UserPlus } from "lucide-react";
 import {
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   Input,
   Label,
   Textarea,
@@ -17,16 +22,38 @@ export interface CustomerCreateFormProps {
 }
 
 export function CustomerCreateForm({ action }: CustomerCreateFormProps) {
+  const [open, setOpen] = React.useState(false);
+  const [isPending, startTransition] = React.useTransition();
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      await action(formData);
+    });
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle as="h2" className="flex items-center gap-2">
-          <UserPlus className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
-          Crear cliente
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form action={action} className="grid gap-4" data-testid="customer-create-form">
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!isPending) setOpen(nextOpen); }}>
+      <DialogTrigger asChild>
+        <Button type="button" className="w-full sm:w-fit">
+          <UserPlus className="h-4 w-4" aria-hidden="true" />
+          Nuevo cliente
+        </Button>
+      </DialogTrigger>
+      <DialogContent
+        className="max-w-lg"
+        onEscapeKeyDown={(event) => { if (isPending) event.preventDefault(); }}
+        onPointerDownOutside={(event) => { if (isPending) event.preventDefault(); }}
+      >
+        <DialogHeader>
+          <DialogTitle>Nuevo cliente</DialogTitle>
+          <DialogDescription>
+            Registra los datos del cliente. Solo el nombre es obligatorio.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="grid gap-4" data-testid="customer-create-form">
           <div className="grid gap-2">
             <Label htmlFor="name">Nombre</Label>
             <Input id="name" name="name" placeholder="Nombre del cliente" required />
@@ -54,11 +81,21 @@ export function CustomerCreateForm({ action }: CustomerCreateFormProps) {
             <Label htmlFor="notes">Notas</Label>
             <Textarea id="notes" name="notes" placeholder="Información adicional..." rows={3} />
           </div>
-          <Button type="submit" variant="primary" className="w-full sm:w-fit">
-            Crear cliente
-          </Button>
+          <p role="status" className="sr-only">
+            {isPending ? "Creando cliente..." : ""}
+          </p>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={isPending}>
+                Cancelar
+              </Button>
+            </DialogClose>
+            <Button type="submit" variant="primary" loading={isPending} disabled={isPending}>
+              Crear cliente
+            </Button>
+          </DialogFooter>
         </form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }

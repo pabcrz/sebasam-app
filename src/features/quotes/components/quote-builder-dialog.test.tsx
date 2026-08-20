@@ -64,11 +64,11 @@ async function enterRepresentativeQuoteState(user: ReturnType<typeof userEvent.s
   await user.clear(screen.getByRole("textbox", { name: "Cantidad" }));
   await user.type(screen.getByRole("textbox", { name: "Cantidad" }), "3");
   await user.type(screen.getByRole("spinbutton", { name: "Precio unitario" }), "1250");
+  await user.click(screen.getByRole("checkbox", { name: "Incluir IVA (16%)" }));
   await user.click(screen.getByRole("button", { name: "Siguiente" }));
   await user.type(screen.getByRole("textbox", { name: "Título" }), "Servicio completo");
   await user.type(screen.getByLabelText("Descripción", { selector: "textarea" }), "Trabajo prioritario");
   await user.click(screen.getByRole("checkbox", { name: "Cotización administrativa" }));
-  await user.click(screen.getByRole("checkbox", { name: "Incluir IVA (16%)" }));
 }
 
 function expectRepresentativeQuoteState() {
@@ -178,7 +178,7 @@ describe("QuoteBuilderDialog", () => {
     await user.click(closeButton);
 
     const confirmation = screen.getByRole("dialog", { name: "¿Descartar la cotización?" });
-    const hiddenBuilder = document.querySelector('[role="dialog"][aria-hidden="true"]');
+    const hiddenBuilder = screen.getByRole("dialog", { name: /Crear cotización/i, hidden: true });
     expect(hiddenBuilder).toHaveAttribute("data-state", "open");
     expect(confirmation).toContainElement(document.activeElement as HTMLElement);
     expect(hiddenBuilder).not.toContainElement(document.activeElement as HTMLElement);
@@ -258,10 +258,10 @@ describe("QuoteBuilderDialog", () => {
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
     await user.click(screen.getByRole("button", { name: "Descartar cambios" }));
 
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "Crear cotización" })).not.toBeInTheDocument();
-    });
-    await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
+    const trigger = screen.getByRole("button", { name: "Nueva cotización" });
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
+    await user.click(trigger);
+    await screen.findByRole("dialog", { name: "Crear cotización" });
     expect(screen.getByRole("button", { name: "Paso 1: Cliente / Unidad" })).toHaveAttribute("aria-current", "step");
     expect(screen.getByLabelText("Cliente")).not.toHaveValue("Acme");
     expect(screen.getByLabelText("Placas (opcional)")).toHaveValue("");
@@ -325,7 +325,6 @@ describe("QuoteBuilderDialog", () => {
     await user.clear(title);
     await user.type(title, "Servicio editado");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1));
@@ -351,7 +350,6 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     await enterRepresentativeQuoteState(user);
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.click(screen.getByRole("button", { name: "Crear cotización" }));
 

@@ -36,6 +36,7 @@ describe("CotizacionPage", () => {
         customerId: "customer-1",
         vehicleId: null,
         vehicleSnapshot: null,
+        operationalDate: new Date("2026-06-15T00:00:00.000Z"),
         createdAt: new Date("2026-07-01T12:00:00.000Z"),
         updatedAt: new Date("2026-07-01T12:00:00.000Z"),
         customer: {
@@ -73,6 +74,7 @@ describe("CotizacionPage", () => {
       expect.objectContaining({
         token: "token-123",
         quote: expect.objectContaining({
+          operationalDate: new Date("2026-06-15T00:00:00.000Z"),
           items: [expect.objectContaining({ quantity: "1.5" })],
         }),
       }),

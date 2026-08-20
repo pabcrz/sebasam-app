@@ -1,6 +1,7 @@
 import { QuoteItemType } from "@prisma/client";
 import { z } from "zod";
-import { optionalTrimmedString as optionalFilterString, optionalDate } from "@/lib/filters";
+import { normalizeOperationalDate } from "./lib/operational-date";
+import { optionalTrimmedString as optionalFilterString } from "@/lib/filters";
 
 const optionalTrimmedString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -31,6 +32,11 @@ const centsFromDollarInput = z.preprocess((value) => {
 
   return Math.round(Number(normalized) * 100);
 }, z.number().int().nonnegative("Unit price must be zero or greater").max(MAX_UNIT_PRICE_CENTS, "Unit price is too large"));
+
+const optionalCentsFromDollarInput = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  centsFromDollarInput.optional(),
+);
 
 const quantitySchema = z.coerce
   .number()
@@ -65,6 +71,7 @@ export const quoteItemInputSchema = quoteItemBaseSchema.superRefine(validateItem
 
 const quoteSectionBaseSchema = z.object({
   name: z.string().trim().max(160),
+  isAuthorized: z.boolean().default(false),
 });
 
 export const quoteSectionInputSchema = quoteSectionBaseSchema.extend({
@@ -95,8 +102,34 @@ const quoteInputBaseSchema = z.object({
   administrative: z.boolean().default(false),
   taxEnabled: z.boolean().default(true),
   discountCents: z.number().int().nonnegative().default(0),
+  operationalDate: z.preprocess(
+    (value) => value === "" ? undefined : value,
+    z.string().optional().superRefine((value, context) => {
+      if (!value) return;
+      try {
+        normalizeOperationalDate(value);
+      } catch {
+        context.addIssue({ code: "custom", message: "Operational date must be today or earlier." });
+      }
+    }),
+  ),
   sections: z.array(quoteSectionInputSchema).min(1, "At least one quote section is required").max(10),
 });
+
+const quoteFilterDateSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string" || value.trim() === "") return undefined;
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+    if (!match) return undefined;
+    const [year, month, day] = match.slice(1).map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+      ? date
+      : undefined;
+  },
+  z.date().optional(),
+);
 
 function validateQuoteTotals(
   quote: z.infer<typeof quoteInputBaseSchema>,
@@ -145,13 +178,53 @@ export const quoteFormInputSchema = quoteInputBaseSchema.extend({
   sections: z.array(quoteFormSectionSchema).min(1, "At least one quote section is required").max(10),
 }).superRefine(validateQuoteTotals);
 
+const quoteDraftInputBaseSchema = quoteInputBaseSchema.extend({
+  customerId: optionalTrimmedString,
+});
+
+function validateDraftIdentity(
+  quote: { customerId?: string; vehicle: z.infer<typeof quoteVehicleInputSchema> },
+  ctx: z.RefinementCtx,
+) {
+  const hasIdentifiableUnit = Boolean(
+    quote.vehicle.plate || (quote.vehicle.brand && quote.vehicle.model),
+  );
+
+  if (!quote.customerId && !hasIdentifiableUnit) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Selecciona un cliente o identifica la unidad con placas o marca y modelo.",
+      path: ["vehicle"],
+    });
+  }
+}
+
+export const quoteDraftInputSchema = quoteDraftInputBaseSchema.extend({
+  sections: z.array(quoteSectionBaseSchema.extend({
+    items: z.array(quoteItemBaseSchema.omit({ unitPriceCents: true }).extend({ unitPriceCents: z.number().int().nonnegative().max(MAX_UNIT_PRICE_CENTS).optional() })),
+  })).min(1, "At least one quote section is required").max(10),
+}).superRefine(validateDraftIdentity);
+
+export const quoteDraftFormItemSchema = quoteItemBaseSchema.omit({ unitPriceCents: true }).extend({
+  unitPriceCents: optionalCentsFromDollarInput,
+}).superRefine((item, ctx) => {
+  if (item.unitPriceCents !== undefined) validateItemTotal({ ...item, unitPriceCents: item.unitPriceCents }, ctx);
+});
+
+export const quoteDraftFormInputSchema = quoteDraftInputBaseSchema.extend({
+  administrative: z.coerce.boolean().default(false),
+  discountCents: centsFromDollarInput.default(0),
+  sections: z.array(quoteSectionBaseSchema.extend({ items: z.array(quoteDraftFormItemSchema) })).min(1, "At least one quote section is required").max(10),
+}).superRefine(validateDraftIdentity);
+
 export const quoteFilterSchema = z.object({
   status: optionalFilterString(),
   customerId: optionalFilterString(),
   number: optionalFilterString(),
   plate: optionalFilterString(),
-  dateFrom: optionalDate(),
-  dateTo: optionalDate(),
+dateFrom: quoteFilterDateSchema,
+  dateTo: quoteFilterDateSchema,
+  hasWorkOrder: z.string().optional().transform((val) => val === "true" ? true : val === "false" ? false : undefined),
   showCancelled: z.coerce.boolean().default(false),
   showArchived: z.coerce.boolean().default(false),
 });
@@ -162,4 +235,5 @@ export const quoteListPageSchema = z.coerce.number().int().min(1).default(1);
 
 export type QuoteFilterInput = z.infer<typeof quoteFilterSchema>;
 export type QuoteInput = z.infer<typeof quoteInputSchema>;
+export type QuoteDraftInput = z.infer<typeof quoteDraftInputSchema>;
 export type QuoteVehicleInput = z.infer<typeof quoteVehicleInputSchema>;

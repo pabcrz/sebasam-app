@@ -1,7 +1,6 @@
 import { Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { endOfDay } from "@/lib/filters";
 import { quoteFilterSchema, quoteListPageSchema, type QuoteFilterInput } from "./schemas";
 import { getQuotePaidTotals } from "@/features/payments/queries";
 
@@ -80,14 +79,26 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
     const plateSearch = filters.plate;
     where.OR = [
       { vehicle: { plate: { contains: plateSearch, mode: "insensitive" } } },
-      { vehicleSnapshot: { path: ["plate"], string_contains: plateSearch, mode: "insensitive" } },
+      { vehicleSnapshot: { path: ["plate"], string_contains: plateSearch } },
     ];
   }
 
   if (filters.dateFrom || filters.dateTo) {
-    where.createdAt = {};
-    if (filters.dateFrom) where.createdAt.gte = filters.dateFrom;
-    if (filters.dateTo) where.createdAt.lte = endOfDay(filters.dateTo);
+    where.operationalDate = {};
+    if (filters.dateFrom) where.operationalDate.gte = filters.dateFrom;
+    if (filters.dateTo) where.operationalDate.lte = filters.dateTo;
+  }
+
+  if (filters.hasWorkOrder === true) {
+    where.workOrder = { isNot: null };
+  } else if (filters.hasWorkOrder === false) {
+    if (where.NOT) {
+      where.NOT = Array.isArray(where.NOT)
+        ? [...where.NOT, { workOrder: { isNot: null } }]
+        : [where.NOT, { workOrder: { isNot: null } }];
+    } else {
+      where.NOT = { workOrder: { isNot: null } };
+    }
   }
 
   return Object.keys(where).length > 0 ? where : undefined;
@@ -138,7 +149,7 @@ async function findQuotes(where: Prisma.QuoteWhereInput | undefined, pagination?
     where,
     relationLoadStrategy: "join",
     include: quoteListInclude,
-    orderBy: pagination ? [{ createdAt: "desc" }, { id: "desc" }] : { createdAt: "desc" },
+    orderBy: pagination ? [{ operationalDate: "desc" }, { id: "desc" }] : { operationalDate: "desc" },
     ...pagination,
   });
 }
@@ -149,33 +160,33 @@ async function serializeQuotes(quotes: Awaited<ReturnType<typeof findQuotes>>) {
   // Serialize Prisma Decimal fields to plain numbers so Next.js Server→Client Component
   // serialization does not break with Turbopack.
   return quotes.map((quote) => {
-    const totalCents = Number(quote.totalCents);
+    const totalCents = quote.totalCents === null ? null : Number(quote.totalCents);
     const paidCents = paidTotals.get(quote.id) ?? 0;
 
-    if (paidCents > totalCents) {
+    if (totalCents !== null && paidCents > totalCents) {
       throw new Error(`Los pagos registrados exceden el total de la cotización ${quote.number}.`);
     }
 
     return {
       ...quote,
-      subtotalCents: Number(quote.subtotalCents),
-      taxCents: Number(quote.taxCents),
+       subtotalCents: quote.subtotalCents === null ? null : Number(quote.subtotalCents),
+       taxCents: quote.taxCents === null ? null : Number(quote.taxCents),
       totalCents,
       paidCents,
-      remainingCents: totalCents - paidCents,
+       remainingCents: totalCents === null ? null : totalCents - paidCents,
       items: quote.items.map((item) => ({
         ...item,
         quantity: Number(item.quantity),
-        unitPriceCents: Number(item.unitPriceCents),
-        totalCents: Number(item.totalCents),
+         unitPriceCents: item.unitPriceCents === null ? null : Number(item.unitPriceCents),
+         totalCents: item.totalCents === null ? null : Number(item.totalCents),
       })),
       sections: quote.sections.map((section) => ({
         ...section,
         items: section.items.map((item) => ({
           ...item,
           quantity: Number(item.quantity),
-          unitPriceCents: Number(item.unitPriceCents),
-          totalCents: Number(item.totalCents),
+           unitPriceCents: item.unitPriceCents === null ? null : Number(item.unitPriceCents),
+           totalCents: item.totalCents === null ? null : Number(item.totalCents),
         })),
       })),
       activeSharedQuote: findActiveSharedQuote(quote.sharedQuotes),

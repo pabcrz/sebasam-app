@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 
 export const metadata: Metadata = {
@@ -65,10 +66,9 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
 
             <div className="grid gap-2">
               <Label htmlFor="password">Contraseña</Label>
-              <Input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 autoComplete="current-password"
                 placeholder="Ingresa tu contraseña"
                 required

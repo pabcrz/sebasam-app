@@ -12,6 +12,7 @@ import { QuoteDuplicateForm } from "./quote-duplicate-form";
 import { QuoteDeleteForm } from "./quote-delete-form";
 import { ShareQuoteButton } from "./share-quote-button";
 import { QuoteAuthorizeForm } from "./quote-authorize-form";
+import { QuoteCorrectDecisionForm } from "./quote-correct-decision-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
@@ -30,7 +31,8 @@ interface QuoteListRowProps {
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
   shareAction: () => Promise<{ success: boolean; error?: string }>;
-  authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
+  authorizeAction: (note: string, authorizedSectionIds?: string[]) => Promise<{ success: boolean; error?: string }>;
+  correctDecisionAction: (quoteId: string, nextStatus: "APPROVED" | "REJECTED") => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
   cashPaymentAction: (amount: string, operationKey: string) => Promise<{
@@ -57,6 +59,7 @@ export function QuoteListRow({
   cancelAction,
   shareAction,
   authorizeAction,
+  correctDecisionAction,
   paymentRequestAction,
   paymentRequestBankAccounts,
   cashPaymentAction: _cashPaymentAction,
@@ -72,8 +75,11 @@ export function QuoteListRow({
 }: QuoteListRowProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
-  const paymentRequestContext = createPaymentRequestDialogContext(quote, paymentRequestBankAccounts);
   const canUsePaymentActions = quote.status === "APPROVED" && quote.workOrder?.status === "IN_PROGRESS";
+  const paymentRequestContext = canUsePaymentActions && quote.customer &&
+    quote.subtotalCents !== null && quote.taxCents !== null && quote.totalCents !== null
+    ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts)
+    : null;
 
   return (
     <TableRow
@@ -92,7 +98,7 @@ export function QuoteListRow({
           ) : null}
         </div>
       </TableCell>
-      <TableCell>{quote.customer.name}</TableCell>
+      <TableCell>{quote.customer?.name ?? "Sin cliente"}</TableCell>
       <TableCell>
         {quote.vehicle ? formatVehicle(quote.vehicle) : formatSnapshotVehicle(quote.vehicleSnapshot)}
       </TableCell>
@@ -142,25 +148,37 @@ export function QuoteListRow({
             <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
           ) : null}
 
-          {quote.activeSharedQuote && (quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED") ? (
+          {quote.status === "DRAFT" || (quote.activeSharedQuote && (quote.status === "SENT" || quote.status === "APPROVED")) ? (
             <ShareQuoteButton
-              action={quote.status === "DRAFT" ? shareAction : undefined}
-              sharedQuote={quote.activeSharedQuote}
+              action={shareAction}
+              sharedQuote={quote.activeSharedQuote ?? undefined}
               status={quote.status}
               quoteNumber={quote.number}
             />
           ) : null}
 
-          {quote.status === "DRAFT" || quote.status === "SENT" ? (
+          {quote.status === "SENT" ? (
             <QuoteAuthorizeForm
               action={authorizeAction}
               quoteNumber={quote.number}
+              sections={quote.sections}
               variant="outline"
               size="sm"
             />
           ) : null}
 
-          {quote.status === "APPROVED" ? (
+          {(quote.status === "APPROVED" || quote.status === "REJECTED") && !quote.workOrder ? (
+            <QuoteCorrectDecisionForm
+              action={correctDecisionAction}
+              quoteId={quote.id}
+              quoteNumber={quote.number}
+              currentStatus={quote.status}
+              variant="outline"
+              size="sm"
+            />
+          ) : null}
+
+          {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
             <WorkOrderOperationsDialog
               quoteNumber={quote.number}
               quoteStatus={quote.status}
@@ -180,7 +198,7 @@ export function QuoteListRow({
             />
           ) : null}
 
-          {canUsePaymentActions ? (
+          {canUsePaymentActions && paymentRequestContext ? (
             <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
           ) : null}
         </div>

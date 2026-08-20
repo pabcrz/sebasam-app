@@ -3,9 +3,9 @@
 import * as React from "react";
 
 import { Badge } from "@/components/ui";
-import { ListChecks, NotebookText, Truck, UserRound } from "lucide-react";
+import { Truck, UserRound } from "lucide-react";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
-import { formatQuantity, itemTypeLabels, ItemFormValue, SectionFormValue } from "./quote-builder-shared";
+import { formatQuantity, SectionFormValue } from "./quote-builder-shared";
 import { QuoteTotalsCard } from "./quote-totals-card";
 import { QuotePaymentBalanceIndicator } from "./quote-payment-balance-indicator";
 
@@ -16,15 +16,18 @@ export interface QuotePreviewCardProps {
   description: string;
   administrative: boolean;
   sections: SectionFormValue[];
-  subtotalCents: number;
+  subtotalCents: number | null;
   discountCents?: number;
-  taxCents: number;
-  totalCents: number;
-  paidCents?: number;
-  remainingCents?: number;
+  taxCents: number | null;
+  totalCents: number | null;
+  paidCents?: number | null;
+  remainingCents?: number | null;
   validUntil: Date | null;
   isNote?: boolean;
   compactHeader?: boolean;
+  /** When provided, sections become selectable (partial authorization). */
+  selectableSectionIds?: string[];
+  onSectionToggle?: (sectionId: string, selected: boolean) => void;
 }
 
 // PreviewItemRow is removed because we use a <table> directly
@@ -45,12 +48,18 @@ export function QuotePreviewCard({
   validUntil,
   isNote,
   compactHeader,
+  selectableSectionIds,
+  onSectionToggle,
 }: QuotePreviewCardProps) {
   const vehicleDescription = [vehicle.brand, vehicle.model, vehicle.year, vehicle.plate]
     .filter(Boolean)
     .join(" · ");
 
   const hasMultipleSections = sections.length > 1;
+  const hasPendingPrice = sections.some((section) => section.items.some((item) => item.description.trim() && item.unitPrice.trim() === ""));
+  const displaySubtotalCents = hasPendingPrice ? null : subtotalCents;
+  const displayTaxCents = hasPendingPrice ? null : taxCents;
+  const displayTotalCents = hasPendingPrice ? null : totalCents;
   let globalIndex = 0;
 
   return (
@@ -61,7 +70,7 @@ export function QuotePreviewCard({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
-                  <UserRound className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Cliente
+                  <UserRound data-testid="preview-customer-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Cliente
                 </p>
                 <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
                   {customerName || "Sin cliente"}
@@ -69,7 +78,7 @@ export function QuotePreviewCard({
               </div>
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
-                  <Truck className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Unidad
+                  <Truck data-testid="preview-vehicle-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Unidad
                 </p>
                 <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
                   {vehicleDescription || "Sin vehículo"}
@@ -103,44 +112,76 @@ export function QuotePreviewCard({
                 </thead>
                 <tbody className="divide-y divide-[var(--color-primary)]/10 print:divide-blue-100">
                   {sections.map((section, sIndex) => {
-                    const completeItems = section.items.filter(
-                      (item) => item.description.trim() && Number(item.unitPrice) >= 0,
-                    );
-                    if (completeItems.length === 0) return null;
-                    
+                    const displayItems = section.items.filter((item) => item.description.trim());
+                    if (displayItems.length === 0) return null;
+                    const completeItems = displayItems.filter((item) => item.unitPrice.trim() !== "" && Number(item.unitPrice) >= 0);
+
+                    const isSelectable = Boolean(selectableSectionIds && section.id);
+                    const isSelected = isSelectable
+                      ? (selectableSectionIds ?? []).includes(section.id ?? "")
+                      : section.isAuthorized !== false;
+
                     const sectionSubtotalCents = completeItems.reduce(
                       (acc, item) => acc + Math.round(Number(item.quantity) * Number(item.unitPrice) * 100),
                       0
                     );
 
+                    const showsAuthorization = section.isAuthorized !== undefined;
+                    const shouldShowSectionHeader = hasMultipleSections || showsAuthorization;
+
                     return (
                       <React.Fragment key={sIndex}>
-                        {hasMultipleSections && (
-                          <tr className="bg-[var(--color-bg-soft)]/60 print:bg-gray-50/80 border-b border-[var(--color-border-light)]/50 print:border-gray-100">
+                        {shouldShowSectionHeader && (
+                          <tr className={`bg-[var(--color-bg-soft)]/60 print:bg-gray-50/80 border-b border-[var(--color-border-light)]/50 print:border-gray-100 ${isSelected ? "" : "opacity-60 print:opacity-100"}`}>
                             <td colSpan={4} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)] print:text-gray-800">
-                              {section.name || `Sección ${sIndex + 1}`}
+                              {isSelectable ? (
+                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={(event) => onSectionToggle?.(section.id!, event.target.checked)}
+                                    data-testid={`section-toggle-${section.id}`}
+                                    className="h-3.5 w-3.5 accent-[var(--color-primary)] print:hidden"
+                                  />
+                                  <span>{section.name || `Sección ${sIndex + 1}`}</span>
+                                  <span className="ml-auto font-normal normal-case tracking-normal text-[var(--color-text-muted)] print:hidden">
+                                    {isSelected ? "Incluida" : "Excluida"}
+                                  </span>
+                                </label>
+                              ) : (
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span>{section.name || `Sección ${sIndex + 1}`}</span>
+                                  {showsAuthorization ? (
+                                    <span className={section.isAuthorized
+                                      ? "rounded-full border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[var(--color-status-success-fg)]"
+                                      : "rounded-full border border-[var(--color-status-warning-border)] bg-[var(--color-status-warning-bg)] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[var(--color-status-warning-fg)]"}>
+                                      {section.isAuthorized ? "Autorizada" : "Pendiente de autorización"}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              )}
                             </td>
                           </tr>
                         )}
-                        {completeItems.map((item) => {
+                         {displayItems.map((item) => {
                           const idx = globalIndex++;
                           const quantityNum = Number(item.quantity);
-                          const lineTotalCents = Math.round(quantityNum * Number(item.unitPrice) * 100);
+                           const lineTotalCents = item.unitPrice.trim() ? Math.round(quantityNum * Number(item.unitPrice) * 100) : null;
                           return (
-                            <tr key={idx} className="print:text-black hover:bg-[var(--color-bg-soft)] print:hover:bg-transparent">
+                            <tr key={idx} className={`print:text-black hover:bg-[var(--color-bg-soft)] print:hover:bg-transparent ${isSelected ? "" : "opacity-40 print:opacity-100"}`}>
                               <td className="px-3 py-2 align-top text-[var(--color-text-muted)] print:text-gray-700 w-1 whitespace-nowrap text-center font-medium">
                                 {item.type === "LABOR" && quantityNum === 1 ? "-" : formatQuantity(item.quantity)}
                               </td>
                               <td className="px-3 py-2 align-top">
                                 <div className="font-medium text-[var(--color-text-main)] print:text-black">{item.description}</div>
                               </td>
-                              <td className="px-3 py-2 align-top text-right text-[var(--color-text-muted)] print:text-gray-700">{formatCents(Number(item.unitPrice) * 100)}</td>
+                              <td className="px-3 py-2 align-top text-right text-[var(--color-text-muted)] print:text-gray-700">{item.unitPrice.trim() ? formatCents(Number(item.unitPrice) * 100) : "Pendiente"}</td>
                               <td className="px-3 py-2 align-top text-right font-bold text-[var(--color-text-main)] print:text-black">{formatCents(lineTotalCents)}</td>
                             </tr>
                           );
                         })}
                         {hasMultipleSections && (
-                          <tr className="bg-[var(--color-bg-soft)]/50 print:bg-gray-50/50">
+                          <tr className={`bg-[var(--color-bg-soft)]/50 print:bg-gray-50/50 ${isSelected ? "" : "opacity-40 print:opacity-100"}`}>
                             <td colSpan={3} className="px-3 py-1.5 text-right text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-600">
                               Subtotal
                             </td>
@@ -158,7 +199,7 @@ export function QuotePreviewCard({
           )}
         </div>
 
-        <QuoteTotalsCard subtotalCents={subtotalCents} discountCents={discountCents} taxCents={taxCents} totalCents={totalCents} />
+        <QuoteTotalsCard subtotalCents={displaySubtotalCents} discountCents={discountCents} taxCents={displayTaxCents} totalCents={displayTotalCents} />
         <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} />
 
         {description ? (

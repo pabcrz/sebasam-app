@@ -1,11 +1,39 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CustomerCreateForm } from "./customer-create-form";
 
 describe("CustomerCreateForm", () => {
-  it("renders the expected labelled fields with the correct names", () => {
+  it("opens an accessible modal from the Nuevo cliente trigger", async () => {
+    const user = userEvent.setup();
+
     render(<CustomerCreateForm action={vi.fn()} />);
+
+    const trigger = screen.getByRole("button", { name: "Nuevo cliente" });
+    await user.click(trigger);
+
+    expect(screen.getByRole("dialog", { name: "Nuevo cliente" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("Nombre")).toHaveFocus());
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog", { name: "Nuevo cliente" })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+
+    await user.click(trigger);
+    await user.click(document.querySelector("[data-dialog-overlay]")!);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Nuevo cliente" })).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+    });
+  });
+
+  it("renders the expected labelled fields with the correct names", async () => {
+    const user = userEvent.setup();
+
+    render(<CustomerCreateForm action={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
 
     expect(screen.getByLabelText("Nombre")).toHaveAttribute("name", "name");
     expect(screen.getByLabelText("Correo electrónico")).toHaveAttribute("name", "email");
@@ -22,6 +50,7 @@ describe("CustomerCreateForm", () => {
     const user = userEvent.setup();
 
     render(<CustomerCreateForm action={action} />);
+    await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
 
     await user.type(screen.getByLabelText("Nombre"), "Constructora del Norte");
     await user.type(screen.getByLabelText("Correo electrónico"), "contacto@cdn.mx");

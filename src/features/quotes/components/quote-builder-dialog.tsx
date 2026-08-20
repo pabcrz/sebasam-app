@@ -65,9 +65,12 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
     administrative: quote.administrative,
     taxEnabled: quote.taxEnabled,
     discountCents: Number(quote.discountCents ?? 0),
+    operationalDate: quote.operationalDate.toISOString().slice(0, 10),
+    isOperationalDateEditable: quote.status === "DRAFT",
     sections: quote.sections && quote.sections.length > 0
       ? quote.sections.map((section) => ({
           name: section.name,
+          isAuthorized: section.isAuthorized,
           items: section.items.map((item) => ({
             type: item.type,
             description: item.description,

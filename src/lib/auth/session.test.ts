@@ -47,6 +47,21 @@ describe("auth session resolution", () => {
     expect(findUnique).toHaveBeenCalledTimes(1);
   });
 
+  it("allows SUPER_ADMIN wherever ADMIN or operational access is required", async () => {
+    findUnique.mockResolvedValue(activeProfile("SUPER_ADMIN"));
+    const { requireAdmin, requireOperationalRole, requireSuperAdmin } = await loadSession();
+
+    await expect(requireAdmin()).resolves.toMatchObject({ profile: { role: "SUPER_ADMIN" } });
+    await expect(requireOperationalRole()).resolves.toMatchObject({ profile: { role: "SUPER_ADMIN" } });
+    await expect(requireSuperAdmin()).resolves.toMatchObject({ profile: { role: "SUPER_ADMIN" } });
+  });
+
+  it("keeps SUPER_ADMIN access exclusive", async () => {
+    const { UnauthorizedRoleError, requireSuperAdmin } = await loadSession();
+
+    await expect(requireSuperAdmin()).rejects.toBeInstanceOf(UnauthorizedRoleError);
+  });
+
   it("preserves the page redirect for a missing profile", async () => {
     findUnique.mockResolvedValue(null);
     const { requireProfileForPage } = await loadSession();
@@ -54,11 +69,41 @@ describe("auth session resolution", () => {
     await expect(requireProfileForPage()).rejects.toThrow("redirect:/admin/setup-required");
   });
 
+  it("redirects flagged users from ordinary pages to password change", async () => {
+    findUnique.mockResolvedValue({ ...activeProfile(), mustChangePassword: true });
+    const { requireProfileForPage } = await loadSession();
+
+    await expect(requireProfileForPage()).rejects.toThrow("redirect:/admin/change-password");
+  });
+
+  it("allows only flagged active users to reach the password-change page", async () => {
+    findUnique.mockResolvedValue({ ...activeProfile(), mustChangePassword: true });
+    const { requireProfileForPasswordChangePage } = await loadSession();
+
+    await expect(requireProfileForPasswordChangePage()).resolves.toMatchObject({
+      profile: { mustChangePassword: true },
+    });
+  });
+
+  it("blocks flagged users from ordinary actions", async () => {
+    findUnique.mockResolvedValue({ ...activeProfile(), mustChangePassword: true });
+    const { PasswordChangeRequiredError, requireOperationalRole } = await loadSession();
+
+    await expect(requireOperationalRole()).rejects.toBeInstanceOf(PasswordChangeRequiredError);
+  });
+
   it("preserves the action error for a missing profile", async () => {
     findUnique.mockResolvedValue(null);
     const { MissingUserProfileError, requireProfile } = await loadSession();
 
     await expect(requireProfile()).rejects.toBeInstanceOf(MissingUserProfileError);
+  });
+
+  it("preserves the action error for an inactive profile", async () => {
+    findUnique.mockResolvedValue({ ...activeProfile(), isActive: false });
+    const { InactiveUserProfileError, requireSuperAdmin } = await loadSession();
+
+    await expect(requireSuperAdmin()).rejects.toBeInstanceOf(InactiveUserProfileError);
   });
 
   it("preserves the login redirect for an unauthenticated user", async () => {

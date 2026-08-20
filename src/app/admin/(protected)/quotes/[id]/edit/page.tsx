@@ -87,6 +87,7 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
   const sections: QuoteBuilderInitialData["sections"] = quote.sections.length > 0
     ? quote.sections.map((section) => ({
         name: section.name,
+        isAuthorized: section.isAuthorized,
         items: section.items.map(toItemFormValue),
       }))
     : [{ name: "General", items: [] }];
@@ -99,12 +100,14 @@ export default async function EditQuotePage({ params }: EditQuotePageProps) {
     administrative: quote.administrative,
     taxEnabled: quote.taxEnabled,
     discountCents: quote.discountCents,
+    operationalDate: quote.operationalDate.toISOString().slice(0, 10),
+    isOperationalDateEditable: quote.status === "DRAFT",
     sections,
   };
 
-  const customerOptions = customers.some((customer) => customer.id === quote.customerId)
+  const customerOptions = quote.customer && customers.some((customer) => customer.id === quote.customerId)
     ? customers
-    : [{ id: quote.customer.id, name: quote.customer.name }, ...customers];
+    : quote.customer ? [{ id: quote.customer.id, name: quote.customer.name }, ...customers] : customers;
 
   return (
     <EditDraftQuoteForm

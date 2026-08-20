@@ -1,6 +1,6 @@
 import { QuoteItemType } from "@prisma/client";
 
-export type Step = "client" | "items" | "notes" | "summary" | "preview";
+export type Step = "client" | "items" | "notes" | "preview";
 
 export type ItemFormValue = {
   type: QuoteItemType;
@@ -9,21 +9,28 @@ export type ItemFormValue = {
   unitPrice: string;
 };
 
+export type ItemFieldErrors = {
+  description: string | null;
+  quantity: string | null;
+  unitPrice: string | null;
+};
+
 export type SectionFormValue = {
+  id?: string;
   name: string;
+  isAuthorized?: boolean;
   items: ItemFormValue[];
   /** stable row IDs parallel to items */
   rowIds: string[];
 };
 
-export const steps: Step[] = ["client", "items", "notes", "summary", "preview"];
+export const steps: Step[] = ["client", "items", "notes", "preview"];
 
 export const stepLabels: Record<Step, string> = {
   client: "Cliente / Unidad",
   items: "Conceptos",
   notes: "Notas",
-  summary: "Resumen",
-  preview: "Enviar",
+  preview: "Revisar",
 };
 
 export const itemTypes: QuoteItemType[] = ["LABOR", "SERVICE", "MATERIAL", "EQUIPMENT", "OTHER"];
@@ -55,6 +62,7 @@ export const DEFAULT_SECTION_NAME = "General";
 export function makeEmptySection(rowIdBase: number): SectionFormValue {
   return {
     name: DEFAULT_SECTION_NAME,
+    isAuthorized: false,
     items: [{ ...emptyItem }],
     rowIds: [`quote-item-${rowIdBase}`],
   };
@@ -114,59 +122,76 @@ export function calculateSectionsTotals(sections: SectionFormValue[], taxEnabled
   return calculateTotals(allItems, taxEnabled, discountCents);
 }
 
-export function validateItemValue(item: ItemFormValue, index: number): string | null {
+export function validateItemFields(
+  item: ItemFormValue,
+  index: number,
+  includeQuantityOnly = false,
+  requirePrice = false,
+): ItemFieldErrors {
   const description = item.description.trim();
   const quantity = item.quantity.trim();
   const unitPrice = item.unitPrice.trim();
-  const hasAnyValue = description !== "" || unitPrice !== "";
+  const hasAnyValue = description !== "" || unitPrice !== "" || (includeQuantityOnly && quantity !== "1");
 
   if (!hasAnyValue) {
-    return null;
+    return { description: null, quantity: null, unitPrice: null };
   }
 
-  if (description === "") {
-    return `El concepto ${index + 1} necesita una descripción.`;
-  }
-
-  if (description.length > 240) {
-    return `La descripción del concepto ${index + 1} es muy larga.`;
-  }
-
-  if (quantity === "") {
-    return `El concepto ${index + 1} necesita una cantidad.`;
-  }
+  const descriptionError = description === ""
+    ? `El concepto ${index + 1} necesita una descripción.`
+    : description.length > 240
+      ? `La descripción del concepto ${index + 1} es muy larga.`
+      : null;
 
   const quantityNum = Number(quantity);
-  if (!Number.isFinite(quantityNum) || quantityNum <= 0) {
-    return `La cantidad del concepto ${index + 1} debe ser mayor a 0.`;
-  }
-
-  if (quantityNum > getMaxQuantityForType(item.type)) {
-    return `La cantidad del concepto ${index + 1} no puede ser mayor a ${getMaxQuantityForType(item.type)}.`;
-  }
-
-  if (!Number.isInteger(quantityNum)) {
-    return `La cantidad del concepto ${index + 1} debe ser un número entero.`;
-  }
-
-  if (unitPrice === "") {
-    return `El concepto ${index + 1} necesita un precio unitario.`;
-  }
+  const quantityError = quantity === ""
+    ? `El concepto ${index + 1} necesita una cantidad.`
+    : !Number.isFinite(quantityNum) || quantityNum <= 0
+      ? `La cantidad del concepto ${index + 1} debe ser mayor a 0.`
+      : quantityNum > getMaxQuantityForType(item.type)
+        ? `La cantidad del concepto ${index + 1} no puede ser mayor a ${getMaxQuantityForType(item.type)}.`
+        : !Number.isInteger(quantityNum)
+          ? `La cantidad del concepto ${index + 1} debe ser un número entero.`
+          : null;
 
   const unitPriceNum = Number(unitPrice);
-  if (!Number.isFinite(unitPriceNum) || unitPriceNum < 0) {
-    return `El precio unitario del concepto ${index + 1} no puede ser negativo.`;
-  }
+  const unitPriceError = !requirePrice
+    ? null
+    : unitPrice === ""
+      ? `El concepto ${index + 1} necesita un precio unitario.`
+      : !Number.isFinite(unitPriceNum) || unitPriceNum < 0
+        ? `El precio unitario del concepto ${index + 1} no puede ser negativo.`
+        : unitPriceNum > maxUnitPrice
+          ? `El precio unitario del concepto ${index + 1} es demasiado alto.`
+          : !quantityError && Math.round(quantityNum * unitPriceNum * 100) > 2_147_483_647
+            ? `El total del concepto ${index + 1} es demasiado alto.`
+            : null;
 
-  if (unitPriceNum > maxUnitPrice) {
-    return `El precio unitario del concepto ${index + 1} es demasiado alto.`;
-  }
+  return {
+    description: descriptionError,
+    quantity: quantityError,
+    unitPrice: unitPriceError,
+  };
+}
 
-  if (Math.round(quantityNum * unitPriceNum * 100) > 2_147_483_647) {
-    return `El total del concepto ${index + 1} es demasiado alto.`;
-  }
+export function validateItemValue(item: ItemFormValue, index: number, requirePrice = false): string | null {
+  const errors = validateItemFields(item, index, false, requirePrice);
+  return errors.description ?? errors.quantity ?? (requirePrice ? errors.unitPrice : null);
+}
 
-  return null;
+function isItemDraftComplete(item: ItemFormValue): boolean {
+  const description = item.description.trim();
+  const quantity = item.quantity.trim();
+  const quantityNum = Number(quantity);
+
+  return (
+    description.length > 0 &&
+    quantity !== "" &&
+    Number.isFinite(quantityNum) &&
+    quantityNum > 0 &&
+    Number.isInteger(quantityNum) &&
+    quantityNum <= getMaxQuantityForType(item.type)
+  );
 }
 
 export function isItemComplete(item: ItemFormValue): boolean {
@@ -187,24 +212,31 @@ export function getStepError(
   step: Step,
   state: {
     customerId: string;
-    vehicle: { model: string };
+    vehicle: { plate: string; brand: string; model: string };
     title: string;
     sections: SectionFormValue[];
   },
+  requirePrice = false,
 ): string | null {
   if (step === "client") {
-    if (!state.customerId) return "Selecciona un cliente.";
-    return null;
+    const hasIdentifiableUnit = Boolean(
+      state.vehicle.plate.trim() || (state.vehicle.brand.trim() && state.vehicle.model.trim()),
+    );
+    return state.customerId || hasIdentifiableUnit
+      ? null
+      : "Selecciona un cliente o identifica la unidad con placas o marca y modelo.";
   }
 
   if (step === "items") {
     const allItems = state.sections.flatMap((s) => s.items);
     const rowError = allItems
-      .map((item, index) => validateItemValue(item, index))
+      .map((item, index) => validateItemValue(item, index, requirePrice))
       .find(Boolean);
     if (rowError) return rowError;
 
-    return allItems.some(isItemComplete) ? null : "Ingresa al menos un concepto completo.";
+    return allItems.some(requirePrice ? isItemComplete : isItemDraftComplete)
+      ? null
+      : "Ingresa al menos un concepto completo.";
   }
 
   if (step === "notes") {

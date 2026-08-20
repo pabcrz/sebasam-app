@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { PaymentRequestStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
 import { fiscalDataInputSchema, invoicePreferenceSchema } from "./schemas";
 import { generatePaymentSlugFromNumber, generateUniqueSlug } from "@/lib/slug";
 
@@ -157,17 +158,16 @@ async function createPaymentRequestForQuoteInTransaction(
 ) {
   const quote = await tx.quote.findUnique({
     where: { id: quoteId },
-    include: { customer: true },
+    include: { customer: true, items: true, sections: { include: { items: true } } },
   });
 
   if (!quote) {
     throw new PaymentRequestOperationError("Quote not found.");
   }
 
+  assertCommercialQuote(quote);
+
   const requiresInvoice = quote.taxEnabled;
-  const initialStatus = requiresInvoice
-    ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
-    : PaymentRequestStatus.PENDING;
 
   const token = await generateUniqueSlug(
     `P${quote.number.slice(1)}`,
@@ -183,8 +183,8 @@ async function createPaymentRequestForQuoteInTransaction(
   return tx.paymentRequest.create({
     data: {
       token,
-      status: initialStatus,
-      customerId: quote.customerId,
+      status: PaymentRequestStatus.PENDING,
+      customerId: quote.customerId!,
       quoteId: quote.id,
       requiresInvoice,
       expiresAt: createExpirationDate(),
@@ -217,7 +217,7 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
   return prisma.$transaction(async (tx) => {
     const workOrder = await tx.workOrder.findUnique({
       where: { id: workOrderId },
-      include: { quote: { include: { customer: true } } },
+      include: { quote: { include: { customer: true, items: true, sections: { include: { items: true } } } } },
     });
 
     if (!workOrder) {
@@ -228,12 +228,11 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
       throw new PaymentRequestOperationError("Work order is not linked to a quote.");
     }
 
+    assertCommercialQuote(workOrder.quote);
+
     await assertNoActiveRequest(tx, { workOrderId: workOrder.id });
 
     const requiresInvoice = workOrder.quote.taxEnabled;
-    const initialStatus = requiresInvoice
-      ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
-      : PaymentRequestStatus.PENDING;
 
     const slugPrefix = `P${workOrder.number.slice(1)}`;
     const token = await generateUniqueSlug(
@@ -250,8 +249,8 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
     return tx.paymentRequest.create({
       data: {
         token,
-        status: initialStatus,
-        customerId: workOrder.quote.customerId,
+        status: PaymentRequestStatus.PENDING,
+        customerId: workOrder.quote.customerId!,
         workOrderId: workOrder.id,
         requiresInvoice,
         expiresAt: createExpirationDate(),

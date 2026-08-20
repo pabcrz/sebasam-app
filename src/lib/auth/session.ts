@@ -27,6 +27,13 @@ export class InactiveUserProfileError extends Error {
   }
 }
 
+export class PasswordChangeRequiredError extends Error {
+  constructor(userId: string) {
+    super(`UserProfile ${userId} must change its password.`);
+    this.name = "PasswordChangeRequiredError";
+  }
+}
+
 export class UnauthorizedRoleError extends Error {
   constructor(role: UserRole, allowedRoles: UserRole[]) {
     super(`Role ${role} cannot perform this action. Allowed roles: ${allowedRoles.join(", ")}.`);
@@ -97,6 +104,10 @@ export async function requireProfile(): Promise<CurrentProfile> {
     throw new InactiveUserProfileError(user.id);
   }
 
+  if (profile.mustChangePassword) {
+    throw new PasswordChangeRequiredError(user.id);
+  }
+
   return { user, profile };
 }
 
@@ -111,13 +122,57 @@ export async function requireProfileForPage(): Promise<CurrentProfile> {
     redirect("/admin/setup-required");
   }
 
+  if (profile.mustChangePassword) {
+    redirect("/admin/change-password");
+  }
+
+  return { user, profile };
+}
+
+export async function requireProfileForPasswordChange(): Promise<CurrentProfile> {
+  const { user, profile } = await resolveCurrentProfile();
+
+  if (!user) {
+    redirect("/admin/login");
+  }
+
+  if (!profile) {
+    throw new MissingUserProfileError(user.id);
+  }
+
+  if (!profile.isActive) {
+    throw new InactiveUserProfileError(user.id);
+  }
+
+  if (!profile.mustChangePassword) {
+    redirect("/admin");
+  }
+
+  return { user, profile };
+}
+
+export async function requireProfileForPasswordChangePage(): Promise<CurrentProfile> {
+  const { user, profile } = await resolveCurrentProfile();
+
+  if (!user) {
+    redirect("/admin/login");
+  }
+
+  if (!profile || !profile.isActive) {
+    redirect("/admin/setup-required");
+  }
+
+  if (!profile.mustChangePassword) {
+    redirect("/admin");
+  }
+
   return { user, profile };
 }
 
 export async function requireRole(allowedRoles: UserRole[]): Promise<CurrentProfile> {
   const current = await requireProfile();
 
-  if (!allowedRoles.includes(current.profile.role)) {
+  if (current.profile.role !== "SUPER_ADMIN" && !allowedRoles.includes(current.profile.role)) {
     throw new UnauthorizedRoleError(current.profile.role, allowedRoles);
   }
 
@@ -125,9 +180,13 @@ export async function requireRole(allowedRoles: UserRole[]): Promise<CurrentProf
 }
 
 export async function requireAdmin(): Promise<CurrentProfile> {
-  return requireRole(["ADMIN"]);
+  return requireRole(["SUPER_ADMIN", "ADMIN"]);
+}
+
+export async function requireSuperAdmin(): Promise<CurrentProfile> {
+  return requireRole(["SUPER_ADMIN"]);
 }
 
 export async function requireOperationalRole(): Promise<CurrentProfile> {
-  return requireRole(["ADMIN", "ADMIN_ASSISTANT"]);
+  return requireRole(["SUPER_ADMIN", "ADMIN", "ADMIN_ASSISTANT"]);
 }

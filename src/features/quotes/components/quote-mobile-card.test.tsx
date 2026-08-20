@@ -53,6 +53,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
 
     approvedAt: null,
     administrative: false, deletedAt: null,
+    operationalDate: new Date("2026-06-15T00:00:00.000Z"),
     createdAt: new Date("2026-07-01"),
     updatedAt: new Date("2026-07-01"),
     sections: [],
@@ -106,6 +107,7 @@ function renderCard(quote: QuoteListItem) {
       cancelAction={vi.fn()}
       shareAction={vi.fn()}
       authorizeAction={vi.fn(() => Promise.resolve({ success: true }))}
+      correctDecisionAction={vi.fn(() => Promise.resolve({ success: true }))}
       paymentRequestAction={vi.fn(() => Promise.resolve({ id: "pr-1", token: "token-1" } as PaymentRequest))}
       paymentRequestBankAccounts={[{
         accountHolder: "Federico Cruz",
@@ -141,6 +143,16 @@ describe("QuoteListCard", () => {
     expect(screen.getByText(/cambio de aceite/i)).toBeInTheDocument();
   });
 
+  it("shows the operational quote date instead of the audit creation timestamp", () => {
+    renderCard(createMockQuote({
+      createdAt: new Date("2026-07-01T12:00:00.000Z"),
+      operationalDate: new Date("2026-06-15T00:00:00.000Z"),
+    }));
+
+    expect(screen.getByText(/fecha de cotización: 15 de junio de 2026/i)).toBeInTheDocument();
+    expect(screen.queryByText(/creada el/i)).not.toBeInTheDocument();
+  });
+
   it("opens the preview dialog from the keyboard", async () => {
     const user = userEvent.setup();
     renderCard(createMockQuote());
@@ -166,11 +178,12 @@ describe("QuoteListCard", () => {
     const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
     const duplicate = screen.getByRole("button", { name: "Duplicar cotización" });
     const remove = screen.getByRole("button", { name: "Eliminar cotización C-001" });
-    const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
-    const authorize = screen.getByRole("button", { name: "Autorizar cotización C-001" });
+    const publish = screen.getByRole("button", { name: "Preparar y compartir cotización C-001" });
     const cancel = screen.getByRole("button", { name: "Cancelar cotización C-001" });
     const archive = screen.getByRole("button", { name: "Archivar cotización C-001" });
-    const actions = [edit, duplicate, remove, share, authorize, cancel, archive];
+    const actions = [edit, duplicate, remove, publish, cancel, archive];
+    expect(screen.queryByRole("button", { name: "Compartir cotización C-001" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Autorizar cotización C-001" })).not.toBeInTheDocument();
     const actionRow = edit.parentElement?.parentElement;
 
     expect(actionRow).toHaveClass(
@@ -193,20 +206,63 @@ describe("QuoteListCard", () => {
     expect(edit).toHaveAttribute("title", "Editar cotización C-001");
     expect(duplicate).toHaveAttribute("title", "Duplicar cotización");
     expect(remove).toHaveAttribute("title", "Eliminar cotización C-001");
-    expect(share).toHaveAttribute("title", "Compartir cotización C-001");
-    expect(authorize).toHaveAttribute("title", "Autorizar cotización C-001");
+    expect(publish).toHaveAttribute("title", "Preparar y compartir cotización C-001");
     expect(cancel).toHaveAttribute("title", "Cancelar cotización C-001");
     expect(archive).toHaveAttribute("title", "Archivar cotización C-001");
   });
 
+  it("renders a pending-price draft without payment actions", () => {
+    const quote = createMockQuote();
+
+    renderCard(createMockQuote({
+      subtotalCents: null,
+      taxCents: null,
+      totalCents: null,
+      items: quote.items.map((item) => ({ ...item, unitPriceCents: null, totalCents: null })),
+    }));
+
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /editar cotización c-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /preparar y compartir cotización c-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
+  });
+
   it("keeps the work action icon-only on mobile and labeled on desktop", () => {
-    renderCard(createMockQuote({ status: "APPROVED" }));
+    renderCard(createMockQuote({ status: "DRAFT" }));
 
     const work = screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" });
     expect(work).toHaveClass("h-10", "w-10", "px-0", "sm:h-9", "sm:w-auto", "sm:px-3");
     expect(work.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
     expect(work.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
     expect(work).toHaveAttribute("title", "Gestionar trabajo de cotización C-001");
+  });
+
+  it("preserves payment actions for approved quotes with work in progress", () => {
+    renderCard(createMockQuote({
+      status: "APPROVED",
+      workOrder: { number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+    }));
+
+    expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
+  });
+
+  it("hides payment actions when an approved in-progress quote has incomplete totals", () => {
+    renderCard(createMockQuote({
+      status: "APPROVED",
+      workOrder: { number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+      subtotalCents: null,
+      taxCents: null,
+      totalCents: null,
+    }));
+
+    expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /gestionar orden de trabajo ot-001/i })).toBeInTheDocument();
+  });
+
+  it("keeps work-order management visible for sent quotes", () => {
+    renderCard(createMockQuote({ status: "SENT" }));
+
+    expect(screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" })).toBeInTheDocument();
   });
 
   it("renders authorize button for sent quotes", () => {

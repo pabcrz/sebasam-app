@@ -8,6 +8,7 @@ import { SharedQuoteErrorState } from "@/features/public-quotes/components/share
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
 import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
+import { getPaymentSettings } from "@/features/payment-settings/domain";
 
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
@@ -65,7 +66,10 @@ interface CotizacionPageProps {
 
 export default async function CotizacionPage({ params }: CotizacionPageProps) {
   const { token } = await params;
-  const result = await loadSharedQuotePageResult(token);
+  const [result, paymentSettings] = await Promise.all([
+    loadSharedQuotePageResult(token),
+    getPaymentSettings(),
+  ]);
 
   if (result.kind === "error") {
     return (
@@ -79,18 +83,19 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
 
   return (
     <PublicQuoteShell
+      business={paymentSettings}
       documentType={isNote ? "Nota" : "Cotización"}
       documentNumber={result.quote.number}
-      date={result.quote.createdAt}
+      date={result.quote.operationalDate}
       title={result.quote.title}
-      customerName={result.quote.customer.name}
+       customerName={result.quote.customer?.name ?? "Sin cliente"}
       vehicleDescription={
         result.quote.vehicle
           ? formatVehicle(result.quote.vehicle)
           : formatSnapshotVehicle(result.quote.vehicleSnapshot)
       }
     >
-      <SharedQuoteView quote={result.quote} token={token} isNote={isNote} />
+      <SharedQuoteView quote={result.quote} token={token} isNote={isNote} business={paymentSettings} />
     </PublicQuoteShell>
   );
 }

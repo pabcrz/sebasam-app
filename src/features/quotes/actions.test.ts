@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import { PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
 import {
   cancelQuote,
@@ -44,6 +44,7 @@ vi.mock("./domain", () => ({
   QuoteDecisionError: class QuoteDecisionError extends Error {},
   createSharedQuoteExpirationDate: vi.fn(() => new Date("2026-08-31T00:00:00.000Z")),
   createSharedQuoteToken: vi.fn(() => "stable-token"),
+  getOrCreateSharedQuoteForQuote: vi.fn(),
   SharedQuoteOperationError: class SharedQuoteOperationError extends Error {
     constructor(message: string) {
       super(message);
@@ -54,18 +55,13 @@ vi.mock("./domain", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
-import { authorizeQuote } from "./domain";
-
-class MockFormData {
-  private data = new Map<string, string>();
-  get(name: string): string | null { return this.data.get(name) ?? null; }
-  set(name: string, value: string): void { this.data.set(name, value); }
-}
+import { authorizeQuote, getOrCreateSharedQuoteForQuote } from "./domain";
 
 type MockTx = {
   quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   quoteItem: { deleteMany: ReturnType<typeof vi.fn>; createMany: ReturnType<typeof vi.fn> };
   quoteSection: { deleteMany: ReturnType<typeof vi.fn> };
+  quoteDecision: { create: ReturnType<typeof vi.fn> };
   payment: { count: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn> };
   sharedQuote: { updateMany: ReturnType<typeof vi.fn> };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
@@ -75,14 +71,15 @@ type MockTx = {
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   const tx: MockTx = {
     quote: {
-      create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] }),
-      findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, items: [], sections: [{ id: "sec-1", sortOrder: 0 }] }),
+      create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", isAuthorized: false, sortOrder: 0 }] }),
+      findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, customerId: "cust-1", subtotalCents: 10000, discountCents: 0, taxCents: 1600, totalCents: 11600, taxEnabled: true, operationalDate: new Date("2026-07-14T00:00:00.000Z"), items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }], sections: [{ id: "sec-1", sortOrder: 0, items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }] }] }),
       update: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] }),
       findUniqueOrThrow: vi.fn(),
       updateMany: vi.fn(),
     },
     quoteItem: { deleteMany: vi.fn(), createMany: vi.fn() },
     quoteSection: { deleteMany: vi.fn() },
+    quoteDecision: { create: vi.fn() },
     payment: { count: vi.fn().mockResolvedValue(0), aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: null } }) },
     sharedQuote: { updateMany: vi.fn() },
     paymentRequest: { updateMany: vi.fn() },
@@ -102,15 +99,16 @@ function validInput() {
     administrative: false,
     taxEnabled: true,
     discountCents: 0,
+    operationalDate: "2026-07-14",
     sections: [{ name: "General", items: [{ type: "SERVICE" as const, description: "Cambio de aceite", quantity: 2, unitPriceCents: 85000 }] }],
   };
 }
 
 function buildFormData(overrides: Record<string, string> = {}) {
-  const formData = new MockFormData();
+  const formData = new FormData();
   const defaults: Record<string, string> = {
     customerId: "cust-1", plate: "", brand: "", model: "Hilux", color: "", year: "",
-    title: "Servicio", description: "", taxEnabled: "on", discount: "0",
+    title: "Servicio", description: "", taxEnabled: "on", discount: "0", operationalDate: "2026-07-14",
     "sections.0.name": "General",
     "sections.0.items.0.type": "SERVICE", "sections.0.items.0.description": "Cambio de aceite", "sections.0.items.0.quantity": "1", "sections.0.items.0.unitPrice": "100",
   };
@@ -134,6 +132,7 @@ function validInputWithoutVehicle() {
 
 describe("createQuote", () => {
   beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.useRealTimers());
 
   it("creates a quote linked to a vehicle when vehicle data is provided", async () => {
     const tx = mockTx();
@@ -156,11 +155,10 @@ describe("createQuote", () => {
     });
     expect(createData.id).toEqual(expect.any(String));
     expect(createData.status).toBe("DRAFT");
-    expect(createData.sharedQuotes.create).toEqual({
-      token: "stable-token",
-      expiresAt: new Date("2026-08-31T00:00:00.000Z"),
-    });
+    expect(createData.operationalDate).toEqual(new Date("2026-07-14T00:00:00.000Z"));
+    expect(createData).not.toHaveProperty("sharedQuotes");
     expect(createData.sections.create).toEqual([{
+      isAuthorized: false,
       name: "General",
       sortOrder: 0,
       items: {
@@ -189,6 +187,37 @@ describe("createQuote", () => {
     expect(tx.quote.create.mock.calls[0][0].data.vehicleSnapshot).toBe(Prisma.JsonNull);
     expect(tx.quote.create.mock.calls[0][0].data.totalCents).toBe(50000);
   });
+
+  it("defaults a missing operational date to Mexico City server today", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T01:30:00.000Z"));
+    const tx = mockTx();
+
+    await createQuote({ ...validInput(), operationalDate: undefined });
+
+    expect(tx.quote.create.mock.calls[0][0].data.operationalDate)
+      .toEqual(new Date("2026-07-14T00:00:00.000Z"));
+  });
+
+  it("rejects a future operational date before creating a quote", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T18:00:00.000Z"));
+    const tx = mockTx();
+
+    await expect(createQuote({ ...validInput(), operationalDate: "2026-07-16" })).rejects.toThrow();
+    expect(tx.quote.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects persistence without a customer or identifiable unit", async () => {
+    const tx = mockTx();
+
+    await expect(createQuote({
+      ...validInput(),
+      customerId: "",
+      vehicle: { plate: "", brand: "Toyota", model: "", color: "", year: "" },
+    })).rejects.toThrow("Selecciona un cliente o identifica la unidad");
+    expect(tx.quote.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("updateDraftQuote", () => {
@@ -202,6 +231,7 @@ describe("updateDraftQuote", () => {
     expect(updateData.subtotalCents).toBe(170000);
     expect(updateData.taxCents).toBe(27200);
     expect(updateData.totalCents).toBe(197200);
+    expect(updateData.operationalDate).toEqual(new Date("2026-07-14T00:00:00.000Z"));
     expect(updateData.sections.create).toHaveLength(1);
     expect(result.totalCents).toBe(197200);
   });
@@ -222,6 +252,7 @@ describe("updateDraftQuote", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.DRAFT,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       workOrder: { id: "wo-1", status: "COMPLETED" },
     });
@@ -234,6 +265,7 @@ describe("updateDraftQuote", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.DRAFT,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       workOrder: { id: "wo-1", status: "PLANNED" },
     });
@@ -252,7 +284,15 @@ describe("updateDraftQuote", () => {
     const result = await updateDraftQuote("quote-1", validInput());
 
     expect(result.totalCents).toBe(197200);
-    expect(tx.quote.update.mock.calls[0][0].data.status).toBeUndefined();
+    expect(tx.quote.update.mock.calls[0][0].data.status).toBe("DRAFT");
+  });
+
+  it("rejects an operational date change after a quote leaves DRAFT", async () => {
+    const tx = mockTx(QuoteStatus.SENT);
+
+    await expect(updateDraftQuote("quote-1", { ...validInput(), operationalDate: "2026-07-13" }))
+      .rejects.toThrow("Only draft quotes can change their operational date.");
+    expect(tx.quote.update).not.toHaveBeenCalled();
   });
 
   it("allows updating an APPROVED quote when not expired and work order is not terminal", async () => {
@@ -269,6 +309,7 @@ describe("updateDraftQuote", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.APPROVED,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       totalCents: 250000,
       items: [],
       workOrder: null,
@@ -301,6 +342,7 @@ describe("updateDraftQuote", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.DRAFT,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       validUntil: new Date("2020-01-01T00:00:00.000Z"),
       workOrder: null,
@@ -315,6 +357,7 @@ describe("updateDraftQuote", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.SENT,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       validUntil: new Date("2026-12-31T00:00:00.000Z"),
       workOrder: { id: "wo-1", status: "COMPLETED" },
@@ -334,6 +377,21 @@ describe("updateDraftQuoteFromForm", () => {
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?updated=1");
   });
 
+  it("updates a draft through FormData with a pending price", async () => {
+    const tx = mockTx();
+
+    await updateDraftQuoteFromForm("quote-1", {}, buildFormData({ "sections.0.items.0.unitPrice": "" }));
+
+    expect(tx.quote.update.mock.calls[0][0].data).toMatchObject({
+      subtotalCents: null,
+      taxCents: null,
+      totalCents: null,
+    });
+    expect(tx.quoteItem.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ unitPriceCents: null, totalCents: null })],
+    });
+  });
+
   it("returns an error when form data is malformed", async () => {
     await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData({ title: "" }) as unknown as FormData))
       .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
@@ -350,6 +408,7 @@ describe("updateDraftQuoteFromForm", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.APPROVED,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       workOrder: null,
     });
@@ -365,6 +424,7 @@ describe("updateDraftQuoteFromForm", () => {
     tx.quote.findUnique.mockResolvedValue({
       id: "quote-1",
       status: QuoteStatus.DRAFT,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
       items: [],
       workOrder: { id: "wo-1", status: "COMPLETED" },
     });
@@ -386,7 +446,32 @@ describe("createQuoteFromForm", () => {
     mockTx();
     const futureYear = String(new Date().getFullYear() + 2);
     await expect(createQuoteFromForm({}, buildFormData({ year: futureYear }) as unknown as FormData))
-      .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
+      .resolves.toEqual({ error: "El año del vehículo no puede ser mayor al próximo año" });
+  });
+
+  it("creates a draft through FormData with a pending price", async () => {
+    const tx = mockTx();
+
+    await createQuoteFromForm({}, buildFormData({ "sections.0.items.0.unitPrice": "" }));
+
+    const createData = tx.quote.create.mock.calls[0][0].data;
+    expect(createData).toMatchObject({ subtotalCents: null, taxCents: null, totalCents: null });
+    expect(createData.sections.create[0].items.create[0]).toMatchObject({
+      unitPriceCents: null,
+      totalCents: null,
+    });
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?created=1");
+  });
+
+  it("returns the actionable identity issue", async () => {
+    await expect(createQuoteFromForm({}, buildFormData({
+      customerId: "",
+      plate: "",
+      brand: "",
+      model: "",
+    }))).resolves.toEqual({
+      error: "Selecciona un cliente o identifica la unidad con placas o marca y modelo.",
+    });
   });
 
   it("submits exactly the normalized non-empty concepts", async () => {
@@ -408,6 +493,22 @@ describe("createQuoteFromForm", () => {
     expect(tx.quoteItem.createMany).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?created=1");
+  });
+
+  it("keeps section authorization and approval out of draft persistence", async () => {
+    const tx = mockTx();
+    tx.quote.create.mockResolvedValue({ id: "quote-1", totalCents: 11600, sections: [{ id: "sec-1", isAuthorized: false, sortOrder: 0 }] });
+    vi.mocked(requireOperationalRole).mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1" },
+    } as unknown as Awaited<ReturnType<typeof requireOperationalRole>>);
+
+    await createQuoteFromForm({}, buildFormData({ "sections.0.isAuthorized": "on" }) as unknown as FormData);
+
+    const createData = tx.quote.create.mock.calls[0][0].data;
+    expect(createData.status).toBe(QuoteStatus.DRAFT);
+    expect(createData.sections.create[0].isAuthorized).toBe(false);
+    expect(tx.quoteDecision.create).not.toHaveBeenCalled();
   });
 });
 
@@ -450,7 +551,7 @@ describe("authorizeQuoteAction", () => {
       success: true,
     });
 
-    expect(authorizeQuote).toHaveBeenCalledWith("quote-1", "Llamada telefónica", "user-1");
+    expect(authorizeQuote).toHaveBeenCalledWith("quote-1", "Llamada telefónica", "user-1", undefined);
     expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
   });
 });
@@ -466,6 +567,7 @@ it("returns the specific paid-total error from the update workspace action", asy
   tx.quote.findUnique.mockResolvedValue({
     id: "quote-1",
     status: QuoteStatus.APPROVED,
+    operationalDate: new Date("2026-07-14T00:00:00.000Z"),
     items: [],
     workOrder: null,
   });
@@ -478,9 +580,12 @@ it("returns the specific paid-total error from the update workspace action", asy
 
 describe("duplicateQuote", () => {
   beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.useRealTimers());
 
   it("creates a new DRAFT quote with a fresh number and validity while copying quote fields and items", async () => {
     const tx = mockTx();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T18:00:00.000Z"));
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "quote-source",
       customerId: "cust-1",
@@ -496,6 +601,7 @@ describe("duplicateQuote", () => {
       taxCents: 27200,
       totalCents: 197200,
       validUntil: new Date("2026-06-30T00:00:00.000Z"),
+      operationalDate: new Date("2026-06-01T00:00:00.000Z"),
       workOrder: { id: "wo-source" },
       sharedQuotes: [{ id: "shared-source" }],
       paymentRequests: [{ id: "payment-source" }],
@@ -578,6 +684,7 @@ describe("duplicateQuote", () => {
       taxCents: 27200,
       totalCents: 197200,
       validUntil: new Date("2026-07-15T00:00:00.000Z"),
+      operationalDate: new Date("2026-07-15T00:00:00.000Z"),
     });
     expect(createData.id).toEqual(expect.any(String));
     expect(createData.items.create).toEqual([{
@@ -615,10 +722,7 @@ describe("duplicateQuote", () => {
       },
     }]);
     expect(createData).not.toHaveProperty("workOrder");
-    expect(createData.sharedQuotes.create).toEqual({
-      token: "stable-token",
-      expiresAt: new Date("2026-08-31T00:00:00.000Z"),
-    });
+    expect(createData).not.toHaveProperty("sharedQuotes");
     expect(createData).not.toHaveProperty("paymentRequests");
   });
 
@@ -677,7 +781,7 @@ describe("duplicateQuoteFromForm", () => {
       sections: [],
     });
 
-    const formData = new MockFormData();
+    const formData = new FormData();
     formData.set("quoteId", "quote-source");
 
     await duplicateQuoteFromForm(formData as unknown as FormData);
@@ -689,7 +793,7 @@ describe("duplicateQuoteFromForm", () => {
   });
 
   it("redirects with invalid error when quoteId is missing", async () => {
-    await duplicateQuoteFromForm(new MockFormData() as unknown as FormData);
+    await duplicateQuoteFromForm(new FormData());
 
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid");
   });
@@ -697,7 +801,7 @@ describe("duplicateQuoteFromForm", () => {
   it("redirects with duplicate-failed when the original quote cannot be duplicated", async () => {
     mockTx();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-    const formData = new MockFormData();
+    const formData = new FormData();
     formData.set("quoteId", "missing-quote");
 
     await duplicateQuoteFromForm(formData as unknown as FormData);
@@ -728,7 +832,7 @@ describe("deleteQuoteFromForm", () => {
 
   it("authorizes and soft-deletes once before redirecting without revalidation", async () => {
     const tx = mockTx();
-    const formData = new MockFormData();
+    const formData = new FormData();
     formData.set("quoteId", "quote-1");
 
     await deleteQuoteFromForm(formData as unknown as FormData);
@@ -765,7 +869,7 @@ describe("cancelQuote", () => {
 
   it("throws when the quote is not in DRAFT status", async () => {
     mockTx(QuoteStatus.APPROVED);
-    await expect(cancelQuote("quote-1")).rejects.toThrow("Only draft quotes can be cancelled.");
+    await expect(cancelQuote("quote-1")).rejects.toThrow("Only draft or sent quotes can be cancelled.");
   });
 });
 
@@ -777,7 +881,7 @@ describe("cancelQuoteFromForm", () => {
     tx.quote.updateMany.mockResolvedValue({ count: 1 });
     tx.quote.findUniqueOrThrow.mockResolvedValue({ id: "quote-1", status: QuoteStatus.CANCELLED });
 
-    const formData = new MockFormData();
+    const formData = new FormData();
     formData.set("quoteId", "quote-1");
 
     await cancelQuoteFromForm(formData as unknown as FormData);
@@ -786,18 +890,18 @@ describe("cancelQuoteFromForm", () => {
   });
 
   it("redirects with invalid-cancellation when quoteId is missing", async () => {
-    await cancelQuoteFromForm(new MockFormData() as unknown as FormData);
+    await cancelQuoteFromForm(new FormData());
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=invalid-cancellation");
   });
 
   it("redirects with not-draft error when quote is no longer draft", async () => {
     mockTx(QuoteStatus.SENT);
-    const formData = new MockFormData();
+    const formData = new FormData();
     formData.set("quoteId", "quote-1");
 
     await cancelQuoteFromForm(formData as unknown as FormData);
 
-    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=not-draft");
+    expect(redirect).toHaveBeenCalledWith("/admin/quotes?error=cancellation-failed");
   });
 });
 
@@ -846,18 +950,60 @@ describe("quote lifecycle", () => {
 describe("publishSharedQuote", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("conditionally publishes a draft without reading or creating a token", async () => {
-    const updateMany = prisma.quote.updateMany as ReturnType<typeof vi.fn>;
-    updateMany.mockResolvedValue({ count: 1 });
+  it("returns failure for a stale non-DRAFT quote without creating a shared link", async () => {
+    const tx = mockTx(QuoteStatus.SENT);
+    tx.quote.updateMany.mockResolvedValue({ count: 0 });
 
-    await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: true });
+    await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: false, error: "La cotización cambió de estado. Recarga e intenta de nuevo." });
 
-    expect(updateMany).toHaveBeenCalledWith({
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
       where: { id: "quote-1", status: QuoteStatus.DRAFT },
       data: { status: QuoteStatus.SENT },
     });
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-    expect(redirect).not.toHaveBeenCalled();
-    expect(revalidatePath).not.toHaveBeenCalled();
+    expect(getOrCreateSharedQuoteForQuote).not.toHaveBeenCalled();
+  });
+
+  it("returns failure for a missing quote without creating a shared link", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue(null);
+
+    await expect(publishSharedQuote("missing-quote")).resolves.toEqual({ success: false, error: "No se encontró la cotización." });
+
+    expect(tx.quote.updateMany).not.toHaveBeenCalled();
+    expect(getOrCreateSharedQuoteForQuote).not.toHaveBeenCalled();
+  });
+
+  it("returns actionable validation feedback and keeps an incomplete draft unchanged", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      status: QuoteStatus.DRAFT,
+      customerId: null,
+      subtotalCents: 10000,
+      discountCents: 0,
+      taxCents: 1600,
+      totalCents: 11600,
+      taxEnabled: true,
+      sections: [{ items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }] }],
+    });
+
+    await expect(publishSharedQuote("quote-1")).resolves.toEqual({
+      success: false,
+      error: "Selecciona un cliente antes de preparar la cotización para compartir.",
+    });
+
+    expect(tx.quote.updateMany).not.toHaveBeenCalled();
+    expect(getOrCreateSharedQuoteForQuote).not.toHaveBeenCalled();
+  });
+
+  it("publishes a complete draft, creates its link, and revalidates the list", async () => {
+    const tx = mockTx();
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+    vi.mocked(getOrCreateSharedQuoteForQuote).mockResolvedValue({ id: "shared-1" } as never);
+
+    await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: true });
+
+    expect(getOrCreateSharedQuoteForQuote).toHaveBeenCalledWith("quote-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
   });
 });

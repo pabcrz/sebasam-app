@@ -7,7 +7,7 @@ import { PaymentRequestErrorState } from "./payment-request-error-state";
 import { PublicPaymentPage } from "./public-payment-page";
 import { PublicPaymentShell } from "./public-payment-shell";
 
-function createMockRequest() {
+function createMockRequest(requiresInvoice = false) {
   return {
     id: "pr-123",
     token: "token-123",
@@ -15,7 +15,7 @@ function createMockRequest() {
     customerId: "customer-123",
     quoteId: null,
     workOrderId: null,
-    requiresInvoice: false,
+    requiresInvoice,
     customerFiscalProfileId: null,
     fiscalSnapshot: null,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -259,7 +259,7 @@ describe("PublicPaymentPage", () => {
   });
 
   it("renders payment data directly without invoice decision or fiscal-form elements", () => {
-    render(<PublicPaymentPage request={createMockRequest()} />);
+    render(<PublicPaymentPage request={createMockRequest(true)} />);
 
     expect(screen.queryByRole("heading", { name: /qué necesitas compartir/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /captura de datos fiscales/i })).not.toBeInTheDocument();

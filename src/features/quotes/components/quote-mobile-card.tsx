@@ -5,7 +5,7 @@ import { CalendarDays, Car, ClipboardList } from "lucide-react";
 import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, OperationalActionRow } from "@/components/ui";
-import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
+import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteCancelForm } from "./quote-cancel-form";
@@ -13,6 +13,7 @@ import { QuoteDuplicateForm } from "./quote-duplicate-form";
 import { QuoteDeleteForm } from "./quote-delete-form";
 import { ShareQuoteButton } from "./share-quote-button";
 import { QuoteAuthorizeForm } from "./quote-authorize-form";
+import { QuoteCorrectDecisionForm } from "./quote-correct-decision-form";
 import { PaymentRequestLinkDialog } from "@/features/payment-requests/components/payment-request-link-dialog";
 import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
@@ -32,7 +33,8 @@ interface QuoteListCardProps {
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
   shareAction: () => Promise<{ success: boolean; error?: string }>;
-  authorizeAction: (note: string) => Promise<{ success: boolean; error?: string }>;
+  authorizeAction: (note: string, authorizedSectionIds?: string[]) => Promise<{ success: boolean; error?: string }>;
+  correctDecisionAction: (quoteId: string, nextStatus: "APPROVED" | "REJECTED") => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
   cashPaymentAction: (amount: string, operationKey: string) => Promise<{
@@ -59,6 +61,7 @@ export function QuoteListCard({
   cancelAction,
   shareAction,
   authorizeAction,
+  correctDecisionAction,
   paymentRequestAction,
   paymentRequestBankAccounts,
   cashPaymentAction: _cashPaymentAction,
@@ -75,11 +78,14 @@ export function QuoteListCard({
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
   const openPreview = React.useCallback(() => setPreviewOpen(true), []);
-  const paymentRequestContext = createPaymentRequestDialogContext(quote, paymentRequestBankAccounts);
   const vehicleDescription = quote.vehicle
     ? formatVehicle(quote.vehicle)
     : formatSnapshotVehicle(quote.vehicleSnapshot);
   const canUsePaymentActions = quote.status === "APPROVED" && quote.workOrder?.status === "IN_PROGRESS";
+  const paymentRequestContext = canUsePaymentActions && quote.customer &&
+    quote.subtotalCents !== null && quote.taxCents !== null && quote.totalCents !== null
+    ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts)
+    : null;
   const actionLabelClassName = "sr-only sm:not-sr-only";
 
   return (
@@ -109,7 +115,7 @@ export function QuoteListCard({
         </div>
 
         <p className="mt-3 text-sm font-medium text-[var(--color-text-main)]">
-          {quote.customer.name}
+            {quote.customer?.name ?? "Sin cliente"}
         </p>
         <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
           <Car className="h-3.5 w-3.5" aria-hidden="true" />
@@ -141,7 +147,7 @@ export function QuoteListCard({
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--color-border-light)] pt-3 text-xs text-[var(--color-text-muted)]">
           <p className="flex items-center gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Creada el {formatDate(quote.createdAt)}</span>
+            <span>Fecha de cotización: {formatOperationalDate(quote.operationalDate)}</span>
           </p>
           <p className="flex items-center gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
@@ -172,27 +178,39 @@ export function QuoteListCard({
             <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} actionLabelClassName={actionLabelClassName} />
           ) : null}
 
-          {quote.activeSharedQuote && (quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED") ? (
+          {quote.status === "DRAFT" || (quote.activeSharedQuote && (quote.status === "SENT" || quote.status === "APPROVED")) ? (
             <ShareQuoteButton
-              action={quote.status === "DRAFT" ? shareAction : undefined}
-              sharedQuote={quote.activeSharedQuote}
+              action={shareAction}
+              sharedQuote={quote.activeSharedQuote ?? undefined}
               status={quote.status}
               quoteNumber={quote.number}
               actionLabelClassName={actionLabelClassName}
             />
           ) : null}
 
-          {quote.status === "DRAFT" || quote.status === "SENT" ? (
+           {quote.status === "SENT" ? (
             <QuoteAuthorizeForm
               action={authorizeAction}
               quoteNumber={quote.number}
+              sections={quote.sections}
               variant="outline"
               size="sm"
               actionLabelClassName={actionLabelClassName}
             />
           ) : null}
 
-          {quote.status === "APPROVED" ? (
+          {(quote.status === "APPROVED" || quote.status === "REJECTED") && !quote.workOrder ? (
+            <QuoteCorrectDecisionForm
+              action={correctDecisionAction}
+              quoteId={quote.id}
+              quoteNumber={quote.number}
+              currentStatus={quote.status}
+              variant="outline"
+              size="sm"
+            />
+          ) : null}
+
+          {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
             <WorkOrderOperationsDialog
               quoteNumber={quote.number}
               quoteStatus={quote.status}
@@ -213,7 +231,7 @@ export function QuoteListCard({
             <QuoteLifecycleForm action={archiveAction} mode="archive" quoteNumber={quote.number} actionLabelClassName={actionLabelClassName} />
           ) : null}
 
-          {canUsePaymentActions ? (
+           {canUsePaymentActions && paymentRequestContext ? (
             <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} actionLabelClassName={actionLabelClassName} />
           ) : null}
         </OperationalActionRow>

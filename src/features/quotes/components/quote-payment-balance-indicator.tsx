@@ -2,8 +2,8 @@ import { Badge } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 
 export interface QuotePaymentBalanceIndicatorProps {
-  paidCents?: number;
-  remainingCents?: number;
+  paidCents?: number | null;
+  remainingCents?: number | null;
 }
 
 export function QuotePaymentBalanceIndicator({ paidCents, remainingCents }: QuotePaymentBalanceIndicatorProps) {

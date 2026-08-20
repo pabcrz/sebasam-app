@@ -1,4 +1,5 @@
-export function formatCents(cents: number) {
+export function formatCents(cents: number | null | undefined) {
+  if (cents === null || cents === undefined) return "Pendiente";
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency: "MXN",
@@ -8,6 +9,13 @@ export function formatCents(cents: number) {
 export function formatDate(date: Date) {
   return new Intl.DateTimeFormat("es-MX", {
     dateStyle: "long",
+  }).format(date);
+}
+
+export function formatOperationalDate(date: Date) {
+  return new Intl.DateTimeFormat("es-MX", {
+    dateStyle: "long",
+    timeZone: "UTC",
   }).format(date);
 }
 
