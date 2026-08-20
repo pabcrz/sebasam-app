@@ -416,14 +416,6 @@ export function QuoteBuilder({
     });
   }
 
-  function updateSectionAuthorized(sectionIndex: number, isAuthorized: boolean) {
-    setSections((prev) => {
-      const next = [...prev];
-      next[sectionIndex] = { ...next[sectionIndex]!, isAuthorized };
-      return next;
-    });
-  }
-
   function reorderSection(oldIndex: number, newIndex: number) {
     setSections((prev) => {
       const next = [...prev];
@@ -950,7 +942,6 @@ export function QuoteBuilder({
               onAddSection={addSection}
               onRemoveSection={removeSection}
               onUpdateSectionName={updateSectionName}
-              onUpdateSectionAuthorized={updateSectionAuthorized}
               onTaxEnabledChange={setTaxEnabled}
               onDiscountChange={setDiscount}
               onReorderSection={reorderSection}

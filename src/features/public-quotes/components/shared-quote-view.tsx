@@ -26,21 +26,24 @@ export interface SharedQuoteViewProps {
   quote: SharedQuoteViewQuote;
   token: string;
   isNote?: boolean;
+  isPrint?: boolean;
   business?: { contactPhone: string; contactWhatsapp: string };
 }
 
-function initialSelectedSectionIds(sections: SharedQuoteViewQuote["sections"]) {
-  const hasAuthorizationState = sections.some((section) => typeof section.isAuthorized === "boolean");
-
-  // Legacy quote payloads without authorization state retain whole-quote selection.
-  return hasAuthorizationState
-    ? sections.filter((section) => section.isAuthorized).map((section) => section.id)
-    : sections.map((section) => section.id);
+function initialSelectedSectionIds(quote: SharedQuoteViewQuote) {
+  // If the quote is already approved, reflect the persisted authorized sections.
+  // In any other case (SENT, DRAFT, REJECTED, etc.), default to ALL sections selected so the full quote is presented.
+  if (quote.status === "APPROVED") {
+    const authorized = quote.sections.filter((section) => section.isAuthorized).map((section) => section.id);
+    if (authorized.length > 0) return authorized;
+  }
+  return quote.sections.map((section) => section.id);
 }
 
-export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteViewProps) {
+export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, business }: SharedQuoteViewProps) {
   const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
+  const isPrint = isPrintProp ?? (!token || Boolean(isNote));
 
   React.useEffect(() => {
     // Refresh the quote data every 5 seconds if no decision has been made
@@ -56,7 +59,7 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
     return () => clearInterval(interval);
   }, [router, decision]);
   const [error, setError] = React.useState<string | null>(null);
-  const [selectedSectionIds, setSelectedSectionIds] = React.useState(() => initialSelectedSectionIds(quote.sections));
+  const [selectedSectionIds, setSelectedSectionIds] = React.useState(() => initialSelectedSectionIds(quote));
 
   const handleSectionToggle = React.useCallback((sectionId: string, selected: boolean) => {
     setSelectedSectionIds((prev) =>
@@ -116,7 +119,11 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
     ? quote.sections.map((section) => ({
         id: section.id,
         name: section.name,
-        isAuthorized: decision === "accepted" ? selectedSectionIds.includes(section.id) : section.isAuthorized,
+        isAuthorized: isPrint
+          ? undefined
+          : decision === "accepted"
+            ? selectedSectionIds.includes(section.id)
+            : section.isAuthorized,
         items: section.items.map((item) => ({
           type: item.type,
           description: item.description,
@@ -138,27 +145,70 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
         },
       ];
 
-  const showDecisionControls = quote.status === "SENT" && !hasDecided;
+  const showDecisionControls = !isPrint && Boolean(token) && quote.status === "SENT" && !hasDecided;
 
   const calculateSelectedTotals = () => {
     let subtotalCents = 0;
     const sectionsToSum = quote.sections.filter((s) => selectedSectionIds.includes(s.id));
     for (const section of sectionsToSum) {
       for (const item of section.items) {
-        subtotalCents += Math.round(Number(item.quantity) * item.unitPriceCents!);
+        if (item.unitPriceCents != null) {
+          subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
+        }
       }
     }
-    const taxableCents = Math.max(0, subtotalCents - Number(quote.discountCents));
-    const hasTax = Number(quote.taxCents) > 0;
+    const taxableCents = Math.max(0, subtotalCents - Number(quote.discountCents ?? 0));
+    const hasTax = Number(quote.taxCents) > 0 || quote.taxEnabled;
     const taxCents = hasTax ? Math.round(taxableCents * 0.16) : 0;
     const totalCents = taxableCents + taxCents;
     return { subtotalCents, taxCents, totalCents };
   };
 
-  const totals = quote.sections.length > 1 && selectedSectionIds.length !== quote.sections.length
-    ? calculateSelectedTotals()
-    : { subtotalCents: quote.subtotalCents == null ? null : Number(quote.subtotalCents), taxCents: quote.taxCents == null ? null : Number(quote.taxCents), totalCents: quote.totalCents == null ? null : Number(quote.totalCents) };
-  const progressStatus = decision === "accepted" ? "accepted" : quote.status === "APPROVED"
+  const fullTotals = React.useMemo(() => {
+    let subtotalCents = 0;
+    let hasPending = false;
+
+    if (quote.sections && quote.sections.length > 0) {
+      for (const section of quote.sections) {
+        for (const item of section.items) {
+          if (item.unitPriceCents == null) {
+            hasPending = true;
+          } else {
+            subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
+          }
+        }
+      }
+    } else if (quote.items && quote.items.length > 0) {
+      for (const item of quote.items) {
+        if (item.unitPriceCents == null) {
+          hasPending = true;
+        } else {
+          subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
+        }
+      }
+    }
+
+    if (hasPending) {
+      return {
+        subtotalCents: quote.subtotalCents == null ? null : Number(quote.subtotalCents),
+        taxCents: quote.taxCents == null ? null : Number(quote.taxCents),
+        totalCents: quote.totalCents == null ? null : Number(quote.totalCents),
+      };
+    }
+
+    const discountCents = Number(quote.discountCents ?? 0);
+    const taxableCents = Math.max(0, subtotalCents - discountCents);
+    const hasTax = Number(quote.taxCents) > 0 || quote.taxEnabled;
+    const taxCents = hasTax ? Math.round(taxableCents * 0.16) : 0;
+    const totalCents = taxableCents + taxCents;
+
+    return { subtotalCents, taxCents, totalCents };
+  }, [quote]);
+
+  const totals = isPrint || quote.sections.length <= 1 || selectedSectionIds.length === quote.sections.length
+    ? fullTotals
+    : calculateSelectedTotals();
+  const progressStatus = isPrint ? null : decision === "accepted" ? "accepted" : quote.status === "APPROVED"
     ? quote.workOrder?.status === "COMPLETED" ? "completed"
       : quote.workOrder?.status === "ASSIGNED" || quote.workOrder?.status === "IN_PROGRESS" ? "active" : "accepted"
     : null;
@@ -181,6 +231,8 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
         onSectionToggle={showDecisionControls && quote.sections.length > 1 ? handleSectionToggle : undefined}
         validUntil={quote.validUntil}
         isNote={isNote}
+        isPrint={isPrint}
+        isApproved={quote.status === "APPROVED" || decision === "accepted"}
         compactHeader={true}
       />
 
@@ -257,17 +309,19 @@ export function SharedQuoteView({ quote, token, isNote, business }: SharedQuoteV
         </div>
       ) : null}
 
-      <div className="flex justify-center mt-2 print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => window.print()}
-          className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-border-light)]/50"
-        >
-          <Printer className="w-4 h-4 mr-2" />
-          Imprimir documento
-        </Button>
-      </div>
+      {!isPrint ? (
+        <div className="flex justify-center mt-2 print:hidden">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.print()}
+            className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-border-light)]/50"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Imprimir documento
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

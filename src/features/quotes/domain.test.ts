@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { QuoteDecisionOrigin, QuoteStatus } from "@prisma/client";
+import { QuoteDecisionOrigin, QuoteItemType, QuoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   acceptSharedQuote,
@@ -24,6 +24,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), sharedQuote: {
 
 type MockTransaction = {
   quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  quoteSection: { updateMany: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
   sharedQuote: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
@@ -35,6 +36,9 @@ function mockTx(): MockTransaction {
       findUnique: vi.fn(),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       update: vi.fn(),
+    },
+    quoteSection: {
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     quoteDecision: {
       create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) =>
@@ -583,6 +587,58 @@ describe("correctQuoteDecision", () => {
     });
   });
 
+  it("allows correcting REJECTED to DRAFT with history and clears approvedAt", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-corr-draft-1",
+      status: "REJECTED",
+      workOrder: null
+    });
+
+    await correctQuoteDecision("q-corr-draft-1", "DRAFT", "user-1");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "q-corr-draft-1", status: "REJECTED" },
+      data: { status: "DRAFT", approvedAt: null }
+    });
+
+    expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith({
+      data: {
+        quoteId: "q-corr-draft-1",
+        previousState: "REJECTED",
+        nextState: "DRAFT",
+        actorId: "user-1",
+        reason: "Corrección manual de decisión",
+      }
+    });
+
+    expect(tx.quoteDecision.create).toHaveBeenCalledWith({
+      data: {
+        quoteId: "q-corr-draft-1",
+        status: "DRAFT",
+        origin: "ADMIN",
+        actorId: "user-1",
+        note: "Corrección manual de decisión",
+      }
+    });
+  });
+
+  it("allows correcting APPROVED to DRAFT with history and clears approvedAt", async () => {
+    const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-corr-draft-2",
+      status: "APPROVED",
+      workOrder: null
+    });
+
+    await correctQuoteDecision("q-corr-draft-2", "DRAFT", "user-1");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "q-corr-draft-2", status: "APPROVED" },
+      data: { status: "DRAFT", approvedAt: null }
+    });
+  });
+
   it("fails if quote has a WorkOrder", async () => {
     const tx = mockTx();
     tx.quote.findUnique.mockResolvedValue({
@@ -592,5 +648,106 @@ describe("correctQuoteDecision", () => {
     });
 
     await expect(correctQuoteDecision("q-corr-3", "REJECTED", "user-1")).rejects.toThrow(/orden de trabajo/);
+  });
+
+  it("handles the complete lifecycle: Partial Acceptance -> Correction to Draft -> Re-Acceptance", async () => {
+    const quoteState = {
+      id: "quote-lifecycle-1",
+      number: "C-2026-001",
+      status: QuoteStatus.SENT,
+      customerId: "cust-1",
+      taxEnabled: true,
+      discountCents: 0,
+      subtotalCents: 200_00,
+      taxCents: 32_00,
+      totalCents: 232_00,
+      approvedAt: null as Date | null,
+      workOrder: null,
+      items: [
+        { id: "item-1", description: "Servicio A", quantity: 1, unitPriceCents: 100_00, type: QuoteItemType.SERVICE, sectionId: "sec-a" },
+      ],
+      sections: [
+        { id: "sec-a", quoteId: "quote-lifecycle-1", name: "Sección A", isAuthorized: false, items: [{ id: "item-1", description: "Servicio A", quantity: 1, unitPriceCents: 100_00, type: QuoteItemType.SERVICE }] },
+        { id: "sec-b", quoteId: "quote-lifecycle-1", name: "Sección B", isAuthorized: false, items: [{ id: "item-2", description: "Servicio B", quantity: 1, unitPriceCents: 100_00, type: QuoteItemType.SERVICE }] },
+      ],
+    };
+
+    const tx: MockTransaction = {
+      quote: {
+        findUnique: vi.fn().mockImplementation(() => Promise.resolve(quoteState)),
+        updateMany: vi.fn().mockImplementation((args: { where: { id: string }; data: Partial<typeof quoteState> }) => {
+          Object.assign(quoteState, args.data);
+          return Promise.resolve({ count: 1 });
+        }),
+        update: vi.fn(),
+      },
+      quoteSection: {
+        updateMany: vi.fn().mockImplementation((args: { where: { id: { in: string[] } }; data: { isAuthorized: boolean } }) => {
+          for (const s of quoteState.sections) {
+            if (args.where?.id?.in?.includes(s.id)) {
+              s.isAuthorized = args.data.isAuthorized;
+            }
+          }
+          return Promise.resolve({ count: 1 });
+        }),
+      },
+      quoteDecision: {
+        create: vi.fn().mockResolvedValue({ id: "dec-1" }),
+      },
+      quoteLifecycleEvent: {
+        create: vi.fn().mockResolvedValue({ id: "event-1" }),
+      },
+      sharedQuote: {
+        findFirst: vi.fn().mockImplementation(() =>
+          Promise.resolve({
+            id: "sq-1",
+            token: "valid-token",
+            quoteId: quoteState.id,
+            quote: quoteState,
+            expiresAt: new Date(Date.now() + 86400000),
+            revokedAt: null,
+          }),
+        ),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+      },
+    };
+
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
+      (callback: (t: MockTransaction) => Promise<unknown>) => callback(tx),
+    );
+
+    // STEP 1: Customer partially accepts section A
+    await acceptSharedQuote("valid-token", ["sec-a"]);
+
+    expect(quoteState.status).toBe(QuoteStatus.APPROVED);
+    expect(quoteState.approvedAt).toBeInstanceOf(Date);
+    expect(quoteState.sections.find((s) => s.id === "sec-a")?.isAuthorized).toBe(true);
+    expect(quoteState.sections.find((s) => s.id === "sec-b")?.isAuthorized).toBe(false);
+
+    // STEP 2: Customer or admin realizes mistake. Admin corrects decision back to DRAFT
+    await correctQuoteDecision(quoteState.id, "DRAFT", "admin-user-1");
+
+    expect(quoteState.status).toBe(QuoteStatus.DRAFT);
+    expect(quoteState.approvedAt).toBeNull();
+    expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith({
+      data: {
+        quoteId: quoteState.id,
+        previousState: "APPROVED",
+        nextState: "DRAFT",
+        actorId: "admin-user-1",
+        reason: "Corrección manual de decisión",
+      },
+    });
+
+    // STEP 3: Admin re-sends quote (simulating status -> SENT)
+    quoteState.status = QuoteStatus.SENT;
+
+    // STEP 4: Customer opens link again and now accepts Section B
+    await acceptSharedQuote("valid-token", ["sec-b"]);
+
+    expect(quoteState.status).toBe(QuoteStatus.APPROVED);
+    expect(quoteState.approvedAt).toBeInstanceOf(Date);
+    expect(quoteState.sections.find((s) => s.id === "sec-b")?.isAuthorized).toBe(true);
   });
 });
