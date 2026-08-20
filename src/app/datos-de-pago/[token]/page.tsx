@@ -40,9 +40,9 @@ type PaymentPageResult =
 
 type SettingsBankAccount = Awaited<ReturnType<typeof getPaymentSettings>>["bankAccounts"][number];
 
-function toPublicBankAccounts(accounts: SettingsBankAccount[]) {
+function toPublicBankAccounts(accounts: SettingsBankAccount[], requiresInvoice: boolean) {
   return accounts
-    .filter((account) => !account.isForInvoicing)
+    .filter((account) => account.isForInvoicing === requiresInvoice)
     .map(({ id, accountHolder, bankName, accountNumber, clabe }) => ({
       id,
       accountHolder,
@@ -97,7 +97,7 @@ export default async function DatosDePagoPage({ params }: PaymentPageProps) {
         address: settings.address,
         mapsUrl: settings.mapsUrl,
       }}
-      bankAccounts={toPublicBankAccounts(settings.bankAccounts)}
+      bankAccounts={toPublicBankAccounts(settings.bankAccounts, result.request.requiresInvoice)}
       contact={{
         phone: settings.contactPhone,
         whatsapp: settings.contactWhatsapp,
