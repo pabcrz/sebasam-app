@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Search } from "lucide-react";
-import { createCustomerFromForm } from "@/features/customers/actions";
+import { createCustomerFromForm, getCustomerDetail } from "@/features/customers/actions";
 import { listCustomers } from "@/features/customers/queries";
 import { customerSearchSchema } from "@/features/customers/schemas";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
@@ -86,7 +86,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
               )}
             </div>
           ) : (
-            <CustomerCardList customers={customers} />
+            <CustomerCardList customers={customers} getCustomerDetail={getCustomerDetail} />
           )}
         </CardContent>
       </Card>

@@ -3,10 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import {
   createOrReuseCustomerForQuote,
+  getCustomerDetail,
   searchCustomersForQuote,
   updateCustomerBasics,
   updateCustomerBasicsFromForm,
 } from "./actions";
+import { getCustomerAccountStatement, getCustomerById } from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -29,6 +31,11 @@ vi.mock("next/cache", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
+}));
+
+vi.mock("./queries", () => ({
+  getCustomerAccountStatement: vi.fn(),
+  getCustomerById: vi.fn(),
 }));
 
 const existingCustomer = {
@@ -290,5 +297,29 @@ describe("searchCustomersForQuote", () => {
 
     await expect(searchCustomersForQuote({ query: "Acme" })).rejects.toThrow("Unauthorized");
     expect(prisma.customer.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("getCustomerDetail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("composes the canonical customer and account statement queries", async () => {
+    const customer = { id: "cust-1", name: "Constructora del Norte" };
+    const statement = { totalContractedCents: 25000, totalPaidCents: 17500, pendingBalanceCents: 7500, movements: [] };
+    (getCustomerById as ReturnType<typeof vi.fn>).mockResolvedValue(customer);
+    (getCustomerAccountStatement as ReturnType<typeof vi.fn>).mockResolvedValue(statement);
+
+    await expect(getCustomerDetail("cust-1")).resolves.toEqual({ customer, statement });
+    expect(getCustomerById).toHaveBeenCalledWith("cust-1");
+    expect(getCustomerAccountStatement).toHaveBeenCalledWith("cust-1");
+  });
+
+  it("does not calculate an account statement when the customer no longer exists", async () => {
+    (getCustomerById as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+    await expect(getCustomerDetail("missing")).resolves.toBeNull();
+    expect(getCustomerAccountStatement).not.toHaveBeenCalled();
   });
 });

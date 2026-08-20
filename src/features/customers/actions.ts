@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
+import { getCustomerAccountStatement, getCustomerById } from "./queries";
 import {
   customerInputSchema,
   customerSearchSchema,
@@ -183,6 +184,16 @@ export async function searchCustomersForQuote(input: unknown) {
     take: 20,
     select: { id: true, name: true },
   });
+}
+
+export async function getCustomerDetail(customerId: string) {
+  const customer = await getCustomerById(customerId);
+
+  if (!customer) return null;
+
+  const statement = await getCustomerAccountStatement(customer.id);
+
+  return { customer, statement };
 }
 
 export async function createCustomerFromForm(formData: FormData) {
