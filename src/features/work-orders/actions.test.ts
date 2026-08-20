@@ -33,6 +33,24 @@ function worker(id: string, workerKind: WorkerKind) {
   return { id, role: UserRole.WORKER, workerKind, isActive: true };
 }
 
+function operationalQuote(overrides: Record<string, unknown> = {}) {
+  return {
+    status: QuoteStatus.APPROVED,
+    customerId: "customer-1",
+    vehicle: null,
+    vehicleSnapshot: null,
+    subtotalCents: 10_000,
+    discountCents: 0,
+    taxCents: 1_600,
+    totalCents: 11_600,
+    taxEnabled: true,
+    items: [],
+    sections: [{ items: [{ type: "SERVICE", description: "Service", quantity: 1, unitPriceCents: 10_000 }] }],
+    workOrder: null,
+    ...overrides,
+  };
+}
+
 type MockTx = {
   quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   workOrder: { create: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn> };
@@ -41,7 +59,7 @@ type MockTx = {
   executionRecord: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
   payment: { count: ReturnType<typeof vi.fn> };
   ledgerEntry: { count: ReturnType<typeof vi.fn> };
-  sharedQuote: { updateMany: ReturnType<typeof vi.fn> };
+  sharedQuote: { create: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
 };
@@ -55,7 +73,7 @@ function createTx(): MockTx {
     executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
     payment: { count: vi.fn().mockResolvedValue(0) },
     ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
-    sharedQuote: { updateMany: vi.fn() },
+    sharedQuote: { create: vi.fn(), updateMany: vi.fn() },
     paymentRequest: { updateMany: vi.fn() },
     quoteLifecycleEvent: { create: vi.fn() },
   };
@@ -113,7 +131,7 @@ describe("work order actions", () => {
   describe("createAndAssignWorkOrder", () => {
     it("creates and assigns a regular work order in one step", async () => {
       const tx = createTx();
-      tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.APPROVED, workOrder: null });
+      tx.quote.findUnique.mockResolvedValue(operationalQuote());
       tx.userProfile.findMany.mockResolvedValue([worker(masterId, WorkerKind.MASTER), worker(helperId, WorkerKind.HELPER)]);
 
       await createAndAssignWorkOrder("quote-1", {
@@ -136,11 +154,49 @@ describe("work order actions", () => {
         ],
         skipDuplicates: true,
       });
+      expect(tx.quote.updateMany).not.toHaveBeenCalled();
+      expect(tx.sharedQuote.create).not.toHaveBeenCalled();
+      expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("creates and assigns a draft with an identifiable unit and pending prices", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        status: QuoteStatus.DRAFT,
+        customerId: null,
+        vehicleSnapshot: { plate: "ABC-123" },
+        subtotalCents: null,
+        taxCents: null,
+        totalCents: null,
+        sections: [{ items: [{ type: "SERVICE", description: "Diagnosis", quantity: 1, unitPriceCents: null }] }],
+      }));
+
+      await createAndAssignWorkOrder("quote-1", { isSpecial: true });
+
+      expect(tx.workOrder.create).toHaveBeenCalled();
+      expect(tx.workOrder.update).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ status: WorkOrderStatus.ASSIGNED }),
+      }));
+      expect(tx.quote.updateMany).not.toHaveBeenCalled();
+      expect(tx.sharedQuote.create).not.toHaveBeenCalled();
+      expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("rejects a draft without a customer or identifiable unit", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        status: QuoteStatus.DRAFT,
+        customerId: null,
+        vehicleSnapshot: null,
+      }));
+
+      await expect(createAndAssignWorkOrder("quote-1", { isSpecial: true })).rejects.toThrow(/cliente o identifica la unidad/i);
+      expect(tx.workOrder.create).not.toHaveBeenCalled();
     });
 
     it("creates and assigns a special order without validating master/helpers or creating worker assignments", async () => {
       const tx = createTx();
-      tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.APPROVED, workOrder: { id: "wo-existing", status: WorkOrderStatus.PLANNED } });
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({ workOrder: { id: "wo-existing", status: WorkOrderStatus.PLANNED } }));
 
       await createAndAssignWorkOrder("quote-1", {
         isSpecial: true,
@@ -154,13 +210,13 @@ describe("work order actions", () => {
       expect(tx.workAssignment.createMany).not.toHaveBeenCalled();
     });
 
-    it("rejects assigning if quote is not approved", async () => {
+    it("rejects assigning if quote is outside an internal operational state", async () => {
       const tx = createTx();
-      tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.SENT, workOrder: null });
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({ status: QuoteStatus.REJECTED }));
 
       await expect(createAndAssignWorkOrder("quote-1", {
         isSpecial: true,
-      })).rejects.toThrow("aceptada");
+      })).rejects.toThrow(/borrador, enviada o aceptada/i);
     });
   });
 
@@ -168,7 +224,7 @@ describe("work order actions", () => {
     it("reassigns special work to Taller without creating worker assignments", async () => {
       const tx = createTx();
       tx.workOrder.findUniqueOrThrow.mockResolvedValue({ id: "wo-1" });
-      tx.workOrder.findFirst.mockResolvedValue({ id: "wo-1", status: WorkOrderStatus.ASSIGNED, quote: { status: QuoteStatus.APPROVED } });
+      tx.workOrder.findFirst.mockResolvedValue({ id: "wo-1", status: WorkOrderStatus.ASSIGNED, quote: operationalQuote() });
 
       await assignWorkOrder({ workOrderId: "wo-1", isSpecial: true });
 
@@ -183,7 +239,7 @@ describe("work order actions", () => {
   describe("completeWorkOrder", () => {
     it("completes an assigned work order", async () => {
       const tx = createTx();
-      tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.ASSIGNED, quote: { status: QuoteStatus.APPROVED } });
+      tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.ASSIGNED, quote: operationalQuote() });
 
       await completeWorkOrder({ workOrderId: "wo-1" });
 
@@ -195,9 +251,40 @@ describe("work order actions", () => {
       expect(tx.workOrder.updateMany.mock.calls[0][0].data.completedAt).toBeInstanceOf(Date);
     });
 
+    it("completes a priced draft identified by unit without requiring a customer", async () => {
+      const tx = createTx();
+      tx.workOrder.findUnique.mockResolvedValue({
+        status: WorkOrderStatus.ASSIGNED,
+        quote: operationalQuote({ status: QuoteStatus.DRAFT, customerId: null, vehicleSnapshot: { plate: "ABC-123" } }),
+      });
+
+      await completeWorkOrder({ workOrderId: "wo-1" });
+
+      expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ status: WorkOrderStatus.COMPLETED }),
+      }));
+    });
+
+    it("blocks completion while a concept price is pending", async () => {
+      const tx = createTx();
+      tx.workOrder.findUnique.mockResolvedValue({
+        status: WorkOrderStatus.ASSIGNED,
+        quote: operationalQuote({
+          status: QuoteStatus.SENT,
+          subtotalCents: null,
+          taxCents: null,
+          totalCents: null,
+          sections: [{ items: [{ type: "SERVICE", description: "Diagnosis", quantity: 1, unitPriceCents: null }] }],
+        }),
+      });
+
+      await expect(completeWorkOrder({ workOrderId: "wo-1" })).rejects.toThrow(/precios válidos/i);
+      expect(tx.workOrder.updateMany).not.toHaveBeenCalled();
+    });
+
     it("rejects completing an already completed work order", async () => {
       const tx = createTx();
-      tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.COMPLETED, quote: { status: QuoteStatus.APPROVED } });
+      tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.COMPLETED, quote: operationalQuote() });
 
       await expect(completeWorkOrder({ workOrderId: "wo-1" })).rejects.toThrow("en proceso para poder finalizarse");
     });

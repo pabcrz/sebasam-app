@@ -75,7 +75,7 @@ export function WorkOrderActiveList({
               <OperationalActionRow>
                 <WorkOrderOperationsDialog
                   quoteNumber={wo.quote.number}
-                  quoteStatus="APPROVED"
+                  quoteStatus={wo.quote.status}
                   workOrder={wo}
                   workers={workers}
                   triggerIconOnlyMobile
@@ -120,7 +120,7 @@ export function WorkOrderActiveList({
                 </div>
                 <div className="text-right">
                   <p className="font-mono text-lg font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
-                    {formatCents(Number(wo.quote.totalCents))}
+                    {formatCents(wo.quote.totalCents)}
                   </p>
                   <p className="text-xs text-[var(--color-text-muted)]">{wo.quote.title}</p>
                 </div>

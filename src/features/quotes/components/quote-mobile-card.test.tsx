@@ -228,7 +228,7 @@ describe("QuoteListCard", () => {
   });
 
   it("keeps the work action icon-only on mobile and labeled on desktop", () => {
-    renderCard(createMockQuote({ status: "APPROVED" }));
+    renderCard(createMockQuote({ status: "DRAFT" }));
 
     const work = screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" });
     expect(work).toHaveClass("h-10", "w-10", "px-0", "sm:h-9", "sm:w-auto", "sm:px-3");
@@ -257,6 +257,12 @@ describe("QuoteListCard", () => {
 
     expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /gestionar orden de trabajo ot-001/i })).toBeInTheDocument();
+  });
+
+  it("keeps work-order management visible for sent quotes", () => {
+    renderCard(createMockQuote({ status: "SENT" }));
+
+    expect(screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" })).toBeInTheDocument();
   });
 
   it("renders authorize button for sent quotes", () => {

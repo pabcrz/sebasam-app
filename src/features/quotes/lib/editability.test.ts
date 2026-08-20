@@ -29,6 +29,10 @@ describe("isQuoteEditable", () => {
       expect(isQuoteEditable({ status: "APPROVED", workOrder: { status: "ASSIGNED" } })).toBe(true);
     });
 
+    it("keeps a draft editable after its work order is assigned", () => {
+      expect(isQuoteEditable({ status: "DRAFT", workOrder: { status: "ASSIGNED" } })).toBe(true);
+    });
+
     it("returns true when workOrder is IN_PROGRESS", () => {
       expect(isQuoteEditable({ status: "APPROVED", workOrder: { status: "IN_PROGRESS" } })).toBe(true);
     });

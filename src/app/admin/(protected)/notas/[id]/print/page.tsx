@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getWorkOrderById } from "@/features/work-orders/queries";
+import { getCompletedWorkOrderById } from "@/features/work-orders/queries";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
 import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
@@ -18,7 +18,7 @@ interface PrintPageProps {
 export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
   const { id } = await params;
   const [workOrder, paymentSettings] = await Promise.all([
-    getWorkOrderById(id),
+    getCompletedWorkOrderById(id),
     getPaymentSettings(),
   ]);
 

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { listActiveWorkOrders, listCompletedWorkOrders } from "./queries";
+import { getCompletedWorkOrderById, listActiveWorkOrders, listCompletedWorkOrders } from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { $queryRaw: vi.fn(), workOrder: { findMany: vi.fn() } },
+  prisma: { $queryRaw: vi.fn(), workOrder: { findMany: vi.fn(), findFirst: vi.fn() } },
 }));
 
 vi.mock("@/lib/auth/session", () => ({
@@ -65,5 +65,52 @@ describe("work order operational queues", () => {
     const bounded = await listCompletedWorkOrders(input);
     expect(bounded.hasNextPage).toBe(true);
     expect(prisma.workOrder.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { id: { in: Array.from({ length: 20 }, (_, index) => String(index)) } } }));
+  });
+
+  it("only loads closure-ready completed work for Nota routes", async () => {
+    (prisma.workOrder.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "wo-1",
+      status: "COMPLETED",
+      quote: {
+        customerId: null,
+        vehicle: null,
+        vehicleSnapshot: { plate: "ABC-123" },
+        subtotalCents: 10_000,
+        discountCents: 0,
+        taxCents: 1_600,
+        totalCents: 11_600,
+        taxEnabled: true,
+        items: [],
+        sections: [{ items: [{ type: "SERVICE", description: "Service", quantity: 1, unitPriceCents: 10_000, totalCents: 10_000 }] }],
+      },
+      assignments: [],
+    });
+
+    await expect(getCompletedWorkOrderById("wo-1")).resolves.toMatchObject({ id: "wo-1", status: "COMPLETED" });
+    expect(prisma.workOrder.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "wo-1", status: "COMPLETED" },
+    }));
+  });
+
+  it("hides a completed work order from Nota routes when closure data is invalid", async () => {
+    (prisma.workOrder.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "wo-1",
+      status: "COMPLETED",
+      quote: {
+        customerId: "customer-1",
+        vehicle: null,
+        vehicleSnapshot: null,
+        subtotalCents: null,
+        discountCents: 0,
+        taxCents: null,
+        totalCents: null,
+        taxEnabled: false,
+        items: [],
+        sections: [{ items: [{ type: "SERVICE", description: "Service", quantity: 1, unitPriceCents: null, totalCents: null }] }],
+      },
+      assignments: [],
+    });
+
+    await expect(getCompletedWorkOrderById("wo-1")).resolves.toBeNull();
   });
 });
