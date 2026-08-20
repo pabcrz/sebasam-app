@@ -30,13 +30,14 @@ export interface SharedQuoteViewProps {
   business?: { contactPhone: string; contactWhatsapp: string };
 }
 
-function initialSelectedSectionIds(sections: SharedQuoteViewQuote["sections"]) {
-  const hasAuthorizationState = sections.some((section) => typeof section.isAuthorized === "boolean");
-
-  // Legacy quote payloads without authorization state retain whole-quote selection.
-  return hasAuthorizationState
-    ? sections.filter((section) => section.isAuthorized).map((section) => section.id)
-    : sections.map((section) => section.id);
+function initialSelectedSectionIds(quote: SharedQuoteViewQuote) {
+  // If the quote is already approved, reflect the persisted authorized sections.
+  // In any other case (SENT, DRAFT, REJECTED, etc.), default to ALL sections selected so the full quote is presented.
+  if (quote.status === "APPROVED") {
+    const authorized = quote.sections.filter((section) => section.isAuthorized).map((section) => section.id);
+    if (authorized.length > 0) return authorized;
+  }
+  return quote.sections.map((section) => section.id);
 }
 
 export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, business }: SharedQuoteViewProps) {
@@ -58,7 +59,7 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
     return () => clearInterval(interval);
   }, [router, decision]);
   const [error, setError] = React.useState<string | null>(null);
-  const [selectedSectionIds, setSelectedSectionIds] = React.useState(() => initialSelectedSectionIds(quote.sections));
+  const [selectedSectionIds, setSelectedSectionIds] = React.useState(() => initialSelectedSectionIds(quote));
 
   const handleSectionToggle = React.useCallback((sectionId: string, selected: boolean) => {
     setSelectedSectionIds((prev) =>
@@ -151,18 +152,61 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
     const sectionsToSum = quote.sections.filter((s) => selectedSectionIds.includes(s.id));
     for (const section of sectionsToSum) {
       for (const item of section.items) {
-        subtotalCents += Math.round(Number(item.quantity) * item.unitPriceCents!);
+        if (item.unitPriceCents != null) {
+          subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
+        }
       }
     }
-    const taxableCents = Math.max(0, subtotalCents - Number(quote.discountCents));
-    const hasTax = Number(quote.taxCents) > 0;
+    const taxableCents = Math.max(0, subtotalCents - Number(quote.discountCents ?? 0));
+    const hasTax = Number(quote.taxCents) > 0 || quote.taxEnabled;
     const taxCents = hasTax ? Math.round(taxableCents * 0.16) : 0;
     const totalCents = taxableCents + taxCents;
     return { subtotalCents, taxCents, totalCents };
   };
 
+  const fullTotals = React.useMemo(() => {
+    let subtotalCents = 0;
+    let hasPending = false;
+
+    if (quote.sections && quote.sections.length > 0) {
+      for (const section of quote.sections) {
+        for (const item of section.items) {
+          if (item.unitPriceCents == null) {
+            hasPending = true;
+          } else {
+            subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
+          }
+        }
+      }
+    } else if (quote.items && quote.items.length > 0) {
+      for (const item of quote.items) {
+        if (item.unitPriceCents == null) {
+          hasPending = true;
+        } else {
+          subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
+        }
+      }
+    }
+
+    if (hasPending) {
+      return {
+        subtotalCents: quote.subtotalCents == null ? null : Number(quote.subtotalCents),
+        taxCents: quote.taxCents == null ? null : Number(quote.taxCents),
+        totalCents: quote.totalCents == null ? null : Number(quote.totalCents),
+      };
+    }
+
+    const discountCents = Number(quote.discountCents ?? 0);
+    const taxableCents = Math.max(0, subtotalCents - discountCents);
+    const hasTax = Number(quote.taxCents) > 0 || quote.taxEnabled;
+    const taxCents = hasTax ? Math.round(taxableCents * 0.16) : 0;
+    const totalCents = taxableCents + taxCents;
+
+    return { subtotalCents, taxCents, totalCents };
+  }, [quote]);
+
   const totals = isPrint || quote.sections.length <= 1 || selectedSectionIds.length === quote.sections.length
-    ? { subtotalCents: quote.subtotalCents == null ? null : Number(quote.subtotalCents), taxCents: quote.taxCents == null ? null : Number(quote.taxCents), totalCents: quote.totalCents == null ? null : Number(quote.totalCents) }
+    ? fullTotals
     : calculateSelectedTotals();
   const progressStatus = isPrint ? null : decision === "accepted" ? "accepted" : quote.status === "APPROVED"
     ? quote.workOrder?.status === "COMPLETED" ? "completed"
@@ -187,6 +231,8 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
         onSectionToggle={showDecisionControls && quote.sections.length > 1 ? handleSectionToggle : undefined}
         validUntil={quote.validUntil}
         isNote={isNote}
+        isPrint={isPrint}
+        isApproved={quote.status === "APPROVED" || decision === "accepted"}
         compactHeader={true}
       />
 

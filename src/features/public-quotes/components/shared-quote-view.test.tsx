@@ -198,7 +198,6 @@ describe("SharedQuoteView", () => {
     if (!pendingItem) throw new Error("Pending section item row was not rendered.");
     expect(pendingItem).toHaveClass("opacity-40");
     expect(screen.getByText("Autorizada")).toBeInTheDocument();
-    expect(screen.getByText("Pendiente de autorización")).toBeInTheDocument();
     expect(screen.queryByTestId("section-toggle-sec-1")).not.toBeInTheDocument();
     expect(screen.queryByTestId("section-toggle-sec-2")).not.toBeInTheDocument();
   });
@@ -247,8 +246,20 @@ describe("SharedQuoteView", () => {
   });
 
   describe("partial authorization by sections", () => {
-    it("selects only sections with persisted authorization", () => {
-      render(<SharedQuoteView quote={makePartiallyAuthorizedQuote()} token="token-123" />);
+    it("selects all sections by default for pending sent quotes", () => {
+      render(<SharedQuoteView quote={makeMultiSectionQuote(QuoteStatus.SENT)} token="token-123" />);
+
+      expect(screen.getByTestId("section-toggle-sec-1")).toBeChecked();
+      expect(screen.getByTestId("section-toggle-sec-2")).toBeChecked();
+      expect(screen.getByRole("button", { name: "Aceptar cotización" })).toBeInTheDocument();
+      expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
+    });
+
+    it("allows the customer to uncheck a section and accept partially", async () => {
+      const user = userEvent.setup();
+      render(<SharedQuoteView quote={makeMultiSectionQuote(QuoteStatus.SENT)} token="token-123" />);
+
+      await user.click(screen.getByTestId("section-toggle-sec-2"));
 
       expect(screen.getByTestId("section-toggle-sec-1")).toBeChecked();
       expect(screen.getByTestId("section-toggle-sec-2")).not.toBeChecked();
@@ -256,33 +267,35 @@ describe("SharedQuoteView", () => {
       expect(screen.getByTestId("quote-total")).toHaveTextContent("$46.40");
     });
 
-    it("allows the customer to change the initially authorized selection", async () => {
+    it("disables accept when every section is unchecked", async () => {
       const user = userEvent.setup();
-      render(<SharedQuoteView quote={makePartiallyAuthorizedQuote()} token="token-123" />);
+      render(<SharedQuoteView quote={makeMultiSectionQuote(QuoteStatus.SENT)} token="token-123" />);
 
+      await user.click(screen.getByTestId("section-toggle-sec-1"));
       await user.click(screen.getByTestId("section-toggle-sec-2"));
-
-      expect(screen.getByTestId("section-toggle-sec-2")).toBeChecked();
-      expect(screen.getByRole("button", { name: "Aceptar cotización" })).toBeInTheDocument();
-      expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
-    });
-
-    it("disables accept when no section has persisted authorization", () => {
-      render(<SharedQuoteView quote={makeMultiSectionQuote()} token="token-123" />);
 
       const accept = screen.getByRole("button", { name: "Seleccione al menos una sección" });
       expect(accept).toBeDisabled();
     });
 
-    it("sends only initially authorized section ids when accepting", async () => {
+    it("sends selected section ids when accepting", async () => {
       const user = userEvent.setup();
       acceptSharedQuoteActionMock.mockResolvedValue({ success: true });
 
-      render(<SharedQuoteView quote={makePartiallyAuthorizedQuote()} token="token-123" />);
+      render(<SharedQuoteView quote={makeMultiSectionQuote(QuoteStatus.SENT)} token="token-123" />);
 
+      await user.click(screen.getByTestId("section-toggle-sec-2"));
       await user.click(screen.getByRole("button", { name: "Aceptar 1 sección" }));
 
       expect(acceptSharedQuoteActionMock).toHaveBeenCalledWith("token-123", ["sec-1"]);
+    });
+
+    it("selects only authorized sections when quote is already APPROVED", () => {
+      render(<SharedQuoteView quote={makePartiallyAuthorizedQuote(QuoteStatus.APPROVED)} token="token-123" />);
+
+      expect(screen.getByTestId("quote-total")).toHaveTextContent("$46.40");
+      expect(screen.getByText(/Total correspondiente únicamente a los conceptos autorizados/)).toBeInTheDocument();
+      expect(screen.getByText("Autorizada")).toBeInTheDocument();
     });
 
     it("selects every section for legacy quotes without authorization state", () => {

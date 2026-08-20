@@ -76,7 +76,6 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="sections.0.items.0.description"]')).toBeInTheDocument();
     expect(document.querySelector('input[name="sections.0.items.0.quantity"]')).toBeInTheDocument();
     expect(document.querySelector('input[name="sections.0.items.0.unitPrice"]')).toBeInTheDocument();
-    expect(document.querySelector('input[name="sections.0.isAuthorized"]')).toBeInTheDocument();
     expect(document.querySelector('input[name="taxEnabled"]')).toHaveValue("on");
   });
 
@@ -623,7 +622,6 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     await fillItemsStep(user)();
-    await user.click(screen.getByRole("checkbox", { name: "Autorizado" }));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     await fillNotesStep(user)();
@@ -631,7 +629,6 @@ describe("QuoteBuilder", () => {
 
     expect(screen.getByRole("heading", { name: "Revisar y enviar cotización", level: 2 })).toHaveFocus();
     expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
-    expect(screen.getByText("Autorizada")).toBeInTheDocument();
     expect(action).not.toHaveBeenCalled();
 
     const form = screen.getByTestId("quote-builder-form");
@@ -652,7 +649,6 @@ describe("QuoteBuilder", () => {
     expect(entries["sections.0.items.0.quantity"]).toBe("1");
     expect(entries["sections.0.items.0.unitPrice"]).toBe("850");
     expect(entries["sections.0.items.0.type"]).toBe("LABOR");
-    expect(entries["sections.0.isAuthorized"]).toBe("on");
     expect(entries["sections.0.items.1.type"]).toBeUndefined();
     expect([...formData.keys()].some((key) => key.toLowerCase().includes("rowid"))).toBe(false);
     expect(screen.getAllByText("Cambio de aceite")).toHaveLength(1);
