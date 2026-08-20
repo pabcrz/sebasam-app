@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import Link from "next/link";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Button } from "./button";
@@ -10,7 +11,7 @@ describe("Button", () => {
 
     render(
       <Button asChild variant="ghost">
-        <a href="/admin/customers">Clientes</a>
+        <Link href="/admin/customers">Clientes</Link>
       </Button>,
     );
 
@@ -34,7 +35,7 @@ describe("Button", () => {
 
     render(
       <Button asChild loading variant="primary">
-        <a href="/admin/customers">Clientes</a>
+        <Link href="/admin/customers">Clientes</Link>
       </Button>,
     );
 

@@ -80,21 +80,25 @@ async function loadBankAccountProps() {
 }
 
 describe("DatosDePagoPage bank account boundary", () => {
-  it("only exposes transfer-only (non-invoice) bank accounts", async () => {
-    mockPageData(PaymentRequestStatus.READY_TO_PAY, false);
+  it.each([
+    { requiresInvoice: false, expectedHolders: ["Payment Only"] },
+    { requiresInvoice: true, expectedHolders: ["Invoice First", "Invoice Last"] },
+  ])("exposes only accounts matching requiresInvoice=$requiresInvoice", async ({ requiresInvoice, expectedHolders }) => {
+    mockPageData(PaymentRequestStatus.READY_TO_PAY, requiresInvoice);
 
     const accounts = await loadBankAccountProps();
 
-    expect(accounts.map((account: { accountHolder: string }) => account.accountHolder)).toEqual([
-      "Payment Only",
-    ]);
+    expect(accounts.map((account: { accountHolder: string }) => account.accountHolder)).toEqual(expectedHolders);
   });
 
-  it("returns an explicit empty list when all accounts are for invoicing", async () => {
+  it.each([
+    { requiresInvoice: false, accounts: bankAccounts.filter((account) => account.isForInvoicing) },
+    { requiresInvoice: true, accounts: bankAccounts.filter((account) => !account.isForInvoicing) },
+  ])("returns an explicit empty list when no accounts match requiresInvoice=$requiresInvoice", async ({ requiresInvoice, accounts }) => {
     mockPageData(
       PaymentRequestStatus.READY_TO_PAY,
-      false,
-      bankAccounts.filter((account) => account.isForInvoicing),
+      requiresInvoice,
+      accounts,
     );
 
     expect(await loadBankAccountProps()).toEqual([]);

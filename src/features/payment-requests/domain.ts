@@ -168,9 +168,6 @@ async function createPaymentRequestForQuoteInTransaction(
   assertCommercialQuote(quote);
 
   const requiresInvoice = quote.taxEnabled;
-  const initialStatus = requiresInvoice
-    ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
-    : PaymentRequestStatus.PENDING;
 
   const token = await generateUniqueSlug(
     `P${quote.number.slice(1)}`,
@@ -186,7 +183,7 @@ async function createPaymentRequestForQuoteInTransaction(
   return tx.paymentRequest.create({
     data: {
       token,
-      status: initialStatus,
+      status: PaymentRequestStatus.PENDING,
       customerId: quote.customerId!,
       quoteId: quote.id,
       requiresInvoice,
@@ -236,9 +233,6 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
     await assertNoActiveRequest(tx, { workOrderId: workOrder.id });
 
     const requiresInvoice = workOrder.quote.taxEnabled;
-    const initialStatus = requiresInvoice
-      ? PaymentRequestStatus.FISCAL_DATA_REQUIRED
-      : PaymentRequestStatus.PENDING;
 
     const slugPrefix = `P${workOrder.number.slice(1)}`;
     const token = await generateUniqueSlug(
@@ -255,7 +249,7 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
     return tx.paymentRequest.create({
       data: {
         token,
-        status: initialStatus,
+        status: PaymentRequestStatus.PENDING,
         customerId: workOrder.quote.customerId!,
         workOrderId: workOrder.id,
         requiresInvoice,
