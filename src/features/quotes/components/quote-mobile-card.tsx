@@ -175,10 +175,10 @@ export function QuoteListCard({
             <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} actionLabelClassName={actionLabelClassName} />
           ) : null}
 
-           {quote.activeSharedQuote && (quote.status === "SENT" || quote.status === "APPROVED") ? (
+          {quote.status === "DRAFT" || (quote.activeSharedQuote && (quote.status === "SENT" || quote.status === "APPROVED")) ? (
             <ShareQuoteButton
-               action={shareAction}
-              sharedQuote={quote.activeSharedQuote}
+              action={shareAction}
+              sharedQuote={quote.activeSharedQuote ?? undefined}
               status={quote.status}
               quoteNumber={quote.number}
               actionLabelClassName={actionLabelClassName}

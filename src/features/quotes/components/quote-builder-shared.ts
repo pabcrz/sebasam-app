@@ -212,14 +212,19 @@ export function getStepError(
   step: Step,
   state: {
     customerId: string;
-    vehicle: { model: string };
+    vehicle: { plate: string; brand: string; model: string };
     title: string;
     sections: SectionFormValue[];
   },
   requirePrice = false,
 ): string | null {
   if (step === "client") {
-    return null;
+    const hasIdentifiableUnit = Boolean(
+      state.vehicle.plate.trim() || (state.vehicle.brand.trim() && state.vehicle.model.trim()),
+    );
+    return state.customerId || hasIdentifiableUnit
+      ? null
+      : "Selecciona un cliente o identifica la unidad con placas o marca y modelo.";
   }
 
   if (step === "items") {

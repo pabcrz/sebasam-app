@@ -22,6 +22,35 @@ describe("draft quote persistence contract", () => {
     }
   });
 
+  it.each([
+    ["plate", { plate: "ABC-123", brand: "", model: "", color: "", year: "" }],
+    ["brand and model", { plate: "", brand: "Toyota", model: "Hilux", color: "", year: "" }],
+  ])("accepts a customerless draft identified by %s", (_label, vehicle) => {
+    expect(quoteDraftFormInputSchema.safeParse({ ...draft, vehicle }).success).toBe(true);
+  });
+
+  it("accepts a customer without unit data", () => {
+    expect(quoteDraftFormInputSchema.safeParse({
+      ...draft,
+      customerId: "customer-1",
+      vehicle: { plate: "", brand: "", model: "", color: "", year: "" },
+    }).success).toBe(true);
+  });
+
+  it("rejects a draft without a customer or identifiable unit", () => {
+    const result = quoteDraftFormInputSchema.safeParse({
+      ...draft,
+      vehicle: { plate: "", brand: "Toyota", model: "", color: "", year: "" },
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe(
+        "Selecciona un cliente o identifica la unidad con placas o marca y modelo.",
+      );
+    }
+  });
+
   it("keeps the commercial form schema strict", () => {
     expect(quoteFormInputSchema.safeParse(draft).success).toBe(false);
   });

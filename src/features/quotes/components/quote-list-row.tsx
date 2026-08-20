@@ -145,10 +145,10 @@ export function QuoteListRow({
             <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
           ) : null}
 
-          {quote.activeSharedQuote && (quote.status === "SENT" || quote.status === "APPROVED") ? (
+          {quote.status === "DRAFT" || (quote.activeSharedQuote && (quote.status === "SENT" || quote.status === "APPROVED")) ? (
             <ShareQuoteButton
               action={shareAction}
-              sharedQuote={quote.activeSharedQuote}
+              sharedQuote={quote.activeSharedQuote ?? undefined}
               status={quote.status}
               quoteNumber={quote.number}
             />
