@@ -2,6 +2,7 @@ import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import toast from "react-hot-toast";
 import { WorkOrderActiveList } from "./work-order-active-list";
 
 vi.mock("@/features/work-orders/components/work-order-operations-dialog", () => ({
@@ -74,14 +75,18 @@ describe("WorkOrderActiveList", () => {
     expect(screen.getByText("+ 1 ayudante(s)")).toBeInTheDocument();
   });
 
-  it("keeps duplicate failure feedback in the active-work footer", async () => {
+  it("triggers toast error feedback when duplication fails", async () => {
     const user = userEvent.setup();
+    const toastError = vi.spyOn(toast, "error");
     const duplicateQuoteAction = vi.fn().mockRejectedValue(new Error("offline"));
     renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { duplicateQuoteAction });
 
     await user.click(screen.getByRole("button", { name: "Duplicar cotización" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo duplicar la cotización");
+    expect(toastError).toHaveBeenCalledWith(
+      "No se pudo duplicar la cotización. Intenta de nuevo.",
+      { id: "quote-duplicate-error" }
+    );
   });
 
   it("uses accessible responsive action controls", () => {
