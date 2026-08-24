@@ -30,6 +30,7 @@ interface AdminShellProps {
 type NavItem = {
   href: string;
   label: string;
+  mobileLabel?: string;
   icon: LucideIcon;
 };
 
@@ -45,17 +46,19 @@ const navItems: NavItem[] = [
   { href: "/admin/users", label: "Usuarios", icon: Shield }, // Added for SUPER_ADMIN
 ];
 
-/** Four main items shown in the mobile bottom nav bar. */
+/** Primary operational destinations shown in the mobile bottom nav bar. */
 const mobileNavItems: NavItem[] = [
-  { href: "/admin", label: "Inicio", icon: Home },
-  { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
+  { href: "/admin/customers", label: "Clientes", icon: Users },
+  { href: "/admin/quotes", label: "Cotizaciones", mobileLabel: "Cotiz.", icon: FileText },
   { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
   { href: "/admin/notas", label: "Notas", icon: FileCheck },
+  { href: "/admin/workers", label: "Nómina", icon: UserCog },
 ];
 
 function NavLink({
   href,
   label,
+  mobileLabel,
   icon: Icon,
   mobile = false,
   onNavStart,
@@ -85,9 +88,10 @@ function NavLink({
     <Link
       href={href}
       onClick={handleClick}
+      aria-label={mobile ? label : undefined}
       className={
         mobile
-          ? `group flex min-h-[var(--tap-min-height)] flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] px-2 py-1.5 text-[0.68rem] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-900)] ${
+          ? `group flex min-h-[var(--tap-min-height)] min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] px-1 py-1.5 text-[0.68rem] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-900)] ${
               active
                 ? "bg-white/14 text-white shadow-sm"
                 : "text-[var(--color-on-navy-tint)] hover:bg-white/8 hover:text-white"
@@ -105,7 +109,7 @@ function NavLink({
       ) : (
         <Icon className={mobile ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" />
       )}
-      <span>{label}</span>
+      <span className={mobile ? "whitespace-nowrap" : undefined}>{mobileLabel ?? label}</span>
     </Link>
   );
 }
@@ -124,7 +128,12 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
     <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 print:bg-transparent print:pb-0">
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 text-[var(--color-text-main)] md:flex overflow-y-auto print:hidden">
         <div className="border-b border-[var(--color-border-light)] px-3 pb-5">
-          <p className="text-xl font-extrabold tracking-[-0.04em]">SEBASAM</p>
+          <Link
+            href="/admin"
+            className="inline-flex min-h-[var(--tap-min-height)] items-center rounded-md px-2 text-xl font-extrabold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+          >
+            SEBASAM
+          </Link>
           <p className="mt-1 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
             Operaciones
           </p>
@@ -149,7 +158,12 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
           ) : null}
           <div className="mx-auto flex w-full items-center justify-between px-4 py-3 md:px-6">
             <div className="md:hidden">
-              <p className="text-lg font-extrabold tracking-[-0.04em]">SEBASAM</p>
+              <Link
+                href="/admin"
+                className="inline-flex min-h-[var(--tap-min-height)] flex-col justify-center rounded-md px-2 text-lg font-extrabold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+              >
+                SEBASAM
+              </Link>
               <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
                 Operaciones
               </p>
@@ -211,7 +225,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] text-white md:hidden print:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto grid max-w-md grid-cols-4 gap-1 px-2 pt-2">
+        <div className="mx-auto grid w-full max-w-md grid-cols-5 gap-1 px-1 pt-2">
           {mobileNavItems.map((item) => (
             <NavLink key={item.href} {...item} mobile onNavStart={() => setGlobalPending(true)} />
           ))}
