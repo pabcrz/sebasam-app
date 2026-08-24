@@ -35,7 +35,7 @@ export function PayrollWorkerDetail({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-sm sm:text-base font-semibold text-[var(--color-text-main)]">
-            Órdenes de {activeWorker.displayName}
+            Mano de obra - {activeWorker.displayName}
           </h2>
           <Badge variant="default" className="text-[10px] sm:text-xs py-0 px-2 font-normal">
             {activeWorker.completedOrderCount} {activeWorker.completedOrderCount === 1 ? "orden" : "órdenes"}

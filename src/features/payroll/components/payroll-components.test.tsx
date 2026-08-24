@@ -124,7 +124,7 @@ describe("Payroll UI Components", () => {
       />
     );
 
-    expect(screen.getByText("Órdenes de Maestro Pedro")).toBeInTheDocument();
+    expect(screen.getByText("Mano de obra - Maestro Pedro")).toBeInTheDocument();
     expect(screen.getByText("OT-010")).toBeInTheDocument();
     expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Soldadura / Soplete")).toBeInTheDocument();
