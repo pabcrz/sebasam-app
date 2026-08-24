@@ -177,13 +177,19 @@ export function buildWeeklyPayrollReport(
   let grandTotalCompletedOrders = 0;
 
   for (const wo of orders) {
-    // Gather all items from quote and authorized sections
-    const rawItems: PayrollItemInput[] = [...wo.quote.items];
+    // Gather unique items from quote (deduplicate items present in both quote.items and sections)
+    const itemMap = new Map<string, PayrollItemInput>();
+    for (const item of wo.quote.items) {
+      itemMap.set(item.id, item);
+    }
     if (wo.quote.sections) {
       for (const section of wo.quote.sections) {
-        rawItems.push(...section.items);
+        for (const item of section.items) {
+          itemMap.set(item.id, item);
+        }
       }
     }
+    const rawItems = Array.from(itemMap.values());
 
     // Evaluate labor items
     const evaluatedItems: PayrollItemResult[] = [];

@@ -117,7 +117,7 @@ function WorkOrderDetailRow({ order }: { order: WorkOrderPayrollDetail }) {
           const hasAdjustment = item.payrollBaseCents !== item.clientTotalCents;
           return (
             <div
-              key={item.id}
+              key={`m-${item.id}`}
               className="rounded-[var(--radius-sm)] bg-[var(--color-bg-soft)]/50 p-2 text-xs space-y-1"
             >
               <div className="flex items-start justify-between gap-2">
@@ -170,7 +170,7 @@ function WorkOrderDetailRow({ order }: { order: WorkOrderPayrollDetail }) {
             {order.items.map((item) => {
               const hasAdjustment = item.payrollBaseCents !== item.clientTotalCents;
               return (
-                <TableRow key={item.id} className="text-xs hover:bg-[var(--color-bg-soft)]/50">
+                <TableRow key={`d-${item.id}`} className="text-xs hover:bg-[var(--color-bg-soft)]/50">
                   <TableCell className="px-2 py-1.5">
                     <div className="flex items-center gap-1.5">
                       <span>{item.description}</span>
