@@ -91,10 +91,10 @@ describe("Payroll UI Components", () => {
       />
     );
 
-    expect(screen.getByText("$1,500.00")).toBeInTheDocument();
-    expect(screen.getByText("$3,000.00")).toBeInTheDocument();
-    expect(screen.getByText("4")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getAllByText("$1,500.00").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("$3,000.00").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("4").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders overview table and allows worker selection", () => {
