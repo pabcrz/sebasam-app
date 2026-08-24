@@ -9,6 +9,7 @@ describe("WorkerCreateDialog", () => {
     render(<WorkerCreateDialog action={vi.fn()} />);
 
     const trigger = screen.getByRole("button", { name: "Crear trabajador" });
+    expect(trigger).toHaveClass("w-full", "sm:w-fit");
     await user.click(trigger);
 
     expect(screen.getByRole("dialog", { name: "Crear trabajador" })).toBeInTheDocument();

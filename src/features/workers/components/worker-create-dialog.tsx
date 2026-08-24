@@ -24,7 +24,7 @@ export function WorkerCreateDialog({ action }: WorkerCreateDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!isPending) setOpen(nextOpen); }}>
       <DialogTrigger asChild>
-        <Button type="button" variant="primary" disabled={isPending}>
+        <Button type="button" variant="primary" className="w-full sm:w-fit" disabled={isPending}>
           <UserPlus className="h-4 w-4" aria-hidden="true" />
           Crear trabajador
         </Button>
