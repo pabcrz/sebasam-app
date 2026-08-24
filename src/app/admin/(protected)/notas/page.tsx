@@ -31,9 +31,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <AdminPageHeader
         icon={FileCheck}
-        eyebrow="Trabajo completado y cobro"
-        title="Notas de remisión"
-        description="Trabajos completados del periodo. Revisa saldos, registra cobros e imprime cada nota de remisión."
+        title="Notas"
       />
 
       <NotasFilters mode={filters.mode} payment={filters.payment} assignee={filters.assignee} anchor={filters.anchor} rangeLabel={filters.rangeLabel} isCurrentWeek={filters.isCurrentWeek} masters={masters} />

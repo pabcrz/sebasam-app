@@ -4,20 +4,16 @@ import { ClipboardList } from "lucide-react";
 import { AdminPageHeader } from "./admin-page-header";
 
 describe("AdminPageHeader", () => {
-  it("renders the shared heading hierarchy, context, and optional action", () => {
-    render(
+  it("renders only the shared icon and title", () => {
+    const { container } = render(
       <AdminPageHeader
         icon={ClipboardList}
-        eyebrow="Ejecución activa"
-        title="Trabajos en ejecución"
-        description="Consulta y finaliza las órdenes activas."
-        actions={<button type="button">Nueva cotización</button>}
+        title="Trabajos"
       />,
     );
 
-    expect(screen.getByRole("heading", { level: 1, name: "Trabajos en ejecución" })).toBeInTheDocument();
-    expect(screen.getByText("Ejecución activa")).toBeInTheDocument();
-    expect(screen.getByText("Consulta y finaliza las órdenes activas.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Nueva cotización" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Trabajos" })).toBeInTheDocument();
+    expect(container.querySelector("svg")).toBeInTheDocument();
+    expect(container.querySelector("p")).not.toBeInTheDocument();
   });
 });

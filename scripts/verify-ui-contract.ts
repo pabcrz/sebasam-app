@@ -470,7 +470,7 @@ function checkQuotesPage() {
 
   // User-facing copy must stay in Mexican Spanish.
   const spanishLabels = [
-    { label: "Cola comercial previa a asignación", source: pageSource },
+    { label: "Cotizaciones", source: pageSource },
     { label: "Nueva cotización", source: builderDialogSource },
     { label: "Crear cotización", source: combinedBuilderSource },
     { label: "Conceptos", source: combinedBuilderSource },
@@ -491,18 +491,40 @@ function checkQuotesPage() {
 }
 
 function checkAdminPageHeaders() {
+  const adminPageHeaderSource = readFileSync("src/components/admin-page-header.tsx", "utf8");
   const headers = [
-    ["src/app/admin/(protected)/quotes/page.tsx", "Cola comercial previa a asignación"],
-    ["src/app/admin/(protected)/work-orders/page.tsx", "Ejecución activa"],
-    ["src/app/admin/(protected)/notas/page.tsx", "Trabajo completado y cobro"],
-    ["src/features/payroll/components/payroll-view.tsx", "Liquidación semanal"],
+    ["src/app/admin/(protected)/customers/page.tsx", 'title="Clientes"'],
+    ["src/app/admin/(protected)/workers/page.tsx", 'title="Trabajadores"'],
+    ["src/app/admin/(protected)/quotes/page.tsx", 'title="Cotizaciones"'],
+    ["src/app/admin/(protected)/work-orders/page.tsx", 'title="Trabajos"'],
+    ["src/app/admin/(protected)/notas/page.tsx", 'title="Notas"'],
+    ["src/features/payroll/components/payroll-view.tsx", 'title="Nómina"'],
   ] as const;
 
-  for (const [path, context] of headers) {
+  assertIncludes(adminPageHeaderSource, "icon: LucideIcon", "Shared header must accept an icon");
+  assertIncludes(adminPageHeaderSource, "title: string", "Shared header must accept a title");
+  assert(!adminPageHeaderSource.includes("eyebrow"), "Shared header must not accept or render an eyebrow");
+  assert(!adminPageHeaderSource.includes("description"), "Shared header must not accept or render a description");
+  assert(!adminPageHeaderSource.includes("CardContent"), "Shared header must not render a card body");
+
+  for (const [path, title] of headers) {
     const source = readFileSync(path, "utf8");
     assertIncludes(source, "AdminPageHeader", `${path} must render the shared admin page header`);
-    assertIncludes(source, context, `${path} must state its operational context`);
+    assertIncludes(source, title, `${path} must use its compact header title`);
+    assert(!source.includes("eyebrow="), `${path} must not pass an eyebrow`);
+    assert(!source.includes("description="), `${path} must not pass a description`);
   }
+
+  const quotesSource = readFileSync("src/app/admin/(protected)/quotes/page.tsx", "utf8");
+  const headerEnd = quotesSource.indexOf("/>", quotesSource.indexOf("<AdminPageHeader"));
+  assert(
+    quotesSource.indexOf("<QuoteBuilderDialog") > headerEnd,
+    "Quote builder dialog must remain outside the compact header",
+  );
+  assert(
+    quotesSource.indexOf("<QuotePageToasts") > headerEnd,
+    "Quote page toasts must remain outside the compact header",
+  );
 }
 
 function checkCustomerPages() {

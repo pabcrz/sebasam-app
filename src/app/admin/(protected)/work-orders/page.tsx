@@ -40,9 +40,7 @@ export default async function WorkOrdersPage() {
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <AdminPageHeader
         icon={ClipboardList}
-        eyebrow="Ejecución activa"
-        title="Trabajos en ejecución"
-        description="Órdenes con maestro asignado. Desde aquí podés editar conceptos y finalizar el trabajo."
+        title="Trabajos"
       />
 
       <Card className="min-w-0">

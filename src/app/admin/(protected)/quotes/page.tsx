@@ -102,13 +102,12 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <AdminPageHeader
         icon={FileText}
-        eyebrow="Cola comercial previa a asignación"
         title="Cotizaciones"
-        description="Prepara, comparte y aprueba cotizaciones antes de asignar un maestro."
-        actions={<QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />}
-      >
-        <QuotePageToasts />
-      </AdminPageHeader>
+      />
+      <div className="flex justify-end">
+        <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
+      </div>
+      <QuotePageToasts />
 
       <Card className="min-w-0">
         <CardHeader>

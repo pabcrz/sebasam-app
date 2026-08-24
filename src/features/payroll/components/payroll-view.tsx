@@ -30,9 +30,7 @@ export function PayrollView({ report, period }: PayrollViewProps) {
     <div className="space-y-4 sm:space-y-6">
       <AdminPageHeader
         icon={FileSpreadsheet}
-        eyebrow="Liquidación semanal"
-        title="Nómina semanal"
-        description="Cálculo y liquidación de comisiones de mano de obra por órdenes completadas."
+        title="Nómina"
       />
 
       {/* Period Navigation */}
