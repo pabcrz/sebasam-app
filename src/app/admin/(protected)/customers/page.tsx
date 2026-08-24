@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Search, Users } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { createCustomerFromForm, getCustomerDetail } from "@/features/customers/actions";
 import { listCustomers } from "@/features/customers/queries";
 import { customerSearchSchema } from "@/features/customers/schemas";
@@ -30,14 +31,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text-main)] md:text-3xl">
-          Clientes
-        </h1>
-        <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-          Alta, búsqueda y edición de clientes.
-        </p>
-      </div>
+      <AdminPageHeader icon={Users} title="Clientes" />
 
       {params.created ? (
         <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]" role="status">

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { FileSpreadsheet, Inbox } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import type { WeeklyPayrollReport } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 import { PayrollPeriodNav } from "./payroll-period-nav";
@@ -27,18 +28,10 @@ export function PayrollView({ report, period }: PayrollViewProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Top title and Period Selector */}
-      <div className="flex flex-col gap-0.5">
-        <div className="flex items-center gap-2">
-          <FileSpreadsheet className="h-5 w-5 sm:h-6 sm:w-6 text-[var(--color-primary)] shrink-0" />
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--color-text-main)]">
-            Nómina Semanal
-          </h1>
-        </div>
-        <p className="text-xs sm:text-sm text-[var(--color-text-muted)]">
-          Cálculo y liquidación de comisiones de mano de obra por órdenes completadas.
-        </p>
-      </div>
+      <AdminPageHeader
+        icon={FileSpreadsheet}
+        title="Nómina"
+      />
 
       {/* Period Navigation */}
       <PayrollPeriodNav
