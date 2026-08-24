@@ -1,10 +1,15 @@
+"use client";
+
+import * as React from "react";
 import { FileSpreadsheet, Inbox } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { WeeklyPayrollReport } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 import { PayrollPeriodNav } from "./payroll-period-nav";
 import { PayrollMetrics } from "./payroll-metrics";
-import { PayrollWorkerCard, PayrollUnassignedCard } from "./payroll-worker-card";
+import { PayrollUnassignedCard } from "./payroll-worker-card";
+import { PayrollOverviewTable } from "./payroll-overview-table";
+import { PayrollWorkerDetail } from "./payroll-worker-detail";
 
 interface PayrollViewProps {
   report: WeeklyPayrollReport;
@@ -12,6 +17,14 @@ interface PayrollViewProps {
 }
 
 export function PayrollView({ report, period }: PayrollViewProps) {
+  const [selectedWorkerId, setSelectedWorkerId] = React.useState<string | null>(null);
+
+  // Derive active worker ID during render without cascading useEffect
+  const activeWorkerId =
+    selectedWorkerId && report.workers.some((w) => w.workerId === selectedWorkerId)
+      ? selectedWorkerId
+      : (report.workers[0]?.workerId ?? "");
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Top title and Period Selector */}
@@ -48,16 +61,26 @@ export function PayrollView({ report, period }: PayrollViewProps) {
       {/* Unassigned orders alert if any */}
       <PayrollUnassignedCard orders={report.unassignedOrders} />
 
-      {/* Workers list */}
+      {/* Content: Summary Table + Focused Worker Detail Tabs */}
       {report.workers.length > 0 ? (
-        <div className="space-y-3 sm:space-y-4">
-          <h2 className="text-sm sm:text-base font-semibold text-[var(--color-text-main)]">
-            Desglose por Trabajador ({report.workers.length})
-          </h2>
-          <div className="grid gap-3 sm:gap-4">
-            {report.workers.map((worker) => (
-              <PayrollWorkerCard key={worker.workerId} worker={worker} />
-            ))}
+        <div className="space-y-6">
+          {/* Level 1: General Executive Overview Table */}
+          <PayrollOverviewTable
+            workers={report.workers}
+            selectedWorkerId={activeWorkerId}
+            onSelectWorker={setSelectedWorkerId}
+          />
+
+          {/* Level 2: Specific Detail per Worker */}
+          <div className="space-y-3">
+            <h2 className="text-sm sm:text-base font-semibold text-[var(--color-text-main)]">
+              Desglose Específico por Trabajador
+            </h2>
+            <PayrollWorkerDetail
+              workers={report.workers}
+              selectedWorkerId={activeWorkerId}
+              onSelectWorker={setSelectedWorkerId}
+            />
           </div>
         </div>
       ) : (

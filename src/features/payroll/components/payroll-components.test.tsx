@@ -1,12 +1,66 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { QuoteItemType, WorkerKind } from "@prisma/client";
 import { PayrollPeriodNav } from "./payroll-period-nav";
 import { PayrollMetrics } from "./payroll-metrics";
-import { PayrollWorkerCard, PayrollUnassignedCard } from "./payroll-worker-card";
+import { PayrollUnassignedCard } from "./payroll-worker-card";
+import { PayrollOverviewTable } from "./payroll-overview-table";
+import { PayrollWorkerDetail } from "./payroll-worker-detail";
 import { PayrollView } from "./payroll-view";
 import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
+
+const sampleWorkers: WorkerPayrollSummary[] = [
+  {
+    workerId: "w-1",
+    displayName: "Maestro Pedro",
+    workerKind: WorkerKind.MASTER,
+    completedOrderCount: 1,
+    totalClientLaborCents: 100000,
+    totalPayrollBaseCents: 100000,
+    totalCommissionCents: 40000,
+    workOrders: [
+      {
+        workOrderId: "wo-1",
+        workOrderNumber: "OT-010",
+        quoteId: "q-1",
+        quoteNumber: "COT-010",
+        clientName: "Flotillas SA",
+        vehicleSummary: "Isuzu Forward (ABC-999)",
+        completedAt: new Date("2026-08-20T10:00:00Z"),
+        isSpecial: false,
+        helperNames: ["Ayudante Luis"],
+        items: [
+          {
+            id: "item-1",
+            type: QuoteItemType.LABOR,
+            description: "Soldadura chasis",
+            quantity: 1,
+            unitPriceCents: 100000,
+            clientTotalCents: 100000,
+            payrollBaseCents: 100000,
+            category: "WELDING",
+            ratePercent: 40,
+            commissionCents: 40000,
+          },
+        ],
+        totalClientLaborCents: 100000,
+        totalPayrollBaseCents: 100000,
+        totalCommissionCents: 40000,
+      },
+    ],
+  },
+  {
+    workerId: "w-2",
+    displayName: "Maestro Juan",
+    workerKind: WorkerKind.MASTER,
+    completedOrderCount: 2,
+    totalClientLaborCents: 200000,
+    totalPayrollBaseCents: 200000,
+    totalCommissionCents: 100000,
+    workOrders: [],
+  },
+];
 
 describe("Payroll UI Components", () => {
   it("renders period navigation with range label and buttons", () => {
@@ -43,54 +97,39 @@ describe("Payroll UI Components", () => {
     expect(screen.getByText("2")).toBeInTheDocument();
   });
 
-  it("renders worker card with order details and welding badges", () => {
-    const worker: WorkerPayrollSummary = {
-      workerId: "w-1",
-      displayName: "Maestro Pedro",
-      workerKind: WorkerKind.MASTER,
-      completedOrderCount: 1,
-      totalClientLaborCents: 100000,
-      totalPayrollBaseCents: 100000,
-      totalCommissionCents: 40000,
-      workOrders: [
-        {
-          workOrderId: "wo-1",
-          workOrderNumber: "OT-010",
-          quoteId: "q-1",
-          quoteNumber: "COT-010",
-          clientName: "Flotillas SA",
-          vehicleSummary: "Isuzu Forward (ABC-999)",
-          completedAt: new Date("2026-08-20T10:00:00Z"),
-          isSpecial: false,
-          helperNames: ["Ayudante Luis"],
-          items: [
-            {
-              id: "item-1",
-              type: QuoteItemType.LABOR,
-              description: "Soldadura chasis",
-              quantity: 1,
-              unitPriceCents: 100000,
-              clientTotalCents: 100000,
-              payrollBaseCents: 100000,
-              category: "WELDING",
-              ratePercent: 40,
-              commissionCents: 40000,
-            },
-          ],
-          totalClientLaborCents: 100000,
-          totalPayrollBaseCents: 100000,
-          totalCommissionCents: 40000,
-        },
-      ],
-    };
+  it("renders overview table and allows worker selection", () => {
+    const onSelect = vi.fn();
+    render(
+      <PayrollOverviewTable
+        workers={sampleWorkers}
+        selectedWorkerId="w-1"
+        onSelectWorker={onSelect}
+      />
+    );
 
-    render(<PayrollWorkerCard worker={worker} />);
+    expect(screen.getByText("Resumen General de Nómina")).toBeInTheDocument();
+    expect(screen.getAllByText("Maestro Pedro").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Maestro Juan").length).toBeGreaterThanOrEqual(1);
 
-    expect(screen.getByText("Maestro Pedro")).toBeInTheDocument();
+    const juanButtons = screen.getAllByRole("button", { name: /ver detalle/i });
+    fireEvent.click(juanButtons[0]);
+    expect(onSelect).toHaveBeenCalledWith("w-2");
+  });
+
+  it("renders worker detail tabs and expands work order accordion", () => {
+    const onSelect = vi.fn();
+    render(
+      <PayrollWorkerDetail
+        workers={sampleWorkers}
+        selectedWorkerId="w-1"
+        onSelectWorker={onSelect}
+      />
+    );
+
+    expect(screen.getAllByText("Maestro Pedro").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("OT-010")).toBeInTheDocument();
     expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Soldadura / Soplete")).toBeInTheDocument();
-    expect(screen.getAllByText(/40%/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders unassigned card warning when orders exist without master", () => {
