@@ -135,14 +135,16 @@ export function WorkOrderActiveList({
                   </span>
                 ) : null}
               </div>
-            {/* Preview dialog (triggered by clicking the card body) */}
+            {/* The portaled preview must not bubble its dismissal events back to the clickable card. */}
             {fullQuote ? (
-              <QuotePreviewDialog
-                quote={fullQuote}
-                open={previewOpenId === wo.quote.id}
-                onOpenChange={(open) => setPreviewOpenId(open ? wo.quote.id : null)}
-                showTrigger={false}
-              />
+              <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                <QuotePreviewDialog
+                  quote={fullQuote}
+                  open={previewOpenId === wo.quote.id}
+                  onOpenChange={(open) => setPreviewOpenId(open ? wo.quote.id : null)}
+                  showTrigger={false}
+                />
+              </div>
             ) : null}
           </OperationalCard>
         );
