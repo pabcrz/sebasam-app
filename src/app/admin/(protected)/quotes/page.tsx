@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { FileText } from "lucide-react";
 import {
   approveQuoteAndCreateWorkOrderFromForm,
   cancelQuoteFromForm,
@@ -23,10 +24,10 @@ import { quoteFilterSchema, type QuoteFilterInput } from "@/features/quotes/sche
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { QuoteListCard } from "@/features/quotes/components/quote-mobile-card";
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
 import { QuoteFilters } from "@/features/quotes/components/quote-filters";
@@ -99,22 +100,14 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <Card>
-        <CardHeader>
-          <CardDescription>Gestión de cotizaciones</CardDescription>
-          <CardTitle as="h1">Cotizaciones en borrador</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="max-w-2xl text-sm leading-6 text-[var(--color-text-muted)] md:text-base md:leading-7">
-            Crea cotizaciones en borrador para clientes existentes con subtotales y totales calculados en el servidor.
-          </p>
-          <QuotePageToasts />
-        </CardContent>
-      </Card>
-
+      <AdminPageHeader
+        icon={FileText}
+        title="Cotizaciones"
+      />
       <div className="flex justify-end">
         <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
       </div>
+      <QuotePageToasts />
 
       <Card className="min-w-0">
         <CardHeader>

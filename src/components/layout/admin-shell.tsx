@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Banknote,
   Bolt,
   CircleUserRound,
   ClipboardList,
@@ -41,6 +42,7 @@ const navItems: NavItem[] = [
   { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
   { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
   { href: "/admin/notas", label: "Notas", icon: FileCheck },
+  { href: "/admin/nomina", label: "Nómina", icon: Banknote },
   { href: "/admin/configuracion-pago", label: "Configuración", icon: Bolt },
   { href: "/admin/users", label: "Usuarios", icon: Shield }, // Added for SUPER_ADMIN
 ];
