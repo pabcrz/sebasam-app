@@ -116,17 +116,15 @@ describe("Payroll UI Components", () => {
     expect(onSelect).toHaveBeenCalledWith("w-2");
   });
 
-  it("renders worker detail tabs and expands work order accordion", () => {
-    const onSelect = vi.fn();
+  it("renders worker detail and expands work order accordion", () => {
     render(
       <PayrollWorkerDetail
         workers={sampleWorkers}
         selectedWorkerId="w-1"
-        onSelectWorker={onSelect}
       />
     );
 
-    expect(screen.getAllByText("Maestro Pedro").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Órdenes de Maestro Pedro")).toBeInTheDocument();
     expect(screen.getByText("OT-010")).toBeInTheDocument();
     expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Soldadura / Soplete")).toBeInTheDocument();

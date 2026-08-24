@@ -61,9 +61,9 @@ export function PayrollView({ report, period }: PayrollViewProps) {
       {/* Unassigned orders alert if any */}
       <PayrollUnassignedCard orders={report.unassignedOrders} />
 
-      {/* Content: Summary Table + Focused Worker Detail Tabs */}
+      {/* Content: Summary Table + Focused Worker Detail */}
       {report.workers.length > 0 ? (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {/* Level 1: General Executive Overview Table */}
           <PayrollOverviewTable
             workers={report.workers}
@@ -71,17 +71,11 @@ export function PayrollView({ report, period }: PayrollViewProps) {
             onSelectWorker={setSelectedWorkerId}
           />
 
-          {/* Level 2: Specific Detail per Worker */}
-          <div className="space-y-3">
-            <h2 className="text-sm sm:text-base font-semibold text-[var(--color-text-main)]">
-              Desglose Específico por Trabajador
-            </h2>
-            <PayrollWorkerDetail
-              workers={report.workers}
-              selectedWorkerId={activeWorkerId}
-              onSelectWorker={setSelectedWorkerId}
-            />
-          </div>
+          {/* Level 2: Specific Detail per Selected Worker */}
+          <PayrollWorkerDetail
+            workers={report.workers}
+            selectedWorkerId={activeWorkerId}
+          />
         </div>
       ) : (
         <Card className="p-8 sm:p-12 text-center">
