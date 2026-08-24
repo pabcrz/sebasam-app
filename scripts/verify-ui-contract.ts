@@ -15,6 +15,7 @@ function assertNoRadix(source: string, context: string) {
 function checkQuotesPage() {
   const pagePath = "src/app/admin/(protected)/quotes/page.tsx";
   const pageSource = readFileSync(pagePath, "utf8");
+  const adminPageHeaderSource = readFileSync("src/components/admin-page-header.tsx", "utf8");
   const builderPath = "src/features/quotes/components/quote-builder.tsx";
   const builderComponentPaths = [
     builderPath,
@@ -423,7 +424,8 @@ function checkQuotesPage() {
   );
 
   // Heading hierarchy must not collapse to all h3.
-  assertIncludes(pageSource, 'as="h1"', "Page must render a real h1 via CardTitle");
+  assertIncludes(pageSource, "AdminPageHeader", "Page must render the shared admin page header");
+  assertIncludes(adminPageHeaderSource, 'as="h1"', "Shared admin page header must render a real h1 via CardTitle");
   assertIncludes(pageSource, 'as="h2"', "Section headings must be h2");
 
   // Quote filters must be wired to URL params and render the filter controls.
@@ -468,7 +470,7 @@ function checkQuotesPage() {
 
   // User-facing copy must stay in Mexican Spanish.
   const spanishLabels = [
-    { label: "Cotizaciones en borrador", source: pageSource },
+    { label: "Cola comercial previa a asignación", source: pageSource },
     { label: "Nueva cotización", source: builderDialogSource },
     { label: "Crear cotización", source: combinedBuilderSource },
     { label: "Conceptos", source: combinedBuilderSource },
@@ -485,6 +487,21 @@ function checkQuotesPage() {
 
   for (const { label, source } of spanishLabels) {
     assertIncludes(source, label, `Expected Spanish copy missing: ${label}`);
+  }
+}
+
+function checkAdminPageHeaders() {
+  const headers = [
+    ["src/app/admin/(protected)/quotes/page.tsx", "Cola comercial previa a asignación"],
+    ["src/app/admin/(protected)/work-orders/page.tsx", "Ejecución activa"],
+    ["src/app/admin/(protected)/notas/page.tsx", "Trabajo completado y cobro"],
+    ["src/features/payroll/components/payroll-view.tsx", "Liquidación semanal"],
+  ] as const;
+
+  for (const [path, context] of headers) {
+    const source = readFileSync(path, "utf8");
+    assertIncludes(source, "AdminPageHeader", `${path} must render the shared admin page header`);
+    assertIncludes(source, context, `${path} must state its operational context`);
   }
 }
 
@@ -695,6 +712,7 @@ function checkPublicPaymentPage() {
 }
 
 checkQuotesPage();
+checkAdminPageHeaders();
 checkCustomerPages();
 checkLoginPage();
 checkRootPage();
