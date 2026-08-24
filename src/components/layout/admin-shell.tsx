@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Banknote,
   Bolt,
   CircleUserRound,
   ClipboardList,
@@ -52,7 +53,7 @@ const mobileNavItems: NavItem[] = [
   { href: "/admin/quotes", label: "Cotizaciones", mobileLabel: "Cotiz.", icon: FileText },
   { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
   { href: "/admin/notas", label: "Notas", icon: FileCheck },
-  { href: "/admin/workers", label: "Nómina", icon: UserCog },
+  { href: "/admin/nomina", label: "Nómina", icon: Banknote },
 ];
 
 function NavLink({

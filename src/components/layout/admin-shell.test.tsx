@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import type { SVGProps } from "react";
 import { AdminShell } from "./admin-shell";
 
 let mockPathname = "/admin";
@@ -12,6 +13,13 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("lucide-react")>();
+  return {
+    ...actual,
+    Banknote: (props: SVGProps<SVGSVGElement>) => <svg data-testid="payroll-icon" {...props} />,
+  };
+});
 
 vi.mock("@/features/auth/actions", () => ({
   logoutAdmin: vi.fn(),
@@ -64,7 +72,8 @@ describe("AdminShell", () => {
     ["/admin/quotes", "/admin/quotes"],
     ["/admin/work-orders", "/admin/work-orders"],
     ["/admin/notas", "/admin/notas"],
-    ["/admin/workers/worker-1", "/admin/workers"],
+    ["/admin/nomina", "/admin/nomina"],
+    ["/admin/nomina/worker-1", "/admin/nomina"],
   ])("marks only the matching mobile item as current for %s", (pathname, href) => {
     mockPathname = pathname;
     render(
@@ -96,7 +105,7 @@ describe("AdminShell", () => {
       "/admin/quotes",
       "/admin/work-orders",
       "/admin/notas",
-      "/admin/workers",
+      "/admin/nomina",
     ]);
     expect(links.map((link) => link.getAttribute("aria-label"))).toEqual([
       "Clientes",
@@ -110,6 +119,9 @@ describe("AdminShell", () => {
     expect(links.every((link) => link.querySelector(".whitespace-nowrap"))).toBe(true);
     expect(links.every((link) => link.textContent?.trim() && !link.textContent.includes("\n"))).toBe(true);
     expect(within(mobileNav).getByText("Cotiz.")).toBeInTheDocument();
+    const payrollLink = within(mobileNav).getByRole("link", { name: "Nómina" });
+    expect(payrollLink).toHaveAttribute("href", "/admin/nomina");
+    expect(within(payrollLink).getByTestId("payroll-icon")).toBeInTheDocument();
     expect(mobileNav.querySelector(".grid-cols-5")).toBeInTheDocument();
     expect(mobileNav).toHaveStyle({ paddingBottom: "env(safe-area-inset-bottom)" });
   });
