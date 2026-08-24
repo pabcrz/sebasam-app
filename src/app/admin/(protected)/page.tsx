@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ClipboardList, FileCheck, FileText, LayoutDashboard, UserCog, Users } from "lucide-react";
+import { Banknote, ClipboardList, FileCheck, FileText, LayoutDashboard, UserCog, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
@@ -31,6 +31,12 @@ const modules = [
     title: "Notas de remisión",
     description: "Trabajos finalizados e impresión de nota de entrega.",
     icon: FileCheck,
+  },
+  {
+    href: "/admin/nomina",
+    title: "Nómina",
+    description: "Cálculo y liquidación semanal de mano de obra.",
+    icon: Banknote,
   },
   {
     href: "/admin/workers",

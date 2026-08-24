@@ -76,6 +76,21 @@ describe("AdminShell", () => {
     expect(current[0]).toHaveTextContent("Cotizaciones");
   });
 
+  it("marks only the matching nav item as current for /admin/nomina", () => {
+    mockPathname = "/admin/nomina";
+    render(
+      <AdminShell displayName="Admin User" role="admin">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const desktopNav = screen.getByRole("navigation", { name: "Navegación principal" });
+    const current = desktopNav.querySelectorAll('[aria-current="page"]');
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveAttribute("href", "/admin/nomina");
+    expect(current[0]).toHaveTextContent("Nómina");
+  });
+
   it("provides the four primary routes as keyboard-accessible mobile links", () => {
     render(
       <AdminShell displayName="Admin User" role="admin">
