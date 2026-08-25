@@ -368,15 +368,28 @@ export async function rollbackWorkOrder(input: unknown) {
     }
     assertOperationalQuote(workOrder.quote.status);
 
-    const [paymentCount, ledgerEntryCount] = await Promise.all([
+    const [paymentCount, applicationCount, ledgerEntryCount] = await Promise.all([
       tx.payment.count({ where: { quoteId: workOrder.quoteId } }),
-      tx.ledgerEntry.count({ where: { payment: { quoteId: workOrder.quoteId } } }),
+      tx.paymentApplication?.count
+        ? tx.paymentApplication.count({ where: { workOrderId: workOrder.id } })
+        : Promise.resolve(0),
+      tx.ledgerEntry.count({
+        where: {
+          OR: [
+            { workOrderId: workOrder.id },
+            { payment: { quoteId: workOrder.quoteId } },
+          ],
+        },
+      }),
     ]);
     if (paymentCount > 0) {
       throw new WorkOrderOperationError("No se puede cancelar esta orden porque la cotización tiene pagos. La corrección financiera requiere otro proceso.");
     }
+    if (applicationCount > 0) {
+      throw new WorkOrderOperationError("No se puede cancelar esta orden porque tiene aplicaciones de pago registradas.");
+    }
     if (ledgerEntryCount > 0) {
-      throw new WorkOrderOperationError("No se puede cancelar esta orden porque la cotización tiene movimientos en el ledger. La corrección financiera requiere otro proceso.");
+      throw new WorkOrderOperationError("No se puede cancelar esta orden porque tiene movimientos en el ledger. La corrección financiera requiere otro proceso.");
     }
 
     const cancelled = await tx.workOrder.updateMany({
