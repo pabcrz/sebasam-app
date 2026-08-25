@@ -1,29 +1,70 @@
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import toast from "react-hot-toast";
 import { WorkOrderActiveList } from "./work-order-active-list";
 
 vi.mock("@/features/work-orders/components/work-order-operations-dialog", () => ({
-  WorkOrderOperationsDialog: () => null,
+  WorkOrderOperationsDialog: () => <button type="button">Gestionar orden</button>,
+}));
+
+vi.mock("@/features/quotes/components/quote-builder-dialog", () => ({
+  QuoteBuilderDialog: () => <button type="button">Editar cotización</button>,
+}));
+
+vi.mock("@/features/quotes/components/share-quote-button", () => ({
+  ShareQuoteButton: () => <button type="button">Compartir cotización</button>,
 }));
 
 type ActiveListProps = ComponentProps<typeof WorkOrderActiveList>;
 
-function renderActiveList(workOrder: ActiveListProps["workOrders"][number], input: { duplicateQuoteAction?: ActiveListProps["duplicateQuoteAction"] } = {}) {
+function createQuote() {
+  return {
+    id: "quote-1",
+    number: "COT-001",
+    customer: { name: "Cliente de prueba" },
+    vehicle: null,
+    title: "Servicio de prueba",
+    description: "Revisión completa",
+    vehicleSnapshot: null,
+    administrative: true,
+    subtotalCents: 10000,
+    discountCents: 0,
+    taxCents: 1600,
+    totalCents: 11600,
+    paidCents: 0,
+    remainingCents: 11600,
+    validUntil: new Date("2026-12-31T00:00:00.000Z"),
+    items: [{ type: "LABOR", description: "Cambio de aceite", quantity: 2, unitPriceCents: 5000 }],
+    sections: [],
+    activeSharedQuote: {},
+  } as unknown as ActiveListProps["quoteMap"] extends Map<string, infer Quote> ? Quote : never;
+}
+
+function renderActiveList(
+  workOrder: ActiveListProps["workOrders"][number],
+  input: { duplicateQuoteAction?: ActiveListProps["duplicateQuoteAction"]; withQuote?: boolean } = {},
+) {
+  const quoteMap = input.withQuote ? new Map([[workOrder.quote.id, createQuote()]]) : new Map();
+
   render(
     <WorkOrderActiveList
       workOrders={[workOrder]}
       workers={[]}
       customers={[]}
-      quoteMap={new Map()}
-      saveQuoteActions={[]}
+      quoteMap={quoteMap}
+      saveQuoteActions={input.withQuote ? [async () => ({ success: true })] : []}
       searchCustomersAction={async () => []}
       duplicateQuoteAction={input.duplicateQuoteAction ?? vi.fn()}
       workOrderActions={{}}
     />,
   );
+}
+
+async function openPreview(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Ver detalle de cotización COT-001" }));
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
 }
 
 function createWorkOrder(input: { isSpecial: boolean; assignments: Array<{ workerKind: "MASTER" | "HELPER"; displayName: string }> }) {
@@ -96,5 +137,61 @@ describe("WorkOrderActiveList", () => {
     expect(duplicate).toHaveAttribute("title", "Duplicar cotización");
     expect(duplicate.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
     expect(duplicate.parentElement?.parentElement).toHaveClass("flex", "w-full", "flex-wrap", "items-center", "gap-3", "[&_button]:h-10", "[&_button]:w-10", "sm:gap-2", "sm:[&_button]:h-9", "sm:[&_button]:w-auto");
+  });
+
+  it("keeps the preview closed after its close button is clicked", async () => {
+    const user = userEvent.setup();
+    renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { withQuote: true });
+
+    await openPreview(user);
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("keeps the preview closed after Escape", async () => {
+    const user = userEvent.setup();
+    renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { withQuote: true });
+
+    await openPreview(user);
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("keeps the preview closed after backdrop dismissal", async () => {
+    const user = userEvent.setup();
+    renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { withQuote: true });
+
+    await openPreview(user);
+    const overlay = document.querySelector("[data-dialog-overlay]");
+    expect(overlay).toBeInstanceOf(HTMLElement);
+    if (!(overlay instanceof HTMLElement)) throw new Error("Dialog overlay not found");
+    await user.click(overlay);
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("does not reopen the card preview after interacting with preview content", async () => {
+    const user = userEvent.setup();
+    renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { withQuote: true });
+
+    await openPreview(user);
+    await user.click(screen.getByText("Cambio de aceite"));
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("does not open the preview from footer actions", async () => {
+    const user = userEvent.setup();
+    renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { withQuote: true });
+
+    await user.click(screen.getByRole("button", { name: "Gestionar orden" }));
+    await user.click(screen.getByRole("button", { name: "Editar cotización" }));
+    await user.click(screen.getByRole("button", { name: "Duplicar cotización" }));
+    await user.click(screen.getByRole("button", { name: "Compartir cotización" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
