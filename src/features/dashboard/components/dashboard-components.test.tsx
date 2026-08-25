@@ -1,0 +1,84 @@
+import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { KpiPeriodMetrics } from "./kpi-period-metrics";
+import { PayrollEstimateCard } from "./payroll-estimate-card";
+
+describe("KpiPeriodMetrics", () => {
+  const sampleKpis = {
+    week: {
+      period: "week" as const,
+      rangeLabel: "17–22 de ago de 2026",
+      startDate: new Date("2026-08-17T06:00:00.000Z"),
+      endDate: new Date("2026-08-23T06:00:00.000Z"),
+      completedWorkOrdersCount: 5,
+      completedLaborBilledCents: 150000,
+      completedMaterialsBilledCents: 80000,
+      collectedPaymentsCount: 3,
+      collectedPaymentsTotalCents: 120000,
+    },
+    month: {
+      period: "month" as const,
+      rangeLabel: "agosto de 2026",
+      startDate: new Date("2026-08-01T06:00:00.000Z"),
+      endDate: new Date("2026-09-01T06:00:00.000Z"),
+      completedWorkOrdersCount: 22,
+      completedLaborBilledCents: 650000,
+      completedMaterialsBilledCents: 320000,
+      collectedPaymentsCount: 18,
+      collectedPaymentsTotalCents: 580000,
+    },
+    year: {
+      period: "year" as const,
+      rangeLabel: "2026",
+      startDate: new Date("2026-01-01T06:00:00.000Z"),
+      endDate: new Date("2027-01-01T06:00:00.000Z"),
+      completedWorkOrdersCount: 150,
+      completedLaborBilledCents: 4500000,
+      completedMaterialsBilledCents: 2100000,
+      collectedPaymentsCount: 130,
+      collectedPaymentsTotalCents: 4200000,
+    },
+  };
+
+  it("renders week KPIs by default and switches to month and year when tabs are clicked", () => {
+    render(<KpiPeriodMetrics kpis={sampleKpis} />);
+
+    // Default: Week
+    expect(screen.getByText("17–22 de ago de 2026")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("Materiales y Refacciones")).toBeInTheDocument();
+
+    // Switch to Month
+    fireEvent.click(screen.getByRole("tab", { name: "Este mes" }));
+    expect(screen.getByText("agosto de 2026")).toBeInTheDocument();
+    expect(screen.getByText("22")).toBeInTheDocument();
+
+    // Switch to Year
+    fireEvent.click(screen.getByRole("tab", { name: "Este año" }));
+    expect(screen.getByText("2026")).toBeInTheDocument();
+    expect(screen.getByText("150")).toBeInTheDocument();
+  });
+});
+
+describe("PayrollEstimateCard", () => {
+  it("renders payroll estimate with calculated disclaimer badge", () => {
+    render(
+      <PayrollEstimateCard
+        payroll={{
+          rangeLabel: "17–22 de ago de 2026",
+          startDate: new Date("2026-08-17T06:00:00.000Z"),
+          endDate: new Date("2026-08-23T06:00:00.000Z"),
+          isCurrentWeek: true,
+          totalWorkers: 4,
+          totalCompletedOrders: 6,
+          estimatedCommissionsCents: 75000,
+        }}
+      />
+    );
+
+    expect(screen.getByText("Nómina Semanal (Estimada)")).toBeInTheDocument();
+    expect(screen.getByText("Cálculo estimado")).toBeInTheDocument();
+    expect(screen.getByText("4 trabajadores activos")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /ver liquidación/i })).toHaveAttribute("href", "/admin/nomina");
+  });
+});
