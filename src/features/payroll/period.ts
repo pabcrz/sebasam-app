@@ -69,15 +69,16 @@ function utcDate(date: ReturnType<typeof calendarDate>) {
 
 export function formatPayrollRangeLabel(
   start: ReturnType<typeof calendarDate>,
-  end: ReturnType<typeof calendarDate>
+  endExclusive: ReturnType<typeof calendarDate>
 ): string {
+  const lastActiveDay = addDays(endExclusive, -1);
   const formatter = new Intl.DateTimeFormat("es-MX", {
     day: "numeric",
     month: "long",
     year: "numeric",
     timeZone: "UTC",
   });
-  return formatter.formatRange(utcDate(start), utcDate(end));
+  return formatter.formatRange(utcDate(start), utcDate(lastActiveDay));
 }
 
 export interface ParsedPayrollParams {
@@ -99,7 +100,7 @@ export function parsePayrollParams(
   // Monday as first day of week: (weekday + 6) % 7 gives 0 for Monday, 6 for Sunday
   const mondayOffset = (weekday + 6) % 7;
   const startDate = addDays(anchor, -mondayOffset);
-  const endDate = addDays(startDate, 6); // Sunday
+  const endDate = addDays(startDate, 6); // Sunday, exclusive
 
   const currentDate = calendarDate(undefined, now);
   const currentWeekday = new Date(Date.UTC(currentDate.year, currentDate.month - 1, currentDate.day)).getUTCDay();
@@ -109,9 +110,6 @@ export function parsePayrollParams(
   const prevAnchor = value(addDays(startDate, -7));
   const nextAnchor = value(addDays(startDate, 7));
 
-  // Range from start midnight to end + 1 day midnight (to cover full Sunday)
-  const nextDayAfterSunday = addDays(endDate, 1);
-
   return {
     anchor: value(startDate),
     prevAnchor,
@@ -119,7 +117,7 @@ export function parsePayrollParams(
     rangeLabel: formatPayrollRangeLabel(startDate, endDate),
     isCurrentWeek,
     start: localMidnightUtc(startDate),
-    end: localMidnightUtc(nextDayAfterSunday),
+    end: localMidnightUtc(endDate),
   };
 }
 
