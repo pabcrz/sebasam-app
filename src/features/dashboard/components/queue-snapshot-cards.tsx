@@ -30,7 +30,10 @@ export function QueueSnapshotCards({ queues }: QueueSnapshotCardsProps) {
             </CardHeader>
             <CardContent>
               <div className="flex items-baseline justify-between">
-                <span className="text-3xl font-bold font-mono text-[var(--color-text-main)]">
+                <span
+                  data-numeric-role="count"
+                  className="font-mono text-2xl font-bold tabular-nums text-[var(--color-text-main)]"
+                >
                   {queues.commercialQueueCount}
                 </span>
                 <span className="flex items-center text-xs font-medium text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]">
@@ -60,7 +63,10 @@ export function QueueSnapshotCards({ queues }: QueueSnapshotCardsProps) {
             </CardHeader>
             <CardContent>
               <div className="flex items-baseline justify-between">
-                <span className="text-3xl font-bold font-mono text-[var(--color-text-main)]">
+                <span
+                  data-numeric-role="count"
+                  className="font-mono text-2xl font-bold tabular-nums text-[var(--color-text-main)]"
+                >
                   {queues.activeExecutionCount}
                 </span>
                 <span className="flex items-center text-xs font-medium text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]">

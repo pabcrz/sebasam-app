@@ -75,7 +75,10 @@ export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
               <span className="text-xs font-medium">Trabajos Finalizados</span>
               <CheckCircle2 className="h-4 w-4 text-[var(--color-status-success)]" aria-hidden="true" />
             </div>
-            <div className="mt-2 text-2xl font-bold font-mono text-[var(--color-text-main)]">
+            <div
+              data-numeric-role="count"
+              className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--color-text-main)]"
+            >
               {activeMetrics.completedWorkOrdersCount}
             </div>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
@@ -89,7 +92,10 @@ export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
               <span className="text-xs font-medium">Mano de Obra</span>
               <Coins className="h-4 w-4 text-[var(--color-status-info)]" aria-hidden="true" />
             </div>
-            <div className="mt-2 text-2xl font-bold font-mono text-[var(--color-text-main)]">
+            <div
+              data-numeric-role="currency"
+              className="mt-2 min-w-0 font-mono text-xl font-bold leading-tight tabular-nums text-[var(--color-text-main)] sm:text-2xl"
+            >
               {formatCents(activeMetrics.completedLaborBilledCents)}
             </div>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
@@ -103,7 +109,10 @@ export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
               <span className="text-xs font-medium">Materiales y Refacciones</span>
               <Boxes className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
             </div>
-            <div className="mt-2 text-2xl font-bold font-mono text-[var(--color-text-main)]">
+            <div
+              data-numeric-role="currency"
+              className="mt-2 min-w-0 font-mono text-xl font-bold leading-tight tabular-nums text-[var(--color-text-main)] sm:text-2xl"
+            >
               {formatCents(activeMetrics.completedMaterialsBilledCents)}
             </div>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
@@ -117,11 +126,18 @@ export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
               <span className="text-xs font-medium">Cobros Recibidos</span>
               <CircleDollarSign className="h-4 w-4 text-[var(--color-status-success)]" aria-hidden="true" />
             </div>
-            <div className="mt-2 text-2xl font-bold font-mono text-[var(--color-status-success)]">
+            <div
+              data-numeric-role="currency"
+              className="mt-2 min-w-0 font-mono text-xl font-bold leading-tight tabular-nums text-[var(--color-status-success)] sm:text-2xl"
+            >
               {formatCents(activeMetrics.collectedPaymentsTotalCents)}
             </div>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              {activeMetrics.collectedPaymentsCount} pago{activeMetrics.collectedPaymentsCount === 1 ? "" : "s"} registrado{activeMetrics.collectedPaymentsCount === 1 ? "" : "s"}
+              <span data-numeric-role="supporting-count" className="font-medium tabular-nums">
+                {activeMetrics.collectedPaymentsCount}
+              </span>{" "}
+              pago{activeMetrics.collectedPaymentsCount === 1 ? "" : "s"} registrado
+              {activeMetrics.collectedPaymentsCount === 1 ? "" : "s"}
             </p>
           </div>
         </div>

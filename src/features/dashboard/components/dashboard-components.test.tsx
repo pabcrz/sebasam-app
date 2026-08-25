@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { KpiPeriodMetrics } from "./kpi-period-metrics";
 import { PayrollEstimateCard } from "./payroll-estimate-card";
+import { QueueSnapshotCards } from "./queue-snapshot-cards";
 
 describe("KpiPeriodMetrics", () => {
   const sampleKpis = {
@@ -47,6 +48,9 @@ describe("KpiPeriodMetrics", () => {
     expect(screen.getByText("17–22 de ago de 2026")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByText("Materiales y Refacciones")).toBeInTheDocument();
+    expect(screen.getByText("5")).toHaveAttribute("data-numeric-role", "count");
+    expect(screen.getAllByText(/\$1,?500\.00/)[0]).toHaveAttribute("data-numeric-role", "currency");
+    expect(screen.getAllByText(/\$1,?500\.00/)[0]).toHaveClass("text-xl", "sm:text-2xl", "tabular-nums");
 
     // Switch to Month
     fireEvent.click(screen.getByRole("tab", { name: "Este mes" }));
@@ -78,7 +82,22 @@ describe("PayrollEstimateCard", () => {
 
     expect(screen.getByText("Nómina Semanal (Estimada)")).toBeInTheDocument();
     expect(screen.getByText("Cálculo estimado")).toBeInTheDocument();
-    expect(screen.getByText("4 trabajadores activos")).toBeInTheDocument();
+    expect(screen.getByText("4").parentElement).toHaveTextContent("4 trabajadores activos");
+    expect(screen.getByText("$750.00")).toHaveAttribute("data-numeric-role", "currency");
+    expect(screen.getByText("$750.00")).toHaveClass("text-xl", "sm:text-2xl", "tabular-nums");
+    expect(screen.getByText("4")).toHaveAttribute("data-numeric-role", "supporting-count");
     expect(screen.getByRole("link", { name: /ver liquidación/i })).toHaveAttribute("href", "/admin/nomina");
+  });
+});
+
+describe("QueueSnapshotCards", () => {
+  it("uses the shared count role instead of a larger queue-specific scale", () => {
+    render(<QueueSnapshotCards queues={{ commercialQueueCount: 12, activeExecutionCount: 8 }} />);
+
+    for (const value of ["12", "8"]) {
+      expect(screen.getByText(value)).toHaveAttribute("data-numeric-role", "count");
+      expect(screen.getByText(value)).toHaveClass("text-2xl", "font-mono", "tabular-nums");
+      expect(screen.getByText(value)).not.toHaveClass("text-3xl");
+    }
   });
 });
