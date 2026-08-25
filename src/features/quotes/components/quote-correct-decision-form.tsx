@@ -23,6 +23,7 @@ export interface QuoteCorrectDecisionFormProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
   iconOnly?: boolean;
+  actionLabelClassName?: string;
 }
 
 export function QuoteCorrectDecisionForm({
@@ -33,6 +34,7 @@ export function QuoteCorrectDecisionForm({
   variant = "outline",
   size = "sm",
   iconOnly = false,
+  actionLabelClassName,
 }: QuoteCorrectDecisionFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
@@ -122,7 +124,7 @@ export function QuoteCorrectDecisionForm({
         title={`Corregir decisión de cotización ${quoteNumber}`}
       >
         <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-        {!iconOnly && <span>Corregir decisión</span>}
+        {!iconOnly && <span className={actionLabelClassName}>Corregir decisión</span>}
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>

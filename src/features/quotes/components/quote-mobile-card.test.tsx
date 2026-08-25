@@ -265,6 +265,16 @@ describe("QuoteListCard", () => {
     expect(screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" })).toBeInTheDocument();
   });
 
+  it.each(["APPROVED", "REJECTED"] as const)("keeps the correct-decision action icon-only on mobile and labeled on desktop for %s quotes without work orders", (status) => {
+    renderCard(createMockQuote({ status, workOrder: null }));
+
+    const correctDecision = screen.getByRole("button", { name: "Corregir decisión de cotización C-001" });
+
+    expect(correctDecision).toHaveAttribute("title", "Corregir decisión de cotización C-001");
+    expect(correctDecision.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
+    expect(correctDecision.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
+  });
+
   it("renders authorize button for sent quotes", () => {
     renderCard(createMockQuote({ status: "SENT" }));
 

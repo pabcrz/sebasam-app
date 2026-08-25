@@ -207,6 +207,7 @@ export function QuoteListCard({
               currentStatus={quote.status}
               variant="outline"
               size="sm"
+              actionLabelClassName={actionLabelClassName}
             />
           ) : null}
 
