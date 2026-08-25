@@ -45,12 +45,67 @@ vi.mock("@/lib/auth/session", () => ({
   }),
 }));
 
+type QuoteDouble = {
+  id: string;
+  customerId: string | null;
+  status: QuoteStatus;
+  totalCents: number | null;
+  number?: string;
+  [key: string]: unknown;
+};
+
+type WorkOrderDouble = {
+  id: string;
+  quoteId: string;
+  status: WorkOrderStatus;
+  number?: string;
+  [key: string]: unknown;
+};
+
+type PaymentDouble = {
+  id: string;
+  customerId: string;
+  amountCents: number;
+  status: PaymentStatus;
+  reversedAt: Date | null;
+  operationKey: string;
+  quoteId?: string | null;
+  reversalReason?: string | null;
+  [key: string]: unknown;
+};
+
+type PaymentApplicationDouble = {
+  id: string;
+  paymentId: string;
+  workOrderId: string;
+  amountCents: number;
+  reversedAt: Date | null;
+  operationKey: string;
+  reversalReason?: string | null;
+  [key: string]: unknown;
+};
+
+type LedgerEntryDouble = {
+  id: string;
+  customerId: string;
+  type: LedgerEntryType;
+  movementType: LedgerMovementType;
+  amountCents: number;
+  createdAt: Date;
+  paymentId?: string | null;
+  paymentApplicationId?: string | null;
+  workOrderId?: string | null;
+  actorId?: string | null;
+  reason?: string | null;
+  [key: string]: unknown;
+};
+
 type Store = {
-  quotes: Map<string, any>;
-  workOrders: Map<string, any>;
-  payments: Map<string, any>;
-  applications: Map<string, any>;
-  ledgerEntries: any[];
+  quotes: Map<string, QuoteDouble>;
+  workOrders: Map<string, WorkOrderDouble>;
+  payments: Map<string, PaymentDouble>;
+  applications: Map<string, PaymentApplicationDouble>;
+  ledgerEntries: LedgerEntryDouble[];
 };
 
 function createMockDb(initialState?: Partial<Store>) {
@@ -181,6 +236,7 @@ function createMockDb(initialState?: Partial<Store>) {
           for (const a of store.applications.values()) {
             if (a.operationKey === where.operationKey) {
               const wo = store.workOrders.get(a.workOrderId);
+              if (!wo) return null;
               return { ...a, workOrder: { ...wo, quote: store.quotes.get(wo.quoteId) } };
             }
           }
@@ -251,8 +307,11 @@ function createMockDb(initialState?: Partial<Store>) {
     },
   };
 
+  type PaymentTransaction = Parameters<typeof getNoteFinancialSummary>[0];
+  const transaction = mockTx as unknown as PaymentTransaction;
+
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
-    (callback: (tx: any) => Promise<unknown>) => callback(mockTx),
+    (callback: (tx: PaymentTransaction) => Promise<unknown>) => callback(transaction),
   );
 
   // Link mock prisma client methods to mockTx
@@ -262,7 +321,7 @@ function createMockDb(initialState?: Partial<Store>) {
   Object.assign(prisma.paymentApplication, mockTx.paymentApplication);
   Object.assign(prisma.ledgerEntry, mockTx.ledgerEntry);
 
-  return { store, mockTx };
+  return { store, transaction };
 }
 
 describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
@@ -301,7 +360,7 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
       ],
     ]);
 
-    const { store } = createMockDb({ quotes, workOrders });
+    const { store, transaction } = createMockDb({ quotes, workOrders });
 
     const result = await recordPayment({
       workOrderId: "wo-1",
@@ -343,7 +402,7 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
     );
 
     // Customer credit query
-    const credit = await getCustomerCreditSummary(prisma as any, "cust-1");
+    const credit = await getCustomerCreditSummary(transaction, "cust-1");
     expect(credit.availableCreditCents).toBe(2000);
   });
 
@@ -403,7 +462,7 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
       ],
     ]);
 
-    const { store } = createMockDb({ quotes, workOrders });
+    const { store, transaction } = createMockDb({ quotes, workOrders });
 
     // Step 1: Capture 10,000 for Note 1 (8,000 applied, 2,000 unapplied credit)
     await recordPayment({
@@ -413,14 +472,14 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
     });
 
     // Step 2: Query Note 2 financial status (should NOT auto-apply the 2,000 credit)
-    const note2Status = await getNoteFinancialSummary(prisma as any, "wo-2");
+    const note2Status = await getNoteFinancialSummary(transaction, "wo-2");
     expect(note2Status.chargedCents).toBe(5000);
     expect(note2Status.appliedCents).toBe(0);
     expect(note2Status.pendingBalanceCents).toBe(5000);
     expect(note2Status.isSettled).toBe(false);
 
     // Customer still has 2,000 available credit
-    const credit = await getCustomerCreditSummary(prisma as any, "cust-1");
+    const credit = await getCustomerCreditSummary(transaction, "cust-1");
     expect(credit.availableCreditCents).toBe(2000);
 
     // Step 3: Explicit manual application of the 2,000 credit to Note 2
@@ -436,7 +495,7 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
     expect(manualAppResult.customerCreditRemainingCents).toBe(0);
 
     // Re-verify Note 2 status after manual application
-    const note2UpdatedStatus = await getNoteFinancialSummary(prisma as any, "wo-2");
+    const note2UpdatedStatus = await getNoteFinancialSummary(transaction, "wo-2");
     expect(note2UpdatedStatus.appliedCents).toBe(2000);
     expect(note2UpdatedStatus.pendingBalanceCents).toBe(3000);
   });
@@ -472,7 +531,7 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
       ],
     ]);
 
-    const { store } = createMockDb({ quotes, workOrders });
+    const { store, transaction } = createMockDb({ quotes, workOrders });
 
     // Step 1: Record 8,000 payment
     const paymentResult = await recordPayment({
@@ -503,12 +562,13 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
     expect(reversalResult.reversedApplicationsCount).toBe(1);
 
     // Verify Note 1 balance is restored back to 8,000
-    const note1Status = await getNoteFinancialSummary(prisma as any, "wo-1");
+    const note1Status = await getNoteFinancialSummary(transaction, "wo-1");
     expect(note1Status.pendingBalanceCents).toBe(8000);
     expect(note1Status.appliedCents).toBe(0);
 
     // Verify Payment is marked reversed
     const paymentInStore = store.payments.get(paymentResult.payment.id);
+    if (!paymentInStore) throw new Error("Payment not found in mock store");
     expect(paymentInStore.reversedAt).not.toBeNull();
     expect(paymentInStore.reversalReason).toBe("Capture duplicated by teller mistake");
 
