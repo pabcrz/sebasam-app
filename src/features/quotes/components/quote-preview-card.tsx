@@ -131,7 +131,7 @@ export function QuotePreviewCard({
             </div>
           </div>
         )}
-        {administrative ? <Badge variant="info">Cotización administrativa</Badge> : null}
+        {administrative ? <Badge variant="info">{isNote ? "Nota" : "Cotización"} administrativa</Badge> : null}
 
         <div className="grid gap-2">
           {title && (

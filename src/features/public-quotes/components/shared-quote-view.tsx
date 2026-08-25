@@ -219,7 +219,9 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
       <QuotePreviewCard
         customerName={quote.customer?.name ?? ""}
         vehicle={vehicle}
-        title={quote.title ? `Cotización ${quote.number} — ${quote.title}` : `Cotización ${quote.number}`}
+        title={quote.title
+          ? `${isNote ? "Nota" : "Cotización"} ${quote.number} — ${quote.title}`
+          : `${isNote ? "Nota" : "Cotización"} ${quote.number}`}
         description={quote.description ?? ""}
         administrative={quote.administrative}
         sections={sections}
