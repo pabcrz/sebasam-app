@@ -24,7 +24,7 @@ describe("isQuoteEditable", () => {
     });
   });
 
-  describe("editable with any work order state (admin can always correct data)", () => {
+  describe("editable with a non-terminal work order", () => {
     it("returns true when workOrder is ASSIGNED", () => {
       expect(isQuoteEditable({ status: "APPROVED", workOrder: { status: "ASSIGNED" } })).toBe(true);
     });
@@ -37,8 +37,8 @@ describe("isQuoteEditable", () => {
       expect(isQuoteEditable({ status: "APPROVED", workOrder: { status: "IN_PROGRESS" } })).toBe(true);
     });
 
-    it("returns true when workOrder is COMPLETED", () => {
-      expect(isQuoteEditable({ status: "APPROVED", workOrder: { status: "COMPLETED" } })).toBe(true);
+    it("returns false when workOrder is COMPLETED", () => {
+      expect(isQuoteEditable({ status: "APPROVED", workOrder: { status: "COMPLETED" } })).toBe(false);
     });
 
     it("returns true when workOrder is PLANNED", () => {
@@ -56,10 +56,10 @@ describe("isQuoteEditable", () => {
       expect(isQuoteEditable({ status: "CANCELLED", workOrder: { status: "PLANNED" } })).toBe(false);
     });
 
-    it("returns true when APPROVED with COMPLETED workOrder", () => {
+    it("returns false when APPROVED with COMPLETED workOrder", () => {
       expect(
         isQuoteEditable({ status: "APPROVED", workOrder: { status: "COMPLETED" } }),
-      ).toBe(true);
+      ).toBe(false);
     });
 
     it("returns true when SENT with PLANNED workOrder", () => {
