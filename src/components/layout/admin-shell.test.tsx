@@ -51,8 +51,15 @@ describe("AdminShell", () => {
     expect(current).toHaveLength(0);
   });
 
-  it("marks only the matching nav item as current for /admin/customers", () => {
-    mockPathname = "/admin/customers";
+  it.each([
+    ["/admin/customers", "/admin/customers", "Clientes"],
+    ["/admin/workers", "/admin/workers", "Trabajadores"],
+    ["/admin/quotes", "/admin/quotes", "Cotizaciones"],
+    ["/admin/work-orders", "/admin/work-orders", "Trabajos"],
+    ["/admin/notas", "/admin/notas", "Notas"],
+    ["/admin/nomina", "/admin/nomina", "Nómina"],
+  ])("marks only the matching desktop item as current for %s", (pathname, href, label) => {
+    mockPathname = pathname;
     render(
       <AdminShell displayName="Admin User" role="admin">
         <div>Content</div>
@@ -63,8 +70,8 @@ describe("AdminShell", () => {
     const current = desktopNav.querySelectorAll('[aria-current="page"]');
 
     expect(current).toHaveLength(1);
-    expect(current[0]).toHaveAttribute("href", "/admin/customers");
-    expect(current[0]).toHaveTextContent("Clientes");
+    expect(current[0]).toHaveAttribute("href", href);
+    expect(current[0]).toHaveTextContent(label);
   });
 
   it.each([
