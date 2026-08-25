@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 
 const getOperationalDashboardSnapshotMock = vi.hoisted(() => vi.fn());
 const listCustomersMock = vi.hoisted(() => vi.fn());
@@ -86,7 +86,8 @@ describe("AdminHomePage", () => {
     expect(screen.getByText("Cola Comercial (Cotizaciones)")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("Ejecución Activa (Taller)")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
+    const activeExecutionCard = screen.getByRole("link", { name: /Ejecución Activa \(Taller\)/ });
+    expect(within(activeExecutionCard).getByText("2")).toHaveAttribute("data-numeric-role", "count");
     expect(screen.getByText("Nómina Semanal (Estimada)")).toBeInTheDocument();
     expect(screen.getByText("Cálculo estimado")).toBeInTheDocument();
     expect(screen.getByText("Clientes")).toBeInTheDocument();

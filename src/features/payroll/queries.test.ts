@@ -33,7 +33,8 @@ describe("Payroll Queries", () => {
       })
     );
 
-    expect(report.rangeLabel).toMatch(/17.*23.*agosto.*2026/i);
+    // The weekly payroll range runs Monday through Saturday; Sunday is the exclusive boundary.
+    expect(report.rangeLabel).toBe("17–22 de agosto de 2026");
     expect(report.totalCompletedOrders).toBe(0);
     expect(report.workers).toEqual([]);
   });
