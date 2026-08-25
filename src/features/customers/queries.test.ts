@@ -149,14 +149,14 @@ describe("getCustomerAccountStatement", () => {
     });
     expect(statement.movements).toEqual([
       expect.objectContaining({
-        payment: expect.objectContaining({ method: "CASH", quote: { id: "quote-1", number: "COT-001" } }),
-        amountCents: 5000,
-        resultingBalanceCents: 20000,
-      }),
-      expect.objectContaining({
         payment: expect.objectContaining({ method: "TRANSFER", quote: { id: "quote-2", number: "COT-002" } }),
         amountCents: 12500,
         resultingBalanceCents: 7500,
+      }),
+      expect.objectContaining({
+        payment: expect.objectContaining({ method: "CASH", quote: { id: "quote-1", number: "COT-001" } }),
+        amountCents: 5000,
+        resultingBalanceCents: 20000,
       }),
     ]);
   });

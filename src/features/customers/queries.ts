@@ -146,6 +146,6 @@ export async function getCustomerAccountStatement(customerId: string): Promise<C
 
   return {
     ...summary,
-    movements,
+    movements: movements.reverse(),
   };
 }
