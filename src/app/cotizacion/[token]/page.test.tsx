@@ -15,6 +15,15 @@ vi.mock("@/features/public-quotes/components/shared-quote-view", () => ({
   SharedQuoteView: sharedQuoteViewMock,
 }));
 
+vi.mock("@/features/payment-settings/domain", () => ({
+  getPaymentSettings: vi.fn().mockResolvedValue({
+    bankAccounts: [],
+    name: "SEBASAM",
+    contactPhone: "5556007675",
+    contactWhatsapp: "5536239346",
+  }),
+}));
+
 import CotizacionPage from "./page";
 
 describe("CotizacionPage", () => {
