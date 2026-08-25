@@ -4,7 +4,6 @@ import {
   AssignmentStatus,
   PaymentRequestStatus,
   Prisma,
-  QuoteStatus,
   UserRole,
   WorkOrderStatus,
   WorkerKind,
@@ -367,9 +366,7 @@ export async function rollbackWorkOrder(input: unknown) {
     if (!rollbackableWorkOrderStatuses.includes(workOrder.status)) {
       throw new WorkOrderOperationError("La orden ya fue cancelada. Recarga la página para ver su estado actual.");
     }
-    if (workOrder.quote.status !== QuoteStatus.APPROVED) {
-      throw new WorkOrderOperationError("La cotización ya no está aceptada. Recarga la página antes de corregir la orden.");
-    }
+    assertOperationalQuote(workOrder.quote.status);
 
     const [paymentCount, ledgerEntryCount] = await Promise.all([
       tx.payment.count({ where: { quoteId: workOrder.quoteId } }),
@@ -404,7 +401,7 @@ export async function rollbackWorkOrder(input: unknown) {
       data: { status: PaymentRequestStatus.CANCELLED },
     });
     const restored = await tx.quote.updateMany({
-      where: { id: workOrder.quoteId, status: QuoteStatus.APPROVED },
+      where: { id: workOrder.quoteId, status: workOrder.quote.status },
       data: { status: data.targetQuoteStatus },
     });
     if (restored.count !== 1) {
@@ -413,7 +410,7 @@ export async function rollbackWorkOrder(input: unknown) {
     await tx.quoteLifecycleEvent.create({
       data: {
         quoteId: workOrder.quoteId,
-        previousState: QuoteStatus.APPROVED,
+        previousState: workOrder.quote.status,
         nextState: data.targetQuoteStatus,
         actorId: profile.id,
         reason: data.reason,
@@ -517,6 +514,9 @@ export async function rollbackWorkOrderAction(input: unknown): Promise<ActionRes
     }
     if (error instanceof ZodError) {
       return { success: false, error: error.issues[0]?.message ?? "Revisa los datos de la corrección." };
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+      return { success: false, error: "La operación cambió mientras se corregía. Recarga e inténtalo de nuevo." };
     }
     console.error("Work order rollback failed", { input, error });
     return { success: false, error: "No se pudo corregir la orden. Recarga la página e inténtalo de nuevo." };

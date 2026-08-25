@@ -61,14 +61,13 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("does not expose approval-only rollback for a draft work order", async () => {
+  it.each(["DRAFT", "SENT", "APPROVED"] as const)("exposes rollback for a %s work order", async (quoteStatus) => {
     const user = userEvent.setup();
-    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="DRAFT" workOrder={{ id: "wo-1", number: "T-001", status: "ASSIGNED" }} actions={actions} />);
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus={quoteStatus} workOrder={{ id: "wo-1", number: "T-001", status: "ASSIGNED" }} actions={actions} />);
 
     await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
 
-    expect(screen.queryByRole("button", { name: /cancelar orden y regresar cotización/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /finalizar trabajo/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancelar orden y regresar cotización/i })).toBeInTheDocument();
   });
 
   it("keeps work actions icon-only on mobile and labeled on desktop", async () => {

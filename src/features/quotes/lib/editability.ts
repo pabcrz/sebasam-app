@@ -9,12 +9,9 @@ type QuoteForEditability = {
 /**
  * Determines if a quote can be edited.
  *
- * Editable in all active operational states (DRAFT, SENT, APPROVED)
- * including when a work order is active or completed, so that the admin
- * can add missing concepts, toggle IVA for invoices, or update details anytime.
+ * Editable unless the quote is cancelled or its work order is completed.
  *
- * Only CANCELLED quotes are locked against editing.
  */
 export function isQuoteEditable(quote: QuoteForEditability): boolean {
-  return quote.status !== "CANCELLED";
+  return quote.status !== "CANCELLED" && quote.workOrder?.status !== "COMPLETED";
 }
