@@ -15,7 +15,7 @@ vi.mock("@/features/work-orders/queries", () => ({ getCompletedWorkOrderById }))
 vi.mock("@/features/payment-settings/domain", () => ({ getPaymentSettings }));
 vi.mock("./print-button", () => ({ PrintButton: () => <button type="button">Imprimir</button> }));
 
-import WorkOrderPrintPage from "./page";
+import WorkOrderPrintPage, { metadata } from "./page";
 
 describe("WorkOrderPrintPage", () => {
   it("identifies legacy special work as Taller in the printed note", async () => {
@@ -30,6 +30,7 @@ describe("WorkOrderPrintPage", () => {
         title: "Servicio general",
         customer: { name: "Cliente Demo", phone: null, email: null },
         vehicle: null,
+        administrative: true,
         items: [],
         subtotalCents: 0,
         discountCents: 0,
@@ -47,9 +48,18 @@ describe("WorkOrderPrintPage", () => {
       contactWhatsapp: "5555555555",
     });
 
-    render(await WorkOrderPrintPage({ params: Promise.resolve({ id: "wo-1" }) }));
+    const { container } = render(await WorkOrderPrintPage({ params: Promise.resolve({ id: "wo-1" }) }));
 
     expect(screen.getAllByText(/Taller/)).toHaveLength(2);
     expect(screen.queryByText("Nombre heredado")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nota C-001 — Servicio general" })).toBeInTheDocument();
+    expect(screen.getByText("Nota administrativa")).toBeInTheDocument();
+    expect(screen.queryByText(/Cotización/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Imprimir documento" })).not.toBeInTheDocument();
+    expect(container.firstElementChild).toHaveClass("print:min-h-0");
+  });
+
+  it("uses Nota as the document title", () => {
+    expect(metadata.title).toBe("Nota");
   });
 });
