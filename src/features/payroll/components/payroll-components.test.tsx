@@ -66,7 +66,7 @@ describe("Payroll UI Components", () => {
   it("renders period navigation with range label and buttons", () => {
     render(
       <PayrollPeriodNav
-        rangeLabel="17–23 de agosto de 2026"
+        rangeLabel="17–22 de agosto de 2026"
         anchor="2026-08-17"
         prevAnchor="2026-08-10"
         nextAnchor="2026-08-24"
@@ -74,10 +74,16 @@ describe("Payroll UI Components", () => {
       />
     );
 
-    expect(screen.getByText("17–23 de agosto de 2026")).toBeInTheDocument();
+    expect(screen.getByText("17–22 de agosto de 2026")).toBeInTheDocument();
     expect(screen.getByText("Semana en curso")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /semana anterior/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /semana siguiente/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /semana anterior/i })).toHaveAttribute(
+      "href",
+      "/admin/nomina?anchor=2026-08-10"
+    );
+    expect(screen.getByRole("link", { name: /semana siguiente/i })).toHaveAttribute(
+      "href",
+      "/admin/nomina?anchor=2026-08-24"
+    );
   });
 
   it("renders metrics with formatted amounts", () => {

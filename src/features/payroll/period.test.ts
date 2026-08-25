@@ -2,18 +2,22 @@ import { describe, expect, it } from "vitest";
 import { formatPayrollRangeLabel, parsePayrollParams, payrollHref } from "./period";
 
 describe("Payroll Period Logic", () => {
-  it("generates correct week range for a given Wednesday", () => {
+  it("uses a Monday-through-Saturday range for a given Wednesday", () => {
     // 2026-08-19 is Wednesday
     const fixedDate = new Date("2026-08-19T12:00:00Z");
     const params = parsePayrollParams({ anchor: "2026-08-19" }, fixedDate);
 
-    // Monday should be 2026-08-17, Sunday should be 2026-08-23
+    // Monday is inclusive and Sunday 00:00 in Mexico City is exclusive.
     expect(params.anchor).toBe("2026-08-17");
     expect(params.prevAnchor).toBe("2026-08-10");
     expect(params.nextAnchor).toBe("2026-08-24");
     expect(params.isCurrentWeek).toBe(true);
+    expect(params.start.toISOString()).toBe("2026-08-17T06:00:00.000Z");
+    expect(params.end.toISOString()).toBe("2026-08-23T06:00:00.000Z");
+    expect(new Date("2026-08-23T05:59:59.999Z").getTime()).toBeLessThan(params.end.getTime());
+    expect(new Date("2026-08-23T06:00:00.000Z").getTime()).toBe(params.end.getTime());
     expect(params.rangeLabel).toContain("17");
-    expect(params.rangeLabel).toContain("23");
+    expect(params.rangeLabel).toContain("22");
     expect(params.rangeLabel).toContain("agosto");
   });
 
@@ -21,7 +25,7 @@ describe("Payroll Period Logic", () => {
     const start = { year: 2026, month: 8, day: 17 };
     const end = { year: 2026, month: 8, day: 23 };
     const label = formatPayrollRangeLabel(start, end);
-    expect(label).toMatch(/17.*23.*agosto.*2026/i);
+    expect(label).toMatch(/17.*22.*agosto.*2026/i);
   });
 
   it("identifies past or future weeks accurately", () => {
@@ -32,6 +36,17 @@ describe("Payroll Period Logic", () => {
     expect(pastWeekParams.isCurrentWeek).toBe(false);
     expect(pastWeekParams.prevAnchor).toBe("2026-08-03");
     expect(pastWeekParams.nextAnchor).toBe("2026-08-17");
+  });
+
+  it("uses Mexico City local midnight for historical DST weeks", () => {
+    const params = parsePayrollParams(
+      { anchor: "2022-10-26" },
+      new Date("2022-10-26T12:00:00.000Z")
+    );
+
+    expect(params.start.toISOString()).toBe("2022-10-24T05:00:00.000Z");
+    expect(params.end.toISOString()).toBe("2022-10-30T05:00:00.000Z");
+    expect(params.rangeLabel).toMatch(/24.*29.*octubre.*2022/i);
   });
 
   it("constructs correct payroll href with query parameters", () => {
