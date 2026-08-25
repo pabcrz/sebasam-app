@@ -40,6 +40,23 @@ describe("CashPaymentDialog", () => {
     expect(screen.getByText("$75.00")).toBeInTheDocument();
   });
 
+  it("provides a fixed mobile header close control and restores trigger focus", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    const trigger = screen.getByRole("button", { name: /registrar pago para/i });
+    await user.click(trigger);
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveClass("overflow-hidden");
+    expect(dialog.querySelector("[class*='overflow-y-auto']")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cerrar registro de pago" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+
   it("blocks an overpayment immediately and accepts a corrected partial amount", async () => {
     const user = userEvent.setup();
     const action = vi.fn().mockResolvedValue({

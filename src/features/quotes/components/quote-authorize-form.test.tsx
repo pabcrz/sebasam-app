@@ -21,6 +21,8 @@ describe("QuoteAuthorizeForm", () => {
     render(<QuoteAuthorizeForm action={action} quoteNumber="C-001" />);
 
     await user.click(screen.getByRole("button", { name: "Autorizar cotización C-001" }));
+    expect(screen.getByRole("button", { name: "Cerrar autorización de cotización" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveClass("overflow-hidden");
     await user.click(screen.getByRole("combobox", { name: "Medio de confirmación *" }));
     await user.click(screen.getByRole("option", { name: "Llamada telefónica" }));
     await user.click(screen.getByRole("button", { name: "Autorizar cotización" }));

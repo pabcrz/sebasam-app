@@ -13,6 +13,8 @@ describe("QuoteCorrectDecisionForm", () => {
     const trigger = screen.getByRole("button", { name: /Corregir decisión de cotización Q-1/ });
     fireEvent.click(trigger);
 
+    expect(screen.getByRole("button", { name: "Cerrar corrección de cotización" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveClass("overflow-hidden");
     expect(screen.getByText(/La cotización Q-1 está actualmente/)).toBeInTheDocument();
     expect(screen.getByText("Aceptada")).toBeInTheDocument();
     expect(screen.getByText("Declinar cotización")).toBeInTheDocument();

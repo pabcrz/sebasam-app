@@ -11,10 +11,12 @@ describe("QuoteLifecycleForm", () => {
 
     await user.click(screen.getByRole("button", { name: /archivar cotización c-001/i }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cerrar archivar cotización" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveClass("overflow-hidden");
     expect(screen.getByLabelText("Motivo")).toBeRequired();
 
     await user.type(screen.getByLabelText("Motivo"), "Reference pricing retained");
-    await user.click(screen.getByRole("button", { name: /archivar cotización/i }));
+    await user.click(screen.getByRole("button", { name: /^archivar cotización$/i }));
 
     await waitFor(() => expect(action).toHaveBeenCalledWith("Reference pricing retained"));
   });

@@ -156,16 +156,22 @@ describe("PaymentRequestLinkDialog", () => {
     expect(action).not.toHaveBeenCalled();
   });
 
-  it("renders the dialog with responsive width and scroll constraints", async () => {
+  it("renders fixed mobile chrome and returns focus after closing", async () => {
     const user = userEvent.setup();
     render(<PaymentRequestLinkDialog action={vi.fn()} context={createDialogContext()} />);
 
-    await user.click(screen.getByRole("button", { name: /link de pago/i }));
+    const trigger = screen.getByRole("button", { name: /link de pago/i });
+    await user.click(trigger);
 
     const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveClass("w-[calc(100vw-2rem)]");
+    expect(dialog.className).toMatch(/(?:^|\s)w-\[calc\(100vw(?:-|_-_)2rem\)\](?:\s|$)/);
     expect(dialog).toHaveClass("max-w-2xl");
-    expect(dialog).toHaveClass("overflow-y-auto");
+    expect(dialog).toHaveClass("overflow-hidden");
+    expect(dialog.querySelector("[class*='overflow-y-auto']")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cerrar link de pago" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
   });
 
   it("renders quote, fiscal, and bank context before generating the link", async () => {
