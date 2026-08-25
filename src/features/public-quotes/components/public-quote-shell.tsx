@@ -50,15 +50,15 @@ export function PublicQuoteShell({ children, business, documentType = "Cotizaci√
             <p className="mt-3 font-medium text-sm text-[var(--color-on-navy-tint)] print:text-gray-800">
               {resolvedBusiness.fullName}
             </p>
-            <a href={resolvedBusiness.mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 max-w-sm text-xs text-white/80 hover:text-white transition-colors print:text-gray-600 print:no-underline">
+            <a href={resolvedBusiness.mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 max-w-sm rounded-sm text-xs text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:text-gray-600 print:no-underline">
               {resolvedBusiness.address}
             </a>
             <div className="mt-2 text-xs text-white/80 print:text-gray-600 flex flex-wrap gap-4 items-center">
-              <a href={`tel:${resolvedBusiness.contactPhone}`} className="hover:text-white transition-colors print:no-underline flex items-center gap-1.5">
+              <a href={`tel:${resolvedBusiness.contactPhone}`} className="flex items-center gap-1.5 rounded-sm transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:no-underline">
                 <Phone className="w-3.5 h-3.5 opacity-70" /> 
                 {resolvedBusiness.contactPhone}
               </a>
-              <a href={`https://wa.me/52${resolvedBusiness.contactWhatsapp}`} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors print:no-underline flex items-center gap-1.5">
+              <a href={`https://wa.me/52${resolvedBusiness.contactWhatsapp}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-sm transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:no-underline">
                 <MessageCircle className="w-3.5 h-3.5 opacity-70" /> 
                 {resolvedBusiness.contactWhatsapp}
               </a>

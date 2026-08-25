@@ -27,6 +27,8 @@ export interface QuotePreviewCardProps {
   isPrint?: boolean;
   isApproved?: boolean;
   compactHeader?: boolean;
+  /** Renders accessible item cards below the table breakpoint. */
+  compactItems?: boolean;
   /** When provided, sections become selectable (partial authorization). */
   selectableSectionIds?: string[];
   onSectionToggle?: (sectionId: string, selected: boolean) => void;
@@ -52,6 +54,7 @@ export function QuotePreviewCard({
   isPrint,
   isApproved,
   compactHeader,
+  compactItems,
   selectableSectionIds,
   onSectionToggle,
 }: QuotePreviewCardProps) {
@@ -104,7 +107,34 @@ export function QuotePreviewCard({
     : (hasPendingPrice ? null : totalCents);
 
   const partialNotice = hasPartialApproval ? "Total correspondiente únicamente a los conceptos autorizados." : null;
-  let globalIndex = 0;
+  const visibleSections = sections.flatMap((section, sectionIndex) => {
+    const displayItems = section.items.filter((item) => item.description.trim());
+    if (displayItems.length === 0) return [];
+
+    const completeItems = displayItems.filter((item) => item.unitPrice.trim() !== "" && Number(item.unitPrice) >= 0);
+    const isSelectable = Boolean(selectableSectionIds && section.id);
+    const isSelected = isSelectable
+      ? (selectableSectionIds ?? []).includes(section.id ?? "")
+      : hasPartialApproval
+        ? section.isAuthorized === true
+        : true;
+    const sectionSubtotalCents = completeItems.reduce(
+      (acc, item) => acc + Math.round(Number(item.quantity) * Number(item.unitPrice) * 100),
+      0,
+    );
+    const showsBadge = hasPartialApproval && section.isAuthorized === true;
+
+    return [{
+      section,
+      sectionIndex,
+      displayItems,
+      isSelectable,
+      isSelected,
+      sectionSubtotalCents,
+      showsBadge,
+      shouldShowSectionHeader: hasMultipleSections || showsBadge,
+    }];
+  });
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm print:border-none print:shadow-none print:bg-white print:rounded-none">
@@ -141,12 +171,69 @@ export function QuotePreviewCard({
           )}
 
 
-          {sections.every((s) => s.items.length === 0) ? (
+          {visibleSections.length === 0 ? (
             <p className="text-sm text-[var(--color-text-muted)]">Sin conceptos.</p>
           ) : (
-            <div className="overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--color-border-light)] print:border-gray-200 print:rounded-[var(--radius-sm)]">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
+            <>
+              {compactItems ? (
+                <div data-testid="quote-compact-items" className="grid gap-3 md:hidden print:hidden">
+                  {visibleSections.map(({ section, sectionIndex, displayItems, isSelectable, isSelected, showsBadge, shouldShowSectionHeader }) => (
+                    <section key={section.id ?? sectionIndex} className={`rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] ${isSelected ? "" : "opacity-40"}`}>
+                      {shouldShowSectionHeader ? (
+                        <div className="flex items-center gap-2 border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)] px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)]">
+                          {isSelectable ? (
+                            <label className="flex flex-1 items-center gap-2 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(event) => onSectionToggle?.(section.id!, event.target.checked)}
+                                className="h-3.5 w-3.5 accent-[var(--color-primary)]"
+                              />
+                              <span>{section.name || `Sección ${sectionIndex + 1}`}</span>
+                            </label>
+                          ) : (
+                            <h3>{section.name || `Sección ${sectionIndex + 1}`}</h3>
+                          )}
+                          {showsBadge ? (
+                            <span className="rounded-full border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[var(--color-status-success-fg)]">
+                              Autorizada
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <ul aria-label={`${section.name || `Sección ${sectionIndex + 1}`} conceptos`} className="divide-y divide-[var(--color-primary)]/10">
+                        {displayItems.map((item, itemIndex) => {
+                          const quantityNum = Number(item.quantity);
+                          const lineTotalCents = item.unitPrice.trim() ? Math.round(quantityNum * Number(item.unitPrice) * 100) : null;
+
+                          return (
+                            <li key={itemIndex} className="min-w-0 px-3 py-3">
+                              <p className="break-words font-medium text-[var(--color-text-main)]">{item.description}</p>
+                              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                <div className="min-w-0">
+                                  <dt className="text-[var(--color-text-muted)]">Cantidad</dt>
+                                  <dd className="font-medium text-[var(--color-text-main)]">{item.type === "LABOR" && quantityNum === 1 ? "-" : formatQuantity(item.quantity)}</dd>
+                                </div>
+                                <div className="min-w-0 text-right">
+                                  <dt className="text-[var(--color-text-muted)]">P. unitario</dt>
+                                  <dd className="font-medium text-[var(--color-text-main)]">{item.unitPrice.trim() ? formatCents(Number(item.unitPrice) * 100) : "Pendiente"}</dd>
+                                </div>
+                                <div className="col-span-2 flex items-baseline justify-between gap-3 border-t border-[var(--color-border-light)] pt-2">
+                                  <dt className="text-[var(--color-text-muted)]">Importe</dt>
+                                  <dd className="text-sm font-bold text-[var(--color-text-main)]">{formatCents(lineTotalCents)}</dd>
+                                </div>
+                              </dl>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+              ) : null}
+              <div data-testid="quote-items-table" className="hidden overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--color-border-light)] md:block print:block print:border-gray-200 print:rounded-[var(--radius-sm)]">
+                <table className="w-full border-collapse text-left text-sm">
+                <thead className="print:table-header-group">
                   <tr className="border-b border-[var(--color-border-light)] bg-transparent text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider print:border-gray-200 print:text-gray-500">
                     <th className="px-3 py-2 font-bold whitespace-nowrap w-1 text-center">C.</th>
                     <th className="px-3 py-2 font-bold w-full">Concepto / Servicio Realizado</th>
@@ -154,31 +241,12 @@ export function QuotePreviewCard({
                     <th className="px-3 py-2 font-bold text-right whitespace-nowrap">Importe</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--color-primary)]/10 print:divide-blue-100">
-                  {sections.map((section, sIndex) => {
-                    const displayItems = section.items.filter((item) => item.description.trim());
-                    if (displayItems.length === 0) return null;
-                    const completeItems = displayItems.filter((item) => item.unitPrice.trim() !== "" && Number(item.unitPrice) >= 0);
-
-                    const isSelectable = Boolean(selectableSectionIds && section.id);
-                    const isSelected = isSelectable
-                      ? (selectableSectionIds ?? []).includes(section.id ?? "")
-                      : hasPartialApproval
-                        ? section.isAuthorized === true
-                        : true;
-
-                    const sectionSubtotalCents = completeItems.reduce(
-                      (acc, item) => acc + Math.round(Number(item.quantity) * Number(item.unitPrice) * 100),
-                      0
-                    );
-
-                    const showsBadge = hasPartialApproval && section.isAuthorized === true;
-                    const shouldShowSectionHeader = hasMultipleSections || showsBadge;
-
+                <tbody className="divide-y divide-[var(--color-primary)]/10 print:table-row-group print:divide-blue-100">
+                  {visibleSections.map(({ section, sectionIndex, displayItems, isSelectable, isSelected, sectionSubtotalCents, showsBadge, shouldShowSectionHeader }) => {
                     return (
-                      <React.Fragment key={sIndex}>
+                      <React.Fragment key={section.id ?? sectionIndex}>
                         {shouldShowSectionHeader && (
-                          <tr className={`bg-[var(--color-bg-soft)]/60 print:bg-gray-50/80 border-b border-[var(--color-border-light)]/50 print:border-gray-100 ${isSelected ? "" : "opacity-40 print:opacity-40"}`}>
+                          <tr className={`break-after-avoid bg-[var(--color-bg-soft)]/60 border-b border-[var(--color-border-light)]/50 print:break-after-avoid print:border-gray-100 print:bg-gray-50/80 ${isSelected ? "" : "opacity-40 print:opacity-40"}`}>
                             <td colSpan={4} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)] print:text-gray-800">
                               {isSelectable ? (
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -189,14 +257,14 @@ export function QuotePreviewCard({
                                     data-testid={`section-toggle-${section.id}`}
                                     className="h-3.5 w-3.5 accent-[var(--color-primary)] print:hidden"
                                   />
-                                  <span>{section.name || `Sección ${sIndex + 1}`}</span>
+                                  <span>{section.name || `Sección ${sectionIndex + 1}`}</span>
                                   <span className="ml-auto font-normal normal-case tracking-normal text-[var(--color-text-muted)] print:hidden">
                                     {isSelected ? "Incluida" : "Excluida"}
                                   </span>
                                 </label>
                               ) : (
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span>{section.name || `Sección ${sIndex + 1}`}</span>
+                                  <span>{section.name || `Sección ${sectionIndex + 1}`}</span>
                                   {showsBadge ? (
                                     <span className="rounded-full border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[var(--color-status-success-fg)] print:border-green-300 print:bg-green-50 print:text-green-800">
                                       Autorizada
@@ -207,12 +275,11 @@ export function QuotePreviewCard({
                             </td>
                           </tr>
                         )}
-                         {displayItems.map((item) => {
-                          const idx = globalIndex++;
+                         {displayItems.map((item, itemIndex) => {
                           const quantityNum = Number(item.quantity);
-                           const lineTotalCents = item.unitPrice.trim() ? Math.round(quantityNum * Number(item.unitPrice) * 100) : null;
+                          const lineTotalCents = item.unitPrice.trim() ? Math.round(quantityNum * Number(item.unitPrice) * 100) : null;
                           return (
-                            <tr key={idx} className={`print:text-black hover:bg-[var(--color-bg-soft)] print:hover:bg-transparent ${isSelected ? "" : "opacity-40 print:opacity-40 text-[var(--color-text-muted)] print:text-gray-400"}`}>
+                            <tr key={itemIndex} className={`break-inside-avoid ${itemIndex === 0 ? "print:break-before-avoid " : ""}print:break-inside-avoid print:text-black hover:bg-[var(--color-bg-soft)] print:hover:bg-transparent ${isSelected ? "" : "opacity-40 print:opacity-40 text-[var(--color-text-muted)] print:text-gray-400"}`}>
                               <td className="px-3 py-2 align-top text-[var(--color-text-muted)] print:text-gray-700 w-1 whitespace-nowrap text-center font-medium">
                                 {item.type === "LABOR" && quantityNum === 1 ? "-" : formatQuantity(item.quantity)}
                               </td>
@@ -225,7 +292,7 @@ export function QuotePreviewCard({
                           );
                         })}
                         {hasMultipleSections && (
-                          <tr className={`bg-[var(--color-bg-soft)]/50 print:bg-gray-50/50 ${isSelected ? "" : "opacity-40 print:opacity-40"}`}>
+                          <tr className={`break-inside-avoid bg-[var(--color-bg-soft)]/50 print:break-inside-avoid print:bg-gray-50/50 ${isSelected ? "" : "opacity-40 print:opacity-40"}`}>
                             <td colSpan={3} className="px-3 py-1.5 text-right text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-600">
                               Subtotal
                             </td>
@@ -239,20 +306,23 @@ export function QuotePreviewCard({
                   })}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </div>
 
-        <QuoteTotalsCard
-          subtotalCents={displaySubtotalCents}
-          discountCents={discountCents}
-          taxCents={displayTaxCents}
-          totalCents={displayTotalCents}
-          printSubtotalCents={fullSubtotalCents}
-          printTaxCents={fullTaxCents}
-          printTotalCents={fullTotalCents}
-          partialNotice={partialNotice}
-        />
+        <div data-testid="quote-totals-block" className="print:break-inside-avoid">
+          <QuoteTotalsCard
+            subtotalCents={displaySubtotalCents}
+            discountCents={discountCents}
+            taxCents={displayTaxCents}
+            totalCents={displayTotalCents}
+            printSubtotalCents={fullSubtotalCents}
+            printTaxCents={fullTaxCents}
+            printTotalCents={fullTotalCents}
+            partialNotice={partialNotice}
+          />
+        </div>
         <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} />
 
         {description ? (
