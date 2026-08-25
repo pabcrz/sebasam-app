@@ -113,7 +113,6 @@ function renderRow(quote: QuoteListItem) {
       <tbody>
         <QuoteListRow
           quote={quote}
-          cashPaymentAction={vi.fn()}
           archiveAction={vi.fn()}
           restoreAction={vi.fn()}
           quoteStatusLabels={quoteStatusLabels}

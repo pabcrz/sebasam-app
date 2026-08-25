@@ -18,7 +18,6 @@ import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/featur
 import { listPaginatedQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
 import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
-import { recordCashPaymentAction } from "@/features/payments/actions";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { quoteFilterSchema, type QuoteFilterInput } from "@/features/quotes/schemas";
 import {
@@ -132,7 +131,6 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 correctDecisionAction={correctQuoteDecisionAction}
                 paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
                 paymentRequestBankAccounts={eligiblePaymentRequestBankAccounts}
-                cashPaymentAction={recordCashPaymentAction.bind(null, quote.id)}
                 duplicateAction={duplicateQuoteFromForm}
                 deleteAction={deleteQuoteFromForm}
                 archiveAction={archiveQuote.bind(null, quote.id)}

@@ -41,6 +41,12 @@ export class UnauthorizedRoleError extends Error {
   }
 }
 
+const ADMIN_ROLES: UserRole[] = ["SUPER_ADMIN", "ADMIN"];
+
+export function isAdminRole(role: UserRole | null | undefined): boolean {
+  return role !== null && role !== undefined && ADMIN_ROLES.includes(role);
+}
+
 export const getCurrentUser = cache(async (): Promise<User | null> => {
   const supabase = await createSupabaseServerClient();
   const {
@@ -180,7 +186,7 @@ export async function requireRole(allowedRoles: UserRole[]): Promise<CurrentProf
 }
 
 export async function requireAdmin(): Promise<CurrentProfile> {
-  return requireRole(["SUPER_ADMIN", "ADMIN"]);
+  return requireRole(ADMIN_ROLES);
 }
 
 export async function requireSuperAdmin(): Promise<CurrentProfile> {

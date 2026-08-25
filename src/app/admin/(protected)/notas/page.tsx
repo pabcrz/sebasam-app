@@ -16,6 +16,7 @@ import { WorkOrderCompletedList } from "@/features/work-orders/components/work-o
 import { recordPaymentAction } from "@/features/payments/actions";
 import { rollbackWorkOrderAction } from "@/features/work-orders/actions";
 import { listActiveMasters } from "@/features/workers/queries";
+import { getCurrentProfile, isAdminRole } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Notas de remisión",
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
 
 export default async function NotasPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const filters = parseNotasParams(await searchParams);
-  const [result, masters] = await Promise.all([listCompletedWorkOrders(filters), listActiveMasters()]);
+  const [result, masters, currentProfile] = await Promise.all([listCompletedWorkOrders(filters), listActiveMasters(), getCurrentProfile()]);
   const { workOrders } = result;
   const quoteMap = new Map(workOrders.map((wo) => [wo.quote.id, wo.quote]));
 
@@ -51,10 +52,10 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
             <WorkOrderCompletedList
               workOrders={workOrders}
               quoteMap={quoteMap}
-              recordPaymentActions={workOrders.map((wo) => ({
+              recordPaymentActions={isAdminRole(currentProfile?.profile.role) ? workOrders.map((wo) => ({
                 workOrderId: wo.id,
-                action: recordPaymentAction.bind(null, wo.quote.id),
-              }))}
+                action: recordPaymentAction.bind(null, wo.id),
+              })) : []}
               rollbackAction={rollbackWorkOrderAction}
             />
           )}

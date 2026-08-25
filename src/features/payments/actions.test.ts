@@ -1,25 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireAdmin } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
 import { recordCashPayment } from "./domain";
-import { recordCashPaymentAction } from "./actions";
+import { recordPaymentAction } from "./actions";
 
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/lib/prisma", () => ({ prisma: { workOrder: { findUnique: vi.fn() } } }));
 vi.mock("./domain", async () => ({
   ...(await vi.importActual<typeof import("./domain")>("./domain")),
   recordCashPayment: vi.fn(),
 }));
 
-describe("recordCashPaymentAction", () => {
-  beforeEach(() => vi.clearAllMocks());
+describe("recordPaymentAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (prisma.workOrder.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      quoteId: "quote-1",
+      status: "COMPLETED",
+    });
+  });
 
-  it("requires an administrator, records exact cents, and refreshes quotes", async () => {
+  it("requires an administrator and records a completed note against its quote", async () => {
     (recordCashPayment as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "payment-1" });
 
-    await recordCashPaymentAction("quote-1", "123.45", "payment-operation-1");
+    await recordPaymentAction("work-order-1", "123.45", "payment-operation-1", "CASH");
 
     expect(requireAdmin).toHaveBeenCalledOnce();
+    expect(prisma.workOrder.findUnique).toHaveBeenCalledWith({
+      where: { id: "work-order-1" },
+      select: { quoteId: true, status: true },
+    });
     expect(recordCashPayment).toHaveBeenCalledWith({
       quoteId: "quote-1",
       amountCents: 12345,
@@ -29,9 +41,36 @@ describe("recordCashPaymentAction", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
   });
 
+  it.each([
+    ["partial", "12.50", 1250],
+    ["total", "100.00", 10000],
+  ])("preserves the exact cents for a %s payment", async (_kind, amount, amountCents) => {
+    (recordCashPayment as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "payment-1" });
+
+    await recordPaymentAction("work-order-1", amount, "payment-operation-1", "CASH");
+
+    expect(recordCashPayment).toHaveBeenCalledWith(expect.objectContaining({
+      quoteId: "quote-1",
+      amountCents,
+    }));
+  });
+
   it("does not call the domain for invalid form amounts", async () => {
-    await expect(recordCashPaymentAction("quote-1", "1.999", "payment-operation-1")).rejects.toThrow(
+    await expect(recordPaymentAction("work-order-1", "1.999", "payment-operation-1", "CASH")).rejects.toThrow(
       "Ingresa un monto válido con hasta dos decimales.",
+    );
+
+    expect(recordCashPayment).not.toHaveBeenCalled();
+  });
+
+  it("rejects payment registration outside completed Notes", async () => {
+    (prisma.workOrder.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      quoteId: "quote-1",
+      status: "IN_PROGRESS",
+    });
+
+    await expect(recordPaymentAction("work-order-1", "10", "payment-operation-1", "CASH")).rejects.toThrow(
+      "Solo se pueden registrar pagos desde notas de trabajos completados.",
     );
 
     expect(recordCashPayment).not.toHaveBeenCalled();
