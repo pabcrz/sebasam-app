@@ -359,9 +359,13 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
           throw new PaymentOperationError("La cotización no existe.");
         }
         assertCommercialQuote(quote);
-        if (!CASH_PAYMENT_QUOTE_STATUSES.includes(quote.status)) {
-          throw new PaymentOperationError("Solo se pueden registrar pagos en cotizaciones aprobadas.");
+
+        if (!targetWorkOrder || targetWorkOrder.status !== WorkOrderStatus.COMPLETED) {
+          if (!CASH_PAYMENT_QUOTE_STATUSES.includes(quote.status)) {
+            throw new PaymentOperationError("Solo se pueden registrar pagos en cotizaciones aprobadas.");
+          }
         }
+
         if (!customerId) {
           customerId = quote.customerId ?? undefined;
         }
