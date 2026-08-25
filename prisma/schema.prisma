@@ -280,6 +280,8 @@ model WorkOrder {
   assignments      WorkAssignment[]
   executionRecords ExecutionRecord[]
   paymentRequests  PaymentRequest[]
+
+  @@index([status, completedAt])
 }
 
 model WorkAssignment {
@@ -379,6 +381,7 @@ model Payment {
   @@index([quoteId])
   @@index([paymentRequestId])
   @@index([quoteId, status])
+  @@index([status, createdAt])
 }
 
 model LedgerEntry {
