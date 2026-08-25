@@ -72,4 +72,24 @@ describe("CustomerCreateForm", () => {
       notes: "Cliente frecuente",
     });
   });
+
+  it("prevents dismissal and editing while creation is pending", async () => {
+    const action = vi.fn(() => new Promise<void>(() => {}));
+    const user = userEvent.setup();
+    render(<CustomerCreateForm action={action} />);
+
+    await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
+    await user.type(screen.getByLabelText("Nombre"), "Constructora del Norte");
+    await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Creando cliente...")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nombre")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeDisabled();
+
+    await user.keyboard("{Escape}");
+    await user.click(document.querySelector("[data-dialog-overlay]")!);
+
+    expect(screen.getByRole("dialog", { name: "Nuevo cliente" })).toBeInTheDocument();
+  });
 });
