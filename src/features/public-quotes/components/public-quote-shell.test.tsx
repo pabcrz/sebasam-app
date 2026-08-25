@@ -26,6 +26,14 @@ describe("PublicQuoteShell", () => {
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
+  it("gives public header links a high-contrast keyboard focus ring", () => {
+    render(<PublicQuoteShell>content</PublicQuoteShell>);
+
+    for (const link of screen.getAllByRole("link")) {
+      expect(link).toHaveClass("focus-visible:ring-white", "focus-visible:ring-offset-2");
+    }
+  });
+
   it("formats a date-only operational date without shifting it to the prior day", () => {
     render(<PublicQuoteShell date={new Date("2026-07-01T00:00:00.000Z")}>content</PublicQuoteShell>);
 

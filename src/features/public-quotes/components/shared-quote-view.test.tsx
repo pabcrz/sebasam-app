@@ -162,12 +162,32 @@ describe("SharedQuoteView", () => {
     expect(screen.queryByText("Enviada")).not.toBeInTheDocument();
     expect(screen.queryByText("SEBASAM")).not.toBeInTheDocument();
     expect(screen.queryByText(/Batalla de Casa Blanca/)).not.toBeInTheDocument();
-    expect(screen.getByText("Mano de obra")).toBeInTheDocument();
+    expect(within(screen.getByRole("table")).getByText("Mano de obra")).toBeInTheDocument();
     expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
     expect(screen.getByRole("button", { name: "Aceptar cotización" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Declinar cotización" })).toBeInTheDocument();
     expect(screen.queryByText(/partida/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Progreso de la cotización" })).not.toBeInTheDocument();
+  });
+
+  it("uses clear focus rings for public quotation actions", () => {
+    render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
+
+    expect(screen.getByRole("button", { name: "Aceptar cotización" })).toHaveClass("focus-visible:!ring-white", "focus-visible:!ring-offset-2");
+    expect(screen.getByRole("button", { name: "Declinar cotización" })).toHaveClass("focus-visible:!ring-[var(--color-primary)]", "focus-visible:!ring-offset-2");
+  });
+
+  it("renders accessible compact item details below the table breakpoint", () => {
+    render(<SharedQuoteView quote={makeMultiSectionQuote()} token="token-123" />);
+
+    const compactItems = screen.getByTestId("quote-compact-items");
+    expect(compactItems).toHaveClass("md:hidden", "print:hidden");
+    expect(within(compactItems).getByRole("list", { name: "Aceite y filtros conceptos" })).toBeInTheDocument();
+    expect(within(compactItems).getByText("Cambio de aceite").closest("li")).toHaveTextContent("Cantidad");
+    expect(within(compactItems).getByText("Cambio de aceite").closest("li")).toHaveTextContent("P. unitario");
+
+    expect(screen.getByTestId("quote-items-table")).toHaveClass("hidden", "md:block", "print:block");
+    expect(screen.getByRole("table")).toBeInTheDocument();
   });
 
   it.each([
@@ -193,11 +213,12 @@ describe("SharedQuoteView", () => {
   it("shows all sections with authorization status after partial approval", () => {
     render(<SharedQuoteView quote={makePartiallyAuthorizedQuote(QuoteStatus.APPROVED)} token="token-123" />);
 
-    expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
-    const pendingItem = screen.getByText("Cambio de balatas").closest("tr");
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("Cambio de aceite")).toBeInTheDocument();
+    const pendingItem = within(table).getByText("Cambio de balatas").closest("tr");
     if (!pendingItem) throw new Error("Pending section item row was not rendered.");
     expect(pendingItem).toHaveClass("opacity-40");
-    expect(screen.getByText("Autorizada")).toBeInTheDocument();
+    expect(screen.getAllByText("Autorizada")).toHaveLength(2);
     expect(screen.queryByTestId("section-toggle-sec-1")).not.toBeInTheDocument();
     expect(screen.queryByTestId("section-toggle-sec-2")).not.toBeInTheDocument();
   });
@@ -295,7 +316,7 @@ describe("SharedQuoteView", () => {
 
       expect(screen.getByTestId("quote-total")).toHaveTextContent("$46.40");
       expect(screen.getByText(/Total correspondiente únicamente a los conceptos autorizados/)).toBeInTheDocument();
-      expect(screen.getByText("Autorizada")).toBeInTheDocument();
+      expect(screen.getAllByText("Autorizada")).toHaveLength(2);
     });
 
     it("selects every section for legacy quotes without authorization state", () => {
@@ -314,6 +335,18 @@ describe("SharedQuoteView", () => {
       expect(screen.queryByRole("button", { name: /Aceptar/i })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /Declinar/i })).not.toBeInTheDocument();
       expect(screen.queryByTestId("section-toggle-sec-1")).not.toBeInTheDocument();
+    });
+
+    it("keeps table context together for long print output", () => {
+      render(<SharedQuoteView quote={makeMultiSectionQuote()} token="" isPrint={true} />);
+
+      const table = screen.getByRole("table");
+      expect(screen.queryByTestId("quote-compact-items")).not.toBeInTheDocument();
+      expect(table.parentElement).toHaveClass("print:block");
+      expect(table.querySelector("thead")).toHaveClass("print:table-header-group");
+      expect(screen.getByText("Aceite y filtros").closest("tr")).toHaveClass("print:break-after-avoid");
+      expect(screen.getByText("Cambio de aceite").closest("tr")).toHaveClass("print:break-before-avoid", "print:break-inside-avoid");
+      expect(screen.getByTestId("quote-totals-block")).toHaveClass("print:break-inside-avoid");
     });
   });
 });
