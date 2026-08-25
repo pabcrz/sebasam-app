@@ -16,12 +16,16 @@ import {
   Label,
   Textarea,
 } from "@/components/ui";
+import type { ButtonVariant } from "@/components/ui";
 
 export interface CustomerCreateFormProps {
   action: (formData: FormData) => void | Promise<void>;
+  triggerVariant?: ButtonVariant;
+  triggerClassName?: string;
+  triggerSize?: "default" | "sm" | "lg" | "icon";
 }
 
-export function CustomerCreateForm({ action }: CustomerCreateFormProps) {
+export function CustomerCreateForm({ action, triggerVariant, triggerClassName, triggerSize }: CustomerCreateFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
 
@@ -37,7 +41,13 @@ export function CustomerCreateForm({ action }: CustomerCreateFormProps) {
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!isPending) setOpen(nextOpen); }}>
       <DialogTrigger asChild>
-        <Button type="button" className="w-full sm:w-fit">
+        <Button
+          type="button"
+          variant={triggerVariant}
+          size={triggerSize}
+          className={triggerClassName ?? "w-full sm:w-fit"}
+          disabled={isPending}
+        >
           <UserPlus className="h-4 w-4" aria-hidden="true" />
           Nuevo cliente
         </Button>
@@ -56,11 +66,11 @@ export function CustomerCreateForm({ action }: CustomerCreateFormProps) {
         <form onSubmit={handleSubmit} className="grid gap-4" data-testid="customer-create-form">
           <div className="grid gap-2">
             <Label htmlFor="name">Nombre</Label>
-            <Input id="name" name="name" placeholder="Nombre del cliente" required />
+            <Input id="name" name="name" placeholder="Nombre del cliente" required disabled={isPending} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="email">Correo electrónico</Label>
-            <Input id="email" name="email" type="email" placeholder="cliente@ejemplo.com" />
+            <Input id="email" name="email" type="email" placeholder="cliente@ejemplo.com" disabled={isPending} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="phone">Teléfono</Label>
@@ -71,15 +81,16 @@ export function CustomerCreateForm({ action }: CustomerCreateFormProps) {
               inputMode="tel"
               maxLength={20}
               placeholder="55 1234 5678"
+              disabled={isPending}
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="address">Dirección</Label>
-            <Textarea id="address" name="address" placeholder="Calle, número, colonia..." rows={3} />
+            <Textarea id="address" name="address" placeholder="Calle, número, colonia..." rows={3} disabled={isPending} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="notes">Notas</Label>
-            <Textarea id="notes" name="notes" placeholder="Información adicional..." rows={3} />
+            <Textarea id="notes" name="notes" placeholder="Información adicional..." rows={3} disabled={isPending} />
           </div>
           <p role="status" className="sr-only">
             {isPending ? "Creando cliente..." : ""}

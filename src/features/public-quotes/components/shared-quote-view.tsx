@@ -219,7 +219,9 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
       <QuotePreviewCard
         customerName={quote.customer?.name ?? ""}
         vehicle={vehicle}
-        title={quote.title ? `Cotización ${quote.number} — ${quote.title}` : `Cotización ${quote.number}`}
+        title={quote.title
+          ? `${isNote ? "Nota" : "Cotización"} ${quote.number} — ${quote.title}`
+          : `${isNote ? "Nota" : "Cotización"} ${quote.number}`}
         description={quote.description ?? ""}
         administrative={quote.administrative}
         sections={sections}
@@ -234,6 +236,7 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
         isPrint={isPrint}
         isApproved={quote.status === "APPROVED" || decision === "accepted"}
         compactHeader={true}
+        compactItems={!isPrint}
       />
 
       {progressStatus ? <QuoteProgress status={progressStatus} /> : null}
@@ -280,7 +283,7 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
           <Button
             variant="primary"
             size="default"
-            className="flex-1"
+            className="flex-1 focus-visible:!ring-white focus-visible:!ring-offset-2 focus-visible:!ring-offset-[var(--color-primary)]"
             loading={acceptPending}
             disabled={isPending || (quote.sections.length > 0 && selectedSectionIds.length === 0)}
             onClick={handleAccept}
@@ -297,7 +300,7 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
           <Button
             variant="outline"
             size="default"
-            className="flex-1"
+            className="flex-1 focus-visible:!ring-[var(--color-primary)] focus-visible:!ring-offset-2 focus-visible:!ring-offset-[var(--color-surface)]"
             loading={declinePending}
             disabled={isPending}
             onClick={handleDecline}

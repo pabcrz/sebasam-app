@@ -5,10 +5,12 @@ import { RefreshCcw, CheckCircle2, FileEdit, XCircle } from "lucide-react";
 import { Button } from "@/components/ui";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
+  DialogMobileBody,
+  DialogMobileClose,
+  DialogMobileContent,
+  DialogMobileHeader,
   DialogTitle,
 } from "@/components/ui";
 import type { ButtonVariant, ButtonSize } from "@/components/ui";
@@ -23,6 +25,7 @@ export interface QuoteCorrectDecisionFormProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
   iconOnly?: boolean;
+  actionLabelClassName?: string;
 }
 
 export function QuoteCorrectDecisionForm({
@@ -33,8 +36,10 @@ export function QuoteCorrectDecisionForm({
   variant = "outline",
   size = "sm",
   iconOnly = false,
+  actionLabelClassName,
 }: QuoteCorrectDecisionFormProps) {
   const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [isPending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
 
@@ -65,10 +70,11 @@ export function QuoteCorrectDecisionForm({
       if (newOpen) {
         setSelectedStatus(currentStatus === "REJECTED" ? "DRAFT" : "REJECTED");
       }
+      if (!newOpen && isPending) return;
       setError(null);
       setOpen(newOpen);
     },
-    [currentStatus],
+    [currentStatus, isPending],
   );
 
   const options: Array<{
@@ -113,6 +119,7 @@ export function QuoteCorrectDecisionForm({
         type="button"
         variant={variant}
         size={iconOnly ? "icon" : size}
+        ref={triggerRef}
         className={iconOnly ? "" : "w-full"}
         onClick={(event) => {
           event.stopPropagation();
@@ -122,21 +129,32 @@ export function QuoteCorrectDecisionForm({
         title={`Corregir decisión de cotización ${quoteNumber}`}
       >
         <RefreshCcw className="h-4 w-4" aria-hidden="true" />
-        {!iconOnly && <span>Corregir decisión</span>}
+        {!iconOnly && <span className={actionLabelClassName}>Corregir decisión</span>}
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-xl" onClick={(e) => e.stopPropagation()}>
-          <DialogHeader>
+        <DialogMobileContent
+          className="max-w-xl"
+          onClick={(e) => e.stopPropagation()}
+          onEscapeKeyDown={(event) => { if (isPending) event.preventDefault(); }}
+          onPointerDownOutside={(event) => { if (isPending) event.preventDefault(); }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            triggerRef.current?.focus();
+          }}
+        >
+          <DialogMobileHeader>
             <DialogTitle>Corregir decisión de cotización</DialogTitle>
             <DialogDescription>
               La cotización {quoteNumber} está actualmente{" "}
               <strong>{currentStatus === "APPROVED" ? "Aceptada" : "Declinada"}</strong>.
               Selecciona el estado al que deseas cambiarla:
             </DialogDescription>
-          </DialogHeader>
+            <DialogMobileClose aria-label="Cerrar corrección de cotización" disabled={isPending} />
+          </DialogMobileHeader>
 
-          <div className="grid gap-3 py-2" role="radiogroup" aria-label="Nuevo estado">
+          <DialogMobileBody>
+            <div className="grid gap-3 py-2" role="radiogroup" aria-label="Nuevo estado">
             {options.map((opt) => {
               const Icon = opt.icon;
               const isSelected = selectedStatus === opt.value;
@@ -167,23 +185,24 @@ export function QuoteCorrectDecisionForm({
                 </label>
               );
             })}
-          </div>
+            </div>
 
-          {error ? (
+            {error ? (
             <p role="alert" className="text-sm text-[var(--color-status-danger-fg)]">
               {error}
             </p>
-          ) : null}
+            ) : null}
 
-          <DialogFooter>
+            <DialogFooter>
             <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
               Cancelar
             </Button>
             <Button variant="primary" loading={isPending} onClick={handleConfirm}>
               Confirmar corrección
             </Button>
-          </DialogFooter>
-        </DialogContent>
+            </DialogFooter>
+          </DialogMobileBody>
+        </DialogMobileContent>
       </Dialog>
     </>
   );

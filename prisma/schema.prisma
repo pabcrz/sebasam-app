@@ -86,6 +86,14 @@ enum LedgerEntryType {
   DEBIT
 }
 
+enum LedgerMovementType {
+  NOTE_CHARGE
+  PAYMENT_CAPTURE
+  PAYMENT_APPLICATION
+  PAYMENT_REVERSAL
+  APPLICATION_REVERSAL
+}
+
 enum QuoteDecisionOrigin {
   CUSTOMER
   ADMIN
@@ -108,9 +116,13 @@ model UserProfile {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  assignments      WorkAssignment[]
-  executionRecords ExecutionRecord[]
+  assignments          WorkAssignment[]
+  executionRecords     ExecutionRecord[]
   quoteLifecycleEvents QuoteLifecycleEvent[]
+  reversedPayments     Payment[]            @relation("PaymentReverser")
+  createdApplications PaymentApplication[] @relation("PaymentApplicationCreator")
+  reversedApplications PaymentApplication[] @relation("PaymentApplicationReverser")
+  ledgerEntries        LedgerEntry[]        @relation("LedgerEntryActor")
 }
 
 model Customer {
@@ -128,6 +140,7 @@ model Customer {
   vehicles        Vehicle[]
   fiscalProfiles  CustomerFiscalProfile[]
   paymentRequests PaymentRequest[]
+  payments        Payment[]
   ledgerEntries   LedgerEntry[]
 }
 
@@ -276,10 +289,14 @@ model WorkOrder {
   createdAt                     DateTime        @default(now())
   updatedAt                     DateTime        @updatedAt
 
-  quote            Quote             @relation(fields: [quoteId], references: [id])
-  assignments      WorkAssignment[]
-  executionRecords ExecutionRecord[]
-  paymentRequests  PaymentRequest[]
+  quote               Quote                @relation(fields: [quoteId], references: [id])
+  assignments         WorkAssignment[]
+  executionRecords    ExecutionRecord[]
+  paymentRequests     PaymentRequest[]
+  paymentApplications PaymentApplication[]
+  ledgerEntries       LedgerEntry[]
+
+  @@index([status, completedAt])
 }
 
 model WorkAssignment {
@@ -364,36 +381,83 @@ model PaymentRequest {
 model Payment {
   id               String        @id @default(cuid())
   operationKey     String        @unique
-  quoteId          String
+  customerId       String
+  quoteId          String?
   paymentRequestId String?
   method           PaymentMethod
   amountCents      Int
-  status           PaymentStatus @default(PENDING)
+  status           PaymentStatus @default(PAID)
+  reversedAt       DateTime?
+  reversalReason   String?
+  reversedById     String?       @db.Uuid
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  quote          Quote           @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  paymentRequest PaymentRequest? @relation(fields: [paymentRequestId], references: [id], onDelete: SetNull)
-  ledgerEntry    LedgerEntry?
+  customer       Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  quote          Quote?               @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  paymentRequest PaymentRequest?      @relation(fields: [paymentRequestId], references: [id], onDelete: SetNull)
+  reversedBy     UserProfile?         @relation("PaymentReverser", fields: [reversedById], references: [id], onDelete: Restrict)
+  applications   PaymentApplication[]
+  ledgerEntries  LedgerEntry[]
 
+  @@index([customerId])
   @@index([quoteId])
   @@index([paymentRequestId])
   @@index([quoteId, status])
+  @@index([status, createdAt])
+  @@index([reversedAt])
+}
+
+model PaymentApplication {
+  id             String    @id @default(cuid())
+  operationKey   String    @unique
+  paymentId      String
+  workOrderId    String
+  amountCents    Int
+  actorId        String?   @db.Uuid
+  reversedAt     DateTime?
+  reversalReason String?
+  reversedById   String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+
+  payment       Payment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  workOrder     WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  actor         UserProfile?  @relation("PaymentApplicationCreator", fields: [actorId], references: [id], onDelete: Restrict)
+  reversedBy    UserProfile?  @relation("PaymentApplicationReverser", fields: [reversedById], references: [id], onDelete: Restrict)
+  ledgerEntries LedgerEntry[]
+
+  @@index([paymentId])
+  @@index([workOrderId])
+  @@index([reversedAt])
 }
 
 model LedgerEntry {
-  id                    String          @id @default(cuid())
+  id                    String             @id @default(cuid())
   customerId            String
-  paymentId             String          @unique
   type                  LedgerEntryType
+  movementType          LedgerMovementType
   amountCents           Int
-  resultingBalanceCents Int
-  createdAt             DateTime        @default(now())
+  resultingBalanceCents Int?
+  actorId               String?            @db.Uuid
+  reason                String?
+  paymentId             String?
+  paymentApplicationId  String?
+  workOrderId           String?
+  reversedMovementId    String?            @unique
+  createdAt             DateTime           @default(now())
 
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  payment  Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  customer           Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  payment            Payment?            @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  paymentApplication PaymentApplication? @relation(fields: [paymentApplicationId], references: [id], onDelete: Restrict)
+  workOrder          WorkOrder?          @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  actor              UserProfile?        @relation("LedgerEntryActor", fields: [actorId], references: [id], onDelete: Restrict)
+  reversedMovement   LedgerEntry?        @relation("MovementReversal", fields: [reversedMovementId], references: [id], onDelete: Restrict)
+  reversalMovement   LedgerEntry?        @relation("MovementReversal")
 
   @@index([customerId, createdAt])
+  @@index([paymentId])
+  @@index([paymentApplicationId])
+  @@index([workOrderId])
 }
 
 model PaymentSettings {

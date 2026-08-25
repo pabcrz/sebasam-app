@@ -61,14 +61,13 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("does not expose approval-only rollback for a draft work order", async () => {
+  it.each(["DRAFT", "SENT", "APPROVED"] as const)("exposes rollback for a %s work order", async (quoteStatus) => {
     const user = userEvent.setup();
-    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="DRAFT" workOrder={{ id: "wo-1", number: "T-001", status: "ASSIGNED" }} actions={actions} />);
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus={quoteStatus} workOrder={{ id: "wo-1", number: "T-001", status: "ASSIGNED" }} actions={actions} />);
 
     await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
 
-    expect(screen.queryByRole("button", { name: /cancelar orden y regresar cotización/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /finalizar trabajo/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancelar orden y regresar cotización/i })).toBeInTheDocument();
   });
 
   it("keeps work actions icon-only on mobile and labeled on desktop", async () => {
@@ -264,14 +263,37 @@ describe("WorkOrderOperationsDialog", () => {
     expect(assign).toHaveBeenCalledTimes(1);
   });
 
-  it("allows closing normally when no assignment is pending", async () => {
+  it("closes with the accessible X and restores focus to the trigger", async () => {
     const user = userEvent.setup();
     render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-1", number: "T-001", status: "PLANNED" }} actions={actions} />);
 
-    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
+    const trigger = screen.getByRole("button", { name: /gestionar orden de trabajo/i });
+    await user.click(trigger);
+
+    await user.click(screen.getByRole("button", { name: /cerrar diálogo de orden de trabajo/i }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes with Escape or the backdrop when no assignment is pending", async () => {
+    const user = userEvent.setup();
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-1", number: "T-001", status: "PLANNED" }} actions={actions} />);
+
+    const trigger = screen.getByRole("button", { name: /gestionar orden de trabajo/i });
+    await user.click(trigger);
     await user.keyboard("{Escape}");
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+
+    await user.click(trigger);
+    const overlay = document.querySelector("[data-dialog-overlay]");
+    expect(overlay).toBeTruthy();
+    await user.click(overlay!);
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
   });
 
   it("rejects Escape and overlay dismissal while an assignment is pending", async () => {
@@ -283,6 +305,7 @@ describe("WorkOrderOperationsDialog", () => {
     await user.click(screen.getByLabelText(/trabajo especial/i));
     await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
 
+    expect(screen.getByRole("button", { name: /cerrar diálogo de orden de trabajo/i })).toBeDisabled();
     await user.keyboard("{Escape}");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 

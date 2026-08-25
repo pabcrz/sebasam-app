@@ -8,10 +8,12 @@ import {
   Badge,
   Button,
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
+  DialogMobileBody,
+  DialogMobileClose,
+  DialogMobileContent,
+  DialogMobileHeader,
   DialogTitle,
 } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
@@ -56,6 +58,7 @@ const paymentRequestStatusLabels: Partial<Record<PaymentRequestStatus, string>> 
 
 export function PaymentRequestLinkDialog({ action, context, actionLabelClassName }: PaymentRequestLinkDialogProps) {
   const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [request, setRequest] = React.useState<PaymentRequest | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -93,6 +96,7 @@ export function PaymentRequestLinkDialog({ action, context, actionLabelClassName
         type="button"
         variant="outline"
         size="sm"
+        ref={triggerRef}
         onClick={handleOpen}
         aria-label="Link de pago"
         title="Link de pago"
@@ -101,16 +105,26 @@ export function PaymentRequestLinkDialog({ action, context, actionLabelClassName
         <span className={actionLabelClassName}>Link de pago</span>
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto p-4 sm:p-6">
-          <DialogHeader>
+      <Dialog open={open} onOpenChange={(nextOpen) => { if (!isLoading) setOpen(nextOpen); }}>
+        <DialogMobileContent
+          className="max-w-2xl"
+          onEscapeKeyDown={(event) => { if (isLoading) event.preventDefault(); }}
+          onPointerDownOutside={(event) => { if (isLoading) event.preventDefault(); }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            triggerRef.current?.focus();
+          }}
+        >
+          <DialogMobileHeader>
             <DialogTitle>Link de pago</DialogTitle>
             <DialogDescription>
               Genera o recupera el enlace de pago para {quoteNumber}.
             </DialogDescription>
-          </DialogHeader>
+            <DialogMobileClose aria-label="Cerrar link de pago" disabled={isLoading} />
+          </DialogMobileHeader>
 
-          <div className="grid gap-4">
+          <DialogMobileBody>
+            <div className="grid gap-4">
             <section className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
               <div className="bg-[image:var(--gradient-primary)] px-4 py-3 text-white">
                 <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Cotización {quoteNumber}</p>
@@ -188,18 +202,18 @@ export function PaymentRequestLinkDialog({ action, context, actionLabelClassName
                 </div>
               </section>
             ) : null}
-          </div>
+            </div>
 
-          {error ? (
+            {error ? (
             <p
               className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]"
               role="alert"
             >
               {error}
             </p>
-          ) : null}
+            ) : null}
 
-          {request ? (
+            {request ? (
             <div className="space-y-3">
               <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
                 <p className="text-xs font-medium text-[var(--color-text-muted)]">
@@ -225,9 +239,9 @@ export function PaymentRequestLinkDialog({ action, context, actionLabelClassName
               </Button>
               <CopyButton value={absoluteUrl} className="w-full" />
             </div>
-          ) : null}
+            ) : null}
 
-          <DialogFooter className="gap-2 sm:gap-0">
+            <DialogFooter className="gap-2 sm:gap-0">
             {request ? (
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cerrar
@@ -247,8 +261,9 @@ export function PaymentRequestLinkDialog({ action, context, actionLabelClassName
                 </Button>
               </>
             )}
-          </DialogFooter>
-        </DialogContent>
+            </DialogFooter>
+          </DialogMobileBody>
+        </DialogMobileContent>
       </Dialog>
     </>
   );

@@ -1,17 +1,35 @@
 "use server";
 
-import { PaymentMethod } from "@prisma/client";
+import { PaymentMethod, WorkOrderStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/session";
-import { parseCashAmountCents, recordCashPayment } from "./domain";
+import { prisma } from "@/lib/prisma";
+import {
+  applyCustomerCredit,
+  parseCashAmountCents,
+  recordCashPayment,
+  reversePaymentCapture,
+} from "./domain";
 
 export async function recordPaymentAction(
-  quoteId: string,
+  workOrderId: string,
   amount: string,
   operationKey: string,
   method: string,
 ) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const actorId = session?.profile?.id;
+
+  const amountCents = parseCashAmountCents(amount);
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+    select: { quoteId: true, status: true },
+  });
+
+  if (!workOrder || workOrder.status !== WorkOrderStatus.COMPLETED) {
+    throw new Error("Solo se pueden registrar pagos desde notas de trabajos completados.");
+  }
 
   const paymentMethod =
     Object.values(PaymentMethod).includes(method as PaymentMethod)
@@ -19,20 +37,67 @@ export async function recordPaymentAction(
       : PaymentMethod.CASH;
 
   const result = await recordCashPayment({
-    quoteId,
-    amountCents: parseCashAmountCents(amount),
+    quoteId: workOrder.quoteId,
+    amountCents,
     operationKey,
     method: paymentMethod,
+    ...(actorId ? { actorId } : {}),
   });
 
   revalidatePath("/admin/quotes");
   revalidatePath("/admin/work-orders");
   revalidatePath("/admin/notas");
+  revalidatePath("/admin/customers");
 
   return result;
 }
 
-/** @deprecated use recordPaymentAction instead */
-export async function recordCashPaymentAction(quoteId: string, amount: string, operationKey: string) {
-  return recordPaymentAction(quoteId, amount, operationKey, "CASH");
+export async function applyCustomerCreditAction(
+  customerId: string,
+  workOrderId: string,
+  amount: string,
+  operationKey: string,
+) {
+  const session = await requireAdmin();
+  const actorId = session?.profile?.id;
+
+  const amountCents = parseCashAmountCents(amount);
+
+  const result = await applyCustomerCredit({
+    customerId,
+    workOrderId,
+    amountCents,
+    operationKey,
+    ...(actorId ? { actorId } : {}),
+  });
+
+  revalidatePath("/admin/quotes");
+  revalidatePath("/admin/work-orders");
+  revalidatePath("/admin/notas");
+  revalidatePath("/admin/customers");
+
+  return result;
+}
+
+export async function reversePaymentCaptureAction(
+  paymentId: string,
+  reason: string,
+  operationKey?: string,
+) {
+  const session = await requireAdmin();
+  const actorId = session?.profile?.id ?? "system";
+
+  const result = await reversePaymentCapture({
+    paymentId,
+    reason,
+    actorId,
+    operationKey,
+  });
+
+  revalidatePath("/admin/quotes");
+  revalidatePath("/admin/work-orders");
+  revalidatePath("/admin/notas");
+  revalidatePath("/admin/customers");
+
+  return result;
 }

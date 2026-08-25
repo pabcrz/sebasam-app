@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { clsx } from "clsx";
+import { X } from "lucide-react";
 
 export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
@@ -111,9 +112,61 @@ export const DialogContent = React.forwardRef<
 );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
+export const DialogMobileContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, ...props }, ref) => {
+  return (
+    <DialogContent
+      ref={ref}
+      className={clsx("grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0", className)}
+      {...props}
+    />
+  );
+});
+DialogMobileContent.displayName = "DialogMobileContent";
+
 export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={clsx("flex flex-col gap-1.5 text-center sm:text-left", className)} {...props} />;
 }
+
+export function DialogMobileHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <DialogHeader
+      className={clsx(
+        "relative shrink-0 border-b border-[var(--color-border-light)] px-4 py-3 pr-12 text-left sm:px-6 sm:pr-14",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function DialogMobileBody({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={clsx("min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6", className)} {...props} />;
+}
+
+export const DialogMobileClose = React.forwardRef<
+  HTMLButtonElement,
+  React.ComponentPropsWithoutRef<"button">
+>(({ className, children, type = "button", ...props }, ref) => {
+  return (
+    <DialogClose asChild>
+      <button
+        ref={ref}
+        type={type}
+        className={clsx(
+          "absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50",
+          className,
+        )}
+        {...props}
+      >
+        {children ?? <X className="h-4 w-4" aria-hidden="true" />}
+      </button>
+    </DialogClose>
+  );
+});
+DialogMobileClose.displayName = "DialogMobileClose";
 
 export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={clsx("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)} {...props} />;

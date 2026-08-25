@@ -11,6 +11,7 @@ export * from "./password-input";
 export * from "./select";
 export * from "./skeleton";
 export * from "./spinner";
+export * from "./stat-card";
 export * from "./table";
 export * from "./toaster";
 export * from "./textarea";

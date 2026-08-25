@@ -8,7 +8,7 @@ import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/form
 import { PrintControls } from "./print-controls";
 
 export const metadata: Metadata = {
-  title: "Nota de Remisión",
+  title: "Nota",
 };
 
 interface PrintPageProps {
@@ -28,7 +28,6 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
 
   const { quote } = workOrder;
 
-  // Since it's a "nota" (work order), we label it "Nota"
   const documentType = "Nota";
 
   const viewQuote: SharedQuoteViewQuote = {
@@ -48,8 +47,8 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
   };
 
   return (
-    <div className="bg-[var(--background)] min-h-screen">
-      <PrintControls workOrderId={workOrder.id} />
+    <div className="min-h-screen bg-[var(--background)] print:min-h-0">
+      <PrintControls />
       <PublicQuoteShell
         business={paymentSettings}
         documentType={documentType}
@@ -65,7 +64,7 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
               : formatSnapshotVehicle(quote.vehicleSnapshot)
         }
       >
-        <SharedQuoteView quote={viewQuote} token="" isNote={true} />
+        <SharedQuoteView quote={viewQuote} token="" isNote isPrint />
       </PublicQuoteShell>
     </div>
   );

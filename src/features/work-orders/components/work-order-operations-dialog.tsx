@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { CheckCircle2, ClipboardList, Printer, RotateCcw, UserCheck } from "lucide-react";
+import { CheckCircle2, ClipboardList, Printer, RotateCcw, UserCheck, X } from "lucide-react";
 import type { QuoteStatus, UserRole, WorkOrderStatus } from "@prisma/client";
 import {
   Badge,
   Button,
   Checkbox,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -82,6 +83,7 @@ export function WorkOrderOperationsDialog({
 }: WorkOrderOperationsDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [isPending, startTransition] = React.useTransition();
   const [pendingAction, setPendingAction] = React.useState<"assign" | "complete" | "rollback" | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -197,7 +199,7 @@ export function WorkOrderOperationsDialog({
 
   const isAssigned = workOrder?.status === "ASSIGNED";
   const isCompleted = workOrder?.status === "COMPLETED";
-  const canRollback = quoteStatus === "APPROVED" && workOrder && ["PLANNED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"].includes(workOrder.status);
+  const canRollback = workOrder && ["PLANNED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"].includes(workOrder.status);
   const isAssignmentBusy = pendingAction !== null || isPending;
 
   return (
@@ -206,6 +208,7 @@ export function WorkOrderOperationsDialog({
         type="button"
         variant="outline"
         size="sm"
+        ref={triggerRef}
         className={triggerIconOnlyMobile ? "h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" : "w-full"}
         onClick={(event) => {
           event.stopPropagation();
@@ -228,7 +231,23 @@ export function WorkOrderOperationsDialog({
           className="max-w-xl"
           onEscapeKeyDown={(event) => { if (isAssignmentBusy) event.preventDefault(); }}
           onPointerDownOutside={(event) => { if (isAssignmentBusy) event.preventDefault(); }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            triggerRef.current?.focus();
+          }}
         >
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-4"
+              aria-label="Cerrar diálogo de orden de trabajo"
+              title="Cerrar"
+              disabled={isAssignmentBusy}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </DialogClose>
           <DialogHeader>
             <DialogTitle>
               {workOrder ? `Orden de trabajo ${workOrder.number}` : `Asignar trabajo — Cotización ${quoteNumber}`}

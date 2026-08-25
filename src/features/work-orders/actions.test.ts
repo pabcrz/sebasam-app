@@ -1,4 +1,4 @@
-import { QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
+import { Prisma, QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
@@ -326,14 +326,14 @@ describe("work order actions", () => {
   });
 
   describe("rollbackWorkOrder", () => {
-    it("cancels operational records and returns the quote without touching money", async () => {
+    it.each([QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.APPROVED])("cancels a %s quote without financial activity", async (quoteStatus) => {
       const tx = createTx();
       vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
       tx.workOrder.findUnique.mockResolvedValue({
         id: "wo-1",
         quoteId: "quote-1",
         status: WorkOrderStatus.COMPLETED,
-        quote: { status: QuoteStatus.APPROVED },
+        quote: { status: quoteStatus },
       });
 
       await rollbackWorkOrder({ workOrderId: "wo-1", targetQuoteStatus: "SENT", reason: "Captura equivocada" });
@@ -342,8 +342,16 @@ describe("work order actions", () => {
       expect(tx.workAssignment.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: "CANCELLED" } }));
       expect(tx.sharedQuote.updateMany).toHaveBeenCalled();
       expect(tx.paymentRequest.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: "CANCELLED" } }));
-      expect(tx.quote.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: QuoteStatus.SENT } }));
-      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ actorId: workerId, reason: "Captura equivocada" }) }));
+      expect(tx.quote.updateMany).toHaveBeenCalledWith({
+        where: { id: "quote-1", status: quoteStatus },
+        data: { status: QuoteStatus.SENT },
+      });
+      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ previousState: quoteStatus, actorId: workerId, reason: "Captura equivocada" }),
+      }));
+      expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      });
     });
 
     it("blocks the rollback when the quote has payments", async () => {
@@ -388,6 +396,16 @@ describe("work order actions", () => {
         .resolves.toEqual({ success: false, error: "No se pudo corregir la orden. Recarga la página e inténtalo de nuevo." });
       expect(log).toHaveBeenCalledWith("Work order rollback failed", expect.objectContaining({ input: expect.any(Object) }));
       log.mockRestore();
+    });
+
+    it("returns a specific recovery error for a serializable transaction conflict", async () => {
+      vi.mocked(prisma.$transaction).mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError("conflict", {
+        code: "P2034",
+        clientVersion: "test",
+      }));
+
+      await expect(rollbackWorkOrderAction({ workOrderId: "wo-1", targetQuoteStatus: "SENT", reason: "Corrección" }))
+        .resolves.toEqual({ success: false, error: "La operación cambió mientras se corregía. Recarga e inténtalo de nuevo." });
     });
   });
 });

@@ -35,11 +35,6 @@ interface QuoteListRowProps {
   correctDecisionAction: (quoteId: string, nextStatus: "APPROVED" | "REJECTED" | "DRAFT") => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
   paymentRequestBankAccounts: PaymentRequestDialogBankAccount[];
-  cashPaymentAction: (amount: string, operationKey: string) => Promise<{
-    payment: { amountCents: number };
-    paidCents: number;
-    remainingCents: number;
-  }>;
   duplicateAction: (formData: FormData) => void | Promise<void>;
   deleteAction: (formData: FormData) => void | Promise<void>;
   archiveAction: (reason: string) => Promise<void>;
@@ -62,7 +57,6 @@ export function QuoteListRow({
   correctDecisionAction,
   paymentRequestAction,
   paymentRequestBankAccounts,
-  cashPaymentAction: _cashPaymentAction,
   duplicateAction,
   deleteAction,
   archiveAction,

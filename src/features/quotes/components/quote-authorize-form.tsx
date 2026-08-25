@@ -5,10 +5,12 @@ import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
+  DialogMobileBody,
+  DialogMobileClose,
+  DialogMobileContent,
+  DialogMobileHeader,
   DialogTitle,
 } from "@/components/ui";
 import { Textarea } from "@/components/ui";
@@ -70,6 +72,7 @@ export function QuoteAuthorizeForm({
   sections,
 }: QuoteAuthorizeFormProps) {
   const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [isPending, startTransition] = React.useTransition();
   const [method, setMethod] = React.useState<string>("");
   const [note, setNote] = React.useState("");
@@ -126,13 +129,14 @@ export function QuoteAuthorizeForm({
   const handleOpenChange = React.useCallback(
     (newOpen: boolean) => {
       if (!newOpen) {
+        if (isPending) return;
         setMethod("");
         setNote("");
         setError(null);
       }
       setOpen(newOpen);
     },
-    [],
+    [isPending],
   );
 
   return (
@@ -141,6 +145,7 @@ export function QuoteAuthorizeForm({
         type="button"
         variant={variant}
         size={iconOnly ? "icon" : size}
+        ref={triggerRef}
         className={iconOnly ? "" : "w-full"}
         onClick={(event) => {
           event.stopPropagation();
@@ -154,15 +159,25 @@ export function QuoteAuthorizeForm({
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogMobileContent
+          className="max-w-2xl"
+          onEscapeKeyDown={(event) => { if (isPending) event.preventDefault(); }}
+          onPointerDownOutside={(event) => { if (isPending) event.preventDefault(); }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            triggerRef.current?.focus();
+          }}
+        >
+          <DialogMobileHeader>
             <DialogTitle>Autorizar cotización</DialogTitle>
             <DialogDescription>
               Registra la autorización de {quoteNumber} con el canal o motivo por el cual el cliente confirmó.
             </DialogDescription>
-          </DialogHeader>
+            <DialogMobileClose aria-label="Cerrar autorización de cotización" disabled={isPending} />
+          </DialogMobileHeader>
 
-          <div className="grid gap-4 py-2">
+          <DialogMobileBody>
+            <div className="grid gap-4 py-2">
             {sections && sections.length > 1 ? (
               <div className="grid gap-2">
                 <Label>Secciones a autorizar *</Label>
@@ -227,23 +242,24 @@ export function QuoteAuthorizeForm({
                 rows={3}
               />
             </div>
-          </div>
+            </div>
 
-          {error ? (
+            {error ? (
             <p role="alert" className="text-sm text-[var(--color-status-danger-fg)]">
               {error}
             </p>
-          ) : null}
+            ) : null}
 
-          <DialogFooter>
+            <DialogFooter>
             <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
               Cancelar
             </Button>
             <Button variant="primary" loading={isPending} onClick={handleConfirm}>
               Autorizar cotización
             </Button>
-          </DialogFooter>
-        </DialogContent>
+            </DialogFooter>
+          </DialogMobileBody>
+        </DialogMobileContent>
       </Dialog>
     </>
   );

@@ -5,10 +5,12 @@ import { CreditCard } from "lucide-react";
 import {
   Button,
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
+  DialogMobileBody,
+  DialogMobileClose,
+  DialogMobileContent,
+  DialogMobileHeader,
   DialogTitle,
   Input,
 } from "@/components/ui";
@@ -65,6 +67,7 @@ export function CashPaymentDialog({
 }: CashPaymentDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [amount, setAmount] = React.useState(centsToInput(remainingCents));
   const [method, setMethod] = React.useState("CASH");
   const [summary, setSummary] = React.useState({ paidCents, remainingCents });
@@ -147,6 +150,7 @@ export function CashPaymentDialog({
             type="button"
             variant="outline"
             size="sm"
+            ref={triggerRef}
             onClick={handleOpen}
             aria-label={`Registrar pago para ${quoteNumber}`}
             title={`Registrar pago para ${quoteNumber}`}
@@ -155,16 +159,26 @@ export function CashPaymentDialog({
             <CreditCard className="h-5 w-5" aria-hidden="true" />
             <span className="sr-only sm:not-sr-only">Registrar pago</span>
           </Button>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
+          <Dialog open={open} onOpenChange={(nextOpen) => { if (!isLoading) setOpen(nextOpen); }}>
+            <DialogMobileContent
+              className="max-w-md"
+              onEscapeKeyDown={(event) => { if (isLoading) event.preventDefault(); }}
+              onPointerDownOutside={(event) => { if (isLoading) event.preventDefault(); }}
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                triggerRef.current?.focus();
+              }}
+            >
+              <DialogMobileHeader>
                 <DialogTitle>Registrar pago</DialogTitle>
                 <DialogDescription>
                   Registra un pago para la cotización {quoteNumber}.
                 </DialogDescription>
-              </DialogHeader>
-              <form className="grid gap-4" onSubmit={handleSubmit}>
-                <div className="grid gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-sm">
+                <DialogMobileClose aria-label="Cerrar registro de pago" disabled={isLoading} />
+              </DialogMobileHeader>
+              <DialogMobileBody>
+                <form className="grid gap-4" onSubmit={handleSubmit}>
+                  <div className="grid gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-sm">
                   <div className="flex justify-between gap-3">
                     <span>Total</span>
                     <span>{formatCents(totalCents)}</span>
@@ -267,8 +281,9 @@ export function CashPaymentDialog({
                     Registrar pago
                   </Button>
                 </DialogFooter>
-              </form>
-            </DialogContent>
+                </form>
+              </DialogMobileBody>
+            </DialogMobileContent>
           </Dialog>
         </>
       ) : null}

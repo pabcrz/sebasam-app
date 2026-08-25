@@ -56,6 +56,14 @@ describe("auth session resolution", () => {
     await expect(requireSuperAdmin()).resolves.toMatchObject({ profile: { role: "SUPER_ADMIN" } });
   });
 
+  it("exposes payment controls to exactly the roles authorized by requireAdmin", async () => {
+    const { isAdminRole } = await loadSession();
+
+    expect(isAdminRole("SUPER_ADMIN")).toBe(true);
+    expect(isAdminRole("ADMIN")).toBe(true);
+    expect(isAdminRole("ADMIN_ASSISTANT")).toBe(false);
+  });
+
   it("keeps SUPER_ADMIN access exclusive", async () => {
     const { UnauthorizedRoleError, requireSuperAdmin } = await loadSession();
 
