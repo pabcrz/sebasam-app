@@ -1,17 +1,27 @@
 "use server";
 
-import { PaymentMethod } from "@prisma/client";
+import { PaymentMethod, WorkOrderStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/session";
+import { prisma } from "@/lib/prisma";
 import { parseCashAmountCents, recordCashPayment } from "./domain";
 
 export async function recordPaymentAction(
-  quoteId: string,
+  workOrderId: string,
   amount: string,
   operationKey: string,
   method: string,
 ) {
   await requireAdmin();
+
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+    select: { quoteId: true, status: true },
+  });
+
+  if (!workOrder || workOrder.status !== WorkOrderStatus.COMPLETED) {
+    throw new Error("Solo se pueden registrar pagos desde notas de trabajos completados.");
+  }
 
   const paymentMethod =
     Object.values(PaymentMethod).includes(method as PaymentMethod)
@@ -19,7 +29,7 @@ export async function recordPaymentAction(
       : PaymentMethod.CASH;
 
   const result = await recordCashPayment({
-    quoteId,
+    quoteId: workOrder.quoteId,
     amountCents: parseCashAmountCents(amount),
     operationKey,
     method: paymentMethod,
@@ -30,9 +40,4 @@ export async function recordPaymentAction(
   revalidatePath("/admin/notas");
 
   return result;
-}
-
-/** @deprecated use recordPaymentAction instead */
-export async function recordCashPaymentAction(quoteId: string, amount: string, operationKey: string) {
-  return recordPaymentAction(quoteId, amount, operationKey, "CASH");
 }

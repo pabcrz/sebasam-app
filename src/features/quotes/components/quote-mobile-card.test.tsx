@@ -115,11 +115,6 @@ function renderCard(quote: QuoteListItem) {
         accountNumber: "123456",
         clabe: "4444 4444 4444 4444",
       }]}
-      cashPaymentAction={vi.fn(() => Promise.resolve({
-        payment: { amountCents: 1000 },
-        paidCents: 1000,
-        remainingCents: 10600,
-      }))}
       duplicateAction={vi.fn()}
       deleteAction={vi.fn()}
       archiveAction={vi.fn()}
