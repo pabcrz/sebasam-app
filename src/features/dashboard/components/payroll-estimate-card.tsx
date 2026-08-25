@@ -25,7 +25,10 @@ export function PayrollEstimateCard({ payroll }: PayrollEstimateCardProps) {
       <CardContent>
         <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
           <div>
-            <div className="text-2xl font-bold font-mono text-[var(--color-text-main)]">
+            <div
+              data-numeric-role="currency"
+              className="min-w-0 font-mono text-xl font-bold leading-tight tabular-nums text-[var(--color-text-main)] sm:text-2xl"
+            >
               {formatCents(payroll.estimatedCommissionsCents)}
             </div>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
@@ -36,7 +39,12 @@ export function PayrollEstimateCard({ payroll }: PayrollEstimateCardProps) {
           <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
             <div className="flex items-center gap-1.5">
               <Users className="h-4 w-4" aria-hidden="true" />
-              <span>{payroll.totalWorkers} trabajador{payroll.totalWorkers === 1 ? "" : "es"} activo{payroll.totalWorkers === 1 ? "" : "s"}</span>
+              <span>
+                <span data-numeric-role="supporting-count" className="font-medium tabular-nums">
+                  {payroll.totalWorkers}
+                </span>{" "}
+                trabajador{payroll.totalWorkers === 1 ? "" : "es"} activo{payroll.totalWorkers === 1 ? "" : "s"}
+              </span>
             </div>
             <Link
               href="/admin/nomina"
