@@ -1,7 +1,8 @@
 "use client";
 
+import * as React from "react";
 import { QuoteItemType } from "@prisma/client";
-import { Copy, Minus, Plus, Trash2, PlusCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Copy, Minus, Plus, PlusCircle, Trash2 } from "lucide-react";
 import {
   Badge,
   Button,
@@ -40,9 +41,16 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableSection, SortableItem, DragHandle } from "./quote-builder-dnd";
 import { QuoteTotalsCard } from "./quote-totals-card";
+import { SwipeableRow } from "./swipeable-row";
+
+function formatConceptSummaryDescription(description: string) {
+  return description.trim().replace(/\p{L}/u, (letter) => letter.toLocaleUpperCase("es-MX"));
+}
+
 export interface QuoteBuilderItemsStepProps {
   sections: SectionFormValue[];
   animatedRowId: string | null;
+  expandedItemRowId: string | null;
   completeItemsCount: number;
   taxEnabled: boolean;
   discount: string;
@@ -55,6 +63,7 @@ export interface QuoteBuilderItemsStepProps {
   onDuplicateItem: (sectionIndex: number, itemIndex: number) => void;
   onUpdateItem: (sectionIndex: number, itemIndex: number, patch: Partial<ItemFormValue>) => void;
   onAdjustQuantity: (sectionIndex: number, itemIndex: number, delta: number) => void;
+  onToggleItem: (rowId: string) => void;
   onAddSection: () => void;
   onRemoveSection: (sectionIndex: number) => void;
   onUpdateSectionName: (sectionIndex: number, name: string) => void;
@@ -69,6 +78,7 @@ export interface QuoteBuilderItemsStepProps {
 export function QuoteBuilderItemsStep({
   sections,
   animatedRowId,
+  expandedItemRowId,
   completeItemsCount,
   taxEnabled,
   discount,
@@ -81,6 +91,7 @@ export function QuoteBuilderItemsStep({
   onDuplicateItem,
   onUpdateItem,
   onAdjustQuantity,
+  onToggleItem,
   onAddSection,
   onRemoveSection,
   onUpdateSectionName,
@@ -91,10 +102,10 @@ export function QuoteBuilderItemsStep({
   onRowRef,
   onDescriptionRef,
 }: QuoteBuilderItemsStepProps) {
-  // Offset for display numbering across sections
-
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -151,19 +162,22 @@ export function QuoteBuilderItemsStep({
           {sections.map((section, sectionIndex) => (
             <SortableSection key={`section-${sectionIndex}`} id={`section-${sectionIndex}`}>
               <div
-                className="grid gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border-light)] p-3"
+                className="grid min-w-0 gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border-light)] p-3"
                 data-testid={`section-${sectionIndex}`}
               >
                 {/* Section header */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <DragHandle className="size-4 shrink-0 text-[var(--color-text-muted)] touch-none cursor-grab" />
+                  <DragHandle
+                    ariaLabel={`Reordenar sección ${sectionIndex + 1}`}
+                    className="size-4 shrink-0 text-[var(--color-text-muted)] touch-none cursor-grab"
+                  />
                   <div className="flex min-w-0 flex-1 basis-48 items-center gap-2">
-                    <Input
+                    <input
                       aria-label={`Nombre de la sección ${sectionIndex + 1}`}
                 placeholder="Nombre de la sección (ej. Parte delantera)"
                 value={section.name}
                 onChange={(e) => onUpdateSectionName(sectionIndex, e.target.value)}
-                className="h-8 border-0 bg-transparent p-0 text-sm font-semibold shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="min-w-0 flex-1 bg-transparent p-0 text-sm font-semibold text-[var(--color-text-main)] outline-none placeholder:text-[var(--color-text-muted)]"
                 name={`sections.${sectionIndex}.name`}
               />
             </div>
@@ -171,11 +185,11 @@ export function QuoteBuilderItemsStep({
             {sections.length > 1 ? (
               <Button
                 type="button"
-                variant="danger"
-                size="sm"
+                variant="outline"
+                size="icon"
                 aria-label={`Eliminar sección ${sectionIndex + 1}`}
                 onClick={() => onRemoveSection(sectionIndex)}
-                className="size-8 shrink-0"
+                className="size-8 shrink-0 text-[var(--color-status-danger-fg)] hover:bg-[var(--color-status-danger-bg)]"
               >
                 <Trash2 className="size-3.5" aria-hidden="true" />
               </Button>
@@ -184,7 +198,10 @@ export function QuoteBuilderItemsStep({
 
           {/* Items in this section */}
           <SortableContext items={section.rowIds} strategy={verticalListSortingStrategy}>
-            <div className="grid gap-3" data-testid={`concept-list-${sectionIndex}`}>
+            <div
+              className="grid min-w-0 gap-3"
+              data-testid={`concept-list-${sectionIndex}`}
+            >
               {section.items.map((item, itemIndex) => {
                 const rowId = section.rowIds[itemIndex]!;
                 const displayIndex = sections
@@ -192,7 +209,16 @@ export function QuoteBuilderItemsStep({
                   .reduce((acc, s) => acc + s.items.length, 0) + itemIndex;
                 const itemErrors = validateItemFields(item, displayIndex, true);
                 const unitPrice = Number(item.unitPrice);
-                const lineTotalCents = item.unitPrice.trim() !== "" && Number.isFinite(unitPrice)
+                const quantity = Number(item.quantity);
+                const hasValidQuantity = item.quantity.trim() !== "" && Number.isInteger(quantity) && quantity > 0 && quantity <= getMaxQuantityForType(item.type);
+                const hasValidPrice = item.unitPrice.trim() !== "" && Number.isFinite(unitPrice) && unitPrice >= 0 && unitPrice <= maxUnitPrice;
+                const pendingFields = [
+                  ...(item.description.trim() === "" ? ["descripción"] : []),
+                  ...(!hasValidQuantity ? ["cantidad"] : []),
+                  ...(!hasValidPrice ? [item.unitPrice.trim() === "" ? "precio" : "precio válido"] : []),
+                ];
+                const pendingSummary = pendingFields.length ? `Pendiente: ${pendingFields.join(", ")}` : null;
+                const lineTotalCents = pendingSummary === null
                   ? Math.round(Number(item.quantity) * unitPrice * 100)
                   : null;
                 const typeQuantityLimit = getMaxQuantityForType(item.type);
@@ -201,61 +227,90 @@ export function QuoteBuilderItemsStep({
                 const quantityErrorId = `${fieldId}-quantity-error`;
                 const unitPriceCurrencyId = `${fieldId}-unitPrice-currency`;
                 const unitPriceErrorId = `${fieldId}-unitPrice-error`;
+                const isExpanded = expandedItemRowId === rowId;
 
                 return (
                   <SortableItem key={rowId} id={rowId}>
+                    <SwipeableRow
+                      disabled={isExpanded}
+                      onConfirmDelete={() => onRemoveItem(sectionIndex, itemIndex)}
+                      aria-label={`Eliminar concepto ${displayIndex + 1}`}
+                    >
                     <div
                       ref={(node) => onRowRef(rowId, node)}
                       data-testid={`concept-row-${displayIndex}`}
-                      className={`grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4${rowId === animatedRowId ? " motion-safe:animate-fade-in motion-safe:animate-duration-200" : ""}`}
+                      className={`grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-1${rowId === animatedRowId ? " motion-safe:animate-fade-in motion-safe:animate-duration-200" : ""}`}
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex min-w-0 flex-1 basis-44 items-center gap-3">
-                          <DragHandle className="size-4 shrink-0 text-[var(--color-text-muted)] touch-none cursor-grab" />
-                          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface)] text-sm font-semibold text-[var(--color-text-main)]">
-                            {displayIndex + 1}
+                      <div className="flex items-center gap-2">
+                        <DragHandle
+                          ariaLabel={`Reordenar concepto ${displayIndex + 1}`}
+                          className="size-10 shrink-0 text-[var(--color-text-muted)] touch-none cursor-grab"
+                        />
+                        <button
+                          type="button"
+                          aria-controls={`concept-editor-${rowId}`}
+                          aria-expanded={isExpanded}
+                          onClick={() => onToggleItem(rowId)}
+                          data-testid={`concept-summary-${displayIndex}`}
+                          className="grid min-w-0 flex-1 gap-1 rounded-[var(--radius-sm)] px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+                        >
+                          <span className="break-words text-base font-semibold leading-5 text-[var(--color-text-main)] sm:text-sm">
+                            {formatConceptSummaryDescription(item.description) || "Concepto sin descripción"}
                           </span>
-                          <Select
-                            value={item.type}
-                            onValueChange={(value) => onUpdateItem(sectionIndex, itemIndex, { type: value as QuoteItemType })}
-                          >
-                            <SelectTrigger className="w-auto min-w-36">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {itemTypes.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {itemTypeLabels[type]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="ml-auto flex shrink-0 items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            aria-label={`Duplicar concepto ${displayIndex + 1}`}
-                            onClick={() => onDuplicateItem(sectionIndex, itemIndex)}
-                            className="size-10"
-                          >
-                            <Copy aria-hidden="true" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="danger"
-                            size="sm"
-                            aria-label={`Eliminar concepto ${displayIndex + 1}`}
-                            onClick={() => onRemoveItem(sectionIndex, itemIndex)}
-                            className="size-10"
-                          >
-                            <Trash2 aria-hidden="true" className="h-4 w-4" />
-                          </Button>
-                        </div>
+                          <span className={`${isExpanded ? "hidden" : "flex flex-wrap"} items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)]`}>
+                            {item.quantity.trim() ? <span className="font-medium text-[var(--color-text-main)]">{item.quantity} unidad{item.quantity === "1" ? "" : "es"}</span> : null}
+                            <span>{itemTypeLabels[item.type]}</span>
+                            {pendingSummary ? (
+                              <span className="font-medium text-[var(--color-status-danger-fg)]">{pendingSummary}</span>
+                            ) : (
+                              <span className="font-medium text-[var(--color-text-main)]">{formatCents(lineTotalCents!)}</span>
+                            )}
+                          </span>
+                        </button>
+                        <span
+                          className="shrink-0 text-[var(--color-text-muted)] transition-transform duration-200"
+                          aria-hidden="true"
+                        >
+                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Duplicar concepto ${displayIndex + 1}`}
+                          onClick={() => onDuplicateItem(sectionIndex, itemIndex)}
+                          className="inline-flex size-[var(--tap-min-height)] shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:h-8 sm:w-8"
+                        >
+                          <Copy className="size-4" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Eliminar concepto ${displayIndex + 1}`}
+                          onClick={() => onRemoveItem(sectionIndex, itemIndex)}
+                          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-status-danger-fg)] transition-colors hover:bg-[var(--color-status-danger-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:inline-flex"
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </button>
                       </div>
-                  <input type="hidden" name={`sections.${sectionIndex}.items.${itemIndex}.type`} value={item.type} />
-                  <div className="grid gap-2">
+                      <div id={`concept-editor-${rowId}`} hidden={!isExpanded} className="grid gap-4 border-t border-[var(--color-border-light)] px-1 pt-4">
+                    <input type="hidden" name={`sections.${sectionIndex}.items.${itemIndex}.type`} value={item.type} />
+<div className="grid gap-2">
+                    <Label htmlFor={`${fieldId}-type`}>Tipo</Label>
+                    <Select
+                      value={item.type}
+                      onValueChange={(value) => onUpdateItem(sectionIndex, itemIndex, { type: value as QuoteItemType })}
+                    >
+                      <SelectTrigger id={`${fieldId}-type`} aria-label={`Tipo del concepto ${displayIndex + 1}`} className="w-full sm:w-auto sm:min-w-36">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {itemTypes.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {itemTypeLabels[type]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    </div>
+                    <div className="grid gap-2">
                     <Label htmlFor={`${fieldId}-description`}>Descripción</Label>
                     <Input
                       ref={(node) => onDescriptionRef(rowId, node)}
@@ -274,8 +329,8 @@ export function QuoteBuilderItemsStep({
                     >
                       {itemErrors.description}
                     </span>
-                  </div>
-                  <div
+                    </div>
+                    <div
                     className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end gap-3"
                     data-testid={`quantity-price-row-${displayIndex}`}
                   >
@@ -371,14 +426,16 @@ export function QuoteBuilderItemsStep({
                         {itemErrors.unitPrice}
                       </span>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-1 text-sm text-[var(--color-text-muted)]">
+                    </div>
+                    <div className="flex items-center justify-between pt-1 text-sm text-[var(--color-text-muted)]">
                     <span>Importe</span>
                     <output className="font-medium" data-testid={`concept-total-${displayIndex}`} aria-label={`Importe del concepto ${displayIndex + 1}`}>
                       {lineTotalCents === null ? "Pendiente" : formatCents(lineTotalCents)}
                     </output>
-                  </div>
-                  </div>
+                    </div>
+                      </div>
+                    </div>
+                    </SwipeableRow>
                   </SortableItem>
                 );
               })}
@@ -386,12 +443,44 @@ export function QuoteBuilderItemsStep({
           </SortableContext>
 
           {/* Add item buttons for this section */}
-          <div className="flex flex-wrap gap-2" aria-label={`Agregar concepto a sección ${sectionIndex + 1}`}>
-            {itemTypes.map((type) => (
-              <Button key={type} type="button" variant="outline" size="sm" onClick={() => onAddItem(sectionIndex, type)}>
-                + {itemTypeLabels[type]}
-              </Button>
-            ))}
+          <div
+            className="flex min-w-0 flex-nowrap items-center gap-2"
+            aria-label={`Agregar concepto a sección ${sectionIndex + 1}`}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label={`Agregar Mano de obra a la sección ${sectionIndex + 1}`}
+              title="Mano de obra"
+              onClick={() => onAddItem(sectionIndex, "LABOR")}
+              className="min-w-0 flex-1 px-1 sm:px-3"
+            >
+              + M. O.
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label={`Agregar Refacciones a la sección ${sectionIndex + 1}`}
+              title="Refacciones"
+              onClick={() => onAddItem(sectionIndex, "REFACCIONES")}
+              className="min-w-0 flex-1 px-1 sm:px-3"
+            >
+              + Refac.
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label={`Agregar Material a la sección ${sectionIndex + 1}`}
+              title="Material"
+              onClick={() => onAddItem(sectionIndex, "MATERIAL")}
+              className="min-w-0 flex-1 px-1 sm:px-3"
+            >
+              + Mat.
+            </Button>
+            <ConceptTypePopover onSelect={(type) => onAddItem(sectionIndex, type)} />
           </div>
         </div>
       </SortableSection>
@@ -454,5 +543,69 @@ export function QuoteBuilderItemsStep({
         />
       </div>
     </section>
+  );
+}
+
+function ConceptTypePopover({ onSelect }: { onSelect: (type: QuoteItemType) => void }) {
+  const [open, setOpen] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const overflowTypes: QuoteItemType[] = ["SERVICE", "EQUIPMENT", "OTHER"];
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    function handleClickOutside(e: PointerEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative shrink-0">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        aria-label="Más tipos de concepto"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="w-10 shrink-0 px-0"
+      >
+        ⋯
+      </Button>
+      {open ? (
+        <div
+          role="menu"
+          aria-label="Otros tipos de concepto"
+          className="absolute left-0 top-full z-20 mt-1 min-w-44 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1 shadow-lg"
+        >
+          {overflowTypes.map((type) => (
+            <button
+              key={type}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onSelect(type);
+                setOpen(false);
+              }}
+              className="flex min-h-9 w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 text-left text-sm text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+            >
+              + {itemTypeLabels[type]}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
