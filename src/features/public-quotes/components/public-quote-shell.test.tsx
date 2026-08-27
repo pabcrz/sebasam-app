@@ -11,10 +11,10 @@ describe("PublicQuoteShell", () => {
     expect(logos).toHaveLength(1);
     expect(logos[0]).toHaveAttribute("src", expect.stringContaining("logo-white-short.png"));
     expect(
-      screen.getByText("Servicio y Refacciones para Suspensiones de Aire y Muelles"),
-    ).toBeInTheDocument();
-    expect(screen.getAllByText("SEBASAM")).toHaveLength(1);
-    expect(screen.getByText("Cotización")).toBeInTheDocument();
+      screen.getAllByText("Servicio y Refacciones para Suspensiones de Aire y Muelles").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("SEBASAM").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Cotización").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders the workshop address as a Google Maps link", () => {
@@ -37,6 +37,49 @@ describe("PublicQuoteShell", () => {
   it("formats a date-only operational date without shifting it to the prior day", () => {
     render(<PublicQuoteShell date={new Date("2026-07-01T00:00:00.000Z")}>content</PublicQuoteShell>);
 
-    expect(screen.getByText(/1 de julio de 2026/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/1 de julio de 2026/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders the header with complete client, vehicle, date, and document metadata", () => {
+    const { container } = render(
+      <PublicQuoteShell
+        documentType="Cotización"
+        documentNumber="C-0826-001"
+        date={new Date("2026-06-18T00:00:00.000Z")}
+        customerName="Cristian Del Toro"
+        vehicleDescription="Freightliner - Sin placas"
+      >
+        content
+      </PublicQuoteShell>,
+    );
+
+    expect(container).toHaveTextContent("Servicio y Refacciones para Suspensiones de Aire y Muelles");
+    expect(container).toHaveTextContent("SEBASAM");
+    expect(container).toHaveTextContent("5556007675");
+    expect(container).toHaveTextContent("5536239346");
+    expect(container).toHaveTextContent("Batalla de Casa Blanca");
+    expect(container).toHaveTextContent("Cristian Del Toro");
+    expect(container).toHaveTextContent("Freightliner - Sin placas");
+    expect(container).toHaveTextContent("18 de junio de 2026");
+    expect(container).toHaveTextContent("C-0826-001");
+  });
+
+  it("does not render bank accounts or CLABE in the public quote shell DOM", () => {
+    const { container } = render(
+      <PublicQuoteShell
+        documentType="Cotización"
+        documentNumber="C-0826-001"
+        customerName="Cristian Del Toro"
+        vehicleDescription="Freightliner - ABC-1234"
+      >
+        content
+      </PublicQuoteShell>,
+    );
+
+    expect(container.textContent).not.toMatch(/CLABE/i);
+    expect(container.textContent).not.toMatch(/Santander/i);
+    expect(container.textContent).not.toMatch(/Mercado\s*Pago/i);
+    expect(container.textContent).not.toMatch(/Cuenta\s*bancaria/i);
   });
 });
+

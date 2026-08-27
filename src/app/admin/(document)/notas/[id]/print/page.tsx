@@ -68,7 +68,7 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--background)] print:min-h-0">
+    <div className="min-h-screen bg-[var(--background)] flex flex-col print:min-h-0">
       <PrintControls />
       <PublicQuoteShell
         business={paymentSettings}

@@ -137,8 +137,8 @@ export function QuotePreviewCard({
   });
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm print:border-none print:shadow-none print:bg-white print:rounded-none">
-      <div className="grid gap-6 p-4 md:p-6 print:p-0 print:pt-2">
+    <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm print:border-none print:shadow-none print:bg-white print:rounded-none flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col gap-6 p-4 md:p-6 print:gap-3 print:p-0 print:pt-2">
         {!compactHeader && (
           <div className="flex flex-col rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 print:border-gray-200 print:bg-gray-50">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
@@ -163,7 +163,7 @@ export function QuotePreviewCard({
         )}
         {administrative ? <Badge variant="info">{isNote ? "Nota" : "Cotización"} administrativa</Badge> : null}
 
-        <div className="grid gap-2">
+        <div className="grid gap-2 print:gap-1.5">
           {title && (
             <h2 className="text-sm font-bold text-[var(--color-text-main)] print:text-black">
               {title}
@@ -201,28 +201,30 @@ export function QuotePreviewCard({
                           ) : null}
                         </div>
                       ) : null}
-                      <ul aria-label={`${section.name || `Sección ${sectionIndex + 1}`} conceptos`} className="divide-y divide-[var(--color-primary)]/10">
+                      <ul aria-label={`${section.name || `Sección ${sectionIndex + 1}`} conceptos`} className="divide-y divide-[var(--color-border-light)]/70">
                         {displayItems.map((item, itemIndex) => {
                           const quantityNum = Number(item.quantity);
-                          const lineTotalCents = item.unitPrice.trim() ? Math.round(quantityNum * Number(item.unitPrice) * 100) : null;
+                          const unitPriceCents = item.unitPrice.trim() ? Number(item.unitPrice) * 100 : null;
+                          const lineTotalCents = unitPriceCents != null ? Math.round(quantityNum * unitPriceCents) : null;
+                          const showUnitDetail = quantityNum > 1 && unitPriceCents != null;
 
                           return (
-                            <li key={itemIndex} className="min-w-0 px-3 py-3">
-                              <p className="break-words font-medium text-[var(--color-text-main)]">{item.description}</p>
-                              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                                <div className="min-w-0">
-                                  <dt className="text-[var(--color-text-muted)]">Cantidad</dt>
-                                  <dd className="font-medium text-[var(--color-text-main)]">{item.type === "LABOR" && quantityNum === 1 ? "-" : formatQuantity(item.quantity)}</dd>
-                                </div>
-                                <div className="min-w-0 text-right">
-                                  <dt className="text-[var(--color-text-muted)]">P. unitario</dt>
-                                  <dd className="font-medium text-[var(--color-text-main)]">{item.unitPrice.trim() ? formatCents(Number(item.unitPrice) * 100) : "Pendiente"}</dd>
-                                </div>
-                                <div className="col-span-2 flex items-baseline justify-between gap-3 border-t border-[var(--color-border-light)] pt-2">
-                                  <dt className="text-[var(--color-text-muted)]">Importe</dt>
-                                  <dd className="text-sm font-bold text-[var(--color-text-main)]">{formatCents(lineTotalCents)}</dd>
-                                </div>
-                              </dl>
+                            <li key={itemIndex} className="flex items-start justify-between gap-3 px-3.5 py-3">
+                              <div className="min-w-0 flex-1">
+                                <p className="break-words font-medium text-sm text-[var(--color-text-main)] leading-snug">
+                                  {item.description}
+                                </p>
+                                {showUnitDetail ? (
+                                  <p className="mt-0.5 text-xs text-[var(--color-text-muted)] font-medium">
+                                    {formatQuantity(item.quantity)} × {formatCents(unitPriceCents)} c/u
+                                  </p>
+                                ) : null}
+                              </div>
+                              <div className="text-right whitespace-nowrap pt-0.5">
+                                <span className="text-sm font-bold text-[var(--color-text-main)] tabular-nums">
+                                  {formatCents(lineTotalCents)}
+                                </span>
+                              </div>
                             </li>
                           );
                         })}
@@ -234,11 +236,11 @@ export function QuotePreviewCard({
               <div data-testid="quote-items-table" className="hidden overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--color-border-light)] md:block print:block print:border-gray-200 print:rounded-[var(--radius-sm)]">
                 <table className="w-full border-collapse text-left text-sm">
                 <thead className="print:table-header-group">
-                  <tr className="border-b border-[var(--color-border-light)] bg-transparent text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider print:border-gray-200 print:text-gray-500">
-                    <th className="px-3 py-2 font-bold whitespace-nowrap w-1 text-center">C.</th>
-                    <th className="px-3 py-2 font-bold w-full">Concepto / Servicio Realizado</th>
-                    <th className="px-3 py-2 font-bold text-right whitespace-nowrap">P. Unitario</th>
-                    <th className="px-3 py-2 font-bold text-right whitespace-nowrap">Importe</th>
+                  <tr className="border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)]/40 text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider print:border-gray-200 print:bg-transparent print:text-gray-500">
+                    <th className="w-16 px-3 py-2 print:py-1.5 font-bold whitespace-nowrap text-center">Cant.</th>
+                    <th className="px-3 py-2 print:py-1.5 font-bold w-full">Concepto / Servicio Realizado</th>
+                    <th className="w-28 px-3 py-2 print:py-1.5 font-bold text-right whitespace-nowrap tabular-nums">P. Unitario</th>
+                    <th className="w-28 px-3 py-2 print:py-1.5 font-bold text-right whitespace-nowrap tabular-nums">Importe</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-primary)]/10 print:table-row-group print:divide-blue-100">
@@ -256,7 +258,7 @@ export function QuotePreviewCard({
                                     onChange={(event) => onSectionToggle?.(section.id!, event.target.checked)}
                                     data-testid={`section-toggle-${section.id}`}
                                     className="h-3.5 w-3.5 accent-[var(--color-primary)] print:hidden"
-                                  />
+                                    />
                                   <span>{section.name || `Sección ${sectionIndex + 1}`}</span>
                                   <span className="ml-auto font-normal normal-case tracking-normal text-[var(--color-text-muted)] print:hidden">
                                     {isSelected ? "Incluida" : "Excluida"}
@@ -278,16 +280,19 @@ export function QuotePreviewCard({
                          {displayItems.map((item, itemIndex) => {
                           const quantityNum = Number(item.quantity);
                           const lineTotalCents = item.unitPrice.trim() ? Math.round(quantityNum * Number(item.unitPrice) * 100) : null;
+                          const isServiceOrLaborSingle = (item.type === "LABOR" || item.type === "SERVICE") && quantityNum === 1;
+                          const quantityDisplay = isServiceOrLaborSingle || quantityNum === 0 ? "" : formatQuantity(item.quantity);
+
                           return (
                             <tr key={itemIndex} className={`break-inside-avoid ${itemIndex === 0 ? "print:break-before-avoid " : ""}print:break-inside-avoid print:text-black hover:bg-[var(--color-bg-soft)] print:hover:bg-transparent ${isSelected ? "" : "opacity-40 print:opacity-40 text-[var(--color-text-muted)] print:text-gray-400"}`}>
-                              <td className="px-3 py-2 align-top text-[var(--color-text-muted)] print:text-gray-700 w-1 whitespace-nowrap text-center font-medium">
-                                {item.type === "LABOR" && quantityNum === 1 ? "-" : formatQuantity(item.quantity)}
+                              <td className="w-16 px-3 py-2 print:py-1.5 align-top text-[var(--color-text-muted)] print:text-gray-700 whitespace-nowrap text-center font-medium tabular-nums">
+                                {quantityDisplay}
                               </td>
-                              <td className="px-3 py-2 align-top">
+                              <td className="px-3 py-2 print:py-1.5 align-top">
                                 <div className="font-medium text-[var(--color-text-main)] print:text-black">{item.description}</div>
                               </td>
-                              <td className="px-3 py-2 align-top text-right text-[var(--color-text-muted)] print:text-gray-700">{item.unitPrice.trim() ? formatCents(Number(item.unitPrice) * 100) : "Pendiente"}</td>
-                              <td className="px-3 py-2 align-top text-right font-bold text-[var(--color-text-main)] print:text-black">{formatCents(lineTotalCents)}</td>
+                              <td className="w-28 px-3 py-2 print:py-1.5 align-top text-right text-[var(--color-text-muted)] print:text-gray-700 whitespace-nowrap tabular-nums">{item.unitPrice.trim() ? formatCents(Number(item.unitPrice) * 100) : "Pendiente"}</td>
+                              <td className="w-28 px-3 py-2 print:py-1.5 align-top text-right font-bold text-[var(--color-text-main)] print:text-black whitespace-nowrap tabular-nums">{formatCents(lineTotalCents)}</td>
                             </tr>
                           );
                         })}
@@ -296,7 +301,7 @@ export function QuotePreviewCard({
                             <td colSpan={3} className="px-3 py-1.5 text-right text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-600">
                               Subtotal
                             </td>
-                            <td className="px-3 py-1.5 text-right text-xs font-bold text-[var(--color-text-main)] print:text-black">
+                            <td className="px-3 py-1.5 text-right text-xs font-bold text-[var(--color-text-main)] print:text-black tabular-nums">
                               {formatCents(sectionSubtotalCents)}
                             </td>
                           </tr>
@@ -311,35 +316,37 @@ export function QuotePreviewCard({
           )}
         </div>
 
-        <div data-testid="quote-totals-block" className="print:break-inside-avoid">
-          <QuoteTotalsCard
-            subtotalCents={displaySubtotalCents}
-            discountCents={discountCents}
-            taxCents={displayTaxCents}
-            totalCents={displayTotalCents}
-            printSubtotalCents={fullSubtotalCents}
-            printTaxCents={fullTaxCents}
-            printTotalCents={fullTotalCents}
-            partialNotice={partialNotice}
-          />
+        <div className="mt-auto flex flex-col gap-4 print:gap-2 print:break-inside-avoid">
+          <div data-testid="quote-totals-block" className="print:break-inside-avoid">
+            <QuoteTotalsCard
+              subtotalCents={displaySubtotalCents}
+              discountCents={discountCents}
+              taxCents={displayTaxCents}
+              totalCents={displayTotalCents}
+              printSubtotalCents={fullSubtotalCents}
+              printTaxCents={fullTaxCents}
+              printTotalCents={fullTotalCents}
+              partialNotice={partialNotice}
+            />
+          </div>
+          <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} />
+
+          {description ? (
+            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 print:border-gray-200 print:bg-gray-50 text-sm text-[var(--color-text-muted)] print:text-gray-600 print:break-inside-avoid">
+              <p className="font-semibold text-[10px] uppercase tracking-wider mb-1">Notas / Observaciones</p>
+              <p className="whitespace-pre-wrap" data-testid="preview-notes-text">{description}</p>
+            </div>
+          ) : null}
+
+          {!isNote && (
+            <div className="print:break-inside-avoid">
+              <p data-testid="quote-validity" className="text-[10px] text-[var(--color-text-muted)] print:text-gray-400">
+                Vigente hasta el {validUntil ? formatDate(validUntil) : "—"}. Los precios están sujetos a cambios imprevistos
+                en el costo de materiales.
+              </p>
+            </div>
+          )}
         </div>
-        <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} />
-
-        {description ? (
-          <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 print:border-gray-200 print:bg-gray-50 text-sm text-[var(--color-text-muted)] print:text-gray-600 mt-2 print:break-inside-avoid">
-            <p className="font-semibold text-[10px] uppercase tracking-wider mb-1">Notas / Observaciones</p>
-            <p className="whitespace-pre-wrap" data-testid="preview-notes-text">{description}</p>
-          </div>
-        ) : null}
-
-        {!isNote && (
-          <div className="mt-2 md:mt-1 print:break-inside-avoid">
-            <p data-testid="quote-validity" className="text-[10px] text-[var(--color-text-muted)] print:text-gray-400">
-              Vigente hasta el {validUntil ? formatDate(validUntil) : "—"}. Los precios están sujetos a cambios imprevistos
-              en el costo de materiales.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
