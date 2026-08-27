@@ -156,6 +156,9 @@ export function QuoteBuilder({
   );
 
   const [sections, setSections] = React.useState<SectionFormValue[]>(initialSections);
+  const [expandedItemRowId, setExpandedItemRowId] = React.useState<string | null>(
+    initialSections[0]?.rowIds[0] ?? null,
+  );
 
   const [animatedItemRowId, setAnimatedItemRowId] = React.useState<string | null>(null);
   const pendingItemRowId = React.useRef<string | null>(null);
@@ -398,6 +401,9 @@ export function QuoteBuilder({
 
   function addSection() {
     const rowId = `quote-item-${nextItemRowId.current++}`;
+    pendingItemRowId.current = rowId;
+    setAnimatedItemRowId(rowId);
+    setExpandedItemRowId(rowId);
     setSections((prev) => [
       ...prev,
       { name: "Nueva sección", isAuthorized: false, items: [{ ...emptyItem }], rowIds: [rowId] },
@@ -478,17 +484,11 @@ export function QuoteBuilder({
   }
 
   function addItem(sectionIndex: number, type: ItemFormValue["type"]) {
-    const allItems = sections.flatMap((s) => s.items);
-    const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
-
-    if (firstInvalidIndex !== -1) {
-      return;
-    }
-
     setStepError(null);
     const rowId = `quote-item-${nextItemRowId.current++}`;
     pendingItemRowId.current = rowId;
     setAnimatedItemRowId(rowId);
+    setExpandedItemRowId(rowId);
     setSections((prev) => {
       const next = [...prev];
       const section = next[sectionIndex]!;
@@ -551,17 +551,11 @@ export function QuoteBuilder({
   }
 
   function duplicateItem(sectionIndex: number, itemIndex: number) {
-    const allItems = sections.flatMap((s) => s.items);
-    const firstInvalidIndex = allItems.findIndex((item, index) => validateItemValue(item, index));
-
-    if (firstInvalidIndex !== -1) {
-      return;
-    }
-
     setStepError(null);
     const rowId = `quote-item-${nextItemRowId.current++}`;
     pendingItemRowId.current = rowId;
     setAnimatedItemRowId(rowId);
+    setExpandedItemRowId(rowId);
     setSections((prev) => {
       const next = [...prev];
       const section = next[sectionIndex]!;
@@ -582,6 +576,10 @@ export function QuoteBuilder({
       next[sectionIndex] = { ...section, items: nextItems, rowIds: nextRowIds };
       return next;
     });
+  }
+
+  function toggleItem(rowId: string) {
+    setExpandedItemRowId((current) => current === rowId ? null : rowId);
   }
 
   function goToNext() {
@@ -927,6 +925,7 @@ export function QuoteBuilder({
             <QuoteBuilderItemsStep
               sections={sections}
               animatedRowId={animatedItemRowId}
+              expandedItemRowId={expandedItemRowId}
               completeItemsCount={completeItems.length}
               taxEnabled={taxEnabled}
               discount={discount}
@@ -939,6 +938,7 @@ export function QuoteBuilder({
               onDuplicateItem={duplicateItem}
               onUpdateItem={updateItem}
               onAdjustQuantity={adjustItemQuantity}
+              onToggleItem={toggleItem}
               onAddSection={addSection}
               onRemoveSection={removeSection}
               onUpdateSectionName={updateSectionName}
@@ -1030,6 +1030,7 @@ export function QuoteBuilder({
               taxCents={taxCents}
               totalCents={totalCents}
               validUntil={validUntil}
+              compactItems
             />
           </section>
             </div>

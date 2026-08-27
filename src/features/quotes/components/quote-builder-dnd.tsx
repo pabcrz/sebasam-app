@@ -15,7 +15,7 @@ type SortableContextType = {
 
 const SortableItemContext = createContext<SortableContextType | null>(null);
 
-export function DragHandle({ className }: { className?: string }) {
+export function DragHandle({ ariaLabel, className }: { ariaLabel?: string; className?: string }) {
   const ctx = useContext(SortableItemContext);
   if (!ctx) return <GripVertical className={`size-4 shrink-0 text-[var(--color-text-muted)] ${className || ""}`} aria-hidden="true" />;
   
@@ -25,6 +25,7 @@ export function DragHandle({ className }: { className?: string }) {
       ref={setActivatorNodeRef}
       {...attributes}
       {...listeners}
+      aria-label={ariaLabel}
       className={`flex items-center justify-center touch-none cursor-grab text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] ${className || ""}`}
     >
       <GripVertical className="size-4 shrink-0" aria-hidden="true" />
@@ -53,7 +54,7 @@ export function SortableItem({ id, children }: { id: string; children: React.Rea
 
   return (
     <SortableItemContext.Provider value={{ attributes, listeners, setActivatorNodeRef }}>
-      <div ref={setNodeRef} style={style} className={isDragging ? "pointer-events-none" : ""}>
+      <div ref={setNodeRef} style={style} className={`min-w-0 ${isDragging ? "pointer-events-none" : ""}`}>
         {children}
       </div>
     </SortableItemContext.Provider>
@@ -79,7 +80,7 @@ export function SortableSection({ id, children }: { id: string; children: React.
 
   return (
     <SortableItemContext.Provider value={{ attributes, listeners, setActivatorNodeRef }}>
-      <div ref={setNodeRef} style={style} className={isDragging ? "pointer-events-none" : ""}>
+      <div ref={setNodeRef} style={style} className={`min-w-0 ${isDragging ? "pointer-events-none" : ""}`}>
         {children}
       </div>
     </SortableItemContext.Provider>
