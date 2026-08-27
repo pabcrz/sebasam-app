@@ -65,7 +65,7 @@ describe("CotizacionPage", () => {
           {
             id: "item-1",
             quoteId: "quote-1",
-            type: QuoteItemType.SERVICE,
+            type: QuoteItemType.LABOR,
             description: "Mano de obra",
             quantity: new Prisma.Decimal("1.5"),
             unitPriceCents: 100_00,

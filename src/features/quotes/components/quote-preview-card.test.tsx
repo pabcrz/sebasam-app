@@ -16,7 +16,7 @@ describe("QuotePreviewCard", () => {
         name: "General",
         items: [
           {
-            type: "SERVICE",
+            type: "LABOR",
             description: "Bajar dos muelles traseras",
             quantity: "1",
             unitPrice: "3000",

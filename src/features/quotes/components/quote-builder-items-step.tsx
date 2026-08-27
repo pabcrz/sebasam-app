@@ -550,7 +550,7 @@ function ConceptTypePopover({ onSelect }: { onSelect: (type: QuoteItemType) => v
   const [open, setOpen] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const overflowTypes: QuoteItemType[] = ["SERVICE", "EQUIPMENT", "OTHER"];
+  const overflowTypes: QuoteItemType[] = ["OTHER"];
 
   React.useEffect(() => {
     if (!open) return;

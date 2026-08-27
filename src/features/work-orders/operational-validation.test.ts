@@ -11,7 +11,7 @@ function quote(overrides: Record<string, unknown> = {}) {
     taxCents: 1_600,
     totalCents: 11_600,
     taxEnabled: true,
-    sections: [{ items: [{ type: "SERVICE", description: "Service", quantity: 1, unitPriceCents: 10_000 }] }],
+    sections: [{ items: [{ type: "LABOR", description: "Service", quantity: 1, unitPriceCents: 10_000 }] }],
     ...overrides,
   };
 }
@@ -22,7 +22,7 @@ describe("operational quote validation", () => {
       subtotalCents: null,
       taxCents: null,
       totalCents: null,
-      sections: [{ items: [{ type: "SERVICE", description: "Diagnosis", quantity: 1, unitPriceCents: null }] }],
+      sections: [{ items: [{ type: "LABOR", description: "Diagnosis", quantity: 1, unitPriceCents: null }] }],
     }))).not.toThrow();
   });
 
@@ -38,15 +38,15 @@ describe("operational quote validation", () => {
 
   it.each([
     ["type", { type: "UNKNOWN", description: "Service", quantity: 1, unitPriceCents: null }],
-    ["description", { type: "SERVICE", description: " ", quantity: 1, unitPriceCents: null }],
-    ["quantity", { type: "SERVICE", description: "Service", quantity: 0, unitPriceCents: null }],
+    ["description", { type: "LABOR", description: " ", quantity: 1, unitPriceCents: null }],
+    ["quantity", { type: "LABOR", description: "Service", quantity: 0, unitPriceCents: null }],
   ])("rejects a concept with invalid %s", (_, item) => {
     expect(() => assertOperationalStartQuote(quote({ sections: [{ items: [item] }] }))).toThrow(/tipo, descripción y cantidad/i);
   });
 
   it("blocks closure while a price is pending", () => {
     expect(() => assertOperationalClosureQuote(quote({
-      sections: [{ items: [{ type: "SERVICE", description: "Diagnosis", quantity: 1, unitPriceCents: null }] }],
+      sections: [{ items: [{ type: "LABOR", description: "Diagnosis", quantity: 1, unitPriceCents: null }] }],
     }))).toThrow(/precios válidos/i);
   });
 

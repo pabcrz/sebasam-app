@@ -664,11 +664,11 @@ describe("correctQuoteDecision", () => {
       approvedAt: null as Date | null,
       workOrder: null,
       items: [
-        { id: "item-1", description: "Servicio A", quantity: 1, unitPriceCents: 100_00, type: QuoteItemType.SERVICE, sectionId: "sec-a" },
+        { id: "item-1", description: "Servicio A", quantity: 1, unitPriceCents: 100_00, type: QuoteItemType.LABOR, sectionId: "sec-a" },
       ],
       sections: [
-        { id: "sec-a", quoteId: "quote-lifecycle-1", name: "Sección A", isAuthorized: false, items: [{ id: "item-1", description: "Servicio A", quantity: 1, unitPriceCents: 100_00, type: QuoteItemType.SERVICE }] },
-        { id: "sec-b", quoteId: "quote-lifecycle-1", name: "Sección B", isAuthorized: false, items: [{ id: "item-2", description: "Servicio B", quantity: 1, unitPriceCents: 100_00, type: QuoteItemType.SERVICE }] },
+        { id: "sec-a", quoteId: "quote-lifecycle-1", name: "Sección A", isAuthorized: false, items: [{ id: "item-1", description: "Servicio A", quantity: 1, unitPriceCents: 100_00, type: QuoteItemType.LABOR }] },
+        { id: "sec-b", quoteId: "quote-lifecycle-1", name: "Sección B", isAuthorized: false, items: [{ id: "item-2", description: "Servicio B", quantity: 1, unitPriceCents: 100_00, type: QuoteItemType.LABOR }] },
       ],
     };
 

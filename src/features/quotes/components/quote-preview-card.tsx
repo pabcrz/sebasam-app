@@ -280,7 +280,7 @@ export function QuotePreviewCard({
                          {displayItems.map((item, itemIndex) => {
                           const quantityNum = Number(item.quantity);
                           const lineTotalCents = item.unitPrice.trim() ? Math.round(quantityNum * Number(item.unitPrice) * 100) : null;
-                          const isServiceOrLaborSingle = (item.type === "LABOR" || item.type === "SERVICE") && quantityNum === 1;
+                          const isServiceOrLaborSingle = item.type === "LABOR" && quantityNum === 1;
                           const quantityDisplay = isServiceOrLaborSingle || quantityNum === 0 ? "" : formatQuantity(item.quantity);
 
                           return (

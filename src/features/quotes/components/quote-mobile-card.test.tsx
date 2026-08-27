@@ -75,7 +75,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
         id: "item-1",
         quoteId: "quote-1",
         sectionId: null,
-        type: "SERVICE",
+        type: "LABOR",
         description: "Cambio de aceite",
         quantity: 1,
         unitPriceCents: 10000,

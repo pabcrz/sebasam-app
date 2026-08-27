@@ -54,7 +54,7 @@ async function createTestQuote(customerId: string, opts?: { taxEnabled?: boolean
     data: {
       quoteId: quote.id,
       sectionId: section.id,
-      type: "SERVICE",
+      type: "LABOR",
       description: "Servicio",
       quantity: 1,
       unitPriceCents: 10000,

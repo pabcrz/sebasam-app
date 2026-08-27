@@ -130,7 +130,7 @@ describe("EditQuotePage", () => {
           name: "Sección 1",
           items: [
             {
-              type: "SERVICE" as const,
+              type: "LABOR" as const,
               description: "Mano de obra",
               quantity: 2,
               unitPriceCents: 50_000,
@@ -177,7 +177,7 @@ describe("EditQuotePage", () => {
               name: "Sección 1",
               items: [
                 expect.objectContaining({
-                  type: "SERVICE",
+                  type: "LABOR",
                   description: "Mano de obra",
                   quantity: "2",
                   unitPrice: "500",
