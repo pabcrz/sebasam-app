@@ -8,6 +8,7 @@ import { SharedQuoteErrorState } from "@/features/public-quotes/components/share
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
 import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
+import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
@@ -56,12 +57,30 @@ async function loadSharedQuotePageResult(token: string): Promise<SharedQuotePage
   }
 }
 
-export const metadata: Metadata = {
-  title: "Cotización",
-};
-
 interface CotizacionPageProps {
   params: Promise<{ token: string }>;
+}
+
+export async function generateMetadata({ params }: CotizacionPageProps): Promise<Metadata> {
+  const { token } = await params;
+  try {
+    const sharedQuote = await getSharedQuoteByToken(token);
+    const quote = sharedQuote.quote;
+    const documentType = quote.workOrder !== null ? "Nota" : "Cotización";
+    const title = formatDocumentPdfFilename({
+      customerName: quote.customer?.name,
+      vehicle: quote.vehicle ?? quote.vehicleSnapshot,
+      operationalDate: quote.operationalDate,
+      fallbackType: documentType,
+    });
+    return {
+      title,
+    };
+  } catch {
+    return {
+      title: "Cotización",
+    };
+  }
 }
 
 export default async function CotizacionPage({ params }: CotizacionPageProps) {
