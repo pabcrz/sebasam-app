@@ -33,21 +33,19 @@ export const stepLabels: Record<Step, string> = {
   preview: "Revisar",
 };
 
-export const itemTypes: QuoteItemType[] = ["LABOR", "MATERIAL", "REFACCIONES", "OTHER"];
+export const itemTypes: QuoteItemType[] = ["LABOR", "REFACCIONES", "MATERIAL", "OTHER"];
 export const maxQuantity = 100;
 export const maxUnitPrice = 50_000;
 
-/** LABOR and SERVICE concepts are capped at 5 units; others use the default max. */
+/** LABOR concepts are capped at 5 units; others use the default max. */
 export function getMaxQuantityForType(type: QuoteItemType): number {
-  return type === "LABOR" || type === "SERVICE" ? 5 : maxQuantity;
+  return type === "LABOR" ? 5 : maxQuantity;
 }
 
 export const itemTypeLabels: Record<QuoteItemType, string> = {
-  SERVICE: "Servicio",
   MATERIAL: "Material",
   LABOR: "Mano de obra",
   REFACCIONES: "Refacciones",
-  EQUIPMENT: "Equipo",
   OTHER: "Otro",
 };
 

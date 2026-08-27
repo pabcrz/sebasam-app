@@ -705,7 +705,7 @@ describe("QuoteBuilder", () => {
           administrative: false,
           taxEnabled: true,
           discountCents: 0,
-          sections: [{ name: "", items: [{ type: "SERVICE", description: "Afinación", quantity: "1", unitPrice: "1200" }] }],
+          sections: [{ name: "", items: [{ type: "LABOR", description: "Afinación", quantity: "1", unitPrice: "1200" }] }],
         }}
       />,
     );
@@ -757,8 +757,6 @@ describe("QuoteBuilder", () => {
   });
 
   it.each([
-    ["Servicio", "SERVICE"],
-    ["Equipo", "EQUIPMENT"],
     ["Otro", "OTHER"],
   ])("adds %s from the ⋯ popover with type %s", async (label, type) => {
     const user = userEvent.setup();
@@ -949,7 +947,7 @@ describe("QuoteBuilder", () => {
     expect(quantityInput).toHaveValue("100");
   });
 
-  it("clamps LABOR and SERVICE quantity to a maximum of 5 on blur", async () => {
+  it("clamps LABOR quantity to a maximum of 5 on blur", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 

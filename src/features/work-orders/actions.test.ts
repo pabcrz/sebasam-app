@@ -45,7 +45,7 @@ function operationalQuote(overrides: Record<string, unknown> = {}) {
     totalCents: 11_600,
     taxEnabled: true,
     items: [],
-    sections: [{ items: [{ type: "SERVICE", description: "Service", quantity: 1, unitPriceCents: 10_000 }] }],
+    sections: [{ items: [{ type: "LABOR", description: "Service", quantity: 1, unitPriceCents: 10_000 }] }],
     workOrder: null,
     ...overrides,
   };
@@ -168,7 +168,7 @@ describe("work order actions", () => {
         subtotalCents: null,
         taxCents: null,
         totalCents: null,
-        sections: [{ items: [{ type: "SERVICE", description: "Diagnosis", quantity: 1, unitPriceCents: null }] }],
+        sections: [{ items: [{ type: "LABOR", description: "Diagnosis", quantity: 1, unitPriceCents: null }] }],
       }));
 
       await createAndAssignWorkOrder("quote-1", { isSpecial: true });
@@ -274,7 +274,7 @@ describe("work order actions", () => {
           subtotalCents: null,
           taxCents: null,
           totalCents: null,
-          sections: [{ items: [{ type: "SERVICE", description: "Diagnosis", quantity: 1, unitPriceCents: null }] }],
+          sections: [{ items: [{ type: "LABOR", description: "Diagnosis", quantity: 1, unitPriceCents: null }] }],
         }),
       });
 

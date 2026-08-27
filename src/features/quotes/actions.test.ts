@@ -100,7 +100,7 @@ function validInput() {
     taxEnabled: true,
     discountCents: 0,
     operationalDate: "2026-07-14",
-    sections: [{ name: "General", items: [{ type: "SERVICE" as const, description: "Cambio de aceite", quantity: 2, unitPriceCents: 85000 }] }],
+    sections: [{ name: "General", items: [{ type: "LABOR" as const, description: "Cambio de aceite", quantity: 2, unitPriceCents: 85000 }] }],
   };
 }
 
@@ -110,7 +110,7 @@ function buildFormData(overrides: Record<string, string> = {}) {
     customerId: "cust-1", plate: "", brand: "", model: "Hilux", color: "", year: "",
     title: "Servicio", description: "", taxEnabled: "on", discount: "0", operationalDate: "2026-07-14",
     "sections.0.name": "General",
-    "sections.0.items.0.type": "SERVICE", "sections.0.items.0.description": "Cambio de aceite", "sections.0.items.0.quantity": "1", "sections.0.items.0.unitPrice": "100",
+    "sections.0.items.0.type": "LABOR", "sections.0.items.0.description": "Cambio de aceite", "sections.0.items.0.quantity": "1", "sections.0.items.0.unitPrice": "100",
   };
   for (const [key, value] of Object.entries({ ...defaults, ...overrides })) {
     formData.set(key, value);
@@ -126,7 +126,7 @@ function validInputWithoutVehicle() {
     description: "",
     administrative: true,
     taxEnabled: false,
-    sections: [{ name: "General", items: [{ type: "SERVICE" as const, description: "Asesoría", quantity: 1, unitPriceCents: 50000 }] }],
+    sections: [{ name: "General", items: [{ type: "LABOR" as const, description: "Asesoría", quantity: 1, unitPriceCents: 50000 }] }],
   };
 }
 
@@ -164,7 +164,7 @@ describe("createQuote", () => {
       items: {
         create: [{
           quote: { connect: { id: createData.id } },
-          type: "SERVICE",
+          type: "LABOR",
           description: "Cambio de aceite",
           quantity: 2,
           unitPriceCents: 85000,
@@ -478,7 +478,7 @@ describe("createQuoteFromForm", () => {
   it("submits exactly the normalized non-empty concepts", async () => {
     const tx = mockTx();
     const formData = buildFormData({
-      "sections.0.items.1.type": "EQUIPMENT",
+      "sections.0.items.1.type": "OTHER",
       "sections.0.items.1.description": "",
       "sections.0.items.1.quantity": "1",
       "sections.0.items.1.unitPrice": "",
@@ -610,7 +610,7 @@ describe("duplicateQuote", () => {
         id: "legacy-item",
         quoteId: "quote-source",
         sectionId: null,
-        type: "SERVICE",
+        type: "LABOR",
         description: "Legacy alignment",
         quantity: new Prisma.Decimal("1.50"),
         unitPriceCents: 10000,
@@ -639,7 +639,7 @@ describe("duplicateQuote", () => {
               id: "item-1",
               quoteId: "quote-source",
               sectionId: "section-1",
-              type: "SERVICE",
+              type: "LABOR",
               description: "Cambio de aceite",
               quantity: new Prisma.Decimal("2.00"),
               unitPriceCents: 85000,
@@ -689,7 +689,7 @@ describe("duplicateQuote", () => {
     });
     expect(createData.id).toEqual(expect.any(String));
     expect(createData.items.create).toEqual([{
-      type: "SERVICE",
+      type: "LABOR",
       description: "Legacy alignment",
       quantity: new Prisma.Decimal("1.50"),
       unitPriceCents: 10000,
@@ -712,7 +712,7 @@ describe("duplicateQuote", () => {
           },
           {
             quote: { connect: { id: createData.id } },
-            type: "SERVICE",
+            type: "LABOR",
             description: "Cambio de aceite",
             quantity: new Prisma.Decimal("2.00"),
             unitPriceCents: 85000,
