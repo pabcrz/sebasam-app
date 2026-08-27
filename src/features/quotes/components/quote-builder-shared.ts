@@ -33,7 +33,7 @@ export const stepLabels: Record<Step, string> = {
   preview: "Revisar",
 };
 
-export const itemTypes: QuoteItemType[] = ["LABOR", "SERVICE", "MATERIAL", "EQUIPMENT", "OTHER"];
+export const itemTypes: QuoteItemType[] = ["LABOR", "MATERIAL", "REFACCIONES", "OTHER"];
 export const maxQuantity = 100;
 export const maxUnitPrice = 50_000;
 
@@ -46,6 +46,7 @@ export const itemTypeLabels: Record<QuoteItemType, string> = {
   SERVICE: "Servicio",
   MATERIAL: "Material",
   LABOR: "Mano de obra",
+  REFACCIONES: "Refacciones",
   EQUIPMENT: "Equipo",
   OTHER: "Otro",
 };
@@ -196,13 +197,15 @@ function isItemDraftComplete(item: ItemFormValue): boolean {
 
 export function isItemComplete(item: ItemFormValue): boolean {
   const description = item.description.trim();
+  const unitPrice = item.unitPrice.trim();
   const quantityNum = Number(item.quantity.trim());
-  const unitPriceNum = Number(item.unitPrice.trim());
+  const unitPriceNum = Number(unitPrice);
 
   return (
     description.length > 0 &&
     Number.isFinite(quantityNum) &&
     quantityNum > 0 &&
+    unitPrice !== "" &&
     Number.isFinite(unitPriceNum) &&
     unitPriceNum >= 0
   );
