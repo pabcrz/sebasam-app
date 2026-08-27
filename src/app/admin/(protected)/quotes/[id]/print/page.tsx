@@ -66,7 +66,7 @@ export default async function QuotePrintPage({ params }: PrintPageProps) {
   };
 
   return (
-    <div className="bg-[var(--background)] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen flex flex-col print:min-h-0">
       <PrintControls quoteId={quote.id} />
       <PublicQuoteShell
         business={paymentSettings}

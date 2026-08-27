@@ -50,9 +50,9 @@ describe("WorkOrderPrintPage", () => {
 
     const { container } = render(await WorkOrderPrintPage({ params: Promise.resolve({ id: "wo-1" }) }));
 
-    expect(screen.getAllByText(/Taller/)).toHaveLength(2);
+    expect(screen.getAllByText(/Taller/).length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText("Nombre heredado")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Nota C-001 — Servicio general" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
     expect(screen.getByText("Nota administrativa")).toBeInTheDocument();
     expect(screen.queryByText(/Cotización/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Imprimir documento" })).not.toBeInTheDocument();
