@@ -76,6 +76,7 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
     paidCents: quote.paidCents,
     remainingCents: quote.remainingCents,
     validUntil: quote.validUntil,
+    compactItems: true,
   };
 }
 

@@ -36,10 +36,9 @@ enum QuoteStatus {
 }
 
 enum QuoteItemType {
-  SERVICE
-  MATERIAL
   LABOR
-  EQUIPMENT
+  MATERIAL
+  REFACCIONES
   OTHER
 }
 

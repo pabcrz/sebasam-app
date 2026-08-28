@@ -5,14 +5,34 @@ import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
 import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
+import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
 import { PrintControls } from "./print-controls";
-
-export const metadata: Metadata = {
-  title: "Imprimir PDF",
-};
 
 interface PrintPageProps {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: PrintPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const quote = await getQuoteById(id);
+
+  if (!quote) {
+    return {
+      title: "Cotización",
+    };
+  }
+
+  const documentType = quote.workOrder?.status === "COMPLETED" ? "Nota" : "Cotización";
+  const title = formatDocumentPdfFilename({
+    customerName: quote.customer?.name,
+    vehicle: quote.vehicle ?? quote.vehicleSnapshot,
+    operationalDate: quote.operationalDate,
+    fallbackType: documentType,
+  });
+
+  return {
+    title,
+  };
 }
 
 export default async function QuotePrintPage({ params }: PrintPageProps) {
@@ -46,7 +66,7 @@ export default async function QuotePrintPage({ params }: PrintPageProps) {
   };
 
   return (
-    <div className="bg-[var(--background)] min-h-screen">
+    <div className="bg-[var(--background)] min-h-screen flex flex-col print:min-h-0">
       <PrintControls quoteId={quote.id} />
       <PublicQuoteShell
         business={paymentSettings}

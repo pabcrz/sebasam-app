@@ -9,7 +9,7 @@ const draft = {
   description: "Observación inicial",
   taxEnabled: true,
   discountCents: "0",
-  sections: [{ name: "General", items: [{ type: QuoteItemType.SERVICE, description: "Revisar frenos", quantity: "1", unitPriceCents: "" }] }],
+  sections: [{ name: "General", items: [{ type: QuoteItemType.LABOR, description: "Revisar frenos", quantity: "1", unitPriceCents: "" }] }],
 };
 
 describe("draft quote persistence contract", () => {

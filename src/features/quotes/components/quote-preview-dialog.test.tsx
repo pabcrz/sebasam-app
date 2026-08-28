@@ -60,7 +60,7 @@ describe("QuotePreviewDialog", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByText("Constructora del Norte")).toBeInTheDocument();
     expect(screen.getByText("Cotización administrativa")).toBeInTheDocument();
-    expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
+    expect(screen.getAllByText("Cambio de aceite")[0]).toBeInTheDocument();
     expect(screen.getByTestId("quote-subtotal")).toHaveTextContent("$100.00");
     expect(screen.getByTestId("quote-tax")).toHaveTextContent("$16.00");
     expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
@@ -106,7 +106,7 @@ describe("QuotePreviewDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(screen.getByText("Diagnóstico de motor")).toBeInTheDocument();
+    expect(screen.getAllByText("Diagnóstico de motor")[0]).toBeInTheDocument();
     expect(screen.queryByText("Cambio de aceite")).not.toBeInTheDocument();
   });
 
@@ -118,6 +118,6 @@ describe("QuotePreviewDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(screen.getByText("Cambio de aceite")).toBeInTheDocument();
+    expect(screen.getAllByText("Cambio de aceite")[0]).toBeInTheDocument();
   });
 });

@@ -651,7 +651,11 @@ describe("QuoteBuilder", () => {
     expect(entries["sections.0.items.0.type"]).toBe("LABOR");
     expect(entries["sections.0.items.1.type"]).toBeUndefined();
     expect([...formData.keys()].some((key) => key.toLowerCase().includes("rowid"))).toBe(false);
-    expect(screen.getAllByText("Cambio de aceite")).toHaveLength(1);
+    const conceptDescriptions = screen.getAllByText("Cambio de aceite");
+    // 1 hidden summary row in the items step + 2 visible preview surfaces:
+    // the desktop table and the mobile compact item cards (both in the DOM).
+    expect(conceptDescriptions).toHaveLength(3);
+    expect(conceptDescriptions.filter((description) => !description.closest("[hidden]"))).toHaveLength(2);
   }, 10_000);
 
   it("allows draft submission with a missing price without displaying a false zero", async () => {
@@ -701,7 +705,7 @@ describe("QuoteBuilder", () => {
           administrative: false,
           taxEnabled: true,
           discountCents: 0,
-          sections: [{ name: "", items: [{ type: "SERVICE", description: "Afinación", quantity: "1", unitPrice: "1200" }] }],
+          sections: [{ name: "", items: [{ type: "LABOR", description: "Afinación", quantity: "1", unitPrice: "1200" }] }],
         }}
       />,
     );
@@ -738,10 +742,8 @@ describe("QuoteBuilder", () => {
 
   it.each([
     ["Mano de obra", "LABOR"],
-    ["Servicio", "SERVICE"],
+    ["Refacciones", "REFACCIONES"],
     ["Material", "MATERIAL"],
-    ["Equipo", "EQUIPMENT"],
-    ["Otro", "OTHER"],
   ])("adds %s directly with type %s", async (label, type) => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
@@ -749,9 +751,54 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await fillItemsStep(user)();
 
-    await user.click(screen.getByRole("button", { name: `+ ${label}` }));
+    await user.click(screen.getByRole("button", { name: new RegExp(`Agregar ${label} a la sección`)}));
 
     expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue(type);
+  });
+
+  it.each([
+    ["Otro", "OTHER"],
+  ])("adds %s from the ⋯ popover with type %s", async (label, type) => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+
+    await user.click(screen.getByRole("button", { name: "Más tipos de concepto" }));
+    await user.click(screen.getByRole("menuitem", { name: `+ ${label}` }));
+
+    expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue(type);
+  });
+
+  it("shows an always-visible delete icon in the collapsed row on desktop", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+
+    const deleteButton = screen.getByRole("button", { name: "Eliminar concepto 1" });
+    expect(deleteButton).toBeInTheDocument();
+    // The base Button component injects `inline-flex`, which conflicts with the
+    // breakpoint `hidden`. This icon must NOT carry a conflicting display that
+    // would make it visible on mobile. It should only be inline-flex at sm+.
+    expect(deleteButton).toHaveClass("hidden");
+    expect(deleteButton).toHaveClass("sm:inline-flex");
+  });
+
+  it("renders the section name as title text without an input box", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+
+    const nameInput = screen.getByLabelText("Nombre de la sección 1");
+    expect(nameInput).toBeInstanceOf(HTMLInputElement);
+    expect(nameInput).toHaveClass("bg-transparent");
+    expect(nameInput.className).not.toMatch(/\bborder\b/);
+    expect(nameInput.className).not.toMatch(/shadow/);
   });
 
   it("computes and displays the running total", async () => {
@@ -888,8 +935,7 @@ describe("QuoteBuilder", () => {
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    const [typeTrigger] = screen.getAllByRole("combobox");
-    await user.click(typeTrigger);
+    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
     await user.click(screen.getByRole("option", { name: "Material" }));
 
     const [quantityInput] = screen.getAllByLabelText(/cantidad/i);
@@ -901,7 +947,7 @@ describe("QuoteBuilder", () => {
     expect(quantityInput).toHaveValue("100");
   });
 
-  it("clamps LABOR and SERVICE quantity to a maximum of 5 on blur", async () => {
+  it("clamps LABOR quantity to a maximum of 5 on blur", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -954,7 +1000,7 @@ describe("QuoteBuilder", () => {
     await user.type(firstUnitPriceInput, "850");
 
     // Add a second concept so the blank-description test targets row 2.
-    await user.click(screen.getByRole("button", { name: "+ Mano de obra" }));
+    await user.click(screen.getByRole("button", { name: /Agregar Mano de obra a la sección/ }));
 
     const [, descriptionInput] = screen.getAllByLabelText(/descripción/i);
     const [, quantityInput] = screen.getAllByLabelText(/cantidad/i);
@@ -1201,7 +1247,7 @@ describe("QuoteBuilder", () => {
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Cambio de aceite");
-    await user.click(screen.getByRole("button", { name: "+ Material" }));
+    await user.click(screen.getByRole("button", { name: /Agregar Material a la sección/ }));
 
     const descriptions = screen.getAllByLabelText("Descripción", { selector: "input" });
     const newRow = screen.getByTestId("concept-row-1");
@@ -1211,6 +1257,79 @@ describe("QuoteBuilder", () => {
     expect(scrollIntoView.mock.instances.at(-1)).toBe(newRow);
     expect(newRow).toHaveClass("motion-safe:animate-fade-in", "motion-safe:animate-duration-200");
     scrollIntoView.mockRestore();
+  });
+
+  it("keeps incomplete concepts compact with a pending summary and restores their values", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Precio por confirmar");
+
+    expect(screen.queryByText("1 completos")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("concept-summary-0"));
+
+    const firstSummary = screen.getByTestId("concept-summary-0");
+    expect(firstSummary).toHaveTextContent("Precio por confirmar");
+    expect(firstSummary).toHaveTextContent("Pendiente: precio");
+    expect(firstSummary).not.toHaveTextContent("$0.00");
+    expect(document.getElementById("concept-editor-quote-item-0")).toHaveAttribute("hidden");
+
+    await user.click(screen.getByTestId("concept-summary-0"));
+
+    expect(document.getElementById("concept-editor-quote-item-0")).not.toHaveAttribute("hidden");
+    expect(screen.getByLabelText("Descripción", { selector: "input" })).toHaveValue("Precio por confirmar");
+    expect(screen.getByLabelText("Precio unitario")).toHaveValue(null);
+  });
+
+  it("prioritizes compact summary content and keeps secondary actions accessible", async () => {
+    const user = userEvent.setup();
+    render(
+      <QuoteBuilder
+        customers={customers}
+        createAction={vi.fn()}
+        initialData={{
+          customerId: "cust-1",
+          vehicle: { plate: "", brand: "", model: "", year: "" },
+          title: "Concepto compacto",
+          description: "",
+          administrative: false,
+          taxEnabled: true,
+          discountCents: 0,
+          sections: [{ name: "", items: [{ type: "LABOR", description: "cambio de aceite", quantity: "1", unitPrice: "850" }] }],
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const summary = screen.getByTestId("concept-summary-0");
+
+    expect(summary).toHaveTextContent("Cambio de aceite");
+    expect(summary).toHaveTextContent("1 unidad");
+    expect(summary).toHaveTextContent("Mano de obra");
+    expect(document.querySelector('input[name="sections.0.items.0.description"]')).toHaveValue("cambio de aceite");
+    expect(screen.getByRole("button", { name: "Reordenar concepto 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Duplicar concepto 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Acciones de concepto 1" })).not.toBeInTheDocument();
+  });
+
+  it("opens and focuses each new concept without blocking an incomplete prior concept", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Diagnóstico pendiente");
+
+    await user.click(screen.getByRole("button", { name: /Agregar Material a la sección/ }));
+
+    expect(document.getElementById("concept-editor-quote-item-0")).toHaveAttribute("hidden");
+    expect(document.getElementById("concept-editor-quote-item-1")).not.toHaveAttribute("hidden");
+    expect(screen.getByTestId("concept-summary-0")).toHaveTextContent("Pendiente: precio");
+    expect(document.querySelector('input[name="sections.0.items.1.description"]')).toHaveFocus();
   });
 
   it("groups quantity and price with a concise formatted line amount", async () => {
@@ -1240,10 +1359,10 @@ describe("QuoteBuilder", () => {
     expect(screen.getByTestId("currency-prefix-0")).toHaveTextContent("$");
     expect(screen.getByTestId("concept-total-0")).toHaveTextContent("$850.00");
     expect(quantityPriceRow.parentElement).not.toHaveTextContent("1 × $850.00");
-    expect(screen.getByRole("button", { name: "Duplicar concepto 1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Eliminar concepto 1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "+ Material" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "+ Equipo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Agregar Material a la sección/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Agregar Refacciones a la sección/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Agregar Mano de obra a la sección/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Más tipos de concepto" })).toBeInTheDocument();
   });
 
   it("renders the final preview after the notes step", async () => {
@@ -1262,6 +1381,12 @@ describe("QuoteBuilder", () => {
 
     expect(screen.getByTestId("preview-customer-icon")).toBeInTheDocument();
     expect(screen.getByTestId("preview-vehicle-icon")).toBeInTheDocument();
+    // Concepts must be visible in the review step on every breakpoint: the
+    // compact item cards render the filled concept even when the table is
+    // hidden on mobile.
+    expect(screen.getByTestId("quote-compact-items")).toBeInTheDocument();
+    expect(screen.getAllByText("Cambio de aceite").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("quote-items-table")).toBeInTheDocument();
   });
 
   it("keeps inactive item error slots stable and preserves price currency help", async () => {

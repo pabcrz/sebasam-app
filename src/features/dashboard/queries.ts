@@ -178,7 +178,6 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
     for (const item of wo.quote.items) {
       if (
         item.type === QuoteItemType.MATERIAL ||
-        item.type === QuoteItemType.EQUIPMENT ||
         item.type === QuoteItemType.OTHER
       ) {
         itemMap.set(item.id, {
@@ -196,7 +195,6 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
         for (const item of section.items) {
           if (
             item.type === QuoteItemType.MATERIAL ||
-            item.type === QuoteItemType.EQUIPMENT ||
             item.type === QuoteItemType.OTHER
           ) {
             itemMap.set(item.id, {

@@ -177,7 +177,7 @@ describe("WorkOrderActiveList", () => {
     renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { withQuote: true });
 
     await openPreview(user);
-    await user.click(screen.getByText("Cambio de aceite"));
+    await user.click(screen.getAllByText("Cambio de aceite")[0]);
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());

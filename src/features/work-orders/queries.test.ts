@@ -81,7 +81,7 @@ describe("work order operational queues", () => {
         totalCents: 11_600,
         taxEnabled: true,
         items: [],
-        sections: [{ items: [{ type: "SERVICE", description: "Service", quantity: 1, unitPriceCents: 10_000, totalCents: 10_000 }] }],
+        sections: [{ items: [{ type: "LABOR", description: "Service", quantity: 1, unitPriceCents: 10_000, totalCents: 10_000 }] }],
       },
       assignments: [],
     });
@@ -106,7 +106,7 @@ describe("work order operational queues", () => {
         totalCents: null,
         taxEnabled: false,
         items: [],
-        sections: [{ items: [{ type: "SERVICE", description: "Service", quantity: 1, unitPriceCents: null, totalCents: null }] }],
+        sections: [{ items: [{ type: "LABOR", description: "Service", quantity: 1, unitPriceCents: null, totalCents: null }] }],
       },
       assignments: [],
     });

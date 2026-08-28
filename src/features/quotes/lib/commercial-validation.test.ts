@@ -32,4 +32,10 @@ describe("assertCommercialQuote", () => {
   ])("rejects %s", (_, overrides) => {
     expect(() => assertCommercialQuote(quote(overrides))).toThrow(CommercialQuoteValidationError);
   });
+
+  it("keeps a pending-price draft out of final authorization", () => {
+    expect(() => assertCommercialQuote(quote({
+      sections: [{ items: [{ description: "Precio por confirmar", quantity: 1, unitPriceCents: null }] }],
+    }))).toThrow("Completa la descripción, cantidad y precio de todos los conceptos antes de compartir.");
+  });
 });

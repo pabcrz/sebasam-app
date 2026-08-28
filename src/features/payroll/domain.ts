@@ -105,7 +105,7 @@ export interface WeeklyPayrollReport {
  * Returns null if the item is not labor.
  */
 export function evaluatePayrollItem(item: PayrollItemInput): PayrollItemResult | null {
-  if (item.type !== QuoteItemType.LABOR && item.type !== QuoteItemType.SERVICE) {
+  if (item.type !== QuoteItemType.LABOR) {
     return null;
   }
 

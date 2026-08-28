@@ -33,20 +33,19 @@ export const stepLabels: Record<Step, string> = {
   preview: "Revisar",
 };
 
-export const itemTypes: QuoteItemType[] = ["LABOR", "SERVICE", "MATERIAL", "EQUIPMENT", "OTHER"];
+export const itemTypes: QuoteItemType[] = ["LABOR", "REFACCIONES", "MATERIAL", "OTHER"];
 export const maxQuantity = 100;
 export const maxUnitPrice = 50_000;
 
-/** LABOR and SERVICE concepts are capped at 5 units; others use the default max. */
+/** LABOR concepts are capped at 5 units; others use the default max. */
 export function getMaxQuantityForType(type: QuoteItemType): number {
-  return type === "LABOR" || type === "SERVICE" ? 5 : maxQuantity;
+  return type === "LABOR" ? 5 : maxQuantity;
 }
 
 export const itemTypeLabels: Record<QuoteItemType, string> = {
-  SERVICE: "Servicio",
   MATERIAL: "Material",
   LABOR: "Mano de obra",
-  EQUIPMENT: "Equipo",
+  REFACCIONES: "Refacciones",
   OTHER: "Otro",
 };
 
@@ -196,13 +195,15 @@ function isItemDraftComplete(item: ItemFormValue): boolean {
 
 export function isItemComplete(item: ItemFormValue): boolean {
   const description = item.description.trim();
+  const unitPrice = item.unitPrice.trim();
   const quantityNum = Number(item.quantity.trim());
-  const unitPriceNum = Number(item.unitPrice.trim());
+  const unitPriceNum = Number(unitPrice);
 
   return (
     description.length > 0 &&
     Number.isFinite(quantityNum) &&
     quantityNum > 0 &&
+    unitPrice !== "" &&
     Number.isFinite(unitPriceNum) &&
     unitPriceNum >= 0
   );

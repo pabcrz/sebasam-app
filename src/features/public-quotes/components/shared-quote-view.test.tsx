@@ -59,7 +59,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
         id: "item-1",
         quoteId: "quote-1",
         sectionId: null,
-        type: QuoteItemType.SERVICE,
+        type: QuoteItemType.LABOR,
         description: "Mano de obra",
         quantity: "1",
         unitPriceCents: 100_00,
@@ -90,7 +90,7 @@ function makeMultiSectionQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQu
             id: "item-1",
             quoteId: "quote-1",
             sectionId: "sec-1",
-            type: QuoteItemType.SERVICE,
+            type: QuoteItemType.LABOR,
             description: "Cambio de aceite",
             quantity: "1",
             unitPriceCents: 40_00,
@@ -110,7 +110,7 @@ function makeMultiSectionQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQu
             id: "item-2",
             quoteId: "quote-1",
             sectionId: "sec-2",
-            type: QuoteItemType.SERVICE,
+            type: QuoteItemType.LABOR,
             description: "Cambio de balatas",
             quantity: "1",
             unitPriceCents: 60_00,
@@ -157,7 +157,7 @@ describe("SharedQuoteView", () => {
   it("renders whole-quote decision controls for sent shared quotes", () => {
     render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
 
-    expect(screen.getByRole("heading", { name: "Cotización COT-001 — Servicio general" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
     expect(screen.queryByText(/vista previa/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Enviada")).not.toBeInTheDocument();
     expect(screen.queryByText("SEBASAM")).not.toBeInTheDocument();
@@ -183,8 +183,8 @@ describe("SharedQuoteView", () => {
     const compactItems = screen.getByTestId("quote-compact-items");
     expect(compactItems).toHaveClass("md:hidden", "print:hidden");
     expect(within(compactItems).getByRole("list", { name: "Aceite y filtros conceptos" })).toBeInTheDocument();
-    expect(within(compactItems).getByText("Cambio de aceite").closest("li")).toHaveTextContent("Cantidad");
-    expect(within(compactItems).getByText("Cambio de aceite").closest("li")).toHaveTextContent("P. unitario");
+    expect(within(compactItems).getByText("Cambio de aceite").closest("li")).toHaveTextContent("Cambio de aceite");
+    expect(within(compactItems).getByText("Cambio de aceite").closest("li")).toHaveTextContent("$40.00");
 
     expect(screen.getByTestId("quote-items-table")).toHaveClass("hidden", "md:block", "print:block");
     expect(screen.getByRole("table")).toBeInTheDocument();
@@ -204,7 +204,7 @@ describe("SharedQuoteView", () => {
   it("keeps final status as secondary feedback without decision controls", () => {
     render(<SharedQuoteView quote={makeQuote(QuoteStatus.APPROVED)} token="token-123" />);
 
-    expect(screen.getByRole("heading", { name: "Cotización COT-001 — Servicio general" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
     expect(screen.getAllByText(/Aceptada/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByRole("button", { name: "Aceptar cotización" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Declinar cotización" })).not.toBeInTheDocument();

@@ -45,7 +45,7 @@ describe("Payroll Domain - Labor Detection and Rates", () => {
 });
 
 describe("Payroll Domain - Item Evaluation", () => {
-  it("ignores non-labor items (materials, equipment, other)", () => {
+  it("ignores non-labor items (materials, refacciones, other)", () => {
     expect(
       evaluatePayrollItem({
         id: "item-1",
@@ -60,7 +60,7 @@ describe("Payroll Domain - Item Evaluation", () => {
     expect(
       evaluatePayrollItem({
         id: "item-2",
-        type: QuoteItemType.EQUIPMENT,
+        type: QuoteItemType.REFACCIONES,
         description: "Renta de pluma",
         quantity: 1,
         unitPriceCents: 50000,

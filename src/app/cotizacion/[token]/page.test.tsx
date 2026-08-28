@@ -24,7 +24,8 @@ vi.mock("@/features/payment-settings/domain", () => ({
   }),
 }));
 
-import CotizacionPage from "./page";
+import CotizacionPage, { generateMetadata } from "./page";
+import { SharedQuoteExpiredError, SharedQuoteRevokedError } from "@/features/quotes/domain";
 
 describe("CotizacionPage", () => {
   it("serializes Decimal quote item quantities before rendering the client view", async () => {
@@ -64,7 +65,7 @@ describe("CotizacionPage", () => {
           {
             id: "item-1",
             quoteId: "quote-1",
-            type: QuoteItemType.SERVICE,
+            type: QuoteItemType.LABOR,
             description: "Mano de obra",
             quantity: new Prisma.Decimal("1.5"),
             unitPriceCents: 100_00,
@@ -89,5 +90,57 @@ describe("CotizacionPage", () => {
       }),
       undefined,
     );
+  });
+
+  describe("generateMetadata", () => {
+    it("generates dynamic filename title when token is valid", async () => {
+      getSharedQuoteByTokenMock.mockResolvedValue({
+        quote: {
+          id: "quote-1",
+          number: "COT-001",
+          customer: { name: "Cristian Del Toro" },
+          vehicle: { brand: "freightliner", model: null, plate: null },
+          vehicleSnapshot: null,
+          operationalDate: new Date("2026-06-18T00:00:00.000Z"),
+          workOrder: null,
+        },
+      });
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
+
+      expect(metadata).toEqual({
+        title: "CristianDelToro-freightliner-18062026",
+      });
+    });
+
+    it("returns safe fallback title 'Cotización' when token is expired", async () => {
+      getSharedQuoteByTokenMock.mockRejectedValue(new SharedQuoteExpiredError());
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ token: "expired-token" }) });
+
+      expect(metadata).toEqual({
+        title: "Cotización",
+      });
+    });
+
+    it("returns safe fallback title 'Cotización' when token is revoked", async () => {
+      getSharedQuoteByTokenMock.mockRejectedValue(new SharedQuoteRevokedError());
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ token: "revoked-token" }) });
+
+      expect(metadata).toEqual({
+        title: "Cotización",
+      });
+    });
+
+    it("returns safe fallback title 'Cotización' when token is not found or invalid", async () => {
+      getSharedQuoteByTokenMock.mockRejectedValue(new Error("Not found"));
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ token: "invalid-token" }) });
+
+      expect(metadata).toEqual({
+        title: "Cotización",
+      });
+    });
   });
 });
