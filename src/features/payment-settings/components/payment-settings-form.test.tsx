@@ -44,6 +44,8 @@ const defaultSettings: PaymentSettingsFormProps["settings"] = {
       clabe: "4444 4444 4444 4444",
       isForInvoicing: true,
       sortOrder: 0,
+      publicToken: "santander-token",
+      isPubliclyShareable: true,
     },
     {
       id: 2,
@@ -53,6 +55,8 @@ const defaultSettings: PaymentSettingsFormProps["settings"] = {
       clabe: "5555 5555 5555 5555",
       isForInvoicing: false,
       sortOrder: 1,
+      publicToken: "bbva-token",
+      isPubliclyShareable: false,
     },
   ],
 };

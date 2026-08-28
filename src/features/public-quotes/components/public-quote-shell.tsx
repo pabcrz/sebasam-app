@@ -1,21 +1,15 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { Phone, MessageCircle } from "lucide-react";
 import { businessPaymentConfig } from "@/config/payment";
+import { PublicBrandHeader } from "@/features/public-branding/public-brand-header";
+import type { PublicBusinessIdentity } from "@/features/public-branding/domain";
 import { formatOperationalDate } from "@/features/quotes/lib/format";
 
 export interface PublicQuoteShellProps {
   children: React.ReactNode;
-  business?: {
-    name: string;
-    fullName: string;
-    address: string;
-    mapsUrl: string;
-    contactPhone: string;
-    contactWhatsapp: string;
-  };
+  business?: PublicBusinessIdentity;
   documentType?: string;
   documentNumber?: string;
   date?: Date | null;
@@ -34,34 +28,19 @@ export function PublicQuoteShell({ children, business, documentType = "Cotizaci√
         <div className="relative mx-auto max-w-4xl flex flex-col sm:flex-row print:flex-row gap-6 items-start">
           
           <div className="flex flex-col w-full sm:w-3/5 print:w-3/5">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/logo-white-short.png"
-                alt="Logo de SEBASAM"
-                width={52}
-                height={52}
-                className="h-13 w-13 object-contain print:invert"
-                priority
-              />
-              <h1 className="text-3xl font-extrabold leading-none tracking-[-0.05em] md:text-4xl">
-                {resolvedBusiness.name}
-              </h1>
-            </div>
-            <p className="mt-3 font-medium text-sm text-[var(--color-on-navy-tint)] print:text-gray-800">
-              {resolvedBusiness.fullName}
-            </p>
-            <a href={resolvedBusiness.mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 max-w-sm rounded-sm text-xs text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:text-gray-600 print:no-underline">
+            <PublicBrandHeader identity={resolvedBusiness} />
+            {resolvedBusiness.address ? <a href={resolvedBusiness.mapsUrl || "#"} target="_blank" rel="noopener noreferrer" className="mt-1 max-w-sm rounded-sm text-xs text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:text-gray-600 print:no-underline">
               {resolvedBusiness.address}
-            </a>
-            <div className="mt-2 text-xs text-white/80 print:text-gray-600 flex flex-wrap gap-4 items-center">
-              <a href={`tel:${resolvedBusiness.contactPhone}`} className="flex items-center gap-1.5 rounded-sm transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:no-underline">
+            </a> : null}
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-white/80 print:text-gray-600">
+              {resolvedBusiness.contactPhone ? <a href={`tel:${resolvedBusiness.contactPhone}`} className="flex items-center gap-1.5 rounded-sm transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:no-underline">
                 <Phone className="w-3.5 h-3.5 opacity-70" /> 
                 {resolvedBusiness.contactPhone}
-              </a>
-              <a href={`https://wa.me/52${resolvedBusiness.contactWhatsapp}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-sm transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:no-underline">
+              </a> : null}
+              {resolvedBusiness.contactWhatsapp ? <a href={`https://wa.me/52${resolvedBusiness.contactWhatsapp}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-sm transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:no-underline">
                 <MessageCircle className="w-3.5 h-3.5 opacity-70" /> 
                 {resolvedBusiness.contactWhatsapp}
-              </a>
+              </a> : null}
             </div>
           </div>
 

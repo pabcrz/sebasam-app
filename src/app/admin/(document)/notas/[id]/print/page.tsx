@@ -6,6 +6,7 @@ import { PublicQuoteShell } from "@/features/public-quotes/components/public-quo
 import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { PrintControls } from "./print-controls";
+import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
 export const metadata: Metadata = {
   title: "Nota",
@@ -50,7 +51,7 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
     <div className="min-h-screen bg-[var(--background)] print:min-h-0">
       <PrintControls />
       <PublicQuoteShell
-        business={paymentSettings}
+         business={toPublicBusinessIdentity(paymentSettings)}
         documentType={documentType}
         documentNumber={quote.number}
         date={quote.operationalDate}

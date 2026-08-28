@@ -9,6 +9,7 @@ import { PublicQuoteShell } from "@/features/public-quotes/components/public-quo
 import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
+import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
@@ -83,7 +84,7 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
 
   return (
     <PublicQuoteShell
-      business={paymentSettings}
+       business={toPublicBusinessIdentity(paymentSettings)}
       documentType={isNote ? "Nota" : "Cotización"}
       documentNumber={result.quote.number}
       date={result.quote.operationalDate}

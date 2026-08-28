@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { connection } from "next/server";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
+import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 import { DirectPaymentPage } from "@/features/public-payment/components/direct-payment-page";
 
 export const metadata: Metadata = {
@@ -13,12 +14,7 @@ export default async function DatosPagoPage() {
 
   return (
     <DirectPaymentPage
-      business={{
-        name: settings.name,
-        fullName: settings.fullName,
-        address: settings.address,
-        mapsUrl: settings.mapsUrl,
-      }}
+       business={toPublicBusinessIdentity(settings)}
       bankAccounts={settings.bankAccounts}
       contact={{
         phone: settings.contactPhone,

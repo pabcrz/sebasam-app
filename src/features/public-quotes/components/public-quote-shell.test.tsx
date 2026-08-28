@@ -14,6 +14,7 @@ describe("PublicQuoteShell", () => {
       screen.getByText("Servicio y Refacciones para Suspensiones de Aire y Muelles"),
     ).toBeInTheDocument();
     expect(screen.getAllByText("SEBASAM")).toHaveLength(1);
+    expect(screen.getByRole("heading", { name: "SEBASAM" })).toHaveClass("font-mono");
     expect(screen.getByText("Cotización")).toBeInTheDocument();
   });
 

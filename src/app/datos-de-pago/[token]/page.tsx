@@ -8,6 +8,7 @@ import { PublicPaymentPage } from "@/features/public-payment/components/public-p
 import { PaymentRequestErrorState } from "@/features/public-payment/components/payment-request-error-state";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { type PaymentRequest } from "@prisma/client";
+import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
 export const metadata: Metadata = {
   title: "Datos de pago",
@@ -91,12 +92,7 @@ export default async function DatosDePagoPage({ params }: PaymentPageProps) {
   return (
     <PublicPaymentPage
       request={result.request}
-      business={{
-        name: settings.name,
-        fullName: settings.fullName,
-        address: settings.address,
-        mapsUrl: settings.mapsUrl,
-      }}
+       business={toPublicBusinessIdentity(settings)}
       bankAccounts={toPublicBankAccounts(settings.bankAccounts, result.request.requiresInvoice)}
       contact={{
         phone: settings.contactPhone,

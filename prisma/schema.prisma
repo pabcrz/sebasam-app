@@ -485,6 +485,8 @@ model BankAccount {
   clabe             String
   isForInvoicing    Boolean  @default(false)
   sortOrder         Int      @default(0)
+  publicToken       String   @unique @default(uuid())
+  isPubliclyShareable Boolean @default(false)
   createdAt         DateTime @default(now())
 
   paymentSettings PaymentSettings @relation(fields: [paymentSettingsId], references: [id], onDelete: Cascade)
