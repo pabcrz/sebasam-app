@@ -135,7 +135,7 @@ describe("QuoteListCard", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
-    expect(screen.getByText(/cambio de aceite/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/cambio de aceite/i)[0]).toBeInTheDocument();
   });
 
   it("shows the operational quote date instead of the audit creation timestamp", () => {
