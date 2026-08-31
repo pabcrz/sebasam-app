@@ -91,6 +91,7 @@ describe("WorkOrderOperationsDialog", () => {
     await user.click(viewOrder);
     const printNote = screen.getByRole("button", { name: "Imprimir nota de remisión T-001" });
     expect(printNote).toHaveAttribute("title", "Imprimir nota de remisión T-001");
+    expect(printNote).toHaveClass("min-h-11", "min-w-11");
     expect(printNote).toHaveClass("w-9", "sm:w-auto");
     expect(printNote.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
   });
@@ -243,6 +244,19 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByText("Completada")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /asignar e iniciar trabajo/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /imprimir nota de remisión/i })).toBeInTheDocument();
+  });
+
+  it("opens completed-note printing on the note route and never the quote route", async () => {
+    const user = userEvent.setup();
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-note-1", number: "T-001", status: "COMPLETED", assignments: [] }} actions={{}} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo t-001/i }));
+    await user.click(screen.getByRole("button", { name: "Imprimir nota de remisión T-001" }));
+
+    expect(open).toHaveBeenCalledWith("/admin/notas/wo-note-1/print?returnTo=/admin/notas", "_blank");
+    expect(open.mock.calls[0]?.[0]).not.toContain("/admin/quotes/");
+    open.mockRestore();
   });
 
   it("locks the assignment form and trigger while an assignment is pending", async () => {

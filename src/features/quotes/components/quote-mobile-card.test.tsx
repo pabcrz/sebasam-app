@@ -288,4 +288,34 @@ describe("QuoteListCard", () => {
 
     expect(screen.getByRole("button", { name: /restaurar cotización c-001/i })).toBeInTheDocument();
   });
+
+  it("keeps non-completed mobile quote printing on the quote route", () => {
+    renderCard(createMockQuote({
+      id: "quote-mobile-1",
+      status: "APPROVED",
+      workOrder: { id: "wo-mobile-active-1", number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+    }));
+
+    const print = screen.getByRole("link", { name: /imprimir cotización/i });
+    expect(print).toHaveAttribute(
+      "href",
+      "/admin/quotes/quote-mobile-1/print?returnTo=/admin/quotes",
+    );
+    expect(print.getAttribute("href")).not.toContain("/admin/notas/");
+    expect(print).toHaveClass("!h-11", "!w-11", "min-h-11", "min-w-11", "print-action");
+    expect(print.parentElement).toHaveClass("grid", "w-11", "sm:block", "sm:w-auto");
+  });
+
+  it("routes completed mobile quote printing to the work-order note", () => {
+    renderCard(createMockQuote({
+      id: "quote-mobile-completed-1",
+      status: "APPROVED",
+      workOrder: { id: "wo-mobile-completed-1", number: "OT-002", status: "COMPLETED" } as QuoteListItem["workOrder"],
+    }));
+
+    const print = screen.getByRole("link", { name: /imprimir cotización/i });
+    expect(print).toHaveAttribute("href", "/admin/notas/wo-mobile-completed-1/print?returnTo=/admin/notas");
+    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+  });
+
 });

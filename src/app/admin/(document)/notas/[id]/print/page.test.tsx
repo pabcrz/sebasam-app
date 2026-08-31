@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
   notFound: vi.fn(),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const { getCompletedWorkOrderById, getPaymentSettings } = vi.hoisted(() => ({
@@ -13,7 +14,7 @@ const { getCompletedWorkOrderById, getPaymentSettings } = vi.hoisted(() => ({
 
 vi.mock("@/features/work-orders/queries", () => ({ getCompletedWorkOrderById }));
 vi.mock("@/features/payment-settings/domain", () => ({ getPaymentSettings }));
-vi.mock("./print-button", () => ({ PrintButton: () => <button type="button">Imprimir</button> }));
+vi.mock("@/features/quotes/components/print-controls", () => ({ PrintControls: () => <button type="button">Imprimir</button> }));
 
 import WorkOrderPrintPage, { generateMetadata } from "./page";
 

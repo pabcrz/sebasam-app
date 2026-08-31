@@ -9,8 +9,8 @@ vi.mock("@/features/quotes/queries", () => ({ getQuoteById: getQuoteByIdMock }))
 vi.mock("@/features/payment-settings/domain", () => ({ getPaymentSettings: getPaymentSettingsMock }));
 vi.mock("@/features/public-quotes/components/public-quote-shell", () => ({ PublicQuoteShell: publicQuoteShellMock }));
 vi.mock("@/features/public-quotes/components/shared-quote-view", () => ({ SharedQuoteView: () => null }));
-vi.mock("./print-controls", () => ({ PrintControls: () => null }));
-vi.mock("next/navigation", () => ({ notFound: vi.fn() }));
+vi.mock("@/features/quotes/components/print-controls", () => ({ PrintControls: () => null }));
+vi.mock("next/navigation", () => ({ notFound: vi.fn(), useSearchParams: () => new URLSearchParams() }));
 
 import QuotePrintPage from "./page";
 

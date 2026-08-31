@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { Printer } from "lucide-react";
 import type { listActiveWorkOrders } from "@/features/work-orders/queries";
 
 import type { listQuotes } from "@/features/quotes/queries";
-import { Badge, OperationalActionRow, OperationalCard } from "@/components/ui";
+import { Badge, Button, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
@@ -73,6 +75,9 @@ export function WorkOrderActiveList({
             openLabel={`Ver detalle de cotización ${wo.quote.number}`}
             footer={
               <OperationalActionRow>
+                <Button asChild type="button" variant="outline" size="sm" className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" title={`Imprimir orden ${wo.number}`} aria-label={`Imprimir orden ${wo.number}`}>
+                  <Link href={`/admin/quotes/${wo.quote.id}/print?returnTo=/admin/work-orders`}><Printer className="h-4 w-4" aria-hidden="true" /><span className="sr-only sm:not-sr-only">Imprimir orden</span></Link>
+                </Button>
                 <WorkOrderOperationsDialog
                   quoteNumber={wo.quote.number}
                   quoteStatus={wo.quote.status}

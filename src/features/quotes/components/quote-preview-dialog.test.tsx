@@ -120,4 +120,35 @@ describe("QuotePreviewDialog", () => {
 
     expect(screen.getAllByText("Cambio de aceite")[0]).toBeInTheDocument();
   });
+
+  it("keeps non-completed preview printing on the quote route", async () => {
+    const user = userEvent.setup();
+    render(<QuotePreviewDialog quote={createMockQuote({
+      id: "quote-preview-1",
+      workOrder: { id: "wo-preview-active-1", status: "IN_PROGRESS" } as QuoteListSummary["workOrder"],
+    })} />);
+
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+
+    const print = screen.getByRole("link", { name: /imprimir cotización/i });
+    expect(print).toHaveAttribute("href", "/admin/quotes/quote-preview-1/print?returnTo=/admin/quotes");
+    expect(print.getAttribute("href")).not.toContain("/admin/notas/");
+    expect(print).toHaveAttribute("target", "_blank");
+    expect(print).toHaveClass("min-h-11", "min-w-11", "!h-11", "!w-11", "sm:!h-9", "sm:!w-auto");
+    expect(screen.getByText("Imprimir cotización")).toHaveClass("sr-only", "sm:not-sr-only");
+  });
+
+  it("routes completed preview printing to the work-order note", async () => {
+    const user = userEvent.setup();
+    render(<QuotePreviewDialog quote={createMockQuote({
+      id: "quote-preview-completed-1",
+      workOrder: { id: "wo-preview-completed-1", status: "COMPLETED" } as QuoteListSummary["workOrder"],
+    })} />);
+
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+
+    const print = screen.getByRole("link", { name: /imprimir cotización/i });
+    expect(print).toHaveAttribute("href", "/admin/notas/wo-preview-completed-1/print?returnTo=/admin/notas");
+    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+  });
 });

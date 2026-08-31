@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Eye, X } from "lucide-react";
+import { Eye, Printer, X } from "lucide-react";
+import Link from "next/link";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import {
   Button,
@@ -13,9 +14,10 @@ import {
 } from "@/components/ui";
 import { QuotePreviewCard, type QuotePreviewCardProps } from "./quote-preview-card";
 
-export type QuotePreviewSummary = Pick<QuoteListSummary, "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & {
+export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & {
   customer: Pick<NonNullable<QuoteListSummary["customer"]>, "name"> | null;
   vehicle: Pick<NonNullable<QuoteListSummary["vehicle"]>, "plate" | "brand" | "model" | "year"> | null;
+  workOrder?: Pick<NonNullable<QuoteListSummary["workOrder"]>, "id" | "status"> | null;
   items: Array<{ type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }>;
   sections: Array<{ name: string; items: Array<{ type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }> }>;
 };
@@ -92,6 +94,9 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
     [onOpenChange],
   );
   const preview = toQuotePreviewCardProps(quote);
+  const printHref = quote.workOrder?.status === "COMPLETED"
+    ? `/admin/notas/${quote.workOrder.id}/print?returnTo=/admin/notas`
+    : `/admin/quotes/${quote.id}/print?returnTo=/admin/quotes`;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -123,6 +128,12 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
         </DialogHeader>
 
         <QuotePreviewCard {...preview} />
+        <Button asChild type="button" variant="primary" size="sm" className="!h-11 !w-11 min-h-11 min-w-11 px-0 sm:!h-9 sm:!w-auto sm:px-3">
+          <Link href={printHref} target="_blank" rel="noreferrer">
+            <Printer className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only sm:not-sr-only">Imprimir cotización</span>
+          </Link>
+        </Button>
       </DialogContent>
     </Dialog>
   );

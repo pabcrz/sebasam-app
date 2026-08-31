@@ -222,4 +222,32 @@ describe("QuoteListRow", () => {
     expect(screen.getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /preparar y compartir cotización c-001/i })).toBeInTheDocument();
   });
+
+  it("keeps non-completed quote-row printing on the quote route", () => {
+    renderRow(createMockQuote({
+      id: "quote-row-1",
+      status: "APPROVED",
+      workOrder: { id: "wo-row-active-1", number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+    }));
+
+    const print = screen.getByRole("link", { name: /imprimir cotización/i });
+    expect(print).toHaveAttribute(
+      "href",
+      "/admin/quotes/quote-row-1/print?returnTo=/admin/quotes",
+    );
+    expect(print.getAttribute("href")).not.toContain("/admin/notas/");
+    expect(print).toHaveClass("min-h-11", "min-w-11");
+  });
+
+  it("routes completed quote-row printing to the work-order note", () => {
+    renderRow(createMockQuote({
+      id: "quote-row-completed-1",
+      status: "APPROVED",
+      workOrder: { id: "wo-row-completed-1", number: "OT-002", status: "COMPLETED" } as QuoteListItem["workOrder"],
+    }));
+
+    const print = screen.getByRole("link", { name: /imprimir cotización/i });
+    expect(print).toHaveAttribute("href", "/admin/notas/wo-row-completed-1/print?returnTo=/admin/notas");
+    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+  });
 });

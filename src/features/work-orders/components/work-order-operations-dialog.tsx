@@ -428,10 +428,10 @@ export function WorkOrderOperationsDialog({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="w-9 px-0 sm:w-auto sm:px-3"
+                  className="min-h-11 min-w-11 w-9 px-0 sm:w-auto sm:px-3"
                   title={`Imprimir nota de remisión ${workOrder.number}`}
                   aria-label={`Imprimir nota de remisión ${workOrder.number}`}
-                  onClick={() => window.open(`/admin/notas/${workOrder.id}/print`, "_blank")}
+                  onClick={() => window.open(`/admin/notas/${workOrder.id}/print?returnTo=/admin/notas`, "_blank")}
                 >
                   <Printer className="h-4 w-4" aria-hidden="true" />
                   <span className="sr-only sm:not-sr-only">Imprimir Nota de Remisión</span>

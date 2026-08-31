@@ -47,6 +47,7 @@ describe("WorkOrderCompletedList", () => {
     const print = screen.getByRole("button", { name: "Imprimir nota de remisión OT-001" });
     const payment = screen.getByRole("button", { name: "Registrar pago para COT-001" });
     expect(print).toHaveAttribute("title", "Imprimir nota de remisión OT-001");
+    expect(print).toHaveClass("min-h-11", "min-w-11");
     expect(print).toHaveClass("w-10", "sm:w-auto");
     expect(print.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
     expect(print.parentElement?.parentElement).toHaveClass("flex", "w-full", "flex-wrap", "items-center", "gap-3", "[&_button]:h-10", "[&_button]:w-10", "sm:gap-2", "sm:[&_button]:h-9", "sm:[&_button]:w-auto");
@@ -57,5 +58,16 @@ describe("WorkOrderCompletedList", () => {
     expect(screen.getByText(/Pago parcial · Saldo.*75/)).toBeVisible();
     expect(screen.getByText(/Cobro urgente · Saldo.*75/)).toBeVisible();
     expect(screen.queryByText("Completada")).not.toBeInTheDocument();
+  });
+
+  it("opens completed-note printing on the note route and never the quote route", () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<WorkOrderCompletedList workOrders={[workOrder]} />);
+
+    screen.getByRole("button", { name: "Imprimir nota de remisión OT-001" }).click();
+
+    expect(open).toHaveBeenCalledWith("/admin/notas/work-order-1/print?returnTo=/admin/notas", "_blank");
+    expect(open.mock.calls[0]?.[0]).not.toContain("/admin/quotes/");
+    open.mockRestore();
   });
 });
