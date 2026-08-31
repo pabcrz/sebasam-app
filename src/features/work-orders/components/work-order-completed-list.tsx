@@ -84,10 +84,10 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
+                    className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
                     title={`Imprimir nota de remisión ${wo.number}`}
                     aria-label={`Imprimir nota de remisión ${wo.number}`}
-                    onClick={() => window.open(`/admin/notas/${wo.id}/print`, "_blank")}
+                    onClick={() => window.open(`/admin/notas/${wo.id}/print?returnTo=/admin/notas`, "_blank")}
                   >
                     <Printer className="h-5 w-5" aria-hidden="true" />
                     <span className="sr-only sm:not-sr-only">Imprimir nota</span>

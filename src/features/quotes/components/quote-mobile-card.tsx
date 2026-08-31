@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { CalendarDays, Car, ClipboardList } from "lucide-react";
+import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
+import Link from "next/link";
 import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, OperationalActionRow } from "@/components/ui";
+import { Badge, Button, OperationalActionRow } from "@/components/ui";
 import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
@@ -80,6 +81,9 @@ export function QuoteListCard({
     quote.subtotalCents !== null && quote.taxCents !== null && quote.totalCents !== null
     ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts)
     : null;
+  const printHref = quote.workOrder?.status === "COMPLETED"
+    ? `/admin/notas/${quote.workOrder.id}/print?returnTo=/admin/notas`
+    : `/admin/quotes/${quote.id}/print?returnTo=/admin/quotes`;
   const actionLabelClassName = "sr-only sm:not-sr-only";
 
   return (
@@ -151,8 +155,11 @@ export function QuoteListCard({
       </button>
 
       <div className="mt-4 grid gap-2">
-        <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
+          <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
         <OperationalActionRow>
+          <Button asChild type="button" variant="outline" size="sm" data-mobile-target="44" className="!h-11 !w-11 min-h-11 min-w-11 px-0 sm:!h-9 sm:!w-auto sm:px-3 print-action" title={`Imprimir cotización ${quote.number}`} aria-label={`Imprimir cotización ${quote.number}`}>
+            <Link href={printHref}><Printer className="h-4 w-4" aria-hidden="true" /><span className={actionLabelClassName}>Imprimir cotización</span></Link>
+          </Button>
           {editable ? (
             <QuoteBuilderDialog
               customers={customers}

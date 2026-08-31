@@ -15,9 +15,12 @@ type OperationalCardProps = {
 export function OperationalActionRow({ children }: React.PropsWithChildren) {
   return (
     <div className="flex w-full flex-wrap items-center gap-3 [&_button]:h-10 [&_button]:w-10 sm:gap-2 sm:[&_button]:h-9 sm:[&_button]:w-auto">
-      {React.Children.map(children, (child) => child == null ? null : (
-        <div className="grid w-10 sm:block sm:w-auto">{child}</div>
-      ))}
+      {React.Children.map(children, (child) => {
+        if (child == null) return null;
+        const childProps = React.isValidElement(child) ? child.props as { "data-mobile-target"?: string } : undefined;
+        const hasTouchTarget = childProps?.["data-mobile-target"] === "44";
+        return <div className={`grid ${hasTouchTarget ? "w-11" : "w-10"} sm:block sm:w-auto`}>{child}</div>;
+      })}
     </div>
   );
 }

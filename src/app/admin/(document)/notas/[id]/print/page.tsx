@@ -6,7 +6,8 @@ import { PublicQuoteShell } from "@/features/public-quotes/components/public-quo
 import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
-import { PrintControls } from "./print-controls";
+import { PrintControls } from "@/features/quotes/components/print-controls";
+import { Suspense } from "react";
 
 interface PrintPageProps {
   params: Promise<{ id: string }>;
@@ -69,7 +70,7 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
 
   return (
     <div className="min-h-screen bg-[var(--background)] flex flex-col print:min-h-0">
-      <PrintControls />
+      <Suspense fallback={null}><PrintControls backLabel="Volver a notas" /></Suspense>
       <PublicQuoteShell
         business={paymentSettings}
         documentType={documentType}

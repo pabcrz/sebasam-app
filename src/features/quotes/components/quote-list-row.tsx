@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import type { PaymentRequest, QuoteStatus } from "@prisma/client";
+import Link from "next/link";
+import { Printer } from "lucide-react";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, TableCell, TableRow } from "@/components/ui";
+import { Badge, Button, TableCell, TableRow } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
@@ -74,6 +76,9 @@ export function QuoteListRow({
     quote.subtotalCents !== null && quote.taxCents !== null && quote.totalCents !== null
     ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts)
     : null;
+  const printHref = quote.workOrder?.status === "COMPLETED"
+    ? `/admin/notas/${quote.workOrder.id}/print?returnTo=/admin/notas`
+    : `/admin/quotes/${quote.id}/print?returnTo=/admin/quotes`;
 
   return (
     <TableRow
@@ -122,8 +127,11 @@ export function QuoteListRow({
       </TableCell>
       <TableCell>{quote.validUntil ? formatDate(quote.validUntil) : "—"}</TableCell>
       <TableCell className="min-w-[230px]" onClick={(event) => event.stopPropagation()}>
-        <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
+          <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
         <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <Button asChild type="button" variant="outline" size="sm" className="min-h-11 min-w-11" title={`Imprimir cotización ${quote.number}`} aria-label={`Imprimir cotización ${quote.number}`}>
+            <Link href={printHref}><Printer className="h-4 w-4" aria-hidden="true" /><span className="sr-only">Imprimir cotización</span></Link>
+          </Button>
           {editable ? (
             <QuoteBuilderDialog
               customers={customers}

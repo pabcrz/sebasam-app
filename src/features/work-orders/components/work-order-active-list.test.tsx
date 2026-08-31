@@ -194,4 +194,15 @@ describe("WorkOrderActiveList", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("routes the active work-order print affordance back to work orders", () => {
+    renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }));
+
+    const print = screen.getByRole("link", { name: /imprimir orden/i });
+    expect(print).toHaveAttribute(
+      "href",
+      "/admin/quotes/quote-1/print?returnTo=/admin/work-orders",
+    );
+    expect(print).toHaveClass("min-h-11", "min-w-11");
+  });
 });
