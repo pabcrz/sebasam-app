@@ -20,24 +20,33 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   expect(dialogStyle.justifyContent).toBe("flex-start");
   expect(dialogStyle.overflow).toBe("hidden");
 
-  const header = screen.getByRole("heading", { name: /cotización/ }).parentElement;
-  const form = screen.getByTestId("quote-builder-form");
-  const stepper = screen.getByRole("navigation", { name: "Pasos de cotización" }).parentElement;
-  const body = screen.getByTestId("quote-builder-scroll-area");
-  const footer = screen.getByTestId("quote-builder-footer");
+  const header = screen.getByTestId("multi-step-dialog-header");
+  const stepper = screen.getByTestId("multi-step-dialog-stepper");
+  const body = screen.getByTestId("multi-step-dialog-body");
+  const footer = screen.getByTestId("multi-step-dialog-footer");
 
-  expect(header).not.toBeNull();
-  expect(stepper).not.toBeNull();
-  expect(Array.from(dialog.children)).toEqual([header, form]);
-  expect(Array.from(form.children)).toEqual([stepper, body, footer]);
-  expect(getComputedStyle(form).justifyContent).toBe("flex-start");
-  expect(getComputedStyle(form).minHeight).toBe("0px");
+  expect(Array.from(dialog.children)).toEqual([header, stepper, body, footer]);
 
-  for (const fixedRegion of [header!, stepper!, footer]) {
+  expect(header).toContainElement(screen.getByRole("heading", { name: /cotización/ }));
+  expect(stepper).toContainElement(screen.getByRole("navigation", { name: "Pasos de cotización" }));
+  expect(footer).toContainElement(screen.getByRole("button", { name: "Siguiente" }));
+
+  for (const fixedRegion of [header, stepper, footer]) {
     const style = getComputedStyle(fixedRegion);
     expect(style.flexShrink).toBe("0");
     expect(style.overflowY).not.toBe("auto");
   }
+
+  const form = screen.getByTestId("quote-builder-form");
+  expect(body).toContainElement(form);
+  const scrollArea = screen.getByTestId("quote-builder-scroll-area");
+  expect(Array.from(form.children)).toEqual([scrollArea]);
+  const formStyle = getComputedStyle(form);
+  expect(formStyle.display).toBe("flex");
+  expect(formStyle.flexDirection).toBe("column");
+  expect(formStyle.justifyContent).toBe("flex-start");
+  expect(formStyle.height).toBe("100%");
+  expect(formStyle.minHeight).toBe("0px");
 
   const bodyStyle = getComputedStyle(body);
   expect(bodyStyle.flexGrow).toBe("1");
@@ -46,11 +55,18 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   expect(bodyStyle.overflowY).toBe("auto");
   expect(bodyStyle.overscrollBehaviorY).toBe("contain");
 
-  Object.defineProperties(body, {
+  const scrollAreaStyle = getComputedStyle(scrollArea);
+  expect(scrollAreaStyle.flexGrow).toBe("1");
+  expect(scrollAreaStyle.flexShrink).toBe("1");
+  expect(scrollAreaStyle.minHeight).toBe("0px");
+  expect(scrollAreaStyle.overflowY).toBe("auto");
+  expect(scrollAreaStyle.overscrollBehaviorY).toBe("contain");
+
+  Object.defineProperties(scrollArea, {
     clientHeight: { configurable: true, value: 320 },
     scrollHeight: { configurable: true, value: overflowing ? 960 : 240 },
   });
-  expect(body.scrollHeight > body.clientHeight).toBe(overflowing);
+  expect(scrollArea.scrollHeight > scrollArea.clientHeight).toBe(overflowing);
 }
 
 async function enterRepresentativeQuoteState(user: ReturnType<typeof userEvent.setup>) {
