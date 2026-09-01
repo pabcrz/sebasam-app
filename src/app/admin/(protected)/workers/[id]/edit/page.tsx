@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, UserCog } from "lucide-react";
 import { notFound } from "next/navigation";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import { Button, Card, CardContent, CardHeader } from "@/components/ui";
 import {
   setWorkerActiveFromForm,
   updateWorkerFromForm,
@@ -39,17 +40,9 @@ export default async function EditWorkerPage({ params, searchParams }: EditWorke
         </Link>
       </Button>
 
+      <AdminPageHeader icon={UserCog} title={worker.displayName} description="Actualiza los datos del perfil operativo." variant="expanded" />
       <Card>
         <CardHeader>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
-            Edición de trabajador
-          </p>
-          <CardTitle as="h1" className="text-2xl md:text-3xl">
-            {worker.displayName}
-          </CardTitle>
-          <p className="text-sm text-[var(--color-text-muted)]">
-            Actualiza los datos del perfil operativo.
-          </p>
           {query.error === "invalid" ? (
             <p className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
               Revisa los datos del trabajador e intenta de nuevo.

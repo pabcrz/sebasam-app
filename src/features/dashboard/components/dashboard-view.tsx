@@ -7,7 +7,8 @@ import {
   LayoutDashboard,
   UserCog,
   Users,
-} from "lucide-react";
+  } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CustomerCreateForm } from "@/features/customers/components/customer-create-form";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
@@ -85,23 +86,12 @@ export function DashboardView({
 }: DashboardViewProps) {
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-10">
-      {/* Header & Direct Modal Triggers */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between md:mb-8">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white">
-            <LayoutDashboard className="h-6 w-6" aria-hidden="true" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text-main)] md:text-3xl">
-              Panel de operaciones
-            </h1>
-            <p className="text-sm text-[var(--color-text-muted)]">
-              Estado operativo en tiempo real, colas de trabajo y métricas de desempeño.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <AdminPageHeader
+        icon={LayoutDashboard}
+        title="Panel de operaciones"
+        description="Estado operativo en tiempo real, colas de trabajo y métricas de desempeño."
+        actions={
+          <>
           <CustomerCreateForm
             action={createCustomerAction}
             triggerVariant="outline"
@@ -115,8 +105,9 @@ export function DashboardView({
             triggerVariant="primary"
             triggerSize="sm"
           />
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Main Operational Stack */}
       <div className="space-y-6">

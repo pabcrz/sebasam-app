@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import { deleteCustomerFromForm, updateCustomerBasicsFromForm } from "@/features/customers/actions";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { getCustomerById } from "@/features/customers/queries";
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { CustomerEditForm } from "@/features/customers/components/customer-edit-form";
@@ -36,15 +37,9 @@ export default async function EditCustomerPage({ params, searchParams }: EditCus
         </Link>
       </Button>
 
+      <AdminPageHeader icon={Users} title={customer.name} description="Actualiza los datos básicos del cliente." variant="expanded" />
       <Card>
         <CardHeader>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
-            Edición de cliente
-          </p>
-          <CardTitle as="h1" className="text-2xl md:text-3xl">
-            {customer.name}
-          </CardTitle>
-          <p className="text-sm text-[var(--color-text-muted)]">Actualiza los datos básicos del cliente.</p>
           {query.error === "invalid" ? (
             <p className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
               Revisa los datos del cliente e intenta de nuevo.
@@ -81,4 +76,3 @@ export default async function EditCustomerPage({ params, searchParams }: EditCus
     </section>
   );
 }
-
