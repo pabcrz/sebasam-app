@@ -4,11 +4,9 @@ import {
   ClipboardList,
   FileCheck,
   FileText,
-  LayoutDashboard,
   UserCog,
   Users,
-  } from "lucide-react";
-import { AdminPageHeader } from "@/components/admin-page-header";
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, SectionLabel } from "@/components/ui";
 import { CustomerCreateForm } from "@/features/customers/components/customer-create-form";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
@@ -85,29 +83,23 @@ export function DashboardView({
   searchCustomersAction,
 }: DashboardViewProps) {
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-10">
-      <AdminPageHeader
-        icon={LayoutDashboard}
-        title="Panel de operaciones"
-        description="Estado operativo en tiempo real, colas de trabajo y métricas de desempeño."
-        actions={
-          <>
-          <CustomerCreateForm
-            action={createCustomerAction}
-            triggerVariant="outline"
-            triggerSize="sm"
-          />
-          <QuoteBuilderDialog
-            customers={customers}
-            createAction={createQuoteAction}
-            createCustomerAction={createCustomerForQuoteAction}
-            searchCustomersAction={searchCustomersAction}
-            triggerVariant="primary"
-            triggerSize="sm"
-          />
-          </>
-        }
-      />
+    <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
+      <h1 className="sr-only">Inicio</h1>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <CustomerCreateForm
+          action={createCustomerAction}
+          triggerVariant="outline"
+          triggerSize="sm"
+        />
+        <QuoteBuilderDialog
+          customers={customers}
+          createAction={createQuoteAction}
+          createCustomerAction={createCustomerForQuoteAction}
+          searchCustomersAction={searchCustomersAction}
+          triggerVariant="primary"
+          triggerSize="sm"
+        />
+      </div>
 
       {/* Main Operational Stack */}
       <div className="space-y-6">

@@ -3,6 +3,13 @@ import { render, screen } from "@testing-library/react";
 import { PublicQuoteShell } from "./public-quote-shell";
 
 describe("PublicQuoteShell", () => {
+  it("anchors totals at bottom of page in print using calibrated printable height", () => {
+    const { container } = render(<PublicQuoteShell>content</PublicQuoteShell>);
+
+    expect(container.firstElementChild).toHaveClass("min-h-screen");
+    expect(container.firstElementChild).toHaveClass("print:min-h-[235mm]");
+  });
+
   it("renders the approved quote brand treatment and subtitle", () => {
     render(<PublicQuoteShell business={{ businessName: "Taller Norte", fullName: "Servicio Norte" }} logoSrc="/taller-norte.png">content</PublicQuoteShell>);
 

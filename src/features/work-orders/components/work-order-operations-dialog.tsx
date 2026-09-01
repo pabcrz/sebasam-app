@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
+import type { ButtonVariant } from "@/components/ui";
 
 import { useRouter } from "next/navigation";
 
@@ -68,6 +69,7 @@ type WorkOrderOperationsDialogProps = {
   actions?: WorkOrderActions;
   triggerIconOnlyMobile?: boolean;
   noteReturnTo?: string;
+  triggerVariant?: ButtonVariant;
 };
 
 const noopActions: WorkOrderActions = {
@@ -83,6 +85,7 @@ export function WorkOrderOperationsDialog({
   actions = noopActions,
   triggerIconOnlyMobile = false,
   noteReturnTo = "/admin/notas",
+  triggerVariant = "outline",
 }: WorkOrderOperationsDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -209,7 +212,7 @@ export function WorkOrderOperationsDialog({
     <>
       <Button
         type="button"
-        variant="outline"
+        variant={triggerVariant}
         size="sm"
         ref={triggerRef}
         className={triggerIconOnlyMobile ? "h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" : "w-full"}

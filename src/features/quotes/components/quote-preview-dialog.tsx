@@ -37,7 +37,7 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
   const snapshotValue = (key: string) => snapshot[key] == null ? "" : String(snapshot[key]);
 
   // Preserve root items and section items as independent renderable sections.
-  const rootItems = quote.items.filter((item) => item.sectionId === null);
+  const rootItems = quote.items.filter((item) => item.sectionId == null);
   const rootSection = rootItems.length > 0
     ? [{
         name: "General",
