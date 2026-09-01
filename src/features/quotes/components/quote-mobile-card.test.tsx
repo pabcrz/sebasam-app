@@ -192,36 +192,38 @@ describe("QuoteListCard", () => {
     expect(remove.closest("div[class*='border-t']")).not.toBeNull();
   });
 
-  it("renders Edit and Print as compact equal-width responsive action targets", () => {
+  it("renders Edit and Print as compact, wrapping responsive action targets", () => {
     renderCard(createMockQuote());
 
     const frequentActions = screen.getByTestId("quote-frequent-actions");
     const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
     const print = screen.getByRole("link", { name: "Imprimir cotización C-001" });
-    expect(frequentActions).toHaveClass("grid-cols-2");
-    expect(edit).toHaveClass("h-10", "w-full", "px-0", "sm:h-9", "sm:px-3");
+    expect(frequentActions).toHaveClass("flex", "flex-wrap", "gap-2", "sm:items-center");
+    expect(frequentActions).not.toHaveClass("grid", "grid-cols-2", "grid-cols-3");
+    expect(edit).toHaveClass("h-10", "w-10", "px-0", "sm:h-9", "sm:w-auto", "sm:px-3");
     expect(within(edit).getByText("Editar")).toHaveClass("sr-only", "sm:not-sr-only");
     expect(print).toHaveAttribute("aria-label", "Imprimir cotización C-001");
     expect(print).toHaveAttribute("title", "Imprimir cotización C-001");
-    expect(print).toHaveClass("h-10", "w-full", "px-0", "sm:h-9", "sm:px-3");
+    expect(print).toHaveClass("h-10", "w-10", "px-0", "sm:h-9", "sm:w-auto", "sm:px-3");
     expect(within(print).getByText("Imprimir")).toHaveClass("sr-only", "sm:not-sr-only");
   });
 
-  it("renders Sent frequent actions in the required Edit, Print, Share three-tile order", () => {
+  it("renders Sent frequent actions in the required Edit, Print, Share wrapping order", () => {
     renderCard(createMockQuote({
       status: "SENT",
       activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"],
     }));
 
     const frequentActions = screen.getByTestId("quote-frequent-actions");
-    expect(frequentActions).toHaveClass("grid-cols-3");
+    expect(frequentActions).toHaveClass("flex", "flex-wrap");
+    expect(frequentActions).not.toHaveClass("grid-cols-3");
     expect(Array.from(frequentActions.querySelectorAll<HTMLElement>("[aria-label]")).map((element) => element.getAttribute("aria-label"))).toEqual([
       "Editar cotización C-001",
       "Imprimir cotización C-001",
       "Compartir cotización C-001",
     ]);
     const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
-    expect(share).toHaveClass("h-10", "w-full", "px-0", "sm:h-9", "sm:px-3");
+    expect(share).toHaveClass("h-10", "w-10", "px-0", "sm:h-9", "sm:w-auto", "sm:px-3");
     expect(within(share).getByText("Compartir")).toHaveClass("sr-only", "sm:not-sr-only");
     expect(screen.getByTestId("quote-overflow-action")).toHaveClass("flex", "justify-center");
     expect(screen.getByRole("button", { name: "Más acciones de cotización C-001" })).not.toHaveClass("border");

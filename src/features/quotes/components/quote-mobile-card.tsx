@@ -99,7 +99,7 @@ export function QuoteListCard({
     variant: "primary" | "outline" = "outline",
     presentation: "default" | "tile" = "default",
   ) => {
-    const tileClassName = presentation === "tile" ? "h-10 w-full justify-center gap-0 px-0 sm:h-9 sm:gap-2 sm:px-3" : "w-full";
+    const tileClassName = presentation === "tile" ? "h-10 w-10 justify-center gap-0 px-0 sm:h-9 sm:w-auto sm:gap-2 sm:px-3" : "w-full";
 
     switch (action) {
       case "print":
@@ -263,10 +263,10 @@ export function QuoteListCard({
         {actionPresentation.frequent.length > 0 ? (
           <div
             data-testid="quote-frequent-actions"
-            className={`grid gap-2 ${actionPresentation.frequent.length === 3 ? "grid-cols-3" : actionPresentation.frequent.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}
+            className="flex flex-wrap gap-2 sm:items-center"
           >
             {actionPresentation.frequent.map((action) => (
-              <div key={action} className="min-w-0">{renderAction(action, "outline", "tile")}</div>
+              <div key={action} className="shrink-0">{renderAction(action, "outline", "tile")}</div>
             ))}
           </div>
         ) : null}
