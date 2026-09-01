@@ -65,6 +65,7 @@ describe("sequential quote/work-order numbers", () => {
 
     expect(query).toContain("MAX(parsed_suffix)");
     expect(query).toContain('FROM "Quote"');
+    expect(query).toContain('AND "deletedAt" IS NULL');
     expect(query).toContain("substring(\"number\" FROM ?::integer)");
     expect(query).toContain("WHERE suffix !~ '-'");
     expect(query).toContain("regexp_match(suffix, '^[[:space:]]*[+]?[0-9]+'");

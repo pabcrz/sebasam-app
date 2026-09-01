@@ -31,7 +31,7 @@ async function getNextNumber(
           FROM (
             SELECT substring("number" FROM ${prefixPattern.length + 1}::integer) AS suffix
             FROM "Quote"
-            WHERE "number" LIKE ${`${prefixPattern}%`}
+            WHERE "number" LIKE ${`${prefixPattern}%`} AND "deletedAt" IS NULL
           ) AS matching
           WHERE suffix !~ '-'
         ) AS parsed
