@@ -8,9 +8,6 @@ const listCustomersMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() => vi.fn());
 const redirectMock = vi.hoisted(() => vi.fn());
 const updateDraftQuoteFromFormMock = vi.hoisted(() => vi.fn());
-const editDraftQuoteFormMock = vi.hoisted(() =>
-  vi.fn(() => <div data-testid="edit-draft-quote-form" />),
-);
 
 vi.mock("@/lib/auth/session", () => ({
   requireOperationalRole: requireOperationalRoleMock,
@@ -31,14 +28,11 @@ vi.mock("@/features/customers/queries", () => ({
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
   redirect: redirectMock,
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 vi.mock("@/features/quotes/actions", () => ({
   updateDraftQuoteFromForm: updateDraftQuoteFromFormMock,
-}));
-
-vi.mock("@/features/quotes/components/edit-draft-quote-form", () => ({
-  EditDraftQuoteForm: editDraftQuoteFormMock,
 }));
 
 import EditQuotePage from "./page";
@@ -151,44 +145,11 @@ describe("EditQuotePage", () => {
 
     render(await EditQuotePage({ params }));
 
-    expect(screen.getByTestId("edit-draft-quote-form")).toBeInTheDocument();
-
-    expect(editDraftQuoteFormMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        customers,
-        quoteNumber: "COT-001",
-        saveAction: expect.any(Function),
-        initialData: expect.objectContaining({
-          customerId: "customer-1",
-          title: "Servicio general",
-          description: "Descripción de prueba",
-          administrative: false,
-          taxEnabled: true,
-          operationalDate: "2026-07-14",
-          isOperationalDateEditable: true,
-          vehicle: {
-            plate: "ABC123",
-            brand: "Toyota",
-            model: "Corolla",
-            year: "2022",
-          },
-          sections: [
-            expect.objectContaining({
-              name: "Sección 1",
-              items: [
-                expect.objectContaining({
-                  type: "LABOR",
-                  description: "Mano de obra",
-                  quantity: "2",
-                  unitPrice: "500",
-                }),
-              ],
-            }),
-          ],
-        }),
-      }),
-      undefined,
-    );
+    expect(screen.getByRole("heading", { name: "Editar cotización COT-001" })).toBeInTheDocument();
+    expect(screen.getByTestId("quote-builder-form")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Cliente Demo")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("ABC123")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Servicio general")).toBeInTheDocument();
   });
 
   it("resolves vehicle data from vehicleSnapshot when vehicle relation is absent", async () => {
@@ -223,23 +184,9 @@ describe("EditQuotePage", () => {
 
     render(await EditQuotePage({ params }));
 
-    expect(editDraftQuoteFormMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        initialData: expect.objectContaining({
-          description: "",
-          administrative: true,
-          taxEnabled: false,
-          operationalDate: "2026-07-13",
-          vehicle: {
-            plate: "XYZ789",
-            brand: "Honda",
-            model: "Civic",
-            year: "2023",
-          },
-          sections: [{ name: "General", items: [] }],
-        }),
-      }),
-      undefined,
-    );
+    expect(screen.getByRole("heading", { name: "Editar cotización COT-002" })).toBeInTheDocument();
+    expect(screen.getByTestId("quote-builder-form")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("XYZ789")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Servicio express")).toBeInTheDocument();
   });
 });

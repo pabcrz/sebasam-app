@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Users } from "lucide-react";
 import { notFound } from "next/navigation";
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { AdminPageHeader } from "@/components/admin-page-header";
+import { Button, Card, CardContent } from "@/components/ui";
 import { CustomerAccountStatement } from "@/features/customers/components/customer-account-statement";
 import { getCustomerAccountStatement, getCustomerById } from "@/features/customers/queries";
 
@@ -33,22 +34,8 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         </Link>
       </Button>
 
+      <AdminPageHeader icon={Users} title={customer.name} description="Detalle de cliente" variant="expanded" actions={<Button asChild variant="outline"><Link href={`/admin/customers/${customer.id}/edit`}>Editar</Link></Button>} />
       <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
-                Cliente
-              </p>
-              <CardTitle as="h1" className="mt-1 text-2xl md:text-3xl">
-                {customer.name}
-              </CardTitle>
-            </div>
-            <Button asChild variant="outline">
-              <Link href={`/admin/customers/${customer.id}/edit`}>Editar</Link>
-            </Button>
-          </div>
-        </CardHeader>
         <CardContent>
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
             <div>

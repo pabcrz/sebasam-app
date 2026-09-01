@@ -499,6 +499,15 @@ function checkAdminPageHeaders() {
     "getSectionTitle",
     "AdminShell must compute section title via getSectionTitle",
   );
+
+  const adminPageHeaderSource = readFileSync("src/components/admin-page-header.tsx", "utf8");
+  assertIncludes(adminPageHeaderSource, "icon: LucideIcon", "Shared header must accept an icon");
+  assertIncludes(adminPageHeaderSource, "title: string", "Shared header must accept a title");
+  assert(!adminPageHeaderSource.includes("eyebrow"), "Shared header must not accept or render an eyebrow");
+  assertIncludes(adminPageHeaderSource, "description?: ReactNode", "Shared header must accept a truthful description");
+  assertIncludes(adminPageHeaderSource, "actions?: ReactNode", "Shared header must accept contextual actions");
+  assertIncludes(adminPageHeaderSource, 'variant?: "compact" | "expanded"', "Shared header must expose the approved variants");
+  assert(!adminPageHeaderSource.includes("CardContent"), "Shared header must not render a card body");
 }
 
 function checkCustomerPages() {

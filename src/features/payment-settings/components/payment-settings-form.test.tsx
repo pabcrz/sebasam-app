@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PaymentSettingsForm, type PaymentSettingsFormProps } from "./payment-settings-form";
 
@@ -152,7 +152,7 @@ describe("PaymentSettingsForm", () => {
     await user.clear(screen.getByLabelText("Nombre corto"));
     await user.type(screen.getByLabelText("Nombre corto"), "Nuevo Nombre");
 
-    await user.click(screen.getByRole("button", { name: /guardar configuración/i }));
+    fireEvent.submit(screen.getByTestId("payment-settings-form"));
 
     await waitFor(() => expect(mockSaveAction).toHaveBeenCalledTimes(1));
 
@@ -161,10 +161,9 @@ describe("PaymentSettingsForm", () => {
   });
 
   it("shows success toast after save", async () => {
-    const user = userEvent.setup();
     renderForm();
 
-    await user.click(screen.getByRole("button", { name: /guardar configuración/i }));
+    fireEvent.submit(screen.getByTestId("payment-settings-form"));
 
     await waitFor(() =>
       expect(mockToast.success).toHaveBeenCalledWith(
@@ -174,13 +173,28 @@ describe("PaymentSettingsForm", () => {
     );
   });
 
+  it("locks the header save action while the real form action is pending", async () => {
+    let resolveSave!: (value: { success: boolean }) => void;
+    mockSaveAction.mockImplementation(() => new Promise((resolve) => { resolveSave = resolve; }));
+    const user = userEvent.setup();
+    renderForm();
+    const save = screen.getByRole("button", { name: "Guardar configuración" });
+
+    await user.click(save);
+    expect(save).toBeDisabled();
+    await user.click(save);
+    expect(mockSaveAction).toHaveBeenCalledTimes(1);
+
+    resolveSave({ success: true });
+    await waitFor(() => expect(save).not.toBeDisabled());
+  });
+
   it("shows error toast when action fails", async () => {
     mockSaveAction.mockResolvedValue({ success: false });
 
-    const user = userEvent.setup();
     renderForm();
 
-    await user.click(screen.getByRole("button", { name: /guardar configuración/i }));
+    fireEvent.submit(screen.getByTestId("payment-settings-form"));
 
     await waitFor(() =>
       expect(mockToast.error).toHaveBeenCalledWith(
