@@ -31,9 +31,11 @@ describe("WorkOrderOperationsDialog", () => {
 
   it("exposes the assignment dialog for an approved quote", async () => {
     const user = userEvent.setup();
-    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={null} actions={actions} />);
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={null} actions={actions} triggerVariant="primary" />);
 
-    await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i }));
+    const trigger = screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i });
+    expect(trigger).toHaveClass("bg-[image:var(--gradient-primary)]");
+    await user.click(trigger);
 
     expect(screen.getByRole("dialog")).toHaveTextContent("Asignar trabajo");
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();

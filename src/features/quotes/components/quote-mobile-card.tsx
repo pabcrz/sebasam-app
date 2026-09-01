@@ -5,7 +5,7 @@ import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
 import Link from "next/link";
 import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, Button, OperationalActionRow } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
@@ -24,6 +24,8 @@ import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
+import { QuoteActionsMenu } from "./quote-actions-menu";
+import { resolveQuoteActionPresentation, type QuoteActionId } from "./quote-action-presentation";
 
 type QuoteListItem = QuoteListSummary;
 
@@ -84,10 +86,109 @@ export function QuoteListCard({
   const printHref = quote.workOrder?.status === "COMPLETED"
     ? `/admin/notas/${quote.workOrder.id}/print?returnTo=/admin/notas`
     : `/admin/quotes/${quote.id}/print?returnTo=/admin/quotes`;
-  const actionLabelClassName = "sr-only sm:not-sr-only";
+  const actionPresentation = resolveQuoteActionPresentation({
+    status: quote.status,
+    editable,
+    hasActiveSharedQuote: Boolean(quote.activeSharedQuote),
+    hasWorkOrder: Boolean(quote.workOrder),
+    paymentAvailable: paymentRequestContext !== null,
+  });
+
+  const renderAction = (
+    action: QuoteActionId,
+    variant: "primary" | "outline" = "outline",
+    presentation: "default" | "tile" = "default",
+  ) => {
+    const tileClassName = presentation === "tile"
+      ? "h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
+      : "w-full";
+
+    switch (action) {
+      case "print":
+        return (
+          <Button
+            asChild
+            type="button"
+            variant={variant}
+            size="sm"
+            className={presentation === "tile" ? tileClassName : "min-h-11 min-w-11 px-3 sm:px-0"}
+            aria-label={`Imprimir cotización ${quote.number}`}
+            title={`Imprimir cotización ${quote.number}`}
+          >
+            <Link href={printHref}>
+              <Printer className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only">Imprimir</span>
+            </Link>
+          </Button>
+        );
+      case "edit":
+        return (
+          <QuoteBuilderDialog
+            customers={customers}
+            saveAction={saveAction}
+            searchCustomersAction={searchCustomersAction}
+            quote={quote}
+            quoteNumber={quote.number}
+            triggerAriaLabel={`Editar cotización ${quote.number}`}
+            triggerSize="sm"
+            triggerVariant={variant}
+            triggerClassName={tileClassName}
+            triggerIconOnly={presentation === "tile"}
+          />
+        );
+      case "share":
+        return (
+          <ShareQuoteButton
+            action={shareAction}
+            sharedQuote={quote.activeSharedQuote ?? undefined}
+            status={quote.status}
+            quoteNumber={quote.number}
+            variant={variant}
+            className={tileClassName}
+            actionLabelClassName={presentation === "tile" ? "sr-only" : undefined}
+          />
+        );
+      case "authorize":
+        return <QuoteAuthorizeForm action={authorizeAction} quoteNumber={quote.number} sections={quote.sections} variant={variant} size="sm" />;
+      case "correctDecision":
+        return (
+          <QuoteCorrectDecisionForm
+            action={correctDecisionAction}
+            quoteId={quote.id}
+            quoteNumber={quote.number}
+            currentStatus={quote.status as "APPROVED" | "REJECTED"}
+            variant={variant}
+            size="sm"
+          />
+        );
+      case "workOrder":
+        return (
+          <WorkOrderOperationsDialog
+            quoteNumber={quote.number}
+            quoteStatus={quote.status}
+            workOrder={quote.workOrder}
+            workers={workers}
+            actions={workOrderActions}
+            triggerVariant={variant}
+          />
+        );
+      case "paymentLink":
+        return paymentRequestContext ? <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} /> : null;
+      case "duplicate":
+        return <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} />;
+      case "cancel":
+        return <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant={variant} size="sm" />;
+      case "archive":
+        return <QuoteLifecycleForm action={archiveAction} mode="archive" quoteNumber={quote.number} />;
+      case "restore":
+        return <QuoteLifecycleForm action={restoreAction} mode="restore" quoteNumber={quote.number} />;
+      case "delete":
+        return <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />;
+    }
+  };
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm">
+    <div className="w-full min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm">
       <button
         type="button"
         onClick={openPreview}
@@ -154,89 +255,31 @@ export function QuoteListCard({
         </div>
       </button>
 
-      <div className="mt-4 grid gap-2">
-          <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
-        <OperationalActionRow>
-          <Button asChild type="button" variant="outline" size="sm" data-mobile-target="44" className="!h-11 !w-11 min-h-11 min-w-11 px-0 sm:!h-9 sm:!w-auto sm:px-3 print-action" title={`Imprimir cotización ${quote.number}`} aria-label={`Imprimir cotización ${quote.number}`}>
-            <Link href={printHref}><Printer className="h-4 w-4" aria-hidden="true" /><span className={actionLabelClassName}>Imprimir cotización</span></Link>
-          </Button>
-          {editable ? (
-            <QuoteBuilderDialog
-              customers={customers}
-              saveAction={saveAction}
-              searchCustomersAction={searchCustomersAction}
-              quote={quote}
+      <div className="mt-4 grid gap-3">
+        <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
+        {actionPresentation.primary ? (
+          <div data-testid="quote-primary-action" className="w-full [&_a]:w-full [&_button]:w-full">
+            {renderAction(actionPresentation.primary, "primary")}
+          </div>
+        ) : null}
+        <div
+          data-testid="quote-secondary-actions"
+          className="grid grid-cols-[repeat(3,minmax(0,1fr))_auto] items-center gap-2"
+        >
+          {actionPresentation.frequent.map((action) => (
+            <div key={action} className="min-w-0">{renderAction(action, "outline", "tile")}</div>
+          ))}
+          <div data-testid="quote-overflow-action" className="col-start-4 min-w-0">
+            <QuoteActionsMenu
               quoteNumber={quote.number}
-              triggerSize="sm"
-              triggerVariant="outline"
-              triggerIconOnlyMobile
-            />
-          ) : null}
-
-          <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} actionLabelClassName={actionLabelClassName} />
-
-          {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "CANCELLED" || quote.status === "REJECTED" || quote.status === "ARCHIVED" ? (
-            <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} actionLabelClassName={actionLabelClassName} />
-          ) : null}
-
-          {quote.status === "DRAFT" || (quote.activeSharedQuote && (quote.status === "SENT" || quote.status === "APPROVED")) ? (
-            <ShareQuoteButton
-              action={shareAction}
-              sharedQuote={quote.activeSharedQuote ?? undefined}
-              status={quote.status}
-              quoteNumber={quote.number}
-              actionLabelClassName={actionLabelClassName}
-            />
-          ) : null}
-
-           {quote.status === "SENT" ? (
-            <QuoteAuthorizeForm
-              action={authorizeAction}
-              quoteNumber={quote.number}
-              sections={quote.sections}
-              variant="outline"
-              size="sm"
-              actionLabelClassName={actionLabelClassName}
-            />
-          ) : null}
-
-          {(quote.status === "APPROVED" || quote.status === "REJECTED") && !quote.workOrder ? (
-            <QuoteCorrectDecisionForm
-              action={correctDecisionAction}
-              quoteId={quote.id}
-              quoteNumber={quote.number}
-              currentStatus={quote.status}
-              variant="outline"
-              size="sm"
-              actionLabelClassName={actionLabelClassName}
-            />
-          ) : null}
-
-          {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
-            <WorkOrderOperationsDialog
-              quoteNumber={quote.number}
-              quoteStatus={quote.status}
-              workOrder={quote.workOrder}
-              workers={workers}
-              actions={workOrderActions}
-              triggerIconOnlyMobile
-            />
-          ) : null}
-
-          {quote.status === "DRAFT" || quote.status === "SENT" ? (
-            <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant="outline" size="sm" actionLabelClassName={actionLabelClassName} />
-          ) : null}
-
-          {quote.status === "ARCHIVED" ? (
-            <QuoteLifecycleForm action={restoreAction} mode="restore" quoteNumber={quote.number} actionLabelClassName={actionLabelClassName} />
-          ) : quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "REJECTED" || quote.status === "CANCELLED" ? (
-            <QuoteLifecycleForm action={archiveAction} mode="archive" quoteNumber={quote.number} actionLabelClassName={actionLabelClassName} />
-          ) : null}
-
-           {canUsePaymentActions && paymentRequestContext ? (
-            <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} actionLabelClassName={actionLabelClassName} />
-          ) : null}
-        </OperationalActionRow>
+              destructive={actionPresentation.destructive ? renderAction(actionPresentation.destructive) : null}
+              triggerClassName="h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
+              triggerIconOnly
+            >
+              {actionPresentation.overflow.map((action) => <React.Fragment key={action}>{renderAction(action)}</React.Fragment>)}
+            </QuoteActionsMenu>
+          </div>
+        </div>
       </div>
     </div>
   );

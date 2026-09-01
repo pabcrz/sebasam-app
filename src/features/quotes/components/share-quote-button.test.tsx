@@ -59,10 +59,18 @@ describe("ShareQuoteButton", () => {
     const action = vi.fn();
     writeText.mockResolvedValue(undefined);
     render(<ShareQuoteButton action={action} sharedQuote={{ token: "stable" }} status="SENT" quoteNumber="C-001" />);
-    await user.click(screen.getByRole("button"));
+    const button = screen.getByRole("button", { name: /compartir cotización c-001/i });
+
+    expect(button).toHaveTextContent("Compartir");
+    expect(button).not.toHaveTextContent("Link copiado");
+
+    await user.click(button);
+
     expect(action).not.toHaveBeenCalled();
     expect(writeText).toHaveBeenCalledTimes(1);
     expect(toastSuccess).toHaveBeenCalledWith("Enlace copiado al portapapeles.", { id: "quote-share-copied" });
+    expect(button).toHaveTextContent("Compartir");
+    expect(button).not.toHaveTextContent("Link copiado");
   });
 
   it("shows error toast with URL for manual copy when clipboard rejects", async () => {
@@ -90,4 +98,3 @@ describe("ShareQuoteButton", () => {
     );
   });
 });
-
