@@ -250,3 +250,68 @@ export async function updateCustomerBasicsFromForm(customerId: string, formData:
   revalidatePath(`${customersPath}/${customerId}/edit`);
   redirect(`${customersPath}?updated=1`);
 }
+
+async function deleteCustomerAuthorized(customerId: string) {
+  return prisma.$transaction(async (tx) => {
+    const customer = await tx.customer.findUnique({ where: { id: customerId } });
+
+    if (!customer) {
+      throw new Error("Customer not found.");
+    }
+
+    if (await tx.quote.count({ where: { customerId } })) {
+      throw new Error("This customer has quotes and cannot be deleted.");
+    }
+
+    if (await tx.payment.count({ where: { customerId } })) {
+      throw new Error("This customer has financial activity and cannot be deleted.");
+    }
+
+    if (await tx.paymentRequest.count({ where: { customerId } })) {
+      throw new Error("This customer has payment requests and cannot be deleted.");
+    }
+
+    if (await tx.ledgerEntry.count({ where: { customerId } })) {
+      throw new Error("This customer has ledger entries and cannot be deleted.");
+    }
+
+    await tx.vehicle.deleteMany({ where: { customerId } });
+    await tx.customerFiscalProfile.deleteMany({ where: { customerId } });
+
+    await tx.customer.delete({
+      where: { id: customerId },
+    });
+
+    return customer;
+  });
+}
+
+export async function deleteCustomer(customerId: string) {
+  await requireOperationalRole();
+  return deleteCustomerAuthorized(customerId);
+}
+
+export async function deleteCustomerFromForm(formData: FormData) {
+  await requireOperationalRole();
+
+  const customerId = formData.get("customerId");
+
+  if (typeof customerId !== "string" || customerId.trim() === "") {
+    redirect(`${customersPath}?error=invalid-deletion`);
+  }
+
+  try {
+    await deleteCustomerAuthorized(customerId);
+  } catch (error) {
+    if (error instanceof Error && (error.message.includes("cannot be deleted") || error.message.includes("not found"))) {
+      redirect(`${customersPath}/${customerId}/edit?error=cannot-delete`);
+    }
+    redirect(`${customersPath}?error=invalid-deletion`);
+  }
+
+  revalidatePath(customersPath);
+  revalidatePath(`${customersPath}/${customerId}`);
+  revalidatePath(`${customersPath}/${customerId}/edit`);
+  redirect(`${customersPath}?deleted=1`);
+}
+

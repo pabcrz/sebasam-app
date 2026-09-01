@@ -1,11 +1,45 @@
 import { describe, expect, it } from "vitest";
-import { generateSlug, generateUniqueSlug } from "./slug";
+import {
+  generateBankAccountSlug,
+  generatePaymentSlugFromNumber,
+  generateSlug,
+  generateUniqueSlug,
+  normalizeSlugPrefix,
+} from "./slug";
 
 describe("generateSlug", () => {
   it("creates a short base62 slug with the provided prefix", () => {
     const slug = generateSlug("C-0726-03");
 
     expect(slug).toMatch(/^C-0726-03-[0-9A-Za-z]{8}$/);
+  });
+});
+
+describe("normalizeSlugPrefix", () => {
+  it("normalizes spaces, uppercase and accents into clean hyphenated strings", () => {
+    expect(normalizeSlugPrefix("Banco Azteca")).toBe("banco-azteca");
+    expect(normalizeSlugPrefix("Débito BBVA")).toBe("debito-bbva");
+    expect(normalizeSlugPrefix("Santander #1")).toBe("santander-1");
+    expect(normalizeSlugPrefix("---")).toBe("");
+  });
+});
+
+describe("generateBankAccountSlug", () => {
+  it("generates a slug starting with the normalized bank name", () => {
+    const slug = generateBankAccountSlug("Mercado Pago");
+    expect(slug).toMatch(/^mercado-pago-[0-9A-Za-z]{8}$/);
+  });
+
+  it("uses fallback 'cuenta' when bank name contains only symbols", () => {
+    const slug = generateBankAccountSlug("$$$");
+    expect(slug).toMatch(/^cuenta-[0-9A-Za-z]{8}$/);
+  });
+});
+
+describe("generatePaymentSlugFromNumber", () => {
+  it("generates payment slug replacing C/T prefix with P", () => {
+    const slug = generatePaymentSlugFromNumber("C-0726-03");
+    expect(slug).toMatch(/^P-0726-03-[0-9A-Za-z]{8}$/);
   });
 });
 

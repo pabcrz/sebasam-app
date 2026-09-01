@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileText } from "lucide-react";
 import {
   approveQuoteAndCreateWorkOrderFromForm,
   cancelQuoteFromForm,
@@ -26,7 +25,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui";
-import { AdminPageHeader } from "@/components/admin-page-header";
 import { QuoteListCard } from "@/features/quotes/components/quote-mobile-card";
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
 import { QuoteFilters } from "@/features/quotes/components/quote-filters";
@@ -99,10 +97,6 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <AdminPageHeader
-        icon={FileText}
-        title="Cotizaciones"
-      />
       <div className="flex justify-end">
         <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
       </div>
@@ -117,7 +111,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
             <QuoteFilters filters={filters} customers={customers} />
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
             {quotes.map((quote) => (
               <QuoteListCard
                 key={quote.id}

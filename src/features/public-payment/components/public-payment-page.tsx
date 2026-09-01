@@ -24,6 +24,7 @@ type PaymentRequestWithRelations = PaymentRequest & {
 export interface PublicPaymentPageProps {
   request: PaymentRequestWithRelations;
   business?: ShellBusinessSettings;
+  location?: { address?: string; mapsUrl?: string };
   bankAccounts?: BankAccountData[];
   contact?: ContactSettings;
 }
@@ -45,12 +46,13 @@ export function PublicPaymentPage({
   business,
   bankAccounts,
   contact,
+  location,
 }: PublicPaymentPageProps) {
   const reference = request.quote?.number ?? request.workOrder?.number ?? request.id.slice(0, 8);
   const amount = request.quote?.totalCents ?? 0;
 
   return (
-    <PublicPaymentShell badge="payment" business={business}>
+    <PublicPaymentShell badge="payment" business={business} location={location}>
       <div className="mb-6 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm md:p-5">
         <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">Referencia</p>
         <p className="text-lg font-bold text-[var(--color-text-main)]">{reference}</p>
@@ -58,7 +60,7 @@ export function PublicPaymentPage({
           <div className="mt-3 grid gap-1 text-sm text-[var(--color-text-muted)]">
             <p>Subtotal: {formatCurrency(request.quote.subtotalCents)}</p>
             {request.quote.taxEnabled ? <p>IVA: {formatCurrency(request.quote.taxCents)}</p> : null}
-            <p className="font-mono text-xl font-bold text-[var(--color-primary)]">
+            <p className="font-mono text-xl font-bold tabular-nums text-[var(--color-primary)]" data-numeric-role="currency">
               Total: {formatCurrency(request.quote.totalCents)}
             </p>
             {request.quote.validUntil ? (
@@ -69,7 +71,12 @@ export function PublicPaymentPage({
             ) : null}
           </div>
         ) : amount > 0 ? (
-          <p className="mt-1 font-mono text-xl font-bold text-[var(--color-primary)]">{formatCurrency(amount)}</p>
+          <p
+            className="mt-1 font-mono text-xl font-bold tabular-nums text-[var(--color-primary)]"
+            data-numeric-role="currency"
+          >
+            {formatCurrency(amount)}
+          </p>
         ) : null}
       </div>
 

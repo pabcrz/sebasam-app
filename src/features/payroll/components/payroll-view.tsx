@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { FileSpreadsheet, Inbox } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { AdminPageHeader } from "@/components/admin-page-header";
 import type { WeeklyPayrollReport } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 import { PayrollPeriodNav } from "./payroll-period-nav";
@@ -28,11 +27,6 @@ export function PayrollView({ report, period }: PayrollViewProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <AdminPageHeader
-        icon={FileSpreadsheet}
-        title="Nómina"
-      />
-
       {/* Period Navigation */}
       <PayrollPeriodNav
         rangeLabel={period.rangeLabel}

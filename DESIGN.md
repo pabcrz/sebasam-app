@@ -106,6 +106,14 @@ Regla de badges: fondo pastel con alpha bajo + borde con alpha medio + texto/dot
 
 ## Componentes
 
+### Headers de páginas admin
+
+| Componente | Export | Props / slots / variants |
+|---|---|---|
+| `AdminPageHeader` | `src/components/admin-page-header.tsx` | `icon: LucideIcon`, `title: string`, `description?: ReactNode`, `actions?: ReactNode`, `children?: ReactNode`, `variant?: "compact" | "expanded"`. Compact (default) conserva Card, icono 40px, gap 12px, padding 16px y título 18px. Expanded presenta Card con padding 24px, icono 48px, gap 16px, separación de composición 24px y título 20px; descripción, acciones y children mantienen una jerarquía explícita. La variante es solo visual. |
+
+**Ownership exacto:** `AdminPageHeader` se usa únicamente en las 15 superficies completas mapeadas: `/admin`, `/admin/customers`, `/admin/customers/[id]`, `/admin/customers/[id]/edit`, `/admin/workers`, `/admin/workers/[id]/edit`, `/admin/quotes`, `/admin/quotes/nueva`, `/admin/quotes/[id]/edit`, `/admin/work-orders`, `/admin/work-orders/[id]`, `/admin/notas`, `/admin/nomina`, `/admin/configuracion-pago` y `/admin/users`. Los diálogos, modales, previews, workspaces y páginas de impresión conservan sus headers propios; nunca renderizan este componente. En Configuración de pago, el botón `Guardar configuración` vive en `actions` y se relaciona externamente con `#payment-settings-form`, preservando la semántica y el flujo del formulario.
+
 ### Base UI
 
 Implementar como wrappers Tailwind sobre comportamiento nativo o Radix cuando se requiera accesibilidad avanzada.
@@ -138,6 +146,16 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 | `Accordion` | FAQ, secciones colapsables de documento público. |
 
 ### Componentes de dominio
+
+### Identidad pública
+
+| Export | Ruta | Responsabilidad |
+|---|---|---|
+| `PublicBusinessIdentity` | `src/features/public-branding/domain.ts` | Proyección de configuración pública: `businessName`, `phone?`, `whatsapp?`. No contiene logo, dirección ni URL de mapas. |
+| `toPublicBusinessIdentity` | `src/features/public-branding/domain.ts` | Mapea únicamente nombre y contactos existentes desde `PaymentSettingsData`; omite valores ausentes o vacíos. |
+| `PublicBrandHeader` | `src/features/public-branding/public-brand-header.tsx` | Renderiza la identidad y acepta `logoSrc?` independiente, provisto únicamente por el caller. Sin fallback cuando falta. |
+
+La dirección y `mapsUrl` permanecen como datos de ubicación del shell público original, no como parte de `PublicBusinessIdentity`. Los adaptadores basados en `PaymentSettingsData` no pasan `logoSrc`.
 
 | Componente | Responsabilidad |
 |---|---|

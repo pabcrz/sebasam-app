@@ -83,7 +83,7 @@ export async function getSharedQuoteByToken(token: string) {
     include: sharedQuoteInclude,
   });
 
-  if (!sharedQuote) {
+  if (!sharedQuote || !sharedQuote.quote || sharedQuote.quote.deletedAt !== null) {
     throw new SharedQuoteNotFoundError();
   }
 

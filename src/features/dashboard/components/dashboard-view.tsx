@@ -4,11 +4,10 @@ import {
   ClipboardList,
   FileCheck,
   FileText,
-  LayoutDashboard,
   UserCog,
   Users,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, SectionLabel } from "@/components/ui";
 import { CustomerCreateForm } from "@/features/customers/components/customer-create-form";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
@@ -84,38 +83,22 @@ export function DashboardView({
   searchCustomersAction,
 }: DashboardViewProps) {
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-10">
-      {/* Header & Direct Modal Triggers */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between md:mb-8">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white">
-            <LayoutDashboard className="h-6 w-6" aria-hidden="true" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text-main)] md:text-3xl">
-              Panel de operaciones
-            </h1>
-            <p className="text-sm text-[var(--color-text-muted)]">
-              Estado operativo en tiempo real, colas de trabajo y métricas de desempeño.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <CustomerCreateForm
-            action={createCustomerAction}
-            triggerVariant="outline"
-            triggerSize="sm"
-          />
-          <QuoteBuilderDialog
-            customers={customers}
-            createAction={createQuoteAction}
-            createCustomerAction={createCustomerForQuoteAction}
-            searchCustomersAction={searchCustomersAction}
-            triggerVariant="primary"
-            triggerSize="sm"
-          />
-        </div>
+    <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
+      <h1 className="sr-only">Inicio</h1>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <CustomerCreateForm
+          action={createCustomerAction}
+          triggerVariant="outline"
+          triggerSize="sm"
+        />
+        <QuoteBuilderDialog
+          customers={customers}
+          createAction={createQuoteAction}
+          createCustomerAction={createCustomerForQuoteAction}
+          searchCustomersAction={searchCustomersAction}
+          triggerVariant="primary"
+          triggerSize="sm"
+        />
       </div>
 
       {/* Main Operational Stack */}
@@ -131,9 +114,7 @@ export function DashboardView({
 
         {/* 4. Quick Access Modules */}
         <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-            Módulos del Sistema
-          </h2>
+          <SectionLabel className="mb-3">Módulos del Sistema</SectionLabel>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {modules.map((module) => (
               <Link

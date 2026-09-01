@@ -14,7 +14,7 @@ describe("NotasFilters", () => {
 
   it("keeps payment when changing period or mode and resets pagination", () => {
     render(<NotasFilters mode="week" payment="paid" assignee="workshop" anchor="2026-08-05" rangeLabel="3–8 de agosto de 2026" isCurrentWeek masters={masters} />);
-    expect(screen.getByRole("navigation", { name: "Filtros de notas" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Estado de pago" })).toBeInTheDocument();
     expect(screen.getByText("3–8 de agosto de 2026")).toBeVisible();
     expect(screen.getByText("Semana en curso")).toBeVisible();
     expect(screen.getByRole("link", { name: "Periodo anterior" })).toHaveAttribute("href", expect.stringContaining("anchor=2026-07-29"));
@@ -22,9 +22,8 @@ describe("NotasFilters", () => {
     expect(screen.getByRole("link", { name: "Periodo anterior" })).toHaveAttribute("href", expect.stringContaining("payment=paid"));
     expect(screen.getByRole("link", { name: "Periodo anterior" })).toHaveAttribute("href", expect.stringContaining("assignee=workshop"));
     expect(screen.getByRole("link", { name: "Pendientes" })).toHaveAttribute("href", expect.not.stringContaining("page="));
-    expect(screen.getByText("Pagadas")).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("link", { name: "Pagadas" })).toHaveAttribute("aria-current", "page");
     expect(screen.queryByRole("button", { name: "Pagadas" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Pagadas" })).not.toBeInTheDocument();
     const monthly = screen.getByRole("link", { name: "Vista mensual" });
     expect(monthly).toHaveAttribute("href", expect.stringContaining("mode=month"));
     expect(monthly).toHaveAttribute("href", expect.not.stringContaining("page="));
@@ -42,8 +41,7 @@ describe("NotasFilters", () => {
     render(<NotasFilters mode="month" payment="all" assignee="all" anchor="2026-08-01" rangeLabel="agosto de 2026" isCurrentWeek={false} masters={masters} />);
     expect(screen.getByText("agosto de 2026")).toBeVisible();
     expect(screen.queryByText("Semana en curso")).not.toBeInTheDocument();
-    expect(screen.getByText("Todas")).toHaveAttribute("aria-current", "true");
-    expect(screen.queryByRole("button", { name: "Todas" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Todas" })).toHaveAttribute("aria-current", "page");
     fireEvent.change(screen.getByLabelText("Mes y año"), { target: { value: "2026-09" } });
     expect(push).toHaveBeenCalledWith("/admin/notas?mode=month&anchor=2026-09&payment=all&assignee=all");
   });

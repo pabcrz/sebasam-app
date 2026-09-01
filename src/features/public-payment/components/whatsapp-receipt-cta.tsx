@@ -6,14 +6,16 @@ import { businessPaymentConfig } from "@/config/payment";
 
 export interface WhatsAppReceiptCtaProps {
   reference?: string;
+  whatsapp?: string;
 }
 
-export function WhatsAppReceiptCta({ reference }: WhatsAppReceiptCtaProps) {
+export function WhatsAppReceiptCta({ reference, whatsapp }: WhatsAppReceiptCtaProps) {
+  const number = whatsapp || businessPaymentConfig.contactWhatsapp;
   const message = reference
     ? `Hola, envío comprobante de pago correspondiente a ${reference}.`
     : "Hola, envío comprobante de pago.";
 
-  const href = `https://wa.me/52${businessPaymentConfig.contactWhatsapp}?text=${encodeURIComponent(message)}`;
+  const href = `https://wa.me/52${number}?text=${encodeURIComponent(message)}`;
 
   return (
     <Card>

@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getQuoteById } from "@/features/quotes/queries";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
+import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
 import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
-import { PrintControls } from "./print-controls";
+import { PrintControls } from "@/features/quotes/components/print-controls";
+import { Suspense } from "react";
 
 interface PrintPageProps {
   params: Promise<{ id: string }>;
@@ -67,9 +69,10 @@ export default async function QuotePrintPage({ params }: PrintPageProps) {
 
   return (
     <div className="bg-[var(--background)] min-h-screen flex flex-col print:min-h-0">
-      <PrintControls quoteId={quote.id} />
+      <Suspense fallback={null}><PrintControls backLabel="Volver a cotizaciones" /></Suspense>
       <PublicQuoteShell
-        business={paymentSettings}
+         business={toPublicBusinessIdentity(paymentSettings)}
+         location={{ address: paymentSettings.address, mapsUrl: paymentSettings.mapsUrl }}
         documentType={documentType}
         documentNumber={quote.number}
         date={quote.operationalDate}

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PaymentSettingsForm, type PaymentSettingsFormProps } from "./payment-settings-form";
 
@@ -18,11 +18,14 @@ vi.mock("react-hot-toast", () => ({
 const mockSaveAction = vi.fn();
 const mockAddAction = vi.fn();
 const mockRemoveAction = vi.fn();
+const mockShareAction = vi.fn();
 
 vi.mock("../actions", () => ({
   savePaymentSettingsAction: (formData: FormData) => mockSaveAction(formData),
   addBankAccountAction: (formData: FormData) => mockAddAction(formData),
   removeBankAccountAction: (accountId: number) => mockRemoveAction(accountId),
+  setBankAccountPublicSharingAction: (accountId: number, enabled: boolean) =>
+    mockShareAction(accountId, enabled),
 }));
 
 const defaultSettings: PaymentSettingsFormProps["settings"] = {
@@ -43,6 +46,8 @@ const defaultSettings: PaymentSettingsFormProps["settings"] = {
       accountNumber: "123456",
       clabe: "4444 4444 4444 4444",
       isForInvoicing: true,
+      isPubliclyShareable: true,
+      publicToken: "santander-token",
       sortOrder: 0,
     },
     {
@@ -52,6 +57,8 @@ const defaultSettings: PaymentSettingsFormProps["settings"] = {
       accountNumber: "789012",
       clabe: "5555 5555 5555 5555",
       isForInvoicing: false,
+      isPubliclyShareable: false,
+      publicToken: "bbva-token",
       sortOrder: 1,
     },
   ],
@@ -67,6 +74,7 @@ describe("PaymentSettingsForm", () => {
     mockSaveAction.mockResolvedValue({ success: true });
     mockAddAction.mockResolvedValue({ success: true });
     mockRemoveAction.mockResolvedValue({ success: true });
+    mockShareAction.mockResolvedValue({ success: true });
     mockToast.loading.mockReturnValue("toast-1");
   });
 
@@ -144,7 +152,7 @@ describe("PaymentSettingsForm", () => {
     await user.clear(screen.getByLabelText("Nombre corto"));
     await user.type(screen.getByLabelText("Nombre corto"), "Nuevo Nombre");
 
-    await user.click(screen.getByRole("button", { name: /guardar configuración/i }));
+    fireEvent.submit(screen.getByTestId("payment-settings-form"));
 
     await waitFor(() => expect(mockSaveAction).toHaveBeenCalledTimes(1));
 
@@ -153,10 +161,9 @@ describe("PaymentSettingsForm", () => {
   });
 
   it("shows success toast after save", async () => {
-    const user = userEvent.setup();
     renderForm();
 
-    await user.click(screen.getByRole("button", { name: /guardar configuración/i }));
+    fireEvent.submit(screen.getByTestId("payment-settings-form"));
 
     await waitFor(() =>
       expect(mockToast.success).toHaveBeenCalledWith(
@@ -166,13 +173,28 @@ describe("PaymentSettingsForm", () => {
     );
   });
 
+  it("locks the header save action while the real form action is pending", async () => {
+    let resolveSave!: (value: { success: boolean }) => void;
+    mockSaveAction.mockImplementation(() => new Promise((resolve) => { resolveSave = resolve; }));
+    const user = userEvent.setup();
+    renderForm();
+    const save = screen.getByRole("button", { name: "Guardar configuración" });
+
+    await user.click(save);
+    expect(save).toBeDisabled();
+    await user.click(save);
+    expect(mockSaveAction).toHaveBeenCalledTimes(1);
+
+    resolveSave({ success: true });
+    await waitFor(() => expect(save).not.toBeDisabled());
+  });
+
   it("shows error toast when action fails", async () => {
     mockSaveAction.mockResolvedValue({ success: false });
 
-    const user = userEvent.setup();
     renderForm();
 
-    await user.click(screen.getByRole("button", { name: /guardar configuración/i }));
+    fireEvent.submit(screen.getByTestId("payment-settings-form"));
 
     await waitFor(() =>
       expect(mockToast.error).toHaveBeenCalledWith(
@@ -314,6 +336,48 @@ describe("PaymentSettingsForm", () => {
           "Cuenta eliminada.",
           { id: "toast-1" },
         ),
+      );
+    });
+  });
+
+  describe("shareable bank accounts", () => {
+    it("renders the share checkbox for each bank account and copy button when enabled", () => {
+      renderForm();
+
+      const checkboxes = screen.getAllByLabelText("Compartir esta cuenta públicamente");
+      expect(checkboxes).toHaveLength(2);
+      expect(checkboxes[0]).toBeChecked();
+      expect(checkboxes[1]).not.toBeChecked();
+
+      expect(screen.getByRole("button", { name: "Copiar enlace público" })).toBeInTheDocument();
+    });
+
+    it("calls setBankAccountPublicSharingAction when toggling sharing checkbox", async () => {
+      const user = userEvent.setup();
+      renderForm();
+
+      const checkboxes = screen.getAllByLabelText("Compartir esta cuenta públicamente");
+      await user.click(checkboxes[1]);
+
+      await waitFor(() => expect(mockShareAction).toHaveBeenCalledWith(2, true));
+    });
+
+    it("copies the public URL to clipboard when clicking copy link", async () => {
+      const user = userEvent.setup();
+      const writeTextMock = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText: writeTextMock },
+        configurable: true,
+        writable: true,
+      });
+
+      renderForm();
+
+      const copyButton = screen.getByRole("button", { name: "Copiar enlace público" });
+      await user.click(copyButton);
+
+      expect(writeTextMock).toHaveBeenCalledWith(
+        expect.stringContaining("/datos-de-pago/cuenta/santander-token"),
       );
     });
   });

@@ -30,8 +30,8 @@ describe("QuotePageToasts", () => {
     window.history.replaceState(null, "", "/admin/quotes");
   });
 
-  it("shows success toasts for created, approved, updated, cancelled, shared, and duplicated query params", async () => {
-    currentSearchParams = new URLSearchParams("created=1&approved=1&updated=1&cancelled=1&shared=1&duplicated=1");
+  it("shows success toasts for created, approved, updated, cancelled, shared, duplicated, and deleted query params", async () => {
+    currentSearchParams = new URLSearchParams("created=1&approved=1&updated=1&cancelled=1&shared=1&duplicated=1&deleted=1");
     renderWithToaster(<QuotePageToasts />);
 
     await waitFor(() => {
@@ -41,16 +41,17 @@ describe("QuotePageToasts", () => {
       expect(screen.getByText("Cotización cancelada.")).toBeInTheDocument();
       expect(screen.getByText("Cotización compartida.")).toBeInTheDocument();
       expect(screen.getByText("Cotización duplicada.")).toBeInTheDocument();
+      expect(screen.getByText("Cotización eliminada.")).toBeInTheDocument();
     });
   });
 
   it("shows an error toast for the error query param", async () => {
-    currentSearchParams = new URLSearchParams("error=invalid");
+    currentSearchParams = new URLSearchParams("error=cannot-delete");
     renderWithToaster(<QuotePageToasts />);
 
     await waitFor(() => {
       expect(
-        screen.getByText("Revisa los datos de la cotización e incluye al menos un concepto completo."),
+        screen.getByText("No se puede eliminar la cotización porque tiene actividad vinculada (orden de trabajo o pagos) o no está en un estado eliminable."),
       ).toBeInTheDocument();
     });
   });
@@ -60,7 +61,7 @@ describe("QuotePageToasts", () => {
     const success = vi.spyOn(toast, "success");
     const error = vi.spyOn(toast, "error");
     const replaceState = vi.spyOn(window.history, "replaceState");
-    const search = "created=1&approved=1&updated=1&cancelled=1&shared=1&duplicated=1&error=invalid&page=2&customerId=customer-1";
+    const search = "created=1&approved=1&updated=1&cancelled=1&shared=1&duplicated=1&deleted=1&error=invalid&page=2&customerId=customer-1";
     currentSearchParams = new URLSearchParams(search);
     window.history.replaceState(historyState, "", `/admin/quotes?${search}#quotes`);
     replaceState.mockClear();
@@ -92,6 +93,7 @@ describe("QuotePageToasts", () => {
       ["Cotización cancelada.", { id: "quote-cancelled" }],
       ["Cotización compartida.", { id: "quote-shared" }],
       ["Cotización duplicada.", { id: "quote-duplicated" }],
+      ["Cotización eliminada.", { id: "quote-deleted" }],
     ]);
     expect(error).toHaveBeenCalledTimes(1);
     expect(error).toHaveBeenCalledWith(

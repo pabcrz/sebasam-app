@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Badge, BadgeVariant, Button } from "@/components/ui";
+import { Badge, BadgeVariant, Button, ListItemCard } from "@/components/ui";
 import { CustomerDetailDialog, type CustomerDetailLoader } from "./customer-detail-dialog";
 
 export type CustomerCardListItem = {
@@ -29,28 +29,33 @@ export function CustomerCardList({ customers, getCustomerDetail }: CustomerCardL
   return (
     <div className="mt-6 grid gap-3">
       {customers.map((customer) => (
-        <div
+        <ListItemCard
           key={customer.id}
-          className="relative flex items-start justify-between gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
-        >
-          <CustomerDetailDialog customer={customer} getCustomerDetail={getCustomerDetail} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-medium text-[var(--color-text-main)]">{customer.name}</p>
-            <div className="mt-0.5 grid gap-0.5 text-sm text-[var(--color-text-muted)]">
-              {customer.email ? <p className="truncate">{customer.email}</p> : null}
-              {customer.phone ? <p className="truncate">{customer.phone}</p> : null}
-              {!customer.email && !customer.phone ? <p>Sin contacto</p> : null}
-            </div>
-            <div className="mt-2">
-              <Badge variant={statusBadgeVariant[customer.status] ?? "default"}>
-                {statusLabels[customer.status] ?? customer.status}
-              </Badge>
-            </div>
-          </div>
-          <Button asChild variant="outline" className="relative z-10">
-            <Link href={`/admin/customers/${customer.id}/edit`}>Editar</Link>
-          </Button>
-        </div>
+          bodyClassName="relative"
+          body={
+            <>
+              <CustomerDetailDialog customer={customer} getCustomerDetail={getCustomerDetail} />
+              <div>
+                <p className="truncate font-medium text-[var(--color-text-main)]">{customer.name}</p>
+                <div className="mt-0.5 grid gap-0.5 text-sm text-[var(--color-text-muted)]">
+                  {customer.email ? <p className="truncate">{customer.email}</p> : null}
+                  {customer.phone ? <p className="truncate">{customer.phone}</p> : null}
+                  {!customer.email && !customer.phone ? <p>Sin contacto</p> : null}
+                </div>
+                <div className="mt-2">
+                  <Badge variant={statusBadgeVariant[customer.status] ?? "default"}>
+                    {statusLabels[customer.status] ?? customer.status}
+                  </Badge>
+                </div>
+              </div>
+            </>
+          }
+          actions={
+            <Button asChild variant="outline">
+              <Link href={`/admin/customers/${customer.id}/edit`}>Editar</Link>
+            </Button>
+          }
+        />
       ))}
       {customers.length === 0 ? (
         <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">

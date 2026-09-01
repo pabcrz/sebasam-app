@@ -42,6 +42,13 @@ describe("EditDraftQuoteForm", () => {
     expect(screen.queryByText(/en borrador/i)).not.toBeInTheDocument();
     expect(screen.getByTestId("quote-builder-form")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cerrar edición" })).toBeInTheDocument();
+    const print = screen.getByRole("link", { name: "Imprimir PDF" });
+    expect(print).toHaveAttribute(
+      "href",
+      "/admin/quotes/quote-1/print?returnTo=/admin/quotes",
+    );
+    expect(print).not.toHaveAttribute("target");
+    expect(print).not.toHaveAttribute("rel");
   });
 
   it("asks for confirmation before leaving", async () => {

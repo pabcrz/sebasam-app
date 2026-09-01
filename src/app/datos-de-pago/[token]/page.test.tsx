@@ -62,9 +62,6 @@ function mockPageData(
   });
   getPaymentSettings.mockResolvedValue({
     name: "SEBASAM",
-    fullName: "SEBASAM",
-    address: "Address",
-    mapsUrl: "https://maps.example.com",
     contactPhone: "5555555555",
     contactWhatsapp: "5555555555",
     hours: { weekdays: "Weekdays", saturday: "Saturday" },
@@ -80,6 +77,18 @@ async function loadBankAccountProps() {
 }
 
 describe("DatosDePagoPage bank account boundary", () => {
+  it("passes payment settings through the public identity adapter", async () => {
+    mockPageData(PaymentRequestStatus.READY_TO_PAY, false);
+
+    const page = await DatosDePagoPage({ params: Promise.resolve({ token: "token-123" }) });
+
+    expect(page.props.business).toEqual({
+      businessName: "SEBASAM",
+      phone: "5555555555",
+      whatsapp: "5555555555",
+    });
+  });
+
   it.each([
     { requiresInvoice: false, expectedHolders: ["Payment Only"] },
     { requiresInvoice: true, expectedHolders: ["Invoice First", "Invoice Last"] },

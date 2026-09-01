@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Boxes, CheckCircle2, CircleDollarSign, Coins, TrendingUp } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, MetricCardGroup, StatCard, Tabs } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import type { DashboardPeriodKey, PeriodMetrics } from "../types";
 
@@ -25,127 +25,84 @@ export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
   const activeMetrics = kpis[selectedPeriod];
 
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--color-border-light)] pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
-            <CardTitle as="h2" className="text-lg font-semibold text-[var(--color-text-main)]">
-              Rendimiento Operativo y Cobranza
-            </CardTitle>
-          </div>
-          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-            Período: <span className="font-medium text-[var(--color-text-main)]">{activeMetrics.rangeLabel}</span>
-          </p>
-        </div>
-
-        {/* Period Selector Tabs */}
-        <div
-          role="tablist"
-          aria-label="Seleccionar período de métricas"
-          className="inline-flex rounded-[var(--radius-sm)] bg-[var(--color-bg-soft)] p-1"
-        >
-          {(["week", "month", "year"] as DashboardPeriodKey[]).map((periodKey) => {
-            const isSelected = selectedPeriod === periodKey;
-            return (
-              <button
-                key={periodKey}
-                role="tab"
-                type="button"
-                aria-selected={isSelected}
-                onClick={() => setSelectedPeriod(periodKey)}
-                className={`rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] ${
-                  isSelected
-                    ? "bg-[var(--color-surface)] text-[var(--color-text-main)] shadow-xs"
-                    : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
-                }`}
-              >
-                {PERIOD_LABELS[periodKey]}
-              </button>
-            );
-          })}
-        </div>
-      </CardHeader>
-
-      <CardContent className="pt-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Completed Work Orders */}
-          <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)]/40 p-4">
-            <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-              <span className="text-xs font-medium">Trabajos Finalizados</span>
-              <CheckCircle2 className="h-4 w-4 text-[var(--color-status-success)]" aria-hidden="true" />
-            </div>
-            <div
-              data-numeric-role="count"
-              className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--color-text-main)]"
-            >
-              {activeMetrics.completedWorkOrdersCount}
+    <Card className="p-0 shadow-sm">
+      <Tabs
+        tabs={(["week", "month", "year"] as DashboardPeriodKey[]).map((periodKey) => ({
+          value: periodKey,
+          label: PERIOD_LABELS[periodKey],
+          panel: <PeriodMetricCards metrics={kpis[periodKey]} />,
+        }))}
+        label="Seleccionar período de métricas"
+        value={selectedPeriod}
+        onValueChange={(value) => setSelectedPeriod(value as DashboardPeriodKey)}
+        header={
+          <div>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
+              <h2 className="text-lg font-semibold text-[var(--color-text-main)]">Rendimiento Operativo y Cobranza</h2>
             </div>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              Órdenes completadas en el período
+              Período: <span className="font-medium text-[var(--color-text-main)]">{activeMetrics.rangeLabel}</span>
             </p>
           </div>
-
-          {/* Labor Billed */}
-          <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)]/40 p-4">
-            <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-              <span className="text-xs font-medium">Mano de Obra</span>
-              <Coins className="h-4 w-4 text-[var(--color-status-info)]" aria-hidden="true" />
-            </div>
-            <div
-              data-numeric-role="currency"
-              className="mt-2 min-w-0 font-mono text-xl font-bold leading-tight tabular-nums text-[var(--color-text-main)] sm:text-2xl"
-            >
-              {formatCents(activeMetrics.completedLaborBilledCents)}
-            </div>
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              Mano de obra finalizada facturada
-            </p>
-          </div>
-
-          {/* Materials & Refacciones */}
-          <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)]/40 p-4">
-            <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-              <span className="text-xs font-medium">Materiales y Refacciones</span>
-              <Boxes className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
-            </div>
-            <div
-              data-numeric-role="currency"
-              className="mt-2 min-w-0 font-mono text-xl font-bold leading-tight tabular-nums text-[var(--color-text-main)] sm:text-2xl"
-            >
-              {formatCents(activeMetrics.completedMaterialsBilledCents)}
-            </div>
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              Materiales y repuestos finalizados
-            </p>
-          </div>
-
-          {/* Payments Collected */}
-          <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)]/40 p-4">
-            <div className="flex items-center justify-between text-[var(--color-text-muted)]">
-              <span className="text-xs font-medium">Cobros Recibidos</span>
-              <CircleDollarSign className="h-4 w-4 text-[var(--color-status-success)]" aria-hidden="true" />
-            </div>
-            <div
-              data-numeric-role="currency"
-              className="mt-2 min-w-0 font-mono text-xl font-bold leading-tight tabular-nums text-[var(--color-status-success)] sm:text-2xl"
-            >
-              {formatCents(activeMetrics.collectedPaymentsTotalCents)}
-            </div>
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              <span data-numeric-role="supporting-count" className="font-medium tabular-nums">
-                {activeMetrics.collectedPaymentsCount}
-              </span>{" "}
-              pago{activeMetrics.collectedPaymentsCount === 1 ? "" : "s"} registrado
-              {activeMetrics.collectedPaymentsCount === 1 ? "" : "s"}
-            </p>
-          </div>
-        </div>
-
-        <p className="mt-4 text-right text-[11px] text-[var(--color-text-muted)] italic">
-          * Los cobros se agrupan según su fecha de registro en el sistema.
-        </p>
-      </CardContent>
+        }
+        headerClassName="flex flex-col gap-4 border-b border-[var(--color-border-light)] p-[var(--space-md)] sm:flex-row sm:items-center sm:justify-between"
+        tabListClassName="self-start sm:self-auto"
+        panelContainerClassName="p-[var(--space-md)] pt-6"
+      />
     </Card>
+  );
+}
+
+function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
+  return (
+    <>
+      <MetricCardGroup columns={4}>
+        <StatCard
+          label="Trabajos Finalizados"
+          value={metrics.completedWorkOrdersCount}
+          numericRole="count"
+          description="Órdenes completadas en el período"
+          icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
+          iconVariant="success"
+        />
+        <StatCard
+          label="Mano de Obra"
+          value={formatCents(metrics.completedLaborBilledCents)}
+          numericRole="currency"
+          description="Mano de obra finalizada facturada"
+          icon={<Coins className="h-4 w-4" aria-hidden="true" />}
+          iconVariant="info"
+        />
+        <StatCard
+          label="Materiales y Refacciones"
+          value={formatCents(metrics.completedMaterialsBilledCents)}
+          numericRole="currency"
+          description="Materiales y repuestos finalizados"
+          icon={<Boxes className="h-4 w-4" aria-hidden="true" />}
+          iconVariant="primary"
+        />
+        <StatCard
+          label="Cobros Recibidos"
+          value={formatCents(metrics.collectedPaymentsTotalCents)}
+          numericRole="currency"
+          valueClassName="text-[var(--color-status-success)]"
+          description={
+            <>
+              <span data-numeric-role="supporting-count" className="font-medium tabular-nums">
+                {metrics.collectedPaymentsCount}
+              </span>{" "}
+              pago{metrics.collectedPaymentsCount === 1 ? "" : "s"} registrado
+              {metrics.collectedPaymentsCount === 1 ? "" : "s"}
+            </>
+          }
+          icon={<CircleDollarSign className="h-4 w-4" aria-hidden="true" />}
+          iconVariant="success"
+        />
+      </MetricCardGroup>
+      <p className="mt-4 text-right text-[11px] text-[var(--color-text-muted)] italic">
+        * Los cobros se agrupan según su fecha de registro en el sistema.
+      </p>
+    </>
   );
 }

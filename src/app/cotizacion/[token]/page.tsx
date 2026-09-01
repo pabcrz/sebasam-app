@@ -10,6 +10,7 @@ import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-qu
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
+import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
@@ -67,18 +68,48 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
     const sharedQuote = await getSharedQuoteByToken(token);
     const quote = sharedQuote.quote;
     const documentType = quote.workOrder !== null ? "Nota" : "Cotización";
+    const customerName = quote.customer?.name ?? "Sin cliente";
+    const vehicleDescription = quote.vehicle
+      ? formatVehicle(quote.vehicle)
+      : formatSnapshotVehicle(quote.vehicleSnapshot);
+
     const title = formatDocumentPdfFilename({
       customerName: quote.customer?.name,
       vehicle: quote.vehicle ?? quote.vehicleSnapshot,
       operationalDate: quote.operationalDate,
       fallbackType: documentType,
     });
+    const displayTitle = `${documentType} ${quote.number} | SEBASAM`;
+    const description = `${documentType} para ${customerName} - ${vehicleDescription}`;
+
     return {
       title,
+      description,
+      openGraph: {
+        title: displayTitle,
+        description,
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: displayTitle,
+        description,
+      },
     };
   } catch {
     return {
       title: "Cotización",
+      description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+      openGraph: {
+        title: "Cotización | SEBASAM",
+        description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "Cotización | SEBASAM",
+        description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+      },
     };
   }
 }
@@ -102,7 +133,8 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
 
   return (
     <PublicQuoteShell
-      business={paymentSettings}
+      business={toPublicBusinessIdentity(paymentSettings)}
+      location={{ address: paymentSettings.address, mapsUrl: paymentSettings.mapsUrl }}
       documentType={isNote ? "Nota" : "Cotización"}
       documentNumber={result.quote.number}
       date={result.quote.operationalDate}

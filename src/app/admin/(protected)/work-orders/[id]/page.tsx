@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ClipboardList } from "lucide-react";
+import { ArrowLeft, ClipboardList, Printer } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { getWorkOrderById } from "@/features/work-orders/queries";
 import { listActiveWorkers } from "@/features/workers/queries";
 import { searchCustomersForQuote } from "@/features/customers/actions";
@@ -9,11 +10,9 @@ import { updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
 import { listCustomers } from "@/features/customers/queries";
 import {
   Badge,
+  Button,
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import { createAndAssignWorkOrderAction, completeWorkOrderAction, rollbackWorkOrderAction } from "@/features/work-orders/actions";
@@ -45,6 +44,9 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
   const editable = isQuoteEditable({ ...quote, workOrder: { status: workOrder.status } });
   const master = workOrder.assignments.find((a) => a.worker.workerKind === "MASTER");
   const helpers = workOrder.assignments.filter((a) => a.worker.workerKind === "HELPER");
+  const printHref = workOrder.status === "COMPLETED"
+    ? `/admin/notas/${workOrder.id}/print?returnTo=/admin/notas`
+    : `/admin/quotes/${quote.id}/print?returnTo=/admin/work-orders`;
 
   const dialogActions = {
     assign: createAndAssignWorkOrderAction.bind(null, quote.id),
@@ -64,26 +66,8 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
         </Link>
       </div>
 
+      <AdminPageHeader icon={ClipboardList} title={quote.customer?.name ?? "Sin cliente"} description={`Orden de Trabajo ${workOrder.number}`} variant="expanded" actions={<Badge variant={workOrder.status === "COMPLETED" ? "success" : "info"} className="w-fit">{workOrder.status === "COMPLETED" ? "Completada" : "En proceso"}</Badge>} />
       <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-blue-tint)] text-[var(--color-primary)]">
-                <ClipboardList className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div>
-                <CardDescription>Orden de Trabajo {workOrder.number}</CardDescription>
-                <CardTitle as="h1">{quote.customer?.name ?? "Sin cliente"}</CardTitle>
-              </div>
-            </div>
-            <Badge
-              variant={workOrder.status === "COMPLETED" ? "success" : "info"}
-              className="w-fit"
-            >
-              {workOrder.status === "COMPLETED" ? "Completada" : "En proceso"}
-            </Badge>
-          </div>
-        </CardHeader>
         <CardContent className="grid gap-6">
           {/* Details Grid */}
           <div className="grid gap-4 sm:grid-cols-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4 text-sm">
@@ -140,6 +124,9 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
               )}
             </div>
             <div className="w-full sm:w-auto">
+              <Button asChild type="button" variant="outline" size="sm" className="mb-2 !h-11 !w-11 min-h-11 min-w-11 px-0 sm:mb-0 sm:mr-2 sm:!h-9 sm:!w-auto sm:px-3" title={`Imprimir orden ${workOrder.number}`} aria-label={`Imprimir orden ${workOrder.number}`}>
+                <Link href={printHref}><Printer className="h-4 w-4" aria-hidden="true" /><span className="sr-only sm:not-sr-only">Imprimir orden</span></Link>
+              </Button>
               <WorkOrderOperationsDialog
                 quoteNumber={quote.number}
                 quoteStatus={quote.status}

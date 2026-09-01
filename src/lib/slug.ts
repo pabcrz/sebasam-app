@@ -20,6 +20,18 @@ export function generateSlug(prefix: string): string {
 }
 
 /**
+ * Normalize text into a clean URL slug prefix (lowercase, alphanumeric + hyphens, unaccented).
+ */
+export function normalizeSlugPrefix(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
  * Build a payment slug from a reference number (quote or work order):
  * Replaces the first letter with "P" and appends a random suffix.
  * "C-0726-03" → "P-0726-03-a1B2c3D4"
@@ -29,6 +41,16 @@ export function generatePaymentSlugFromNumber(referenceNumber: string): string {
   const base = referenceNumber.slice(1); // Drop leading C/T prefix
 
   return generateSlug(`P${base}`);
+}
+
+/**
+ * Build a short human-readable slug for a bank account:
+ * "Santander" → "santander-a1B2c3D4"
+ * "Mercado Pago" → "mercado-pago-a1B2c3D4"
+ */
+export function generateBankAccountSlug(bankName: string): string {
+  const prefix = normalizeSlugPrefix(bankName) || "cuenta";
+  return generateSlug(prefix);
 }
 
 /** Max attempts before throwing when trying to generate a unique slug. */

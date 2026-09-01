@@ -31,9 +31,11 @@ describe("WorkOrderOperationsDialog", () => {
 
   it("exposes the assignment dialog for an approved quote", async () => {
     const user = userEvent.setup();
-    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={null} actions={actions} />);
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={null} actions={actions} triggerVariant="primary" />);
 
-    await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i }));
+    const trigger = screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i });
+    expect(trigger).toHaveClass("bg-[image:var(--gradient-primary)]");
+    await user.click(trigger);
 
     expect(screen.getByRole("dialog")).toHaveTextContent("Asignar trabajo");
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
@@ -89,8 +91,9 @@ describe("WorkOrderOperationsDialog", () => {
     expect(viewOrder).toHaveTextContent("Ver orden");
 
     await user.click(viewOrder);
-    const printNote = screen.getByRole("button", { name: "Imprimir nota de remisión T-001" });
+    const printNote = screen.getByRole("link", { name: "Imprimir nota de remisión T-001" });
     expect(printNote).toHaveAttribute("title", "Imprimir nota de remisión T-001");
+    expect(printNote).toHaveClass("min-h-11", "min-w-11");
     expect(printNote).toHaveClass("w-9", "sm:w-auto");
     expect(printNote.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
   });
@@ -242,7 +245,20 @@ describe("WorkOrderOperationsDialog", () => {
 
     expect(screen.getByText("Completada")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /asignar e iniciar trabajo/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /imprimir nota de remisión/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /imprimir nota de remisión/i })).toBeInTheDocument();
+  });
+
+  it("preserves the current Notes state when printing from completed operations", async () => {
+    const user = userEvent.setup();
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-note-1", number: "T-001", status: "COMPLETED", assignments: [] }} actions={{}} noteReturnTo="/admin/notas?mode=week&anchor=2026-08-12&payment=pending&assignee=all" />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo t-001/i }));
+
+    const print = screen.getByRole("link", { name: "Imprimir nota de remisión T-001" });
+    expect(print).toHaveAttribute("href", "/admin/notas/wo-note-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dweek%26anchor%3D2026-08-12%26payment%3Dpending%26assignee%3Dall");
+    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+    expect(print).not.toHaveAttribute("target");
+    expect(print).not.toHaveAttribute("rel");
   });
 
   it("locks the assignment form and trigger while an assignment is pending", async () => {

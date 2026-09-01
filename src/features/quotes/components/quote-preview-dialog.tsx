@@ -13,10 +13,11 @@ import {
 } from "@/components/ui";
 import { QuotePreviewCard, type QuotePreviewCardProps } from "./quote-preview-card";
 
-export type QuotePreviewSummary = Pick<QuoteListSummary, "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & {
+export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & {
   customer: Pick<NonNullable<QuoteListSummary["customer"]>, "name"> | null;
   vehicle: Pick<NonNullable<QuoteListSummary["vehicle"]>, "plate" | "brand" | "model" | "year"> | null;
-  items: Array<{ type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }>;
+  workOrder?: Pick<NonNullable<QuoteListSummary["workOrder"]>, "id" | "status"> | null;
+  items: Array<{ sectionId: string | null; type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }>;
   sections: Array<{ name: string; items: Array<{ type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }> }>;
 };
 
@@ -25,6 +26,7 @@ interface QuotePreviewDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   showTrigger?: boolean;
+  noteReturnTo?: string;
 }
 
 export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePreviewCardProps {
@@ -33,9 +35,21 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
     : {};
   const snapshotValue = (key: string) => snapshot[key] == null ? "" : String(snapshot[key]);
 
-  // Build sections from DB items — group by section if available, else one default section
-  const sections = quote.sections && quote.sections.length > 0
-    ? quote.sections.map((section) => ({
+  // Preserve root items and section items as independent renderable sections.
+  const rootItems = quote.items.filter((item) => item.sectionId == null);
+  const rootSection = rootItems.length > 0
+    ? [{
+        name: "General",
+        items: rootItems.map((item) => ({
+          type: item.type,
+          description: item.description,
+          quantity: String(Number(item.quantity)),
+          unitPrice: item.unitPriceCents == null ? "" : String(Number(item.unitPriceCents) / 100),
+        })),
+        rowIds: [],
+      }]
+    : [];
+  const sectionItems = quote.sections.map((section) => ({
         name: section.name,
         items: section.items.map((item) => ({
           type: item.type,
@@ -45,17 +59,8 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
           rowIds: [],
         })),
         rowIds: [],
-      }))
-    : [{
-        name: "General",
-        items: quote.items.map((item) => ({
-          type: item.type,
-          description: item.description,
-          quantity: String(Number(item.quantity)),
-          unitPrice: item.unitPriceCents == null ? "" : String(Number(item.unitPriceCents) / 100),
-        })),
-        rowIds: [],
-      }];
+      }));
+  const sections = [...rootSection, ...sectionItems];
 
   return {
     customerName: quote.customer?.name ?? "",
@@ -81,7 +86,7 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
 }
 
 
-export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true }: QuotePreviewDialogProps) {
+export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true, noteReturnTo = "/admin/notas" }: QuotePreviewDialogProps) {
   const [openInternal, setOpenInternal] = React.useState(false);
   const open = openProp ?? openInternal;
   const setOpen = React.useCallback(
@@ -92,7 +97,6 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
     [onOpenChange],
   );
   const preview = toQuotePreviewCardProps(quote);
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {showTrigger ? (

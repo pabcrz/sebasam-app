@@ -58,14 +58,15 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 import { authorizeQuote, getOrCreateSharedQuoteForQuote } from "./domain";
 
 type MockTx = {
-  quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
+  quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   quoteItem: { deleteMany: ReturnType<typeof vi.fn>; createMany: ReturnType<typeof vi.fn> };
   quoteSection: { deleteMany: ReturnType<typeof vi.fn> };
-  quoteDecision: { create: ReturnType<typeof vi.fn> };
+  quoteDecision: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   payment: { count: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn> };
-  sharedQuote: { updateMany: ReturnType<typeof vi.fn> };
-  paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
-  quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
+  sharedQuote: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
+  paymentRequest: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
+  quoteLifecycleEvent: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
+  workOrder: { count: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
@@ -74,16 +75,18 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
       create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", isAuthorized: false, sortOrder: 0 }] }),
       findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, customerId: "cust-1", subtotalCents: 10000, discountCents: 0, taxCents: 1600, totalCents: 11600, taxEnabled: true, operationalDate: new Date("2026-07-14T00:00:00.000Z"), items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }], sections: [{ id: "sec-1", sortOrder: 0, items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }] }] }),
       update: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] }),
+      delete: vi.fn().mockResolvedValue({ id: "quote-1" }),
       findUniqueOrThrow: vi.fn(),
       updateMany: vi.fn(),
     },
     quoteItem: { deleteMany: vi.fn(), createMany: vi.fn() },
     quoteSection: { deleteMany: vi.fn() },
-    quoteDecision: { create: vi.fn() },
+    quoteDecision: { create: vi.fn(), deleteMany: vi.fn() },
     payment: { count: vi.fn().mockResolvedValue(0), aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: null } }) },
-    sharedQuote: { updateMany: vi.fn() },
-    paymentRequest: { updateMany: vi.fn() },
-    quoteLifecycleEvent: { create: vi.fn() },
+    sharedQuote: { updateMany: vi.fn(), deleteMany: vi.fn() },
+    paymentRequest: { updateMany: vi.fn(), deleteMany: vi.fn() },
+    quoteLifecycleEvent: { create: vi.fn(), deleteMany: vi.fn() },
+    workOrder: { count: vi.fn().mockResolvedValue(0) },
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
   (findOrCreateVehicle as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "vehicle-1" });
@@ -814,24 +817,49 @@ describe("duplicateQuoteFromForm", () => {
 describe("deleteQuote", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("authorizes direct deletion and soft-deletes once", async () => {
+  it("authorizes direct deletion and permanently deletes quote and related records when there are no active payments", async () => {
     const tx = mockTx();
+    tx.payment.count.mockResolvedValue(0);
 
     await deleteQuote("quote-1");
 
     expect(requireOperationalRole).toHaveBeenCalledTimes(1);
-    expect(tx.quote.update).toHaveBeenCalledTimes(1);
-    expect(tx.quote.update).toHaveBeenCalledWith({
-      where: { id: "quote-1" },
-      data: { deletedAt: expect.any(Date) },
+    expect(tx.payment.count).toHaveBeenCalledWith({
+      where: { quoteId: "quote-1" },
     });
+    expect(tx.sharedQuote.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });
+    expect(tx.quoteDecision.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });
+    expect(tx.quoteLifecycleEvent.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });
+    expect(tx.quoteItem.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });
+    expect(tx.quoteSection.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });
+    expect(tx.paymentRequest.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });
+    expect(tx.quote.delete).toHaveBeenCalledTimes(1);
+    expect(tx.quote.delete).toHaveBeenCalledWith({
+      where: { id: "quote-1" },
+    });
+  });
+
+  it("rejects deletion when quote has financial activity", async () => {
+    const tx = mockTx();
+    tx.payment.count.mockResolvedValue(1);
+
+    await expect(deleteQuote("quote-1")).rejects.toThrow("This quote has financial activity and cannot be deleted.");
+    expect(tx.quote.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejects deletion when quote has an associated work order", async () => {
+    const tx = mockTx();
+    tx.workOrder.count.mockResolvedValue(1);
+
+    await expect(deleteQuote("quote-1")).rejects.toThrow("This quote has an associated work order and cannot be deleted.");
+    expect(tx.quote.delete).not.toHaveBeenCalled();
   });
 });
 
 describe("deleteQuoteFromForm", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("authorizes and soft-deletes once before redirecting without revalidation", async () => {
+  it("authorizes and deletes once before redirecting without revalidation", async () => {
     const tx = mockTx();
     const formData = new FormData();
     formData.set("quoteId", "quote-1");
@@ -839,7 +867,7 @@ describe("deleteQuoteFromForm", () => {
     await deleteQuoteFromForm(formData as unknown as FormData);
 
     expect(requireOperationalRole).toHaveBeenCalledTimes(1);
-    expect(tx.quote.update).toHaveBeenCalledTimes(1);
+    expect(tx.quote.delete).toHaveBeenCalledTimes(1);
     expect(revalidatePath).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?deleted=1");
   });

@@ -233,7 +233,7 @@ export function QuotePreviewCard({
                   ))}
                 </div>
               ) : null}
-              <div data-testid="quote-items-table" className="hidden overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--color-border-light)] md:block print:block print:border-gray-200 print:rounded-[var(--radius-sm)]">
+              <div data-testid="quote-items-table" className={`${compactItems ? "sr-only md:not-sr-only print:not-sr-only" : ""} overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--color-border-light)] print:border-gray-200 print:rounded-[var(--radius-sm)]`}>
                 <table className="w-full border-collapse text-left text-sm">
                 <thead className="print:table-header-group">
                   <tr className="border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)]/40 text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider print:border-gray-200 print:bg-transparent print:text-gray-500">

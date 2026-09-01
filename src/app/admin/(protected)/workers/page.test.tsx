@@ -45,7 +45,7 @@ describe("WorkersPage", () => {
     const page = await WorkersPage({ searchParams: Promise.resolve({}) });
     render(page);
 
-    expect(screen.getByRole("heading", { name: "Trabajadores" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Buscar trabajadores" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Crear trabajador" })).toBeInTheDocument();
     expect(screen.queryByTestId("worker-create-form")).not.toBeInTheDocument();
     expect(screen.getByText("Ana López")).toBeInTheDocument();

@@ -82,6 +82,7 @@ function mockSharedQuote(overrides: Record<string, unknown> = {}) {
       taxCents: 160,
       totalCents: 1160,
       taxEnabled: true,
+      deletedAt: null,
       items: [{ description: "Repair", quantity: 1, unitPriceCents: 1000 }],
       sections: undefined,
       ...quoteOverrides,
@@ -174,6 +175,12 @@ describe("getSharedQuoteByToken", () => {
     mockSharedQuote({ revokedAt: new Date() });
 
     await expect(getSharedQuoteByToken("token-valid")).rejects.toThrow(SharedQuoteRevokedError);
+  });
+
+  it("throws SharedQuoteNotFoundError when quote is soft-deleted", async () => {
+    mockSharedQuote({ quote: { deletedAt: new Date() } });
+
+    await expect(getSharedQuoteByToken("token-valid")).rejects.toThrow(SharedQuoteNotFoundError);
   });
 });
 

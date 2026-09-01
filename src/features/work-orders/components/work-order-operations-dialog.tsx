@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { CheckCircle2, ClipboardList, Printer, RotateCcw, UserCheck, X } from "lucide-react";
+import Link from "next/link";
 import type { QuoteStatus, UserRole, WorkOrderStatus } from "@prisma/client";
 import {
   Badge,
@@ -22,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
+import type { ButtonVariant } from "@/components/ui";
 
 import { useRouter } from "next/navigation";
 
@@ -66,6 +68,8 @@ type WorkOrderOperationsDialogProps = {
   workers?: WorkerOption[];
   actions?: WorkOrderActions;
   triggerIconOnlyMobile?: boolean;
+  noteReturnTo?: string;
+  triggerVariant?: ButtonVariant;
 };
 
 const noopActions: WorkOrderActions = {
@@ -80,6 +84,8 @@ export function WorkOrderOperationsDialog({
   workers = [],
   actions = noopActions,
   triggerIconOnlyMobile = false,
+  noteReturnTo = "/admin/notas",
+  triggerVariant = "outline",
 }: WorkOrderOperationsDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -206,7 +212,7 @@ export function WorkOrderOperationsDialog({
     <>
       <Button
         type="button"
-        variant="outline"
+        variant={triggerVariant}
         size="sm"
         ref={triggerRef}
         className={triggerIconOnlyMobile ? "h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" : "w-full"}
@@ -425,16 +431,18 @@ export function WorkOrderOperationsDialog({
                   Trabajo completado. Podes generar la Nota de Remisión desde el panel de Notas o imprimir la orden.
                 </p>
                 <Button
+                  asChild
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="w-9 px-0 sm:w-auto sm:px-3"
+                  className="min-h-11 min-w-11 w-9 px-0 sm:w-auto sm:px-3"
                   title={`Imprimir nota de remisión ${workOrder.number}`}
                   aria-label={`Imprimir nota de remisión ${workOrder.number}`}
-                  onClick={() => window.open(`/admin/notas/${workOrder.id}/print`, "_blank")}
                 >
-                  <Printer className="h-4 w-4" aria-hidden="true" />
-                  <span className="sr-only sm:not-sr-only">Imprimir Nota de Remisión</span>
+                  <Link href={`/admin/notas/${workOrder.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}>
+                    <Printer className="h-4 w-4" aria-hidden="true" />
+                    <span className="sr-only sm:not-sr-only">Imprimir Nota de Remisión</span>
+                  </Link>
                 </Button>
               </section>
             ) : null}

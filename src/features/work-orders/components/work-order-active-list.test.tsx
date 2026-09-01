@@ -36,7 +36,7 @@ function createQuote() {
     paidCents: 0,
     remainingCents: 11600,
     validUntil: new Date("2026-12-31T00:00:00.000Z"),
-    items: [{ type: "LABOR", description: "Cambio de aceite", quantity: 2, unitPriceCents: 5000 }],
+    items: [{ sectionId: null, type: "LABOR", description: "Cambio de aceite", quantity: 2, unitPriceCents: 5000 }],
     sections: [],
     activeSharedQuote: {},
   } as unknown as ActiveListProps["quoteMap"] extends Map<string, infer Quote> ? Quote : never;
@@ -193,5 +193,17 @@ describe("WorkOrderActiveList", () => {
     await user.click(screen.getByRole("button", { name: "Compartir cotización" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("routes the active work-order print affordance back to work orders", () => {
+    renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }));
+
+    const print = screen.getByRole("link", { name: /imprimir orden/i });
+    expect(print).toHaveAttribute(
+      "href",
+      "/admin/quotes/quote-1/print?returnTo=/admin/work-orders",
+    );
+    expect(print).toHaveClass("min-h-11", "min-w-11");
+    expect(print.parentElement).toHaveClass("grid", "w-11", "sm:block", "sm:w-auto");
   });
 });

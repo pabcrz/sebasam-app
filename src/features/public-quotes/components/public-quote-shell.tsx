@@ -1,21 +1,17 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
-import { Phone, MessageCircle } from "lucide-react";
-import { businessPaymentConfig } from "@/config/payment";
+import { PublicBrandHeader } from "@/features/public-branding/public-brand-header";
+import { getPublicMapsUrl, type PublicBusinessIdentity } from "@/features/public-branding/domain";
 import { formatOperationalDate } from "@/features/quotes/lib/format";
+
+const defaultQuoteLogoSrc = "/logo-white-short.png";
 
 export interface PublicQuoteShellProps {
   children: React.ReactNode;
-  business?: {
-    name: string;
-    fullName: string;
-    address: string;
-    mapsUrl: string;
-    contactPhone: string;
-    contactWhatsapp: string;
-  };
+  business?: PublicBusinessIdentity;
+  location?: { address?: string; mapsUrl?: string };
+  logoSrc?: string;
   documentType?: string;
   documentNumber?: string;
   date?: Date | null;
@@ -24,45 +20,20 @@ export interface PublicQuoteShellProps {
   vehicleDescription?: string;
 }
 
-export function PublicQuoteShell({ children, business, documentType = "Cotización", documentNumber, date, customerName, vehicleDescription }: PublicQuoteShellProps) {
-  const resolvedBusiness = business ?? businessPaymentConfig;
+export function PublicQuoteShell({ children, business, location, logoSrc, documentType = "Cotización", documentNumber, date, customerName, vehicleDescription }: PublicQuoteShellProps) {
+  const resolvedBusiness = business ?? {};
+  const resolvedLogoSrc = logoSrc ?? (resolvedBusiness.businessName ? defaultQuoteLogoSrc : undefined);
+  const mapsUrl = getPublicMapsUrl(location?.mapsUrl);
 
   return (
-    <div className="flex flex-1 min-h-screen flex-col bg-[var(--background)] print:min-h-0 print:bg-white">
+    <div className="flex flex-1 min-h-screen flex-col bg-[var(--background)] print:min-h-[235mm] print:bg-white">
       <header className="relative isolate overflow-hidden bg-[image:var(--gradient-primary)] px-6 pb-6 pt-8 text-white md:rounded-b-[22px] md:px-8 md:pb-8 md:pt-10 print:rounded-none print:bg-none print:px-0 print:pt-2 print:pb-3 print:text-black">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[size:32px_32px] opacity-60 print:hidden" />
         <div className="relative mx-auto max-w-4xl flex flex-col sm:flex-row print:flex-row gap-6 print:gap-4 items-start">
           
           <div className="flex flex-col w-full sm:w-3/5 print:w-3/5">
-            <div className="flex items-center gap-3 print:gap-2">
-              <Image
-                src="/logo-white-short.png"
-                alt="Logo de SEBASAM"
-                width={52}
-                height={52}
-                className="h-13 w-13 print:h-10 print:w-10 object-contain print:invert"
-                priority
-              />
-              <h1 className="text-3xl font-extrabold leading-none tracking-[-0.05em] md:text-4xl print:text-2xl print:text-black">
-                {resolvedBusiness.name}
-              </h1>
-            </div>
-            <p className="mt-2.5 print:mt-1.5 font-mono text-xs print:text-[10px] uppercase tracking-[0.12em] font-medium text-[var(--color-on-navy-tint)] print:text-gray-700">
-              {resolvedBusiness.fullName}
-            </p>
-            <a href={resolvedBusiness.mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 max-w-sm rounded-sm text-xs text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:text-gray-600 print:text-[11px] print:no-underline">
-              {resolvedBusiness.address}
-            </a>
-            <div className="mt-2 print:mt-1 text-xs print:text-[11px] text-white/80 print:text-gray-600 flex flex-wrap gap-4 print:gap-3 items-center">
-              <a href={`tel:${resolvedBusiness.contactPhone}`} className="flex items-center gap-1.5 rounded-sm transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:no-underline">
-                <Phone className="w-3.5 h-3.5 opacity-70 print:opacity-100" /> 
-                {resolvedBusiness.contactPhone}
-              </a>
-              <a href={`https://wa.me/52${resolvedBusiness.contactWhatsapp}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-sm transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:no-underline">
-                <MessageCircle className="w-3.5 h-3.5 opacity-70 print:opacity-100" /> 
-                {resolvedBusiness.contactWhatsapp}
-              </a>
-            </div>
+            <PublicBrandHeader identity={resolvedBusiness} logoSrc={resolvedLogoSrc} quoteLayout />
+            {location?.address ? mapsUrl ? <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 max-w-sm rounded-sm text-xs text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:text-gray-600 print:text-[11px] print:no-underline">{location.address}</a> : <p className="mt-1 max-w-sm text-xs text-white/80 print:text-gray-600 print:text-[11px]">{location.address}</p> : null}
           </div>
 
           <div className="flex flex-col sm:items-end print:items-end w-full sm:w-2/5 print:w-2/5">

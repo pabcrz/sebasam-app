@@ -17,7 +17,7 @@ describe("OperationalCard", () => {
     const user = userEvent.setup();
     const onOpen = vi.fn();
     const onAction = vi.fn();
-    render(<OperationalCard onOpen={onOpen} openLabel="Ver detalle" footer={<button type="button" onClick={onAction}>Acción</button>}>Contenido</OperationalCard>);
+    render(<OperationalCard onOpen={onOpen} openLabel="Ver detalle" actions={<button type="button" onClick={onAction}>Acción</button>} body="Contenido" />);
 
     screen.getByRole("button", { name: "Ver detalle" }).focus();
     await user.keyboard("{Enter}");
@@ -28,7 +28,7 @@ describe("OperationalCard", () => {
   });
 
   it("keeps body and actions on one padded surface", () => {
-    render(<OperationalCard onOpen={vi.fn()} openLabel="Ver detalle" footer={<button type="button">Acción</button>}>Contenido</OperationalCard>);
+    render(<OperationalCard onOpen={vi.fn()} openLabel="Ver detalle" actions={<button type="button">Acción</button>} body="Contenido" />);
 
     const body = screen.getByRole("button", { name: "Ver detalle" });
     const action = screen.getByRole("button", { name: "Acción" });

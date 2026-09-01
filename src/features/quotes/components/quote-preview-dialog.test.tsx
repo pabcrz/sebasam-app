@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { QuotePreviewDialog } from "./quote-preview-dialog";
+import { QuotePreviewDialog, toQuotePreviewCardProps } from "./quote-preview-dialog";
 
 function createMockQuote(overrides: Partial<QuoteListSummary> = {}): QuoteListSummary {
   return {
@@ -30,6 +30,7 @@ function createMockQuote(overrides: Partial<QuoteListSummary> = {}): QuoteListSu
       {
         id: "item-1",
         quoteId: "quote-1",
+        sectionId: null,
         type: "LABOR",
         description: "Cambio de aceite",
         quantity: 2,
@@ -83,6 +84,17 @@ describe("QuotePreviewDialog", () => {
   it("renders sectioned concepts from the supplied payload", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote({
+      items: [{
+        id: "section-item-1",
+        quoteId: "quote-1",
+        sectionId: "section-1",
+        type: "LABOR",
+        description: "Diagnóstico de motor",
+        quantity: 1,
+        unitPriceCents: 5000,
+        totalCents: 5000,
+        sortOrder: 0,
+      }],
       sections: [{
         id: "section-1",
         quoteId: "quote-1",
@@ -119,5 +131,71 @@ describe("QuotePreviewDialog", () => {
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
     expect(screen.getAllByText("Cambio de aceite")[0]).toBeInTheDocument();
+  });
+
+  it("keeps root and section concepts when both are present", () => {
+    const preview = toQuotePreviewCardProps(createMockQuote({
+      items: [
+        {
+          id: "root-item-1",
+          quoteId: "quote-1",
+          sectionId: null,
+          type: "LABOR",
+          description: "Cambio de aceite",
+          quantity: 2,
+          unitPriceCents: 5000,
+          totalCents: 10000,
+          sortOrder: 0,
+        },
+        {
+          id: "section-item-1",
+          quoteId: "quote-1",
+          sectionId: "section-1",
+          type: "LABOR",
+          description: "Cambio de aceite",
+          quantity: 1,
+          unitPriceCents: 5000,
+          totalCents: 5000,
+          sortOrder: 0,
+        },
+      ],
+      sections: [{
+        id: "section-1",
+        quoteId: "quote-1",
+        name: "Frenos",
+        sortOrder: 0,
+        isAuthorized: false,
+        items: [{
+          id: "section-item-1",
+          quoteId: "quote-1",
+          sectionId: "section-1",
+          type: "LABOR",
+          description: "Cambio de aceite",
+          quantity: 1,
+          unitPriceCents: 5000,
+          totalCents: 5000,
+          sortOrder: 0,
+        }],
+      }],
+    }));
+
+    expect(preview.sections).toHaveLength(2);
+    expect(preview.sections[0]?.items[0]?.description).toBe("Cambio de aceite");
+    expect(preview.sections[0]?.items).toHaveLength(1);
+    expect(preview.sections[1]?.items[0]?.description).toBe("Cambio de aceite");
+    expect(preview.sections[1]?.items).toHaveLength(1);
+  });
+
+  it("does not render redundant print button inside the preview dialog", async () => {
+    const user = userEvent.setup();
+    render(<QuotePreviewDialog quote={createMockQuote({
+      id: "quote-preview-1",
+      workOrder: { id: "wo-preview-active-1", status: "IN_PROGRESS" } as QuoteListSummary["workOrder"],
+    })} />);
+
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+
+    expect(screen.queryByRole("link", { name: /imprimir/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/imprimir cotización/i)).not.toBeInTheDocument();
   });
 });

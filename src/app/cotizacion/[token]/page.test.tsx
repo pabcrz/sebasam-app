@@ -19,6 +19,9 @@ vi.mock("@/features/payment-settings/domain", () => ({
   getPaymentSettings: vi.fn().mockResolvedValue({
     bankAccounts: [],
     name: "SEBASAM",
+    fullName: "Servicio y Refacciones para Suspensiones de Aire y Muelles",
+    address: "Batalla de Casa Blanca",
+    mapsUrl: "not a URL",
     contactPhone: "5556007675",
     contactWhatsapp: "5536239346",
   }),
@@ -90,10 +93,14 @@ describe("CotizacionPage", () => {
       }),
       undefined,
     );
+    expect(screen.getByAltText("Logo de SEBASAM")).toHaveAttribute("src", expect.stringContaining("logo-white-short.png"));
+    expect(screen.getByText("Servicio y Refacciones para Suspensiones de Aire y Muelles")).toHaveClass("font-mono", "print:text-[10px]");
+    expect(screen.getByText("Batalla de Casa Blanca")).not.toHaveAttribute("href");
+    expect(screen.queryByRole("link", { name: /Batalla de Casa Blanca/i })).not.toBeInTheDocument();
   });
 
   describe("generateMetadata", () => {
-    it("generates dynamic filename title when token is valid", async () => {
+    it("generates dynamic filename title and OpenGraph metadata when token is valid", async () => {
       getSharedQuoteByTokenMock.mockResolvedValue({
         quote: {
           id: "quote-1",
@@ -110,36 +117,80 @@ describe("CotizacionPage", () => {
 
       expect(metadata).toEqual({
         title: "CristianDelToro-freightliner-18062026",
+        description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
+        openGraph: {
+          title: "Cotización COT-001 | SEBASAM",
+          description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Cotización COT-001 | SEBASAM",
+          description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
+        },
       });
     });
 
-    it("returns safe fallback title 'Cotización' when token is expired", async () => {
+    it("returns safe fallback metadata when token is expired", async () => {
       getSharedQuoteByTokenMock.mockRejectedValue(new SharedQuoteExpiredError());
 
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "expired-token" }) });
 
       expect(metadata).toEqual({
         title: "Cotización",
+        description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+        openGraph: {
+          title: "Cotización | SEBASAM",
+          description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Cotización | SEBASAM",
+          description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+        },
       });
     });
 
-    it("returns safe fallback title 'Cotización' when token is revoked", async () => {
+    it("returns safe fallback metadata when token is revoked", async () => {
       getSharedQuoteByTokenMock.mockRejectedValue(new SharedQuoteRevokedError());
 
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "revoked-token" }) });
 
       expect(metadata).toEqual({
         title: "Cotización",
+        description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+        openGraph: {
+          title: "Cotización | SEBASAM",
+          description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Cotización | SEBASAM",
+          description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+        },
       });
     });
 
-    it("returns safe fallback title 'Cotización' when token is not found or invalid", async () => {
+    it("returns safe fallback metadata when token is not found or invalid", async () => {
       getSharedQuoteByTokenMock.mockRejectedValue(new Error("Not found"));
 
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "invalid-token" }) });
 
       expect(metadata).toEqual({
         title: "Cotización",
+        description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+        openGraph: {
+          title: "Cotización | SEBASAM",
+          description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Cotización | SEBASAM",
+          description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+        },
       });
     });
   });

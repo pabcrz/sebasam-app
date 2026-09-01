@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, type BadgeVariant } from "@/components/ui";
+import { Badge, ListItemCard, type BadgeVariant } from "@/components/ui";
 import { WorkerEditDialog } from "./worker-edit-dialog";
 
 type WorkerCardListWorker = {
@@ -32,28 +32,30 @@ export function WorkerCardList({ workers, updateAction, setActiveAction, deleteA
         const statusVariant: BadgeVariant = worker.isActive ? "success" : "default";
 
         return (
-          <div
+          <ListItemCard
             key={worker.id}
-            className="flex items-start justify-between gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-medium text-[var(--color-text-main)]">{worker.displayName}</p>
-                <Badge variant={statusVariant}>{statusLabel}</Badge>
-              </div>
-              <div className="mt-1 grid gap-0.5 text-sm text-[var(--color-text-muted)]">
-                <p>{kindLabels[worker.workerKind ?? "HELPER"]}</p>
-                <p className="truncate">@{worker.username}</p>
-                <p className="truncate">{worker.email}</p>
-              </div>
-            </div>
-            <WorkerEditDialog
-              worker={worker}
-              updateAction={updateAction}
-              setActiveAction={setActiveAction}
-              deleteAction={deleteAction}
-            />
-          </div>
+            body={
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-[var(--color-text-main)]">{worker.displayName}</p>
+                  <Badge variant={statusVariant}>{statusLabel}</Badge>
+                </div>
+                <div className="mt-1 grid gap-0.5 text-sm text-[var(--color-text-muted)]">
+                  <p>{kindLabels[worker.workerKind ?? "HELPER"]}</p>
+                  <p className="truncate">@{worker.username}</p>
+                  <p className="truncate">{worker.email}</p>
+                </div>
+              </>
+            }
+            actions={
+              <WorkerEditDialog
+                worker={worker}
+                updateAction={updateAction}
+                setActiveAction={setActiveAction}
+                deleteAction={deleteAction}
+              />
+            }
+          />
         );
       })}
 

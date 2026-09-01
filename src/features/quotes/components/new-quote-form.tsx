@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { X, FileText } from "lucide-react";
 import { Button, ConfirmDialog } from "@/components/ui";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { QuoteBuilder } from "./quote-builder";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
@@ -31,20 +32,7 @@ export function NewQuoteForm({
 
   return (
     <section className="mx-auto flex min-h-[calc(100dvh-5rem)] w-full max-w-6xl flex-col gap-4 px-4 py-6 md:px-6 md:py-10">
-      <div className="flex shrink-0 items-center justify-between">
-        <h1 className="text-2xl font-semibold text-[var(--color-text-main)]">
-          Crear cotización
-        </h1>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowConfirmClose(true)}
-          aria-label="Cerrar"
-        >
-          <X className="h-5 w-5" aria-hidden="true" />
-        </Button>
-      </div>
+      <AdminPageHeader icon={FileText} title="Crear cotización" variant="expanded" actions={<Button type="button" variant="ghost" size="sm" onClick={() => setShowConfirmClose(true)} aria-label="Cerrar"><X className="h-5 w-5" aria-hidden="true" /></Button>} />
       <QuoteBuilder
         customers={customers}
         createAction={createAction}

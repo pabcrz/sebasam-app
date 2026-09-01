@@ -11,17 +11,21 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
-vi.mock("lucide-react", () => ({
-  ChevronDown: ({ ...props }: React.SVGAttributes<SVGSVGElement>) => (
-    <svg data-testid="chevron-down-icon" {...props} />
-  ),
-  Filter: ({ ...props }: React.SVGAttributes<SVGSVGElement>) => (
-    <svg data-testid="filter-icon" {...props} />
-  ),
-  X: ({ ...props }: React.SVGAttributes<SVGSVGElement>) => (
-    <svg data-testid="x-icon" {...props} />
-  ),
-}));
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("lucide-react")>();
+  return {
+    ...actual,
+    ChevronDown: ({ ...props }: React.SVGAttributes<SVGSVGElement>) => (
+      <svg data-testid="chevron-down-icon" {...props} />
+    ),
+    Filter: ({ ...props }: React.SVGAttributes<SVGSVGElement>) => (
+      <svg data-testid="filter-icon" {...props} />
+    ),
+    X: ({ ...props }: React.SVGAttributes<SVGSVGElement>) => (
+      <svg data-testid="x-icon" {...props} />
+    ),
+  };
+});
 
 const customers = [
   { id: "cust-1", name: "Constructora del Norte" },
@@ -37,6 +41,8 @@ describe("QuoteFilters", () => {
   it("keeps filter fields collapsed by default", () => {
     renderFilters();
 
+    expect(screen.getByRole("navigation", { name: "Filtros directos por estado" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Todas" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("button", { name: /mostrar filtros/i })).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByLabelText("Estatus")).not.toBeInTheDocument();
   });

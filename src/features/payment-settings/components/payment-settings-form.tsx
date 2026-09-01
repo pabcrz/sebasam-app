@@ -1,12 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { Building2, FileText, Hash, Key, Plus, Save, Trash2, User } from "lucide-react";
+import { Building2, Check, Copy, FileText, Hash, Key, Plus, Save, Share2, Trash2, User } from "lucide-react";
 import toast from "react-hot-toast";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox } from "@/components/ui";
 import { Input } from "@/components/ui";
 import { Label } from "@/components/ui";
-import { savePaymentSettingsAction, addBankAccountAction, removeBankAccountAction } from "../actions";
+import {
+  savePaymentSettingsAction,
+  addBankAccountAction,
+  removeBankAccountAction,
+  setBankAccountPublicSharingAction,
+} from "../actions";
 import type { PaymentSettingsData, BankAccountData } from "../domain";
 
 export interface PaymentSettingsFormProps {
@@ -17,6 +22,33 @@ export interface PaymentSettingsFormProps {
 function BankAccountRow({ account }: { account: BankAccountData }) {
   const fieldClass = "grid gap-1.5";
   const [pending, startTransition] = React.useTransition();
+  const [sharePending, startShareTransition] = React.useTransition();
+  const [shareable, setShareable] = React.useState(account.isPubliclyShareable);
+  const [copied, setCopied] = React.useState(false);
+
+  const publicUrl = account.publicToken
+    ? `/datos-de-pago/cuenta/${account.publicToken}`
+    : "";
+
+  const handleSharing = () => {
+    const nextValue = !shareable;
+    startShareTransition(async () => {
+      const result = await setBankAccountPublicSharingAction(account.id, nextValue);
+      if (result.success) {
+        setShareable(nextValue);
+        toast.success(nextValue ? "Enlace público habilitado." : "Enlace público deshabilitado.");
+      } else {
+        toast.error("No se pudo actualizar la visibilidad pública.");
+      }
+    });
+  };
+
+  const handleCopyLink = async () => {
+    if (!publicUrl) return;
+    await navigator.clipboard.writeText(`${window.location.origin}${publicUrl}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleRemove = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,6 +85,31 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
             <span className="sr-only">Eliminar</span>
           </Button>
         </form>
+      </div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3">
+        <label className="flex min-h-[var(--tap-min-height)] items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={shareable}
+            onChange={handleSharing}
+            disabled={sharePending}
+            className="size-4"
+          />
+          <Share2 className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
+          Compartir esta cuenta públicamente
+        </label>
+        {shareable && publicUrl ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleCopyLink}
+            aria-label="Copiar enlace público"
+          >
+            {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+            <span>{copied ? "Copiado" : "Copiar enlace"}</span>
+          </Button>
+        ) : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className={fieldClass}>
@@ -150,9 +207,23 @@ export function PaymentSettingsForm({ settings, saveError }: PaymentSettingsForm
 
   return (
     <div className="grid gap-6">
-      {/* Business & Contact: main save form */}
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-6">
+      <h1 className="sr-only">Configuración de pago</h1>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="submit"
+          form="payment-settings-form"
+          variant="primary"
+          size="sm"
+          loading={pending}
+        >
+          <Save className="h-4 w-4" aria-hidden="true" />
+          Guardar configuración
+        </Button>
+      </div>
+      <div data-testid="payment-settings-form-body" data-layout-width="readable" className="grid max-w-3xl gap-6">
+        {/* Business & Contact: main save form */}
+        <form id="payment-settings-form" data-testid="payment-settings-form" onSubmit={handleSubmit}>
+          <div className="grid gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Negocio</CardTitle>
@@ -199,17 +270,11 @@ export function PaymentSettingsForm({ settings, saveError }: PaymentSettingsForm
             </CardContent>
           </Card>
 
-          <div className="flex items-center gap-4">
-            <Button type="submit" variant="primary" loading={pending}>
-              <Save className="h-4 w-4" aria-hidden="true" />
-              <span>Guardar configuración</span>
-            </Button>
           </div>
-        </div>
-      </form>
+        </form>
 
-      {/* Bank accounts: separate section with its own mini-forms */}
-      <Card>
+        {/* Bank accounts: separate section with its own mini-forms */}
+        <Card>
         <CardHeader>
           <CardTitle>Datos bancarios</CardTitle>
           <CardDescription>
@@ -272,7 +337,8 @@ export function PaymentSettingsForm({ settings, saveError }: PaymentSettingsForm
             </div>
           </form>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

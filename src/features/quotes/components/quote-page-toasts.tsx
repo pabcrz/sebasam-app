@@ -12,12 +12,16 @@ const errorMessages: Record<string, string> = {
   "invalid-share": "Selecciona una cotización válida antes de compartir.",
   "share-failed": "No se pudo compartir la cotización. Recarga y confirma que tenga al menos un concepto completo.",
   "not-draft": "Esta cotización ya no está en borrador.",
+  "not-draft-sent": "Esta cotización no se puede cancelar porque no está en borrador ni enviada.",
   "has-work-order": "Esta cotización ya tiene una orden de trabajo.",
   "update-failed": "No se pudo actualizar la cotización. Recarga e intenta de nuevo.",
   "duplicate-failed": "No se pudo duplicar la cotización. Recarga e intenta de nuevo.",
   "not-editable": "Esta cotización no se puede editar en este momento.",
   "cancellation-failed": "No se pudo cancelar la cotización. Recarga e intenta de nuevo.",
   "invalid-cancellation": "Selecciona una cotización válida antes de cancelar.",
+  "cannot-delete": "No se puede eliminar la cotización porque tiene actividad vinculada (orden de trabajo o pagos) o no está en un estado eliminable.",
+  "deletion-failed": "No se pudo eliminar la cotización. Recarga e intenta de nuevo.",
+  "invalid-deletion": "Selecciona una cotización válida antes de eliminar.",
 };
 
 export function QuotePageToasts() {
@@ -65,6 +69,12 @@ export function QuotePageToasts() {
     if (params.get("duplicated")) {
       toast.success("Cotización duplicada.", { id: "quote-duplicated" });
       params.delete("duplicated");
+      changed = true;
+    }
+
+    if (params.get("deleted")) {
+      toast.success("Cotización eliminada.", { id: "quote-deleted" });
+      params.delete("deleted");
       changed = true;
     }
 

@@ -116,9 +116,20 @@ function NavLink({
   );
 }
 
+export function getSectionTitle(pathname: string): string {
+  if (pathname === "/admin") {
+    return "Inicio";
+  }
+  const matched = navItems
+    .filter((item) => item.href !== "/admin")
+    .find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  return matched?.label ?? "Inicio";
+}
+
 export function AdminShell({ displayName, role, children }: AdminShellProps) {
   const [isGlobalPending, setGlobalPending] = React.useState(false);
   const pathname = usePathname();
+  const sectionTitle = getSectionTitle(pathname);
 
   // Reset global pending indicator when pathname changes
   React.useEffect(() => {
@@ -127,7 +138,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
   }, [pathname]);
 
   return (
-    <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 print:bg-transparent print:pb-0">
+    <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 print:min-h-0 print:bg-transparent print:pb-0">
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 text-[var(--color-text-main)] md:flex overflow-y-auto print:hidden">
         <div className="border-b border-[var(--color-border-light)] px-3 pb-5">
           <Link
@@ -136,9 +147,6 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
           >
             SEBASAM
           </Link>
-          <p className="mt-1 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-            Operaciones
-          </p>
         </div>
 
         <nav aria-label="Navegación principal" className="mt-6 flex flex-1 flex-col gap-1">
@@ -153,7 +161,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col print:min-h-0 print:flex-none">
         <header className="sticky top-0 z-40 border-b border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] print:hidden">
           {isGlobalPending ? (
             <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--color-primary)] animate-pulse" />
@@ -162,18 +170,15 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
             <div className="md:hidden">
               <Link
                 href="/admin"
-                className="inline-flex min-h-[var(--tap-min-height)] flex-col justify-center rounded-md px-2 text-lg font-extrabold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+                className="inline-flex min-h-[var(--tap-min-height)] items-center rounded-md px-2 text-lg font-extrabold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
               >
                 SEBASAM
               </Link>
-              <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-                Operaciones
-              </p>
             </div>
             <div className="flex items-center gap-2">
-              <p className="hidden font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)] md:block">
-                Panel de operaciones
-              </p>
+              <h1 className="hidden font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)] md:block">
+                {sectionTitle}
+              </h1>
               {isGlobalPending ? (
                 <span className="flex items-center gap-1 text-xs text-[var(--color-primary)] font-medium">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -219,7 +224,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
           </div>
         </header>
 
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 print:min-h-0 print:flex-none">{children}</main>
       </div>
 
       <nav

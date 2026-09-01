@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { X, Printer } from "lucide-react";
+import { X, Printer, FileText } from "lucide-react";
 import { Button } from "@/components/ui";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import Link from "next/link";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuoteBuilder } from "./quote-builder";
@@ -32,21 +33,13 @@ export function EditDraftQuoteForm({
 
   return (
     <section className="mx-auto flex min-h-[calc(100dvh-5rem)] w-full max-w-6xl flex-col gap-4 px-4 py-6 md:px-6 md:py-10">
-      <div className="flex shrink-0 items-center justify-between">
-        <h1 className="text-2xl font-semibold text-[var(--color-text-main)]">
-          Editar cotización {quoteNumber}
-        </h1>
-        <div className="flex items-center gap-2">
-          <Link href={`/admin/quotes/${quoteId}/print`} target="_blank">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-            >
+      <AdminPageHeader icon={FileText} title={`Editar cotización ${quoteNumber}`} variant="expanded" actions={<>
+          <Button asChild type="button" variant="outline" size="sm">
+            <Link href={`/admin/quotes/${quoteId}/print?returnTo=/admin/quotes`}>
               <Printer className="mr-2 h-4 w-4" aria-hidden="true" />
               Imprimir PDF
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <Button
             type="button"
             variant="ghost"
@@ -56,8 +49,7 @@ export function EditDraftQuoteForm({
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </Button>
-        </div>
-      </div>
+        </>} />
       <QuoteBuilder
         customers={customers}
         saveAction={saveAction}

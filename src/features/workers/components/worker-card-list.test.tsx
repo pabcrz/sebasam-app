@@ -29,7 +29,10 @@ describe("WorkerCardList", () => {
     expect(screen.getByText("Inactivo")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Editar" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Editar" }));
+    const edit = screen.getByRole("button", { name: "Editar" });
+    expect(edit.parentElement).not.toHaveClass("min-w-0", "flex-1");
+
+    await user.click(edit);
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByTestId("worker-edit-form")).toBeInTheDocument();
