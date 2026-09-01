@@ -100,4 +100,17 @@ describe("QueueSnapshotCards", () => {
       expect(screen.getByText(value)).not.toHaveClass("text-3xl");
     }
   });
+
+  it("renders each queue as a single link to its management screen", () => {
+    render(<QueueSnapshotCards queues={{ commercialQueueCount: 12, activeExecutionCount: 8 }} />);
+
+    expect(screen.getByRole("link", { name: /ver cotizaciones/i })).toHaveAttribute(
+      "href",
+      "/admin/quotes"
+    );
+    expect(screen.getByRole("link", { name: /ver trabajos/i })).toHaveAttribute(
+      "href",
+      "/admin/work-orders"
+    );
+  });
 });
