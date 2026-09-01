@@ -41,6 +41,8 @@ describe("QuoteFilters", () => {
   it("keeps filter fields collapsed by default", () => {
     renderFilters();
 
+    expect(screen.getByRole("navigation", { name: "Filtros directos por estado" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Todas" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("button", { name: /mostrar filtros/i })).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByLabelText("Estatus")).not.toBeInTheDocument();
   });

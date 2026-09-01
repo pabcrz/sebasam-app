@@ -184,14 +184,22 @@ function checkQuotesPage() {
     "setPreviewOpen(true)",
     "Mobile quote card click must open the preview dialog",
   );
-  const mobilePreviewButtonEnd = mobileCardSource.indexOf("</button>");
-  const mobileActionRowStart = mobileCardSource.includes('data-testid="quote-secondary-actions"')
-    ? mobileCardSource.indexOf('data-testid="quote-secondary-actions"')
-    : mobileCardSource.indexOf("<OperationalActionRow>");
-  assert(
-    mobilePreviewButtonEnd >= 0 && mobileActionRowStart > mobilePreviewButtonEnd,
-    "Mobile quote action row must remain outside the preview button",
-  );
+  if (mobileCardSource.includes("<OperationalCard")) {
+    assertIncludes(
+      mobileCardSource,
+      "actions=",
+      "Mobile quote action row must be passed to actions prop of OperationalCard",
+    );
+  } else {
+    const mobilePreviewButtonEnd = mobileCardSource.indexOf("</button>");
+    const mobileActionRowStart = mobileCardSource.includes('data-testid="quote-secondary-actions"')
+      ? mobileCardSource.indexOf('data-testid="quote-secondary-actions"')
+      : mobileCardSource.indexOf("<OperationalActionRow>");
+    assert(
+      mobilePreviewButtonEnd >= 0 && mobileActionRowStart > mobilePreviewButtonEnd,
+      "Mobile quote action row must remain outside the preview button",
+    );
+  }
 
   // Required form field names must survive wrapper refactors.
   // Vehicle fields are optional; only customer is required to create a quote.

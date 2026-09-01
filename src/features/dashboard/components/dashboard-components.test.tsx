@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { DashboardView } from "./dashboard-view";
 import { KpiPeriodMetrics } from "./kpi-period-metrics";
 import { PayrollEstimateCard } from "./payroll-estimate-card";
@@ -42,26 +42,40 @@ describe("KpiPeriodMetrics", () => {
     },
   };
 
-  it("renders week KPIs by default and switches to month and year when tabs are clicked", () => {
+  it("renders week KPIs by default and switches periods with keyboard tabs", () => {
     render(<KpiPeriodMetrics kpis={sampleKpis} />);
+
+    const week = screen.getByRole("tab", { name: "Esta semana" });
+    const month = screen.getByRole("tab", { name: "Este mes" });
+    const year = screen.getByRole("tab", { name: "Este año" });
+    const weekPanel = screen.getByRole("tabpanel", { name: "Esta semana" });
 
     // Default: Week
     expect(screen.getByText("17–22 de ago de 2026")).toBeInTheDocument();
-    expect(screen.getByText("5")).toBeInTheDocument();
-    expect(screen.getByText("Materiales y Refacciones")).toBeInTheDocument();
-    expect(screen.getByText("5")).toHaveAttribute("data-numeric-role", "count");
-    expect(screen.getAllByText(/\$1,?500\.00/)[0]).toHaveAttribute("data-numeric-role", "currency");
-    expect(screen.getAllByText(/\$1,?500\.00/)[0]).toHaveClass("text-xl", "sm:text-2xl", "tabular-nums");
+    expect(within(weekPanel).getByText("5")).toHaveAttribute("data-numeric-role", "count");
+    expect(within(weekPanel).getByText("Materiales y Refacciones")).toBeInTheDocument();
+    expect(within(weekPanel).getByText(/\$1,?500\.00/)).toHaveAttribute("data-numeric-role", "currency");
+    expect(within(weekPanel).getByText(/\$1,?500\.00/)).toHaveClass("text-xl", "sm:text-2xl", "tabular-nums");
+    expect(week).toHaveAttribute("aria-selected", "true");
+    expect(week).toHaveAttribute("aria-controls");
+    expect(weekPanel).toHaveAttribute("aria-labelledby", week.id);
 
-    // Switch to Month
-    fireEvent.click(screen.getByRole("tab", { name: "Este mes" }));
+    // Switch to Month with roving focus.
+    week.focus();
+    fireEvent.keyDown(week, { key: "ArrowRight" });
+    expect(month).toHaveFocus();
+    expect(month).toHaveAttribute("aria-selected", "true");
+    const monthPanel = screen.getByRole("tabpanel", { name: "Este mes" });
     expect(screen.getByText("agosto de 2026")).toBeInTheDocument();
-    expect(screen.getByText("22")).toBeInTheDocument();
+    expect(within(monthPanel).getByText("22")).toBeInTheDocument();
 
-    // Switch to Year
-    fireEvent.click(screen.getByRole("tab", { name: "Este año" }));
+    // Switch to Year.
+    fireEvent.keyDown(month, { key: "ArrowRight" });
+    expect(year).toHaveFocus();
+    expect(year).toHaveAttribute("aria-selected", "true");
+    const yearPanel = screen.getByRole("tabpanel", { name: "Este año" });
     expect(screen.getByText("2026")).toBeInTheDocument();
-    expect(screen.getByText("150")).toBeInTheDocument();
+    expect(within(yearPanel).getByText("150")).toBeInTheDocument();
   });
 });
 

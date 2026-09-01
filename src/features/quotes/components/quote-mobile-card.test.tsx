@@ -165,12 +165,12 @@ describe("QuoteListCard", () => {
     expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
   });
 
-  it("retains the padded, clickable quote-card reference surface", () => {
+  it("uses the operational card body as the padded, clickable quote-card reference surface", () => {
     renderCard(createMockQuote());
 
     const preview = screen.getByRole("button", { name: /abrir vista previa de c-001/i });
     expect(preview.parentElement).toHaveClass("p-4");
-    expect(preview).toHaveClass("block", "w-full", "rounded-[var(--radius-sm)]", "focus-visible:ring-offset-2");
+    expect(preview).toHaveClass("w-full", "rounded-[var(--radius-sm)]", "focus-visible:ring-offset-2");
   });
 
   it("uses one full-width primary action, a tile row, and a separated accessible overflow dialog", async () => {

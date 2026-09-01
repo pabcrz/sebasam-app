@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import { Badge, Button } from "@/components/ui";
+import { Badge, Button, StatusFilterNav } from "@/components/ui";
 import { notasHref, type NotasAssignee, type NotasMode, type NotasPayment } from "../notas-period";
 
 type Master = { id: string; displayName: string };
@@ -16,7 +16,7 @@ export function NotasFilters({ mode, payment, assignee, anchor, rangeLabel, isCu
     else date.setUTCMonth(date.getUTCMonth() + amount);
     return date.toISOString().slice(0, 10);
   };
-  return <nav aria-label="Filtros de notas" className="grid gap-5 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm sm:p-5">
+  return <section aria-label="Filtros de notas" className="grid gap-5 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm sm:p-5">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Periodo seleccionado</p>
@@ -35,14 +35,14 @@ export function NotasFilters({ mode, payment, assignee, anchor, rangeLabel, isCu
 
     <div className="grid gap-2">
       <p className="text-xs font-semibold text-[var(--color-text-muted)]">Estado de pago</p>
-      <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-lg bg-[var(--color-bg-soft)] p-1" aria-label="Estado de pago">
-        {(["all", "pending", "paid"] as const).map((item) => {
-          const label = ({ all: "Todas", pending: "Pendientes", paid: "Pagadas" } as const)[item];
-          return payment === item
-            ? <span key={item} aria-current="true" className="inline-flex h-9 cursor-default items-center justify-center rounded-md bg-[var(--color-surface)] px-4 text-sm font-semibold text-[var(--color-text-main)] shadow-sm">{label}</span>
-            : <Button key={item} asChild variant="ghost" size="sm" className="px-4"><Link href={notasHref({ mode, anchor, payment: item, assignee })}>{label}</Link></Button>;
-        })}
-      </div>
+        <StatusFilterNav
+          label="Estado de pago"
+          items={(["all", "pending", "paid"] as const).map((item) => ({
+            href: notasHref({ mode, anchor, payment: item, assignee }),
+            label: ({ all: "Todas", pending: "Pendientes", paid: "Pagadas" } as const)[item],
+            current: payment === item,
+          }))}
+        />
     </div>
 
     <div className="grid gap-2">
@@ -63,5 +63,5 @@ export function NotasFilters({ mode, payment, assignee, anchor, rangeLabel, isCu
         <Link aria-label="Periodo siguiente" href={notasHref({ mode, payment, assignee, anchor: shifted(1) })}>Siguiente<ChevronRight className="h-4 w-4" aria-hidden="true" /></Link>
       </Button>
     </div>
-  </nav>;
+  </section>;
 }
