@@ -186,7 +186,7 @@ describe("QuotePreviewDialog", () => {
     expect(preview.sections[1]?.items).toHaveLength(1);
   });
 
-  it("keeps non-completed preview printing on the quote route", async () => {
+  it("does not render redundant print button inside the preview dialog", async () => {
     const user = userEvent.setup();
     render(<QuotePreviewDialog quote={createMockQuote({
       id: "quote-preview-1",
@@ -195,28 +195,7 @@ describe("QuotePreviewDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    const print = screen.getByRole("link", { name: /imprimir cotización/i });
-    expect(print).toHaveAttribute("href", "/admin/quotes/quote-preview-1/print?returnTo=/admin/quotes");
-    expect(print.getAttribute("href")).not.toContain("/admin/notas/");
-    expect(print).not.toHaveAttribute("target");
-    expect(print).not.toHaveAttribute("rel");
-    expect(print).toHaveClass("min-h-11", "min-w-11", "!h-11", "!w-11", "sm:!h-9", "sm:!w-auto");
-    expect(screen.getByText("Imprimir cotización")).toHaveClass("sr-only", "sm:not-sr-only");
-  });
-
-  it("preserves the current Notes state when printing from the completed preview", async () => {
-    const user = userEvent.setup();
-    render(<QuotePreviewDialog quote={createMockQuote({
-      id: "quote-preview-completed-1",
-      workOrder: { id: "wo-preview-completed-1", status: "COMPLETED" } as QuoteListSummary["workOrder"],
-    })} noteReturnTo="/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=workshop&page=2" />);
-
-    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
-
-    const print = screen.getByRole("link", { name: /imprimir cotización/i });
-    expect(print).toHaveAttribute("href", "/admin/notas/wo-preview-completed-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dmonth%26anchor%3D2026-08%26payment%3Dpaid%26assignee%3Dworkshop%26page%3D2");
-    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
-    expect(print).not.toHaveAttribute("target");
-    expect(print).not.toHaveAttribute("rel");
+    expect(screen.queryByRole("link", { name: /imprimir/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/imprimir cotización/i)).not.toBeInTheDocument();
   });
 });
