@@ -476,15 +476,17 @@ model PaymentSettings {
 }
 
 model BankAccount {
-  id                Int      @id @default(autoincrement())
-  paymentSettingsId Int
-  accountHolder     String
-  bankName          String
-  accountNumber     String
-  clabe             String
-  isForInvoicing    Boolean  @default(false)
-  sortOrder         Int      @default(0)
-  createdAt         DateTime @default(now())
+  id                  Int      @id @default(autoincrement())
+  paymentSettingsId   Int
+  accountHolder       String
+  bankName            String
+  accountNumber       String
+  clabe               String
+  isForInvoicing      Boolean  @default(false)
+  isPubliclyShareable Boolean  @default(false)
+  publicToken         String   @unique @default(uuid())
+  sortOrder           Int      @default(0)
+  createdAt           DateTime @default(now())
 
   paymentSettings PaymentSettings @relation(fields: [paymentSettingsId], references: [id], onDelete: Cascade)
 

@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { updatePaymentSettings, addBankAccount, removeBankAccount } from "./domain";
+import {
+  updatePaymentSettings,
+  addBankAccount,
+  removeBankAccount,
+  setBankAccountPublicSharing,
+} from "./domain";
 
 function isValidUrl(value: string): boolean {
   return /^https?:\/\/\S+$/i.test(value);
@@ -64,6 +69,17 @@ export async function removeBankAccountAction(accountId: number) {
   await removeBankAccount(accountId);
 
   revalidatePath("/admin/configuracion-pago");
+
+  return { success: true as const };
+}
+
+export async function setBankAccountPublicSharingAction(accountId: number, enabled: boolean) {
+  await requireOperationalRole();
+
+  await setBankAccountPublicSharing(accountId, enabled);
+
+  revalidatePath("/admin/configuracion-pago");
+  revalidatePath("/datos-de-pago/cuenta/[token]", "page");
 
   return { success: true as const };
 }

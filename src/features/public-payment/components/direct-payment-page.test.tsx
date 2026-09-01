@@ -66,22 +66,14 @@ describe("DirectPaymentPage", () => {
     expect(screen.getByText("Cuenta 2")).toBeInTheDocument();
   });
 
-  it("renders contact data from props", () => {
+  it("renders WhatsApp CTA with link from contact props", () => {
     render(
       <DirectPaymentPage business={mockBusiness} bankAccounts={mockBankAccounts} contact={mockContact} />,
     );
 
-    expect(screen.getByText("5556007675")).toBeInTheDocument();
-    expect(screen.getByText("5536239346")).toBeInTheDocument();
-  });
-
-  it("renders sin factura and con factura sections", () => {
-    render(
-      <DirectPaymentPage business={mockBusiness} bankAccounts={mockBankAccounts} contact={mockContact} />,
-    );
-
-    expect(screen.getByText("Sin factura")).toBeInTheDocument();
-    expect(screen.getByText("Con factura")).toBeInTheDocument();
+    const whatsappLink = screen.getByRole("link", { name: /Enviar WhatsApp/i });
+    expect(whatsappLink).toHaveAttribute("href", expect.stringContaining("5536239346"));
+    expect(screen.getByRole("heading", { name: "Enviar comprobante" })).toBeInTheDocument();
   });
 
   it("renders the address as a Google Maps link in the footer", () => {
@@ -94,14 +86,13 @@ describe("DirectPaymentPage", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 
-  it("renders bank data section heading", () => {
+  it("renders bank data and send receipt section headings", () => {
     render(
       <DirectPaymentPage business={mockBusiness} bankAccounts={mockBankAccounts} contact={mockContact} />,
     );
 
     expect(screen.getByRole("heading", { name: "Datos de pago" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Contacto" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Información de pago" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Enviar comprobante" })).toBeInTheDocument();
   });
 
   it("renders only No. Cuenta row when account number is present and CLABE is empty", () => {
@@ -169,5 +160,47 @@ describe("DirectPaymentPage", () => {
     expect(screen.getByText("Banco")).toBeInTheDocument();
     expect(screen.queryByText("No. Cuenta")).not.toBeInTheDocument();
     expect(screen.queryByText("CLABE")).not.toBeInTheDocument();
+  });
+
+  it("renders 'Facturación' badge when isForInvoicing is true", () => {
+    render(
+      <DirectPaymentPage
+        business={mockBusiness}
+        bankAccounts={[
+          {
+            id: 1,
+            accountHolder: "Federico Cruz",
+            bankName: "Santander",
+            accountNumber: "123456",
+            clabe: "4444 4444 4444 4444",
+            isForInvoicing: true,
+          },
+        ]}
+        contact={mockContact}
+      />,
+    );
+
+    expect(screen.getByText("Facturación")).toBeInTheDocument();
+  });
+
+  it("omits invoicing badge when isForInvoicing is false", () => {
+    render(
+      <DirectPaymentPage
+        business={mockBusiness}
+        bankAccounts={[
+          {
+            id: 1,
+            accountHolder: "Federico Cruz",
+            bankName: "Santander",
+            accountNumber: "123456",
+            clabe: "4444 4444 4444 4444",
+            isForInvoicing: false,
+          },
+        ]}
+        contact={mockContact}
+      />,
+    );
+
+    expect(screen.queryByText("Facturación")).not.toBeInTheDocument();
   });
 });
