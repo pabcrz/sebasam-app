@@ -3,11 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { PublicQuoteShell } from "./public-quote-shell";
 
 describe("PublicQuoteShell", () => {
-  it("keeps its viewport-height floor when printed so lower-page totals can anchor", () => {
+  it("removes viewport-height floor when printed to prevent unwanted multi-page overflows", () => {
     const { container } = render(<PublicQuoteShell>content</PublicQuoteShell>);
 
     expect(container.firstElementChild).toHaveClass("min-h-screen");
-    expect(container.firstElementChild).not.toHaveClass("print:min-h-0");
+    expect(container.firstElementChild).toHaveClass("print:min-h-0");
   });
 
   it("renders the approved quote brand treatment and subtitle", () => {
