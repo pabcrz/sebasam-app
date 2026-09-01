@@ -69,8 +69,8 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
             key={wo.id}
             onOpen={quoteMap?.has(wo.quote.id) ? () => setSelectedQuoteId(wo.quote.id) : undefined}
             openLabel={`Ver detalle de cotización ${wo.quote.number}`}
-            footerClassName="grid gap-3"
-            footer={
+            actionsClassName="grid gap-3"
+            actions={
               <>
                 {paymentAction ? (
                   <CashPaymentDialog
@@ -101,36 +101,39 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                 </OperationalActionRow>
               </>
             }
-          >
-            <div className="mb-3 flex items-start justify-between gap-2">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
-                  <Badge variant={paymentState.variant} className="w-fit">
-                    {paymentState.label}{paymentState.label === "Pago parcial" || paymentState.label === "Cobro urgente" ? ` · Saldo ${formatCents(paymentState.balanceCents!)}` : ""}
-                  </Badge>
+            body={
+              <>
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
+                      <Badge variant={paymentState.variant} className="w-fit">
+                        {paymentState.label}{paymentState.label === "Pago parcial" || paymentState.label === "Cobro urgente" ? ` · Saldo ${formatCents(paymentState.balanceCents!)}` : ""}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer?.name ?? "Sin cliente"}</p>
+                    <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-mono text-lg font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
+                      {formatCents(totalCents)}
+                    </p>
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      Finalizada {formatDate(wo.completedAt)}
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer?.name ?? "Sin cliente"}</p>
-                <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-mono text-lg font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
-                  {formatCents(totalCents)}
-                </p>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  Finalizada {formatDate(wo.completedAt)}
-                </p>
-              </div>
-            </div>
 
-            <div className="mb-3 text-sm text-[var(--color-text-muted)]">
-              <span className="font-medium">Cot. {wo.quote.number}</span>
-              {" · "}
-              {wo.isSpecial
-                ? "Taller"
-                : wo.assignments.find((a) => a.worker.workerKind === "MASTER")?.worker.displayName ?? "Sin maestro"}
-            </div>
-          </OperationalCard>
+                <div className="mb-3 text-sm text-[var(--color-text-muted)]">
+                  <span className="font-medium">Cot. {wo.quote.number}</span>
+                  {" · "}
+                  {wo.isSpecial
+                    ? "Taller"
+                    : wo.assignments.find((a) => a.worker.workerKind === "MASTER")?.worker.displayName ?? "Sin maestro"}
+                </div>
+              </>
+            }
+          />
         );
       })}
     </div>

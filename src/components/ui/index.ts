@@ -7,6 +7,7 @@ export * from "./destructive-action";
 export * from "./dialog";
 export * from "./input";
 export * from "./label";
+export * from "./list-item-card";
 export * from "./metric-card-group";
 export * from "./operational-card";
 export * from "./password-input";

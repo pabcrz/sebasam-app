@@ -5,7 +5,7 @@ import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
 import Link from "next/link";
 import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, Button, OperationalActionRow } from "@/components/ui";
+import { Badge, Button, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
@@ -87,13 +87,12 @@ export function QuoteListCard({
   const actionLabelClassName = "sr-only sm:not-sr-only";
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm">
-      <button
-        type="button"
-        onClick={openPreview}
-        className="block w-full cursor-pointer rounded-[var(--radius-sm)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2"
-        aria-label={`Abrir vista previa de ${quote.number}`}
-      >
+    <OperationalCard
+      onOpen={openPreview}
+      openLabel={`Abrir vista previa de ${quote.number}`}
+      actionsClassName="grid gap-2"
+      body={
+        <>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <h3 className="text-lg font-semibold leading-6 text-[var(--color-text-main)]">
@@ -152,9 +151,10 @@ export function QuoteListCard({
             <span>Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}</span>
           </p>
         </div>
-      </button>
-
-      <div className="mt-4 grid gap-2">
+        </>
+      }
+      actions={
+        <>
           <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
         <OperationalActionRow>
           <Button asChild type="button" variant="outline" size="sm" data-mobile-target="44" className="!h-11 !w-11 min-h-11 min-w-11 px-0 sm:!h-9 sm:!w-auto sm:px-3 print-action" title={`Imprimir cotización ${quote.number}`} aria-label={`Imprimir cotización ${quote.number}`}>
@@ -236,8 +236,9 @@ export function QuoteListCard({
            {canUsePaymentActions && paymentRequestContext ? (
             <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} actionLabelClassName={actionLabelClassName} />
           ) : null}
-        </OperationalActionRow>
-      </div>
-    </div>
+          </OperationalActionRow>
+        </>
+      }
+    />
   );
 }

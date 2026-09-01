@@ -1,5 +1,6 @@
 import type React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CustomerCardList, CustomerCardListItem } from "./customer-card-list";
 
@@ -25,14 +26,25 @@ function buildCustomer(overrides: Partial<CustomerCardListItem> = {}): CustomerC
 describe("CustomerCardList contact display", () => {
   const getCustomerDetail = vi.fn();
 
-  it("opens the customer account from the card while keeping edit as an explicit action", () => {
+  it("opens the customer account from the body while keeping edit outside the detail trigger", async () => {
+    const user = userEvent.setup();
+    getCustomerDetail.mockResolvedValue(null);
     render(<CustomerCardList customers={[buildCustomer()]} getCustomerDetail={getCustomerDetail} />);
 
-    expect(screen.getByRole("button", { name: "Ver cuenta de Constructora del Norte" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Editar" })).toHaveAttribute(
+    const detailTrigger = screen.getByRole("button", { name: "Ver cuenta de Constructora del Norte" });
+    const edit = screen.getByRole("link", { name: "Editar" });
+
+    expect(detailTrigger).toBeInTheDocument();
+    expect(edit).toHaveAttribute(
       "href",
       "/admin/customers/cust-1/edit",
     );
+    expect(detailTrigger).not.toContainElement(edit);
+
+    await user.click(detailTrigger);
+
+    expect(getCustomerDetail).toHaveBeenCalledWith("cust-1");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("renders email and phone when both exist", () => {

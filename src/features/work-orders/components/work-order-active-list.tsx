@@ -73,9 +73,9 @@ export function WorkOrderActiveList({
             key={wo.id}
             onOpen={() => setPreviewOpenId(wo.quote.id)}
             openLabel={`Ver detalle de cotización ${wo.quote.number}`}
-            footer={
+            actions={
               <OperationalActionRow>
-                <Button asChild type="button" variant="outline" size="sm" className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" title={`Imprimir orden ${wo.number}`} aria-label={`Imprimir orden ${wo.number}`}>
+                <Button asChild type="button" variant="outline" size="sm" data-mobile-target="44" className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" title={`Imprimir orden ${wo.number}`} aria-label={`Imprimir orden ${wo.number}`}>
                   <Link href={`/admin/quotes/${wo.quote.id}/print?returnTo=/admin/work-orders`}><Printer className="h-4 w-4" aria-hidden="true" /><span className="sr-only sm:not-sr-only">Imprimir orden</span></Link>
                 </Button>
                 <WorkOrderOperationsDialog
@@ -112,46 +112,49 @@ export function WorkOrderActiveList({
                 ) : null}
               </OperationalActionRow>
             }
-          >
-              {/* Header */}
-              <div className="mb-2 flex items-start justify-between gap-2">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
-                    <Badge variant="info" className="w-fit">En proceso</Badge>
+            body={
+              <>
+                {/* Header */}
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
+                      <Badge variant="info" className="w-fit">En proceso</Badge>
+                    </div>
+                    <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer?.name ?? "Sin cliente"}</p>
+                    <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
                   </div>
-                  <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer?.name ?? "Sin cliente"}</p>
-                  <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
+                  <div className="text-right">
+                    <p className="font-mono text-lg font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
+                      {formatCents(wo.quote.totalCents)}
+                    </p>
+                    <p className="text-xs text-[var(--color-text-muted)]">{wo.quote.title}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-mono text-lg font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
-                    {formatCents(wo.quote.totalCents)}
-                  </p>
-                  <p className="text-xs text-[var(--color-text-muted)]">{wo.quote.title}</p>
-                </div>
-              </div>
 
-              {/* Assignee */}
-              <div className="flex items-center gap-2 text-sm">
-                <AssigneeText wo={wo} />
-                {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length > 0 ? (
-                  <span className="text-xs text-[var(--color-text-muted)]">
-                    + {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length} ayudante(s)
-                  </span>
+                {/* Assignee */}
+                <div className="flex items-center gap-2 text-sm">
+                  <AssigneeText wo={wo} />
+                  {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length > 0 ? (
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      + {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length} ayudante(s)
+                    </span>
+                  ) : null}
+                </div>
+                {/* The portaled preview must not bubble its dismissal events back to the clickable card. */}
+                {fullQuote ? (
+                  <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                    <QuotePreviewDialog
+                      quote={fullQuote}
+                      open={previewOpenId === wo.quote.id}
+                      onOpenChange={(open) => setPreviewOpenId(open ? wo.quote.id : null)}
+                      showTrigger={false}
+                    />
+                  </div>
                 ) : null}
-              </div>
-            {/* The portaled preview must not bubble its dismissal events back to the clickable card. */}
-            {fullQuote ? (
-              <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-                <QuotePreviewDialog
-                  quote={fullQuote}
-                  open={previewOpenId === wo.quote.id}
-                  onOpenChange={(open) => setPreviewOpenId(open ? wo.quote.id : null)}
-                  showTrigger={false}
-                />
-              </div>
-            ) : null}
-          </OperationalCard>
+              </>
+            }
+          />
         );
       })}
     </div>
