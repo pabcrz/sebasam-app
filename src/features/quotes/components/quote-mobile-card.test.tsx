@@ -127,6 +127,12 @@ function renderCard(quote: QuoteListItem) {
 }
 
 describe("QuoteListCard", () => {
+  it("can shrink within a grid track", () => {
+    const { container } = renderCard(createMockQuote());
+
+    expect(container.firstElementChild).toHaveClass("min-w-0", "w-full");
+  });
+
   it("opens the preview dialog when the card is clicked", async () => {
     const user = userEvent.setup();
     renderCard(createMockQuote());

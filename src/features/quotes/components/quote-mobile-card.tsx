@@ -188,7 +188,7 @@ export function QuoteListCard({
   };
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm">
+    <div className="w-full min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm">
       <button
         type="button"
         onClick={openPreview}
