@@ -9,6 +9,7 @@ import {
   updateWorkerFromForm,
 } from "@/features/workers/actions";
 import { WorkerEditForm } from "@/features/workers/components/worker-edit-form";
+import { WorkerStatusControl } from "@/features/workers/components/worker-status-control";
 import { getWorkerById } from "@/features/workers/queries";
 
 export const metadata: Metadata = {
@@ -62,12 +63,11 @@ export default async function EditWorkerPage({ params, searchParams }: EditWorke
             <p className="mt-1 text-sm text-[var(--color-text-muted)]">
               Desactivar conserva sus asignaciones y registros históricos.
             </p>
-            <form action={setWorkerActive} className="mt-3">
-              <input type="hidden" name="isActive" value={worker.isActive ? "false" : "true"} />
-              <Button type="submit" variant={worker.isActive ? "danger" : "secondary"}>
-                {worker.isActive ? "Desactivar trabajador" : "Activar trabajador"}
-              </Button>
-            </form>
+            <WorkerStatusControl
+              workerName={worker.displayName}
+              isActive={worker.isActive}
+              setActiveAction={setWorkerActive}
+            />
           </div>
         </CardContent>
       </Card>

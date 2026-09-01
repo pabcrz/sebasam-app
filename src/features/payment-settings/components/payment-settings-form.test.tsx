@@ -315,13 +315,24 @@ describe("PaymentSettingsForm", () => {
   });
 
   describe("remove bank account", () => {
-    it("removes the account selected through its accessible delete control", async () => {
+    it("removes the account selected through its accessible delete control after confirmation", async () => {
       const user = userEvent.setup();
       renderForm();
 
       await user.click(screen.getAllByRole("button", { name: /eliminar cuenta/i })[1]);
+      await user.click(screen.getByRole("button", { name: "Sí, eliminar cuenta" }));
 
       await waitFor(() => expect(mockRemoveAction).toHaveBeenCalledWith(2));
+    });
+
+    it("does not remove the account when the confirmation is cancelled", async () => {
+      const user = userEvent.setup();
+      renderForm();
+
+      await user.click(screen.getAllByRole("button", { name: /eliminar cuenta/i })[0]);
+      await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+      expect(mockRemoveAction).not.toHaveBeenCalled();
     });
 
     it("shows success toast when a bank account is removed", async () => {
@@ -330,6 +341,7 @@ describe("PaymentSettingsForm", () => {
 
       const removeButtons = screen.getAllByRole("button", { name: /eliminar cuenta/i });
       await user.click(removeButtons[0]);
+      await user.click(screen.getByRole("button", { name: "Sí, eliminar cuenta" }));
 
       await waitFor(() =>
         expect(mockToast.success).toHaveBeenCalledWith(

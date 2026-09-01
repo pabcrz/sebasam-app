@@ -4,6 +4,7 @@ import * as React from "react";
 import { Archive, RotateCcw } from "lucide-react";
 import {
   Button,
+  DestructiveAction,
   Dialog,
   DialogDescription,
   DialogFooter,
@@ -47,18 +48,56 @@ export function QuoteLifecycleForm({ action, mode, quoteNumber, iconOnly = false
     });
   }
 
+  if (archive) {
+    return (
+      <DestructiveAction
+        triggerLabel={label}
+        triggerAriaLabel={`${label} cotización ${quoteNumber}`}
+        triggerTitle={`${label} cotización ${quoteNumber}`}
+        triggerIcon={<Archive className="h-5 w-5" aria-hidden="true" />}
+        triggerVariant="outline"
+        triggerLabelClassName={actionLabelClassName}
+        size="sm"
+        iconOnly={iconOnly}
+        stopPropagation
+        title={`${label} cotización`}
+        description={`Archivar ${quoteNumber} revoca sus enlaces y cancela solicitudes de pago activas.`}
+        confirmLabel={`${label} cotización`}
+        cancelLabel="Volver"
+        onConfirm={async () => {
+          const trimmedReason = reason.trim();
+          if (trimmedReason.length < 3) {
+            throw new Error("Indica el motivo de la archivación (mínimo 3 caracteres).");
+          }
+          await action(trimmedReason);
+          setReason("");
+        }}
+      >
+        <Label htmlFor="quote-archive-reason">Motivo</Label>
+        <Textarea
+          id="quote-archive-reason"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          minLength={3}
+          maxLength={500}
+          required
+        />
+      </DestructiveAction>
+    );
+  }
+
   return (
     <>
       <Button
         type="button"
-        variant={archive ? "outline" : "primary"}
+        variant="primary"
         size={iconOnly ? "icon" : "sm"}
         ref={triggerRef}
         aria-label={`${label} cotización ${quoteNumber}`}
         title={`${label} cotización ${quoteNumber}`}
         onClick={(event) => { event.stopPropagation(); setOpen(true); }}
       >
-        {archive ? <Archive className="h-5 w-5" aria-hidden="true" /> : <RotateCcw className="h-5 w-5" aria-hidden="true" />}
+        <RotateCcw className="h-5 w-5" aria-hidden="true" />
         {!iconOnly ? <span className={actionLabelClassName}>{label}</span> : null}
       </Button>
       <Dialog open={open} onOpenChange={(nextOpen) => { if (!isPending) setOpen(nextOpen); }}>
@@ -74,9 +113,7 @@ export function QuoteLifecycleForm({ action, mode, quoteNumber, iconOnly = false
           <DialogMobileHeader>
             <DialogTitle>{label} cotización</DialogTitle>
             <DialogDescription>
-              {archive
-                ? `Archivar ${quoteNumber} revoca sus enlaces y cancela solicitudes de pago activas.`
-                : `Restaurar ${quoteNumber} la devuelve a borrador sin reactivar enlaces ni solicitudes anteriores.`}
+              Restaurar {quoteNumber} la devuelve a borrador sin reactivar enlaces ni solicitudes anteriores.
             </DialogDescription>
             <DialogMobileClose aria-label={`Cerrar ${label.toLowerCase()} cotización`} disabled={isPending} />
           </DialogMobileHeader>
@@ -89,7 +126,7 @@ export function QuoteLifecycleForm({ action, mode, quoteNumber, iconOnly = false
               {error ? <p role="alert" className="text-sm text-[var(--color-status-danger-fg)]">{error}</p> : null}
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>Volver</Button>
-                <Button type="submit" variant={archive ? "danger" : "primary"} loading={isPending}>{label} cotización</Button>
+                <Button type="submit" variant="primary" loading={isPending}>{label} cotización</Button>
               </DialogFooter>
             </form>
           </DialogMobileBody>

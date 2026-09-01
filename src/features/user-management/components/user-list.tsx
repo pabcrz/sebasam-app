@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import type { UserProfile } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DestructiveAction } from "@/components/ui/destructive-action";
 import {
   Table,
   TableBody,
@@ -29,16 +30,6 @@ export function UserList({ users, currentUserId }: UserListProps) {
         await updateUserRole({ userId, role: newRole });
       } catch (err) {
         alert(err instanceof Error ? err.message : "Error updating role");
-      }
-    });
-  };
-
-  const handleStatusToggle = (userId: string, currentStatus: boolean) => {
-    startTransition(async () => {
-      try {
-        await toggleUserStatus({ userId, isActive: !currentStatus });
-      } catch (err) {
-        alert(err instanceof Error ? err.message : "Error updating status");
       }
     });
   };
@@ -102,14 +93,29 @@ export function UserList({ users, currentUserId }: UserListProps) {
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isPending || (user.id === currentUserId && user.isActive)}
-                    onClick={() => handleStatusToggle(user.id, user.isActive)}
-                  >
-                    {user.isActive ? "Desactivar" : "Activar"}
-                  </Button>
+                  {user.isActive ? (
+                    <DestructiveAction
+                      triggerLabel="Desactivar"
+                      size="sm"
+                      disabled={isPending || (user.id === currentUserId && user.isActive)}
+                      title="Desactivar usuario"
+                      description={`Desactivar a ${user.displayName} le impide iniciar sesión hasta que se active de nuevo.`}
+                      confirmLabel="Sí, desactivar"
+                      cancelLabel="Cancelar"
+                      onConfirm={async () => {
+                        await toggleUserStatus({ userId: user.id, isActive: false });
+                      }}
+                    />
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => toggleUserStatus({ userId: user.id, isActive: true })}
+                    >
+                      Activar
+                    </Button>
+                  )}
                   <Button
                     variant="secondary"
                     size="sm"

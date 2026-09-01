@@ -4,7 +4,7 @@ import * as React from "react";
 import { Building2, Check, Cog, Copy, FileText, Hash, Key, Plus, Save, Share2, Trash2, User } from "lucide-react";
 import toast from "react-hot-toast";
 import { AdminPageHeader } from "@/components/admin-page-header";
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox } from "@/components/ui";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, DestructiveAction } from "@/components/ui";
 import { Input } from "@/components/ui";
 import { Label } from "@/components/ui";
 import {
@@ -22,7 +22,6 @@ export interface PaymentSettingsFormProps {
 
 function BankAccountRow({ account }: { account: BankAccountData }) {
   const fieldClass = "grid gap-1.5";
-  const [pending, startTransition] = React.useTransition();
   const [sharePending, startShareTransition] = React.useTransition();
   const [shareable, setShareable] = React.useState(account.isPubliclyShareable);
   const [copied, setCopied] = React.useState(false);
@@ -51,17 +50,14 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleRemove = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleRemove = async () => {
     const toastId = toast.loading("Eliminando cuenta…");
-    startTransition(async () => {
-      const result = await removeBankAccountAction(account.id);
-      if (result.success) {
-        toast.success("Cuenta eliminada.", { id: toastId });
-      } else {
-        toast.error("No se pudo eliminar la cuenta.", { id: toastId });
-      }
-    });
+    const result = await removeBankAccountAction(account.id);
+    if (result.success) {
+      toast.success("Cuenta eliminada.", { id: toastId });
+    } else {
+      toast.error("No se pudo eliminar la cuenta.", { id: toastId });
+    }
   };
 
   return (
@@ -73,19 +69,19 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
             {account.isForInvoicing ? "Para facturación" : "No usada para facturación"}
           </Badge>
         </div>
-        <form onSubmit={handleRemove}>
-          <Button
-            type="submit"
-            variant="danger"
-            size="sm"
-            aria-label={`Eliminar cuenta ${account.bankName}`}
-            className="size-10"
-            loading={pending}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-            <span className="sr-only">Eliminar</span>
-          </Button>
-        </form>
+        <DestructiveAction
+          triggerLabel="Eliminar"
+          triggerAriaLabel={`Eliminar cuenta ${account.bankName}`}
+          triggerIcon={<Trash2 className="h-4 w-4" aria-hidden="true" />}
+          size="sm"
+          iconOnly
+          triggerClassName="size-10"
+          title="Eliminar cuenta bancaria"
+          description={`¿Confirmas eliminar la cuenta de ${account.bankName}? Los clientes ya no podrán usarla para pagos.`}
+          confirmLabel="Sí, eliminar cuenta"
+          cancelLabel="Cancelar"
+          onConfirm={handleRemove}
+        />
       </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3">
         <label className="flex min-h-[var(--tap-min-height)] items-center gap-2 text-sm font-medium">

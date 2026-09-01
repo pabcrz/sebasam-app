@@ -4,6 +4,7 @@ import * as React from "react";
 import { Trash2 } from "lucide-react";
 import {
   Button,
+  DestructiveAction,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -12,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui";
 import { WorkerEditForm } from "./worker-edit-form";
+import { WorkerStatusControl } from "./worker-status-control";
 
 type WorkerEditDialogWorker = {
   id: string;
@@ -32,7 +34,6 @@ type WorkerEditDialogProps = {
 };
 
 export function WorkerEditDialog({ worker, updateAction, setActiveAction, deleteAction }: WorkerEditDialogProps) {
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
   const updateWorker = updateAction.bind(null, worker.id);
   const setWorkerActive = setActiveAction.bind(null, worker.id);
   const deleteWorker = deleteAction?.bind(null, worker.id);
@@ -60,13 +61,12 @@ export function WorkerEditDialog({ worker, updateAction, setActiveAction, delete
             <p className="mt-1 text-sm text-[var(--color-text-muted)]">
               Desactivar conserva sus asignaciones y registros históricos.
             </p>
-            <form action={setWorkerActive} className="mt-3">
-              <input type="hidden" name="isActive" value={worker.isActive ? "false" : "true"} />
-              <input type="hidden" name="returnTo" value="/admin/workers" />
-              <Button type="submit" variant={worker.isActive ? "secondary" : "outline"}>
-                {worker.isActive ? "Desactivar trabajador" : "Activar trabajador"}
-              </Button>
-            </form>
+            <WorkerStatusControl
+              workerName={worker.displayName}
+              isActive={worker.isActive}
+              setActiveAction={setWorkerActive}
+              returnTo="/admin/workers"
+            />
           </div>
 
           {deleteWorker ? (
@@ -75,35 +75,21 @@ export function WorkerEditDialog({ worker, updateAction, setActiveAction, delete
               <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                 Elimina definitivamente el registro de {worker.displayName} del sistema.
               </p>
-              {!confirmDelete ? (
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  className="mt-3"
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  Eliminar trabajador
-                </Button>
-              ) : (
-                <div className="mt-3 flex items-center gap-2">
-                  <form action={deleteWorker}>
-                    <input type="hidden" name="returnTo" value="/admin/workers" />
-                    <Button type="submit" variant="danger" size="sm">
-                      Sí, eliminar definitivamente
-                    </Button>
-                  </form>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setConfirmDelete(false)}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              )}
+              <DestructiveAction
+                triggerLabel="Eliminar trabajador"
+                triggerIcon={<Trash2 className="h-4 w-4" aria-hidden="true" />}
+                size="sm"
+                triggerClassName="mt-3"
+                title="Eliminar trabajador"
+                description={`Elimina definitivamente el registro de ${worker.displayName} del sistema. Esta acción no se puede deshacer.`}
+                confirmLabel="Sí, eliminar definitivamente"
+                cancelLabel="Cancelar"
+                onConfirm={async () => {
+                  const formData = new FormData();
+                  formData.set("returnTo", "/admin/workers");
+                  await deleteWorker(formData);
+                }}
+              />
             </div>
           ) : null}
         </div>
