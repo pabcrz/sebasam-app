@@ -1,8 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { addBankAccountAction, savePaymentSettingsAction } from "./actions";
+import {
+  addBankAccountAction,
+  savePaymentSettingsAction,
+  setBankAccountPublicSharingAction,
+} from "./actions";
 
-const { addBankAccount } = vi.hoisted(() => ({
+const { addBankAccount, setBankAccountPublicSharing, revalidatePath } = vi.hoisted(() => ({
   addBankAccount: vi.fn().mockResolvedValue(undefined),
+  setBankAccountPublicSharing: vi.fn().mockResolvedValue(undefined),
+  revalidatePath: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/session", () => ({
@@ -10,13 +16,14 @@ vi.mock("@/lib/auth/session", () => ({
 }));
 
 vi.mock("next/cache", () => ({
-  revalidatePath: vi.fn(),
+  revalidatePath,
 }));
 
 vi.mock("./domain", () => ({
   updatePaymentSettings: vi.fn().mockResolvedValue(undefined),
   addBankAccount,
   removeBankAccount: vi.fn(),
+  setBankAccountPublicSharing,
 }));
 
 function formDataWithMapsUrl(mapsUrl: string): FormData {
@@ -117,4 +124,15 @@ it("maps an unchecked invoicing checkbox to false", async () => {
   expect(addBankAccount).toHaveBeenCalledWith(
     expect.objectContaining({ isForInvoicing: false }),
   );
+});
+
+describe("setBankAccountPublicSharingAction", () => {
+  it("persists the flag and revalidates relevant public and admin routes", async () => {
+    const result = await setBankAccountPublicSharingAction(3, true);
+
+    expect(result).toEqual({ success: true });
+    expect(setBankAccountPublicSharing).toHaveBeenCalledWith(3, true);
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/configuracion-pago");
+    expect(revalidatePath).toHaveBeenCalledWith("/datos-de-pago/cuenta/[token]", "page");
+  });
 });

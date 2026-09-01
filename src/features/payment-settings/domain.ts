@@ -9,6 +9,8 @@ export type BankAccountData = {
   accountNumber: string;
   clabe: string;
   isForInvoicing: boolean;
+  isPubliclyShareable: boolean;
+  publicToken: string;
   sortOrder: number;
 };
 
@@ -144,6 +146,7 @@ export async function addBankAccount(data: {
   accountNumber: string;
   clabe: string;
   isForInvoicing: boolean;
+  isPubliclyShareable?: boolean;
 }): Promise<BankAccountData> {
   await prisma.paymentSettings.upsert({
     where: { id: PAYMENT_SETTINGS_ID },
@@ -167,6 +170,7 @@ export async function addBankAccount(data: {
       accountNumber: data.accountNumber.trim(),
       clabe: data.clabe.trim(),
       isForInvoicing: data.isForInvoicing,
+      isPubliclyShareable: data.isPubliclyShareable ?? false,
       sortOrder: nextSortOrder,
     },
   });
@@ -178,8 +182,33 @@ export async function addBankAccount(data: {
     accountNumber: account.accountNumber,
     clabe: account.clabe,
     isForInvoicing: account.isForInvoicing,
+    isPubliclyShareable: account.isPubliclyShareable,
+    publicToken: account.publicToken,
     sortOrder: account.sortOrder,
   };
+}
+
+export async function setBankAccountPublicSharing(
+  accountId: number,
+  enabled: boolean,
+): Promise<void> {
+  await prisma.bankAccount.updateMany({
+    where: { id: accountId, paymentSettingsId: PAYMENT_SETTINGS_ID },
+    data: { isPubliclyShareable: enabled },
+  });
+}
+
+export async function getPublicBankAccountByToken(token: string) {
+  return prisma.bankAccount.findFirst({
+    where: {
+      publicToken: token,
+      paymentSettingsId: PAYMENT_SETTINGS_ID,
+      isPubliclyShareable: true,
+      accountHolder: { not: "" },
+      bankName: { not: "" },
+      OR: [{ accountNumber: { not: "" } }, { clabe: { not: "" } }],
+    },
+  });
 }
 
 /**

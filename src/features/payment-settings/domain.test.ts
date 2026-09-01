@@ -1,22 +1,30 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
 
-const { findMany, create, findUnique, update, upsert } = vi.hoisted(() => ({
+const { findMany, create, findUnique, findFirst, updateMany, update, upsert } = vi.hoisted(() => ({
   findMany: vi.fn().mockResolvedValue([]),
   create: vi.fn().mockImplementation(async ({ data }) => ({ id: 1, ...data })),
   findUnique: vi.fn(),
+  findFirst: vi.fn(),
+  updateMany: vi.fn(),
   update: vi.fn(),
   upsert: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    bankAccount: { findMany, create },
+    bankAccount: { findMany, findFirst, updateMany, create },
     paymentSettings: { findUnique, update, upsert },
   },
 }));
 
-import { addBankAccount, getPaymentSettings, updatePaymentSettings } from "./domain";
+import {
+  addBankAccount,
+  getPaymentSettings,
+  updatePaymentSettings,
+  getPublicBankAccountByToken,
+  setBankAccountPublicSharing,
+} from "./domain";
 
 const storedSettings = {
   name: "SEBASAM",
@@ -105,6 +113,30 @@ describe("getPaymentSettings", () => {
 
     await expect(getPaymentSettings()).rejects.toBe(error);
   });
+
+  it("only queries explicitly shareable, complete accounts by stable token", async () => {
+    findFirst.mockResolvedValue(null);
+
+    await expect(getPublicBankAccountByToken("stable-token")).resolves.toBeNull();
+    expect(findFirst).toHaveBeenCalledWith({
+      where: {
+        publicToken: "stable-token",
+        paymentSettingsId: 1,
+        isPubliclyShareable: true,
+        accountHolder: { not: "" },
+        bankName: { not: "" },
+        OR: [{ accountNumber: { not: "" } }, { clabe: { not: "" } }],
+      },
+    });
+  });
+
+  it("toggles sharing only for accounts owned by the payment settings singleton", async () => {
+    await setBankAccountPublicSharing(7, true);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 7, paymentSettingsId: 1 },
+      data: { isPubliclyShareable: true },
+    });
+  });
 });
 
 describe("addBankAccount", () => {
@@ -128,18 +160,26 @@ describe("addBankAccount", () => {
   });
 
   it("keeps the schema default and migration compatible with existing rows", async () => {
-    const [schema, migration] = await Promise.all([
+    const [schema, migration, publicMigration] = await Promise.all([
       readFile("prisma/schema.prisma", "utf8"),
       readFile(
         "prisma/migrations/20260711120000_add_bank_account_invoicing_flag/migration.sql",
         "utf8",
       ),
+      readFile(
+        "prisma/migrations/20260831000000_add_public_bank_account_links/migration.sql",
+        "utf8",
+      ),
     ]);
 
     expect(schema).toMatch(/isForInvoicing\s+Boolean\s+@default\(false\)/);
+    expect(schema).toMatch(/isPubliclyShareable\s+Boolean\s+@default\(false\)/);
+    expect(schema).toMatch(/publicToken\s+String\s+@unique\s+@default\(uuid\(\)\)/);
     expect(migration).toMatch(
       /ADD COLUMN "isForInvoicing" BOOLEAN NOT NULL DEFAULT false/,
     );
+    expect(publicMigration).toMatch(/"isPubliclyShareable" BOOLEAN NOT NULL DEFAULT false/);
+    expect(publicMigration).toMatch(/"publicToken" TEXT NOT NULL DEFAULT gen_random_uuid\(\)/);
   });
 });
 
