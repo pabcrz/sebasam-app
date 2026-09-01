@@ -98,8 +98,19 @@ export function QuoteListCard({
     switch (action) {
       case "print":
         return (
-          <Button asChild type="button" variant={variant} size="sm" className="w-full" aria-label={`Imprimir cotización ${quote.number}`}>
-            <Link href={printHref}><Printer className="h-4 w-4" aria-hidden="true" /><span>Imprimir cotización</span></Link>
+          <Button
+            asChild
+            type="button"
+            variant={variant}
+            size="sm"
+            className="min-h-11 min-w-11 px-3 sm:px-0"
+            aria-label={`Imprimir cotización ${quote.number}`}
+            title={`Imprimir cotización ${quote.number}`}
+          >
+            <Link href={printHref}>
+              <Printer className="h-4 w-4" aria-hidden="true" />
+              <span className="sm:hidden">Imprimir</span>
+            </Link>
           </Button>
         );
       case "edit":
