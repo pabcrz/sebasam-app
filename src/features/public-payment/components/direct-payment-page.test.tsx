@@ -170,4 +170,46 @@ describe("DirectPaymentPage", () => {
     expect(screen.queryByText("No. Cuenta")).not.toBeInTheDocument();
     expect(screen.queryByText("CLABE")).not.toBeInTheDocument();
   });
+
+  it("renders 'Cuenta exclusiva para facturación' badge when isForInvoicing is true", () => {
+    render(
+      <DirectPaymentPage
+        business={mockBusiness}
+        bankAccounts={[
+          {
+            id: 1,
+            accountHolder: "Federico Cruz",
+            bankName: "Santander",
+            accountNumber: "123456",
+            clabe: "4444 4444 4444 4444",
+            isForInvoicing: true,
+          },
+        ]}
+        contact={mockContact}
+      />,
+    );
+
+    expect(screen.getByText("Cuenta exclusiva para facturación")).toBeInTheDocument();
+  });
+
+  it("omits invoicing badge when isForInvoicing is false", () => {
+    render(
+      <DirectPaymentPage
+        business={mockBusiness}
+        bankAccounts={[
+          {
+            id: 1,
+            accountHolder: "Federico Cruz",
+            bankName: "Santander",
+            accountNumber: "123456",
+            clabe: "4444 4444 4444 4444",
+            isForInvoicing: false,
+          },
+        ]}
+        contact={mockContact}
+      />,
+    );
+
+    expect(screen.queryByText("Cuenta exclusiva para facturación")).not.toBeInTheDocument();
+  });
 });
