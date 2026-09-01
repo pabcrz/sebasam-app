@@ -23,6 +23,13 @@ export interface ConfirmDialogProps {
   loading?: boolean;
   className?: string;
   onConfirm: () => void;
+  /** Optional body content rendered between the description and the footer. */
+  children?: React.ReactNode;
+  /** Forwarded to the dialog content (e.g. blocking dismissal while loading). */
+  onEscapeKeyDown?: (event: KeyboardEvent) => void;
+  onPointerDownOutside?: (event: CustomEvent) => void;
+  /** Forwarded to the dialog content (e.g. returning focus to the trigger). */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 export function ConfirmDialog({
@@ -36,14 +43,24 @@ export function ConfirmDialog({
   loading = false,
   className,
   onConfirm,
+  children,
+  onEscapeKeyDown,
+  onPointerDownOutside,
+  onCloseAutoFocus,
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={clsx("max-w-2xl", className)}>
+      <DialogContent
+        className={clsx("max-w-2xl", className)}
+        onEscapeKeyDown={onEscapeKeyDown}
+        onPointerDownOutside={onPointerDownOutside}
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
+        {children ? <div className="grid gap-2">{children}</div> : null}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             {cancelLabel}
