@@ -825,7 +825,7 @@ describe("deleteQuote", () => {
 
     expect(requireOperationalRole).toHaveBeenCalledTimes(1);
     expect(tx.payment.count).toHaveBeenCalledWith({
-      where: { quoteId: "quote-1", reversedAt: null },
+      where: { quoteId: "quote-1" },
     });
     expect(tx.sharedQuote.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });
     expect(tx.quoteDecision.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });
