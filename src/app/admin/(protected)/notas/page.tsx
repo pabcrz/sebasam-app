@@ -25,6 +25,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
   const [result, masters, currentProfile] = await Promise.all([listCompletedWorkOrders(filters), listActiveMasters(), getCurrentProfile()]);
   const { workOrders } = result;
   const quoteMap = new Map(workOrders.map((wo) => [wo.quote.id, wo.quote]));
+  const noteReturnTo = notasHref(filters);
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
@@ -50,6 +51,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
                 action: recordPaymentAction.bind(null, wo.id),
               })) : []}
               rollbackAction={rollbackWorkOrderAction}
+              noteReturnTo={noteReturnTo}
             />
           )}
           <div className="mt-4 flex justify-between gap-3">

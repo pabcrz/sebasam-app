@@ -43,7 +43,7 @@ function initialSelectedSectionIds(quote: SharedQuoteViewQuote) {
 export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, business }: SharedQuoteViewProps) {
   const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
-  const isPrint = isPrintProp ?? (!token || Boolean(isNote));
+  const isPrint = isPrintProp ?? !token;
 
   React.useEffect(() => {
     // Refresh the quote data every 5 seconds if no decision has been made
@@ -115,8 +115,20 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
     year: vehicleParts[3] ?? "",
   };
 
-  const sections = quote.sections && quote.sections.length > 0
-    ? quote.sections.map((section) => ({
+  const rootItems = quote.items.filter((item) => item.sectionId === null);
+  const rootSection = rootItems.length > 0
+    ? [{
+        name: "General",
+        items: rootItems.map((item) => ({
+          type: item.type,
+          description: item.description,
+          quantity: String(Number(item.quantity)),
+          unitPrice: item.unitPriceCents == null ? "" : String(item.unitPriceCents / 100),
+        })),
+        rowIds: [],
+      }]
+    : [];
+  const sectionItems = quote.sections.map((section) => ({
         id: section.id,
         name: section.name,
         isAuthorized: isPrint
@@ -131,24 +143,19 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
           unitPrice: item.unitPriceCents == null ? "" : String(item.unitPriceCents / 100),
         })),
         rowIds: [],
-      }))
-    : [
-        {
-          name: "General",
-          items: quote.items.map((item) => ({
-            type: item.type,
-            description: item.description,
-            quantity: String(Number(item.quantity)),
-            unitPrice: item.unitPriceCents == null ? "" : String(item.unitPriceCents / 100),
-          })),
-          rowIds: [],
-        },
-      ];
+      }));
+  const sections = [...rootSection, ...sectionItems];
 
   const showDecisionControls = !isPrint && Boolean(token) && quote.status === "SENT" && !hasDecided;
 
   const calculateSelectedTotals = () => {
     let subtotalCents = 0;
+    for (const item of quote.items) {
+      if (item.sectionId !== null) continue;
+      if (item.unitPriceCents != null) {
+        subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
+      }
+    }
     const sectionsToSum = quote.sections.filter((s) => selectedSectionIds.includes(s.id));
     for (const section of sectionsToSum) {
       for (const item of section.items) {
@@ -168,23 +175,21 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
     let subtotalCents = 0;
     let hasPending = false;
 
-    if (quote.sections && quote.sections.length > 0) {
-      for (const section of quote.sections) {
-        for (const item of section.items) {
-          if (item.unitPriceCents == null) {
-            hasPending = true;
-          } else {
-            subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
-          }
-        }
-      }
-    } else if (quote.items && quote.items.length > 0) {
-      for (const item of quote.items) {
+    for (const section of quote.sections) {
+      for (const item of section.items) {
         if (item.unitPriceCents == null) {
           hasPending = true;
         } else {
           subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
         }
+      }
+    }
+    for (const item of quote.items) {
+      if (item.sectionId !== null) continue;
+      if (item.unitPriceCents == null) {
+        hasPending = true;
+      } else {
+        subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
       }
     }
 
@@ -214,7 +219,7 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
     : null;
 
   return (
-    <div className="flex-1 flex flex-col gap-4 print:gap-2">
+    <div className="flex-1 flex flex-col gap-4 pb-[calc(4.75rem+env(safe-area-inset-bottom))] print:gap-2 print:pb-0 sm:pb-20">
 
       <QuotePreviewCard
         customerName={quote.customer?.name ?? ""}
@@ -311,18 +316,20 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
       ) : null}
 
       {!isPrint ? (
-        <div className="flex justify-center mt-2 print:hidden">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.print()}
-            className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-border-light)]/50"
-          >
-            <Printer className="w-4 h-4 mr-2" />
-            Imprimir documento
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="default"
+          title="Imprimir documento"
+          aria-label="Imprimir documento"
+          onClick={() => window.print()}
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 min-h-11 min-w-11 gap-2 px-3 shadow-lg print:hidden sm:bottom-5 sm:right-5 sm:px-4"
+        >
+          <Printer className="h-4 w-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Imprimir</span>
+        </Button>
       ) : null}
+
     </div>
   );
 }

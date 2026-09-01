@@ -177,6 +177,90 @@ describe("SharedQuoteView", () => {
     expect(screen.getByRole("button", { name: "Declinar cotización" })).toHaveClass("focus-visible:!ring-[var(--color-primary)]", "focus-visible:!ring-offset-2");
   });
 
+  it("shows the Imprimir label beside the printer icon at desktop breakpoints", () => {
+    render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
+
+    const printControl = screen.getByRole("button", { name: "Imprimir documento" });
+    expect(printControl.querySelector("svg")).toBeInTheDocument();
+    expect(screen.getByText("Imprimir")).toHaveClass("hidden", "sm:inline");
+  });
+
+  it("keeps the mobile icon-only print control accessible and tappable", () => {
+    render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
+
+    const printControl = screen.getByRole("button", { name: "Imprimir documento" });
+    expect(printControl).toHaveAttribute("title", "Imprimir documento");
+    expect(printControl).toHaveClass(
+      "min-h-11",
+      "min-w-11",
+      "print:hidden",
+    );
+    expect(printControl).toHaveClass(
+      "fixed",
+      "bottom-[calc(1rem+env(safe-area-inset-bottom))]",
+      "right-4",
+      "z-40",
+    );
+    expect(screen.getByText("Imprimir")).toHaveClass("hidden", "sm:inline");
+  });
+
+  it("keeps the print action floating above the reserved document edge", () => {
+    render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
+
+    const printControl = screen.getByRole("button", { name: "Imprimir documento" });
+    expect(printControl).toHaveClass("fixed", "sm:bottom-5", "sm:right-5", "z-40");
+    expect(printControl.parentElement).toHaveClass(
+      "pb-[calc(4.75rem+env(safe-area-inset-bottom))]",
+      "sm:pb-20",
+      "print:pb-0",
+    );
+  });
+
+  it("uses the neutral outline variant instead of the primary acceptance treatment", () => {
+    render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
+
+    const printControl = screen.getByRole("button", { name: "Imprimir documento" });
+    expect(printControl).toHaveClass(
+      "border",
+      "border-[var(--color-border-light)]",
+      "bg-[var(--color-surface)]",
+      "text-[var(--color-text-main)]",
+      "shadow-lg",
+    );
+    expect(printControl).not.toHaveClass("bg-[image:var(--gradient-primary)]");
+  });
+
+  it("prints the public quote in the current tab", async () => {
+    const user = userEvent.setup();
+    const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
+
+    render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
+
+    await user.click(screen.getByRole("button", { name: "Imprimir documento" }));
+
+    expect(print).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Imprimir documento" })).not.toHaveAttribute("target");
+    print.mockRestore();
+  });
+
+  it("keeps the print control interactive for a completed public note", async () => {
+    const user = userEvent.setup();
+    const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
+
+    render(
+      <SharedQuoteView
+        quote={makeQuote(QuoteStatus.APPROVED, WorkOrderStatus.COMPLETED)}
+        token="token-123"
+        isNote
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Imprimir documento" }));
+
+    expect(print).toHaveBeenCalledOnce();
+    print.mockRestore();
+  });
+
   it("renders accessible compact item details below the table breakpoint", () => {
     render(<SharedQuoteView quote={makeMultiSectionQuote()} token="token-123" />);
 
@@ -186,8 +270,40 @@ describe("SharedQuoteView", () => {
     expect(within(compactItems).getByText("Cambio de aceite").closest("li")).toHaveTextContent("Cambio de aceite");
     expect(within(compactItems).getByText("Cambio de aceite").closest("li")).toHaveTextContent("$40.00");
 
-    expect(screen.getByTestId("quote-items-table")).toHaveClass("hidden", "md:block", "print:block");
+    expect(screen.getByTestId("quote-items-table")).toHaveClass("sr-only", "md:not-sr-only", "print:not-sr-only");
     expect(screen.getByRole("table")).toBeInTheDocument();
+  });
+
+  it("renders root and section concepts exactly once in the print document", () => {
+    const quote = makeMultiSectionQuote();
+    quote.sections[0]!.items[0]!.description = "Concepto repetido";
+    quote.items = [{
+      id: "root-item-1",
+      quoteId: quote.id,
+      sectionId: null,
+      type: "LABOR",
+      description: "Concepto repetido",
+      quantity: "1",
+      unitPriceCents: 2_000,
+      totalCents: 2_000,
+      sortOrder: 0,
+    }, ...quote.sections.flatMap((section) => section.items)];
+
+    render(<SharedQuoteView quote={quote} token="" isPrint />);
+
+    const table = screen.getByTestId("quote-items-table");
+    expect(within(table).getAllByText("Concepto repetido")).toHaveLength(2);
+    expect(within(table).getAllByText("Cambio de balatas")).toHaveLength(1);
+    expect(table).not.toHaveClass("hidden", "print:block");
+    expect(screen.getByTestId("quote-total")).toHaveTextContent("$139.20");
+  });
+
+  it("renders a root-only print fixture", () => {
+    render(<SharedQuoteView quote={makeQuote()} token="" isPrint />);
+
+    const table = screen.getByTestId("quote-items-table");
+    expect(within(table).getAllByText("Mano de obra")).toHaveLength(1);
+    expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
   });
 
   it.each([
@@ -342,7 +458,9 @@ describe("SharedQuoteView", () => {
 
       const table = screen.getByRole("table");
       expect(screen.queryByTestId("quote-compact-items")).not.toBeInTheDocument();
-      expect(table.parentElement).toHaveClass("print:block");
+      expect(within(table).getAllByText("Cambio de aceite")).toHaveLength(1);
+      expect(within(table).getAllByText("Cambio de balatas")).toHaveLength(1);
+      expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
       expect(table.querySelector("thead")).toHaveClass("print:table-header-group");
       expect(screen.getByText("Aceite y filtros").closest("tr")).toHaveClass("print:break-after-avoid");
       expect(screen.getByText("Cambio de aceite").closest("tr")).toHaveClass("print:break-before-avoid", "print:break-inside-avoid");

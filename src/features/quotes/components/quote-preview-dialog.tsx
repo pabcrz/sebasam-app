@@ -18,7 +18,7 @@ export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehi
   customer: Pick<NonNullable<QuoteListSummary["customer"]>, "name"> | null;
   vehicle: Pick<NonNullable<QuoteListSummary["vehicle"]>, "plate" | "brand" | "model" | "year"> | null;
   workOrder?: Pick<NonNullable<QuoteListSummary["workOrder"]>, "id" | "status"> | null;
-  items: Array<{ type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }>;
+  items: Array<{ sectionId: string | null; type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }>;
   sections: Array<{ name: string; items: Array<{ type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }> }>;
 };
 
@@ -27,6 +27,7 @@ interface QuotePreviewDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   showTrigger?: boolean;
+  noteReturnTo?: string;
 }
 
 export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePreviewCardProps {
@@ -35,9 +36,21 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
     : {};
   const snapshotValue = (key: string) => snapshot[key] == null ? "" : String(snapshot[key]);
 
-  // Build sections from DB items — group by section if available, else one default section
-  const sections = quote.sections && quote.sections.length > 0
-    ? quote.sections.map((section) => ({
+  // Preserve root items and section items as independent renderable sections.
+  const rootItems = quote.items.filter((item) => item.sectionId === null);
+  const rootSection = rootItems.length > 0
+    ? [{
+        name: "General",
+        items: rootItems.map((item) => ({
+          type: item.type,
+          description: item.description,
+          quantity: String(Number(item.quantity)),
+          unitPrice: item.unitPriceCents == null ? "" : String(Number(item.unitPriceCents) / 100),
+        })),
+        rowIds: [],
+      }]
+    : [];
+  const sectionItems = quote.sections.map((section) => ({
         name: section.name,
         items: section.items.map((item) => ({
           type: item.type,
@@ -47,17 +60,8 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
           rowIds: [],
         })),
         rowIds: [],
-      }))
-    : [{
-        name: "General",
-        items: quote.items.map((item) => ({
-          type: item.type,
-          description: item.description,
-          quantity: String(Number(item.quantity)),
-          unitPrice: item.unitPriceCents == null ? "" : String(Number(item.unitPriceCents) / 100),
-        })),
-        rowIds: [],
-      }];
+      }));
+  const sections = [...rootSection, ...sectionItems];
 
   return {
     customerName: quote.customer?.name ?? "",
@@ -83,7 +87,7 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
 }
 
 
-export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true }: QuotePreviewDialogProps) {
+export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true, noteReturnTo = "/admin/notas" }: QuotePreviewDialogProps) {
   const [openInternal, setOpenInternal] = React.useState(false);
   const open = openProp ?? openInternal;
   const setOpen = React.useCallback(
@@ -95,7 +99,7 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
   );
   const preview = toQuotePreviewCardProps(quote);
   const printHref = quote.workOrder?.status === "COMPLETED"
-    ? `/admin/notas/${quote.workOrder.id}/print?returnTo=/admin/notas`
+    ? `/admin/notas/${quote.workOrder.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`
     : `/admin/quotes/${quote.id}/print?returnTo=/admin/quotes`;
 
   return (
@@ -129,7 +133,7 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
 
         <QuotePreviewCard {...preview} />
         <Button asChild type="button" variant="primary" size="sm" className="!h-11 !w-11 min-h-11 min-w-11 px-0 sm:!h-9 sm:!w-auto sm:px-3">
-          <Link href={printHref} target="_blank" rel="noreferrer">
+          <Link href={printHref}>
             <Printer className="h-4 w-4" aria-hidden="true" />
             <span className="sr-only sm:not-sr-only">Imprimir cotización</span>
           </Link>

@@ -37,16 +37,12 @@ export function EditDraftQuoteForm({
           Editar cotización {quoteNumber}
         </h1>
         <div className="flex items-center gap-2">
-          <Link href={`/admin/quotes/${quoteId}/print?returnTo=/admin/quotes`} target="_blank">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-            >
+          <Button asChild type="button" variant="outline" size="sm">
+            <Link href={`/admin/quotes/${quoteId}/print?returnTo=/admin/quotes`}>
               <Printer className="mr-2 h-4 w-4" aria-hidden="true" />
               Imprimir PDF
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <Button
             type="button"
             variant="ghost"

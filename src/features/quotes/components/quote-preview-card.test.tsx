@@ -55,6 +55,34 @@ describe("QuotePreviewCard", () => {
     expect(table).toHaveTextContent("$140.00");
   });
 
+  it("keeps root and section concepts in the print table without a hidden display dependency", () => {
+    render(
+      <QuotePreviewCard
+        {...defaultProps}
+        compactItems
+        sections={[
+          {
+            name: "General",
+            items: [{ type: "LABOR", description: "Concepto raíz", quantity: "1", unitPrice: "500" }],
+            rowIds: [],
+          },
+          {
+            id: "sec-alignment",
+            name: "Alineación",
+            items: [{ type: "MATERIAL", description: "Concepto de sección", quantity: "2", unitPrice: "100" }],
+            rowIds: [],
+          },
+        ]}
+      />,
+    );
+
+    const table = screen.getByTestId("quote-items-table");
+    expect(table).toHaveTextContent("Concepto raíz");
+    expect(table).toHaveTextContent("Concepto de sección");
+    expect(table).toHaveClass("sr-only", "md:not-sr-only", "print:not-sr-only");
+    expect(table).not.toHaveClass("hidden", "print:block");
+  });
+
   it("renders the service notes and validity text", () => {
     render(<QuotePreviewCard {...defaultProps} />);
 
