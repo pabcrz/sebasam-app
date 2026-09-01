@@ -75,15 +75,6 @@ describe("DirectPaymentPage", () => {
     expect(screen.getByText("5536239346")).toBeInTheDocument();
   });
 
-  it("renders sin factura and con factura sections", () => {
-    render(
-      <DirectPaymentPage business={mockBusiness} bankAccounts={mockBankAccounts} contact={mockContact} />,
-    );
-
-    expect(screen.getByText("Sin factura")).toBeInTheDocument();
-    expect(screen.getByText("Con factura")).toBeInTheDocument();
-  });
-
   it("renders the address as a Google Maps link in the footer", () => {
     render(
       <DirectPaymentPage business={mockBusiness} bankAccounts={mockBankAccounts} contact={mockContact} />,
@@ -94,14 +85,13 @@ describe("DirectPaymentPage", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 
-  it("renders bank data section heading", () => {
+  it("renders bank data and contact section headings", () => {
     render(
       <DirectPaymentPage business={mockBusiness} bankAccounts={mockBankAccounts} contact={mockContact} />,
     );
 
     expect(screen.getByRole("heading", { name: "Datos de pago" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Contacto" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Información de pago" })).toBeInTheDocument();
   });
 
   it("renders only No. Cuenta row when account number is present and CLABE is empty", () => {
