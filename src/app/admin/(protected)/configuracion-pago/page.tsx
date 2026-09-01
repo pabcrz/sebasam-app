@@ -15,7 +15,7 @@ export default async function PaymentSettingsPage() {
     <section
       data-testid="payment-settings-page-frame"
       data-layout-width="admin"
-      className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-10"
+      className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10"
     >
       <PaymentSettingsForm settings={settings} />
     </section>

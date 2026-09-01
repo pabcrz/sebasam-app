@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Building2, Check, Cog, Copy, FileText, Hash, Key, Plus, Save, Share2, Trash2, User } from "lucide-react";
+import { Building2, Check, Copy, FileText, Hash, Key, Plus, Save, Share2, Trash2, User } from "lucide-react";
 import toast from "react-hot-toast";
-import { AdminPageHeader } from "@/components/admin-page-header";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox } from "@/components/ui";
 import { Input } from "@/components/ui";
 import { Label } from "@/components/ui";
@@ -208,13 +207,19 @@ export function PaymentSettingsForm({ settings, saveError }: PaymentSettingsForm
 
   return (
     <div className="grid gap-6">
-      <AdminPageHeader
-        icon={Cog}
-        title="Configuración de pago"
-        description="Administra los datos bancarios, de contacto y del negocio visibles en las páginas públicas de pago."
-        actions={<Button type="submit" form="payment-settings-form" variant="primary" size="sm" loading={pending}><Save className="h-4 w-4" aria-hidden="true" />Guardar configuración</Button>}
-        variant="expanded"
-      />
+      <h1 className="sr-only">Configuración de pago</h1>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="submit"
+          form="payment-settings-form"
+          variant="primary"
+          size="sm"
+          loading={pending}
+        >
+          <Save className="h-4 w-4" aria-hidden="true" />
+          Guardar configuración
+        </Button>
+      </div>
       <div data-testid="payment-settings-form-body" data-layout-width="readable" className="grid max-w-3xl gap-6">
         {/* Business & Contact: main save form */}
         <form id="payment-settings-form" data-testid="payment-settings-form" onSubmit={handleSubmit}>
