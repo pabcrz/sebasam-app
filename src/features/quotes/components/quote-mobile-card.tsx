@@ -100,7 +100,7 @@ export function QuoteListCard({
     presentation: "default" | "tile" = "default",
   ) => {
     const tileClassName = presentation === "tile"
-      ? "h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-2 sm:px-3"
+      ? "h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
       : "w-full";
 
     switch (action) {
@@ -117,7 +117,7 @@ export function QuoteListCard({
           >
             <Link href={printHref}>
               <Printer className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only">Imprimir</span>
+              <span className="sr-only">Imprimir</span>
             </Link>
           </Button>
         );
@@ -133,7 +133,7 @@ export function QuoteListCard({
             triggerSize="sm"
             triggerVariant={variant}
             triggerClassName={tileClassName}
-            triggerIconOnlyMobile={presentation === "tile"}
+            triggerIconOnly={presentation === "tile"}
           />
         );
       case "share":
@@ -145,7 +145,7 @@ export function QuoteListCard({
             quoteNumber={quote.number}
             variant={variant}
             className={tileClassName}
-            actionLabelClassName={presentation === "tile" ? "sr-only sm:not-sr-only" : undefined}
+            actionLabelClassName={presentation === "tile" ? "sr-only" : undefined}
           />
         );
       case "authorize":
@@ -264,16 +264,16 @@ export function QuoteListCard({
         ) : null}
         <div
           data-testid="quote-secondary-actions"
-          className="grid grid-cols-4 gap-2 sm:grid-cols-[repeat(3,minmax(0,1fr))_auto] sm:items-center"
+          className="grid grid-cols-[repeat(3,minmax(0,1fr))_auto] items-center gap-2"
         >
           {actionPresentation.frequent.map((action) => (
             <div key={action} className="min-w-0">{renderAction(action, "outline", "tile")}</div>
           ))}
-          <div data-testid="quote-overflow-action" className="min-w-0 sm:col-start-4">
+          <div data-testid="quote-overflow-action" className="col-start-4 min-w-0">
             <QuoteActionsMenu
               quoteNumber={quote.number}
               destructive={actionPresentation.destructive ? renderAction(actionPresentation.destructive) : null}
-              triggerClassName="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
+              triggerClassName="h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
               triggerIconOnly
             >
               {actionPresentation.overflow.map((action) => <React.Fragment key={action}>{renderAction(action)}</React.Fragment>)}
