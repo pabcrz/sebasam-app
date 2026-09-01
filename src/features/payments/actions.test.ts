@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireAdmin } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { recordCashPayment } from "./domain";
-import { recordPaymentAction } from "./actions";
+import { recordCashPayment, reversePaymentCapture } from "./domain";
+import { recordPaymentAction, reversePaymentCaptureAction } from "./actions";
 
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -11,6 +11,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: { workOrder: { findUnique: vi.fn() } } 
 vi.mock("./domain", async () => ({
   ...(await vi.importActual<typeof import("./domain")>("./domain")),
   recordCashPayment: vi.fn(),
+  reversePaymentCapture: vi.fn(),
 }));
 
 describe("recordPaymentAction", () => {
@@ -74,5 +75,41 @@ describe("recordPaymentAction", () => {
     );
 
     expect(recordCashPayment).not.toHaveBeenCalled();
+  });
+});
+
+describe("reversePaymentCaptureAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireAdmin as ReturnType<typeof vi.fn>).mockResolvedValue({
+      profile: { id: "admin-user-1" },
+    });
+  });
+
+  it("requires admin session and calls domain reversePaymentCapture with actorId", async () => {
+    (reversePaymentCapture as ReturnType<typeof vi.fn>).mockResolvedValue({
+      paymentId: "pay-1",
+      reversedApplicationsCount: 1,
+      restoredCustomerCreditCents: 5000,
+    });
+
+    const result = await reversePaymentCaptureAction("pay-1", "Error de captura", "op-rev-1");
+
+    expect(requireAdmin).toHaveBeenCalledOnce();
+    expect(reversePaymentCapture).toHaveBeenCalledWith({
+      paymentId: "pay-1",
+      reason: "Error de captura",
+      actorId: "admin-user-1",
+      operationKey: "op-rev-1",
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/work-orders");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/notas");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/customers");
+    expect(result).toEqual({
+      paymentId: "pay-1",
+      reversedApplicationsCount: 1,
+      restoredCustomerCreditCents: 5000,
+    });
   });
 });

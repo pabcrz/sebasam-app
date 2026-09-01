@@ -817,12 +817,16 @@ describe("duplicateQuoteFromForm", () => {
 describe("deleteQuote", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("authorizes direct deletion and permanently deletes quote and related records", async () => {
+  it("authorizes direct deletion and permanently deletes quote and related records when there are no active payments", async () => {
     const tx = mockTx();
+    tx.payment.count.mockResolvedValue(0);
 
     await deleteQuote("quote-1");
 
     expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    expect(tx.payment.count).toHaveBeenCalledWith({
+      where: { quoteId: "quote-1", reversedAt: null },
+    });
     expect(tx.sharedQuote.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });
     expect(tx.quoteDecision.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });
     expect(tx.quoteLifecycleEvent.deleteMany).toHaveBeenCalledWith({ where: { quoteId: "quote-1" } });

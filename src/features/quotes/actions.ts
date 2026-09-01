@@ -536,7 +536,7 @@ async function deleteQuoteAuthorized(quoteId: string) {
       throw new Error("This quote cannot be deleted in its current state.");
     }
 
-    if (await tx.payment.count({ where: { quoteId } })) {
+    if (await tx.payment.count({ where: { quoteId, reversedAt: null } })) {
       throw new Error("This quote has financial activity and cannot be deleted.");
     }
 
