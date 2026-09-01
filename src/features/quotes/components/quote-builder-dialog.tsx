@@ -29,6 +29,7 @@ type QuoteBuilderDialogProps = {
   quote?: QuoteListSummary;
   quoteNumber?: string;
   triggerClassName?: string;
+  triggerAriaLabel?: string;
   triggerSize?: "default" | "sm";
   triggerVariant?: ButtonVariant;
   triggerIconOnlyMobile?: boolean;
@@ -41,7 +42,7 @@ type QuoteBuilderDialogProps = {
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
 };
 
-export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerSize, triggerVariant, triggerIconOnlyMobile = false, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
+export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerAriaLabel, triggerSize, triggerVariant, triggerIconOnlyMobile = false, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = React.useState(false);
@@ -137,8 +138,8 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
             variant={triggerVariant ?? "primary"}
             size={triggerSize}
             className={triggerIconOnlyMobile ? `h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3 ${triggerClassName ?? ""}` : triggerClassName}
-            title={triggerIconOnlyMobile && isEdit ? `Editar cotización ${quoteNumber}` : undefined}
-            aria-label={triggerIconOnlyMobile && isEdit ? `Editar cotización ${quoteNumber}` : undefined}
+            title={triggerAriaLabel ?? (triggerIconOnlyMobile && isEdit ? `Editar cotización ${quoteNumber}` : undefined)}
+            aria-label={triggerAriaLabel ?? (triggerIconOnlyMobile && isEdit ? `Editar cotización ${quoteNumber}` : undefined)}
           >
             {isEdit ? <Pencil className="h-5 w-5" aria-hidden="true" /> : null}
             <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{isEdit ? "Editar" : "Nueva cotización"}</span>

@@ -1,64 +1,56 @@
 "use client";
 
-import * as React from "react";
 import type { ReactNode } from "react";
 import { MoreHorizontal } from "lucide-react";
+import {
+  Button,
+  Dialog,
+  DialogDescription,
+  DialogMobileBody,
+  DialogMobileClose,
+  DialogMobileContent,
+  DialogMobileHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui";
 
 type QuoteActionsMenuProps = {
   quoteNumber: string;
   children: ReactNode;
+  destructive?: ReactNode;
 };
 
-export function QuoteActionsMenu({ quoteNumber, children }: QuoteActionsMenuProps) {
-  const [open, setOpen] = React.useState(false);
-  const menuRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    if (!open) return;
-
-    function handleClickOutside(event: MouseEvent | TouchEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-    };
-  }, [open]);
-
+export function QuoteActionsMenu({ quoteNumber, children, destructive }: QuoteActionsMenuProps) {
   return (
-    <div
-      ref={menuRef}
-      className="relative"
-      data-testid="quote-actions-menu"
-      onClick={(event) => event.stopPropagation()}
-    >
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
-        aria-label={`Más acciones de cotización ${quoteNumber}`}
-        title={`Más acciones de cotización ${quoteNumber}`}
-        aria-expanded={open}
-      >
-        <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-      </button>
-
-      {open ? (
-        <div
-          role="menu"
-          aria-label={`Acciones de ${quoteNumber}`}
-          className="absolute right-0 top-11 z-20 grid min-w-44 gap-1 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1 shadow-lg"
-          onClick={() => setOpen(false)}
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full"
+          aria-label={`Más acciones de cotización ${quoteNumber}`}
+          title={`Más acciones de cotización ${quoteNumber}`}
         >
-          {children}
-        </div>
-      ) : null}
-    </div>
+          <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+          <span>Más acciones</span>
+        </Button>
+      </DialogTrigger>
+      <DialogMobileContent className="max-w-md" onClick={(event) => event.stopPropagation()}>
+        <DialogMobileHeader>
+          <DialogTitle>Acciones de cotización</DialogTitle>
+          <DialogDescription>Acciones disponibles para {quoteNumber}.</DialogDescription>
+          <DialogMobileClose aria-label={`Cerrar acciones de cotización ${quoteNumber}`} />
+        </DialogMobileHeader>
+        <DialogMobileBody>
+          <div className="grid gap-2 [&_button]:w-full">{children}</div>
+          {destructive ? (
+            <div className="mt-4 border-t border-[var(--color-status-danger-border)] pt-4 [&_button]:w-full">
+              {destructive}
+            </div>
+          ) : null}
+        </DialogMobileBody>
+      </DialogMobileContent>
+    </Dialog>
   );
 }

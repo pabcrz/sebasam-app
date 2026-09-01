@@ -6,6 +6,7 @@ import type { QuoteStatus, SharedQuote } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui";
+import type { ButtonVariant } from "@/components/ui";
 
 export interface ShareQuoteButtonProps {
   action?: () => Promise<{ success: boolean; error?: string }>;
@@ -13,6 +14,7 @@ export interface ShareQuoteButtonProps {
   status: QuoteStatus;
   quoteNumber: string;
   className?: string;
+  variant?: ButtonVariant;
   iconOnly?: boolean;
   actionLabelClassName?: string;
 }
@@ -23,6 +25,7 @@ export function ShareQuoteButton({
   status,
   quoteNumber,
   className,
+  variant = "outline",
   iconOnly = false,
   actionLabelClassName,
 }: ShareQuoteButtonProps) {
@@ -94,7 +97,7 @@ export function ShareQuoteButton({
   return (
     <Button
       type="button"
-      variant="outline"
+      variant={variant}
       size={iconOnly ? "icon" : "sm"}
       aria-label={`${label} cotización ${quoteNumber}`}
       title={`${label} cotización ${quoteNumber}`}
@@ -116,4 +119,3 @@ export function ShareQuoteButton({
     </Button>
   );
 }
-
