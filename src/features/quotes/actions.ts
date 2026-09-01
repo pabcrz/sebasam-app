@@ -540,9 +540,19 @@ async function deleteQuoteAuthorized(quoteId: string) {
       throw new Error("This quote has financial activity and cannot be deleted.");
     }
 
-    await tx.quote.update({
+    if (await tx.workOrder.count({ where: { quoteId } })) {
+      throw new Error("This quote has an associated work order and cannot be deleted.");
+    }
+
+    await tx.sharedQuote.deleteMany({ where: { quoteId } });
+    await tx.quoteDecision.deleteMany({ where: { quoteId } });
+    await tx.quoteLifecycleEvent.deleteMany({ where: { quoteId } });
+    await tx.quoteItem.deleteMany({ where: { quoteId } });
+    await tx.quoteSection.deleteMany({ where: { quoteId } });
+    await tx.paymentRequest.deleteMany({ where: { quoteId } });
+
+    await tx.quote.delete({
       where: { id: quoteId },
-      data: { deletedAt: new Date() },
     });
     return quote;
   });
