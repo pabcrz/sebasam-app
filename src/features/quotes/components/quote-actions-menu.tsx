@@ -18,9 +18,17 @@ type QuoteActionsMenuProps = {
   quoteNumber: string;
   children: ReactNode;
   destructive?: ReactNode;
+  triggerClassName?: string;
+  triggerIconOnly?: boolean;
 };
 
-export function QuoteActionsMenu({ quoteNumber, children, destructive }: QuoteActionsMenuProps) {
+export function QuoteActionsMenu({
+  quoteNumber,
+  children,
+  destructive,
+  triggerClassName,
+  triggerIconOnly = false,
+}: QuoteActionsMenuProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -28,12 +36,12 @@ export function QuoteActionsMenu({ quoteNumber, children, destructive }: QuoteAc
           type="button"
           variant="ghost"
           size="sm"
-          className="min-h-11 px-3"
+          className={triggerClassName ?? "min-h-11 px-3"}
           aria-label={`Más acciones de cotización ${quoteNumber}`}
           title={`Más acciones de cotización ${quoteNumber}`}
         >
           <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-          <span>Más acciones</span>
+          <span className={triggerIconOnly ? "sr-only" : undefined}>Más acciones</span>
         </Button>
       </DialogTrigger>
       <DialogMobileContent className="max-w-md" onClick={(event) => event.stopPropagation()}>

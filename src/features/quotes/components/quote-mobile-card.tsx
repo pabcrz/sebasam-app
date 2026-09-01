@@ -99,7 +99,9 @@ export function QuoteListCard({
     variant: "primary" | "outline" = "outline",
     presentation: "default" | "tile" = "default",
   ) => {
-    const tileClassName = presentation === "tile" ? "h-10 w-10 justify-center gap-0 px-0 sm:h-9 sm:w-auto sm:gap-2 sm:px-3" : "w-full";
+    const tileClassName = presentation === "tile"
+      ? "h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-2 sm:px-3"
+      : "w-full";
 
     switch (action) {
       case "print":
@@ -260,23 +262,23 @@ export function QuoteListCard({
             {renderAction(actionPresentation.primary, "primary")}
           </div>
         ) : null}
-        {actionPresentation.frequent.length > 0 ? (
-          <div
-            data-testid="quote-frequent-actions"
-            className="flex flex-wrap gap-2 sm:items-center"
-          >
-            {actionPresentation.frequent.map((action) => (
-              <div key={action} className="shrink-0">{renderAction(action, "outline", "tile")}</div>
-            ))}
-          </div>
-        ) : null}
-        <div data-testid="quote-overflow-action" className="flex justify-center">
+        <div
+          data-testid="quote-secondary-actions"
+          className="grid grid-cols-4 gap-2 sm:grid-cols-[repeat(3,minmax(0,1fr))_auto] sm:items-center"
+        >
+          {actionPresentation.frequent.map((action) => (
+            <div key={action} className="min-w-0">{renderAction(action, "outline", "tile")}</div>
+          ))}
+          <div data-testid="quote-overflow-action" className="min-w-0 sm:col-start-4">
             <QuoteActionsMenu
               quoteNumber={quote.number}
               destructive={actionPresentation.destructive ? renderAction(actionPresentation.destructive) : null}
+              triggerClassName="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
+              triggerIconOnly
             >
               {actionPresentation.overflow.map((action) => <React.Fragment key={action}>{renderAction(action)}</React.Fragment>)}
             </QuoteActionsMenu>
+          </div>
         </div>
       </div>
     </div>
