@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Share2 } from "lucide-react";
+import { Share2 } from "lucide-react";
 import type { QuoteStatus, SharedQuote } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -31,7 +31,6 @@ export function ShareQuoteButton({
 }: ShareQuoteButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
-  const [copied, setCopied] = React.useState(false);
   const isDraft = status === "DRAFT";
   const label = isDraft ? "Preparar y compartir" : "Compartir";
   const shareUrl = sharedQuote
@@ -39,12 +38,6 @@ export function ShareQuoteButton({
       ? `/cotizacion/${sharedQuote.token}`
       : `${window.location.origin}/cotizacion/${sharedQuote.token}`
     : null;
-
-  React.useEffect(() => {
-    if (!copied) return;
-    const timer = window.setTimeout(() => setCopied(false), 2000);
-    return () => window.clearTimeout(timer);
-  }, [copied]);
 
   async function copyUrl() {
     if (!shareUrl) return;
@@ -57,7 +50,6 @@ export function ShareQuoteButton({
     }
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
       toast.success("Enlace copiado al portapapeles.", { id: "quote-share-copied" });
     } catch {
       toast.error(`No se pudo copiar automáticamente: ${shareUrl}`, {
@@ -106,15 +98,9 @@ export function ShareQuoteButton({
       disabled={isPending}
       onClick={handleShare}
     >
-      {!isPending ? (
-        copied ? (
-          <Check className="h-5 w-5" aria-hidden="true" />
-        ) : (
-          <Share2 className="h-5 w-5" aria-hidden="true" />
-        )
-      ) : null}
+      {!isPending ? <Share2 className="h-5 w-5" aria-hidden="true" /> : null}
       {!iconOnly && !isPending ? (
-        <span className={actionLabelClassName}>{copied ? "Link copiado" : label}</span>
+        <span className={actionLabelClassName}>{label}</span>
       ) : null}
     </Button>
   );
