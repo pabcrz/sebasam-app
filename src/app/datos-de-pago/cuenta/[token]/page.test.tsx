@@ -49,7 +49,8 @@ describe("PublicBankAccountPage", () => {
 
     expect(getPublicBankAccountByToken).toHaveBeenCalledWith("valid-token");
     expect(page.props.bankAccounts).toEqual([singleAccount]);
-    expect(page.props.business.name).toBe("SEBASAM");
+    expect(page.props.business.businessName).toBe("SEBASAM");
+    expect(page.props.location).toEqual({ address: "Address", mapsUrl: "https://maps.example.com" });
     expect(notFound).not.toHaveBeenCalled();
   });
 
