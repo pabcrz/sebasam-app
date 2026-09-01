@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { QuotePreviewDialog } from "./quote-preview-dialog";
+import { QuotePreviewDialog, toQuotePreviewCardProps } from "./quote-preview-dialog";
 
 function createMockQuote(overrides: Partial<QuoteListSummary> = {}): QuoteListSummary {
   return {
@@ -30,6 +30,7 @@ function createMockQuote(overrides: Partial<QuoteListSummary> = {}): QuoteListSu
       {
         id: "item-1",
         quoteId: "quote-1",
+        sectionId: null,
         type: "LABOR",
         description: "Cambio de aceite",
         quantity: 2,
@@ -83,6 +84,17 @@ describe("QuotePreviewDialog", () => {
   it("renders sectioned concepts from the supplied payload", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote({
+      items: [{
+        id: "section-item-1",
+        quoteId: "quote-1",
+        sectionId: "section-1",
+        type: "LABOR",
+        description: "Diagnóstico de motor",
+        quantity: 1,
+        unitPriceCents: 5000,
+        totalCents: 5000,
+        sortOrder: 0,
+      }],
       sections: [{
         id: "section-1",
         quoteId: "quote-1",
@@ -121,6 +133,59 @@ describe("QuotePreviewDialog", () => {
     expect(screen.getAllByText("Cambio de aceite")[0]).toBeInTheDocument();
   });
 
+  it("keeps root and section concepts when both are present", () => {
+    const preview = toQuotePreviewCardProps(createMockQuote({
+      items: [
+        {
+          id: "root-item-1",
+          quoteId: "quote-1",
+          sectionId: null,
+          type: "LABOR",
+          description: "Cambio de aceite",
+          quantity: 2,
+          unitPriceCents: 5000,
+          totalCents: 10000,
+          sortOrder: 0,
+        },
+        {
+          id: "section-item-1",
+          quoteId: "quote-1",
+          sectionId: "section-1",
+          type: "LABOR",
+          description: "Cambio de aceite",
+          quantity: 1,
+          unitPriceCents: 5000,
+          totalCents: 5000,
+          sortOrder: 0,
+        },
+      ],
+      sections: [{
+        id: "section-1",
+        quoteId: "quote-1",
+        name: "Frenos",
+        sortOrder: 0,
+        isAuthorized: false,
+        items: [{
+          id: "section-item-1",
+          quoteId: "quote-1",
+          sectionId: "section-1",
+          type: "LABOR",
+          description: "Cambio de aceite",
+          quantity: 1,
+          unitPriceCents: 5000,
+          totalCents: 5000,
+          sortOrder: 0,
+        }],
+      }],
+    }));
+
+    expect(preview.sections).toHaveLength(2);
+    expect(preview.sections[0]?.items[0]?.description).toBe("Cambio de aceite");
+    expect(preview.sections[0]?.items).toHaveLength(1);
+    expect(preview.sections[1]?.items[0]?.description).toBe("Cambio de aceite");
+    expect(preview.sections[1]?.items).toHaveLength(1);
+  });
+
   it("keeps non-completed preview printing on the quote route", async () => {
     const user = userEvent.setup();
     render(<QuotePreviewDialog quote={createMockQuote({
@@ -133,22 +198,25 @@ describe("QuotePreviewDialog", () => {
     const print = screen.getByRole("link", { name: /imprimir cotización/i });
     expect(print).toHaveAttribute("href", "/admin/quotes/quote-preview-1/print?returnTo=/admin/quotes");
     expect(print.getAttribute("href")).not.toContain("/admin/notas/");
-    expect(print).toHaveAttribute("target", "_blank");
+    expect(print).not.toHaveAttribute("target");
+    expect(print).not.toHaveAttribute("rel");
     expect(print).toHaveClass("min-h-11", "min-w-11", "!h-11", "!w-11", "sm:!h-9", "sm:!w-auto");
     expect(screen.getByText("Imprimir cotización")).toHaveClass("sr-only", "sm:not-sr-only");
   });
 
-  it("routes completed preview printing to the work-order note", async () => {
+  it("preserves the current Notes state when printing from the completed preview", async () => {
     const user = userEvent.setup();
     render(<QuotePreviewDialog quote={createMockQuote({
       id: "quote-preview-completed-1",
       workOrder: { id: "wo-preview-completed-1", status: "COMPLETED" } as QuoteListSummary["workOrder"],
-    })} />);
+    })} noteReturnTo="/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=workshop&page=2" />);
 
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
     const print = screen.getByRole("link", { name: /imprimir cotización/i });
-    expect(print).toHaveAttribute("href", "/admin/notas/wo-preview-completed-1/print?returnTo=/admin/notas");
+    expect(print).toHaveAttribute("href", "/admin/notas/wo-preview-completed-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dmonth%26anchor%3D2026-08%26payment%3Dpaid%26assignee%3Dworkshop%26page%3D2");
     expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+    expect(print).not.toHaveAttribute("target");
+    expect(print).not.toHaveAttribute("rel");
   });
 });

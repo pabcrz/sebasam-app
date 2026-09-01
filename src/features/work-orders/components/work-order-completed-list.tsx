@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Printer } from "lucide-react";
+import Link from "next/link";
 import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
 import { Badge, Button, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
@@ -28,6 +29,7 @@ interface WorkOrderCompletedListProps {
   quoteMap?: Map<string, WorkOrderItem["quote"]>;
   recordPaymentActions?: WorkOrderPaymentAction[];
   rollbackAction?: WorkOrderActions["rollback"];
+  noteReturnTo?: string;
 }
 
 function formatDate(date: Date | null) {
@@ -41,7 +43,7 @@ function formatVehicle(wo: WorkOrderItem) {
   return [v.brand, v.model, v.year, v.plate ? `· ${v.plate}` : null].filter(Boolean).join(" ");
 }
 
-export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActions = [], rollbackAction }: WorkOrderCompletedListProps) {
+export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActions = [], rollbackAction, noteReturnTo = "/admin/notas" }: WorkOrderCompletedListProps) {
   const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
   const [selectedQuoteId, setSelectedQuoteId] = React.useState<string | null>(null);
 
@@ -81,18 +83,21 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                 ) : null}
                 <OperationalActionRow>
                   <Button
+                    asChild
                     type="button"
                     variant="outline"
                     size="sm"
+                    data-mobile-target="44"
                     className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
                     title={`Imprimir nota de remisión ${wo.number}`}
                     aria-label={`Imprimir nota de remisión ${wo.number}`}
-                    onClick={() => window.open(`/admin/notas/${wo.id}/print?returnTo=/admin/notas`, "_blank")}
                   >
-                    <Printer className="h-5 w-5" aria-hidden="true" />
-                    <span className="sr-only sm:not-sr-only">Imprimir nota</span>
+                    <Link href={`/admin/notas/${wo.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}>
+                      <Printer className="h-5 w-5" aria-hidden="true" />
+                      <span className="sr-only sm:not-sr-only">Imprimir nota</span>
+                    </Link>
                   </Button>
-                  <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile />
+                  <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile noteReturnTo={noteReturnTo} />
                 </OperationalActionRow>
               </>
             }
@@ -133,6 +138,7 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
     {selectedQuote && (
       <QuotePreviewDialog
         quote={selectedQuote}
+        noteReturnTo={noteReturnTo}
         open={selectedQuoteId !== null}
         onOpenChange={(open) => {
           if (!open) setSelectedQuoteId(null);

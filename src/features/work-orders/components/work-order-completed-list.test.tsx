@@ -44,12 +44,12 @@ describe("WorkOrderCompletedList", () => {
   it("uses accessible responsive note actions and renders payment balances only when needed", () => {
     render(<WorkOrderCompletedList workOrders={[workOrder, partialWorkOrder, urgentWorkOrder]} recordPaymentActions={[{ workOrderId: workOrder.id, action: vi.fn() }]} />);
 
-    const print = screen.getByRole("button", { name: "Imprimir nota de remisión OT-001" });
+    const print = screen.getByRole("link", { name: "Imprimir nota de remisión OT-001" });
     const payment = screen.getByRole("button", { name: "Registrar pago para COT-001" });
     expect(print).toHaveAttribute("title", "Imprimir nota de remisión OT-001");
     expect(print).toHaveClass("min-h-11", "min-w-11");
     expect(print).toHaveClass("w-10", "sm:w-auto");
-    expect(print.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
+    expect(print.parentElement).toHaveClass("grid", "w-11", "sm:block", "sm:w-auto");
     expect(print.parentElement?.parentElement).toHaveClass("flex", "w-full", "flex-wrap", "items-center", "gap-3", "[&_button]:h-10", "[&_button]:w-10", "sm:gap-2", "sm:[&_button]:h-9", "sm:[&_button]:w-auto");
     expect(payment).toHaveAttribute("title", "Registrar pago para COT-001");
     expect(payment).toHaveClass("w-10", "sm:w-auto");
@@ -60,14 +60,13 @@ describe("WorkOrderCompletedList", () => {
     expect(screen.queryByText("Completada")).not.toBeInTheDocument();
   });
 
-  it("opens completed-note printing on the note route and never the quote route", () => {
-    const open = vi.spyOn(window, "open").mockImplementation(() => null);
-    render(<WorkOrderCompletedList workOrders={[workOrder]} />);
+  it("preserves the current Notes state when printing from the completed list", () => {
+    render(<WorkOrderCompletedList workOrders={[workOrder]} noteReturnTo="/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=workshop&page=2" />);
 
-    screen.getByRole("button", { name: "Imprimir nota de remisión OT-001" }).click();
-
-    expect(open).toHaveBeenCalledWith("/admin/notas/work-order-1/print?returnTo=/admin/notas", "_blank");
-    expect(open.mock.calls[0]?.[0]).not.toContain("/admin/quotes/");
-    open.mockRestore();
+    const print = screen.getByRole("link", { name: "Imprimir nota de remisión OT-001" });
+    expect(print).toHaveAttribute("href", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dmonth%26anchor%3D2026-08%26payment%3Dpaid%26assignee%3Dworkshop%26page%3D2");
+    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+    expect(print).not.toHaveAttribute("target");
+    expect(print).not.toHaveAttribute("rel");
   });
 });

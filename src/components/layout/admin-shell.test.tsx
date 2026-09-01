@@ -146,4 +146,16 @@ describe("AdminShell", () => {
     expect(brandLinks.every((link) => link.className.includes("min-h-[var(--tap-min-height)]"))).toBe(true);
     expect(brandLinks.every((link) => link.className.includes("focus-visible:ring-[3px]"))).toBe(true);
   });
+
+  it("hides shell navigation and header when printing", () => {
+    render(
+      <AdminShell displayName="Admin User" role="admin">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    expect(screen.getByRole("complementary")).toHaveClass("print:hidden");
+    expect(screen.getByRole("banner")).toHaveClass("print:hidden");
+    expect(screen.getByRole("navigation", { name: "Navegación móvil" })).toHaveClass("print:hidden");
+  });
 });
