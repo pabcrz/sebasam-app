@@ -21,8 +21,10 @@ export default async function PublicBankAccountPage({
   return (
     <DirectPaymentPage
       business={{
-        name: settings.name,
+        businessName: settings.name,
         fullName: settings.fullName,
+      }}
+      location={{
         address: settings.address,
         mapsUrl: settings.mapsUrl,
       }}

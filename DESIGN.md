@@ -139,6 +139,16 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 
 ### Componentes de dominio
 
+### Identidad pública
+
+| Export | Ruta | Responsabilidad |
+|---|---|---|
+| `PublicBusinessIdentity` | `src/features/public-branding/domain.ts` | Proyección de configuración pública: `businessName`, `phone?`, `whatsapp?`. No contiene logo, dirección ni URL de mapas. |
+| `toPublicBusinessIdentity` | `src/features/public-branding/domain.ts` | Mapea únicamente nombre y contactos existentes desde `PaymentSettingsData`; omite valores ausentes o vacíos. |
+| `PublicBrandHeader` | `src/features/public-branding/public-brand-header.tsx` | Renderiza la identidad y acepta `logoSrc?` independiente, provisto únicamente por el caller. Sin fallback cuando falta. |
+
+La dirección y `mapsUrl` permanecen como datos de ubicación del shell público original, no como parte de `PublicBusinessIdentity`. Los adaptadores basados en `PaymentSettingsData` no pasan `logoSrc`.
+
 | Componente | Responsabilidad |
 |---|---|
 | `QuoteOperationalBadge` | Mapea `EstadoCotizacion` a etapa humana: Pendiente / Aceptada / Espera / En proceso / Ajuste final / Cancelada. |

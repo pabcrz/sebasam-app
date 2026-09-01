@@ -19,6 +19,9 @@ vi.mock("@/features/payment-settings/domain", () => ({
   getPaymentSettings: vi.fn().mockResolvedValue({
     bankAccounts: [],
     name: "SEBASAM",
+    fullName: "Servicio y Refacciones para Suspensiones de Aire y Muelles",
+    address: "Batalla de Casa Blanca",
+    mapsUrl: "not a URL",
     contactPhone: "5556007675",
     contactWhatsapp: "5536239346",
   }),
@@ -90,6 +93,10 @@ describe("CotizacionPage", () => {
       }),
       undefined,
     );
+    expect(screen.getByAltText("Logo de SEBASAM")).toHaveAttribute("src", expect.stringContaining("logo-white-short.png"));
+    expect(screen.getByText("Servicio y Refacciones para Suspensiones de Aire y Muelles")).toHaveClass("font-mono", "print:text-[10px]");
+    expect(screen.getByText("Batalla de Casa Blanca")).not.toHaveAttribute("href");
+    expect(screen.queryByRole("link", { name: /Batalla de Casa Blanca/i })).not.toBeInTheDocument();
   });
 
   describe("generateMetadata", () => {

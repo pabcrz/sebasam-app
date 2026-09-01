@@ -43,18 +43,22 @@ describe("WorkOrderPrintPage", () => {
     });
     getPaymentSettings.mockResolvedValue({
       name: "SEBASAM",
-      fullName: "SEBASAM Taller",
-      address: "Dirección",
+      fullName: "Servicio y Refacciones para Suspensiones de Aire y Muelles",
+      address: "Batalla de Casa Blanca",
       contactPhone: "5555555555",
       contactWhatsapp: "5555555555",
     });
 
     const { container } = render(await WorkOrderPrintPage({ params: Promise.resolve({ id: "wo-1" }) }));
 
-    expect(screen.getAllByText(/Taller/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Taller")).toBeInTheDocument();
     expect(screen.queryByText("Nombre heredado")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
     expect(screen.getByText("Nota administrativa")).toBeInTheDocument();
+    expect(screen.getByAltText("Logo de SEBASAM")).toHaveAttribute("src", expect.stringContaining("logo-white-short.png"));
+    expect(screen.getByText("Servicio y Refacciones para Suspensiones de Aire y Muelles")).toHaveClass("font-mono", "print:text-[10px]");
+    expect(screen.getByText("Batalla de Casa Blanca")).not.toHaveAttribute("href");
+    expect(screen.queryByRole("link", { name: /Batalla de Casa Blanca/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Cotización/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Imprimir documento" })).not.toBeInTheDocument();
     expect(container.firstElementChild).toHaveClass("print:min-h-0");
