@@ -1,10 +1,20 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
 
-const { findMany, create, findUnique, findFirst, updateMany, update, upsert } = vi.hoisted(() => ({
+const {
+  findMany,
+  create,
+  findUnique,
+  bankAccountFindUnique,
+  findFirst,
+  updateMany,
+  update,
+  upsert,
+} = vi.hoisted(() => ({
   findMany: vi.fn().mockResolvedValue([]),
   create: vi.fn().mockImplementation(async ({ data }) => ({ id: 1, ...data })),
   findUnique: vi.fn(),
+  bankAccountFindUnique: vi.fn().mockResolvedValue(null),
   findFirst: vi.fn(),
   updateMany: vi.fn(),
   update: vi.fn(),
@@ -13,7 +23,7 @@ const { findMany, create, findUnique, findFirst, updateMany, update, upsert } = 
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    bankAccount: { findMany, findFirst, updateMany, create },
+    bankAccount: { findMany, findFirst, findUnique: bankAccountFindUnique, updateMany, create },
     paymentSettings: { findUnique, update, upsert },
   },
 }));
@@ -140,17 +150,20 @@ describe("getPaymentSettings", () => {
 });
 
 describe("addBankAccount", () => {
-  it("passes the invoicing flag to Prisma", async () => {
+  it("passes the invoicing flag and generates a bank-prefixed slug", async () => {
     await addBankAccount({
       accountHolder: "Juan Pérez",
-      bankName: "BBVA",
+      bankName: "Banco Azteca",
       accountNumber: "",
       clabe: "123456789012345678",
       isForInvoicing: false,
     });
 
     expect(create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ isForInvoicing: false }),
+      data: expect.objectContaining({
+        isForInvoicing: false,
+        publicToken: expect.stringMatching(/^banco-azteca-[0-9A-Za-z]{8}$/),
+      }),
     });
     expect(upsert).toHaveBeenCalledWith({
       where: { id: 1 },
