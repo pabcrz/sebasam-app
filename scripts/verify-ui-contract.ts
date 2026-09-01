@@ -185,7 +185,9 @@ function checkQuotesPage() {
     "Mobile quote card click must open the preview dialog",
   );
   const mobilePreviewButtonEnd = mobileCardSource.indexOf("</button>");
-  const mobileActionRowStart = mobileCardSource.indexOf("<OperationalActionRow>");
+  const mobileActionRowStart = mobileCardSource.includes('data-testid="quote-secondary-actions"')
+    ? mobileCardSource.indexOf('data-testid="quote-secondary-actions"')
+    : mobileCardSource.indexOf("<OperationalActionRow>");
   assert(
     mobilePreviewButtonEnd >= 0 && mobileActionRowStart > mobilePreviewButtonEnd,
     "Mobile quote action row must remain outside the preview button",
