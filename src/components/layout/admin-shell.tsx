@@ -170,13 +170,10 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
             <div className="md:hidden">
               <Link
                 href="/admin"
-                className="inline-flex min-h-[var(--tap-min-height)] flex-col justify-center rounded-md px-2 text-lg font-extrabold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+                className="inline-flex min-h-[var(--tap-min-height)] items-center rounded-md px-2 text-lg font-extrabold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
               >
                 SEBASAM
               </Link>
-              <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-                {sectionTitle}
-              </p>
             </div>
             <div className="flex items-center gap-2">
               <h1 className="hidden font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)] md:block">

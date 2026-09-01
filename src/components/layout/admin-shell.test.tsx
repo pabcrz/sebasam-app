@@ -160,7 +160,7 @@ describe("AdminShell", () => {
     ["/admin/nomina/worker-1", "Nómina"],
     ["/admin/configuracion-pago", "Configuración"],
     ["/admin/users", "Usuarios"],
-  ])("renders dynamic section title '%s' -> '%s' in desktop header and mobile header", (pathname, expectedTitle) => {
+  ])("renders dynamic section title '%s' -> '%s' as h1 in desktop top bar", (pathname, expectedTitle) => {
     mockPathname = pathname;
     render(
       <AdminShell displayName="Admin User" role="admin">
@@ -169,9 +169,6 @@ describe("AdminShell", () => {
     );
 
     const header = screen.getByRole("banner");
-    const matchedTitles = within(header).getAllByText(expectedTitle);
-    // At least 2 elements: one in mobile header, one in desktop header center
-    expect(matchedTitles.length).toBeGreaterThanOrEqual(2);
     expect(within(header).queryByText("Panel de operaciones")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: expectedTitle })).toBeInTheDocument();
   });
