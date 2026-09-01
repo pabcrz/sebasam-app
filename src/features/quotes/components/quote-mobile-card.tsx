@@ -99,7 +99,7 @@ export function QuoteListCard({
     variant: "primary" | "outline" = "outline",
     presentation: "default" | "tile" = "default",
   ) => {
-    const tileClassName = presentation === "tile" ? "min-h-20 w-full flex-col gap-1 px-2" : "w-full";
+    const tileClassName = presentation === "tile" ? "min-h-14 w-full flex-col gap-0.5 px-2" : "w-full";
 
     switch (action) {
       case "print":

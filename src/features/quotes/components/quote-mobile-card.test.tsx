@@ -199,10 +199,10 @@ describe("QuoteListCard", () => {
     const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
     const print = screen.getByRole("link", { name: "Imprimir cotización C-001" });
     expect(frequentActions).toHaveClass("grid-cols-2");
-    expect(edit).toHaveClass("min-h-20", "w-full", "flex-col");
+    expect(edit).toHaveClass("min-h-14", "w-full", "flex-col");
     expect(print).toHaveAttribute("aria-label", "Imprimir cotización C-001");
     expect(print).toHaveAttribute("title", "Imprimir cotización C-001");
-    expect(print).toHaveClass("min-h-20", "w-full", "flex-col");
+    expect(print).toHaveClass("min-h-14", "w-full", "flex-col");
     expect(within(print).getByText("Imprimir")).toBeInTheDocument();
   });
 
