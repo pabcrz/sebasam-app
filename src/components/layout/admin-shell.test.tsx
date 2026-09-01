@@ -173,6 +173,7 @@ describe("AdminShell", () => {
     // At least 2 elements: one in mobile header, one in desktop header center
     expect(matchedTitles.length).toBeGreaterThanOrEqual(2);
     expect(within(header).queryByText("Panel de operaciones")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: expectedTitle })).toBeInTheDocument();
   });
 
   it("links both SEBASAM brand marks to the dashboard", () => {

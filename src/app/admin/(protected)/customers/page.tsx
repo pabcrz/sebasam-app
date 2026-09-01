@@ -31,8 +31,6 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <h1 className="sr-only">Clientes</h1>
-
       {params.created ? (
         <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]" role="status">
           Cliente creado.

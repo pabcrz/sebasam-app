@@ -97,7 +97,6 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <h1 className="sr-only">Cotizaciones</h1>
       <div className="flex justify-end">
         <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
       </div>

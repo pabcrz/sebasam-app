@@ -179,9 +179,9 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <p className="hidden font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)] md:block">
+              <h1 className="hidden font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)] md:block">
                 {sectionTitle}
-              </p>
+              </h1>
               {isGlobalPending ? (
                 <span className="flex items-center gap-1 text-xs text-[var(--color-primary)] font-medium">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
