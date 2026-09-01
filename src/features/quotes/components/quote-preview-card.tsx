@@ -137,8 +137,8 @@ export function QuotePreviewCard({
   });
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm print:border-none print:shadow-none print:bg-white print:rounded-none flex-1 flex flex-col print:min-h-0 print:flex-none">
-      <div className="flex-1 flex flex-col gap-6 p-4 md:p-6 print:gap-3 print:p-0 print:pt-2 print:min-h-0 print:flex-none">
+    <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm print:border-none print:shadow-none print:bg-white print:rounded-none flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col gap-6 p-4 md:p-6 print:gap-3 print:p-0 print:pt-2">
         {!compactHeader && (
           <div className="flex flex-col rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 print:border-gray-200 print:bg-gray-50">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
@@ -316,7 +316,7 @@ export function QuotePreviewCard({
           )}
         </div>
 
-        <div className="mt-auto print:mt-4 flex flex-col gap-4 print:gap-2 print:break-inside-avoid">
+        <div className="mt-auto flex flex-col gap-4 print:gap-2 print:break-inside-avoid">
           <div data-testid="quote-totals-block" className="print:break-inside-avoid">
             <QuoteTotalsCard
               subtotalCents={displaySubtotalCents}
