@@ -68,18 +68,48 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
     const sharedQuote = await getSharedQuoteByToken(token);
     const quote = sharedQuote.quote;
     const documentType = quote.workOrder !== null ? "Nota" : "Cotización";
+    const customerName = quote.customer?.name ?? "Sin cliente";
+    const vehicleDescription = quote.vehicle
+      ? formatVehicle(quote.vehicle)
+      : formatSnapshotVehicle(quote.vehicleSnapshot);
+
     const title = formatDocumentPdfFilename({
       customerName: quote.customer?.name,
       vehicle: quote.vehicle ?? quote.vehicleSnapshot,
       operationalDate: quote.operationalDate,
       fallbackType: documentType,
     });
+    const displayTitle = `${documentType} ${quote.number} | SEBASAM`;
+    const description = `${documentType} para ${customerName} - ${vehicleDescription}`;
+
     return {
       title,
+      description,
+      openGraph: {
+        title: displayTitle,
+        description,
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: displayTitle,
+        description,
+      },
     };
   } catch {
     return {
       title: "Cotización",
+      description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+      openGraph: {
+        title: "Cotización | SEBASAM",
+        description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "Cotización | SEBASAM",
+        description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
+      },
     };
   }
 }
