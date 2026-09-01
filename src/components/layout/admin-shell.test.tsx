@@ -133,6 +133,46 @@ describe("AdminShell", () => {
     expect(mobileNav).toHaveStyle({ paddingBottom: "env(safe-area-inset-bottom)" });
   });
 
+  it("does not render static Operaciones subtitle under sidebar brand mark", () => {
+    render(
+      <AdminShell displayName="Admin User" role="admin">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const aside = screen.getByRole("complementary");
+    expect(within(aside).queryByText(/operaciones/i)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["/admin", "Inicio"],
+    ["/admin/customers", "Clientes"],
+    ["/admin/customers/cust-1/edit", "Clientes"],
+    ["/admin/workers", "Trabajadores"],
+    ["/admin/workers/worker-1/edit", "Trabajadores"],
+    ["/admin/quotes", "Cotizaciones"],
+    ["/admin/quotes/nueva", "Cotizaciones"],
+    ["/admin/quotes/quote-1/edit", "Cotizaciones"],
+    ["/admin/work-orders", "Trabajos"],
+    ["/admin/work-orders/wo-1", "Trabajos"],
+    ["/admin/notas", "Notas"],
+    ["/admin/nomina", "Nómina"],
+    ["/admin/nomina/worker-1", "Nómina"],
+    ["/admin/configuracion-pago", "Configuración"],
+    ["/admin/users", "Usuarios"],
+  ])("renders dynamic section title '%s' -> '%s' as h1 in desktop top bar", (pathname, expectedTitle) => {
+    mockPathname = pathname;
+    render(
+      <AdminShell displayName="Admin User" role="admin">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const header = screen.getByRole("banner");
+    expect(within(header).queryByText("Panel de operaciones")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: expectedTitle })).toBeInTheDocument();
+  });
+
   it("links both SEBASAM brand marks to the dashboard", () => {
     render(
       <AdminShell displayName="Admin User" role="admin">
@@ -147,3 +187,4 @@ describe("AdminShell", () => {
     expect(brandLinks.every((link) => link.className.includes("focus-visible:ring-[3px]"))).toBe(true);
   });
 });
+

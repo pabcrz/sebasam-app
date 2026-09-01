@@ -116,9 +116,20 @@ function NavLink({
   );
 }
 
+export function getSectionTitle(pathname: string): string {
+  if (pathname === "/admin") {
+    return "Inicio";
+  }
+  const matched = navItems
+    .filter((item) => item.href !== "/admin")
+    .find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  return matched?.label ?? "Inicio";
+}
+
 export function AdminShell({ displayName, role, children }: AdminShellProps) {
   const [isGlobalPending, setGlobalPending] = React.useState(false);
   const pathname = usePathname();
+  const sectionTitle = getSectionTitle(pathname);
 
   // Reset global pending indicator when pathname changes
   React.useEffect(() => {
@@ -136,9 +147,6 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
           >
             SEBASAM
           </Link>
-          <p className="mt-1 font-mono text-[0.68rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-            Operaciones
-          </p>
         </div>
 
         <nav aria-label="Navegación principal" className="mt-6 flex flex-1 flex-col gap-1">
@@ -162,18 +170,15 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
             <div className="md:hidden">
               <Link
                 href="/admin"
-                className="inline-flex min-h-[var(--tap-min-height)] flex-col justify-center rounded-md px-2 text-lg font-extrabold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+                className="inline-flex min-h-[var(--tap-min-height)] items-center rounded-md px-2 text-lg font-extrabold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
               >
                 SEBASAM
               </Link>
-              <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-                Operaciones
-              </p>
             </div>
             <div className="flex items-center gap-2">
-              <p className="hidden font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)] md:block">
-                Panel de operaciones
-              </p>
+              <h1 className="hidden font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)] md:block">
+                {sectionTitle}
+              </h1>
               {isGlobalPending ? (
                 <span className="flex items-center gap-1 text-xs text-[var(--color-primary)] font-medium">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />

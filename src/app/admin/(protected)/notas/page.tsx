@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { FileCheck } from "lucide-react";
 import Link from "next/link";
 import { listCompletedWorkOrders } from "@/features/work-orders/queries";
 import { notasHref, parseNotasParams } from "@/features/work-orders/notas-period";
@@ -11,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui";
-import { AdminPageHeader } from "@/components/admin-page-header";
 import { WorkOrderCompletedList } from "@/features/work-orders/components/work-order-completed-list";
 import { recordPaymentAction } from "@/features/payments/actions";
 import { rollbackWorkOrderAction } from "@/features/work-orders/actions";
@@ -30,11 +28,6 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <AdminPageHeader
-        icon={FileCheck}
-        title="Notas"
-      />
-
       <NotasFilters mode={filters.mode} payment={filters.payment} assignee={filters.assignee} anchor={filters.anchor} rangeLabel={filters.rangeLabel} isCurrentWeek={filters.isCurrentWeek} masters={masters} />
 
       <Card className="min-w-0">
