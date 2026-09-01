@@ -1,6 +1,11 @@
+"use client";
+
+import * as React from "react";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
-import type { CustomerAccountStatement } from "../queries";
+import { ReversePaymentDialog } from "@/features/payments/components/reverse-payment-dialog";
+import { reversePaymentCaptureAction } from "@/features/payments/actions";
+import type { CustomerAccountStatement as CustomerAccountStatementType } from "../queries";
 
 const movementTypeLabels: Record<string, string> = {
   CREDIT: "Crédito",
@@ -21,10 +26,16 @@ const paymentMethodLabels: Record<string, string> = {
 };
 
 type CustomerAccountStatementProps = {
-  statement: CustomerAccountStatement;
+  statement: CustomerAccountStatementType;
+  reversePaymentAction?: (paymentId: string, reason: string, operationKey?: string) => Promise<unknown>;
+  onPaymentReversed?: () => void;
 };
 
-export function CustomerAccountStatement({ statement }: CustomerAccountStatementProps) {
+export function CustomerAccountStatement({
+  statement,
+  reversePaymentAction = reversePaymentCaptureAction,
+  onPaymentReversed,
+}: CustomerAccountStatementProps) {
   const isSettled = statement.pendingBalanceCents === 0;
 
   return (
@@ -96,18 +107,45 @@ export function CustomerAccountStatement({ statement }: CustomerAccountStatement
                   ? (paymentMethodLabels[movement.payment.method] ?? movement.payment.method)
                   : "—";
 
+                const isPaymentCapture = movement.movementType === "PAYMENT_CAPTURE";
+                const isReversed = Boolean(movement.payment?.reversedAt);
+                const canReversePayment = isPaymentCapture && movement.payment && !isReversed;
+
                 return (
                   <li key={movement.id} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] p-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="font-medium text-[var(--color-text-main)]">{title}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-[var(--color-text-main)]">{title}</p>
+                          {isReversed && (
+                            <Badge variant="danger" className="text-xs">
+                              Revertido
+                            </Badge>
+                          )}
+                        </div>
                         <time className="text-sm text-[var(--color-text-muted)]" dateTime={movement.createdAt.toISOString()}>
                           {formatDate(movement.createdAt)}
                         </time>
                       </div>
-                      <span className="text-sm font-semibold tabular-nums text-[var(--color-text-main)]">
-                        {movement.type === "DEBIT" ? "-" : "+"}{formatCents(movement.amountCents)}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold tabular-nums text-[var(--color-text-main)]">
+                          {movement.type === "DEBIT" ? "-" : "+"}{formatCents(movement.amountCents)}
+                        </span>
+                        {canReversePayment && movement.payment && (
+                          <ReversePaymentDialog
+                            paymentId={movement.payment.id}
+                            amountCents={movement.amountCents}
+                            method={movement.payment.method}
+                            paymentDate={movement.createdAt}
+                            reference={movement.payment.operationKey}
+                            action={reversePaymentAction}
+                            triggerLabel="Revertir"
+                            triggerSize="sm"
+                            triggerVariant="outline"
+                            onSuccess={onPaymentReversed}
+                          />
+                        )}
+                      </div>
                     </div>
                     <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
                       <div>
