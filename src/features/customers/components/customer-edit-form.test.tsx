@@ -21,6 +21,8 @@ describe("CustomerEditForm", () => {
 
     const hiddenId = document.querySelector('input[type="hidden"][name="customerId"]');
     expect(hiddenId).toHaveValue("cust-1");
+    expect(screen.getByText("Información del cliente").tagName).toBe("LEGEND");
+    expect(screen.getByText("Contacto y notas").tagName).toBe("LEGEND");
 
     expect(screen.getByLabelText("Nombre")).toHaveAttribute("name", "name");
     expect(screen.getByLabelText("Correo electrónico")).toHaveAttribute("name", "email");

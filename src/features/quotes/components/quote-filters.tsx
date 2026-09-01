@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Filter, X } from "lucide-react";
 import type { QuoteStatus } from "@prisma/client";
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusFilterNav } from "@/components/ui";
 import type { QuoteFilterInput } from "@/features/quotes/schemas";
 
 const quoteStatusLabels: Record<QuoteStatus, string> = {
@@ -127,27 +126,14 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
 
   return (
     <div className="grid gap-4">
-      {/* Quick Direct Status Chips */}
-      <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="Filtros directos por estado">
-        {statusChips.map((chip) => {
-          const isActive = activeChipKey === chip.key;
-          const href = buildStatusFilterHref(filters, chip.key);
-          return (
-            <Link
-              key={chip.key}
-              href={href}
-              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                isActive
-                  ? "bg-[var(--color-primary)] text-white shadow-xs"
-                  : "border border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]"
-              }`}
-              aria-pressed={isActive}
-            >
-              {chip.label}
-            </Link>
-          );
-        })}
-      </div>
+      <StatusFilterNav
+        label="Filtros directos por estado"
+        items={statusChips.map((chip) => ({
+          href: buildStatusFilterHref(filters, chip.key),
+          label: chip.label,
+          current: activeChipKey === chip.key,
+        }))}
+      />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
