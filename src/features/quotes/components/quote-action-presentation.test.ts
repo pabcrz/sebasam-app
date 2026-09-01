@@ -9,10 +9,10 @@ const base = {
 };
 
 describe("resolveQuoteActionPresentation", () => {
-  it("prioritizes preparing a draft while retaining Print and Edit as frequent actions", () => {
+  it("prioritizes preparing a draft while retaining Edit and Print as frequent actions", () => {
     expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT" })).toEqual({
       primary: "share",
-      frequent: ["print", "edit"],
+      frequent: ["edit", "print"],
       overflow: ["workOrder", "duplicate", "cancel", "archive"],
       destructive: "delete",
     });
@@ -21,23 +21,23 @@ describe("resolveQuoteActionPresentation", () => {
   it("prioritizes authorization for sent quotes and only exposes Share when an active link exists", () => {
     expect(resolveQuoteActionPresentation({ ...base, status: "SENT" })).toMatchObject({
       primary: "authorize",
-      frequent: ["print", "edit"],
+      frequent: ["edit", "print"],
       overflow: ["workOrder", "duplicate", "cancel", "archive"],
       destructive: "delete",
     });
-    expect(resolveQuoteActionPresentation({ ...base, status: "SENT", hasActiveSharedQuote: true }).frequent).toEqual(["print", "share", "edit"]);
+    expect(resolveQuoteActionPresentation({ ...base, status: "SENT", hasActiveSharedQuote: true }).frequent).toEqual(["edit", "print", "share"]);
   });
 
   it("prioritizes work-order management for approved quotes and keeps payment links to eligible work", () => {
     expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED" })).toEqual({
       primary: "workOrder",
-      frequent: ["print", "edit"],
+      frequent: ["edit", "print"],
       overflow: ["correctDecision", "duplicate"],
       destructive: null,
     });
     expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED", hasActiveSharedQuote: true, hasWorkOrder: true, paymentAvailable: true })).toEqual({
       primary: "workOrder",
-      frequent: ["print", "share", "edit"],
+      frequent: ["edit", "print", "share"],
       overflow: ["paymentLink", "duplicate"],
       destructive: null,
     });
@@ -52,13 +52,13 @@ describe("resolveQuoteActionPresentation", () => {
   it("surfaces a correction only for rejected quotes without a work order", () => {
     expect(resolveQuoteActionPresentation({ ...base, status: "REJECTED" })).toEqual({
       primary: "correctDecision",
-      frequent: ["print", "edit"],
+      frequent: ["edit", "print"],
       overflow: ["duplicate", "archive"],
       destructive: "delete",
     });
     expect(resolveQuoteActionPresentation({ ...base, status: "REJECTED", hasWorkOrder: true })).toMatchObject({
       primary: null,
-      frequent: ["print", "edit"],
+      frequent: ["edit", "print"],
       overflow: ["duplicate", "archive"],
     });
   });
@@ -72,7 +72,7 @@ describe("resolveQuoteActionPresentation", () => {
     });
     expect(resolveQuoteActionPresentation({ ...base, status: "ARCHIVED" })).toEqual({
       primary: "restore",
-      frequent: ["print", "edit"],
+      frequent: ["edit", "print"],
       overflow: ["duplicate"],
       destructive: "delete",
     });

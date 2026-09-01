@@ -167,12 +167,13 @@ describe("QuoteListCard", () => {
     expect(preview).toHaveClass("block", "w-full", "rounded-[var(--radius-sm)]", "focus-visible:ring-offset-2");
   });
 
-  it("uses one labeled primary action, labeled frequent actions including inline Print, and a separated accessible overflow dialog", async () => {
+  it("uses one full-width primary action, a tile row, and a separated accessible overflow dialog", async () => {
     const user = userEvent.setup();
     renderCard(createMockQuote());
 
     const primary = screen.getByRole("button", { name: "Preparar y compartir cotización C-001" });
     expect(primary).toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(screen.getByTestId("quote-primary-action")).toHaveClass("w-full");
     expect(screen.getByRole("button", { name: "Editar cotización C-001" })).toBeInTheDocument();
     const print = screen.getByRole("link", { name: "Imprimir cotización C-001" });
     expect(print).toBeInTheDocument();
@@ -191,16 +192,35 @@ describe("QuoteListCard", () => {
     expect(remove.closest("div[class*='border-t']")).not.toBeNull();
   });
 
-  it("renders frequent Print inline beside Edit: short label on mobile, icon-only 44px target with explicit aria-label/title at sm+", () => {
+  it("renders Edit and Print as equal-width vertical action tiles", () => {
     renderCard(createMockQuote());
 
+    const frequentActions = screen.getByTestId("quote-frequent-actions");
+    const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
     const print = screen.getByRole("link", { name: "Imprimir cotización C-001" });
-    expect(screen.getByRole("button", { name: "Editar cotización C-001" })).toBeInTheDocument();
+    expect(frequentActions).toHaveClass("grid-cols-2");
+    expect(edit).toHaveClass("min-h-20", "w-full", "flex-col");
     expect(print).toHaveAttribute("aria-label", "Imprimir cotización C-001");
     expect(print).toHaveAttribute("title", "Imprimir cotización C-001");
-    expect(print).toHaveClass("min-h-11", "min-w-11");
+    expect(print).toHaveClass("min-h-20", "w-full", "flex-col");
     expect(within(print).getByText("Imprimir")).toBeInTheDocument();
-    expect(print.querySelector("span")).toHaveClass("sm:hidden");
+  });
+
+  it("renders Sent frequent actions in the required Edit, Print, Share three-tile order", () => {
+    renderCard(createMockQuote({
+      status: "SENT",
+      activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"],
+    }));
+
+    const frequentActions = screen.getByTestId("quote-frequent-actions");
+    expect(frequentActions).toHaveClass("grid-cols-3");
+    expect(Array.from(frequentActions.querySelectorAll<HTMLElement>("[aria-label]")).map((element) => element.getAttribute("aria-label"))).toEqual([
+      "Editar cotización C-001",
+      "Imprimir cotización C-001",
+      "Compartir cotización C-001",
+    ]);
+    expect(screen.getByTestId("quote-overflow-action")).toHaveClass("flex", "justify-center");
+    expect(screen.getByRole("button", { name: "Más acciones de cotización C-001" })).not.toHaveClass("border");
   });
 
   it("renders a pending-price draft without payment actions", async () => {

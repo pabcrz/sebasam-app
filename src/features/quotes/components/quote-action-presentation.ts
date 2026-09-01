@@ -80,9 +80,9 @@ export function resolveQuoteActionPresentation({
     ARCHIVED: ["restore"],
   };
   const primary = primaryCandidates[status].find((action) => available.has(action)) ?? null;
-  // Print is always available, so it is always a frequent action. Order is
-  // deterministic (print, share, edit) so mobile renders Print beside Edit.
-  const frequent: QuoteActionId[] = (["print", "share", "edit"] as const).filter(
+  // Print is always available, so it is always a frequent action. The order
+  // mirrors the card tiles: Edit, Print, then Share when it is available.
+  const frequent: QuoteActionId[] = (["edit", "print", "share"] as const).filter(
     (action) => available.has(action) && action !== primary,
   );
   const overflow = actionOrder.filter(

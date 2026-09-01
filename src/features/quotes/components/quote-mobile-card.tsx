@@ -94,7 +94,13 @@ export function QuoteListCard({
     paymentAvailable: paymentRequestContext !== null,
   });
 
-  const renderAction = (action: QuoteActionId, variant: "primary" | "outline" = "outline") => {
+  const renderAction = (
+    action: QuoteActionId,
+    variant: "primary" | "outline" = "outline",
+    presentation: "default" | "tile" = "default",
+  ) => {
+    const tileClassName = presentation === "tile" ? "min-h-20 w-full flex-col gap-1 px-2" : "w-full";
+
     switch (action) {
       case "print":
         return (
@@ -103,13 +109,13 @@ export function QuoteListCard({
             type="button"
             variant={variant}
             size="sm"
-            className="min-h-11 min-w-11 px-3 sm:px-0"
+            className={presentation === "tile" ? tileClassName : "min-h-11 min-w-11 px-3 sm:px-0"}
             aria-label={`Imprimir cotización ${quote.number}`}
             title={`Imprimir cotización ${quote.number}`}
           >
             <Link href={printHref}>
               <Printer className="h-4 w-4" aria-hidden="true" />
-              <span className="sm:hidden">Imprimir</span>
+              <span>Imprimir</span>
             </Link>
           </Button>
         );
@@ -124,7 +130,7 @@ export function QuoteListCard({
             triggerAriaLabel={`Editar cotización ${quote.number}`}
             triggerSize="sm"
             triggerVariant={variant}
-            triggerClassName="w-full"
+            triggerClassName={tileClassName}
           />
         );
       case "share":
@@ -135,7 +141,7 @@ export function QuoteListCard({
             status={quote.status}
             quoteNumber={quote.number}
             variant={variant}
-            className="w-full"
+            className={tileClassName}
           />
         );
       case "authorize":
@@ -245,23 +251,30 @@ export function QuoteListCard({
         </div>
       </button>
 
-      <div className="mt-4 grid gap-2">
+      <div className="mt-4 grid gap-3">
         <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
-        <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
-          {actionPresentation.primary ? (
-            <div className="min-w-0 flex-1">{renderAction(actionPresentation.primary, "primary")}</div>
-          ) : null}
-          {actionPresentation.frequent.map((action) => (
-            <div key={action} className="min-w-0 flex-1 sm:flex-none">{renderAction(action)}</div>
-          ))}
-          <div className="min-w-0 flex-1 sm:flex-none">
+        {actionPresentation.primary ? (
+          <div data-testid="quote-primary-action" className="w-full [&_a]:w-full [&_button]:w-full">
+            {renderAction(actionPresentation.primary, "primary")}
+          </div>
+        ) : null}
+        {actionPresentation.frequent.length > 0 ? (
+          <div
+            data-testid="quote-frequent-actions"
+            className={`grid gap-2 ${actionPresentation.frequent.length === 3 ? "grid-cols-3" : actionPresentation.frequent.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}
+          >
+            {actionPresentation.frequent.map((action) => (
+              <div key={action} className="min-w-0">{renderAction(action, "outline", "tile")}</div>
+            ))}
+          </div>
+        ) : null}
+        <div data-testid="quote-overflow-action" className="flex justify-center">
             <QuoteActionsMenu
               quoteNumber={quote.number}
               destructive={actionPresentation.destructive ? renderAction(actionPresentation.destructive) : null}
             >
               {actionPresentation.overflow.map((action) => <React.Fragment key={action}>{renderAction(action)}</React.Fragment>)}
             </QuoteActionsMenu>
-          </div>
         </div>
       </div>
     </div>

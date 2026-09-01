@@ -26,9 +26,9 @@ export function QuoteActionsMenu({ quoteNumber, children, destructive }: QuoteAc
       <DialogTrigger asChild>
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="w-full"
+          className="min-h-11 px-3"
           aria-label={`Más acciones de cotización ${quoteNumber}`}
           title={`Más acciones de cotización ${quoteNumber}`}
         >
