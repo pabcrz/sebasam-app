@@ -536,7 +536,7 @@ async function deleteQuoteAuthorized(quoteId: string) {
       throw new Error("This quote cannot be deleted in its current state.");
     }
 
-    if (await tx.payment.count({ where: { quoteId, reversedAt: null } })) {
+    if (await tx.payment.count({ where: { quoteId } })) {
       throw new Error("This quote has financial activity and cannot be deleted.");
     }
 
@@ -575,6 +575,7 @@ export async function deleteQuoteFromForm(formData: FormData) {
   try {
     await deleteQuoteAuthorized(quoteId);
   } catch (error) {
+    console.error("[deleteQuoteFromForm] Error deleting quote:", error);
     if (error instanceof Error && error.message.includes("deleted")) {
       redirect(`${quotesPath}?error=cannot-delete`);
     }
