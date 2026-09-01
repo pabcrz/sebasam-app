@@ -126,14 +126,14 @@ export function BankDataCard({ bankAccounts }: BankDataCardProps) {
           return (
             <div key={account.id}>
               {accounts.length > 1 || account.isForInvoicing ? (
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   {accounts.length > 1 ? (
                     <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                       Cuenta {index + 1}
                     </p>
                   ) : <div />}
                   {account.isForInvoicing ? (
-                    <Badge variant="info">Cuenta exclusiva para facturación</Badge>
+                    <Badge variant="info">Facturación</Badge>
                   ) : null}
                 </div>
               ) : null}

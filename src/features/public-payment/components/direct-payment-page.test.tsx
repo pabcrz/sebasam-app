@@ -162,7 +162,7 @@ describe("DirectPaymentPage", () => {
     expect(screen.queryByText("CLABE")).not.toBeInTheDocument();
   });
 
-  it("renders 'Cuenta exclusiva para facturación' badge when isForInvoicing is true", () => {
+  it("renders 'Facturación' badge when isForInvoicing is true", () => {
     render(
       <DirectPaymentPage
         business={mockBusiness}
@@ -180,7 +180,7 @@ describe("DirectPaymentPage", () => {
       />,
     );
 
-    expect(screen.getByText("Cuenta exclusiva para facturación")).toBeInTheDocument();
+    expect(screen.getByText("Facturación")).toBeInTheDocument();
   });
 
   it("omits invoicing badge when isForInvoicing is false", () => {
@@ -201,6 +201,6 @@ describe("DirectPaymentPage", () => {
       />,
     );
 
-    expect(screen.queryByText("Cuenta exclusiva para facturación")).not.toBeInTheDocument();
+    expect(screen.queryByText("Facturación")).not.toBeInTheDocument();
   });
 });
