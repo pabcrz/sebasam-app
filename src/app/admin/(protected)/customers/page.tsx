@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 type CustomersPageProps = {
   searchParams: Promise<{
     created?: string;
+    deleted?: string;
     error?: string;
     q?: string;
     updated?: string;
@@ -43,7 +44,17 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
           Cliente actualizado.
         </p>
       ) : null}
-      {params.error === "invalid" ? (
+      {params.deleted ? (
+        <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]" role="status">
+          Cliente eliminado.
+        </p>
+      ) : null}
+      {params.error === "cannot-delete" ? (
+        <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
+          No se puede eliminar el cliente porque tiene cotizaciones o actividad financiera asociada.
+        </p>
+      ) : null}
+      {params.error === "invalid" || params.error === "invalid-deletion" ? (
         <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]" role="alert">
           Revisa los datos del cliente e intenta de nuevo.
         </p>
