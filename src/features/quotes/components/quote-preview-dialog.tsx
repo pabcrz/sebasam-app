@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Eye, Printer, X } from "lucide-react";
-import Link from "next/link";
+import { Eye, X } from "lucide-react";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import {
   Button,
@@ -98,10 +97,6 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
     [onOpenChange],
   );
   const preview = toQuotePreviewCardProps(quote);
-  const printHref = quote.workOrder?.status === "COMPLETED"
-    ? `/admin/notas/${quote.workOrder.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`
-    : `/admin/quotes/${quote.id}/print?returnTo=/admin/quotes`;
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {showTrigger ? (
@@ -132,12 +127,6 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
         </DialogHeader>
 
         <QuotePreviewCard {...preview} />
-        <Button asChild type="button" variant="primary" size="sm" className="!h-11 !w-11 min-h-11 min-w-11 px-0 sm:!h-9 sm:!w-auto sm:px-3">
-          <Link href={printHref}>
-            <Printer className="h-4 w-4" aria-hidden="true" />
-            <span className="sr-only sm:not-sr-only">Imprimir cotización</span>
-          </Link>
-        </Button>
       </DialogContent>
     </Dialog>
   );
