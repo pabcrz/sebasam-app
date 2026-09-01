@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import { PublicBrandHeader } from "@/features/public-branding/public-brand-header";
-import type { PublicBusinessIdentity } from "@/features/public-branding/domain";
+import { getPublicMapsUrl, type PublicBusinessIdentity } from "@/features/public-branding/domain";
 import { formatOperationalDate } from "@/features/quotes/lib/format";
+
+const defaultQuoteLogoSrc = "/logo-white-short.png";
 
 export interface PublicQuoteShellProps {
   children: React.ReactNode;
@@ -20,6 +22,8 @@ export interface PublicQuoteShellProps {
 
 export function PublicQuoteShell({ children, business, location, logoSrc, documentType = "Cotización", documentNumber, date, customerName, vehicleDescription }: PublicQuoteShellProps) {
   const resolvedBusiness = business ?? {};
+  const resolvedLogoSrc = logoSrc ?? (resolvedBusiness.businessName ? defaultQuoteLogoSrc : undefined);
+  const mapsUrl = getPublicMapsUrl(location?.mapsUrl);
 
   return (
     <div className="flex flex-1 min-h-screen flex-col bg-[var(--background)] print:min-h-0 print:bg-white">
@@ -28,8 +32,8 @@ export function PublicQuoteShell({ children, business, location, logoSrc, docume
         <div className="relative mx-auto max-w-4xl flex flex-col sm:flex-row print:flex-row gap-6 print:gap-4 items-start">
           
           <div className="flex flex-col w-full sm:w-3/5 print:w-3/5">
-            <PublicBrandHeader identity={resolvedBusiness} logoSrc={logoSrc} />
-            {location?.address ? <a href={location.mapsUrl || "#"} target="_blank" rel="noopener noreferrer" className="mt-1 max-w-sm rounded-sm text-xs text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:text-gray-600 print:text-[11px] print:no-underline">{location.address}</a> : null}
+            <PublicBrandHeader identity={resolvedBusiness} logoSrc={resolvedLogoSrc} quoteLayout />
+            {location?.address ? mapsUrl ? <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 max-w-sm rounded-sm text-xs text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:text-gray-600 print:text-[11px] print:no-underline">{location.address}</a> : <p className="mt-1 max-w-sm text-xs text-white/80 print:text-gray-600 print:text-[11px]">{location.address}</p> : null}
           </div>
 
           <div className="flex flex-col sm:items-end print:items-end w-full sm:w-2/5 print:w-2/5">

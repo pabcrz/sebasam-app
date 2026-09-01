@@ -3,15 +3,16 @@ import { render, screen } from "@testing-library/react";
 import { PublicQuoteShell } from "./public-quote-shell";
 
 describe("PublicQuoteShell", () => {
-  it("renders configured branding and preserves print-safe logo treatment", () => {
-    render(<PublicQuoteShell business={{ businessName: "Taller Norte" }} logoSrc="/taller-norte.png">content</PublicQuoteShell>);
+  it("renders the approved quote brand treatment and subtitle", () => {
+    render(<PublicQuoteShell business={{ businessName: "Taller Norte", fullName: "Servicio Norte" }} logoSrc="/taller-norte.png">content</PublicQuoteShell>);
 
     const logos = screen.getAllByRole("img", { name: "Logo de Taller Norte" });
 
     expect(logos).toHaveLength(1);
     expect(logos[0]).toHaveAttribute("src", expect.stringContaining("taller-norte.png"));
-    expect(logos[0]).toHaveClass("print:h-10", "print:w-10", "print:invert");
-    expect(screen.getByRole("heading", { name: "Taller Norte" })).toHaveClass("font-mono");
+    expect(logos[0]).toHaveClass("h-13", "print:h-10", "print:w-10", "print:invert");
+    expect(screen.getByRole("heading", { name: "Taller Norte" })).toHaveClass("print:text-2xl", "print:text-black");
+    expect(screen.getByText("Servicio Norte")).toHaveClass("font-mono", "print:text-[10px]");
     expect(screen.getAllByText("Cotización").length).toBeGreaterThanOrEqual(1);
   });
 
@@ -32,6 +33,13 @@ describe("PublicQuoteShell", () => {
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
+  it("renders an address without a map URL as text instead of an invalid link", () => {
+    render(<PublicQuoteShell location={{ address: "Batalla de Casa Blanca", mapsUrl: "not a URL" }}>content</PublicQuoteShell>);
+
+    expect(screen.getByText("Batalla de Casa Blanca")).not.toHaveAttribute("href");
+    expect(screen.queryByRole("link", { name: /Batalla de Casa Blanca/i })).not.toBeInTheDocument();
+  });
+
   it("gives public header links a high-contrast keyboard focus ring", () => {
      render(<PublicQuoteShell business={{ businessName: "Taller Norte" }} location={{ address: "Address", mapsUrl: "https://maps.example.test" }}>content</PublicQuoteShell>);
 
@@ -49,7 +57,7 @@ describe("PublicQuoteShell", () => {
   it("renders the header with complete client, vehicle, date, and document metadata", () => {
     const { container } = render(
         <PublicQuoteShell
-          business={{ businessName: "SEBASAM", phone: "5556007675", whatsapp: "5536239346" }}
+          business={{ businessName: "SEBASAM", fullName: "Servicio y Refacciones para Suspensiones de Aire y Muelles", phone: "5556007675", whatsapp: "5536239346" }}
           location={{ address: "Batalla de Casa Blanca" }}
         documentType="Cotización"
         documentNumber="C-0826-001"
@@ -62,6 +70,7 @@ describe("PublicQuoteShell", () => {
     );
 
     expect(container).toHaveTextContent("SEBASAM");
+    expect(container).toHaveTextContent("Servicio y Refacciones para Suspensiones de Aire y Muelles");
     expect(container).toHaveTextContent("5556007675");
     expect(container).toHaveTextContent("5536239346");
     expect(container).toHaveTextContent("Batalla de Casa Blanca");

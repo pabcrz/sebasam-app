@@ -4,7 +4,7 @@ import * as React from "react";
 import { clsx } from "clsx";
 import { Landmark, FileText, Banknote } from "lucide-react";
 import { PublicBrandHeader } from "@/features/public-branding/public-brand-header";
-import type { PublicBusinessIdentity } from "@/features/public-branding/domain";
+import { getPublicMapsUrl, type PublicBusinessIdentity } from "@/features/public-branding/domain";
 
 export type ShellBusinessSettings = PublicBusinessIdentity;
 
@@ -34,6 +34,7 @@ const badgeConfig = {
 export function PublicPaymentShell({ children, badge = "payment-and-invoice", business, location, logoSrc }: PublicPaymentShellProps) {
   const resolvedBusiness = business ?? {};
   const headerBusiness = { ...resolvedBusiness, phone: undefined, whatsapp: undefined };
+  const mapsUrl = getPublicMapsUrl(location?.mapsUrl);
   const badgeInfo = badgeConfig[badge];
   const BadgeIcon = badgeInfo.icon;
 
@@ -58,14 +59,14 @@ export function PublicPaymentShell({ children, badge = "payment-and-invoice", bu
       <footer className="bg-[var(--color-navy-900)] px-6 py-5 text-[var(--color-on-navy-tint)] md:px-8">
         <div className="mx-auto max-w-6xl">
           {location?.address ? (
-            <a
-              href={location.mapsUrl || "#"}
+            mapsUrl ? <a
+              href={mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm underline transition-colors hover:text-white"
             >
               {location.address}
-            </a>
+            </a> : <p className="text-sm">{location.address}</p>
           ) : null}
         </div>
       </footer>

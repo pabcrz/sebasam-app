@@ -291,6 +291,13 @@ describe("PublicPaymentShell", () => {
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
+  it("renders an address without a valid map URL as text", () => {
+    render(<PublicPaymentShell location={{ address: "Batalla de Casa Blanca", mapsUrl: "not a URL" }}><p>content</p></PublicPaymentShell>);
+
+    expect(screen.getByText("Batalla de Casa Blanca")).not.toHaveAttribute("href");
+    expect(screen.queryByRole("link", { name: /Batalla de Casa Blanca/i })).not.toBeInTheDocument();
+  });
+
   it("renders business data from props", () => {
     render(
       <PublicPaymentShell
