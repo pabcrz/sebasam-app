@@ -7,8 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui";
-import { ClipboardList } from "lucide-react";
-import { AdminPageHeader } from "@/components/admin-page-header";
 import { WorkOrderActiveList } from "@/features/work-orders/components/work-order-active-list";
 import { listCustomers } from "@/features/customers/queries";
 import { listQuotes } from "@/features/quotes/queries";
@@ -38,10 +36,7 @@ export default async function WorkOrdersPage() {
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <AdminPageHeader
-        icon={ClipboardList}
-        title="Trabajos"
-      />
+      <h1 className="sr-only">Trabajos</h1>
 
       <Card className="min-w-0">
         <CardHeader>
