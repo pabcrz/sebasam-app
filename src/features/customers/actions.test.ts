@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import {
   createOrReuseCustomerForQuote,
+  deleteCustomer,
+  deleteCustomerFromForm,
   getCustomerDetail,
   searchCustomersForQuote,
   updateCustomerBasics,
@@ -12,11 +14,32 @@ import { getCustomerAccountStatement, getCustomerById } from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    $transaction: vi.fn(),
     customer: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
       findUniqueOrThrow: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
+    },
+    quote: {
+      count: vi.fn(),
+    },
+    payment: {
+      count: vi.fn(),
+    },
+    paymentRequest: {
+      count: vi.fn(),
+    },
+    ledgerEntry: {
+      count: vi.fn(),
+    },
+    vehicle: {
+      deleteMany: vi.fn(),
+    },
+    customerFiscalProfile: {
+      deleteMany: vi.fn(),
     },
   },
 }));
@@ -37,6 +60,9 @@ vi.mock("./queries", () => ({
   getCustomerAccountStatement: vi.fn(),
   getCustomerById: vi.fn(),
 }));
+
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 const existingCustomer = {
   id: "cust-existing",
@@ -323,3 +349,144 @@ describe("getCustomerDetail", () => {
     expect(getCustomerAccountStatement).not.toHaveBeenCalled();
   });
 });
+
+describe("deleteCustomer", () => {
+  type MockTx = {
+    customer: { findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
+    quote: { count: ReturnType<typeof vi.fn> };
+    payment: { count: ReturnType<typeof vi.fn> };
+    paymentRequest: { count: ReturnType<typeof vi.fn> };
+    ledgerEntry: { count: ReturnType<typeof vi.fn> };
+    vehicle: { deleteMany: ReturnType<typeof vi.fn> };
+    customerFiscalProfile: { deleteMany: ReturnType<typeof vi.fn> };
+  };
+
+  function mockDeleteTx(): MockTx {
+    const tx: MockTx = {
+      customer: {
+        findUnique: vi.fn().mockResolvedValue({ id: "cust-1", name: "Cliente Prueba" }),
+        delete: vi.fn().mockResolvedValue({ id: "cust-1" }),
+      },
+      quote: { count: vi.fn().mockResolvedValue(0) },
+      payment: { count: vi.fn().mockResolvedValue(0) },
+      paymentRequest: { count: vi.fn().mockResolvedValue(0) },
+      ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
+      vehicle: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      customerFiscalProfile: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    };
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
+    return tx;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({ profile: { id: "admin-1" } });
+  });
+
+  it("authorizes and permanently deletes customer and related test vehicles and fiscal profiles", async () => {
+    const tx = mockDeleteTx();
+
+    await deleteCustomer("cust-1");
+
+    expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    expect(tx.vehicle.deleteMany).toHaveBeenCalledWith({ where: { customerId: "cust-1" } });
+    expect(tx.customerFiscalProfile.deleteMany).toHaveBeenCalledWith({ where: { customerId: "cust-1" } });
+    expect(tx.customer.delete).toHaveBeenCalledWith({ where: { id: "cust-1" } });
+  });
+
+  it("throws error when customer is not found", async () => {
+    const tx = mockDeleteTx();
+    tx.customer.findUnique.mockResolvedValue(null);
+
+    await expect(deleteCustomer("missing")).rejects.toThrow("Customer not found.");
+    expect(tx.customer.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejects deletion when customer has quotes", async () => {
+    const tx = mockDeleteTx();
+    tx.quote.count.mockResolvedValue(2);
+
+    await expect(deleteCustomer("cust-1")).rejects.toThrow("This customer has quotes and cannot be deleted.");
+    expect(tx.customer.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejects deletion when customer has payments", async () => {
+    const tx = mockDeleteTx();
+    tx.payment.count.mockResolvedValue(1);
+
+    await expect(deleteCustomer("cust-1")).rejects.toThrow("This customer has financial activity and cannot be deleted.");
+    expect(tx.customer.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejects deletion when customer has payment requests", async () => {
+    const tx = mockDeleteTx();
+    tx.paymentRequest.count.mockResolvedValue(1);
+
+    await expect(deleteCustomer("cust-1")).rejects.toThrow("This customer has payment requests and cannot be deleted.");
+    expect(tx.customer.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejects deletion when customer has ledger entries", async () => {
+    const tx = mockDeleteTx();
+    tx.ledgerEntry.count.mockResolvedValue(1);
+
+    await expect(deleteCustomer("cust-1")).rejects.toThrow("This customer has ledger entries and cannot be deleted.");
+    expect(tx.customer.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteCustomerFromForm", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({ profile: { id: "admin-1" } });
+  });
+
+  it("authorizes, deletes customer, revalidates paths and redirects to /admin/customers?deleted=1", async () => {
+    const tx = {
+      customer: {
+        findUnique: vi.fn().mockResolvedValue({ id: "cust-1", name: "Cliente Prueba" }),
+        delete: vi.fn().mockResolvedValue({ id: "cust-1" }),
+      },
+      quote: { count: vi.fn().mockResolvedValue(0) },
+      payment: { count: vi.fn().mockResolvedValue(0) },
+      paymentRequest: { count: vi.fn().mockResolvedValue(0) },
+      ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
+      vehicle: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      customerFiscalProfile: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    };
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
+
+    const formData = new FormData();
+    formData.set("customerId", "cust-1");
+
+    await deleteCustomerFromForm(formData);
+
+    expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    expect(tx.customer.delete).toHaveBeenCalledWith({ where: { id: "cust-1" } });
+    expect(redirect).toHaveBeenCalledWith("/admin/customers?deleted=1");
+  });
+
+  it("redirects with cannot-delete error when deletion is rejected due to activity", async () => {
+    const tx = {
+      customer: {
+        findUnique: vi.fn().mockResolvedValue({ id: "cust-1", name: "Cliente Prueba" }),
+        delete: vi.fn(),
+      },
+      quote: { count: vi.fn().mockResolvedValue(1) },
+      payment: { count: vi.fn().mockResolvedValue(0) },
+      paymentRequest: { count: vi.fn().mockResolvedValue(0) },
+      ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
+      vehicle: { deleteMany: vi.fn() },
+      customerFiscalProfile: { deleteMany: vi.fn() },
+    };
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
+
+    const formData = new FormData();
+    formData.set("customerId", "cust-1");
+
+    await deleteCustomerFromForm(formData);
+
+    expect(redirect).toHaveBeenCalledWith("/admin/customers/cust-1/edit?error=cannot-delete");
+  });
+});
+
