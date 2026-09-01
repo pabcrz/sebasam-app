@@ -73,8 +73,8 @@ export function PublicQuoteShell({ children, business, location, logoSrc, docume
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col bg-[var(--color-bg-soft)] px-4 py-6 md:px-8 md:py-8 print:bg-white print:px-0 print:py-0 print:pt-1">
-        <div className="mx-auto max-w-4xl flex-1 flex flex-col w-full">{children}</div>
+      <main className="flex-1 flex flex-col bg-[var(--color-bg-soft)] px-4 py-6 md:px-8 md:py-8 print:min-h-0 print:flex-none print:bg-white print:px-0 print:py-0 print:pt-1">
+        <div className="mx-auto max-w-4xl flex-1 flex flex-col w-full print:min-h-0 print:flex-none">{children}</div>
       </main>
     </div>
   );

@@ -203,7 +203,11 @@ body {
   @page {
     margin: 1.5cm;
   }
+  html,
   body {
-    padding: 0;
+    height: auto !important;
+    min-height: 0 !important;
+    background: #ffffff !important;
+    padding: 0 !important;
   }
 }

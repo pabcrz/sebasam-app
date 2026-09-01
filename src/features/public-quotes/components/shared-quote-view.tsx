@@ -219,7 +219,7 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
     : null;
 
   return (
-    <div className="flex-1 flex flex-col gap-4 pb-[calc(4.75rem+env(safe-area-inset-bottom))] print:gap-2 print:pb-0 sm:pb-20">
+    <div className="flex-1 flex flex-col gap-4 pb-[calc(4.75rem+env(safe-area-inset-bottom))] print:min-h-0 print:flex-none print:gap-2 print:pb-0 sm:pb-20">
 
       <QuotePreviewCard
         customerName={quote.customer?.name ?? ""}
