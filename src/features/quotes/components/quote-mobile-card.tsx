@@ -99,7 +99,7 @@ export function QuoteListCard({
     variant: "primary" | "outline" = "outline",
     presentation: "default" | "tile" = "default",
   ) => {
-    const tileClassName = presentation === "tile" ? "min-h-14 w-full flex-col gap-0.5 px-2" : "w-full";
+    const tileClassName = presentation === "tile" ? "h-10 w-full justify-center gap-0 px-0 sm:h-9 sm:gap-2 sm:px-3" : "w-full";
 
     switch (action) {
       case "print":
@@ -115,7 +115,7 @@ export function QuoteListCard({
           >
             <Link href={printHref}>
               <Printer className="h-4 w-4" aria-hidden="true" />
-              <span>Imprimir</span>
+              <span className="sr-only sm:not-sr-only">Imprimir</span>
             </Link>
           </Button>
         );
@@ -131,6 +131,7 @@ export function QuoteListCard({
             triggerSize="sm"
             triggerVariant={variant}
             triggerClassName={tileClassName}
+            triggerIconOnlyMobile={presentation === "tile"}
           />
         );
       case "share":
@@ -142,6 +143,7 @@ export function QuoteListCard({
             quoteNumber={quote.number}
             variant={variant}
             className={tileClassName}
+            actionLabelClassName={presentation === "tile" ? "sr-only sm:not-sr-only" : undefined}
           />
         );
       case "authorize":

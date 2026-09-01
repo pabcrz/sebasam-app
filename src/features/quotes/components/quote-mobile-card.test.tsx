@@ -192,18 +192,19 @@ describe("QuoteListCard", () => {
     expect(remove.closest("div[class*='border-t']")).not.toBeNull();
   });
 
-  it("renders Edit and Print as equal-width vertical action tiles", () => {
+  it("renders Edit and Print as compact equal-width responsive action targets", () => {
     renderCard(createMockQuote());
 
     const frequentActions = screen.getByTestId("quote-frequent-actions");
     const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
     const print = screen.getByRole("link", { name: "Imprimir cotización C-001" });
     expect(frequentActions).toHaveClass("grid-cols-2");
-    expect(edit).toHaveClass("min-h-14", "w-full", "flex-col");
+    expect(edit).toHaveClass("h-10", "w-full", "px-0", "sm:h-9", "sm:px-3");
+    expect(within(edit).getByText("Editar")).toHaveClass("sr-only", "sm:not-sr-only");
     expect(print).toHaveAttribute("aria-label", "Imprimir cotización C-001");
     expect(print).toHaveAttribute("title", "Imprimir cotización C-001");
-    expect(print).toHaveClass("min-h-14", "w-full", "flex-col");
-    expect(within(print).getByText("Imprimir")).toBeInTheDocument();
+    expect(print).toHaveClass("h-10", "w-full", "px-0", "sm:h-9", "sm:px-3");
+    expect(within(print).getByText("Imprimir")).toHaveClass("sr-only", "sm:not-sr-only");
   });
 
   it("renders Sent frequent actions in the required Edit, Print, Share three-tile order", () => {
@@ -219,6 +220,9 @@ describe("QuoteListCard", () => {
       "Imprimir cotización C-001",
       "Compartir cotización C-001",
     ]);
+    const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
+    expect(share).toHaveClass("h-10", "w-full", "px-0", "sm:h-9", "sm:px-3");
+    expect(within(share).getByText("Compartir")).toHaveClass("sr-only", "sm:not-sr-only");
     expect(screen.getByTestId("quote-overflow-action")).toHaveClass("flex", "justify-center");
     expect(screen.getByRole("button", { name: "Más acciones de cotización C-001" })).not.toHaveClass("border");
   });
