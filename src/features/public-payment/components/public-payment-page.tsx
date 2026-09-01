@@ -60,7 +60,7 @@ export function PublicPaymentPage({
           <div className="mt-3 grid gap-1 text-sm text-[var(--color-text-muted)]">
             <p>Subtotal: {formatCurrency(request.quote.subtotalCents)}</p>
             {request.quote.taxEnabled ? <p>IVA: {formatCurrency(request.quote.taxCents)}</p> : null}
-            <p className="font-mono text-xl font-bold text-[var(--color-primary)]">
+            <p className="font-mono text-xl font-bold tabular-nums text-[var(--color-primary)]" data-numeric-role="currency">
               Total: {formatCurrency(request.quote.totalCents)}
             </p>
             {request.quote.validUntil ? (
@@ -71,7 +71,12 @@ export function PublicPaymentPage({
             ) : null}
           </div>
         ) : amount > 0 ? (
-          <p className="mt-1 font-mono text-xl font-bold text-[var(--color-primary)]">{formatCurrency(amount)}</p>
+          <p
+            className="mt-1 font-mono text-xl font-bold tabular-nums text-[var(--color-primary)]"
+            data-numeric-role="currency"
+          >
+            {formatCurrency(amount)}
+          </p>
         ) : null}
       </div>
 
