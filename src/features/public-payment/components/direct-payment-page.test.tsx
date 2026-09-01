@@ -66,13 +66,14 @@ describe("DirectPaymentPage", () => {
     expect(screen.getByText("Cuenta 2")).toBeInTheDocument();
   });
 
-  it("renders contact data from props", () => {
+  it("renders WhatsApp CTA with link from contact props", () => {
     render(
       <DirectPaymentPage business={mockBusiness} bankAccounts={mockBankAccounts} contact={mockContact} />,
     );
 
-    expect(screen.getByText("5556007675")).toBeInTheDocument();
-    expect(screen.getByText("5536239346")).toBeInTheDocument();
+    const whatsappLink = screen.getByRole("link", { name: /Enviar WhatsApp/i });
+    expect(whatsappLink).toHaveAttribute("href", expect.stringContaining("5536239346"));
+    expect(screen.getByRole("heading", { name: "Enviar comprobante" })).toBeInTheDocument();
   });
 
   it("renders the address as a Google Maps link in the footer", () => {
@@ -85,13 +86,13 @@ describe("DirectPaymentPage", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 
-  it("renders bank data and contact section headings", () => {
+  it("renders bank data and send receipt section headings", () => {
     render(
       <DirectPaymentPage business={mockBusiness} bankAccounts={mockBankAccounts} contact={mockContact} />,
     );
 
     expect(screen.getByRole("heading", { name: "Datos de pago" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Contacto" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Enviar comprobante" })).toBeInTheDocument();
   });
 
   it("renders only No. Cuenta row when account number is present and CLABE is empty", () => {
