@@ -9,7 +9,7 @@ import {
   Users,
   } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin-page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, SectionLabel } from "@/components/ui";
 import { CustomerCreateForm } from "@/features/customers/components/customer-create-form";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
@@ -122,9 +122,7 @@ export function DashboardView({
 
         {/* 4. Quick Access Modules */}
         <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-            Módulos del Sistema
-          </h2>
+          <SectionLabel className="mb-3">Módulos del Sistema</SectionLabel>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {modules.map((module) => (
               <Link
