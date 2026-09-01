@@ -42,9 +42,7 @@ describe("WorkOrderPrintPage", () => {
       },
     });
     getPaymentSettings.mockResolvedValue({
-      name: "SEBASAM",
-      fullName: "SEBASAM Taller",
-      address: "Dirección",
+      name: "SEBASAM Taller",
       contactPhone: "5555555555",
       contactWhatsapp: "5555555555",
     });
@@ -55,6 +53,7 @@ describe("WorkOrderPrintPage", () => {
     expect(screen.queryByText("Nombre heredado")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
     expect(screen.getByText("Nota administrativa")).toBeInTheDocument();
+    expect(screen.getByText("SEBASAM Taller")).toBeInTheDocument();
     expect(screen.queryByText(/Cotización/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Imprimir documento" })).not.toBeInTheDocument();
     expect(container.firstElementChild).toHaveClass("print:min-h-0");

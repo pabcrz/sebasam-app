@@ -40,9 +40,6 @@ describe("DatosPagoPage", () => {
       callOrder.push("settings");
       return {
         name: "SEBASAM",
-        fullName: "SEBASAM",
-        address: "Address",
-        mapsUrl: "https://maps.example.com",
         contactPhone: "5555555555",
         contactWhatsapp: "5555555555",
         hours: { weekdays: "Weekdays", saturday: "Saturday" },
@@ -56,5 +53,10 @@ describe("DatosPagoPage", () => {
 
     expect(callOrder).toEqual(["connection", "settings"]);
     expect(page.props.bankAccounts).toEqual(bankAccounts);
+    expect(page.props.business).toEqual({
+      businessName: "SEBASAM",
+      phone: "5555555555",
+      whatsapp: "5555555555",
+    });
   });
 });

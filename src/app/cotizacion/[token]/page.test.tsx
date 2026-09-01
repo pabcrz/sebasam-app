@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { CustomerStatus, Prisma, QuoteItemType, QuoteStatus } from "@prisma/client";
 
 const getSharedQuoteByTokenMock = vi.hoisted(() => vi.fn());
 const sharedQuoteViewMock = vi.hoisted(() => vi.fn(() => <div data-testid="shared-quote-view" />));
+const publicQuoteShellMock = vi.hoisted(() => vi.fn(({ children }: { children: ReactNode }) => <div data-testid="public-quote-shell">{children}</div>));
 
 vi.mock("@/features/quotes/domain", () => ({
   getSharedQuoteByToken: getSharedQuoteByTokenMock,
@@ -15,11 +17,15 @@ vi.mock("@/features/public-quotes/components/shared-quote-view", () => ({
   SharedQuoteView: sharedQuoteViewMock,
 }));
 
+vi.mock("@/features/public-quotes/components/public-quote-shell", () => ({
+  PublicQuoteShell: publicQuoteShellMock,
+}));
+
 vi.mock("@/features/payment-settings/domain", () => ({
   getPaymentSettings: vi.fn().mockResolvedValue({
-    bankAccounts: [],
-    name: "SEBASAM",
-    contactPhone: "5556007675",
+           bankAccounts: [],
+           name: "SEBASAM",
+            contactPhone: "5556007675",
     contactWhatsapp: "5536239346",
   }),
 }));
@@ -86,6 +92,16 @@ describe("CotizacionPage", () => {
         quote: expect.objectContaining({
           operationalDate: new Date("2026-06-15T00:00:00.000Z"),
           items: [expect.objectContaining({ quantity: "1.5" })],
+        }),
+      }),
+      undefined,
+    );
+    expect(publicQuoteShellMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        business: expect.objectContaining({
+            businessName: "SEBASAM",
+            phone: "5556007675",
+            whatsapp: "5536239346",
         }),
       }),
       undefined,

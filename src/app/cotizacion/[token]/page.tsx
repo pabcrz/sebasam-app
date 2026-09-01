@@ -10,6 +10,7 @@ import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-qu
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
+import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
@@ -102,7 +103,8 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
 
   return (
     <PublicQuoteShell
-      business={paymentSettings}
+      business={toPublicBusinessIdentity(paymentSettings)}
+      location={{ address: paymentSettings.address, mapsUrl: paymentSettings.mapsUrl }}
       documentType={isNote ? "Nota" : "Cotización"}
       documentNumber={result.quote.number}
       date={result.quote.operationalDate}

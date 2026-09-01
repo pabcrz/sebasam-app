@@ -184,7 +184,7 @@ describe("BankDataCard", () => {
 
 describe("ContactCard", () => {
   it("renders phone and whatsapp", () => {
-    render(<ContactCard />);
+    render(<ContactCard contact={{ phone: "5556007675", whatsapp: "5536239346" }} />);
 
     expect(screen.getByText("Teléfono fijo")).toBeInTheDocument();
     expect(screen.getByText("WhatsApp")).toBeInTheDocument();
@@ -274,11 +274,19 @@ describe("PublicPaymentPage", () => {
 });
 
 describe("PublicPaymentShell", () => {
-  it("renders the workshop address as a Google Maps link", () => {
+  it("does not invent identity values when business settings are absent", () => {
     render(<PublicPaymentShell><p>content</p></PublicPaymentShell>);
 
+    expect(screen.queryByRole("heading", { name: "SEBASAM" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Batalla de Casa Blanca/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("renders the workshop address as a Google Maps link", () => {
+    render(<PublicPaymentShell location={{ address: "Batalla de Casa Blanca", mapsUrl: "https://maps.example.test" }}><p>content</p></PublicPaymentShell>);
+
     const link = screen.getByRole("link", { name: /Batalla de Casa Blanca/i });
-    expect(link).toHaveAttribute("href", "https://maps.app.goo.gl/MYuGBKwabPGbea7y7");
+    expect(link).toHaveAttribute("href", "https://maps.example.test");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
@@ -287,18 +295,15 @@ describe("PublicPaymentShell", () => {
     render(
       <PublicPaymentShell
         business={{
-          name: "Taller Test",
-          fullName: "Taller de Prueba SA de CV",
-          address: "Calle Falsa 123, CDMX",
-          mapsUrl: "https://maps.example.com/test",
+          businessName: "Taller Test",
         }}
+        location={{ address: "Calle Falsa 123, CDMX", mapsUrl: "https://maps.example.com/test" }}
       >
         <p>content</p>
       </PublicPaymentShell>,
     );
 
     expect(screen.getByRole("heading", { name: "Taller Test" })).toBeInTheDocument();
-    expect(screen.getByText("Taller de Prueba SA de CV")).toBeInTheDocument();
     const link = screen.getByRole("link", { name: /Calle Falsa 123/i });
     expect(link).toHaveAttribute("href", "https://maps.example.com/test");
   });
@@ -309,11 +314,9 @@ describe("PublicPaymentShell", () => {
       <PublicPaymentPage
         request={mockRequest}
         business={{
-          name: "Custom Business",
-          fullName: "Custom Full Name",
-          address: "Custom Address 456",
-          mapsUrl: "https://maps.example.com/custom",
+          businessName: "Custom Business",
         }}
+        location={{ address: "Custom Address 456", mapsUrl: "https://maps.example.com/custom" }}
         bankAccounts={[
           {
             id: 1,
@@ -335,5 +338,18 @@ describe("PublicPaymentShell", () => {
     expect(screen.getByText("Custom Bank")).toBeInTheDocument();
     expect(screen.getByText("5500000000")).toBeInTheDocument();
     expect(screen.getByText("5511111111")).toBeInTheDocument();
+  });
+
+  it("renders payment contacts once in the contact card instead of duplicating them in the header", () => {
+    render(
+      <PublicPaymentPage
+        request={createMockRequest()}
+        business={{ businessName: "Custom Business", phone: "5500000000", whatsapp: "5511111111" }}
+        contact={{ phone: "5500000000", whatsapp: "5511111111" }}
+      />,
+    );
+
+    expect(screen.getAllByText("5500000000")).toHaveLength(1);
+    expect(screen.getAllByText("5511111111")).toHaveLength(1);
   });
 });

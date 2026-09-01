@@ -8,6 +8,7 @@ import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/form
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
 import { PrintControls } from "@/features/quotes/components/print-controls";
 import { Suspense } from "react";
+import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
 interface PrintPageProps {
   params: Promise<{ id: string }>;
@@ -72,7 +73,8 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
     <div className="min-h-screen bg-[var(--background)] flex flex-col print:min-h-0">
       <Suspense fallback={null}><PrintControls backLabel="Volver a notas" /></Suspense>
       <PublicQuoteShell
-        business={paymentSettings}
+        business={toPublicBusinessIdentity(paymentSettings)}
+        location={{ address: paymentSettings.address, mapsUrl: paymentSettings.mapsUrl }}
         documentType={documentType}
         documentNumber={quote.number}
         date={quote.operationalDate}

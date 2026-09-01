@@ -24,6 +24,7 @@ type PaymentRequestWithRelations = PaymentRequest & {
 export interface PublicPaymentPageProps {
   request: PaymentRequestWithRelations;
   business?: ShellBusinessSettings;
+  location?: { address?: string; mapsUrl?: string };
   bankAccounts?: BankAccountData[];
   contact?: ContactSettings;
 }
@@ -45,12 +46,13 @@ export function PublicPaymentPage({
   business,
   bankAccounts,
   contact,
+  location,
 }: PublicPaymentPageProps) {
   const reference = request.quote?.number ?? request.workOrder?.number ?? request.id.slice(0, 8);
   const amount = request.quote?.totalCents ?? 0;
 
   return (
-    <PublicPaymentShell badge="payment" business={business}>
+    <PublicPaymentShell badge="payment" business={business} location={location}>
       <div className="mb-6 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm md:p-5">
         <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">Referencia</p>
         <p className="text-lg font-bold text-[var(--color-text-main)]">{reference}</p>

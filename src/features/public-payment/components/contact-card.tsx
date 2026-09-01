@@ -2,11 +2,10 @@
 
 import { Phone, MessageCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
-import { businessPaymentConfig } from "@/config/payment";
 
 export interface ContactSettings {
-  phone: string;
-  whatsapp: string;
+  phone?: string;
+  whatsapp?: string;
 }
 
 export interface ContactCardProps {
@@ -14,10 +13,7 @@ export interface ContactCardProps {
 }
 
 export function ContactCard({ contact }: ContactCardProps) {
-  const resolvedContact = contact ?? {
-    phone: businessPaymentConfig.contactPhone,
-    whatsapp: businessPaymentConfig.contactWhatsapp,
-  };
+  const resolvedContact = contact ?? {};
 
   return (
     <Card>
@@ -25,7 +21,7 @@ export function ContactCard({ contact }: ContactCardProps) {
         <CardTitle>Contacto</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center gap-3 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+        {resolvedContact.phone ? <div className="flex items-center gap-3 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface)] text-[var(--color-primary)]">
             <Phone className="h-4 w-4" aria-hidden="true" />
           </div>
@@ -33,9 +29,9 @@ export function ContactCard({ contact }: ContactCardProps) {
             <p className="text-xs font-medium text-[var(--color-text-muted)]">Teléfono fijo</p>
             <p className="text-sm font-semibold text-[var(--color-text-main)]">{resolvedContact.phone}</p>
           </div>
-        </div>
+        </div> : null}
 
-        <div className="flex items-center gap-3 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+        {resolvedContact.whatsapp ? <div className="flex items-center gap-3 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface)] text-[var(--color-primary)]">
             <MessageCircle className="h-4 w-4" aria-hidden="true" />
           </div>
@@ -43,7 +39,7 @@ export function ContactCard({ contact }: ContactCardProps) {
             <p className="text-xs font-medium text-[var(--color-text-muted)]">WhatsApp</p>
             <p className="text-sm font-semibold text-[var(--color-text-main)]">{resolvedContact.whatsapp}</p>
           </div>
-        </div>
+        </div> : null}
       </CardContent>
     </Card>
   );
