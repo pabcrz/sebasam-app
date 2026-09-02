@@ -262,13 +262,14 @@ describe("QuoteListCard", () => {
     expect(screen.getByRole("button", { name: /editar cotización c-001/i })).toBeInTheDocument();
     const share = screen.getByRole("button", { name: /compartir cotización c-001/i });
     expect(share).toBeInTheDocument();
+    expect(share).toHaveClass("bg-[var(--color-blue-tint)]");
     expect(share).not.toHaveClass("bg-[image:var(--gradient-primary)]");
     expect(screen.queryByRole("button", { name: /cancelar cotización c-001/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));
     expect(within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
-  it("renders share button as outline when draft is missing a customer", () => {
+  it("renders share button as secondary when draft is missing a customer", () => {
     renderCard(createMockQuote({
       customer: null,
       customerId: null,
@@ -276,6 +277,7 @@ describe("QuoteListCard", () => {
 
     const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
     expect(share).toBeInTheDocument();
+    expect(share).toHaveClass("bg-[var(--color-blue-tint)]");
     expect(share).not.toHaveClass("bg-[image:var(--gradient-primary)]");
   });
 

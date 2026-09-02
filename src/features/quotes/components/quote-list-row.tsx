@@ -157,7 +157,7 @@ export function QuoteListRow({
               sharedQuote={quote.activeSharedQuote ?? undefined}
               status={quote.status}
               quoteNumber={quote.number}
-              variant={quote.status === "DRAFT" && isQuoteCommercialReady(quote) ? "primary" : "outline"}
+              variant={quote.status === "DRAFT" ? (isQuoteCommercialReady(quote) ? "primary" : "secondary") : "outline"}
             />
           ) : null}
 
