@@ -179,17 +179,105 @@ describe("Payroll UI Components", () => {
     };
 
     const period: ParsedPayrollParams = {
+      mode: "weekly",
       anchor: "2026-08-17",
       prevAnchor: "2026-08-10",
       nextAnchor: "2026-08-24",
       rangeLabel: "17–23 de agosto de 2026",
       isCurrentWeek: true,
+      isCurrentPeriod: true,
       start: new Date("2026-08-17T00:00:00Z"),
       end: new Date("2026-08-24T00:00:00Z"),
     };
 
     render(<PayrollView report={emptyReport} period={period} />);
 
-    expect(screen.getByText(/No hay órdenes completadas en esta semana/i)).toBeInTheDocument();
+    expect(screen.getByText(/No hay órdenes completadas en este período/i)).toBeInTheDocument();
+  });
+
+  it("opens the confidential signing sheet modal when clicking Hoja de Firmas", () => {
+    const period: ParsedPayrollParams = {
+      mode: "weekly",
+      anchor: "2026-08-17",
+      prevAnchor: "2026-08-10",
+      nextAnchor: "2026-08-24",
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      isCurrentPeriod: true,
+      start: new Date("2026-08-17T06:00:00Z"),
+      end: new Date("2026-08-23T06:00:00Z"),
+    };
+
+    const fullReport: WeeklyPayrollReport = {
+      mode: "weekly",
+      startDate: new Date("2026-08-17T06:00:00Z"),
+      endDate: new Date("2026-08-23T06:00:00Z"),
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      totalWorkers: 2,
+      totalCompletedOrders: 3,
+      totalClientLaborCents: 300000,
+      totalPayrollBaseCents: 300000,
+      totalCommissionCents: 140000,
+      workers: sampleWorkers,
+      unassignedOrders: [],
+    };
+
+    render(<PayrollView report={fullReport} period={period} />);
+
+    const signingSheetBtn = screen.getByRole("button", { name: /hoja de firmas/i });
+    fireEvent.click(signingSheetBtn);
+
+    expect(screen.getAllByText(/Hoja de Firma de Nómina/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByAltText("Logo de SEBASAM")).toBeInTheDocument();
+    expect(screen.getByText("Personalizar lista de trabajadores:")).toBeInTheDocument();
+    // Confirms worker names appear
+    expect(screen.getAllByText("Maestro Pedro").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Maestro Juan").length).toBeGreaterThanOrEqual(1);
+
+    // Test adding a custom worker
+    const addInput = screen.getByPlaceholderText(/Nombre del trabajador adicional/i);
+    fireEvent.change(addInput, { target: { value: "Ayudante Roberto" } });
+    const addBtn = screen.getByRole("button", { name: "Agregar" });
+    fireEvent.click(addBtn);
+    expect(screen.getByText("Ayudante Roberto")).toBeInTheDocument();
+  });
+
+  it("opens individual pay envelope modal when clicking Sobre de Pago", () => {
+    const period: ParsedPayrollParams = {
+      mode: "weekly",
+      anchor: "2026-08-17",
+      prevAnchor: "2026-08-10",
+      nextAnchor: "2026-08-24",
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      isCurrentPeriod: true,
+      start: new Date("2026-08-17T06:00:00Z"),
+      end: new Date("2026-08-23T06:00:00Z"),
+    };
+
+    const fullReport: WeeklyPayrollReport = {
+      mode: "weekly",
+      startDate: new Date("2026-08-17T06:00:00Z"),
+      endDate: new Date("2026-08-23T06:00:00Z"),
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      totalWorkers: 2,
+      totalCompletedOrders: 3,
+      totalClientLaborCents: 300000,
+      totalPayrollBaseCents: 300000,
+      totalCommissionCents: 140000,
+      workers: sampleWorkers,
+      unassignedOrders: [],
+    };
+
+    render(<PayrollView report={fullReport} period={period} />);
+
+    const envelopeBtn = screen.getByRole("button", { name: /sobre de pago/i });
+    fireEvent.click(envelopeBtn);
+
+    expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /imagen/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /whatsapp/i })).toBeInTheDocument();
   });
 });

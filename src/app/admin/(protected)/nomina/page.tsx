@@ -4,8 +4,8 @@ import { parsePayrollParams } from "@/features/payroll/period";
 import { PayrollView } from "@/features/payroll/components/payroll-view";
 
 export const metadata: Metadata = {
-  title: "Nómina Semanal | SEBASAM",
-  description: "Cálculo y liquidación semanal de mano de obra por órdenes completadas.",
+  title: "Nómina | SEBASAM",
+  description: "Cálculo y liquidación de nómina de mano de obra por órdenes completadas.",
 };
 
 export default async function NominaPage({

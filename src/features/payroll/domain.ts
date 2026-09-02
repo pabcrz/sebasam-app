@@ -87,6 +87,7 @@ export interface WorkerPayrollSummary {
 }
 
 export interface WeeklyPayrollReport {
+  mode?: "weekly" | "monthly";
   startDate: Date;
   endDate: Date;
   rangeLabel: string;
@@ -99,6 +100,8 @@ export interface WeeklyPayrollReport {
   workers: WorkerPayrollSummary[];
   unassignedOrders: WorkOrderPayrollDetail[];
 }
+
+export type PayrollReport = WeeklyPayrollReport;
 
 /**
  * Processes a single quote item for payroll calculation.
@@ -162,6 +165,7 @@ export interface RawWorkOrderForPayroll {
 export function buildWeeklyPayrollReport(
   orders: RawWorkOrderForPayroll[],
   options: {
+    mode?: "weekly" | "monthly";
     startDate: Date;
     endDate: Date;
     rangeLabel: string;
@@ -289,6 +293,7 @@ export function buildWeeklyPayrollReport(
   const workers = Array.from(workerMap.values()).sort((a, b) => a.displayName.localeCompare(b.displayName));
 
   return {
+    mode: options.mode ?? "weekly",
     startDate: options.startDate,
     endDate: options.endDate,
     rangeLabel: options.rangeLabel,
