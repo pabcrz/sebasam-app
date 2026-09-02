@@ -194,7 +194,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
       {/* Mobile Floating Action Button */}
       <div
-        className="fixed right-5 z-40 sm:hidden"
+        className="fixed right-4 z-40 sm:hidden"
         style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
         <QuoteBuilderDialog
@@ -203,9 +203,8 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
           createCustomerAction={createOrReuseCustomerForQuote}
           searchCustomersAction={searchCustomersForQuote}
           triggerVariant="primary"
-          triggerClassName="h-14 w-14 rounded-full p-0 shadow-xl border-2 border-white/20 flex items-center justify-center cursor-pointer"
-          triggerIconOnly
-          triggerAriaLabel="Nueva cotización"
+          triggerSize="sm"
+          triggerClassName="h-11 px-4 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-1.5 border border-white/20"
         />
       </div>
     </section>

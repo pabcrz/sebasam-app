@@ -143,20 +143,25 @@ export function DashboardView({
         </div>
       </div>
 
-      {/* Mobile Floating Action Button */}
+      {/* Mobile Floating Action Buttons */}
       <div
-        className="fixed right-5 z-40 sm:hidden"
+        className="fixed right-4 z-40 flex items-center gap-2 sm:hidden"
         style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
+        <CustomerCreateForm
+          action={createCustomerAction}
+          triggerVariant="outline"
+          triggerSize="sm"
+          triggerClassName="h-11 px-3.5 rounded-2xl shadow-lg border border-[var(--color-border-light)] bg-[var(--color-surface)]/95 backdrop-blur-md text-xs font-semibold flex items-center gap-1.5"
+        />
         <QuoteBuilderDialog
           customers={customers}
           createAction={createQuoteAction}
           createCustomerAction={createCustomerForQuoteAction}
           searchCustomersAction={searchCustomersAction}
           triggerVariant="primary"
-          triggerClassName="h-14 w-14 rounded-full p-0 shadow-xl border-2 border-white/20 flex items-center justify-center cursor-pointer"
-          triggerIconOnly
-          triggerAriaLabel="Nueva cotización"
+          triggerSize="sm"
+          triggerClassName="h-11 px-3.5 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-1.5 border border-white/20"
         />
       </div>
     </section>
