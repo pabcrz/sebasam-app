@@ -261,6 +261,11 @@ export function QuoteBuilderItemsStep({
                             <span className={`${isExpanded ? "hidden" : "flex flex-wrap"} items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)]`}>
                               {item.quantity.trim() ? <span className="font-medium text-[var(--color-text-main)]">{item.quantity} unidad{item.quantity === "1" ? "" : "es"}</span> : null}
                               <span>{itemTypeLabels[item.type]}</span>
+                              {item.type === "OTHER" && item.includeInPayroll ? (
+                                <span className="rounded bg-[var(--color-bg-subtle)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-main)]">
+                                  {item.customRatePercent || "40"}% nómina
+                                </span>
+                              ) : null}
                               {pendingSummary ? (
                                 <span className="font-medium text-[var(--color-status-danger-fg)]">{pendingSummary}</span>
                               ) : (
@@ -429,6 +434,56 @@ export function QuoteBuilderItemsStep({
                       </span>
                     </div>
                     </div>
+
+                    {item.type === "OTHER" ? (
+                      <div className="grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3">
+                        <label
+                          htmlFor={`${fieldId}-includeInPayroll`}
+                          className="flex items-center gap-2.5 text-sm font-medium text-[var(--color-text-main)] cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            id={`${fieldId}-includeInPayroll`}
+                            name={`sections.${sectionIndex}.items.${itemIndex}.includeInPayroll`}
+                            checked={Boolean(item.includeInPayroll)}
+                            onChange={(e) => onUpdateItem(sectionIndex, itemIndex, {
+                              includeInPayroll: e.target.checked,
+                              customRatePercent: item.customRatePercent || "40",
+                            })}
+                            className="size-4 rounded border-[var(--color-border-input)] text-[var(--color-primary)] focus:ring-[var(--color-ring)]"
+                          />
+                          <span>Incluir en nómina / comisión</span>
+                        </label>
+                        {item.includeInPayroll ? (
+                          <div className="grid gap-1.5 sm:max-w-xs">
+                            <Label htmlFor={`${fieldId}-customRatePercent`} className="text-xs text-[var(--color-text-muted)]">
+                              Porcentaje de comisión
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id={`${fieldId}-customRatePercent`}
+                                name={`sections.${sectionIndex}.items.${itemIndex}.customRatePercent`}
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={item.customRatePercent ?? "40"}
+                                onChange={(e) => onUpdateItem(sectionIndex, itemIndex, { customRatePercent: e.target.value })}
+                                className="h-9 w-24 bg-[var(--color-surface)]"
+                                aria-describedby={itemErrors.customRatePercent ? `${fieldId}-rate-error` : undefined}
+                                aria-invalid={Boolean(itemErrors.customRatePercent)}
+                              />
+                              <span className="text-sm font-medium text-[var(--color-text-muted)]">%</span>
+                            </div>
+                            {itemErrors.customRatePercent ? (
+                              <span id={`${fieldId}-rate-error`} role="alert" className="text-xs text-[var(--color-status-danger-fg)]">
+                                {itemErrors.customRatePercent}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     <div className="flex items-center justify-between pt-1 text-sm text-[var(--color-text-muted)]">
                     <span>Importe</span>
                     <output className="font-medium" data-testid={`concept-total-${displayIndex}`} aria-label={`Importe del concepto ${displayIndex + 1}`}>
