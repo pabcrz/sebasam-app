@@ -103,6 +103,7 @@ export async function getWeeklyPayroll(
   });
 
   return buildWeeklyPayrollReport(serializedOrders, {
+    mode: period.mode,
     startDate: period.start,
     endDate: period.end,
     rangeLabel: period.rangeLabel,

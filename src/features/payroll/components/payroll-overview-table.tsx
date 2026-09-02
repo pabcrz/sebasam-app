@@ -37,7 +37,7 @@ export function PayrollOverviewTable({
               Resumen General de Nómina
             </CardTitle>
             <CardDescription className="text-xs">
-              Consolidado semanal por trabajador. Selecciona uno para ver su desglose de órdenes.
+              Consolidado por trabajador para el período seleccionado. Selecciona uno para ver su desglose de órdenes.
             </CardDescription>
           </div>
         </div>
