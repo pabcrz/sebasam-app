@@ -152,43 +152,8 @@ export function PayrollWorkerEnvelopeModal({
           </div>
         </DialogHeader>
 
-        {/* Action Quick Bar: WhatsApp with image share + Download Image (Hidden in Print) */}
-        <div className="print:hidden flex items-center justify-between gap-2 p-2.5 bg-[var(--color-bg-soft)] rounded-md border border-[var(--color-border-light)] text-xs">
-          <span className="text-[var(--color-text-muted)] font-medium">Compartir:</span>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadImage}
-              disabled={isGeneratingImage || isSharingWhatsApp}
-              className="h-8 gap-1.5 text-xs"
-              title="Descargar imagen PNG para enviar"
-            >
-              {isGeneratingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-[var(--color-primary)]" />}
-              <span>Descargar Imagen</span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleWhatsApp}
-              disabled={isGeneratingImage || isSharingWhatsApp}
-              className="h-8 gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold"
-              title="Compartir imagen por WhatsApp"
-            >
-              {isSharingWhatsApp ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <MessageCircle className="h-3.5 w-3.5" />
-              )}
-              <span>WhatsApp (con Imagen)</span>
-            </Button>
-          </div>
-        </div>
-
         {/* Flush Envelope Preview */}
-        <div className="flex justify-center w-full py-2">
+        <div className="flex justify-center w-full py-1">
           <div
             id="payroll-worker-envelope-document"
             className="w-[350px] max-w-full p-2 bg-white text-slate-900 space-y-3 mx-auto rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
@@ -290,8 +255,43 @@ export function PayrollWorkerEnvelopeModal({
           </div>
         </div>
 
+        {/* Action Sharing Bar (Single row below receipt, matching width) */}
+        <div className="print:hidden w-full max-w-[350px] mx-auto p-2 bg-[var(--color-bg-soft)] rounded-md border border-[var(--color-border-light)] flex items-center justify-between gap-2 text-xs">
+          <span className="text-[var(--color-text-muted)] font-semibold shrink-0">Compartir:</span>
+          <div className="grid grid-cols-2 gap-2 flex-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadImage}
+              disabled={isGeneratingImage || isSharingWhatsApp}
+              className="h-8 gap-1.5 text-xs w-full justify-center"
+              title="Descargar imagen PNG para enviar"
+            >
+              {isGeneratingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-[var(--color-primary)]" />}
+              <span>Imagen</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleWhatsApp}
+              disabled={isGeneratingImage || isSharingWhatsApp}
+              className="h-8 gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold w-full justify-center"
+              title="Compartir imagen por WhatsApp"
+            >
+              {isSharingWhatsApp ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <MessageCircle className="h-3.5 w-3.5" />
+              )}
+              <span>WhatsApp</span>
+            </Button>
+          </div>
+        </div>
+
         {/* Dialog Actions (Hidden in Print) */}
-        <DialogFooter className="flex-row justify-end gap-2 pt-2 print:hidden">
+        <DialogFooter className="flex-row justify-end gap-2 pt-1 print:hidden">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
