@@ -84,20 +84,32 @@ export function PayrollWorkerEnvelopeModal({
     const node = document.getElementById("payroll-worker-envelope-document");
     if (!node) return;
     setIsGeneratingImage(true);
+    let offscreenWrapper: HTMLDivElement | null = null;
     try {
-      const rect = node.getBoundingClientRect();
-      const targetWidth = Math.ceil(Math.max(node.scrollWidth, node.offsetWidth, rect.width, 360));
-      const targetHeight = Math.ceil(Math.max(node.scrollHeight, node.offsetHeight, rect.height));
+      offscreenWrapper = document.createElement("div");
+      offscreenWrapper.style.position = "absolute";
+      offscreenWrapper.style.left = "-9999px";
+      offscreenWrapper.style.top = "0";
+      offscreenWrapper.style.width = "400px";
+      offscreenWrapper.style.padding = "24px";
+      offscreenWrapper.style.backgroundColor = "#ffffff";
+      offscreenWrapper.style.boxSizing = "border-box";
 
-      const dataUrl = await toPng(node, {
+      const clone = node.cloneNode(true) as HTMLElement;
+      clone.style.width = "100%";
+      clone.style.maxWidth = "100%";
+      clone.style.margin = "0";
+      clone.style.padding = "0";
+
+      offscreenWrapper.appendChild(clone);
+      document.body.appendChild(offscreenWrapper);
+
+      const dataUrl = await toPng(offscreenWrapper, {
         backgroundColor: "#ffffff",
         pixelRatio: 3,
         cacheBust: true,
-        width: targetWidth,
-        height: targetHeight,
-        canvasWidth: targetWidth * 3,
-        canvasHeight: targetHeight * 3,
       });
+
       const link = document.createElement("a");
       const safeName = worker.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
       link.download = `recibo-nomina-${safeName}.png`;
@@ -106,6 +118,9 @@ export function PayrollWorkerEnvelopeModal({
     } catch (err) {
       console.error("Error exportando imagen de sobre:", err);
     } finally {
+      if (offscreenWrapper && offscreenWrapper.parentNode) {
+        offscreenWrapper.parentNode.removeChild(offscreenWrapper);
+      }
       setIsGeneratingImage(false);
     }
   };
@@ -163,7 +178,7 @@ export function PayrollWorkerEnvelopeModal({
         <div className="flex justify-center w-full py-2">
           <div
             id="payroll-worker-envelope-document"
-            className="w-[360px] max-w-full p-4 bg-white text-slate-900 space-y-3 mx-auto rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
+            className="w-[350px] max-w-full p-2 bg-white text-slate-900 space-y-3 mx-auto rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
           >
             {/* Header with Clean Inverted Logo */}
             <div className="border-b-2 border-slate-900 pb-2 flex items-center justify-between gap-1.5">
@@ -241,7 +256,7 @@ export function PayrollWorkerEnvelopeModal({
             </div>
 
             {/* Light Totals Summary */}
-            <div className="bg-slate-50 border border-slate-200 rounded p-2.5 flex items-center justify-between">
+            <div className="bg-slate-50 border border-slate-200 rounded-md p-2.5 flex items-center justify-between">
               <div>
                 <span className="text-[9px] uppercase tracking-wider block font-bold text-slate-500">
                   Mano de Obra Taller:
