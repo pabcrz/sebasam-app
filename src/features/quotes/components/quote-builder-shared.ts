@@ -7,12 +7,15 @@ export type ItemFormValue = {
   description: string;
   quantity: string;
   unitPrice: string;
+  includeInPayroll?: boolean;
+  customRatePercent?: string;
 };
 
 export type ItemFieldErrors = {
   description: string | null;
   quantity: string | null;
   unitPrice: string | null;
+  customRatePercent?: string | null;
 };
 
 export type SectionFormValue = {
@@ -54,6 +57,8 @@ export const emptyItem: ItemFormValue = {
   description: "",
   quantity: "1",
   unitPrice: "",
+  includeInPayroll: false,
+  customRatePercent: "40",
 };
 
 export const DEFAULT_SECTION_NAME = "General";
@@ -166,16 +171,26 @@ export function validateItemFields(
             ? `El total del concepto ${index + 1} es demasiado alto.`
             : null;
 
+  const customRatePercentStr = item.customRatePercent?.trim() ?? "";
+  let customRateError: string | null = null;
+  if (item.type === "OTHER" && item.includeInPayroll) {
+    const rateNum = Number(customRatePercentStr);
+    if (customRatePercentStr === "" || !Number.isFinite(rateNum) || !Number.isInteger(rateNum) || rateNum < 1 || rateNum > 100) {
+      customRateError = `El porcentaje de comisión del concepto ${index + 1} debe ser un entero entre 1 y 100.`;
+    }
+  }
+
   return {
     description: descriptionError,
     quantity: quantityError,
     unitPrice: unitPriceError,
+    customRatePercent: customRateError,
   };
 }
 
 export function validateItemValue(item: ItemFormValue, index: number, requirePrice = false): string | null {
   const errors = validateItemFields(item, index, false, requirePrice);
-  return errors.description ?? errors.quantity ?? (requirePrice ? errors.unitPrice : null);
+  return errors.description ?? errors.quantity ?? (requirePrice ? errors.unitPrice : null) ?? errors.customRatePercent ?? null;
 }
 
 function isItemDraftComplete(item: ItemFormValue): boolean {

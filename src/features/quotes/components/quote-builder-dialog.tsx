@@ -86,6 +86,8 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
             description: item.description,
             quantity: String(Number(item.quantity)),
             unitPrice: String(Number(item.unitPriceCents) / 100),
+            includeInPayroll: Boolean((item as { includeInPayroll?: boolean }).includeInPayroll),
+            customRatePercent: (item as { customRatePercent?: number | null }).customRatePercent != null ? String((item as { customRatePercent?: number | null }).customRatePercent) : "40",
           })),
         }))
       : [{
@@ -95,6 +97,8 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
             description: item.description,
             quantity: String(Number(item.quantity)),
             unitPrice: String(Number(item.unitPriceCents) / 100),
+            includeInPayroll: Boolean((item as { includeInPayroll?: boolean }).includeInPayroll),
+            customRatePercent: (item as { customRatePercent?: number | null }).customRatePercent != null ? String((item as { customRatePercent?: number | null }).customRatePercent) : "40",
           })),
         }],
   } : undefined);

@@ -50,6 +50,11 @@ const quoteItemBaseSchema = z.object({
   description: z.string().trim().min(1, "Item description is required").max(240),
   quantity: quantitySchema,
   unitPriceCents: z.coerce.number().int().nonnegative("Unit price must be zero or greater").max(MAX_UNIT_PRICE_CENTS, "Unit price is too large"),
+  includeInPayroll: z.coerce.boolean().default(false),
+  customRatePercent: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
+    z.number().int().min(1, "El porcentaje de comisión debe ser al menos 1%").max(100, "El porcentaje de comisión no puede superar 100%").optional(),
+  ),
 });
 
 function validateItemTotal(

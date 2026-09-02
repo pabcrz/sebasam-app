@@ -63,6 +63,8 @@ export async function getWeeklyPayroll(
       quantity: Number(item.quantity),
       unitPriceCents: item.unitPriceCents == null ? null : Number(item.unitPriceCents),
       totalCents: item.totalCents == null ? null : Number(item.totalCents),
+      includeInPayroll: item.includeInPayroll,
+      customRatePercent: item.customRatePercent,
     });
 
     return {
