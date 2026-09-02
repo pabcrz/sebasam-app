@@ -104,13 +104,13 @@ export function PayrollSigningSheetModal({
           {/* Header with Logo and Title */}
           <div className="border-b-2 border-slate-900 pb-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="relative h-12 w-12 shrink-0 bg-slate-900 rounded-md p-1.5 flex items-center justify-center shadow-sm">
+              <div className="relative h-11 w-11 shrink-0 flex items-center justify-center">
                 <Image
                   src="/logo-white-short.png"
                   alt="Logo de SEBASAM"
                   width={44}
                   height={44}
-                  className="object-contain"
+                  className="object-contain invert"
                   priority
                 />
               </div>

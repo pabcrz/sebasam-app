@@ -18,25 +18,24 @@ export function PayrollWorkerEnvelopeDocument({
     timeZone: "America/Mexico_City",
   }).format(new Date());
 
-  // Collect only labor item descriptions and amounts
   const allLaborItems = worker.workOrders.flatMap((order) => order.items);
 
   return (
     <div className="flex flex-col items-center justify-start p-2 sm:p-6 print:p-0 print:m-0 print:block">
       <div
         id="payroll-worker-envelope-document"
-        className="w-[8.9cm] max-w-[8.9cm] min-h-[16.5cm] rounded-lg border-2 border-[var(--color-navy-900)] p-4 bg-white text-slate-900 shadow-md space-y-3.5 mx-auto print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:border-2 print:border-slate-900 print:p-3.5 print:shadow-none print:m-0 print:break-inside-avoid"
+        className="w-[8.9cm] max-w-[8.9cm] min-h-[16.5cm] rounded-lg border-2 border-slate-900 p-4 bg-white text-slate-900 shadow-md space-y-3.5 mx-auto print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:border-2 print:border-slate-900 print:p-3.5 print:shadow-none print:m-0 print:break-inside-avoid"
       >
-        {/* Header with Logo Badge */}
-        <div className="border-b-2 border-[var(--color-navy-900)] pb-2.5 flex items-center justify-between gap-2">
+        {/* Header with Clean Inverted Logo (No dark background box) */}
+        <div className="border-b-2 border-slate-900 pb-2.5 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="relative h-10 w-10 shrink-0 bg-slate-900 rounded-md p-1.5 flex items-center justify-center shadow-sm">
+            <div className="relative h-9 w-9 shrink-0 flex items-center justify-center">
               <Image
                 src="/logo-white-short.png"
                 alt="Logo de SEBASAM"
                 width={36}
                 height={36}
-                className="object-contain"
+                className="object-contain invert"
                 priority
               />
             </div>
@@ -51,7 +50,7 @@ export function PayrollWorkerEnvelopeDocument({
         </div>
 
         {/* Worker & Period Info */}
-        <div className="bg-slate-100 rounded-md p-2.5 border border-slate-200 text-xs space-y-1">
+        <div className="bg-slate-100/90 rounded-md p-2.5 border border-slate-200 text-xs space-y-1">
           <div className="flex items-baseline justify-between gap-1">
             <span className="text-[10px] uppercase font-bold text-slate-500">Trabajador:</span>
             <span className="font-black text-slate-900 text-xs truncate">{worker.displayName}</span>
@@ -62,30 +61,34 @@ export function PayrollWorkerEnvelopeDocument({
           </div>
         </div>
 
-        {/* Clean Labor Only Breakdown Table */}
+        {/* Labor Table with Base and A Cobrar (Without %) */}
         <div className="border border-slate-300 rounded-md overflow-hidden">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-200/90 border-b border-slate-300 text-slate-800 font-bold text-[10px] uppercase tracking-wide">
-                <th className="py-2 px-3">Mano de Obra</th>
-                <th className="py-2 px-3 text-right w-24">Importe</th>
+              <tr className="bg-slate-100 border-b border-slate-300 text-slate-800 font-bold text-[10px] uppercase tracking-wide">
+                <th className="py-2 px-2.5">Mano de Obra</th>
+                <th className="py-2 px-2 text-right w-20">Base</th>
+                <th className="py-2 px-2.5 text-right w-20">A Cobrar</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {allLaborItems.length > 0 ? (
                 allLaborItems.map((item, idx) => (
                   <tr key={`${item.id}-${idx}`} className="hover:bg-slate-50/50">
-                    <td className="py-2 px-3 text-slate-800 font-medium text-[11px] leading-snug">
+                    <td className="py-2 px-2.5 text-slate-800 font-medium text-[11px] leading-snug">
                       {item.description}
                     </td>
-                    <td className="py-2 px-3 text-right font-bold text-slate-900 text-xs whitespace-nowrap">
+                    <td className="py-2 px-2 text-right text-slate-600 font-medium text-[11px] whitespace-nowrap">
+                      {formatCents(item.payrollBaseCents)}
+                    </td>
+                    <td className="py-2 px-2.5 text-right font-bold text-slate-900 text-xs whitespace-nowrap">
                       {formatCents(item.commissionCents)}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={2} className="py-4 text-center text-slate-500 text-xs">
+                  <td colSpan={3} className="py-4 text-center text-slate-500 text-xs">
                     Sin conceptos registrados
                   </td>
                 </tr>
@@ -94,14 +97,24 @@ export function PayrollWorkerEnvelopeDocument({
           </table>
         </div>
 
-        {/* Compressed Grand Total Card */}
-        <div className="bg-slate-900 text-white rounded-md p-3 flex items-center justify-between shadow-sm">
-          <span className="text-[11px] uppercase tracking-wider font-bold text-slate-200">
-            Total a Liquidar:
-          </span>
-          <span className="text-lg font-black text-emerald-300">
-            {formatCents(worker.totalCommissionCents)}
-          </span>
+        {/* Light Totals Summary (No Dark Background) */}
+        <div className="bg-slate-50 border border-slate-300 rounded-md p-2.5 flex items-center justify-between">
+          <div>
+            <span className="text-[9px] uppercase tracking-wider block font-bold text-slate-500">
+              Mano de Obra Taller:
+            </span>
+            <span className="text-xs font-bold text-slate-800">
+              {formatCents(worker.totalPayrollBaseCents)}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] uppercase tracking-wider block font-black text-slate-900">
+              Total a Liquidar:
+            </span>
+            <span className="text-base font-black text-slate-900">
+              {formatCents(worker.totalCommissionCents)}
+            </span>
+          </div>
         </div>
       </div>
     </div>

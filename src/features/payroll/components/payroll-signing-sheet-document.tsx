@@ -32,16 +32,16 @@ export function PayrollSigningSheetDocument({
 
   return (
     <div className="w-full max-w-4xl mx-auto p-8 sm:p-12 bg-white text-slate-900 space-y-6 print:p-0 print:max-w-none print:w-full">
-      {/* Header */}
+      {/* Header with Inverted Logo without black box */}
       <div className="border-b-2 border-slate-900 pb-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="relative h-12 w-12 shrink-0 bg-slate-900 rounded p-1 flex items-center justify-center">
+          <div className="relative h-11 w-11 shrink-0 flex items-center justify-center">
             <Image
               src="/logo-white-short.png"
               alt="Logo de SEBASAM"
               width={44}
               height={44}
-              className="object-contain"
+              className="object-contain invert"
               priority
             />
           </div>
