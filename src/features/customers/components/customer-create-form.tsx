@@ -23,9 +23,11 @@ export interface CustomerCreateFormProps {
   triggerVariant?: ButtonVariant;
   triggerClassName?: string;
   triggerSize?: "default" | "sm" | "lg" | "icon";
+  triggerIconOnly?: boolean;
+  triggerAriaLabel?: string;
 }
 
-export function CustomerCreateForm({ action, triggerVariant, triggerClassName, triggerSize }: CustomerCreateFormProps) {
+export function CustomerCreateForm({ action, triggerVariant, triggerClassName, triggerSize, triggerIconOnly = false, triggerAriaLabel }: CustomerCreateFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
 
@@ -47,9 +49,11 @@ export function CustomerCreateForm({ action, triggerVariant, triggerClassName, t
           size={triggerSize}
           className={triggerClassName ?? "w-full sm:w-fit"}
           disabled={isPending}
+          title={triggerAriaLabel ?? (triggerIconOnly ? "Nuevo cliente" : undefined)}
+          aria-label={triggerAriaLabel ?? (triggerIconOnly ? "Nuevo cliente" : undefined)}
         >
-          <UserPlus className="h-4 w-4" aria-hidden="true" />
-          Nuevo cliente
+          <UserPlus className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />
+          <span className={triggerIconOnly ? "sr-only" : undefined}>Nuevo cliente</span>
         </Button>
       </DialogTrigger>
       <DialogContent

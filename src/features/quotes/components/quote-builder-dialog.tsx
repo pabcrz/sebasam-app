@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   Button,
@@ -139,11 +139,11 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
             type="button"
             variant={triggerVariant ?? "primary"}
             size={triggerSize}
-            className={triggerIconOnlyMobile ? `h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3 ${triggerClassName ?? ""}` : triggerClassName}
-            title={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) && isEdit ? `Editar cotización ${quoteNumber}` : undefined)}
-            aria-label={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) && isEdit ? `Editar cotización ${quoteNumber}` : undefined)}
+            className={triggerIconOnlyMobile ? `h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3 ${triggerClassName ?? ""}` : (triggerClassName ?? "w-full sm:w-fit")}
+            title={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : "Nueva cotización") : undefined)}
+            aria-label={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : "Nueva cotización") : undefined)}
           >
-            {isEdit ? <Pencil className="h-5 w-5" aria-hidden="true" /> : null}
+            {isEdit ? <Pencil className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" /> : <Plus className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />}
             <span className={triggerIconOnly ? "sr-only" : triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{isEdit ? "Editar" : "Nueva cotización"}</span>
           </Button>
         }

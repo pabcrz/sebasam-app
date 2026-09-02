@@ -190,9 +190,9 @@ describe("DashboardView", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { level: 1, name: "Inicio" })).toHaveClass("sr-only");
-    expect(screen.getByRole("button", { name: /nuevo cliente/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Inicio" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /nuevo cliente/i })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /nueva cotización/i })[0]).toBeInTheDocument();
     expect(screen.getByText("Módulos del Sistema")).toBeInTheDocument();
     expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
   });

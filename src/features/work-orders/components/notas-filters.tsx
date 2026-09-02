@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import { Badge, Button, StatusFilterNav } from "@/components/ui";
+import { Badge, Button, Card, StatusFilterNav } from "@/components/ui";
 import { notasHref, type NotasAssignee, type NotasMode, type NotasPayment } from "../notas-period";
 
 type Master = { id: string; displayName: string };
@@ -16,7 +16,7 @@ export function NotasFilters({ mode, payment, assignee, anchor, rangeLabel, isCu
     else date.setUTCMonth(date.getUTCMonth() + amount);
     return date.toISOString().slice(0, 10);
   };
-  return <section aria-label="Filtros de notas" className="grid gap-5 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm sm:p-5">
+  return <Card aria-label="Filtros de notas" className="grid gap-5 p-4 shadow-sm sm:p-5">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Periodo seleccionado</p>
@@ -63,5 +63,5 @@ export function NotasFilters({ mode, payment, assignee, anchor, rangeLabel, isCu
         <Link aria-label="Periodo siguiente" href={notasHref({ mode, payment, assignee, anchor: shifted(1) })}>Siguiente<ChevronRight className="h-4 w-4" aria-hidden="true" /></Link>
       </Button>
     </div>
-  </section>;
+  </Card>;
 }

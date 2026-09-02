@@ -34,8 +34,8 @@ describe("QuotesPage", () => {
     render(await QuotesPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Nueva cotización" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Nueva cotización" })[0]).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Cotizaciones" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Cotizaciones recientes" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 1, name: "Cotizaciones" })).not.toBeInTheDocument();
   });
 });

@@ -63,8 +63,11 @@ export default async function WorkersPage({ searchParams }: WorkersPageProps) {
         </p>
       ) : null}
 
-      <div>
-        <WorkerCreateDialog action={createWorkerFromForm} />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
+          Trabajadores
+        </h1>
+        <WorkerCreateDialog action={createWorkerFromForm} triggerVariant="primary" triggerSize="sm" triggerClassName="w-full sm:w-auto" />
       </div>
 
       <Card>
@@ -119,6 +122,17 @@ export default async function WorkersPage({ searchParams }: WorkersPageProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Mobile Floating Action Button */}
+      <div className="fixed bottom-6 right-5 z-40 sm:hidden">
+        <WorkerCreateDialog
+          action={createWorkerFromForm}
+          triggerVariant="primary"
+          triggerClassName="h-14 w-14 rounded-full p-0 shadow-xl border-2 border-white/20 flex items-center justify-center cursor-pointer"
+          triggerIconOnly
+          triggerAriaLabel="Crear trabajador"
+        />
+      </div>
     </section>
   );
 }

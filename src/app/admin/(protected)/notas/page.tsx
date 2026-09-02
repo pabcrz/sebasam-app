@@ -29,6 +29,11 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
+          Notas de remisión
+        </h1>
+      </div>
       <NotasFilters mode={filters.mode} payment={filters.payment} assignee={filters.assignee} anchor={filters.anchor} rangeLabel={filters.rangeLabel} isCurrentWeek={filters.isCurrentWeek} masters={masters} />
 
       <Card className="min-w-0">

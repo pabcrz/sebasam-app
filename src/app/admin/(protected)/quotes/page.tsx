@@ -97,7 +97,10 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <div className="flex justify-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
+          Cotizaciones
+        </h1>
         <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
       </div>
       <QuotePageToasts />
@@ -186,6 +189,20 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
           ) : null}
         </CardContent>
       </Card>
+
+      {/* Mobile Floating Action Button */}
+      <div className="fixed bottom-6 right-5 z-40 sm:hidden">
+        <QuoteBuilderDialog
+          customers={customers}
+          createAction={createQuoteFromWorkspace}
+          createCustomerAction={createOrReuseCustomerForQuote}
+          searchCustomersAction={searchCustomersForQuote}
+          triggerVariant="primary"
+          triggerClassName="h-14 w-14 rounded-full p-0 shadow-xl border-2 border-white/20 flex items-center justify-center cursor-pointer"
+          triggerIconOnly
+          triggerAriaLabel="Nueva cotización"
+        />
+      </div>
     </section>
   );
 }

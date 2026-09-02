@@ -84,21 +84,23 @@ export function DashboardView({
 }: DashboardViewProps) {
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <h1 className="sr-only">Inicio</h1>
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <CustomerCreateForm
-          action={createCustomerAction}
-          triggerVariant="outline"
-          triggerSize="sm"
-        />
-        <QuoteBuilderDialog
-          customers={customers}
-          createAction={createQuoteAction}
-          createCustomerAction={createCustomerForQuoteAction}
-          searchCustomersAction={searchCustomersAction}
-          triggerVariant="primary"
-          triggerSize="sm"
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">Inicio</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <CustomerCreateForm
+            action={createCustomerAction}
+            triggerVariant="outline"
+            triggerSize="sm"
+          />
+          <QuoteBuilderDialog
+            customers={customers}
+            createAction={createQuoteAction}
+            createCustomerAction={createCustomerForQuoteAction}
+            searchCustomersAction={searchCustomersAction}
+            triggerVariant="primary"
+            triggerSize="sm"
+          />
+        </div>
       </div>
 
       {/* Main Operational Stack */}
@@ -139,6 +141,20 @@ export function DashboardView({
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Mobile Floating Action Button */}
+      <div className="fixed bottom-6 right-5 z-40 sm:hidden">
+        <QuoteBuilderDialog
+          customers={customers}
+          createAction={createQuoteAction}
+          createCustomerAction={createCustomerForQuoteAction}
+          searchCustomersAction={searchCustomersAction}
+          triggerVariant="primary"
+          triggerClassName="h-14 w-14 rounded-full p-0 shadow-xl border-2 border-white/20 flex items-center justify-center cursor-pointer"
+          triggerIconOnly
+          triggerAriaLabel="Nueva cotización"
+        />
       </div>
     </section>
   );
