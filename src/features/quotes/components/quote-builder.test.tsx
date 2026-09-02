@@ -743,7 +743,7 @@ describe("QuoteBuilder", () => {
   it.each([
     ["Mano de obra", "LABOR"],
     ["Refacciones", "REFACCIONES"],
-    ["Material", "MATERIAL"],
+    ["Materiales", "MATERIAL"],
   ])("adds %s directly with type %s", async (label, type) => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
@@ -754,6 +754,26 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: new RegExp(`Agregar ${label} a la sección`)}));
 
     expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue(type);
+  });
+
+  it("renders compact add labels only below the responsive breakpoint", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const laborButton = screen.getByRole("button", { name: /Agregar Mano de obra a la sección/ });
+    const partsButton = screen.getByRole("button", { name: /Agregar Refacciones a la sección/ });
+    const materialsButton = screen.getByRole("button", { name: /Agregar Materiales a la sección/ });
+
+    expect(laborButton.querySelector("span.sm\\:hidden")).toHaveTextContent("+ M. O.");
+    expect(laborButton.querySelector("span.hidden.sm\\:inline")).toHaveTextContent("+ Mano de obra");
+    expect(partsButton.querySelector("span.sm\\:hidden")).toHaveTextContent("+ Refac.");
+    expect(partsButton.querySelector("span.hidden.sm\\:inline")).toHaveTextContent("+ Refacciones");
+    expect(materialsButton.querySelector("span.sm\\:hidden")).toHaveTextContent("+ Mat.");
+    expect(materialsButton.querySelector("span.hidden.sm\\:inline")).toHaveTextContent("+ Materiales");
+    expect(materialsButton).toHaveAccessibleName("Agregar Materiales a la sección 1");
+    expect(materialsButton).toHaveAttribute("title", "Materiales");
   });
 
   it.each([
@@ -769,6 +789,22 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("menuitem", { name: `+ ${label}` }));
 
     expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue(type);
+  });
+
+  it("aligns the other concept menu to the trigger's right edge", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    const trigger = screen.getByRole("button", { name: "Más tipos de concepto" });
+
+    await user.click(trigger);
+
+    const menu = screen.getByRole("menu", { name: "Otros tipos de concepto" });
+    expect(menu).toHaveClass("right-0");
+    expect(menu).not.toHaveClass("left-0");
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
   });
 
   it("shows an always-visible delete icon in the collapsed row on desktop", async () => {
@@ -1247,7 +1283,7 @@ describe("QuoteBuilder", () => {
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Cambio de aceite");
-    await user.click(screen.getByRole("button", { name: /Agregar Material a la sección/ }));
+    await user.click(screen.getByRole("button", { name: /Agregar Materiales a la sección/ }));
 
     const descriptions = screen.getAllByLabelText("Descripción", { selector: "input" });
     const newRow = screen.getByTestId("concept-row-1");
@@ -1324,7 +1360,7 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Diagnóstico pendiente");
 
-    await user.click(screen.getByRole("button", { name: /Agregar Material a la sección/ }));
+    await user.click(screen.getByRole("button", { name: /Agregar Materiales a la sección/ }));
 
     expect(document.getElementById("concept-editor-quote-item-0")).toHaveAttribute("hidden");
     expect(document.getElementById("concept-editor-quote-item-1")).not.toHaveAttribute("hidden");
@@ -1359,7 +1395,7 @@ describe("QuoteBuilder", () => {
     expect(screen.getByTestId("currency-prefix-0")).toHaveTextContent("$");
     expect(screen.getByTestId("concept-total-0")).toHaveTextContent("$850.00");
     expect(quantityPriceRow.parentElement).not.toHaveTextContent("1 × $850.00");
-    expect(screen.getByRole("button", { name: /Agregar Material a la sección/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Agregar Materiales a la sección/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Agregar Refacciones a la sección/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Agregar Mano de obra a la sección/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Más tipos de concepto" })).toBeInTheDocument();

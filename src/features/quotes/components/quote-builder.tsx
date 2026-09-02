@@ -35,6 +35,22 @@ export type CustomerOption = {
   name: string;
 };
 
+/**
+ * Host elements for the dialog chrome slots (stepper + footer). The dialog
+ * shell owns them as state and provides them through
+ * `QuoteBuilderChromeContext`; consumed only when `layout === "dialog"` so the
+ * stepper and footer render into `MultiStepDialog`'s fixed slots instead of
+ * inside the form. Reactivity is driven by the provider's host ref callbacks,
+ * so the consumer re-renders the portals once both hosts are attached — no
+ * effect ordering involved.
+ */
+export type QuoteBuilderChromeHosts = {
+  stepperHost: HTMLDivElement | null;
+  footerHost: HTMLDivElement | null;
+};
+
+export const QuoteBuilderChromeContext = React.createContext<QuoteBuilderChromeHosts | null>(null);
+
 const customerSearchDelay = 500;
 const minimumCustomerQueryLength = 2;
 const customerListGap = 4;
@@ -670,36 +686,94 @@ export function QuoteBuilder({
   }
 
   const isDialogLayout = layout === "dialog";
+  // The provider flips its host state from the slot ref callbacks, so this
+  // context value changes exactly when a host attaches or detaches. The
+  // consumer re-renders the portals reactively, without any effect that could
+  // miss the late-attached footer host.
+  const chromeHosts = React.useContext(QuoteBuilderChromeContext);
+  // Unique per instance: the footer is rendered outside the form in the dialog
+  // layout, so the submit button associates back to its form by id.
+  const formId = React.useId();
   const formClass = isDialogLayout
-    ? "min-h-0"
+    ? "min-h-0 min-w-0"
     : "flex flex-col";
   const scrollAreaClass = isDialogLayout
-    ? "min-h-0 py-4 pr-1"
+    ? "min-h-0 min-w-0"
     : "py-4 pr-1";
+  const stepperContent = <QuoteBuilderStepper current={step} onChange={setStep} />;
+  const footerContent = (
+    <>
+      <div className="flex items-center gap-2">
+        {step !== "client" ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={goToPrevious}
+            className="min-w-[96px]"
+          >
+            Anterior
+          </Button>
+        ) : null}
+      </div>
+
+      {step === "preview" ? (
+        <Button
+          ref={submitButtonRef}
+          type="submit"
+          variant="primary"
+          loading={isSubmitting}
+          form={formId}
+          onClick={() => {
+            hasExplicitSubmitRequest.current = true;
+          }}
+          className="min-w-[160px]"
+          aria-live="polite"
+        >
+          {isSubmitting ? (isEdit ? "Guardando..." : "Creando...") : (isEdit ? "Guardar cambios" : "Crear cotización")}
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          variant="primary"
+          onClick={goToNext}
+          className="min-w-[140px]"
+        >
+          Siguiente
+        </Button>
+      )}
+    </>
+  );
+  const shouldPortalChrome =
+    isDialogLayout &&
+    chromeHosts != null &&
+    chromeHosts.stepperHost != null &&
+    chromeHosts.footerHost != null;
 
   return (
+    <>
     <form
       ref={formRef}
+      id={formId}
       action={formAction}
       className={formClass}
       data-testid="quote-builder-form"
       data-layout={layout}
       style={isDialogLayout ? {
         alignItems: "stretch",
-        display: "flex",
-        flex: "1 1 0%",
-        flexDirection: "column",
+         display: "flex",
+         flexDirection: "column",
+         height: "100%",
         justifyContent: "flex-start",
         minHeight: 0,
+        minWidth: 0,
       } : undefined}
       onSubmit={handleSubmit}
     >
-          <div
-            className="shrink-0 border-b border-[var(--color-border-light)] pb-4"
-            style={isDialogLayout ? { flexShrink: 0 } : undefined}
-          >
-            <QuoteBuilderStepper current={step} onChange={setStep} />
+          {isDialogLayout ? null : (
+          <div className="shrink-0 border-b border-[var(--color-border-light)] pb-4">
+            {stepperContent}
           </div>
+          )}
 
           <div
             ref={scrollAreaRef}
@@ -708,6 +782,7 @@ export function QuoteBuilder({
             style={isDialogLayout ? {
               flex: "1 1 0%",
               minHeight: 0,
+              minWidth: 0,
               overflowY: "auto",
               overscrollBehaviorY: "contain",
             } : undefined}
@@ -1036,49 +1111,21 @@ export function QuoteBuilder({
             </div>
           </div>
 
+          {isDialogLayout ? null : (
           <div
             className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4"
             data-testid="quote-builder-footer"
-            style={isDialogLayout ? { flexShrink: 0 } : undefined}
           >
-            <div className="flex items-center gap-2">
-              {step !== "client" ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={goToPrevious}
-                className="min-w-[96px]"
-              >
-                Anterior
-              </Button>
-              ) : null}
-            </div>
-
-            {step === "preview" ? (
-              <Button
-                ref={submitButtonRef}
-                type="submit"
-                variant="primary"
-                loading={isSubmitting}
-                onClick={() => {
-                  hasExplicitSubmitRequest.current = true;
-                }}
-                className="min-w-[160px]"
-                aria-live="polite"
-              >
-                {isSubmitting ? (isEdit ? "Guardando..." : "Creando...") : (isEdit ? "Guardar cambios" : "Crear cotización")}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="primary"
-                onClick={goToNext}
-                className="min-w-[140px]"
-              >
-                Siguiente
-              </Button>
-            )}
+            {footerContent}
           </div>
+          )}
     </form>
+    {shouldPortalChrome && chromeHosts ? (
+      <>
+        {createPortal(stepperContent, chromeHosts.stepperHost!)}
+        {createPortal(footerContent, chromeHosts.footerHost!)}
+      </>
+    ) : null}
+    </>
   );
 }

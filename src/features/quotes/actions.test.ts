@@ -34,6 +34,7 @@ vi.mock("@/features/vehicles/schemas", async () => ({
 }));
 vi.mock("./lib/sequence", () => ({
   nextQuoteNumber: vi.fn(() => Promise.resolve("C-0626-01")),
+  withQuoteNumberRetry: vi.fn((operation: () => Promise<unknown>) => operation()),
 }));
 vi.mock("./lib/calculate", async () => ({
   ...(await vi.importActual<typeof import("./lib/calculate")>("./lib/calculate")),
@@ -137,7 +138,7 @@ describe("createQuote", () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => vi.useRealTimers());
 
-  it("creates a quote linked to a vehicle when vehicle data is provided", async () => {
+  it("creates a quote linked to a vehicle when vehicle data and customer are provided", async () => {
     const tx = mockTx();
     const result = await createQuote(validInput());
 
@@ -145,7 +146,18 @@ describe("createQuote", () => {
     expect(requireOperationalRole).toHaveBeenCalledTimes(1);
     expect(nextQuoteNumber).toHaveBeenCalledWith(tx);
     expect(tx.quote.create).toHaveBeenCalledTimes(1);
-    expect(tx.quoteItem.createMany).not.toHaveBeenCalled();
+    expect(tx.quoteItem.createMany).toHaveBeenCalledWith({
+      data: [{
+        quoteId: "quote-1",
+        sectionId: "sec-1",
+        type: "LABOR",
+        description: "Cambio de aceite",
+        quantity: 2,
+        unitPriceCents: 85000,
+        totalCents: 170000,
+        sortOrder: 0,
+      }],
+    });
     expect(tx.quote.create.mock.calls[0][0].include).toEqual({ sections: true });
     const createData = tx.quote.create.mock.calls[0][0].data;
     expect(createData.vehicleId).toBe("vehicle-1");
@@ -164,18 +176,32 @@ describe("createQuote", () => {
       isAuthorized: false,
       name: "General",
       sortOrder: 0,
-      items: {
-        create: [{
-          quote: { connect: { id: createData.id } },
-          type: "LABOR",
-          description: "Cambio de aceite",
-          quantity: 2,
-          unitPriceCents: 85000,
-          totalCents: 170000,
-          sortOrder: 0,
-        }],
-      },
     }]);
+    expect(result.totalCents).toBe(197200);
+  });
+
+  it("creates a draft quote with vehicle data but without a customer, storing snapshot without linking Vehicle", async () => {
+    const tx = mockTx();
+    const draftWithoutCustomer = {
+      ...validInput(),
+      customerId: undefined,
+    };
+
+    const result = await createQuote(draftWithoutCustomer);
+
+    expect(findOrCreateVehicle).not.toHaveBeenCalled();
+    expect(tx.quote.create).toHaveBeenCalledTimes(1);
+    const createData = tx.quote.create.mock.calls[0][0].data;
+    expect(createData.customerId).toBeNull();
+    expect(createData.vehicleId).toBeNull();
+    expect(createData.vehicleSnapshot).toEqual({
+      plate: null,
+      brand: "Toyota",
+      model: "Hilux",
+      color: null,
+      year: null,
+    });
+    expect(tx.quoteItem.createMany).toHaveBeenCalledTimes(1);
     expect(result.totalCents).toBe(197200);
   });
 
@@ -236,6 +262,30 @@ describe("updateDraftQuote", () => {
     expect(updateData.totalCents).toBe(197200);
     expect(updateData.operationalDate).toEqual(new Date("2026-07-14T00:00:00.000Z"));
     expect(updateData.sections.create).toHaveLength(1);
+    expect(result.totalCents).toBe(197200);
+  });
+
+  it("updates a draft quote without a customer, storing vehicle snapshot without linking Vehicle", async () => {
+    const tx = mockTx();
+    const draftWithoutCustomer = {
+      ...validInput(),
+      customerId: undefined,
+    };
+
+    const result = await updateDraftQuote("quote-1", draftWithoutCustomer);
+
+    expect(findOrCreateVehicle).not.toHaveBeenCalled();
+    expect(tx.quote.update).toHaveBeenCalledTimes(1);
+    const updateData = tx.quote.update.mock.calls[0][0].data;
+    expect(updateData.customerId).toBeNull();
+    expect(updateData.vehicleId).toBeNull();
+    expect(updateData.vehicleSnapshot).toEqual({
+      plate: null,
+      brand: "Toyota",
+      model: "Hilux",
+      color: null,
+      year: null,
+    });
     expect(result.totalCents).toBe(197200);
   });
 
@@ -460,9 +510,13 @@ describe("createQuoteFromForm", () => {
 
     const createData = tx.quote.create.mock.calls[0][0].data;
     expect(createData).toMatchObject({ subtotalCents: null, taxCents: null, totalCents: null });
-    expect(createData.sections.create[0].items.create[0]).toMatchObject({
-      unitPriceCents: null,
-      totalCents: null,
+    expect(tx.quoteItem.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          unitPriceCents: null,
+          totalCents: null,
+        }),
+      ],
     });
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?created=1");
   });
@@ -492,9 +546,13 @@ describe("createQuoteFromForm", () => {
     expect(requireOperationalRole).toHaveBeenCalledTimes(1);
     const sections = tx.quote.create.mock.calls[0][0].data.sections.create;
     expect(sections).toHaveLength(1);
-    expect(sections[0].items.create).toHaveLength(1);
-    expect(sections[0].items.create[0].description).toBe("Cambio de aceite");
-    expect(tx.quoteItem.createMany).not.toHaveBeenCalled();
+    expect(tx.quoteItem.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          description: "Cambio de aceite",
+        }),
+      ],
+    });
     expect(revalidatePath).not.toHaveBeenCalled();
     expect(redirect).toHaveBeenCalledWith("/admin/quotes?created=1");
   });
@@ -653,7 +711,7 @@ describe("duplicateQuote", () => {
         },
       ],
     });
-    tx.quote.create.mockResolvedValue({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT });
+    tx.quote.create.mockResolvedValue({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT, sections: [{ id: "sec-1", sortOrder: 0 }] });
 
     const result = await duplicateQuote("quote-source");
 
@@ -669,9 +727,32 @@ describe("duplicateQuote", () => {
     expect(requireOperationalRole).toHaveBeenCalledTimes(1);
     expect(findOrCreateVehicle).not.toHaveBeenCalled();
     expect(tx.quote.create).toHaveBeenCalledTimes(1);
-    expect(tx.quoteItem.createMany).not.toHaveBeenCalled();
+    expect(tx.quoteItem.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          quoteId: "quote-copy",
+          sectionId: "sec-1",
+          type: "PART",
+          description: "Filtro",
+          quantity: new Prisma.Decimal("1.00"),
+          unitPriceCents: 20000,
+          totalCents: 20000,
+          sortOrder: 0,
+        },
+        {
+          quoteId: "quote-copy",
+          sectionId: "sec-1",
+          type: "LABOR",
+          description: "Cambio de aceite",
+          quantity: new Prisma.Decimal("2.00"),
+          unitPriceCents: 85000,
+          totalCents: 170000,
+          sortOrder: 1,
+        },
+      ],
+    });
     expect(tx.quote.create.mock.calls[0][0].include).toEqual({ sections: true });
-    expect(result).toEqual({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT });
+    expect(result).toEqual({ id: "quote-copy", number: "C-0626-01", status: QuoteStatus.DRAFT, sections: [{ id: "sec-1", sortOrder: 0 }] });
 
     const createData = tx.quote.create.mock.calls[0][0].data;
     expect(createData).toMatchObject({
@@ -702,28 +783,6 @@ describe("duplicateQuote", () => {
     expect(createData.sections.create).toEqual([{
       name: "General",
       sortOrder: 0,
-      items: {
-        create: [
-          {
-            quote: { connect: { id: createData.id } },
-            type: "PART",
-            description: "Filtro",
-            quantity: new Prisma.Decimal("1.00"),
-            unitPriceCents: 20000,
-            totalCents: 20000,
-            sortOrder: 0,
-          },
-          {
-            quote: { connect: { id: createData.id } },
-            type: "LABOR",
-            description: "Cambio de aceite",
-            quantity: new Prisma.Decimal("2.00"),
-            unitPriceCents: 85000,
-            totalCents: 170000,
-            sortOrder: 1,
-          },
-        ],
-      },
     }]);
     expect(createData).not.toHaveProperty("workOrder");
     expect(createData).not.toHaveProperty("sharedQuotes");
@@ -1028,9 +1087,9 @@ describe("publishSharedQuote", () => {
   it("publishes a complete draft, creates its link, and revalidates the list", async () => {
     const tx = mockTx();
     tx.quote.updateMany.mockResolvedValue({ count: 1 });
-    vi.mocked(getOrCreateSharedQuoteForQuote).mockResolvedValue({ id: "shared-1" } as never);
+    vi.mocked(getOrCreateSharedQuoteForQuote).mockResolvedValue({ id: "shared-1", token: "tok-123" } as never);
 
-    await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: true });
+    await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: true, token: "tok-123" });
 
     expect(getOrCreateSharedQuoteForQuote).toHaveBeenCalledWith("quote-1");
     expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");

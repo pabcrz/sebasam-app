@@ -72,7 +72,7 @@ export function resolveQuoteActionPresentation({
   if (status !== "APPROVED") available.add("delete");
 
   const primaryCandidates: Record<QuoteStatus, QuoteActionId[]> = {
-    DRAFT: ["share"],
+    DRAFT: [],
     SENT: ["authorize"],
     APPROVED: ["workOrder"],
     REJECTED: ["correctDecision"],
