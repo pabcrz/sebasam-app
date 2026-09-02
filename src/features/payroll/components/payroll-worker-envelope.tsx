@@ -89,12 +89,6 @@ export function PayrollWorkerEnvelopeModal({
         backgroundColor: "#ffffff",
         pixelRatio: 3,
         cacheBust: true,
-        style: {
-          padding: "24px",
-          backgroundColor: "#ffffff",
-          width: `${node.offsetWidth + 48}px`,
-          height: "auto",
-        },
       });
       const link = document.createElement("a");
       const safeName = worker.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -158,10 +152,10 @@ export function PayrollWorkerEnvelopeModal({
         </div>
 
         {/* Flush Envelope Preview */}
-        <div className="flex justify-center w-full py-1">
+        <div className="flex justify-center w-full py-2">
           <div
             id="payroll-worker-envelope-document"
-            className="w-full max-w-[340px] p-1 bg-white text-slate-900 space-y-3 mx-auto print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
+            className="w-[340px] max-w-full p-4 bg-white text-slate-900 space-y-3 mx-auto rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
           >
             {/* Header with Clean Inverted Logo */}
             <div className="border-b-2 border-slate-900 pb-2 flex items-center justify-between gap-1.5">
@@ -213,7 +207,7 @@ export function PayrollWorkerEnvelopeModal({
                   {allLaborItems.length > 0 ? (
                     allLaborItems.map((item, idx) => (
                       <tr key={`${item.id}-${idx}`} className="hover:bg-slate-50/50">
-                        <td className="py-2 pl-2.5 pr-1 text-slate-800 font-medium text-xs leading-snug">
+                        <td className="py-2 pl-2.5 pr-1 text-slate-900 font-semibold text-xs leading-snug">
                           {item.description}
                         </td>
                         <td className="py-2 px-1 text-right text-slate-500 font-normal text-[10px] whitespace-nowrap">
@@ -239,7 +233,7 @@ export function PayrollWorkerEnvelopeModal({
             </div>
 
             {/* Light Totals Summary */}
-            <div className="bg-slate-50 border border-slate-200 rounded p-2.5 flex items-center justify-between">
+            <div className="bg-slate-50 border border-slate-200 rounded-md p-2.5 flex items-center justify-between">
               <div>
                 <span className="text-[9px] uppercase tracking-wider block font-bold text-slate-500">
                   Mano de Obra Taller:
