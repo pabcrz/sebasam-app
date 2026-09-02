@@ -84,30 +84,21 @@ export function PayrollWorkerEnvelopeModal({
     const node = document.getElementById("payroll-worker-envelope-document");
     if (!node) return;
     setIsGeneratingImage(true);
-    let offscreenWrapper: HTMLDivElement | null = null;
     try {
-      offscreenWrapper = document.createElement("div");
-      offscreenWrapper.style.position = "absolute";
-      offscreenWrapper.style.left = "-9999px";
-      offscreenWrapper.style.top = "0";
-      offscreenWrapper.style.width = "400px";
-      offscreenWrapper.style.padding = "24px";
-      offscreenWrapper.style.backgroundColor = "#ffffff";
-      offscreenWrapper.style.boxSizing = "border-box";
+      const scrollW = node.scrollWidth || 350;
+      const scrollH = node.scrollHeight || 500;
+      const targetWidth = Math.max(scrollW, node.offsetWidth, 350) + 12;
+      const targetHeight = Math.max(scrollH, node.offsetHeight, 400) + 12;
 
-      const clone = node.cloneNode(true) as HTMLElement;
-      clone.style.width = "100%";
-      clone.style.maxWidth = "100%";
-      clone.style.margin = "0";
-      clone.style.padding = "0";
-
-      offscreenWrapper.appendChild(clone);
-      document.body.appendChild(offscreenWrapper);
-
-      const dataUrl = await toPng(offscreenWrapper, {
+      const dataUrl = await toPng(node, {
         backgroundColor: "#ffffff",
-        pixelRatio: 3,
+        pixelRatio: 2.5,
         cacheBust: true,
+        width: targetWidth,
+        height: targetHeight,
+        style: {
+          overflow: "visible",
+        },
       });
 
       const link = document.createElement("a");
@@ -118,9 +109,6 @@ export function PayrollWorkerEnvelopeModal({
     } catch (err) {
       console.error("Error exportando imagen de sobre:", err);
     } finally {
-      if (offscreenWrapper && offscreenWrapper.parentNode) {
-        offscreenWrapper.parentNode.removeChild(offscreenWrapper);
-      }
       setIsGeneratingImage(false);
     }
   };
