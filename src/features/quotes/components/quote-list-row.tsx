@@ -8,6 +8,7 @@ import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, Button, TableCell, TableRow } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
+import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteCancelForm } from "./quote-cancel-form";
 import { QuoteDuplicateForm } from "./quote-duplicate-form";
@@ -156,6 +157,7 @@ export function QuoteListRow({
               sharedQuote={quote.activeSharedQuote ?? undefined}
               status={quote.status}
               quoteNumber={quote.number}
+              variant={quote.status === "DRAFT" && isQuoteCommercialReady(quote) ? "primary" : "outline"}
             />
           ) : null}
 

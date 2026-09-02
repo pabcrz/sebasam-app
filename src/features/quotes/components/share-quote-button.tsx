@@ -9,7 +9,7 @@ import { Button } from "@/components/ui";
 import type { ButtonVariant } from "@/components/ui";
 
 export interface ShareQuoteButtonProps {
-  action?: () => Promise<{ success: boolean; error?: string }>;
+  action?: () => Promise<{ success: boolean; token?: string; error?: string }>;
   sharedQuote?: Pick<SharedQuote, "token">;
   status: QuoteStatus;
   quoteNumber: string;
@@ -32,7 +32,7 @@ export function ShareQuoteButton({
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
   const isDraft = status === "DRAFT";
-  const label = isDraft ? "Preparar y compartir" : "Compartir";
+  const label = "Compartir";
   const shareUrl = sharedQuote
     ? typeof window === "undefined"
       ? `/cotizacion/${sharedQuote.token}`
@@ -76,7 +76,27 @@ export function ShareQuoteButton({
           );
           return;
         }
-        toast.success("Cotización preparada.", { id: "quote-share-prepared" });
+        if (result.token) {
+          const generatedUrl = typeof window === "undefined"
+            ? `/cotizacion/${result.token}`
+            : `${window.location.origin}/cotizacion/${result.token}`;
+          if (navigator.clipboard?.writeText) {
+            try {
+              await navigator.clipboard.writeText(generatedUrl);
+              toast.success("Enlace copiado al portapapeles.", { id: "quote-share-copied" });
+            } catch {
+              toast.error(`No se pudo copiar automáticamente: ${generatedUrl}`, {
+                id: "quote-share-error",
+                duration: 6000,
+              });
+            }
+          } else {
+            toast.error(`No se pudo copiar automáticamente: ${generatedUrl}`, {
+              id: "quote-share-error",
+              duration: 6000,
+            });
+          }
+        }
         router.refresh();
       } catch {
         toast.error("No se pudo preparar la cotización. Intenta de nuevo.", {

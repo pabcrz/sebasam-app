@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertCommercialQuote, CommercialQuoteValidationError } from "./commercial-validation";
+import { assertCommercialQuote, CommercialQuoteValidationError, isQuoteCommercialReady } from "./commercial-validation";
 
 function quote(overrides: Partial<Parameters<typeof assertCommercialQuote>[0]> = {}) {
   return {
@@ -37,5 +37,15 @@ describe("assertCommercialQuote", () => {
     expect(() => assertCommercialQuote(quote({
       sections: [{ items: [{ description: "Precio por confirmar", quantity: 1, unitPriceCents: null }] }],
     }))).toThrow("Completa la descripción, cantidad y precio de todos los conceptos antes de compartir.");
+  });
+
+  describe("isQuoteCommercialReady", () => {
+    it("returns true for valid complete quote", () => {
+      expect(isQuoteCommercialReady(quote())).toBe(true);
+    });
+
+    it("returns false for incomplete quote without throwing", () => {
+      expect(isQuoteCommercialReady(quote({ customerId: null }))).toBe(false);
+    });
   });
 });

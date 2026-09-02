@@ -29,7 +29,9 @@ export function assertCommercialQuote(quote: CommercialQuote) {
     throw new CommercialQuoteValidationError("Selecciona un cliente antes de preparar la cotización para compartir.");
   }
 
-  const items = quote.sections?.flatMap((section) => section.items) ?? quote.items ?? [];
+  const items = quote.sections && quote.sections.length > 0
+    ? quote.sections.flatMap((section) => section.items)
+    : (quote.items ?? []);
   if (items.length === 0) {
     throw new CommercialQuoteValidationError("Agrega al menos un concepto completo antes de preparar la cotización para compartir.");
   }
@@ -52,4 +54,13 @@ export function assertCommercialQuote(quote: CommercialQuote) {
   }
 
   return totals;
+}
+
+export function isQuoteCommercialReady(quote: CommercialQuote): boolean {
+  try {
+    assertCommercialQuote(quote);
+    return true;
+  } catch {
+    return false;
+  }
 }

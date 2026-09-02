@@ -15,22 +15,22 @@ describe("ShareQuoteButton", () => {
     vi.clearAllMocks();
   });
 
-  it("publishes a tokenless draft, confirms success, and refreshes the row", async () => {
+  it("publishes a tokenless draft, copies the generated link, confirms success, and refreshes the row", async () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText");
     const toastSuccess = vi.spyOn(toast, "success");
-    const action = vi.fn().mockResolvedValue({ success: true });
+    const action = vi.fn().mockResolvedValue({ success: true, token: "new-token" });
     writeText.mockResolvedValue(undefined);
     render(<ShareQuoteButton action={action} status="DRAFT" quoteNumber="C-001" />);
 
-    const button = screen.getByRole("button", { name: /preparar y compartir cotización c-001/i });
+    const button = screen.getByRole("button", { name: /compartir cotización c-001/i });
     expect(button).toBeInTheDocument();
 
     await user.click(button);
 
     expect(action).toHaveBeenCalledTimes(1);
-    expect(writeText).not.toHaveBeenCalled();
-    expect(toastSuccess).toHaveBeenCalledWith("Cotización preparada.", { id: "quote-share-prepared" });
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/cotizacion/new-token"));
+    expect(toastSuccess).toHaveBeenCalledWith("Enlace copiado al portapapeles.", { id: "quote-share-copied" });
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
@@ -43,7 +43,7 @@ describe("ShareQuoteButton", () => {
     });
     render(<ShareQuoteButton action={action} status="DRAFT" quoteNumber="C-001" />);
 
-    await user.click(screen.getByRole("button", { name: /preparar y compartir/i }));
+    await user.click(screen.getByRole("button", { name: /compartir/i }));
 
     expect(toastError).toHaveBeenCalledWith(
       "Completa la descripción, cantidad y precio de todos los conceptos antes de compartir.",
