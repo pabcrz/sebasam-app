@@ -426,3 +426,7 @@ button:hover .icon-copy-hover,
   transform: translateY(-1px) scale(1.08);
 }
 
+html[data-font-scale="large"] {
+  font-size: 112.5%;
+}
+

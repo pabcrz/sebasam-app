@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { logoutAdmin } from "@/features/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { FontScaleToggle } from "@/components/font-scale-toggle";
 import { Button } from "@/components/ui/button";
 
 interface AdminShellProps {
@@ -220,6 +221,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
                 </div>
               </details>
 
+              <FontScaleToggle className="text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]" />
               <ThemeToggle className="text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]" />
             </div>
           </div>
