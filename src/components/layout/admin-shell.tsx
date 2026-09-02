@@ -93,12 +93,12 @@ function NavLink({
       aria-label={mobile ? label : undefined}
       className={
         mobile
-          ? `group flex min-h-[var(--tap-min-height)] min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] px-1 py-1.5 text-[0.68rem] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-900)] ${
+          ? `group flex min-h-[var(--tap-min-height)] min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] px-1 py-1.5 text-[0.68rem] font-semibold leading-none transition-all duration-150 active-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-900)] ${
               active
                 ? "bg-white/14 text-white shadow-sm"
                 : "text-[var(--color-on-navy-tint)] hover:bg-white/8 hover:text-white"
             } ${isPending ? "opacity-75" : ""}`
-          : `flex min-h-[var(--tap-min-height)] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+          : `group flex min-h-[var(--tap-min-height)] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150 active-press-subtle ${
               active
                 ? "bg-[var(--color-blue-tint)] text-[var(--color-nav-active-text)] shadow-sm"
                 : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)]"
@@ -106,11 +106,12 @@ function NavLink({
       }
       aria-current={active ? "page" : undefined}
     >
-      {isPending ? (
-        <Loader2 className={mobile ? "h-5 w-5 animate-spin text-white" : "h-4 w-4 animate-spin text-[var(--color-primary)]"} aria-hidden="true" />
-      ) : (
-        <Icon className={mobile ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" />
-      )}
+      <Icon
+        className={`transition-transform duration-200 ease-out will-change-transform ${
+          mobile ? "h-5 w-5" : "h-4 w-4"
+        } ${active ? "scale-110" : "group-hover:scale-110 group-active:scale-95"}`}
+        aria-hidden="true"
+      />
       <span className={mobile ? "whitespace-nowrap" : undefined}>{mobileLabel ?? label}</span>
     </Link>
   );

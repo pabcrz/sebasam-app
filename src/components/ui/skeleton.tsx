@@ -10,7 +10,7 @@ export function Skeleton({ className, circle, ...props }: SkeletonProps) {
   return (
     <div
       className={clsx(
-        "animate-pulse bg-[var(--color-border-light)]/60",
+        "animate-pulse animate-shimmer bg-[var(--color-border-light)]/60",
         circle ? "rounded-full" : "rounded-md",
         className,
       )}
