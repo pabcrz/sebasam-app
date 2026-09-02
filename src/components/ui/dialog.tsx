@@ -44,14 +44,130 @@ function isDialogPortalTarget(target: EventTarget | null): boolean {
   return target.closest("[data-select-content], [data-dialog-popover]") !== null;
 }
 
+function dispatchEscape(target: HTMLElement | null) {
+  const event = new KeyboardEvent("keydown", {
+    key: "Escape",
+    code: "Escape",
+    keyCode: 27,
+    which: 27,
+    bubbles: true,
+    cancelable: true,
+  });
+  if (target) {
+    target.dispatchEvent(event);
+  } else if (typeof document !== "undefined") {
+    document.dispatchEvent(event);
+  }
+}
+
+export function useDialogPlatformDismiss(
+  contentRef: React.RefObject<HTMLElement | null>,
+  enabled: boolean = true,
+) {
+  React.useEffect(() => {
+    if (!enabled || typeof window === "undefined") return;
+
+    // 1. Modern CloseWatcher API (Chrome 120+, Android Chrome/WebView)
+    if (
+      "CloseWatcher" in window &&
+      typeof (window as unknown as { CloseWatcher: new () => { onclose?: () => void; destroy: () => void } }).CloseWatcher === "function"
+    ) {
+      let watcher: { onclose?: () => void; destroy: () => void } | null = null;
+      try {
+        const CloseWatcherConstructor = (
+          window as unknown as { CloseWatcher: new () => { onclose?: () => void; destroy: () => void } }
+        ).CloseWatcher;
+        watcher = new CloseWatcherConstructor();
+        watcher.onclose = () => {
+          if (watcher) {
+            watcher.destroy();
+            watcher = null;
+          }
+          dispatchEscape(contentRef.current);
+        };
+      } catch {
+        // Fall back to history if CloseWatcher creation fails
+      }
+
+      if (watcher) {
+        return () => {
+          if (watcher) {
+            watcher.destroy();
+            watcher = null;
+          }
+        };
+      }
+    }
+
+    // 2. History API fallback for browsers without CloseWatcher (Safari, Firefox, older browsers)
+    const historyKey = `__dialog_${Math.random().toString(36).slice(2, 9)}`;
+    let closedByPopState = false;
+    let pushed = false;
+
+    try {
+      const currentState = (window.history.state as Record<string, unknown> | null) ?? {};
+      window.history.pushState({ ...currentState, [historyKey]: true }, "");
+      pushed = true;
+    } catch {
+      return;
+    }
+
+    const handlePopState = () => {
+      closedByPopState = true;
+      dispatchEscape(contentRef.current);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (pushed && !closedByPopState) {
+        try {
+          window.history.back();
+        } catch {
+          // Ignore history errors during unmount
+        }
+      }
+    };
+  }, [contentRef, enabled]);
+}
+
+export interface DialogContentProps
+  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  disablePlatformDismiss?: boolean;
+}
+
 export const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+  DialogContentProps
 >(
   (
-    { className, children, onInteractOutside, onPointerDownOutside, onFocusOutside, ...props },
+    {
+      className,
+      children,
+      onInteractOutside,
+      onPointerDownOutside,
+      onFocusOutside,
+      disablePlatformDismiss = false,
+      ...props
+    },
     ref,
   ) => {
+    const localRef = React.useRef<HTMLDivElement | null>(null);
+    const setRef = React.useCallback(
+      (node: HTMLDivElement | null) => {
+        localRef.current = node;
+        if (typeof ref === "function") {
+          ref(node);
+        } else if (ref) {
+          (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        }
+      },
+      [ref],
+    );
+
+    useDialogPlatformDismiss(localRef, !disablePlatformDismiss);
+
     const pointerDownOutsideEventRef = React.useRef<PointerEvent | null>(null);
     const pointerDownOutsideGuard = React.useMemo<DialogPointerDownOutsideGuard>(
       () => ({
@@ -72,7 +188,7 @@ export const DialogContent = React.forwardRef<
         <DialogPortal>
           <DialogOverlay />
           <DialogPrimitive.Content
-            ref={ref}
+            ref={setRef}
             className={clsx(
               "fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh_-_2rem)] w-[calc(100vw_-_2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-[var(--space-md)] shadow-lg",
               className,
