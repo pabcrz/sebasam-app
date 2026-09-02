@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { printElementById } from "../lib/print-element";
 import type { WeeklyPayrollReport } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 
@@ -36,10 +37,8 @@ export function PayrollSigningSheetModal({
   const [customRows, setCustomRows] = React.useState<CustomRow[]>([]);
   const [newWorkerName, setNewWorkerName] = React.useState("");
 
-  const printUrl = `/admin/nomina/imprimir/firmas?anchor=${encodeURIComponent(period.anchor)}&mode=${encodeURIComponent(period.mode)}`;
-
   const handlePrint = () => {
-    window.open(printUrl, "_blank");
+    printElementById("payroll-signing-sheet-document", "Hoja de Firma de Nómina");
   };
 
   const handleAddWorker = (e?: React.FormEvent) => {

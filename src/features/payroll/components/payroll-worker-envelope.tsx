@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatCents } from "@/features/quotes/lib/format";
+import { printElementById } from "../lib/print-element";
 import type { WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 
@@ -32,10 +33,8 @@ export function PayrollWorkerEnvelopeModal({
 
   if (!worker) return null;
 
-  const printUrl = `/admin/nomina/imprimir/sobre/${encodeURIComponent(worker.workerId)}?anchor=${encodeURIComponent(period.anchor)}&mode=${encodeURIComponent(period.mode)}`;
-
   const handlePrint = () => {
-    window.open(printUrl, "_blank");
+    printElementById("payroll-worker-envelope-document", `Sobre de Pago - ${worker.displayName}`);
   };
 
   const todayStr = new Intl.DateTimeFormat("es-MX", {
