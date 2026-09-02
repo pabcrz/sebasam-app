@@ -82,7 +82,7 @@ export function PayrollPeriodNav({
               onClick={onExportExcel}
               disabled={!hasData}
               title={!hasData ? "No hay datos para exportar en este período" : "Descargar reporte en Excel"}
-              className="h-7 sm:h-8 text-xs px-2.5 gap-1.5 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+              className="h-7 sm:h-8 text-xs px-2.5 gap-1.5 text-[var(--color-status-success)] border-[var(--color-status-success-border)] hover:bg-[var(--color-status-success-bg)]"
             >
               <Download className="h-3.5 w-3.5" />
               Descargar Excel

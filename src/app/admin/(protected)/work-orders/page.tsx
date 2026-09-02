@@ -36,6 +36,11 @@ export default async function WorkOrdersPage() {
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
+          Trabajos en proceso
+        </h1>
+      </div>
       <Card className="min-w-0">
         <CardHeader>
           <CardTitle as="h2">Órdenes activas</CardTitle>

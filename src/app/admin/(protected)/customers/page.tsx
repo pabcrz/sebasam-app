@@ -57,7 +57,14 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
         </p>
       ) : null}
 
-      <CustomerCreateForm action={createCustomerFromForm} />
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
+          Clientes
+        </h1>
+        <div className="hidden sm:block">
+          <CustomerCreateForm action={createCustomerFromForm} triggerVariant="primary" triggerSize="sm" triggerClassName="w-full sm:w-auto" />
+        </div>
+      </div>
 
       <Card>
         <CardHeader>
@@ -92,6 +99,19 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
           )}
         </CardContent>
       </Card>
+
+      {/* Mobile Floating Action Button */}
+      <div
+        className="fixed right-4 z-40 sm:hidden"
+        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <CustomerCreateForm
+          action={createCustomerFromForm}
+          triggerVariant="primary"
+          triggerSize="sm"
+          triggerClassName="h-11 px-4 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-1.5 border border-white/20"
+        />
+      </div>
     </section>
   );
 }
