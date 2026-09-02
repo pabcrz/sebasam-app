@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ClipboardCheck } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { listCompletedWorkOrders } from "@/features/work-orders/queries";
 import { notasHref, parseNotasParams } from "@/features/work-orders/notas-period";
 import { NotasFilters } from "@/features/work-orders/components/notas-filters";
@@ -29,11 +31,12 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
-          Notas de remisión
-        </h1>
-      </div>
+      <AdminPageHeader
+        icon={ClipboardCheck}
+        title="Notas de remisión"
+        description="Control de trabajos completados en taller y estado de cobranza."
+        variant="expanded"
+      />
       <NotasFilters mode={filters.mode} payment={filters.payment} assignee={filters.assignee} anchor={filters.anchor} rangeLabel={filters.rangeLabel} isCurrentWeek={filters.isCurrentWeek} masters={masters} />
 
       <Card className="min-w-0">

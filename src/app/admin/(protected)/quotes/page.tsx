@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { FileText } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import {
   approveQuoteAndCreateWorkOrderFromForm,
   cancelQuoteFromForm,
@@ -97,14 +99,22 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
-          Cotizaciones
-        </h1>
-        <div className="hidden sm:block">
-          <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
-        </div>
-      </div>
+      <AdminPageHeader
+        icon={FileText}
+        title="Cotizaciones"
+        description="Presupuestos comerciales y órdenes de trabajo asociadas."
+        variant="expanded"
+        actions={
+          <div className="hidden sm:block">
+            <QuoteBuilderDialog
+              customers={customers}
+              createAction={createQuoteFromWorkspace}
+              createCustomerAction={createOrReuseCustomerForQuote}
+              searchCustomersAction={searchCustomersForQuote}
+            />
+          </div>
+        }
+      />
       <QuotePageToasts />
 
       <Card className="min-w-0">
