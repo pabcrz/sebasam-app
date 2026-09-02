@@ -201,13 +201,44 @@ body {
 
 @media print {
   @page {
-    margin: 1.5cm;
+    margin: 1cm;
+    size: letter portrait;
   }
   html,
   body {
     height: auto !important;
     min-height: 0 !important;
     background: #ffffff !important;
+    color: #000000 !important;
     padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* When printing from inside a dialog modal */
+  [data-dialog-overlay] {
+    display: none !important;
+  }
+  [role="dialog"] {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+  }
+
+  /* Hide background content outside radix portal when dialog is active */
+  body:has([role="dialog"]) > *:not([data-radix-portal]) {
+    display: none !important;
   }
 }
