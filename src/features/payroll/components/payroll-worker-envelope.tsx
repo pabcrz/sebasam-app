@@ -85,10 +85,18 @@ export function PayrollWorkerEnvelopeModal({
     if (!node) return;
     setIsGeneratingImage(true);
     try {
+      const rect = node.getBoundingClientRect();
+      const targetWidth = Math.ceil(Math.max(node.scrollWidth, node.offsetWidth, rect.width, 360));
+      const targetHeight = Math.ceil(Math.max(node.scrollHeight, node.offsetHeight, rect.height));
+
       const dataUrl = await toPng(node, {
         backgroundColor: "#ffffff",
         pixelRatio: 3,
         cacheBust: true,
+        width: targetWidth,
+        height: targetHeight,
+        canvasWidth: targetWidth * 3,
+        canvasHeight: targetHeight * 3,
       });
       const link = document.createElement("a");
       const safeName = worker.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -155,7 +163,7 @@ export function PayrollWorkerEnvelopeModal({
         <div className="flex justify-center w-full py-2">
           <div
             id="payroll-worker-envelope-document"
-            className="w-[340px] max-w-full p-4 bg-white text-slate-900 space-y-3 mx-auto rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
+            className="w-[360px] max-w-full p-4 bg-white text-slate-900 space-y-3 mx-auto rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
           >
             {/* Header with Clean Inverted Logo */}
             <div className="border-b-2 border-slate-900 pb-2 flex items-center justify-between gap-1.5">
@@ -198,9 +206,9 @@ export function PayrollWorkerEnvelopeModal({
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold text-[10px] uppercase tracking-wide">
                     <th className="py-2 pl-2.5 pr-1 text-left">Mano de Obra</th>
-                    <th className="py-2 px-1 text-right w-16 text-[9px] font-bold text-slate-600">Base</th>
+                    <th className="py-2 px-1 text-right w-14 text-[9px] font-bold text-slate-600">Base</th>
                     <th className="py-2 px-0.5 text-center w-7 text-[9px] font-bold text-slate-600">%</th>
-                    <th className="py-2 pl-1 pr-2.5 text-right w-18 text-[10px] font-bold text-slate-900">A Cobrar</th>
+                    <th className="py-2 pl-1 pr-2.5 text-right w-16 text-[10px] font-bold text-slate-900">A Cobrar</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -233,7 +241,7 @@ export function PayrollWorkerEnvelopeModal({
             </div>
 
             {/* Light Totals Summary */}
-            <div className="bg-slate-50 border border-slate-200 rounded-md p-2.5 flex items-center justify-between">
+            <div className="bg-slate-50 border border-slate-200 rounded p-2.5 flex items-center justify-between">
               <div>
                 <span className="text-[9px] uppercase tracking-wider block font-bold text-slate-500">
                   Mano de Obra Taller:
