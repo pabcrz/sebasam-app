@@ -18,7 +18,6 @@ import type { ParsedPayrollParams } from "../period";
 interface CustomRow {
   id: string;
   name: string;
-  type: string;
 }
 
 interface PayrollSigningSheetProps {
@@ -51,7 +50,6 @@ export function PayrollSigningSheetModal({
       {
         id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         name: newWorkerName.trim(),
-        type: "Mecánico / Ayudante",
       },
     ]);
     setNewWorkerName("");
@@ -63,7 +61,6 @@ export function PayrollSigningSheetModal({
       {
         id: `blank-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         name: "",
-        type: "",
       },
     ]);
   };
@@ -81,13 +78,11 @@ export function PayrollSigningSheetModal({
     ...report.workers.map((w) => ({
       id: w.workerId,
       name: w.displayName,
-      type: w.workerKind === "SPECIAL" ? "Especial / Taller" : "Maestro Mecánico",
       isCustom: false,
     })),
     ...customRows.map((r) => ({
       id: r.id,
       name: r.name,
-      type: r.type || "Trabajador",
       isCustom: true,
     })),
   ];
@@ -167,45 +162,39 @@ export function PayrollSigningSheetModal({
             </div>
           </div>
 
-          {/* Full-width Workers Table */}
+          {/* Full-width Workers Table (No Puesto column) */}
           <div className="overflow-hidden border border-slate-300 rounded">
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="bg-slate-100 border-b border-slate-300 text-slate-800 font-bold text-xs uppercase tracking-wide">
-                  <th className="py-3 px-3 w-12 text-center">No.</th>
-                  <th className="py-3 px-4">Nombre del Trabajador</th>
-                  <th className="py-3 px-4 w-44 text-center">Puesto / Tipo</th>
-                  <th className="py-3 px-6 w-72 text-center">Firma de Conformidad</th>
-                  <th className="py-3 px-2 w-8 text-center print:hidden"></th>
+                  <th className="py-3.5 px-4 w-16 text-center">No.</th>
+                  <th className="py-3.5 px-6">Nombre del Trabajador</th>
+                  <th className="py-3.5 px-8 w-80 text-center">Firma de Conformidad</th>
+                  <th className="py-3.5 px-2 w-8 text-center print:hidden"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {allWorkers.length > 0 ? (
                   allWorkers.map((worker, idx) => (
                     <tr key={worker.id} className="h-16 hover:bg-slate-50/50">
-                      <td className="py-3 px-3 text-center font-semibold text-slate-600">
+                      <td className="py-3.5 px-4 text-center font-bold text-slate-600">
                         {idx + 1}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-6">
                         {worker.name ? (
-                          <span className="font-bold text-sm sm:text-base text-slate-900 block">
+                          <span className="font-bold text-base text-slate-900 block">
                             {worker.name}
                           </span>
                         ) : (
-                          <div className="border-b border-dotted border-slate-400 h-6 w-full max-w-[200px]" />
+                          <div className="border-b border-dotted border-slate-400 h-6 w-full max-w-[280px]" />
                         )}
                       </td>
-                      <td className="py-3 px-4 text-center text-xs text-slate-600">
-                        {worker.type || (
-                          <div className="border-b border-dotted border-slate-300 h-4 w-20 mx-auto" />
-                        )}
-                      </td>
-                      <td className="py-3 px-6">
+                      <td className="py-3.5 px-8">
                         <div className="h-10 border-b border-dashed border-slate-400 flex items-end justify-center">
                           <span className="text-[10px] text-slate-400 pb-0.5 select-none">Firma</span>
                         </div>
                       </td>
-                      <td className="py-3 px-2 text-center print:hidden">
+                      <td className="py-3.5 px-2 text-center print:hidden">
                         {worker.isCustom && (
                           <button
                             type="button"
@@ -221,7 +210,7 @@ export function PayrollSigningSheetModal({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-500">
+                    <td colSpan={4} className="py-8 text-center text-slate-500">
                       No hay trabajadores con trabajos registrados en este período.
                     </td>
                   </tr>
