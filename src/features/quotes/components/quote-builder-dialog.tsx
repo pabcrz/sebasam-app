@@ -100,8 +100,14 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
   } : undefined);
 
   const handleOpenChange = React.useCallback((nextOpen: boolean) => {
-    setOpen(nextOpen);
-  }, []);
+    if (nextOpen) {
+      setOpen(true);
+      return;
+    }
+    if (!dirty) {
+      setOpen(false);
+    }
+  }, [dirty]);
 
   const discardChanges = React.useCallback(() => {
     setOpen(false);

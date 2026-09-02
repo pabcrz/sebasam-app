@@ -8,6 +8,7 @@ import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, Button, OperationalCard } from "@/components/ui";
 import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
+import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteCancelForm } from "./quote-cancel-form";
 import { QuoteDuplicateForm } from "./quote-duplicate-form";
@@ -96,7 +97,7 @@ export function QuoteListCard({
 
   const renderAction = (
     action: QuoteActionId,
-    variant: "primary" | "outline" | "danger" = "outline",
+    variant: "primary" | "secondary" | "outline" | "danger" = "outline",
     presentation: "default" | "tile" = "default",
   ) => {
     const tileClassName = presentation === "tile"
@@ -267,9 +268,16 @@ export function QuoteListCard({
             data-testid="quote-secondary-actions"
             className="grid grid-cols-[repeat(3,minmax(0,1fr))_auto] items-center gap-2"
           >
-            {actionPresentation.frequent.map((action) => (
-              <div key={action} className="min-w-0">{renderAction(action, "outline", "tile")}</div>
-            ))}
+            {actionPresentation.frequent.map((action) => {
+              const variant = action === "share" && quote.status === "DRAFT"
+                ? (isQuoteCommercialReady(quote) ? "primary" : "secondary")
+                : "outline";
+              return (
+                <div key={action} className="min-w-0">
+                  {renderAction(action, variant, "tile")}
+                </div>
+              );
+            })}
             <div data-testid="quote-overflow-action" className="col-start-4 min-w-0">
               <QuoteActionsMenu
                 quoteNumber={quote.number}

@@ -156,13 +156,20 @@ async function createQuoteAuthorized(input: unknown) {
   return withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
     const quoteId = randomUUID();
     const quoteNumber = await nextQuoteNumber(tx);
-    const shouldLinkVehicle = hasVehicleData(data.vehicle);
+    const hasVehicle = hasVehicleData(data.vehicle);
+    const shouldLinkVehicle = Boolean(data.customerId && hasVehicle);
     const vehicle = shouldLinkVehicle
       ? await findOrCreateVehicle(tx, buildVehicleInput(data.customerId, data.vehicle))
       : null;
-    const vehicleSnapshot = shouldLinkVehicle
+    const vehicleSnapshot = hasVehicle
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
+
+    const sectionData = data.sections.map((section, sIndex) => ({
+      name: section.name,
+      isAuthorized: false,
+      sortOrder: sIndex,
+    }));
 
     const createdQuote = await tx.quote.create({
       data: {
@@ -183,27 +190,33 @@ async function createQuoteAuthorized(input: unknown) {
         totalCents: totals.totalCents,
         operationalDate,
         validUntil,
-        sections: {
-          create: data.sections.map((section, sectionIndex) => ({
-            name: section.name,
-            isAuthorized: false,
-            sortOrder: sectionIndex,
-            items: {
-              create: section.items.map((item, itemIndex) => ({
-                quote: { connect: { id: quoteId } },
-                type: item.type,
-                description: item.description,
-                quantity: item.quantity,
-                unitPriceCents: item.unitPriceCents ?? null,
-                totalCents: item.unitPriceCents === undefined ? null : calculateItemTotalCents(item.quantity, item.unitPriceCents),
-                sortOrder: itemIndex,
-              })),
-            },
-          })),
-        },
+        sections: { create: sectionData },
       },
       include: { sections: true },
     });
+
+    const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
+    data.sections.forEach((sectionInput, sIndex) => {
+      const createdSection = createdQuote.sections.find((s) => s.sortOrder === sIndex);
+      if (createdSection) {
+        sectionInput.items.forEach((item, iIndex) => {
+          itemsToCreate.push({
+            quoteId: createdQuote.id,
+            sectionId: createdSection.id,
+            type: item.type,
+            description: item.description,
+            quantity: item.quantity,
+            unitPriceCents: item.unitPriceCents ?? null,
+            totalCents: item.unitPriceCents === undefined ? null : calculateItemTotalCents(item.quantity, item.unitPriceCents),
+            sortOrder: iIndex,
+          });
+        });
+      }
+    });
+
+    if (itemsToCreate.length > 0) {
+      await tx.quoteItem.createMany({ data: itemsToCreate });
+    }
 
     return createdQuote;
   }));
@@ -302,11 +315,12 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       throw new Error(`Esta cotización ya tiene ${paidCents / 100} abonados, el nuevo total no puede ser menor a esa cantidad.`);
     }
 
-    const shouldLinkVehicle = hasVehicleData(data.vehicle);
+    const hasVehicle = hasVehicleData(data.vehicle);
+    const shouldLinkVehicle = Boolean(data.customerId && hasVehicle);
     const vehicle = shouldLinkVehicle
       ? await findOrCreateVehicle(tx, buildVehicleInput(data.customerId, data.vehicle))
       : null;
-    const vehicleSnapshot = shouldLinkVehicle
+    const vehicleSnapshot = hasVehicle
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
 
@@ -651,7 +665,7 @@ export async function approveQuoteAndCreateWorkOrderFromForm(formData: FormData)
   redirect(`${quotesPath}?approved=1`);
 }
 
-export async function publishSharedQuote(quoteId: string) {
+export async function publishSharedQuote(quoteId: string): Promise<{ success: boolean; token?: string; error?: string }> {
   await requireOperationalRole();
   let result: { success: boolean; error?: string };
 
@@ -672,9 +686,9 @@ export async function publishSharedQuote(quoteId: string) {
   }
 
   if (!result.success) return result;
-  await getOrCreateSharedQuoteForQuote(quoteId);
+  const shared = await getOrCreateSharedQuoteForQuote(quoteId);
   revalidatePath(quotesPath);
-  return result;
+  return { success: true, token: shared.token };
 }
 
 // --- Public accept / decline (no auth required; token is the authorization) ---
@@ -794,8 +808,12 @@ async function duplicateQuoteAuthorized(quoteId: string) {
   return withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
     const duplicatedQuoteId = randomUUID();
     const quoteNumber = await nextQuoteNumber(tx);
+    const sectionData = original.sections.map((section, sIndex) => ({
+      name: section.name,
+      sortOrder: sIndex,
+    }));
 
-    return tx.quote.create({
+    const duplicatedQuote = await tx.quote.create({
       data: {
         id: duplicatedQuoteId,
         customerId: original.customerId,
@@ -823,26 +841,34 @@ async function duplicateQuoteAuthorized(quoteId: string) {
             sortOrder: itemIndex,
           })),
         },
-        sections: {
-          create: original.sections.map((section, sectionIndex) => ({
-            name: section.name,
-            sortOrder: sectionIndex,
-            items: {
-              create: section.items.map((item, itemIndex) => ({
-                quote: { connect: { id: duplicatedQuoteId } },
-                type: item.type,
-                description: item.description,
-                quantity: item.quantity,
-                unitPriceCents: item.unitPriceCents,
-                totalCents: item.totalCents,
-                sortOrder: itemIndex,
-              })),
-            },
-          })),
-        },
+        sections: { create: sectionData },
       },
       include: { sections: true },
     });
+    const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
+    original.sections.forEach((sectionInput, sIndex) => {
+      const createdSection = duplicatedQuote.sections.find((s) => s.sortOrder === sIndex);
+      if (createdSection) {
+        sectionInput.items.forEach((item, iIndex) => {
+          itemsToCreate.push({
+            quoteId: duplicatedQuote.id,
+            sectionId: createdSection.id,
+            type: item.type,
+            description: item.description,
+            quantity: item.quantity,
+            unitPriceCents: item.unitPriceCents,
+            totalCents: item.totalCents,
+            sortOrder: iIndex,
+          });
+        });
+      }
+    });
+
+    if (itemsToCreate.length > 0) {
+      await tx.quoteItem.createMany({ data: itemsToCreate });
+    }
+
+    return duplicatedQuote;
   }));
 }
 
