@@ -12,7 +12,8 @@ interface SwipeableRowProps {
   disabled?: boolean;
 }
 
-const SWIPE_THRESHOLD_RATIO = 0.4;
+const SWIPE_THRESHOLD_RATIO = 0.2;
+const REVEAL_WIDTH_PX = 120;
 
 export function SwipeableRow({
   children,
@@ -49,13 +50,11 @@ export function SwipeableRow({
   const setRevealed = useCallback((revealed: boolean) => {
     revealedRef.current = revealed;
     setIsRevealed(revealed);
-    applyOffset(revealed ? -getRevealWidth() : 0);
+    applyOffset(revealed ? REVEAL_WIDTH_PX : 0);
   }, [applyOffset]);
 
   function getRevealWidth() {
-    const container = containerRef.current;
-    if (!container) return 0;
-    return container.offsetWidth * SWIPE_THRESHOLD_RATIO;
+    return REVEAL_WIDTH_PX;
   }
 
   // When the row is not swipeable (desktop or expanded), the swipe card is not
@@ -69,7 +68,7 @@ export function SwipeableRow({
       const touch = e.touches[0];
       touchStartRef.current = { x: touch.clientX, y: touch.clientY };
       swipeAxisLockedRef.current = null;
-      startTranslateRef.current = revealedRef.current ? -getRevealWidth() : 0;
+      startTranslateRef.current = revealedRef.current ? REVEAL_WIDTH_PX : 0;
     },
     [disabled],
   );
@@ -94,7 +93,7 @@ export function SwipeableRow({
       // card follows the finger and the underlying delete action is reachable.
       e.preventDefault();
 
-      const newTranslate = Math.min(0, startTranslateRef.current + deltaX);
+      const newTranslate = Math.max(0, startTranslateRef.current + deltaX);
       applyOffset(newTranslate);
     },
     [disabled, applyOffset],
@@ -106,7 +105,7 @@ export function SwipeableRow({
     if (!container) return;
 
     const threshold = container.offsetWidth * SWIPE_THRESHOLD_RATIO;
-    const isBeyondThreshold = Math.abs(translateRef.current) >= threshold;
+    const isBeyondThreshold = translateRef.current >= threshold;
     setRevealed(isBeyondThreshold);
   }, [setRevealed]);
 
@@ -130,14 +129,14 @@ export function SwipeableRow({
   }
 
   return (
-    <div ref={containerRef} className="relative overflow-hidden" onBlur={handleContainerBlur}>
+    <div ref={containerRef} className="relative overflow-hidden rounded-[var(--radius-md)]" onBlur={handleContainerBlur}>
       {/* Delete zone behind the card */}
-      <div className="absolute inset-0 flex items-center justify-end bg-[var(--color-status-danger-bg)]">
+      <div className="absolute inset-0 flex items-center justify-start bg-[var(--color-status-danger-bg)]">
         <button
           type="button"
           aria-label={ariaLabel || "Eliminar concepto"}
           onClick={handleDeleteTap}
-          className="flex h-full min-h-[44px] items-center gap-2 px-4 text-[var(--color-status-danger-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+          className="flex h-full min-h-[44px] w-[120px] items-center justify-center gap-2 px-3 text-[var(--color-status-danger-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
         >
           <Trash2 className="size-5 shrink-0" aria-hidden="true" />
           <span className="text-sm font-medium">Eliminar</span>

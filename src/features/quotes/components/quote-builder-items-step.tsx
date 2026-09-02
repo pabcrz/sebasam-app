@@ -252,27 +252,29 @@ export function QuoteBuilderItemsStep({
                           aria-expanded={isExpanded}
                           onClick={() => onToggleItem(rowId)}
                           data-testid={`concept-summary-${displayIndex}`}
-                          className="grid min-w-0 flex-1 gap-1 rounded-[var(--radius-sm)] px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+                          className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-[var(--radius-sm)] px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
                         >
-                          <span className="break-words text-base font-semibold leading-5 text-[var(--color-text-main)] sm:text-sm">
-                            {formatConceptSummaryDescription(item.description) || "Concepto sin descripción"}
-                          </span>
-                          <span className={`${isExpanded ? "hidden" : "flex flex-wrap"} items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)]`}>
-                            {item.quantity.trim() ? <span className="font-medium text-[var(--color-text-main)]">{item.quantity} unidad{item.quantity === "1" ? "" : "es"}</span> : null}
-                            <span>{itemTypeLabels[item.type]}</span>
-                            {pendingSummary ? (
-                              <span className="font-medium text-[var(--color-status-danger-fg)]">{pendingSummary}</span>
-                            ) : (
-                              <span className="font-medium text-[var(--color-text-main)]">{formatCents(lineTotalCents!)}</span>
-                            )}
+                          <div className="grid min-w-0 flex-1 gap-1">
+                            <span className="break-words text-base font-semibold leading-5 text-[var(--color-text-main)] sm:text-sm">
+                              {formatConceptSummaryDescription(item.description) || "Concepto sin descripción"}
+                            </span>
+                            <span className={`${isExpanded ? "hidden" : "flex flex-wrap"} items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)]`}>
+                              {item.quantity.trim() ? <span className="font-medium text-[var(--color-text-main)]">{item.quantity} unidad{item.quantity === "1" ? "" : "es"}</span> : null}
+                              <span>{itemTypeLabels[item.type]}</span>
+                              {pendingSummary ? (
+                                <span className="font-medium text-[var(--color-status-danger-fg)]">{pendingSummary}</span>
+                              ) : (
+                                <span className="font-medium text-[var(--color-text-main)]">{formatCents(lineTotalCents!)}</span>
+                              )}
+                            </span>
+                          </div>
+                          <span
+                            className="shrink-0 text-[var(--color-text-muted)] transition-transform duration-200"
+                            aria-hidden="true"
+                          >
+                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </span>
                         </button>
-                        <span
-                          className="shrink-0 text-[var(--color-text-muted)] transition-transform duration-200"
-                          aria-hidden="true"
-                        >
-                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </span>
                         <button
                           type="button"
                           aria-label={`Duplicar concepto ${displayIndex + 1}`}
