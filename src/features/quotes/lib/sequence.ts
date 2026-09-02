@@ -1,8 +1,33 @@
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import { Prisma, type Prisma as PrismaTypes } from "@prisma/client";
 
-type SequenceClient = Pick<Prisma.TransactionClient, "$queryRaw">;
+type SequenceClient = Pick<PrismaTypes.TransactionClient, "$queryRaw">;
 type HighestSequenceRow = { highestSequence: string };
+
+export const QUOTE_NUMBER_MAX_RETRIES = 2;
+
+function isQuoteNumberUniqueConstraintError(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+    return false;
+  }
+
+  const target = error.meta?.target;
+  return Array.isArray(target) && target.length === 1 && target[0] === "number";
+}
+
+export async function withQuoteNumberRetry<T>(operation: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; attempt <= QUOTE_NUMBER_MAX_RETRIES; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === QUOTE_NUMBER_MAX_RETRIES || !isQuoteNumberUniqueConstraintError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error("Quote number retry loop exhausted unexpectedly.");
+}
 
 function formatSequentialNumber(prefix: string, sequence: number, sequenceWidth: number): string {
   const now = new Date();

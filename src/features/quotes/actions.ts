@@ -18,7 +18,7 @@ import {
 import { isQuoteEditable } from "./lib/editability";
 import { assertCommercialQuote, CommercialQuoteValidationError } from "./lib/commercial-validation";
 import { normalizeOperationalDate } from "./lib/operational-date";
-import { nextQuoteNumber, nextWorkOrderNumber } from "./lib/sequence";
+import { nextQuoteNumber, nextWorkOrderNumber, withQuoteNumberRetry } from "./lib/sequence";
 import {
   QuoteDecisionError,
   acceptSharedQuote,
@@ -153,7 +153,7 @@ async function createQuoteAuthorized(input: unknown) {
   const validUntil = createQuoteValidUntil();
   const operationalDate = normalizeOperationalDate(data.operationalDate);
 
-  return prisma.$transaction(async (tx) => {
+  return withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
     const quoteId = randomUUID();
     const quoteNumber = await nextQuoteNumber(tx);
     const hasVehicle = hasVehicleData(data.vehicle);
@@ -219,7 +219,7 @@ async function createQuoteAuthorized(input: unknown) {
     }
 
     return createdQuote;
-  });
+  }));
 }
 
 export async function createQuote(input: unknown) {
@@ -805,7 +805,7 @@ async function duplicateQuoteAuthorized(quoteId: string) {
   const validUntil = createQuoteValidUntil();
   const operationalDate = normalizeOperationalDate(undefined);
 
-  return prisma.$transaction(async (tx) => {
+  return withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
     const duplicatedQuoteId = randomUUID();
     const quoteNumber = await nextQuoteNumber(tx);
     const sectionData = original.sections.map((section, sIndex) => ({
@@ -845,7 +845,6 @@ async function duplicateQuoteAuthorized(quoteId: string) {
       },
       include: { sections: true },
     });
-
     const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
     original.sections.forEach((sectionInput, sIndex) => {
       const createdSection = duplicatedQuote.sections.find((s) => s.sortOrder === sIndex);
@@ -870,7 +869,7 @@ async function duplicateQuoteAuthorized(quoteId: string) {
     }
 
     return duplicatedQuote;
-  });
+  }));
 }
 
 export async function duplicateQuote(quoteId: string) {
