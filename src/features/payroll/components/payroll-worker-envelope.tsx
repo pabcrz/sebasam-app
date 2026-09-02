@@ -151,11 +151,11 @@ export function PayrollWorkerEnvelopeModal({
           </div>
         </div>
 
-        {/* Compact Envelope Format (8.9cm x 16.5cm exact printable envelope proportions) */}
+        {/* Flush Envelope Preview (No nested outer border - exactly identical to print output) */}
         <div className="flex justify-center w-full py-1">
           <div
             id="payroll-worker-envelope-document"
-            className="w-full max-w-[340px] rounded-md p-3 bg-white text-slate-900 space-y-3 border border-slate-200 shadow-sm print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:border-none print:shadow-none print:p-1.5 print:m-0 print:break-inside-avoid"
+            className="w-full max-w-[340px] p-1 bg-white text-slate-900 space-y-3 mx-auto print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
           >
             {/* Header with Clean Inverted Logo */}
             <div className="border-b-2 border-slate-900 pb-2 flex items-center justify-between gap-1.5">
@@ -181,7 +181,7 @@ export function PayrollWorkerEnvelopeModal({
             </div>
 
             {/* Worker & Period Info */}
-            <div className="bg-slate-50 rounded p-2.5 border border-slate-200 text-xs space-y-0.5">
+            <div className="bg-slate-50 rounded-md p-2.5 border border-slate-200 text-xs space-y-0.5">
               <div className="flex items-baseline justify-between gap-1">
                 <span className="text-[10px] uppercase font-bold text-slate-500">Trabajador:</span>
                 <span className="font-black text-slate-900 text-xs truncate">{worker.displayName}</span>
@@ -193,7 +193,7 @@ export function PayrollWorkerEnvelopeModal({
             </div>
 
             {/* Cohesive 4-Column Table with tighter number gaps */}
-            <div className="border border-slate-200 rounded overflow-hidden">
+            <div className="border border-slate-200 rounded-md overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold text-[10px] uppercase tracking-wide">
@@ -233,7 +233,7 @@ export function PayrollWorkerEnvelopeModal({
             </div>
 
             {/* Light Totals Summary */}
-            <div className="bg-slate-50 border border-slate-200 rounded p-2.5 flex items-center justify-between">
+            <div className="bg-slate-50 border border-slate-200 rounded-md p-2.5 flex items-center justify-between">
               <div>
                 <span className="text-[9px] uppercase tracking-wider block font-bold text-slate-500">
                   Mano de Obra Taller:
