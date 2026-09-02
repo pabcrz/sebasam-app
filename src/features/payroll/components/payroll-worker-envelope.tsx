@@ -89,6 +89,12 @@ export function PayrollWorkerEnvelopeModal({
         backgroundColor: "#ffffff",
         pixelRatio: 3,
         cacheBust: true,
+        style: {
+          padding: "24px",
+          backgroundColor: "#ffffff",
+          width: `${node.offsetWidth + 48}px`,
+          height: "auto",
+        },
       });
       const link = document.createElement("a");
       const safeName = worker.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
