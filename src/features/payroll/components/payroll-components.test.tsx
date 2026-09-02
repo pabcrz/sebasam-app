@@ -277,8 +277,8 @@ describe("Payroll UI Components", () => {
     fireEvent.click(envelopeBtn);
 
     expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toBeInTheDocument();
-    expect(screen.getByText(/Recibo individual con descripciones sencillas/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /copiar resumen/i })).toBeInTheDocument();
+    expect(screen.getByText(/RECIBO DE NÓMINA/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /copiar/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /whatsapp/i })).toBeInTheDocument();
   });
 });
