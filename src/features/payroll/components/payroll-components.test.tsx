@@ -229,10 +229,18 @@ describe("Payroll UI Components", () => {
     fireEvent.click(signingSheetBtn);
 
     expect(screen.getAllByText(/Hoja de Firma de Nómina/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Documento colectivo para firma de conformidad/i)).toBeInTheDocument();
+    expect(screen.getByAltText("Logo de SEBASAM")).toBeInTheDocument();
+    expect(screen.getByText("Personalizar lista de trabajadores:")).toBeInTheDocument();
     // Confirms worker names appear
     expect(screen.getAllByText("Maestro Pedro").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Maestro Juan").length).toBeGreaterThanOrEqual(1);
+
+    // Test adding a custom worker
+    const addInput = screen.getByPlaceholderText(/Nombre del trabajador adicional/i);
+    fireEvent.change(addInput, { target: { value: "Ayudante Roberto" } });
+    const addBtn = screen.getByRole("button", { name: "Agregar" });
+    fireEvent.click(addBtn);
+    expect(screen.getByText("Ayudante Roberto")).toBeInTheDocument();
   });
 
   it("opens individual pay envelope modal when clicking Sobre de Pago", () => {

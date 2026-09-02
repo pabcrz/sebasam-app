@@ -1,18 +1,25 @@
 "use client";
 
 import * as React from "react";
-import { FileSignature, Printer } from "lucide-react";
+import Image from "next/image";
+import { FileSignature, Printer, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { WeeklyPayrollReport } from "../domain";
 import type { ParsedPayrollParams } from "../period";
+
+interface CustomRow {
+  id: string;
+  name: string;
+  type: string;
+}
 
 interface PayrollSigningSheetProps {
   report: WeeklyPayrollReport;
@@ -27,8 +34,40 @@ export function PayrollSigningSheetModal({
   open,
   onOpenChange,
 }: PayrollSigningSheetProps) {
+  const [customRows, setCustomRows] = React.useState<CustomRow[]>([]);
+  const [newWorkerName, setNewWorkerName] = React.useState("");
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleAddWorker = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newWorkerName.trim()) return;
+    setCustomRows((prev) => [
+      ...prev,
+      {
+        id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: newWorkerName.trim(),
+        type: "Mecánico / Ayudante",
+      },
+    ]);
+    setNewWorkerName("");
+  };
+
+  const handleAddBlankRow = () => {
+    setCustomRows((prev) => [
+      ...prev,
+      {
+        id: `blank-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: "",
+        type: "",
+      },
+    ]);
+  };
+
+  const handleRemoveCustomRow = (id: string) => {
+    setCustomRows((prev) => prev.filter((r) => r.id !== id));
   };
 
   const todayStr = new Intl.DateTimeFormat("es-MX", {
@@ -36,68 +75,151 @@ export function PayrollSigningSheetModal({
     timeZone: "America/Mexico_City",
   }).format(new Date());
 
+  const allWorkers = [
+    ...report.workers.map((w) => ({
+      id: w.workerId,
+      name: w.displayName,
+      type: w.workerKind === "SPECIAL" ? "Especial / Taller" : "Maestro Mecánico",
+      isCustom: false,
+    })),
+    ...customRows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      type: r.type || "Trabajador",
+      isCustom: true,
+    })),
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto print:max-w-none print:w-full print:h-auto print:max-h-none print:p-0 print:border-none print:shadow-none print:overflow-visible print:static print:transform-none">
+        <DialogHeader className="print:hidden">
           <div className="flex items-center gap-2">
             <FileSignature className="h-5 w-5 text-[var(--color-primary-600)]" />
             <DialogTitle>Hoja de Firma de Nómina</DialogTitle>
           </div>
-          <DialogDescription>
-            Documento colectivo para firma de conformidad de los trabajadores. Los montos se mantienen 100% confidenciales.
-          </DialogDescription>
         </DialogHeader>
 
-        {/* Printable Surface */}
-        <div id="payroll-signing-sheet-document" className="space-y-6 rounded-md border border-[var(--color-border-light)] p-6 bg-white text-slate-900 shadow-sm print:border-none print:p-0 print:shadow-none">
-          {/* Header */}
-          <div className="border-b-2 border-slate-900 pb-3 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">SEBASAM</h1>
-              <p className="text-xs text-slate-600">Servicio Básico a Suspensiones y Aire y Muelles</p>
+        {/* Dynamic Worker Controls (UI Only - Hidden on Print) */}
+        <div className="print:hidden space-y-2 p-3 bg-[var(--color-bg-soft)] rounded-lg border border-[var(--color-border-light)] text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-[var(--color-text-main)]">
+              Personalizar lista de trabajadores:
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddBlankRow}
+              className="h-7 text-xs gap-1"
+            >
+              <Plus className="h-3 w-3" />
+              + Fila en blanco
+            </Button>
+          </div>
+          <form onSubmit={handleAddWorker} className="flex items-center gap-2">
+            <Input
+              type="text"
+              placeholder="Nombre del trabajador adicional..."
+              value={newWorkerName}
+              onChange={(e) => setNewWorkerName(e.target.value)}
+              className="h-8 text-xs flex-1"
+            />
+            <Button type="submit" variant="secondary" size="sm" className="h-8 text-xs shrink-0">
+              Agregar
+            </Button>
+          </form>
+        </div>
+
+        {/* Printable Letter-Sized Document Surface */}
+        <div
+          id="payroll-signing-sheet-document"
+          className="w-full space-y-6 rounded-md border border-slate-300 p-8 sm:p-10 bg-white text-slate-900 shadow-sm print:border-none print:p-0 print:shadow-none print:w-full"
+        >
+          {/* Header with Logo and Title */}
+          <div className="border-b-2 border-slate-900 pb-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="relative h-12 w-12 shrink-0 bg-slate-900 rounded p-1 flex items-center justify-center">
+                <Image
+                  src="/logo-white-short.png"
+                  alt="Logo de SEBASAM"
+                  width={44}
+                  height={44}
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight text-slate-900">SEBASAM</h1>
+              </div>
             </div>
-            <div className="sm:text-right">
+
+            <div className="text-right">
               <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">
                 Hoja de Firma de Nómina ({period.mode === "monthly" ? "Mensual" : "Semanal"})
               </h2>
-              <p className="text-xs font-medium text-slate-600">
-                Período: <span className="font-semibold text-slate-900">{period.rangeLabel}</span>
+              <p className="text-xs font-medium text-slate-700">
+                Período: <span className="font-bold text-slate-900">{period.rangeLabel}</span>
               </p>
               <p className="text-[11px] text-slate-500">Fecha de Emisión: {todayStr}</p>
             </div>
           </div>
 
-          {/* Workers Table */}
+          {/* Full-width Workers Table */}
           <div className="overflow-hidden border border-slate-300 rounded">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-left text-sm border-collapse">
               <thead>
-                <tr className="bg-slate-100 border-b border-slate-300 text-slate-800 font-semibold">
-                  <th className="py-2.5 px-3 w-12 text-center">No.</th>
-                  <th className="py-2.5 px-4">Nombre del Trabajador</th>
-                  <th className="py-2.5 px-4 w-40 text-center">Puesto / Tipo</th>
-                  <th className="py-2.5 px-6 w-64 text-center">Firma de Conformidad</th>
+                <tr className="bg-slate-100 border-b border-slate-300 text-slate-800 font-bold text-xs uppercase tracking-wide">
+                  <th className="py-3 px-3 w-12 text-center">No.</th>
+                  <th className="py-3 px-4">Nombre del Trabajador</th>
+                  <th className="py-3 px-4 w-44 text-center">Puesto / Tipo</th>
+                  <th className="py-3 px-6 w-72 text-center">Firma de Conformidad</th>
+                  <th className="py-3 px-2 w-8 text-center print:hidden"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {report.workers.length > 0 ? (
-                  report.workers.map((worker, idx) => (
-                    <tr key={worker.workerId} className="h-16">
-                      <td className="py-2 px-3 text-center font-medium text-slate-600">{idx + 1}</td>
-                      <td className="py-2 px-4 font-semibold text-slate-900">{worker.displayName}</td>
-                      <td className="py-2 px-4 text-center text-slate-600">
-                        {worker.workerKind === "SPECIAL" ? "Especial / Taller" : "Maestro Mecánico"}
+                {allWorkers.length > 0 ? (
+                  allWorkers.map((worker, idx) => (
+                    <tr key={worker.id} className="h-16 hover:bg-slate-50/50">
+                      <td className="py-3 px-3 text-center font-semibold text-slate-600">
+                        {idx + 1}
                       </td>
-                      <td className="py-2 px-6">
+                      <td className="py-3 px-4">
+                        {worker.name ? (
+                          <span className="font-bold text-sm sm:text-base text-slate-900 block">
+                            {worker.name}
+                          </span>
+                        ) : (
+                          <div className="border-b border-dotted border-slate-400 h-6 w-full max-w-[200px]" />
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center text-xs text-slate-600">
+                        {worker.type || (
+                          <div className="border-b border-dotted border-slate-300 h-4 w-20 mx-auto" />
+                        )}
+                      </td>
+                      <td className="py-3 px-6">
                         <div className="h-10 border-b border-dashed border-slate-400 flex items-end justify-center">
                           <span className="text-[10px] text-slate-400 pb-0.5 select-none">Firma</span>
                         </div>
+                      </td>
+                      <td className="py-3 px-2 text-center print:hidden">
+                        {worker.isCustom && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCustomRow(worker.id)}
+                            className="text-slate-400 hover:text-red-600 p-1 transition-colors"
+                            title="Eliminar fila"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="py-8 text-center text-slate-500">
+                    <td colSpan={5} className="py-8 text-center text-slate-500">
                       No hay trabajadores con trabajos registrados en este período.
                     </td>
                   </tr>
@@ -106,28 +228,16 @@ export function PayrollSigningSheetModal({
             </table>
           </div>
 
-          {/* Confidentiality Notice & Signatures */}
-          <div className="pt-4 space-y-6">
-            <p className="text-[11px] text-slate-600 italic leading-relaxed text-center sm:text-left">
+          {/* Single clean legal notice */}
+          <div className="pt-2">
+            <p className="text-xs text-slate-600 italic leading-relaxed text-center sm:text-left">
               * Al plasmar su firma en este documento, cada trabajador manifiesta su entera conformidad con la recepción del sobre/recibo correspondiente al período indicado y la correcta liquidación de sus trabajos de mano de obra.
             </p>
-
-            <div className="grid grid-cols-2 gap-8 pt-6 border-t border-slate-200 text-center">
-              <div>
-                <div className="w-48 mx-auto border-b border-slate-900 pb-1"></div>
-                <p className="text-xs font-semibold text-slate-800 mt-1">Entregado por</p>
-                <p className="text-[10px] text-slate-500">Administración / Taller</p>
-              </div>
-              <div>
-                <div className="w-48 mx-auto border-b border-slate-900 pb-1"></div>
-                <p className="text-xs font-semibold text-slate-800 mt-1">Autorizado por</p>
-                <p className="text-[10px] text-slate-500">Dirección General</p>
-              </div>
-            </div>
           </div>
         </div>
 
-        <DialogFooter className="flex-row justify-end gap-2 pt-2">
+        {/* Dialog Actions (Hidden in Print) */}
+        <DialogFooter className="flex-row justify-end gap-2 pt-2 print:hidden">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
