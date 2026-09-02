@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Check, Copy, Download, MessageCircle, Printer, Mail, Loader2 } from "lucide-react";
+import { Download, MessageCircle, Printer, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,8 +30,8 @@ export function PayrollWorkerEnvelopeModal({
   open,
   onOpenChange,
 }: PayrollWorkerEnvelopeProps) {
-  const [copied, setCopied] = React.useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = React.useState(false);
+  const [isSharingWhatsApp, setIsSharingWhatsApp] = React.useState(false);
 
   if (!worker) return null;
 
@@ -64,42 +64,32 @@ export function PayrollWorkerEnvelopeModal({
     return text;
   };
 
-  const handleCopy = async () => {
-    const text = generateTextSummary();
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
-    }
-  };
+  const generateEnvelopePngDataUrl = async (): Promise<string | null> => {
+    const node = document.getElementById("payroll-worker-envelope-document");
+    if (!node) return null;
 
-  const handleWhatsApp = () => {
-    const text = encodeURIComponent(generateTextSummary());
-    window.open(`https://wa.me/?text=${text}`, "_blank");
+    const scrollW = node.scrollWidth || 350;
+    const scrollH = node.scrollHeight || 500;
+    const targetWidth = Math.max(scrollW, node.offsetWidth, 350) + 12;
+    const targetHeight = Math.max(scrollH, node.offsetHeight, 400) + 12;
+
+    return await toPng(node, {
+      backgroundColor: "#ffffff",
+      pixelRatio: 2.5,
+      cacheBust: true,
+      width: targetWidth,
+      height: targetHeight,
+      style: {
+        overflow: "visible",
+      },
+    });
   };
 
   const handleDownloadImage = async () => {
-    const node = document.getElementById("payroll-worker-envelope-document");
-    if (!node) return;
     setIsGeneratingImage(true);
     try {
-      const scrollW = node.scrollWidth || 350;
-      const scrollH = node.scrollHeight || 500;
-      const targetWidth = Math.max(scrollW, node.offsetWidth, 350) + 12;
-      const targetHeight = Math.max(scrollH, node.offsetHeight, 400) + 12;
-
-      const dataUrl = await toPng(node, {
-        backgroundColor: "#ffffff",
-        pixelRatio: 2.5,
-        cacheBust: true,
-        width: targetWidth,
-        height: targetHeight,
-        style: {
-          overflow: "visible",
-        },
-      });
+      const dataUrl = await generateEnvelopePngDataUrl();
+      if (!dataUrl) return;
 
       const link = document.createElement("a");
       const safeName = worker.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -113,6 +103,55 @@ export function PayrollWorkerEnvelopeModal({
     }
   };
 
+  const handleWhatsApp = async () => {
+    setIsSharingWhatsApp(true);
+    try {
+      const dataUrl = await generateEnvelopePngDataUrl();
+      const safeName = worker.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const summaryText = generateTextSummary();
+
+      if (dataUrl) {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], `recibo-nomina-${safeName}.png`, { type: "image/png" });
+
+        // If Web Share API supports file sharing, invoke it directly
+        if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: `Recibo de Nómina - ${worker.displayName}`,
+            text: summaryText,
+          });
+          return;
+        }
+
+        // Fallback for desktop: Copy image to clipboard so user can paste (Cmd+V / Ctrl+V) in WhatsApp
+        if (typeof navigator !== "undefined" && navigator.clipboard && typeof ClipboardItem !== "undefined") {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                "image/png": blob,
+              }),
+            ]);
+          } catch {
+            // Clipboard fallback
+          }
+        }
+      }
+
+      // Open WhatsApp Web
+      const encodedText = encodeURIComponent(summaryText);
+      window.open(`https://wa.me/?text=${encodedText}`, "_blank");
+    } catch (err) {
+      console.error("Error al compartir por WhatsApp:", err);
+      // Fallback
+      const text = encodeURIComponent(generateTextSummary());
+      window.open(`https://wa.me/?text=${text}`, "_blank");
+    } finally {
+      setIsSharingWhatsApp(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[92vh] overflow-y-auto print:max-w-none print:w-full print:h-auto print:max-h-none print:p-0 print:border-none print:shadow-none print:overflow-visible print:static print:transform-none">
@@ -123,41 +162,37 @@ export function PayrollWorkerEnvelopeModal({
           </div>
         </DialogHeader>
 
-        {/* Action Quick Bar with Image Download (Hidden in Print) */}
-        <div className="print:hidden flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 bg-[var(--color-bg-soft)] rounded-md border border-[var(--color-border-light)] text-xs">
+        {/* Action Quick Bar: WhatsApp with image share + Download Image (Hidden in Print) */}
+        <div className="print:hidden flex items-center justify-between gap-2 p-2.5 bg-[var(--color-bg-soft)] rounded-md border border-[var(--color-border-light)] text-xs">
           <span className="text-[var(--color-text-muted)] font-medium">Compartir:</span>
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleDownloadImage}
-              disabled={isGeneratingImage}
-              className="h-8 gap-1 text-xs"
+              disabled={isGeneratingImage || isSharingWhatsApp}
+              className="h-8 gap-1.5 text-xs"
               title="Descargar imagen PNG para enviar"
             >
               {isGeneratingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-[var(--color-primary)]" />}
-              <span>Imagen</span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleCopy}
-              className="h-8 gap-1 text-xs"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-              <span>{copied ? "Copiado" : "Copiar"}</span>
+              <span>Descargar Imagen</span>
             </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleWhatsApp}
-              className="h-8 gap-1 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+              disabled={isGeneratingImage || isSharingWhatsApp}
+              className="h-8 gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold"
+              title="Compartir imagen por WhatsApp"
             >
-              <MessageCircle className="h-3.5 w-3.5" />
-              <span>WhatsApp</span>
+              {isSharingWhatsApp ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <MessageCircle className="h-3.5 w-3.5" />
+              )}
+              <span>WhatsApp (con Imagen)</span>
             </Button>
           </div>
         </div>
