@@ -456,7 +456,8 @@ export function QuoteBuilderItemsStep({
               onClick={() => onAddItem(sectionIndex, "LABOR")}
               className="min-w-0 flex-1 px-1 sm:px-3"
             >
-              + M. O.
+              <span className="sm:hidden">+ M. O.</span>
+              <span className="hidden sm:inline">+ Mano de obra</span>
             </Button>
             <Button
               type="button"
@@ -467,18 +468,20 @@ export function QuoteBuilderItemsStep({
               onClick={() => onAddItem(sectionIndex, "REFACCIONES")}
               className="min-w-0 flex-1 px-1 sm:px-3"
             >
-              + Refac.
+              <span className="sm:hidden">+ Refac.</span>
+              <span className="hidden sm:inline">+ Refacciones</span>
             </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              aria-label={`Agregar Material a la sección ${sectionIndex + 1}`}
-              title="Material"
+              aria-label={`Agregar Materiales a la sección ${sectionIndex + 1}`}
+              title="Materiales"
               onClick={() => onAddItem(sectionIndex, "MATERIAL")}
               className="min-w-0 flex-1 px-1 sm:px-3"
             >
-              + Mat.
+              <span className="sm:hidden">+ Mat.</span>
+              <span className="hidden sm:inline">+ Materiales</span>
             </Button>
             <ConceptTypePopover onSelect={(type) => onAddItem(sectionIndex, type)} />
           </div>
@@ -588,7 +591,7 @@ function ConceptTypePopover({ onSelect }: { onSelect: (type: QuoteItemType) => v
         <div
           role="menu"
           aria-label="Otros tipos de concepto"
-          className="absolute left-0 top-full z-20 mt-1 min-w-44 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1 shadow-lg"
+          className="absolute right-0 top-full z-20 mt-1 min-w-44 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1 shadow-lg"
         >
           {overflowTypes.map((type) => (
             <button

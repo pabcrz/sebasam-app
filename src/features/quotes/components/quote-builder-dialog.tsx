@@ -142,7 +142,7 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
           </Button>
         }
         stepper={<div ref={attachStepperHost} />}
-        footer={<div ref={attachFooterHost} />}
+        footer={<div ref={attachFooterHost} className="contents" data-testid="quote-builder-footer-host" />}
         body={
           <QuoteBuilder
             key={builderKey}
