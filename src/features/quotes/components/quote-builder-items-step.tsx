@@ -284,17 +284,17 @@ export function QuoteBuilderItemsStep({
                           type="button"
                           aria-label={`Duplicar concepto ${displayIndex + 1}`}
                           onClick={() => onDuplicateItem(sectionIndex, itemIndex)}
-                          className="inline-flex size-[var(--tap-min-height)] shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:h-8 sm:w-8"
+                          className="group inline-flex size-[var(--tap-min-height)] shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:h-8 sm:w-8"
                         >
-                          <Copy className="size-4" aria-hidden="true" />
+                          <Copy className="size-4 icon-copy-hover" aria-hidden="true" />
                         </button>
                         <button
                           type="button"
                           aria-label={`Eliminar concepto ${displayIndex + 1}`}
                           onClick={() => onRemoveItem(sectionIndex, itemIndex)}
-                          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-status-danger-fg)] transition-colors hover:bg-[var(--color-status-danger-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:inline-flex"
+                          className="group hidden h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-status-danger-fg)] transition-colors hover:bg-[var(--color-status-danger-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:inline-flex"
                         >
-                          <Trash2 className="size-4" aria-hidden="true" />
+                          <Trash2 className="size-4 icon-trash-hover" aria-hidden="true" />
                         </button>
                       </div>
                       <div id={`concept-editor-${rowId}`} hidden={!isExpanded} className="grid gap-4 border-t border-[var(--color-border-light)] px-1 pt-4">
