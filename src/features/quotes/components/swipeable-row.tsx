@@ -32,16 +32,6 @@ export function SwipeableRow({
   const swipeAxisLockedRef = useRef<"horizontal" | "vertical" | null>(null);
   const startTranslateRef = useRef(0);
 
-  // React's "adjust state during render" pattern: clear any lingering reveal
-  // when the row stops being swipeable, so returning to mobile starts clean.
-  const inactive = !isMobile || disabled;
-  if (inactive && revealedRef.current) {
-    revealedRef.current = false;
-    translateRef.current = 0;
-    setIsRevealed(false);
-    setTranslateX(0);
-  }
-
   const applyOffset = useCallback((next: number) => {
     translateRef.current = next;
     setTranslateX(next);
@@ -52,10 +42,6 @@ export function SwipeableRow({
     setIsRevealed(revealed);
     applyOffset(revealed ? REVEAL_WIDTH_PX : 0);
   }, [applyOffset]);
-
-  function getRevealWidth() {
-    return REVEAL_WIDTH_PX;
-  }
 
   // When the row is not swipeable (desktop or expanded), the swipe card is not
   // rendered at all, so any previous reveal state is simply never shown. We do
