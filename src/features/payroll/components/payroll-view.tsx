@@ -45,6 +45,7 @@ export function PayrollView({ report, period }: PayrollViewProps) {
         nextAnchor={period.nextAnchor}
         isCurrentPeriod={period.isCurrentPeriod}
         isCurrentWeek={period.isCurrentWeek}
+        hasData={report.workers.length > 0}
         onExportExcel={handleExportExcel}
         onOpenSigningSheet={() => setIsSigningSheetOpen(true)}
       />

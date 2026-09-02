@@ -15,6 +15,7 @@ interface PayrollPeriodNavProps {
   nextAnchor: string;
   isCurrentWeek?: boolean;
   isCurrentPeriod?: boolean;
+  hasData?: boolean;
   onExportExcel?: () => void;
   onOpenSigningSheet?: () => void;
 }
@@ -26,6 +27,7 @@ export function PayrollPeriodNav({
   nextAnchor,
   isCurrentWeek,
   isCurrentPeriod,
+  hasData = true,
   onExportExcel,
   onOpenSigningSheet,
 }: PayrollPeriodNavProps) {
@@ -55,7 +57,7 @@ export function PayrollPeriodNav({
           </Button>
         </div>
 
-        {/* Action Buttons: Excel & Signing Sheet */}
+        {/* Action Buttons: Excel & Signing Sheet (Disabled when no jobs) */}
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {onOpenSigningSheet && (
             <Button
@@ -63,6 +65,8 @@ export function PayrollPeriodNav({
               variant="outline"
               size="sm"
               onClick={onOpenSigningSheet}
+              disabled={!hasData}
+              title={!hasData ? "No hay trabajos registrados en este período" : "Imprimir hoja de firmas de nómina"}
               className="h-7 sm:h-8 text-xs px-2.5 gap-1.5"
             >
               <FileSignature className="h-3.5 w-3.5 text-[var(--color-primary)]" />
@@ -76,6 +80,8 @@ export function PayrollPeriodNav({
               variant="outline"
               size="sm"
               onClick={onExportExcel}
+              disabled={!hasData}
+              title={!hasData ? "No hay datos para exportar en este período" : "Descargar reporte en Excel"}
               className="h-7 sm:h-8 text-xs px-2.5 gap-1.5 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
             >
               <Download className="h-3.5 w-3.5" />
