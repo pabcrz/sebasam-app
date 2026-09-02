@@ -72,6 +72,10 @@ export function PayrollWorkerEnvelopeModal({
       backgroundColor: "#ffffff",
       pixelRatio: 2,
       cacheBust: true,
+      style: {
+        margin: "0",
+        transform: "none",
+      },
     });
   };
 
@@ -156,7 +160,7 @@ export function PayrollWorkerEnvelopeModal({
         <div className="flex justify-center w-full py-1">
           <div
             id="payroll-worker-envelope-document"
-            className="w-[360px] max-w-full px-4 py-3 bg-white text-slate-900 space-y-3 print:space-y-1.5 mx-auto rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
+            className="w-[360px] max-w-full p-3 bg-white text-slate-900 space-y-3 print:space-y-1.5 rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
           >
             {/* Header with Clean Inverted Logo */}
             <div className="border-b-2 border-slate-900 pb-2 print:pb-1 flex items-center justify-between gap-1.5">
