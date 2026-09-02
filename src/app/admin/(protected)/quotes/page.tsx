@@ -97,11 +97,13 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
           Cotizaciones
         </h1>
-        <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
+        <div className="hidden sm:block">
+          <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
+        </div>
       </div>
       <QuotePageToasts />
 
@@ -191,7 +193,10 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
       </Card>
 
       {/* Mobile Floating Action Button */}
-      <div className="fixed bottom-6 right-5 z-40 sm:hidden">
+      <div
+        className="fixed right-5 z-40 sm:hidden"
+        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
         <QuoteBuilderDialog
           customers={customers}
           createAction={createQuoteFromWorkspace}

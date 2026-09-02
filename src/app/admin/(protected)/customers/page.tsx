@@ -57,11 +57,13 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
           Clientes
         </h1>
-        <CustomerCreateForm action={createCustomerFromForm} triggerVariant="primary" triggerSize="sm" triggerClassName="w-full sm:w-auto" />
+        <div className="hidden sm:block">
+          <CustomerCreateForm action={createCustomerFromForm} triggerVariant="primary" triggerSize="sm" triggerClassName="w-full sm:w-auto" />
+        </div>
       </div>
 
       <Card>
@@ -99,7 +101,10 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
       </Card>
 
       {/* Mobile Floating Action Button */}
-      <div className="fixed bottom-6 right-5 z-40 sm:hidden">
+      <div
+        className="fixed right-5 z-40 sm:hidden"
+        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
         <CustomerCreateForm
           action={createCustomerFromForm}
           triggerVariant="primary"

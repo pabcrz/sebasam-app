@@ -84,9 +84,9 @@ export function DashboardView({
 }: DashboardViewProps) {
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">Inicio</h1>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-2">
           <CustomerCreateForm
             action={createCustomerAction}
             triggerVariant="outline"
@@ -144,7 +144,10 @@ export function DashboardView({
       </div>
 
       {/* Mobile Floating Action Button */}
-      <div className="fixed bottom-6 right-5 z-40 sm:hidden">
+      <div
+        className="fixed right-5 z-40 sm:hidden"
+        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
         <QuoteBuilderDialog
           customers={customers}
           createAction={createQuoteAction}
