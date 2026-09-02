@@ -155,7 +155,7 @@ export function PayrollWorkerEnvelopeModal({
         <div className="flex justify-center w-full py-1">
           <div
             id="payroll-worker-envelope-document"
-            className="w-full max-w-[340px] rounded-md p-2.5 sm:p-3 bg-white text-slate-900 space-y-2.5 border border-slate-200 shadow-sm print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:border-none print:shadow-none print:p-1.5 print:m-0 print:break-inside-avoid"
+            className="w-full max-w-[340px] rounded-md p-3 bg-white text-slate-900 space-y-3 border border-slate-200 shadow-sm print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:border-none print:shadow-none print:p-1.5 print:m-0 print:break-inside-avoid"
           >
             {/* Header with Clean Inverted Logo */}
             <div className="border-b-2 border-slate-900 pb-2 flex items-center justify-between gap-1.5">
@@ -181,42 +181,42 @@ export function PayrollWorkerEnvelopeModal({
             </div>
 
             {/* Worker & Period Info */}
-            <div className="bg-slate-50 rounded p-2 border border-slate-200 text-xs space-y-0.5">
+            <div className="bg-slate-50 rounded p-2.5 border border-slate-200 text-xs space-y-0.5">
               <div className="flex items-baseline justify-between gap-1">
                 <span className="text-[10px] uppercase font-bold text-slate-500">Trabajador:</span>
                 <span className="font-black text-slate-900 text-xs truncate">{worker.displayName}</span>
               </div>
               <div className="flex items-baseline justify-between gap-1">
                 <span className="text-[10px] uppercase font-bold text-slate-500">Período:</span>
-                <span className="font-semibold text-slate-800 text-[10px] truncate">{period.rangeLabel}</span>
+                <span className="font-semibold text-slate-800 text-[11px] truncate">{period.rangeLabel}</span>
               </div>
             </div>
 
-            {/* Compact 4-Column Table: Mano de Obra, Base, %, A Cobrar */}
+            {/* Cohesive 4-Column Table with tighter number gaps */}
             <div className="border border-slate-200 rounded overflow-hidden">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold text-[9px] uppercase tracking-wide">
-                    <th className="py-1 px-2">Mano de Obra</th>
-                    <th className="py-1 px-1.5 text-right w-16">Base</th>
-                    <th className="py-1 px-1 text-center w-8">%</th>
-                    <th className="py-1 px-2 text-right w-18">A Cobrar</th>
+                  <tr className="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold text-[10px] uppercase tracking-wide">
+                    <th className="py-2 pl-2.5 pr-1 text-left">Mano de Obra</th>
+                    <th className="py-2 px-1 text-right w-16">Base</th>
+                    <th className="py-2 px-0.5 text-center w-7">%</th>
+                    <th className="py-2 pl-1 pr-2.5 text-right w-18">A Cobrar</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {allLaborItems.length > 0 ? (
                     allLaborItems.map((item, idx) => (
                       <tr key={`${item.id}-${idx}`} className="hover:bg-slate-50/50">
-                        <td className="py-1.5 px-2 text-slate-800 font-medium text-[10px] leading-tight">
+                        <td className="py-2 pl-2.5 pr-1 text-slate-900 font-semibold text-xs leading-snug">
                           {item.description}
                         </td>
-                        <td className="py-1.5 px-1.5 text-right text-slate-600 text-[10px] whitespace-nowrap font-medium">
+                        <td className="py-2 px-1 text-right text-slate-600 font-medium text-xs whitespace-nowrap">
                           {formatCents(item.payrollBaseCents)}
                         </td>
-                        <td className="py-1.5 px-1 text-center text-slate-400 text-[9px] whitespace-nowrap font-semibold">
+                        <td className="py-2 px-0.5 text-center text-slate-400 font-semibold text-[10px] whitespace-nowrap">
                           {item.ratePercent}%
                         </td>
-                        <td className="py-1.5 px-2 text-right font-bold text-slate-900 text-[11px] whitespace-nowrap">
+                        <td className="py-2 pl-1 pr-2.5 text-right font-black text-slate-900 text-xs whitespace-nowrap">
                           {formatCents(item.commissionCents)}
                         </td>
                       </tr>
@@ -233,20 +233,20 @@ export function PayrollWorkerEnvelopeModal({
             </div>
 
             {/* Light Totals Summary */}
-            <div className="bg-slate-50 border border-slate-200 rounded p-2 flex items-center justify-between">
+            <div className="bg-slate-50 border border-slate-200 rounded p-2.5 flex items-center justify-between">
               <div>
                 <span className="text-[9px] uppercase tracking-wider block font-bold text-slate-500">
                   Mano de Obra Taller:
                 </span>
-                <span className="text-[11px] font-bold text-slate-800">
+                <span className="text-xs font-bold text-slate-800">
                   {formatCents(worker.totalPayrollBaseCents)}
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-[9px] uppercase tracking-wider block font-black text-slate-900">
+                <span className="text-[10px] uppercase tracking-wider block font-black text-slate-900">
                   Total a Liquidar:
                 </span>
-                <span className="text-sm sm:text-base font-black text-slate-900">
+                <span className="text-base font-black text-slate-900">
                   {formatCents(worker.totalCommissionCents)}
                 </span>
               </div>
