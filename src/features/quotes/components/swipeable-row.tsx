@@ -122,9 +122,9 @@ export function SwipeableRow({
           type="button"
           aria-label={ariaLabel || "Eliminar concepto"}
           onClick={handleDeleteTap}
-          className="flex h-full min-h-[44px] w-[120px] items-center justify-center gap-2 px-3 text-[var(--color-status-danger-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+          className="group flex h-full min-h-[44px] w-[120px] items-center justify-center gap-2 px-3 text-[var(--color-status-danger-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
         >
-          <Trash2 className="size-5 shrink-0" aria-hidden="true" />
+          <Trash2 className="size-5 shrink-0 icon-trash-hover" aria-hidden="true" />
           <span className="text-sm font-medium">Eliminar</span>
         </button>
       </div>
