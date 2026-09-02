@@ -9,10 +9,10 @@ const base = {
 };
 
 describe("resolveQuoteActionPresentation", () => {
-  it("prioritizes preparing a draft while retaining Edit and Print as frequent actions", () => {
+  it("keeps Edit, Print, and Share as frequent actions in a draft without a primary action", () => {
     expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT" })).toEqual({
-      primary: "share",
-      frequent: ["edit", "print"],
+      primary: null,
+      frequent: ["edit", "print", "share"],
       overflow: ["workOrder", "duplicate", "cancel", "archive"],
       destructive: "delete",
     });

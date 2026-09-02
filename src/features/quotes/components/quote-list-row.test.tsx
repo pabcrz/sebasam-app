@@ -170,7 +170,7 @@ describe("QuoteListRow", () => {
 
     expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /preparar y compartir cotización c-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /compartir cotización c-001/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
@@ -220,7 +220,7 @@ describe("QuoteListRow", () => {
 
     expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /preparar y compartir cotización c-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /compartir cotización c-001/i })).toBeInTheDocument();
   });
 
   it("keeps non-completed quote-row printing on the quote route", () => {
