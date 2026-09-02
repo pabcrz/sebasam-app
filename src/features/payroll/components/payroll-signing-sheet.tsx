@@ -96,37 +96,6 @@ export function PayrollSigningSheetModal({
           </div>
         </DialogHeader>
 
-        {/* Dynamic Worker Controls (UI Only - Hidden on Print) */}
-        <div className="print:hidden space-y-2 p-3 bg-[var(--color-bg-soft)] rounded-lg border border-[var(--color-border-light)] text-xs">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-[var(--color-text-main)]">
-              Personalizar lista de trabajadores:
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleAddBlankRow}
-              className="h-7 text-xs gap-1"
-            >
-              <Plus className="h-3 w-3" />
-              + Fila en blanco
-            </Button>
-          </div>
-          <form onSubmit={handleAddWorker} className="flex items-center gap-2">
-            <Input
-              type="text"
-              placeholder="Nombre del trabajador adicional..."
-              value={newWorkerName}
-              onChange={(e) => setNewWorkerName(e.target.value)}
-              className="h-8 text-xs flex-1"
-            />
-            <Button type="submit" variant="secondary" size="sm" className="h-8 text-xs shrink-0">
-              Agregar
-            </Button>
-          </form>
-        </div>
-
         {/* Printable Letter-Sized Document Surface */}
         <div
           id="payroll-signing-sheet-document"
@@ -135,7 +104,7 @@ export function PayrollSigningSheetModal({
           {/* Header with Logo and Title */}
           <div className="border-b-2 border-slate-900 pb-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="relative h-12 w-12 shrink-0 bg-slate-900 rounded p-1 flex items-center justify-center">
+              <div className="relative h-12 w-12 shrink-0 bg-slate-900 rounded-md p-1.5 flex items-center justify-center shadow-sm">
                 <Image
                   src="/logo-white-short.png"
                   alt="Logo de SEBASAM"
@@ -224,6 +193,37 @@ export function PayrollSigningSheetModal({
               * Al plasmar su firma en este documento, cada trabajador manifiesta su entera conformidad con la recepción del sobre/recibo correspondiente al período indicado y la correcta liquidación de sus trabajos de mano de obra.
             </p>
           </div>
+        </div>
+
+        {/* Dynamic Worker Controls (UI Only - Hidden on Print, Placed at Bottom) */}
+        <div className="print:hidden space-y-2 p-3 bg-[var(--color-bg-soft)] rounded-lg border border-[var(--color-border-light)] text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-[var(--color-text-main)]">
+              Personalizar lista de trabajadores:
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddBlankRow}
+              className="h-7 text-xs gap-1"
+            >
+              <Plus className="h-3 w-3" />
+              + Fila en blanco
+            </Button>
+          </div>
+          <form onSubmit={handleAddWorker} className="flex items-center gap-2">
+            <Input
+              type="text"
+              placeholder="Nombre del trabajador adicional..."
+              value={newWorkerName}
+              onChange={(e) => setNewWorkerName(e.target.value)}
+              className="h-8 text-xs flex-1"
+            />
+            <Button type="submit" variant="secondary" size="sm" className="h-8 text-xs shrink-0">
+              Agregar
+            </Button>
+          </form>
         </div>
 
         {/* Dialog Actions (Hidden in Print) */}
