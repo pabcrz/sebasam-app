@@ -83,12 +83,16 @@ describe("QuotePreviewCard", () => {
     expect(table).not.toHaveClass("hidden", "print:block");
   });
 
-  it("renders the service notes and validity text", () => {
+  it("renders the service notes before totals and validity text", () => {
     render(<QuotePreviewCard {...defaultProps} />);
 
-    expect(screen.getByTestId("preview-notes-text")).toHaveTextContent(
+    const notes = screen.getByTestId("preview-notes-text");
+    const totals = screen.getByTestId("quote-totals-block");
+
+    expect(notes).toHaveTextContent(
       "Abrazaderas de eje: $600 (no incluidas en costo final)",
     );
+    expect(notes.compareDocumentPosition(totals) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByTestId("quote-validity")).toHaveTextContent(/Vigente hasta el/);
   });
 
