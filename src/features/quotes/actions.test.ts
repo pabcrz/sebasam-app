@@ -34,6 +34,7 @@ vi.mock("@/features/vehicles/schemas", async () => ({
 }));
 vi.mock("./lib/sequence", () => ({
   nextQuoteNumber: vi.fn(() => Promise.resolve("C-0626-01")),
+  withQuoteNumberRetry: vi.fn((operation: () => Promise<unknown>) => operation()),
 }));
 vi.mock("./lib/calculate", async () => ({
   ...(await vi.importActual<typeof import("./lib/calculate")>("./lib/calculate")),

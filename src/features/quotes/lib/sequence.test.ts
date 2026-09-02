@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Prisma } from "@prisma/client";
 
 const prismaMock = vi.hoisted(() => ({
   $queryRaw: vi.fn(),
@@ -8,7 +9,20 @@ vi.mock("@/lib/prisma", () => ({
   prisma: prismaMock,
 }));
 
-import { nextQuoteNumber, nextWorkOrderNumber } from "./sequence";
+import {
+  nextQuoteNumber,
+  nextWorkOrderNumber,
+  QUOTE_NUMBER_MAX_RETRIES,
+  withQuoteNumberRetry,
+} from "./sequence";
+
+function quoteNumberConflict(target: string[]) {
+  return new Prisma.PrismaClientKnownRequestError("Quote number already exists", {
+    code: "P2002",
+    clientVersion: "test",
+    meta: { target },
+  });
+}
 
 describe("sequential quote/work-order numbers", () => {
   beforeEach(() => {
@@ -87,5 +101,30 @@ describe("sequential quote/work-order numbers", () => {
     expect(query).toContain("substring(\"number\" FROM ?::integer)");
     expect(suffixStart).toBe(8);
     expect(prefixPattern).toBe("T-0626-%");
+  });
+
+  it("retries the complete transaction after a Quote.number collision", async () => {
+    const transaction = vi.fn()
+      .mockRejectedValueOnce(quoteNumberConflict(["number"]))
+      .mockResolvedValueOnce("created");
+
+    await expect(withQuoteNumberRetry(transaction)).resolves.toBe("created");
+    expect(transaction).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry an unrelated unique constraint error", async () => {
+    const error = quoteNumberConflict(["submissionKey"]);
+    const transaction = vi.fn().mockRejectedValue(error);
+
+    await expect(withQuoteNumberRetry(transaction)).rejects.toBe(error);
+    expect(transaction).toHaveBeenCalledOnce();
+  });
+
+  it("propagates a Quote.number collision after the explicit retry limit", async () => {
+    const error = quoteNumberConflict(["number"]);
+    const transaction = vi.fn().mockRejectedValue(error);
+
+    await expect(withQuoteNumberRetry(transaction)).rejects.toBe(error);
+    expect(transaction).toHaveBeenCalledTimes(QUOTE_NUMBER_MAX_RETRIES + 1);
   });
 });
