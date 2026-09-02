@@ -84,10 +84,10 @@ describe("SwipeableRow", () => {
     Object.defineProperty(container, "offsetWidth", { configurable: true, value: 400 });
 
     fireEvent.touchStart(card, {
-      touches: [{ clientX: 200, clientY: 50 }],
+      touches: [{ clientX: 100, clientY: 50 }],
     } as unknown as React.TouchEvent);
     fireEvent.touchMove(card, {
-      touches: [{ clientX: 60, clientY: 52 }],
+      touches: [{ clientX: 200, clientY: 52 }],
       preventDefault: () => {},
     } as unknown as React.TouchEvent);
     fireEvent.touchEnd(card, { touches: [] } as unknown as React.TouchEvent);
@@ -112,10 +112,10 @@ describe("SwipeableRow", () => {
     Object.defineProperty(container, "offsetWidth", { configurable: true, value: 400 });
 
     fireEvent.touchStart(card, {
-      touches: [{ clientX: 200, clientY: 50 }],
+      touches: [{ clientX: 100, clientY: 50 }],
     } as unknown as React.TouchEvent);
     fireEvent.touchMove(card, {
-      touches: [{ clientX: 180, clientY: 51 }],
+      touches: [{ clientX: 120, clientY: 51 }],
       preventDefault: () => {},
     } as unknown as React.TouchEvent);
     fireEvent.touchEnd(card, { touches: [] } as unknown as React.TouchEvent);
