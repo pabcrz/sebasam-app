@@ -37,8 +37,10 @@ export function PayrollSigningSheetModal({
   const [customRows, setCustomRows] = React.useState<CustomRow[]>([]);
   const [newWorkerName, setNewWorkerName] = React.useState("");
 
+  const printUrl = `/admin/nomina/imprimir/firmas?anchor=${encodeURIComponent(period.anchor)}&mode=${encodeURIComponent(period.mode)}`;
+
   const handlePrint = () => {
-    window.print();
+    window.open(printUrl, "_blank");
   };
 
   const handleAddWorker = (e?: React.FormEvent) => {

@@ -32,8 +32,10 @@ export function PayrollWorkerEnvelopeModal({
 
   if (!worker) return null;
 
+  const printUrl = `/admin/nomina/imprimir/sobre/${encodeURIComponent(worker.workerId)}?anchor=${encodeURIComponent(period.anchor)}&mode=${encodeURIComponent(period.mode)}`;
+
   const handlePrint = () => {
-    window.print();
+    window.open(printUrl, "_blank");
   };
 
   const todayStr = new Intl.DateTimeFormat("es-MX", {
