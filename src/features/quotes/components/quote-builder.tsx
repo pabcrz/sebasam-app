@@ -695,10 +695,10 @@ export function QuoteBuilder({
   // layout, so the submit button associates back to its form by id.
   const formId = React.useId();
   const formClass = isDialogLayout
-    ? "min-h-0"
+    ? "min-h-0 min-w-0"
     : "flex flex-col";
   const scrollAreaClass = isDialogLayout
-    ? "min-h-0"
+    ? "min-h-0 min-w-0"
     : "py-4 pr-1";
   const stepperContent = <QuoteBuilderStepper current={step} onChange={setStep} />;
   const footerContent = (
@@ -760,11 +760,12 @@ export function QuoteBuilder({
       data-layout={layout}
       style={isDialogLayout ? {
         alignItems: "stretch",
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
+         display: "flex",
+         flexDirection: "column",
+         height: "100%",
         justifyContent: "flex-start",
         minHeight: 0,
+        minWidth: 0,
       } : undefined}
       onSubmit={handleSubmit}
     >
@@ -781,6 +782,7 @@ export function QuoteBuilder({
             style={isDialogLayout ? {
               flex: "1 1 0%",
               minHeight: 0,
+              minWidth: 0,
               overflowY: "auto",
               overscrollBehaviorY: "contain",
             } : undefined}

@@ -208,11 +208,46 @@ describe("MultiStepDialog", () => {
     expect(bodyStyle.flexGrow).toBe("1");
     expect(bodyStyle.flexShrink).toBe("1");
     expect(bodyStyle.minHeight).toBe("0px");
+    expect(bodyStyle.minWidth).toBe("0px");
     expect(bodyStyle.overflowY).toBe("auto");
     expect(bodyStyle.overscrollBehaviorY).toBe("contain");
 
     expect(footer).toHaveClass("border-t", "shrink-0");
+    expect(getComputedStyle(footer).minWidth).toBe("0px");
     expect(footer).toContainElement(screen.getByRole("button", { name: "Guardar" }));
+  });
+
+  it("keeps footer slot children available as separate flex items", () => {
+    const previous = <button type="button">Anterior</button>;
+    const next = <button type="button">Siguiente</button>;
+
+    render(
+      <MultiStepDialog
+        open
+        onOpenChange={vi.fn()}
+        title="New quote"
+        body={<div>Content</div>}
+        footer={
+          <div data-testid="footer-slot-host" className="contents">
+            <div className="flex items-center gap-2">{previous}</div>
+            {next}
+          </div>
+        }
+      />,
+    );
+
+    const footer = screen.getByTestId("multi-step-dialog-footer");
+    const host = screen.getByTestId("footer-slot-host");
+    const previousButton = screen.getByRole("button", { name: "Anterior" });
+    const nextButton = screen.getByRole("button", { name: "Siguiente" });
+
+    expect(footer).toHaveClass("flex", "min-w-0", "flex-wrap", "justify-between", "gap-3");
+    expect(host).toHaveClass("contents");
+    expect(host.parentElement).toBe(footer);
+    expect(host).toContainElement(previousButton);
+    expect(host).toContainElement(nextButton);
+    expect(previousButton.parentElement).not.toBe(host);
+    expect(nextButton.parentElement).toBe(host);
   });
 
   it("does not open the discard confirmation while pending, even when dirty", async () => {

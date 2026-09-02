@@ -24,12 +24,15 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   const stepper = screen.getByTestId("multi-step-dialog-stepper");
   const body = screen.getByTestId("multi-step-dialog-body");
   const footer = screen.getByTestId("multi-step-dialog-footer");
+  const footerHost = screen.getByTestId("quote-builder-footer-host");
 
   expect(Array.from(dialog.children)).toEqual([header, stepper, body, footer]);
 
   expect(header).toContainElement(screen.getByRole("heading", { name: /cotización/ }));
   expect(stepper).toContainElement(screen.getByRole("navigation", { name: "Pasos de cotización" }));
   expect(footer).toContainElement(screen.getByRole("button", { name: "Siguiente" }));
+  expect(footerHost).toHaveClass("contents");
+  expect(footerHost.parentElement).toBe(footer);
 
   for (const fixedRegion of [header, stepper, footer]) {
     const style = getComputedStyle(fixedRegion);
@@ -47,11 +50,13 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   expect(formStyle.justifyContent).toBe("flex-start");
   expect(formStyle.height).toBe("100%");
   expect(formStyle.minHeight).toBe("0px");
+  expect(formStyle.minWidth).toBe("0px");
 
   const bodyStyle = getComputedStyle(body);
   expect(bodyStyle.flexGrow).toBe("1");
   expect(bodyStyle.flexShrink).toBe("1");
   expect(bodyStyle.minHeight).toBe("0px");
+  expect(bodyStyle.minWidth).toBe("0px");
   expect(bodyStyle.overflowY).toBe("auto");
   expect(bodyStyle.overscrollBehaviorY).toBe("contain");
 
@@ -59,6 +64,7 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   expect(scrollAreaStyle.flexGrow).toBe("1");
   expect(scrollAreaStyle.flexShrink).toBe("1");
   expect(scrollAreaStyle.minHeight).toBe("0px");
+  expect(scrollAreaStyle.minWidth).toBe("0px");
   expect(scrollAreaStyle.overflowY).toBe("auto");
   expect(scrollAreaStyle.overscrollBehaviorY).toBe("contain");
 
@@ -148,6 +154,36 @@ describe("QuoteBuilderDialog", () => {
     expect(screen.getAllByLabelText("Descripción", { selector: "input" })).toHaveLength(itemCount);
     expect(screen.getByTestId("concept-list-0")).toHaveClass("grid", "gap-3");
     expect(screen.getByTestId("concept-list-0")).not.toHaveClass("max-h-[45dvh]", "overflow-y-auto");
+  });
+
+  it("keeps dialog footer actions separated and shrinkable on the concepts step", async () => {
+    const user = userEvent.setup();
+    render(
+      <QuoteBuilderDialog
+        customers={customers}
+        initialData={editInitialData}
+        quoteNumber="C-001"
+        saveAction={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const footer = screen.getByTestId("multi-step-dialog-footer");
+    const footerHost = screen.getByTestId("quote-builder-footer-host");
+    const previous = screen.getByRole("button", { name: "Anterior" });
+    const next = screen.getByRole("button", { name: "Siguiente" });
+    const previousGroup = previous.parentElement;
+
+    expect(footer).toHaveClass("min-w-0", "flex-wrap", "items-center", "justify-between", "gap-3");
+    expect(footerHost).toHaveClass("contents");
+    expect(previousGroup).toBeTruthy();
+    expect(previousGroup).not.toBe(footerHost);
+    expect(previousGroup).toHaveClass("flex", "items-center", "gap-2");
+    expect(next.parentElement).toBe(footerHost);
+    expect(footerHost).toContainElement(previous);
+    expect(footerHost).toContainElement(next);
   });
 
   it("requests confirmation via the X button", async () => {

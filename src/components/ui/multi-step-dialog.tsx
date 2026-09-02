@@ -212,16 +212,16 @@ export function MultiStepDialog({
           </div>
         ) : null}
         <div
-          className="min-h-0 py-4 pr-1"
-          style={{ flex: "1 1 0%", minHeight: 0, overflowY: "auto", overscrollBehaviorY: "contain" }}
+          className="min-h-0 min-w-0 py-4 pr-1"
+          style={{ flex: "1 1 0%", minHeight: 0, minWidth: 0, overflowY: "auto", overscrollBehaviorY: "contain" }}
           data-testid="multi-step-dialog-body"
         >
           {body}
         </div>
         {footer != null ? (
           <div
-            className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4"
-            style={{ flexShrink: 0 }}
+            className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4"
+            style={{ flexShrink: 0, minWidth: 0 }}
             data-testid="multi-step-dialog-footer"
           >
             {footer}
