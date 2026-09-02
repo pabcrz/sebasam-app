@@ -68,20 +68,10 @@ export function PayrollWorkerEnvelopeModal({
     const node = document.getElementById("payroll-worker-envelope-document");
     if (!node) return null;
 
-    const scrollW = node.scrollWidth || 350;
-    const scrollH = node.scrollHeight || 500;
-    const targetWidth = Math.max(scrollW, node.offsetWidth, 350) + 12;
-    const targetHeight = Math.max(scrollH, node.offsetHeight, 400) + 12;
-
     return await toPng(node, {
       backgroundColor: "#ffffff",
-      pixelRatio: 2.5,
+      pixelRatio: 2,
       cacheBust: true,
-      width: targetWidth,
-      height: targetHeight,
-      style: {
-        overflow: "visible",
-      },
     });
   };
 
