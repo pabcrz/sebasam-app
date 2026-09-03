@@ -33,6 +33,14 @@ vi.mock("@/components/theme-toggle", () => ({
   ),
 }));
 
+vi.mock("@/components/font-scale-toggle", () => ({
+  FontScaleToggle: ({ className }: { className?: string }) => (
+    <button type="button" className={className}>
+      FontScale
+    </button>
+  ),
+}));
+
 describe("AdminShell", () => {
   beforeEach(() => {
     mockPathname = "/admin";
