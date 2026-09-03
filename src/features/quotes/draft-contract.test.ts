@@ -64,4 +64,50 @@ describe("draft quote persistence contract", () => {
   it("keeps the commercial form schema strict", () => {
     expect(quoteFormInputSchema.safeParse(draft).success).toBe(false);
   });
+
+  it.each(["", null, undefined, "0"])("accepts draft with discount %j defaulting to 0", (discountCents) => {
+    const parsed = quoteDraftFormInputSchema.safeParse({
+      ...draft,
+      discountCents,
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.discountCents).toBe(0);
+    }
+  });
+
+  it("accepts draft with null or omitted FormData values for optional fields", () => {
+    const parsed = quoteDraftFormInputSchema.safeParse({
+      customerId: "customer-1",
+      vehicle: { plate: null, brand: null, model: null, color: null, year: null },
+      title: "Diagnóstico general",
+      description: null,
+      taxEnabled: true,
+      discountCents: "",
+      operationalDate: null,
+      sections: [
+        {
+          name: "General",
+          isAuthorized: false,
+          items: [
+            {
+              type: QuoteItemType.LABOR,
+              description: "Alineación",
+              quantity: "1",
+              unitPriceCents: "",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.discountCents).toBe(0);
+      expect(parsed.data.description).toBeUndefined();
+      expect(parsed.data.vehicle.plate).toBeUndefined();
+      expect(parsed.data.vehicle.year).toBeUndefined();
+      expect(parsed.data.operationalDate).toBeUndefined();
+    }
+  });
 });
