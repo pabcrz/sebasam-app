@@ -167,7 +167,7 @@ export function MultiStepDialog({
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent
         className={clsx(
-          "!inset-0 !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none p-4 sm:!bottom-auto sm:!left-1/2 sm:!right-auto sm:!top-1/2 sm:!h-[min(90dvh,52rem)] sm:!max-h-[min(90dvh,52rem)] sm:!w-[min(92vw,64rem)] sm:!max-w-5xl sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-[var(--radius-lg)] sm:p-6",
+          "!inset-0 !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none p-3 pt-2.5 sm:!bottom-auto sm:!left-1/2 sm:!right-auto sm:!top-1/2 sm:!h-[min(90dvh,52rem)] sm:!max-h-[min(90dvh,52rem)] sm:!w-[min(92vw,64rem)] sm:!max-w-5xl sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-[var(--radius-lg)] sm:p-6",
           className,
         )}
         style={{
@@ -204,7 +204,7 @@ export function MultiStepDialog({
         </div>
         {stepper != null ? (
           <div
-            className="shrink-0 border-b border-[var(--color-border-light)] pb-4"
+            className="shrink-0 border-b border-[var(--color-border-light)] pb-2 sm:pb-4"
             style={{ flexShrink: 0 }}
             data-testid="multi-step-dialog-stepper"
           >
@@ -212,7 +212,7 @@ export function MultiStepDialog({
           </div>
         ) : null}
         <div
-          className="min-h-0 min-w-0 py-4 pr-1"
+          className="min-h-0 min-w-0 py-2 pr-1 sm:py-4"
           style={{ flex: "1 1 0%", minHeight: 0, minWidth: 0, overflowY: "auto", overscrollBehaviorY: "contain" }}
           data-testid="multi-step-dialog-body"
         >
@@ -220,7 +220,7 @@ export function MultiStepDialog({
         </div>
         {footer != null ? (
           <div
-            className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-4"
+            className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-2 sm:pt-4"
             style={{ flexShrink: 0, minWidth: 0 }}
             data-testid="multi-step-dialog-footer"
           >
