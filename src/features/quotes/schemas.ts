@@ -4,7 +4,7 @@ import { normalizeOperationalDate } from "./lib/operational-date";
 import { optionalTrimmedString as optionalFilterString } from "@/lib/filters";
 
 const optionalTrimmedString = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  (value) => (value === null || value === undefined || (typeof value === "string" && value.trim() === "") ? undefined : value),
   z.string().trim().optional(),
 );
 
@@ -14,10 +14,20 @@ const MAX_UNIT_PRICE_CENTS = 5_000_000;
 
 function optionalTrimmedStringWithMax(max: number) {
   return z.preprocess(
-    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    (value) => (value === null || value === undefined || (typeof value === "string" && value.trim() === "") ? undefined : value),
     z.string().trim().max(max).optional(),
   );
 }
+
+const discountCentsFromDollarInput = z.preprocess((value) => {
+  if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) {
+    return 0;
+  }
+  if (typeof value === "string") {
+    return Math.round(Number(value.trim()) * 100);
+  }
+  return value;
+}, z.number().int().nonnegative("El descuento debe ser mayor o igual a cero").max(MAX_INT_CENTS, "El descuento es demasiado grande"));
 
 const centsFromDollarInput = z.preprocess((value) => {
   if (typeof value !== "string") {
@@ -34,7 +44,7 @@ const centsFromDollarInput = z.preprocess((value) => {
 }, z.number().int().nonnegative("Unit price must be zero or greater").max(MAX_UNIT_PRICE_CENTS, "Unit price is too large"));
 
 const optionalCentsFromDollarInput = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  (value) => (value === null || value === undefined || (typeof value === "string" && value.trim() === "") ? undefined : value),
   centsFromDollarInput.optional(),
 );
 
@@ -89,7 +99,7 @@ export const quoteVehicleInputSchema = z.object({
   model: optionalTrimmedStringWithMax(80),
   color: optionalTrimmedString,
   year: z.preprocess(
-    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    (value) => (value === null || value === undefined || (typeof value === "string" && value.trim() === "") ? undefined : value),
     z.coerce
       .number()
       .int("El año del vehículo debe ser un número entero")
@@ -108,7 +118,7 @@ const quoteInputBaseSchema = z.object({
   taxEnabled: z.boolean().default(true),
   discountCents: z.number().int().nonnegative().default(0),
   operationalDate: z.preprocess(
-    (value) => value === "" ? undefined : value,
+    (value) => (value === null || value === undefined || (typeof value === "string" && value.trim() === "") ? undefined : value),
     z.string().optional().superRefine((value, context) => {
       if (!value) return;
       try {
@@ -179,7 +189,7 @@ export const quoteFormSectionSchema = quoteSectionBaseSchema.extend({
 
 export const quoteFormInputSchema = quoteInputBaseSchema.extend({
   administrative: z.coerce.boolean().default(false),
-  discountCents: centsFromDollarInput.default(0),
+  discountCents: discountCentsFromDollarInput,
   sections: z.array(quoteFormSectionSchema).min(1, "At least one quote section is required").max(10),
 }).superRefine(validateQuoteTotals);
 
@@ -218,7 +228,7 @@ export const quoteDraftFormItemSchema = quoteItemBaseSchema.omit({ unitPriceCent
 
 export const quoteDraftFormInputSchema = quoteDraftInputBaseSchema.extend({
   administrative: z.coerce.boolean().default(false),
-  discountCents: centsFromDollarInput.default(0),
+  discountCents: discountCentsFromDollarInput,
   sections: z.array(quoteSectionBaseSchema.extend({ items: z.array(quoteDraftFormItemSchema) })).min(1, "At least one quote section is required").max(10),
 }).superRefine(validateDraftIdentity);
 
