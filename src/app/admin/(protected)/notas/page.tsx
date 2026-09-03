@@ -17,7 +17,7 @@ import { listActiveMasters } from "@/features/workers/queries";
 import { getCurrentProfile, isAdminRole } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
-  title: "Notas de remisión",
+  title: "Notas",
 };
 
 export default async function NotasPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -31,7 +31,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
-          Notas de remisión
+          Notas
         </h1>
       </div>
       <NotasFilters mode={filters.mode} payment={filters.payment} assignee={filters.assignee} anchor={filters.anchor} rangeLabel={filters.rangeLabel} isCurrentWeek={filters.isCurrentWeek} masters={masters} />

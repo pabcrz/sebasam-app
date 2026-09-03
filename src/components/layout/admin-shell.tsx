@@ -130,7 +130,6 @@ export function getSectionTitle(pathname: string): string {
 export function AdminShell({ displayName, role, children }: AdminShellProps) {
   const [isGlobalPending, setGlobalPending] = React.useState(false);
   const pathname = usePathname();
-  const sectionTitle = getSectionTitle(pathname);
 
   // Reset global pending indicator when pathname changes
   React.useEffect(() => {
@@ -177,9 +176,6 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
               </Link>
             </div>
             <div className="flex items-center gap-2">
-              <h1 className="hidden font-mono text-xs uppercase tracking-[0.14em] text-[var(--color-text-muted)] md:block">
-                {sectionTitle}
-              </h1>
               {isGlobalPending ? (
                 <span className="flex items-center gap-1 text-xs text-[var(--color-primary)] font-medium">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />

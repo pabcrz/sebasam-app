@@ -56,7 +56,7 @@ const modules = [
   },
   {
     href: "/admin/notas",
-    title: "Notas de remisión",
+    title: "Notas",
     description: "Trabajos finalizados e impresión de nota de entrega.",
     icon: FileCheck,
   },
