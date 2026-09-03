@@ -97,8 +97,13 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <div className="flex justify-end">
-        <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
+          Cotizaciones
+        </h1>
+        <div className="hidden sm:block">
+          <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
+        </div>
       </div>
       <QuotePageToasts />
 
@@ -186,6 +191,22 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
           ) : null}
         </CardContent>
       </Card>
+
+      {/* Mobile Floating Action Button */}
+      <div
+        className="fixed right-4 z-40 sm:hidden"
+        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <QuoteBuilderDialog
+          customers={customers}
+          createAction={createQuoteFromWorkspace}
+          createCustomerAction={createOrReuseCustomerForQuote}
+          searchCustomersAction={searchCustomersForQuote}
+          triggerVariant="primary"
+          triggerSize="sm"
+          triggerClassName="h-11 px-4 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-1.5 border border-white/20"
+        />
+      </div>
     </section>
   );
 }

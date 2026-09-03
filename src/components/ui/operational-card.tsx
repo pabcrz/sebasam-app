@@ -32,7 +32,12 @@ export function OperationalCard({ body, actions, onOpen, openLabel, className, b
   return (
     <div className={clsx("rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm", className)}>
       {onOpen ? (
-        <button type="button" onClick={onOpen} aria-label={openLabel} className={clsx(contentClassName, "cursor-pointer hover:bg-[var(--color-bg-soft)]")}>
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={openLabel}
+          className={clsx(contentClassName, "active-press-subtle cursor-pointer hover:bg-[var(--color-bg-soft)]")}
+        >
           {body}
         </button>
       ) : (

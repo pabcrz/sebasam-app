@@ -39,6 +39,7 @@ export interface PayrollItemInput {
   quantity: number;
   unitPriceCents: number | null;
   totalCents: number | null;
+  includeInPayroll?: boolean | null;
   customPayrollBaseCents?: number | null;
   customRatePercent?: number | null;
 }
@@ -87,6 +88,7 @@ export interface WorkerPayrollSummary {
 }
 
 export interface WeeklyPayrollReport {
+  mode?: "weekly" | "monthly";
   startDate: Date;
   endDate: Date;
   rangeLabel: string;
@@ -100,19 +102,34 @@ export interface WeeklyPayrollReport {
   unassignedOrders: WorkOrderPayrollDetail[];
 }
 
+export type PayrollReport = WeeklyPayrollReport;
+
 /**
  * Processes a single quote item for payroll calculation.
- * Returns null if the item is not labor.
+ * Returns null if the item is not commissionable (i.e. not LABOR and not an OTHER item with includeInPayroll).
  */
 export function evaluatePayrollItem(item: PayrollItemInput): PayrollItemResult | null {
-  if (item.type !== QuoteItemType.LABOR) {
+  const isLabor = item.type === QuoteItemType.LABOR;
+  const isCommissionableOther = item.type === QuoteItemType.OTHER && Boolean(item.includeInPayroll);
+
+  if (!isLabor && !isCommissionableOther) {
     return null;
   }
 
   const clientTotal = item.totalCents ?? 0;
   const payrollBase = item.customPayrollBaseCents != null ? item.customPayrollBaseCents : clientTotal;
-  const category = detectLaborCategory(item.description);
-  const ratePercent = item.customRatePercent != null ? item.customRatePercent : getDefaultLaborRate(category);
+
+  let category: LaborCategory;
+  let ratePercent: number;
+
+  if (isCommissionableOther) {
+    category = "GENERAL";
+    ratePercent = item.customRatePercent != null ? item.customRatePercent : 40;
+  } else {
+    category = detectLaborCategory(item.description);
+    ratePercent = item.customRatePercent != null ? item.customRatePercent : getDefaultLaborRate(category);
+  }
+
   const commissionCents = computeCommissionCents(payrollBase, ratePercent);
 
   return {
@@ -162,6 +179,7 @@ export interface RawWorkOrderForPayroll {
 export function buildWeeklyPayrollReport(
   orders: RawWorkOrderForPayroll[],
   options: {
+    mode?: "weekly" | "monthly";
     startDate: Date;
     endDate: Date;
     rangeLabel: string;
@@ -289,6 +307,7 @@ export function buildWeeklyPayrollReport(
   const workers = Array.from(workerMap.values()).sort((a, b) => a.displayName.localeCompare(b.displayName));
 
   return {
+    mode: options.mode ?? "weekly",
     startDate: options.startDate,
     endDate: options.endDate,
     rangeLabel: options.rangeLabel,

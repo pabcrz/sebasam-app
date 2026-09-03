@@ -149,7 +149,7 @@ export function QuoteBuilderItemsStep({
   }
 
   return (
-    <section className="grid gap-6">
+    <section className="grid gap-3 sm:gap-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="min-w-0 font-semibold text-[var(--color-text-main)]">Conceptos</h3>
         {completeItemsCount > 0 ? (
@@ -252,45 +252,52 @@ export function QuoteBuilderItemsStep({
                           aria-expanded={isExpanded}
                           onClick={() => onToggleItem(rowId)}
                           data-testid={`concept-summary-${displayIndex}`}
-                          className="grid min-w-0 flex-1 gap-1 rounded-[var(--radius-sm)] px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+                          className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-[var(--radius-sm)] px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
                         >
-                          <span className="break-words text-base font-semibold leading-5 text-[var(--color-text-main)] sm:text-sm">
-                            {formatConceptSummaryDescription(item.description) || "Concepto sin descripción"}
-                          </span>
-                          <span className={`${isExpanded ? "hidden" : "flex flex-wrap"} items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)]`}>
-                            {item.quantity.trim() ? <span className="font-medium text-[var(--color-text-main)]">{item.quantity} unidad{item.quantity === "1" ? "" : "es"}</span> : null}
-                            <span>{itemTypeLabels[item.type]}</span>
-                            {pendingSummary ? (
-                              <span className="font-medium text-[var(--color-status-danger-fg)]">{pendingSummary}</span>
-                            ) : (
-                              <span className="font-medium text-[var(--color-text-main)]">{formatCents(lineTotalCents!)}</span>
-                            )}
+                          <div className="grid min-w-0 flex-1 gap-1">
+                            <span className="break-words text-base font-semibold leading-5 text-[var(--color-text-main)] sm:text-sm">
+                              {formatConceptSummaryDescription(item.description) || "Concepto sin descripción"}
+                            </span>
+                            <span className={`${isExpanded ? "hidden" : "flex flex-wrap"} items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)]`}>
+                              {item.quantity.trim() ? <span className="font-medium text-[var(--color-text-main)]">{item.quantity} unidad{item.quantity === "1" ? "" : "es"}</span> : null}
+                              <span>{itemTypeLabels[item.type]}</span>
+                              {item.type === "OTHER" && item.includeInPayroll ? (
+                                <span className="rounded bg-[var(--color-bg-subtle)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-main)]">
+                                  {item.customRatePercent || "40"}% nómina
+                                </span>
+                              ) : null}
+                              {pendingSummary ? (
+                                <span className="font-medium text-[var(--color-status-danger-fg)]">{pendingSummary}</span>
+                              ) : (
+                                <span className="font-medium text-[var(--color-text-main)]">{formatCents(lineTotalCents!)}</span>
+                              )}
+                            </span>
+                          </div>
+                          <span
+                            className="shrink-0 text-[var(--color-text-muted)] transition-transform duration-200"
+                            aria-hidden="true"
+                          >
+                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </span>
                         </button>
-                        <span
-                          className="shrink-0 text-[var(--color-text-muted)] transition-transform duration-200"
-                          aria-hidden="true"
-                        >
-                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </span>
                         <button
                           type="button"
                           aria-label={`Duplicar concepto ${displayIndex + 1}`}
                           onClick={() => onDuplicateItem(sectionIndex, itemIndex)}
-                          className="inline-flex size-[var(--tap-min-height)] shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:h-8 sm:w-8"
+                          className="group inline-flex size-[var(--tap-min-height)] shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:h-8 sm:w-8"
                         >
-                          <Copy className="size-4" aria-hidden="true" />
+                          <Copy className="size-4 icon-copy-hover" aria-hidden="true" />
                         </button>
                         <button
                           type="button"
                           aria-label={`Eliminar concepto ${displayIndex + 1}`}
                           onClick={() => onRemoveItem(sectionIndex, itemIndex)}
-                          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-status-danger-fg)] transition-colors hover:bg-[var(--color-status-danger-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:inline-flex"
+                          className="group hidden h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-status-danger-fg)] transition-colors hover:bg-[var(--color-status-danger-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:inline-flex"
                         >
-                          <Trash2 className="size-4" aria-hidden="true" />
+                          <Trash2 className="size-4 icon-trash-hover" aria-hidden="true" />
                         </button>
                       </div>
-                      <div id={`concept-editor-${rowId}`} hidden={!isExpanded} className="grid gap-4 border-t border-[var(--color-border-light)] px-1 pt-4">
+                      <div id={`concept-editor-${rowId}`} hidden={!isExpanded} className="grid gap-2.5 border-t border-[var(--color-border-light)] px-1 pt-2.5 sm:gap-4 sm:pt-4">
                     <input type="hidden" name={`sections.${sectionIndex}.items.${itemIndex}.type`} value={item.type} />
 <div className="grid gap-2">
                     <Label htmlFor={`${fieldId}-type`}>Tipo</Label>
@@ -427,6 +434,56 @@ export function QuoteBuilderItemsStep({
                       </span>
                     </div>
                     </div>
+
+                    {item.type === "OTHER" ? (
+                      <div className="grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3">
+                        <label
+                          htmlFor={`${fieldId}-includeInPayroll`}
+                          className="flex items-center gap-2.5 text-sm font-medium text-[var(--color-text-main)] cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            id={`${fieldId}-includeInPayroll`}
+                            name={`sections.${sectionIndex}.items.${itemIndex}.includeInPayroll`}
+                            checked={Boolean(item.includeInPayroll)}
+                            onChange={(e) => onUpdateItem(sectionIndex, itemIndex, {
+                              includeInPayroll: e.target.checked,
+                              customRatePercent: item.customRatePercent || "40",
+                            })}
+                            className="size-4 rounded border-[var(--color-border-input)] text-[var(--color-primary)] focus:ring-[var(--color-ring)]"
+                          />
+                          <span>Incluir en nómina / comisión</span>
+                        </label>
+                        {item.includeInPayroll ? (
+                          <div className="grid gap-1.5 sm:max-w-xs">
+                            <Label htmlFor={`${fieldId}-customRatePercent`} className="text-xs text-[var(--color-text-muted)]">
+                              Porcentaje de comisión
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id={`${fieldId}-customRatePercent`}
+                                name={`sections.${sectionIndex}.items.${itemIndex}.customRatePercent`}
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={item.customRatePercent ?? "40"}
+                                onChange={(e) => onUpdateItem(sectionIndex, itemIndex, { customRatePercent: e.target.value })}
+                                className="h-9 w-24 bg-[var(--color-surface)]"
+                                aria-describedby={itemErrors.customRatePercent ? `${fieldId}-rate-error` : undefined}
+                                aria-invalid={Boolean(itemErrors.customRatePercent)}
+                              />
+                              <span className="text-sm font-medium text-[var(--color-text-muted)]">%</span>
+                            </div>
+                            {itemErrors.customRatePercent ? (
+                              <span id={`${fieldId}-rate-error`} role="alert" className="text-xs text-[var(--color-status-danger-fg)]">
+                                {itemErrors.customRatePercent}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     <div className="flex items-center justify-between pt-1 text-sm text-[var(--color-text-muted)]">
                     <span>Importe</span>
                     <output className="font-medium" data-testid={`concept-total-${displayIndex}`} aria-label={`Importe del concepto ${displayIndex + 1}`}>

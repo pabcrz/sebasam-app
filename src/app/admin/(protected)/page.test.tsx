@@ -82,9 +82,9 @@ describe("AdminHomePage", () => {
     const page = await AdminHomePage();
     render(page);
 
-    expect(screen.getByRole("heading", { name: "Inicio", level: 1 })).toHaveClass("sr-only");
-    expect(screen.getByRole("button", { name: /nuevo cliente/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Inicio", level: 1 })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /nuevo cliente/i })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /nueva cotización/i })[0]).toBeInTheDocument();
     expect(screen.getByText("Cola Comercial (Cotizaciones)")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("Ejecución Activa (Taller)")).toBeInTheDocument();

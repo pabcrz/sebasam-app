@@ -3,6 +3,8 @@ import { DM_Mono, Inter } from "next/font/google";
 import { PwaRegister } from "./pwa-register";
 import { ThemeScript } from "@/components/theme-script";
 import { ThemeProvider } from "@/components/theme-provider";
+import { FontScaleScript } from "@/components/font-scale-script";
+import { FontScaleProvider } from "@/components/font-scale-provider";
 import { ToasterProvider } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -80,12 +82,15 @@ export default function RootLayout({
     >
       <head>
         <ThemeScript />
+        <FontScaleScript />
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
-          <PwaRegister />
-          <ToasterProvider />
-          {children}
+          <FontScaleProvider>
+            <PwaRegister />
+            <ToasterProvider />
+            {children}
+          </FontScaleProvider>
         </ThemeProvider>
       </body>
     </html>

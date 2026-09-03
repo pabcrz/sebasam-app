@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as React from "react";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogTitle,
   DialogTrigger,
@@ -15,6 +16,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./select";
+
+function SimpleTestDialog({ disablePlatformDismiss }: { disablePlatformDismiss?: boolean }) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button type="button" onClick={() => setOpen(true)}>
+          Open simple dialog
+        </button>
+      </DialogTrigger>
+      <DialogContent disablePlatformDismiss={disablePlatformDismiss}>
+        <DialogTitle>Simple Dialog</DialogTitle>
+        <DialogClose asChild>
+          <button type="button">Close simple dialog</button>
+        </DialogClose>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function TestDialog({ onInteractOutside }: Pick<React.ComponentPropsWithoutRef<typeof DialogContent>, "onInteractOutside">) {
   const [open, setOpen] = React.useState(false);
@@ -134,6 +155,95 @@ describe("DialogContent", () => {
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Platform back dismiss", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    it("closes the dialog when CloseWatcher emits onclose", async () => {
+      const destroyMock = vi.fn();
+      let watcherInstance: { onclose?: () => void; destroy: typeof destroyMock } | null = null;
+      class MockCloseWatcher {
+        onclose?: () => void;
+        destroy = destroyMock;
+      }
+      function MockCloseWatcherConstructor() {
+        const instance = new MockCloseWatcher();
+        watcherInstance = instance;
+        return instance;
+      }
+
+      vi.stubGlobal("CloseWatcher", MockCloseWatcherConstructor);
+
+      const user = userEvent.setup();
+      render(<SimpleTestDialog />);
+
+      await user.click(screen.getByRole("button", { name: "Open simple dialog" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(watcherInstance).not.toBeNull();
+
+      await React.act(async () => {
+        watcherInstance?.onclose?.();
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(destroyMock).toHaveBeenCalled();
+      });
+    });
+
+    it("closes the dialog and does not trigger extra history.back when popstate fires (fallback mode)", async () => {
+      const pushStateSpy = vi.spyOn(window.history, "pushState");
+      const backSpy = vi.spyOn(window.history, "back");
+
+      const user = userEvent.setup();
+      render(<SimpleTestDialog />);
+
+      await user.click(screen.getByRole("button", { name: "Open simple dialog" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(pushStateSpy).toHaveBeenCalled();
+
+      await React.act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+
+      expect(backSpy).not.toHaveBeenCalled();
+    });
+
+    it("pops the pushed history state when dialog is closed via UI close button (fallback mode)", async () => {
+      const backSpy = vi.spyOn(window.history, "back").mockImplementation(() => {});
+
+      const user = userEvent.setup();
+      const { unmount } = render(<SimpleTestDialog />);
+
+      await user.click(screen.getByRole("button", { name: "Open simple dialog" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+      unmount();
+
+      expect(backSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not push history state or register dismiss when disablePlatformDismiss is true", async () => {
+      const pushStateSpy = vi.spyOn(window.history, "pushState");
+
+      const user = userEvent.setup();
+      render(<SimpleTestDialog disablePlatformDismiss />);
+
+      await user.click(screen.getByRole("button", { name: "Open simple dialog" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+      expect(pushStateSpy).not.toHaveBeenCalled();
     });
   });
 });

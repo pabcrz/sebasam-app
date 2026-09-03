@@ -258,15 +258,17 @@ model QuoteSection {
 }
 
 model QuoteItem {
-  id             String        @id @default(cuid())
-  quoteId        String
-  sectionId      String?
-  type           QuoteItemType
-  description    String
-  quantity       Decimal       @db.Decimal(10, 2)
-  unitPriceCents Int?
-  totalCents     Int?
-  sortOrder      Int           @default(0)
+  id                 String        @id @default(cuid())
+  quoteId            String
+  sectionId          String?
+  type               QuoteItemType
+  description        String
+  quantity           Decimal       @db.Decimal(10, 2)
+  unitPriceCents     Int?
+  totalCents         Int?
+  includeInPayroll   Boolean       @default(false)
+  customRatePercent  Int?
+  sortOrder          Int           @default(0)
 
   quote   Quote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   section QuoteSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)

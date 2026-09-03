@@ -3,13 +3,16 @@
 import * as React from "react";
 import { Inbox } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import type { WeeklyPayrollReport } from "../domain";
+import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 import { PayrollPeriodNav } from "./payroll-period-nav";
 import { PayrollMetrics } from "./payroll-metrics";
 import { PayrollUnassignedCard } from "./payroll-worker-card";
 import { PayrollOverviewTable } from "./payroll-overview-table";
 import { PayrollWorkerDetail } from "./payroll-worker-detail";
+import { PayrollSigningSheetModal } from "./payroll-signing-sheet";
+import { PayrollWorkerEnvelopeModal } from "./payroll-worker-envelope";
+import { exportPayrollToExcel } from "../lib/payroll-excel";
 
 interface PayrollViewProps {
   report: WeeklyPayrollReport;
@@ -18,6 +21,8 @@ interface PayrollViewProps {
 
 export function PayrollView({ report, period }: PayrollViewProps) {
   const [selectedWorkerId, setSelectedWorkerId] = React.useState<string | null>(null);
+  const [isSigningSheetOpen, setIsSigningSheetOpen] = React.useState(false);
+  const [envelopeWorker, setEnvelopeWorker] = React.useState<WorkerPayrollSummary | null>(null);
 
   // Derive active worker ID during render without cascading useEffect
   const activeWorkerId =
@@ -25,15 +30,24 @@ export function PayrollView({ report, period }: PayrollViewProps) {
       ? selectedWorkerId
       : (report.workers[0]?.workerId ?? "");
 
+  const handleExportExcel = () => {
+    exportPayrollToExcel(report, period);
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Period Navigation */}
       <PayrollPeriodNav
+        mode={period.mode}
         rangeLabel={period.rangeLabel}
         anchor={period.anchor}
         prevAnchor={period.prevAnchor}
         nextAnchor={period.nextAnchor}
+        isCurrentPeriod={period.isCurrentPeriod}
         isCurrentWeek={period.isCurrentWeek}
+        hasData={report.workers.length > 0}
+        onExportExcel={handleExportExcel}
+        onOpenSigningSheet={() => setIsSigningSheetOpen(true)}
       />
 
       {/* Metrics Overview */}
@@ -62,6 +76,7 @@ export function PayrollView({ report, period }: PayrollViewProps) {
           <PayrollWorkerDetail
             workers={report.workers}
             selectedWorkerId={activeWorkerId}
+            onOpenEnvelope={(worker) => setEnvelopeWorker(worker)}
           />
         </div>
       ) : (
@@ -71,14 +86,32 @@ export function PayrollView({ report, period }: PayrollViewProps) {
               <Inbox className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <h3 className="text-sm sm:text-base font-medium text-[var(--color-text-main)]">
-              No hay órdenes completadas en esta semana
+              No hay órdenes completadas en este período
             </h3>
             <p className="text-xs text-[var(--color-text-muted)] max-w-sm mx-auto">
-              Cuando se completen órdenes de trabajo en este período semanal, aparecerán aquí agrupadas por maestro con su cálculo de comisión.
+              Cuando se completen órdenes de trabajo en este período, aparecerán aquí agrupadas por maestro con su cálculo de comisión.
             </p>
           </CardContent>
         </Card>
       )}
+
+      {/* Modal: Hoja de Firmas Confidencial */}
+      <PayrollSigningSheetModal
+        report={report}
+        period={period}
+        open={isSigningSheetOpen}
+        onOpenChange={setIsSigningSheetOpen}
+      />
+
+      {/* Modal: Sobre de Pago Individual */}
+      <PayrollWorkerEnvelopeModal
+        worker={envelopeWorker}
+        period={period}
+        open={envelopeWorker !== null}
+        onOpenChange={(open) => {
+          if (!open) setEnvelopeWorker(null);
+        }}
+      />
     </div>
   );
 }

@@ -46,12 +46,16 @@ function toItemFormValue(item: {
   description: string;
   quantity: unknown;
   unitPriceCents: unknown;
+  includeInPayroll?: boolean | null;
+  customRatePercent?: number | null;
 }) {
   return {
     type: item.type,
     description: item.description,
     quantity: String(Number(item.quantity)),
     unitPrice: String(Number(item.unitPriceCents) / 100),
+    includeInPayroll: Boolean(item.includeInPayroll),
+    customRatePercent: item.customRatePercent != null ? String(item.customRatePercent) : "40",
   };
 }
 

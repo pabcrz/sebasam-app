@@ -499,15 +499,9 @@ function checkQuotesPage() {
 
 function checkAdminPageHeaders() {
   const adminShellSource = readFileSync("src/components/layout/admin-shell.tsx", "utf8");
-  assertIncludes(
-    adminShellSource,
-    "<h1",
-    "AdminShell must render the dynamic section h1 heading in the desktop top bar",
-  );
-  assertIncludes(
-    adminShellSource,
-    "getSectionTitle",
-    "AdminShell must compute section title via getSectionTitle",
+  assert(
+    !adminShellSource.includes("<h1"),
+    "AdminShell must not render a redundant h1 heading in the desktop top bar",
   );
 
   const adminPageHeaderSource = readFileSync("src/components/admin-page-header.tsx", "utf8");

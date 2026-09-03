@@ -56,7 +56,7 @@ const modules = [
   },
   {
     href: "/admin/notas",
-    title: "Notas de remisión",
+    title: "Notas",
     description: "Trabajos finalizados e impresión de nota de entrega.",
     icon: FileCheck,
   },
@@ -84,21 +84,23 @@ export function DashboardView({
 }: DashboardViewProps) {
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <h1 className="sr-only">Inicio</h1>
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <CustomerCreateForm
-          action={createCustomerAction}
-          triggerVariant="outline"
-          triggerSize="sm"
-        />
-        <QuoteBuilderDialog
-          customers={customers}
-          createAction={createQuoteAction}
-          createCustomerAction={createCustomerForQuoteAction}
-          searchCustomersAction={searchCustomersAction}
-          triggerVariant="primary"
-          triggerSize="sm"
-        />
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">Inicio</h1>
+        <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+          <CustomerCreateForm
+            action={createCustomerAction}
+            triggerVariant="outline"
+            triggerSize="sm"
+          />
+          <QuoteBuilderDialog
+            customers={customers}
+            createAction={createQuoteAction}
+            createCustomerAction={createCustomerForQuoteAction}
+            searchCustomersAction={searchCustomersAction}
+            triggerVariant="primary"
+            triggerSize="sm"
+          />
+        </div>
       </div>
 
       {/* Main Operational Stack */}
@@ -139,6 +141,28 @@ export function DashboardView({
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Mobile Floating Action Buttons */}
+      <div
+        className="fixed right-4 z-40 flex items-center gap-2 sm:hidden"
+        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <CustomerCreateForm
+          action={createCustomerAction}
+          triggerVariant="outline"
+          triggerSize="sm"
+          triggerClassName="h-11 px-3.5 rounded-2xl shadow-lg border border-[var(--color-border-light)] bg-[var(--color-surface)]/95 backdrop-blur-md text-xs font-semibold flex items-center gap-1.5"
+        />
+        <QuoteBuilderDialog
+          customers={customers}
+          createAction={createQuoteAction}
+          createCustomerAction={createCustomerForQuoteAction}
+          searchCustomersAction={searchCustomersAction}
+          triggerVariant="primary"
+          triggerSize="sm"
+          triggerClassName="h-11 px-3.5 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-1.5 border border-white/20"
+        />
       </div>
     </section>
   );

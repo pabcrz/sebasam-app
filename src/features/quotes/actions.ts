@@ -47,6 +47,8 @@ type QuoteItemFormInput = {
   description: FormDataEntryValue | null;
   quantity: FormDataEntryValue | null;
   unitPriceCents: FormDataEntryValue | null;
+  includeInPayroll: boolean;
+  customRatePercent: FormDataEntryValue | null;
 };
 
 type QuoteSectionFormInput = {
@@ -68,12 +70,15 @@ function quoteFormDataToInput(formData: FormData) {
       const description = formData.get(`sections.${sIndex}.items.${index}.description`);
       const quantity = formData.get(`sections.${sIndex}.items.${index}.quantity`);
       const unitPriceCents = formData.get(`sections.${sIndex}.items.${index}.unitPrice`);
+      const includeInPayrollVal = formData.get(`sections.${sIndex}.items.${index}.includeInPayroll`);
+      const includeInPayroll = includeInPayrollVal === "on" || includeInPayrollVal === "true";
+      const customRatePercent = formData.get(`sections.${sIndex}.items.${index}.customRatePercent`);
 
       if (type === null && description === null && quantity === null && unitPriceCents === null) {
         break;
       }
 
-      const item = { type, description, quantity, unitPriceCents };
+      const item = { type, description, quantity, unitPriceCents, includeInPayroll, customRatePercent };
 
       const hasAnyItemValue = [item.description, item.unitPriceCents].some(
         (value) => typeof value === "string" && value.trim() !== "",
@@ -100,11 +105,11 @@ function quoteFormDataToInput(formData: FormData) {
       color: undefined,
       year: formData.get("year"),
     },
-    title: formData.get("title"),
+    title: String(formData.get("title") ?? ""),
     description: formData.get("description"),
-    administrative: formData.get("administrative") === "on",
+    administrative: formData.get("administrative"),
     taxEnabled: formData.get("taxEnabled") === "on",
-    discountCents: formData.get("discount") || "0",
+    discountCents: formData.get("discount"),
     operationalDate: formData.get("operationalDate"),
     sections,
   };
@@ -208,6 +213,8 @@ async function createQuoteAuthorized(input: unknown) {
             quantity: item.quantity,
             unitPriceCents: item.unitPriceCents ?? null,
             totalCents: item.unitPriceCents === undefined ? null : calculateItemTotalCents(item.quantity, item.unitPriceCents),
+            includeInPayroll: item.type === "OTHER" ? Boolean(item.includeInPayroll) : item.type === "LABOR",
+            customRatePercent: item.type === "OTHER" && item.includeInPayroll ? (item.customRatePercent ?? 40) : (item.customRatePercent ?? null),
             sortOrder: iIndex,
           });
         });
@@ -362,6 +369,8 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
             quantity: item.quantity,
             unitPriceCents: item.unitPriceCents ?? null,
             totalCents: item.unitPriceCents === undefined ? null : calculateItemTotalCents(item.quantity, item.unitPriceCents),
+            includeInPayroll: item.type === "OTHER" ? Boolean(item.includeInPayroll) : item.type === "LABOR",
+            customRatePercent: item.type === "OTHER" && item.includeInPayroll ? (item.customRatePercent ?? 40) : (item.customRatePercent ?? null),
             sortOrder: iIndex,
           });
         });
@@ -858,6 +867,8 @@ async function duplicateQuoteAuthorized(quoteId: string) {
             quantity: item.quantity,
             unitPriceCents: item.unitPriceCents,
             totalCents: item.totalCents,
+            includeInPayroll: item.includeInPayroll,
+            customRatePercent: item.customRatePercent,
             sortOrder: iIndex,
           });
         });

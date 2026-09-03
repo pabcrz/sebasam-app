@@ -33,6 +33,14 @@ vi.mock("@/components/theme-toggle", () => ({
   ),
 }));
 
+vi.mock("@/components/font-scale-toggle", () => ({
+  FontScaleToggle: ({ className }: { className?: string }) => (
+    <button type="button" className={className}>
+      FontScale
+    </button>
+  ),
+}));
+
 describe("AdminShell", () => {
   beforeEach(() => {
     mockPathname = "/admin";
@@ -144,24 +152,8 @@ describe("AdminShell", () => {
     expect(within(aside).queryByText(/operaciones/i)).not.toBeInTheDocument();
   });
 
-  it.each([
-    ["/admin", "Inicio"],
-    ["/admin/customers", "Clientes"],
-    ["/admin/customers/cust-1/edit", "Clientes"],
-    ["/admin/workers", "Trabajadores"],
-    ["/admin/workers/worker-1/edit", "Trabajadores"],
-    ["/admin/quotes", "Cotizaciones"],
-    ["/admin/quotes/nueva", "Cotizaciones"],
-    ["/admin/quotes/quote-1/edit", "Cotizaciones"],
-    ["/admin/work-orders", "Trabajos"],
-    ["/admin/work-orders/wo-1", "Trabajos"],
-    ["/admin/notas", "Notas"],
-    ["/admin/nomina", "Nómina"],
-    ["/admin/nomina/worker-1", "Nómina"],
-    ["/admin/configuracion-pago", "Configuración"],
-    ["/admin/users", "Usuarios"],
-  ])("renders dynamic section title '%s' -> '%s' as h1 in desktop top bar", (pathname, expectedTitle) => {
-    mockPathname = pathname;
+  it("does not render redundant section title or h1 in desktop top bar", () => {
+    mockPathname = "/admin/quotes";
     render(
       <AdminShell displayName="Admin User" role="admin">
         <div>Content</div>
@@ -169,8 +161,7 @@ describe("AdminShell", () => {
     );
 
     const header = screen.getByRole("banner");
-    expect(within(header).queryByText("Panel de operaciones")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: expectedTitle })).toBeInTheDocument();
+    expect(within(header).queryByRole("heading")).not.toBeInTheDocument();
   });
 
   it("links both SEBASAM brand marks to the dashboard", () => {

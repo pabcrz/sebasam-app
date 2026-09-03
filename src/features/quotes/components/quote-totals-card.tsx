@@ -25,7 +25,7 @@ export function QuoteTotalsCard({
   const hasPrintOverride = printTotalCents !== undefined && printTotalCents !== totalCents;
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4 md:p-5 print:border-gray-200 print:bg-gray-50/50 print:p-4 mt-6 print:mt-4 print:break-inside-avoid">
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4 md:p-5 print:border-gray-200 print:bg-gray-50/50 print:p-4 mt-4 sm:mt-6 print:mt-4 print:break-inside-avoid">
       <div className="flex flex-col md:flex-row print:flex-row md:items-end print:items-end md:justify-between gap-6 print:gap-4">
         <div className="flex-1 order-2 md:order-1 print:order-1 text-xs text-[var(--color-text-muted)] print:text-gray-700 uppercase tracking-wide">
           <p data-testid="quote-total-in-words" className="print:text-xs print:text-gray-700 print:tracking-normal">

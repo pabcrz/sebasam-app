@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Mail } from "lucide-react";
 import { formatCents } from "@/features/quotes/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,11 +19,13 @@ import type { WorkerPayrollSummary, WorkOrderPayrollDetail } from "../domain";
 interface PayrollWorkerDetailProps {
   workers: WorkerPayrollSummary[];
   selectedWorkerId: string;
+  onOpenEnvelope?: (worker: WorkerPayrollSummary) => void;
 }
 
 export function PayrollWorkerDetail({
   workers,
   selectedWorkerId,
+  onOpenEnvelope,
 }: PayrollWorkerDetailProps) {
   const activeWorker = workers.find((w) => w.workerId === selectedWorkerId) || workers[0];
 
@@ -31,14 +33,28 @@ export function PayrollWorkerDetail({
 
   return (
     <div className="space-y-2.5">
-      {/* Title with Active Worker Context */}
-      <div className="flex items-center justify-between">
+      {/* Title with Active Worker Context and Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <h2 className="text-sm sm:text-base font-semibold text-[var(--color-text-main)]">
           Mano de obra - {activeWorker.displayName}
         </h2>
-        <span className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
-          Total: {formatCents(activeWorker.totalCommissionCents)}
-        </span>
+        <div className="flex items-center gap-3">
+          {onOpenEnvelope && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenEnvelope(activeWorker)}
+              className="h-7 text-xs px-2.5 gap-1.5"
+            >
+              <Mail className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+              Sobre de Pago
+            </Button>
+          )}
+          <span className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
+            Total: {formatCents(activeWorker.totalCommissionCents)}
+          </span>
+        </div>
       </div>
 
       {/* Accordion List of Work Orders */}

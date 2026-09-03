@@ -4,8 +4,8 @@ import { parsePayrollParams } from "@/features/payroll/period";
 import { PayrollView } from "@/features/payroll/components/payroll-view";
 
 export const metadata: Metadata = {
-  title: "Nómina Semanal | SEBASAM",
-  description: "Cálculo y liquidación semanal de mano de obra por órdenes completadas.",
+  title: "Nómina | SEBASAM",
+  description: "Cálculo y liquidación de nómina de mano de obra por órdenes completadas.",
 };
 
 export default async function NominaPage({
@@ -18,7 +18,12 @@ export default async function NominaPage({
   const report = await getWeeklyPayroll(resolvedParams);
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8">
+    <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
+          Nómina
+        </h1>
+      </div>
       <PayrollView report={report} period={period} />
     </section>
   );

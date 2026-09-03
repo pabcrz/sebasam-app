@@ -207,20 +207,23 @@ export function PaymentSettingsForm({ settings, saveError }: PaymentSettingsForm
 
   return (
     <div className="grid gap-6">
-      <h1 className="sr-only">Configuración de pago</h1>
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
+          Configuración de pago
+        </h1>
         <Button
           type="submit"
           form="payment-settings-form"
           variant="primary"
           size="sm"
           loading={pending}
+          className="w-full sm:w-auto"
         >
           <Save className="h-4 w-4" aria-hidden="true" />
           Guardar configuración
         </Button>
       </div>
-      <div data-testid="payment-settings-form-body" data-layout-width="readable" className="grid max-w-3xl gap-6">
+      <div data-testid="payment-settings-form-body" data-layout-width="readable" className="grid w-full gap-6">
         {/* Business & Contact: main save form */}
         <form id="payment-settings-form" data-testid="payment-settings-form" onSubmit={handleSubmit}>
           <div className="grid gap-6">

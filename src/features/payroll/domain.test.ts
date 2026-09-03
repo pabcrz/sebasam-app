@@ -138,6 +138,67 @@ describe("Payroll Domain - Item Evaluation", () => {
     expect(res?.ratePercent).toBe(35);
     expect(res?.commissionCents).toBe(35000);
   });
+
+  it("evaluates OTHER item when includeInPayroll is true with default 40% rate", () => {
+    const res = evaluatePayrollItem({
+      id: "item-other-1",
+      type: QuoteItemType.OTHER,
+      description: "Servicio foráneo Toluca",
+      quantity: 1,
+      unitPriceCents: 200000,
+      totalCents: 200000,
+      includeInPayroll: true,
+    });
+
+    expect(res).not.toBeNull();
+    expect(res?.type).toBe(QuoteItemType.OTHER);
+    expect(res?.ratePercent).toBe(40);
+    expect(res?.clientTotalCents).toBe(200000);
+    expect(res?.commissionCents).toBe(80000); // 40% of $2,000.00 = $800.00
+  });
+
+  it("evaluates OTHER item when includeInPayroll is true with custom rate (e.g. 45%)", () => {
+    const res = evaluatePayrollItem({
+      id: "item-other-2",
+      type: QuoteItemType.OTHER,
+      description: "Traslado en grúa foráneo",
+      quantity: 1,
+      unitPriceCents: 150000,
+      totalCents: 150000,
+      includeInPayroll: true,
+      customRatePercent: 45,
+    });
+
+    expect(res).not.toBeNull();
+    expect(res?.type).toBe(QuoteItemType.OTHER);
+    expect(res?.ratePercent).toBe(45);
+    expect(res?.commissionCents).toBe(67500); // 45% of $1,500.00 = $675.00
+  });
+
+  it("ignores OTHER item when includeInPayroll is false or omitted", () => {
+    expect(
+      evaluatePayrollItem({
+        id: "item-other-3",
+        type: QuoteItemType.OTHER,
+        description: "Servicio de flete local",
+        quantity: 1,
+        unitPriceCents: 100000,
+        totalCents: 100000,
+        includeInPayroll: false,
+      })
+    ).toBeNull();
+
+    expect(
+      evaluatePayrollItem({
+        id: "item-other-4",
+        type: QuoteItemType.OTHER,
+        description: "Servicio de flete local",
+        quantity: 1,
+        unitPriceCents: 100000,
+        totalCents: 100000,
+      })
+    ).toBeNull();
+  });
 });
 
 describe("Payroll Domain - Report Builder", () => {
