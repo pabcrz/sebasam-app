@@ -212,7 +212,7 @@ export function MultiStepDialog({
           </div>
         ) : null}
         <div
-          className="min-h-0 min-w-0 py-2 pr-1 sm:py-4"
+          className="min-h-0 min-w-0 pr-0 sm:pr-1 sm:py-4"
           style={{ flex: "1 1 0%", minHeight: 0, minWidth: 0, overflowY: "auto", overscrollBehaviorY: "contain" }}
           data-testid="multi-step-dialog-body"
         >
