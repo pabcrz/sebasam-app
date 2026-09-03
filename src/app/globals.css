@@ -427,6 +427,6 @@ button:hover .icon-copy-hover,
 }
 
 html[data-font-scale="large"] {
-  font-size: 112.5%;
+  font-size: 125%; /* 20px base (1.25rem * 16px) */
 }
 
