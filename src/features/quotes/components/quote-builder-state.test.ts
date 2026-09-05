@@ -78,3 +78,81 @@ describe("QuoteBuilder state core", () => {
     expect(snapshot).not.toContain("nextItemRowId");
   });
 });
+
+describe("QuoteBuilder state operations", () => {
+  it("adds, updates, duplicates, and removes items without mutating prior state", () => {
+    const initial = initializedState();
+    const added = quoteBuilderReducer(initial, { type: "addItem", sectionIndex: 0, itemType: "REFACCIONES" });
+    const updated = quoteBuilderReducer(added, {
+      type: "updateItem",
+      sectionIndex: 0,
+      itemIndex: 2,
+      patch: { description: "Bearing", quantity: "3", unitPrice: "20" },
+    });
+    const duplicated = quoteBuilderReducer(updated, { type: "duplicateItem", sectionIndex: 0, itemIndex: 2 });
+    const removed = quoteBuilderReducer(duplicated, { type: "removeItem", sectionIndex: 0, itemIndex: 0 });
+
+    expect(initial.sections[0]?.items).toHaveLength(2);
+    expect(added.sections[0]?.rowIds.at(-1)).toBe("quote-item-3");
+    expect(duplicated.sections[0]?.items[3]).toMatchObject({ description: "Bearing", quantity: "3" });
+    expect(duplicated.sections[0]?.rowIds[3]).toBe("quote-item-4");
+    expect(removed.sections[0]?.items.map((item) => item.description)).toEqual(["Paint", "Bearing", "Bearing"]);
+  });
+
+  it("keeps one replacement item when the last item is removed", () => {
+    const initial = initializeQuoteBuilderState(undefined, date);
+    const next = quoteBuilderReducer(initial, { type: "removeItem", sectionIndex: 0, itemIndex: 0 });
+
+    expect(next.sections[0]?.items).toEqual([{
+      type: "LABOR",
+      description: "",
+      quantity: "1",
+      unitPrice: "",
+      includeInPayroll: false,
+      customRatePercent: "40",
+    }]);
+    expect(next.sections[0]?.rowIds).toEqual(["quote-item-1"]);
+    expect(next.nextItemRowId).toBe(2);
+  });
+
+  it("adds, renames, removes, and reorders sections", () => {
+    const initial = initializeQuoteBuilderState(undefined, date);
+    const added = quoteBuilderReducer(initial, { type: "addSection" });
+    const renamed = quoteBuilderReducer(added, { type: "updateSectionName", sectionIndex: 1, name: "Rear" });
+    const reordered = quoteBuilderReducer(renamed, { type: "reorderSection", oldIndex: 1, newIndex: 0 });
+    const removed = quoteBuilderReducer(reordered, { type: "removeSection", sectionIndex: 1 });
+
+    expect(added.sections[1]?.rowIds).toEqual(["quote-item-1"]);
+    expect(reordered.sections.map((section) => section.name)).toEqual(["Rear", "General"]);
+    expect(removed.sections.map((section) => section.name)).toEqual(["Rear"]);
+  });
+
+  it("keeps item identity aligned when reordering within a section", () => {
+    const next = quoteBuilderReducer(initializedState(), {
+      type: "reorderItem",
+      activeSectionIndex: 0,
+      activeItemIndex: 0,
+      overSectionIndex: 0,
+      overItemIndex: 1,
+    });
+
+    expect(next.sections[0]?.items.map((item) => item.description)).toEqual(["Paint", "Repair"]);
+    expect(next.sections[0]?.rowIds).toEqual(["quote-item-1", "quote-item-0"]);
+  });
+
+  it("replaces the last source item when moving it across sections", () => {
+    const next = quoteBuilderReducer(initializedState(), {
+      type: "reorderItem",
+      activeSectionIndex: 1,
+      activeItemIndex: 0,
+      overSectionIndex: 0,
+      overItemIndex: 1,
+    });
+
+    expect(next.sections[0]?.items.map((item) => item.description)).toEqual(["Repair", "Detail", "Paint"]);
+    expect(next.sections[0]?.rowIds).toEqual(["quote-item-0", "quote-item-2", "quote-item-1"]);
+    expect(next.sections[1]?.items[0]?.description).toBe("");
+    expect(next.sections[1]?.rowIds).toEqual(["quote-item-3"]);
+    expect(next.nextItemRowId).toBe(4);
+  });
+});
