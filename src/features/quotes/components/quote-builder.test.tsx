@@ -1197,6 +1197,52 @@ describe("QuoteBuilder", () => {
     expect(formData.get("taxEnabled")).toBe("off");
   });
 
+  it("preserves discount and payroll fields in native FormData order", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn();
+    render(<QuoteBuilder customers={customers} createAction={action} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
+    await user.click(screen.getByRole("option", { name: "Otro" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("checkbox", { name: "Incluir en nómina / comisión" }));
+    await user.clear(screen.getByRole("spinbutton", { name: "Porcentaje de comisión" }));
+    await user.type(screen.getByRole("spinbutton", { name: "Porcentaje de comisión" }), "35");
+    await user.type(screen.getByLabelText("Descuento Global (Opcional)"), "100");
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: "Crear cotización" }));
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    const formData = action.mock.calls[0][1] as FormData;
+    expect(formData.get("sections.0.items.0.includeInPayroll")).toBe("on");
+    expect(formData.get("sections.0.items.0.customRatePercent")).toBe("35");
+    expect(formData.get("discount")).toBe("100");
+    expect(formData.get("taxEnabled")).toBe("on");
+    expect([...formData.keys()]).toEqual([
+      "customerId",
+      "plate",
+      "brand",
+      "model",
+      "year",
+      "sections.0.name",
+      "sections.0.items.0.type",
+      "sections.0.items.0.description",
+      "sections.0.items.0.quantity",
+      "sections.0.items.0.unitPrice",
+      "sections.0.items.0.includeInPayroll",
+      "sections.0.items.0.customRatePercent",
+      "taxEnabled",
+      "discount",
+      "title",
+      "operationalDate",
+      "description",
+    ]);
+  }, 10_000);
+
   it("shows the validity note in the preview step", async () => {
     const user = userEvent.setup();
 

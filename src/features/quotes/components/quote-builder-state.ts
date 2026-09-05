@@ -253,7 +253,8 @@ export function serializeQuoteBuilderSnapshot(
   customerSearch: string,
   newCustomer: readonly [string, string, string],
 ) {
-  const { nextItemRowId: _, ...persistableState } = state;
+  const persistableState: Partial<QuoteBuilderState> = { ...state };
+  delete persistableState.nextItemRowId;
   return JSON.stringify({
     ...persistableState,
     customerSearch,
