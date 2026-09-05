@@ -12,15 +12,8 @@ import {
 import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
 import { mexicoCityCalendarDate } from "@/features/quotes/lib/operational-date";
 import {
-  calculateSectionsTotals,
-  emptyItem,
   getStepError,
-  isItemComplete,
-  makeEmptySection,
   normalizeSections,
-  SectionFormValue,
-  ItemFormValue,
-  getMaxQuantityForType,
   Step,
   steps,
   validateItemValue,
@@ -29,11 +22,28 @@ import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderStepper } from "./quote-builder-stepper";
 import { QuotePreviewCard } from "./quote-preview-card";
 import type { QuoteFormActionState } from "../actions";
+import {
+  initializeQuoteBuilderState,
+  quoteBuilderReducer,
+  selectNextItemRowId,
+  selectQuoteBuilderSummary,
+  serializeQuoteBuilderSnapshot,
+  type QuoteBuilderItemsAction,
+} from "./quote-builder-state";
+import type {
+  CustomerOption,
+  QuoteBuilderChromeHosts,
+  QuoteBuilderProps,
+  QuoteCustomerActionResult,
+} from "./quote-builder-contracts";
 
-export type CustomerOption = {
-  id: string;
-  name: string;
-};
+export type {
+  CustomerOption,
+  QuoteBuilderChromeHosts,
+  QuoteBuilderInitialData,
+  QuoteBuilderProps,
+  QuoteCustomerActionResult,
+} from "./quote-builder-contracts";
 
 /**
  * Host elements for the dialog chrome slots (stepper + footer). The dialog
@@ -44,11 +54,6 @@ export type CustomerOption = {
  * so the consumer re-renders the portals once both hosts are attached — no
  * effect ordering involved.
  */
-export type QuoteBuilderChromeHosts = {
-  stepperHost: HTMLDivElement | null;
-  footerHost: HTMLDivElement | null;
-};
-
 export const QuoteBuilderChromeContext = React.createContext<QuoteBuilderChromeHosts | null>(null);
 
 const customerSearchDelay = 500;
@@ -62,40 +67,6 @@ function filterCustomers(customers: CustomerOption[], query: string) {
   if (!normalizedQuery) return customers;
   return customers.filter((customer) => customer.name.toLocaleLowerCase("es-MX").includes(normalizedQuery));
 }
-
-type QuoteCustomerActionResult = {
-  success: boolean;
-  customer?: CustomerOption;
-  error?: string;
-  reused?: boolean;
-};
-
-export type QuoteBuilderInitialData = {
-  customerId: string | null;
-  vehicle: { plate: string; brand: string; model: string; year: string };
-  title: string;
-  description: string;
-  administrative: boolean;
-  taxEnabled: boolean;
-  discountCents: number;
-  operationalDate?: string;
-  isOperationalDateEditable?: boolean;
-  /** Sections with items. Each section has a name and an array of ItemFormValues. */
-  sections: Array<{ name: string; isAuthorized?: boolean; items: ItemFormValue[] }>;
-};
-
-type QuoteBuilderProps = {
-  customers: CustomerOption[];
-  createAction?: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
-  saveAction?: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
-  createCustomerAction?: (input: unknown) => Promise<QuoteCustomerActionResult>;
-  searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
-  initialData?: QuoteBuilderInitialData;
-  onCancel?: () => void;
-  onDirtyChange?: (dirty: boolean) => void;
-  onSuccess?: () => void;
-  layout?: "page" | "dialog";
-};
 
 export function QuoteBuilder({
   customers,
@@ -142,38 +113,25 @@ export function QuoteBuilder({
   const [createCustomerMessage, setCreateCustomerMessage] = React.useState<string | null>(null);
   const [createCustomerError, setCreateCustomerError] = React.useState<string | null>(null);
   const [isCreatingCustomer, setIsCreatingCustomer] = React.useState(false);
-  const [customerId, setCustomerId] = React.useState(initialData?.customerId ?? "");
-  const [vehicle, setVehicle] = React.useState(
-    initialData?.vehicle ?? { plate: "", brand: "", model: "", year: "" },
+  const [builderState, dispatch] = React.useReducer(
+    quoteBuilderReducer,
+    undefined,
+    () => initializeQuoteBuilderState(initialData, mexicoCityCalendarDate()),
   );
-  const [title, setTitle] = React.useState(initialData?.title ?? "");
-  const [description, setDescription] = React.useState(initialData?.description ?? "");
-  const [administrative, setAdministrative] = React.useState(initialData?.administrative ?? false);
-  const [taxEnabled, setTaxEnabled] = React.useState(initialData?.taxEnabled ?? true);
-  const [discount, setDiscount] = React.useState(initialData?.discountCents ? String(initialData.discountCents / 100) : "");
-  const [operationalDate, setOperationalDate] = React.useState(initialData?.operationalDate ?? mexicoCityCalendarDate());
+  const {
+    customerId,
+    vehicle,
+    title,
+    description,
+    administrative,
+    taxEnabled,
+    discount,
+    operationalDate,
+    sections,
+  } = builderState;
   const isOperationalDateEditable = initialData?.isOperationalDateEditable ?? true;
-
-  // ── Sections / Items state ─────────────────────────────────────────────────
-  const [initialSections] = React.useState<SectionFormValue[]>(() => {
-    let idCounter = 0;
-    return initialData?.sections?.length
-      ? initialData.sections.map((sec) => ({
-          name: sec.name,
-          isAuthorized: sec.isAuthorized ?? false,
-          items: sec.items,
-          rowIds: sec.items.map(() => `quote-item-${idCounter++}`),
-        }))
-      : [makeEmptySection(idCounter++)];
-  });
-
-  const nextItemRowId = React.useRef(
-    initialSections.reduce((acc, sec) => acc + sec.items.length, 0)
-  );
-
-  const [sections, setSections] = React.useState<SectionFormValue[]>(initialSections);
   const [expandedItemRowId, setExpandedItemRowId] = React.useState<string | null>(
-    initialSections[0]?.rowIds[0] ?? null,
+    builderState.sections[0]?.rowIds[0] ?? null,
   );
 
   const [animatedItemRowId, setAnimatedItemRowId] = React.useState<string | null>(null);
@@ -181,25 +139,14 @@ export function QuoteBuilder({
   const itemRowRefs = React.useRef(new Map<string, HTMLDivElement>());
   const itemDescriptionRefs = React.useRef(new Map<string, HTMLInputElement>());
 
-  const [initialFormState] = React.useState(() => JSON.stringify({
-    customerId: initialData?.customerId ?? "",
-    customerSearch: initialSelectedCustomer?.name ?? "",
-    vehicle: initialData?.vehicle ?? { plate: "", brand: "", model: "", year: "" },
-    title: initialData?.title ?? "",
-    description: initialData?.description ?? "",
-    administrative: initialData?.administrative ?? false,
-    taxEnabled: initialData?.taxEnabled ?? true,
-    discount: initialData?.discountCents ? String(initialData.discountCents / 100) : "",
-    operationalDate: initialData?.operationalDate ?? mexicoCityCalendarDate(),
-    sections: initialSections,
-    newCustomer: ["", "", ""],
-  }));
+  const [initialFormState] = React.useState(() =>
+    serializeQuoteBuilderSnapshot(builderState, initialSelectedCustomer?.name ?? "", ["", "", ""]),
+  );
 
   const currentStepIndex = steps.indexOf(step);
-  const discountCents = discount.trim() ? Math.round(Number(discount.trim()) * 100) : 0;
-  const { subtotalCents, taxCents, totalCents } = calculateSectionsTotals(sections, taxEnabled, discountCents);
+  const { completeItemsCount, discountCents, subtotalCents, taxCents, totalCents } =
+    selectQuoteBuilderSummary(builderState);
   const selectedCustomer = customerOptions.find((customer) => customer.id === customerId);
-  const completeItems = sections.flatMap((s) => s.items).filter(isItemComplete);
   const validUntil = createQuoteValidUntil();
 
   React.useEffect(() => {
@@ -207,9 +154,9 @@ export function QuoteBuilder({
   }, [actionState.success, onSuccess]);
 
   React.useEffect(() => {
-    const current = JSON.stringify({ customerId, customerSearch, vehicle, title, description, administrative, taxEnabled, discount, operationalDate, sections, newCustomer: [newCustomerName, newCustomerEmail, newCustomerPhone] });
+    const current = serializeQuoteBuilderSnapshot(builderState, customerSearch, [newCustomerName, newCustomerEmail, newCustomerPhone]);
     onDirtyChange?.(current !== initialFormState);
-  }, [administrative, customerId, customerSearch, description, discount, operationalDate, sections, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, taxEnabled, title, vehicle, initialFormState]);
+  }, [builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState]);
 
   React.useEffect(() => {
     if (!hasChangedStep.current) {
@@ -331,7 +278,7 @@ export function QuoteBuilder({
     setCustomerOptions((current) =>
       current.some((option) => option.id === customer.id) ? current : [customer, ...current],
     );
-    setCustomerId(customer.id);
+    dispatch({ type: "setCustomerId", customerId: customer.id });
     setCustomerSearch(customer.name);
     setCustomerSearchError(null);
     setIsSearchingCustomers(false);
@@ -413,185 +360,28 @@ export function QuoteBuilder({
     );
   }
 
-  // ── Section / Item handlers ────────────────────────────────────────────────
+  function dispatchItemsAction(action: QuoteBuilderItemsAction) {
+    const addsFocusedRow = action.type === "addSection" || action.type === "addItem" || action.type === "duplicateItem";
+    if (addsFocusedRow) {
+      const rowId = selectNextItemRowId(builderState);
+      pendingItemRowId.current = rowId;
+      setAnimatedItemRowId(rowId);
+      setExpandedItemRowId(rowId);
+      setStepError(null);
+    }
 
-  function addSection() {
-    const rowId = `quote-item-${nextItemRowId.current++}`;
-    pendingItemRowId.current = rowId;
-    setAnimatedItemRowId(rowId);
-    setExpandedItemRowId(rowId);
-    setSections((prev) => [
-      ...prev,
-      { name: "Nueva sección", isAuthorized: false, items: [{ ...emptyItem }], rowIds: [rowId] },
-    ]);
-  }
-
-  function removeSection(sectionIndex: number) {
-    setSections((prev) => prev.filter((_, i) => i !== sectionIndex));
-  }
-
-  function updateSectionName(sectionIndex: number, name: string) {
-    setSections((prev) => {
-      const next = [...prev];
-      next[sectionIndex] = { ...next[sectionIndex]!, name };
-      return next;
-    });
-  }
-
-  function reorderSection(oldIndex: number, newIndex: number) {
-    setSections((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(oldIndex, 1);
-      next.splice(newIndex, 0, moved!);
-      return next;
-    });
-  }
-
-  function reorderItem(activeSectionIndex: number, activeItemIndex: number, overSectionIndex: number, overItemIndex: number) {
-    setSections((prev) => {
-      const next = [...prev];
-      
-      if (activeSectionIndex === overSectionIndex) {
-        // Same section
-        const section = { ...next[activeSectionIndex]! };
-        const newItems = [...section.items];
-        const newRowIds = [...section.rowIds];
-        
-        const [movedItem] = newItems.splice(activeItemIndex, 1);
-        newItems.splice(overItemIndex, 0, movedItem!);
-        
-        const [movedRowId] = newRowIds.splice(activeItemIndex, 1);
-        newRowIds.splice(overItemIndex, 0, movedRowId!);
-        
-        section.items = newItems;
-        section.rowIds = newRowIds;
-        next[activeSectionIndex] = section;
-      } else {
-        // Different section
-        const activeSection = { ...next[activeSectionIndex]! };
-        const overSection = { ...next[overSectionIndex]! };
-        
-        const activeItems = [...activeSection.items];
-        const activeRowIds = [...activeSection.rowIds];
-        const [movedItem] = activeItems.splice(activeItemIndex, 1);
-        const [movedRowId] = activeRowIds.splice(activeItemIndex, 1);
-        
-        const overItems = [...overSection.items];
-        const overRowIds = [...overSection.rowIds];
-        overItems.splice(overItemIndex, 0, movedItem!);
-        overRowIds.splice(overItemIndex, 0, movedRowId!);
-        
-        // Ensure active section doesn't end up completely empty
-        if (activeItems.length === 0) {
-          activeItems.push({ ...emptyItem });
-          activeRowIds.push(`quote-item-${nextItemRowId.current++}`);
-        }
-        
-        activeSection.items = activeItems;
-        activeSection.rowIds = activeRowIds;
-        overSection.items = overItems;
-        overSection.rowIds = overRowIds;
-        
-        next[activeSectionIndex] = activeSection;
-        next[overSectionIndex] = overSection;
-      }
-      return next;
-    });
-  }
-
-  function addItem(sectionIndex: number, type: ItemFormValue["type"]) {
-    setStepError(null);
-    const rowId = `quote-item-${nextItemRowId.current++}`;
-    pendingItemRowId.current = rowId;
-    setAnimatedItemRowId(rowId);
-    setExpandedItemRowId(rowId);
-    setSections((prev) => {
-      const next = [...prev];
-      const section = next[sectionIndex]!;
-      next[sectionIndex] = {
-        ...section,
-        items: [...section.items, { ...emptyItem, type }],
-        rowIds: [...section.rowIds, rowId],
-      };
-      return next;
-    });
-  }
-
-  function removeItem(sectionIndex: number, itemIndex: number) {
-    setSections((prev) => {
-      const next = [...prev];
-      const section = next[sectionIndex]!;
-      const nextItems = section.items.filter((_, i) => i !== itemIndex);
-      const nextRowIds = section.rowIds.filter((_, i) => i !== itemIndex);
-      // Keep at least one empty item per section
-      const finalItems = nextItems.length > 0 ? nextItems : [{ ...emptyItem }];
-      const rowId = nextItems.length > 0 ? nextRowIds : [`quote-item-${nextItemRowId.current++}`];
-      next[sectionIndex] = { ...section, items: finalItems, rowIds: rowId };
-      return next;
-    });
-    setStepError((current) =>
-      current ? getStepError("items", { customerId, vehicle, title, sections }) : null,
-    );
-  }
-
-  function updateItem(sectionIndex: number, itemIndex: number, patch: Partial<ItemFormValue>) {
-    setSections((prev) => {
-      const next = [...prev];
-      const section = next[sectionIndex]!;
-      const nextItems = [...section.items];
-      nextItems[itemIndex] = { ...nextItems[itemIndex]!, ...patch };
-      next[sectionIndex] = { ...section, items: nextItems };
-      return next;
-    });
-    setStepError((current) =>
-      current ? getStepError("items", { customerId, vehicle, title, sections }) : null,
-    );
-  }
-
-  function adjustItemQuantity(sectionIndex: number, itemIndex: number, delta: number) {
-    setSections((prev) => {
-      const next = [...prev];
-      const section = next[sectionIndex]!;
-      const nextItems = [...section.items];
-      const currentQuantity = Number(nextItems[itemIndex]?.quantity);
-      const baseQuantity = Number.isFinite(currentQuantity) ? currentQuantity : 0;
-      const limit = getMaxQuantityForType(nextItems[itemIndex]?.type ?? "LABOR");
-      const nextQuantity = Math.min(limit, Math.max(1, baseQuantity + delta));
-      nextItems[itemIndex] = { ...nextItems[itemIndex]!, quantity: String(nextQuantity) };
-      next[sectionIndex] = { ...section, items: nextItems };
-      return next;
-    });
-    setStepError((current) =>
-      current ? getStepError("items", { customerId, vehicle, title, sections }) : null,
-    );
-  }
-
-  function duplicateItem(sectionIndex: number, itemIndex: number) {
-    setStepError(null);
-    const rowId = `quote-item-${nextItemRowId.current++}`;
-    pendingItemRowId.current = rowId;
-    setAnimatedItemRowId(rowId);
-    setExpandedItemRowId(rowId);
-    setSections((prev) => {
-      const next = [...prev];
-      const section = next[sectionIndex]!;
-      const source = section.items[itemIndex];
-      if (!source) return prev;
-
-      const duplicated: ItemFormValue = {
-        type: source.type,
-        description: source.description,
-        quantity: source.quantity,
-        unitPrice: source.unitPrice,
-      };
-
-      const nextItems = [...section.items];
-      nextItems.splice(itemIndex + 1, 0, duplicated);
-      const nextRowIds = [...section.rowIds];
-      nextRowIds.splice(itemIndex + 1, 0, rowId);
-      next[sectionIndex] = { ...section, items: nextItems, rowIds: nextRowIds };
-      return next;
-    });
+    const nextState = !addsFocusedRow && stepError
+      ? quoteBuilderReducer(builderState, action)
+      : null;
+    dispatch(action);
+    if (nextState) {
+      setStepError(getStepError("items", {
+        customerId: nextState.customerId,
+        vehicle: nextState.vehicle,
+        title: nextState.title,
+        sections: nextState.sections,
+      }));
+    }
   }
 
   function toggleItem(rowId: string) {
@@ -616,7 +406,7 @@ export function QuoteBuilder({
       }
 
       setStepError(null);
-      setSections(normalizedSecs);
+      dispatch({ type: "replaceSections", sections: normalizedSecs });
     } else {
       const error = getStepError(step, { customerId, vehicle, title, sections });
 
@@ -829,7 +619,7 @@ export function QuoteBuilder({
                   const nextSearch = event.target.value;
                   customerSearchRequest.current += 1;
                   setCustomerSearch(nextSearch);
-                  setCustomerId("");
+                  dispatch({ type: "setCustomerId", customerId: "" });
                   selectedCustomerRef.current = undefined;
                   setCustomerSearchError(null);
                   setIsSearchingCustomers(false);
@@ -955,7 +745,7 @@ export function QuoteBuilder({
                     name="plate"
                     maxLength={10}
                     value={vehicle.plate}
-                    onChange={(event) => setVehicle((prev) => ({ ...prev, plate: event.target.value }))}
+                    onChange={(event) => dispatch({ type: "setVehicleField", field: "plate", value: event.target.value })}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -964,7 +754,7 @@ export function QuoteBuilder({
                     id="brand"
                     name="brand"
                     value={vehicle.brand}
-                    onChange={(event) => setVehicle((prev) => ({ ...prev, brand: event.target.value }))}
+                    onChange={(event) => dispatch({ type: "setVehicleField", field: "brand", value: event.target.value })}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -973,7 +763,7 @@ export function QuoteBuilder({
                     id="model"
                     name="model"
                     value={vehicle.model}
-                    onChange={(event) => setVehicle((prev) => ({ ...prev, model: event.target.value }))}
+                    onChange={(event) => dispatch({ type: "setVehicleField", field: "model", value: event.target.value })}
                   />
                 </div>
                 <div className="grid gap-2 sm:col-span-2">
@@ -985,7 +775,7 @@ export function QuoteBuilder({
                     min="1950"
                     max={new Date().getFullYear() + 1}
                     value={vehicle.year}
-                    onChange={(event) => setVehicle((prev) => ({ ...prev, year: event.target.value }))}
+                    onChange={(event) => dispatch({ type: "setVehicleField", field: "year", value: event.target.value })}
                   />
                 </div>
               </div>
@@ -998,36 +788,21 @@ export function QuoteBuilder({
               Conceptos
             </h2>
             <QuoteBuilderItemsStep
-              sections={sections}
-              animatedRowId={animatedItemRowId}
-              expandedItemRowId={expandedItemRowId}
-              completeItemsCount={completeItems.length}
-              taxEnabled={taxEnabled}
-              discount={discount}
-              subtotalCents={subtotalCents}
-              discountCents={discountCents}
-              taxCents={taxCents}
-              totalCents={totalCents}
-              onAddItem={addItem}
-              onRemoveItem={removeItem}
-              onDuplicateItem={duplicateItem}
-              onUpdateItem={updateItem}
-              onAdjustQuantity={adjustItemQuantity}
-              onToggleItem={toggleItem}
-              onAddSection={addSection}
-              onRemoveSection={removeSection}
-              onUpdateSectionName={updateSectionName}
-              onTaxEnabledChange={setTaxEnabled}
-              onDiscountChange={setDiscount}
-              onReorderSection={reorderSection}
-              onReorderItem={reorderItem}
-              onRowRef={(rowId, node) => {
-                if (node) itemRowRefs.current.set(rowId, node);
-                else itemRowRefs.current.delete(rowId);
-              }}
-              onDescriptionRef={(rowId, node) => {
-                if (node) itemDescriptionRefs.current.set(rowId, node);
-                else itemDescriptionRefs.current.delete(rowId);
+              state={{ sections, taxEnabled, discount }}
+              summary={{ completeItemsCount, subtotalCents, discountCents, taxCents, totalCents }}
+              dispatch={dispatchItemsAction}
+              focus={{
+                animatedRowId: animatedItemRowId,
+                expandedItemRowId,
+                onToggleItem: toggleItem,
+                onRowRef: (rowId, node) => {
+                  if (node) itemRowRefs.current.set(rowId, node);
+                  else itemRowRefs.current.delete(rowId);
+                },
+                onDescriptionRef: (rowId, node) => {
+                  if (node) itemDescriptionRefs.current.set(rowId, node);
+                  else itemDescriptionRefs.current.delete(rowId);
+                },
               }}
             />
           </div>
@@ -1046,7 +821,7 @@ export function QuoteBuilder({
                 value={title}
                 onChange={(event) => {
                   const nextTitle = event.target.value;
-                  setTitle(nextTitle);
+                  dispatch({ type: "setTitle", title: nextTitle });
                   setStepError((current) =>
                     current
                       ? getStepError("notes", { customerId, vehicle, title: nextTitle, sections })
@@ -1065,7 +840,7 @@ export function QuoteBuilder({
                 max={mexicoCityCalendarDate()}
                 value={operationalDate}
                 disabled={!isOperationalDateEditable}
-                onChange={(event) => setOperationalDate(event.target.value)}
+                onChange={(event) => dispatch({ type: "setOperationalDate", operationalDate: event.target.value })}
               />
               {!isOperationalDateEditable ? <input type="hidden" name="operationalDate" value={operationalDate} /> : null}
             </div>
@@ -1076,7 +851,7 @@ export function QuoteBuilder({
                 name="description"
                 rows={4}
                 value={description}
-                onChange={(event) => setDescription(event.target.value)}
+                onChange={(event) => dispatch({ type: "setDescription", description: event.target.value })}
                 placeholder="Detalles adicionales de la cotización..."
               />
             </div>
@@ -1084,7 +859,7 @@ export function QuoteBuilder({
               name="administrative"
               label="Cotización administrativa"
               checked={administrative}
-              onCheckedChange={(checked) => setAdministrative(checked === true)}
+              onCheckedChange={(checked) => dispatch({ type: "setAdministrative", administrative: checked === true })}
             />
           </section>
 
