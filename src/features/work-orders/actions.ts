@@ -1,9 +1,12 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import {
   AssignmentStatus,
   PaymentRequestStatus,
   Prisma,
+  QuoteDecisionOrigin,
+  QuoteStatus,
   UserRole,
   WorkOrderStatus,
   WorkerKind,
@@ -11,10 +14,24 @@ import {
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { nextWorkOrderNumber } from "@/features/quotes/lib/sequence";
+import { findOrCreateVehicle } from "@/features/vehicles/actions";
+import { createVehicleSnapshot } from "@/features/vehicles/schemas";
+import { nextQuoteNumber, nextWorkOrderNumber, withQuoteNumberRetry } from "@/features/quotes/lib/sequence";
+import { calculateItemTotalCents, createQuoteValidUntil } from "@/features/quotes/lib/calculate";
+import { normalizeOperationalDate, operationalDateToCompletedAt } from "@/features/quotes/lib/operational-date";
+import type { QuoteFormActionState } from "@/features/quotes/actions";
+import {
+  buildVehicleInput,
+  draftTotals,
+  hasVehicleData,
+  nullableOptional,
+  quoteFormDataToInput,
+} from "@/features/quotes/quote-helpers";
 import {
   assignWorkOrderInputSchema,
   completeWorkOrderInputSchema,
+  directWorkOrderFormInputSchema,
+  directWorkOrderInputSchema,
   executionRecordInputSchema,
   rollbackWorkOrderInputSchema,
   workAssignmentInputSchema,
@@ -346,6 +363,14 @@ export async function completeWorkOrder(input: unknown) {
       throw new WorkOrderOperationError("El estado de la orden cambió. Recarga e intenta de nuevo.");
     }
 
+    await tx.workAssignment.updateMany({
+      where: {
+        workOrderId: data.workOrderId,
+        status: { notIn: [AssignmentStatus.DONE, AssignmentStatus.CANCELLED] },
+      },
+      data: { status: AssignmentStatus.DONE },
+    });
+
     return tx.workOrder.findUniqueOrThrow({ where: { id: data.workOrderId } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
@@ -573,3 +598,220 @@ export async function assignWorker(input: unknown) {
     data,
   });
 }
+
+function directWorkOrderFormDataToInput(formData: FormData) {
+  return {
+    ...quoteFormDataToInput(formData),
+    masterId: formData.get("masterId"),
+    isCompleted: formData.get("isCompleted"),
+  };
+}
+
+export async function createDirectWorkOrder(input: unknown) {
+  const { profile } = await requireOperationalRole();
+  const data = directWorkOrderInputSchema.parse(input);
+  const totals = draftTotals(data);
+  const validUntil = createQuoteValidUntil();
+  const operationalDate = normalizeOperationalDate(data.operationalDate);
+  const completedAt = data.isCompleted ? operationalDateToCompletedAt(data.operationalDate) : null;
+
+  const quoteLike = {
+    customerId: data.customerId ?? null,
+    vehicle: data.vehicle
+      ? {
+          plate: data.vehicle.plate ?? null,
+          brand: data.vehicle.brand ?? null,
+          model: data.vehicle.model ?? null,
+        }
+      : null,
+    subtotalCents: totals.subtotalCents,
+    discountCents: totals.discountCents ?? data.discountCents,
+    taxCents: totals.taxCents,
+    totalCents: totals.totalCents,
+    taxEnabled: data.taxEnabled,
+    sections: data.sections.map((section) => ({
+      items: section.items.map((item) => ({
+        type: item.type,
+        description: item.description,
+        quantity: item.quantity,
+        unitPriceCents: item.unitPriceCents ?? null,
+      })),
+    })),
+  };
+
+  assertOperationalStartQuote(quoteLike);
+  if (data.isCompleted) {
+    assertOperationalClosureQuote(quoteLike);
+  }
+
+  return withQuoteNumberRetry(() =>
+    prisma.$transaction(
+      async (tx) => {
+        const master = await tx.userProfile.findFirst({
+          where: {
+            id: data.masterId,
+            role: UserRole.WORKER,
+            workerKind: WorkerKind.MASTER,
+            isActive: true,
+          },
+        });
+
+        if (!master) {
+          throw new WorkOrderOperationError("El maestro responsable seleccionado no es válido o no está activo.");
+        }
+
+        assertOperationalStartQuote(quoteLike);
+        if (data.isCompleted) {
+          assertOperationalClosureQuote(quoteLike);
+        }
+
+        const quoteId = randomUUID();
+        const quoteNumber = await nextQuoteNumber(tx);
+        const workOrderNumber = await nextWorkOrderNumber(tx);
+        const hasVehicle = hasVehicleData(data.vehicle);
+        const shouldLinkVehicle = Boolean(data.customerId && hasVehicle);
+        const vehicle = shouldLinkVehicle
+          ? await findOrCreateVehicle(tx, buildVehicleInput(data.customerId, data.vehicle))
+          : null;
+        const vehicleSnapshot = hasVehicle
+          ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
+          : Prisma.JsonNull;
+
+        const sectionData = data.sections.map((section, sIndex) => ({
+          name: section.name,
+          isAuthorized: true,
+          sortOrder: sIndex,
+        }));
+
+        const effectiveDate = completedAt ?? new Date();
+
+        const createdQuote = await tx.quote.create({
+          data: {
+            id: quoteId,
+            customerId: data.customerId ?? null,
+            vehicleId: vehicle?.id ?? null,
+            vehicleSnapshot,
+            number: quoteNumber,
+            status: QuoteStatus.APPROVED,
+            approvedAt: effectiveDate,
+            title: data.title,
+            description: nullableOptional(data.description),
+            administrative: data.administrative,
+            taxEnabled: data.taxEnabled,
+            subtotalCents: totals.subtotalCents,
+            discountCents: totals.discountCents ?? data.discountCents,
+            taxCents: totals.taxCents,
+            totalCents: totals.totalCents,
+            operationalDate,
+            validUntil,
+            sections: { create: sectionData },
+          },
+          include: { sections: true },
+        });
+
+        const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
+        data.sections.forEach((sectionInput, sIndex) => {
+          const createdSection = createdQuote.sections.find((s) => s.sortOrder === sIndex);
+          if (createdSection) {
+            sectionInput.items.forEach((item, iIndex) => {
+              itemsToCreate.push({
+                quoteId: createdQuote.id,
+                sectionId: createdSection.id,
+                type: item.type,
+                description: item.description,
+                quantity: item.quantity,
+                unitPriceCents: item.unitPriceCents ?? null,
+                totalCents:
+                  item.unitPriceCents === undefined
+                    ? null
+                    : calculateItemTotalCents(item.quantity, item.unitPriceCents),
+                includeInPayroll: item.type === "OTHER" ? Boolean(item.includeInPayroll) : item.type === "LABOR",
+                customRatePercent:
+                  item.type === "OTHER" && item.includeInPayroll
+                    ? item.customRatePercent ?? 40
+                    : item.customRatePercent ?? null,
+                sortOrder: iIndex,
+              });
+            });
+          }
+        });
+
+        if (itemsToCreate.length > 0) {
+          await tx.quoteItem.createMany({ data: itemsToCreate });
+        }
+
+        await tx.quoteDecision.create({
+          data: {
+            quoteId: createdQuote.id,
+            status: QuoteStatus.APPROVED,
+            origin: QuoteDecisionOrigin.ADMIN,
+            actorId: profile.id,
+            note: "Trabajo creado directamente",
+            authorizedSectionIds: createdQuote.sections.map((s) => s.id),
+            createdAt: effectiveDate,
+          },
+        });
+
+        await tx.quoteLifecycleEvent.create({
+          data: {
+            quoteId: createdQuote.id,
+            previousState: QuoteStatus.DRAFT,
+            nextState: QuoteStatus.APPROVED,
+            actorId: profile.id,
+            reason: "Trabajo creado directamente",
+            createdAt: effectiveDate,
+          },
+        });
+
+        const workOrder = await tx.workOrder.create({
+          data: {
+            quoteId: createdQuote.id,
+            number: workOrderNumber,
+            status: data.isCompleted ? WorkOrderStatus.COMPLETED : WorkOrderStatus.ASSIGNED,
+            completedAt,
+          },
+        });
+
+        await tx.workAssignment.create({
+          data: {
+            workOrderId: workOrder.id,
+            workerId: data.masterId,
+            status: data.isCompleted ? AssignmentStatus.DONE : AssignmentStatus.ASSIGNED,
+            assignedAt: effectiveDate,
+          },
+        });
+
+        return { quote: createdQuote, workOrder };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    ),
+  );
+}
+
+export async function createDirectWorkOrderFromWorkspace(
+  _previousState: QuoteFormActionState,
+  formData: FormData,
+): Promise<QuoteFormActionState> {
+  const parsed = directWorkOrderFormInputSchema.safeParse(directWorkOrderFormDataToInput(formData));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Revisa los datos e intenta de nuevo." };
+  }
+
+  try {
+    await createDirectWorkOrder(parsed.data);
+  } catch (error) {
+    if (error instanceof WorkOrderOperationError) {
+      return { error: error.message };
+    }
+    if (error instanceof Error && error.message) {
+      return { error: error.message };
+    }
+    return { error: "No se pudo crear el trabajo. Intenta de nuevo." };
+  }
+
+  revalidatePath(quotesPath);
+  revalidatePath(workOrdersPath);
+  revalidatePath(notasPath);
+  return { success: true };
+}
+

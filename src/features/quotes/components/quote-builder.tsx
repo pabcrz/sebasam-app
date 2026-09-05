@@ -7,6 +7,11 @@ import {
   Checkbox,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Textarea,
 } from "@/components/ui";
 import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
@@ -78,6 +83,8 @@ export function QuoteBuilder({
   onDirtyChange,
   onSuccess,
   layout = "page",
+  mode = "quote",
+  masters = [],
 }: QuoteBuilderProps) {
   const isEdit = saveAction != null;
   const action = saveAction ?? createAction;
@@ -92,6 +99,8 @@ export function QuoteBuilder({
   const [isSearchingCustomers, setIsSearchingCustomers] = React.useState(false);
   const [isCustomerListOpen, setIsCustomerListOpen] = React.useState(false);
   const [activeCustomerIndex, setActiveCustomerIndex] = React.useState(-1);
+  const [masterId, setMasterId] = React.useState("");
+  const [isCompleted, setIsCompleted] = React.useState(false);
   const customerSearchRequest = React.useRef(0);
   const selectedCustomerRef = React.useRef<CustomerOption | undefined>(initialSelectedCustomer);
   const customerInputRef = React.useRef<HTMLInputElement>(null);
@@ -155,8 +164,9 @@ export function QuoteBuilder({
 
   React.useEffect(() => {
     const current = serializeQuoteBuilderSnapshot(builderState, customerSearch, [newCustomerName, newCustomerEmail, newCustomerPhone]);
-    onDirtyChange?.(current !== initialFormState);
-  }, [builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState]);
+    const isDirectDirty = mode === "direct-work-order" ? Boolean(masterId || isCompleted) : false;
+    onDirtyChange?.(current !== initialFormState || isDirectDirty);
+  }, [builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, mode, masterId, isCompleted]);
 
   React.useEffect(() => {
     if (!hasChangedStep.current) {
@@ -405,6 +415,16 @@ export function QuoteBuilder({
         return;
       }
 
+      if (mode === "direct-work-order" && isCompleted) {
+        const hasMissingPrice = normalizedSecs.some((s) =>
+          s.items.some((item) => !item.unitPrice || Number(item.unitPrice) < 0)
+        );
+        if (hasMissingPrice) {
+          setStepError("Completa los precios válidos de todos los conceptos antes de finalizar el trabajo.");
+          return;
+        }
+      }
+
       setStepError(null);
       dispatch({ type: "replaceSections", sections: normalizedSecs });
     } else {
@@ -412,6 +432,11 @@ export function QuoteBuilder({
 
       if (error) {
         setStepError(error);
+        return;
+      }
+
+      if (step === "client" && mode === "direct-work-order" && !masterId) {
+        setStepError("El maestro responsable es obligatorio.");
         return;
       }
 
@@ -454,6 +479,26 @@ export function QuoteBuilder({
     if (error) {
       setStepError(error);
       return false;
+    }
+
+    if (mode === "direct-work-order") {
+      if (!masterId) {
+        setStep("client");
+        setStepError("El maestro responsable es obligatorio.");
+        return false;
+      }
+
+      if (isCompleted) {
+        const normalizedSecs = normalizeSections(sections);
+        const hasMissingPrice = normalizedSecs.some((s) =>
+          s.items.some((item) => !item.unitPrice || Number(item.unitPrice) < 0)
+        );
+        if (hasMissingPrice) {
+          setStep("items");
+          setStepError("Completa los precios válidos de todos los conceptos antes de finalizar el trabajo.");
+          return false;
+        }
+      }
     }
 
     setStepError(null);
@@ -519,7 +564,13 @@ export function QuoteBuilder({
           className="min-w-[160px]"
           aria-live="polite"
         >
-          {isSubmitting ? (isEdit ? "Guardando..." : "Creando...") : (isEdit ? "Guardar cambios" : "Crear cotización")}
+          {isSubmitting
+            ? (isEdit ? "Guardando..." : "Creando...")
+            : isEdit
+              ? "Guardar cambios"
+              : mode === "direct-work-order"
+                ? "Crear trabajo"
+                : "Crear cotización"}
         </Button>
       ) : (
         <Button
@@ -578,6 +629,12 @@ export function QuoteBuilder({
             } : undefined}
           >
             <div className="grid content-start gap-6">
+          {mode === "direct-work-order" ? (
+            <>
+              <input type="hidden" name="masterId" value={masterId} />
+              <input type="hidden" name="isCompleted" value={isCompleted ? "true" : "false"} />
+            </>
+          ) : null}
 
           {stepError ? (
             <p
@@ -735,6 +792,43 @@ export function QuoteBuilder({
               ) : null}
             </div>
 
+            {mode === "direct-work-order" ? (
+              <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="masterId">Maestro responsable *</Label>
+                  <Select
+                    value={masterId}
+                    onValueChange={(val) => {
+                      setMasterId(val);
+                      setStepError(null);
+                    }}
+                  >
+                    <SelectTrigger id="masterId">
+                      <SelectValue placeholder="Selecciona un maestro" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {masters.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.displayName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1">
+                  <Checkbox
+                    id="isCompleted"
+                    label="Trabajo finalizado"
+                    checked={isCompleted}
+                    onCheckedChange={(checked) => setIsCompleted(checked === true)}
+                  />
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    Si se marca como finalizado, todos los conceptos deben tener precio y pasará directamente a Notas.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
             <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
               <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -832,7 +926,9 @@ export function QuoteBuilder({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="operationalDate">Fecha de cotización</Label>
+              <Label htmlFor="operationalDate">
+                {mode === "direct-work-order" ? "Fecha del trabajo" : "Fecha de cotización"}
+              </Label>
               <Input
                 id="operationalDate"
                 name={isOperationalDateEditable ? "operationalDate" : undefined}
@@ -852,7 +948,7 @@ export function QuoteBuilder({
                 rows={4}
                 value={description}
                 onChange={(event) => dispatch({ type: "setDescription", description: event.target.value })}
-                placeholder="Detalles adicionales de la cotización..."
+                placeholder={mode === "direct-work-order" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
               />
             </div>
             <Checkbox
@@ -866,7 +962,7 @@ export function QuoteBuilder({
           {/* Step 4: Review and submit */}
           <section hidden={step !== "preview"} className="grid gap-4">
             <h2 className="sr-only" tabIndex={-1} data-step-heading="preview">
-              Revisar y enviar cotización
+              {mode === "direct-work-order" ? "Revisar y confirmar trabajo" : "Revisar y enviar cotización"}
             </h2>
             <QuotePreviewCard
               customerName={selectedCustomer?.name ?? ""}

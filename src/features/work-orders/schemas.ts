@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { quoteDraftFormInputSchema, quoteDraftInputSchema } from "@/features/quotes/schemas";
 
 export const workOrderInputSchema = z.object({
   quoteId: z.string().min(1),
@@ -62,3 +63,19 @@ export type RollbackWorkOrderInput = z.infer<typeof rollbackWorkOrderInputSchema
 export type StartWorkOrderInput = z.infer<typeof startWorkOrderInputSchema>;
 export type ExecutionRecordInput = z.infer<typeof executionRecordInputSchema>;
 export type WorkAssignmentInput = z.infer<typeof workAssignmentInputSchema>;
+
+export const directWorkOrderInputSchema = quoteDraftInputSchema.extend({
+  masterId: z.string("El maestro responsable es obligatorio.").uuid("El maestro responsable es obligatorio."),
+  isCompleted: z.boolean().default(false),
+});
+
+export const directWorkOrderFormInputSchema = quoteDraftFormInputSchema.extend({
+  masterId: z.preprocess(
+    (val) => (typeof val === "string" && val.trim() !== "" ? val : undefined),
+    z.string("El maestro responsable es obligatorio.").uuid("El maestro responsable es obligatorio."),
+  ),
+  isCompleted: z.preprocess((val) => val === "on" || val === "true" || val === true, z.boolean().default(false)),
+});
+
+export type DirectWorkOrderInput = z.infer<typeof directWorkOrderInputSchema>;
+export type DirectWorkOrderFormInput = z.infer<typeof directWorkOrderFormInputSchema>;
