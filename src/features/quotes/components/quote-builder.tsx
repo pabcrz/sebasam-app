@@ -788,38 +788,21 @@ export function QuoteBuilder({
               Conceptos
             </h2>
             <QuoteBuilderItemsStep
-              sections={sections}
-              animatedRowId={animatedItemRowId}
-              expandedItemRowId={expandedItemRowId}
-              completeItemsCount={completeItemsCount}
-              taxEnabled={taxEnabled}
-              discount={discount}
-              subtotalCents={subtotalCents}
-              discountCents={discountCents}
-              taxCents={taxCents}
-              totalCents={totalCents}
-              onAddItem={(sectionIndex, itemType) => dispatchItemsAction({ type: "addItem", sectionIndex, itemType })}
-              onRemoveItem={(sectionIndex, itemIndex) => dispatchItemsAction({ type: "removeItem", sectionIndex, itemIndex })}
-              onDuplicateItem={(sectionIndex, itemIndex) => dispatchItemsAction({ type: "duplicateItem", sectionIndex, itemIndex })}
-              onUpdateItem={(sectionIndex, itemIndex, patch) => dispatchItemsAction({ type: "updateItem", sectionIndex, itemIndex, patch })}
-              onAdjustQuantity={(sectionIndex, itemIndex, delta) => dispatchItemsAction({ type: "adjustItemQuantity", sectionIndex, itemIndex, delta })}
-              onToggleItem={toggleItem}
-              onAddSection={() => dispatchItemsAction({ type: "addSection" })}
-              onRemoveSection={(sectionIndex) => dispatchItemsAction({ type: "removeSection", sectionIndex })}
-              onUpdateSectionName={(sectionIndex, name) => dispatchItemsAction({ type: "updateSectionName", sectionIndex, name })}
-              onTaxEnabledChange={(taxEnabled) => dispatchItemsAction({ type: "setTaxEnabled", taxEnabled })}
-              onDiscountChange={(discount) => dispatchItemsAction({ type: "setDiscount", discount })}
-              onReorderSection={(oldIndex, newIndex) => dispatchItemsAction({ type: "reorderSection", oldIndex, newIndex })}
-              onReorderItem={(activeSectionIndex, activeItemIndex, overSectionIndex, overItemIndex) => {
-                dispatchItemsAction({ type: "reorderItem", activeSectionIndex, activeItemIndex, overSectionIndex, overItemIndex });
-              }}
-              onRowRef={(rowId, node) => {
-                if (node) itemRowRefs.current.set(rowId, node);
-                else itemRowRefs.current.delete(rowId);
-              }}
-              onDescriptionRef={(rowId, node) => {
-                if (node) itemDescriptionRefs.current.set(rowId, node);
-                else itemDescriptionRefs.current.delete(rowId);
+              state={{ sections, taxEnabled, discount }}
+              summary={{ completeItemsCount, subtotalCents, discountCents, taxCents, totalCents }}
+              dispatch={dispatchItemsAction}
+              focus={{
+                animatedRowId: animatedItemRowId,
+                expandedItemRowId,
+                onToggleItem: toggleItem,
+                onRowRef: (rowId, node) => {
+                  if (node) itemRowRefs.current.set(rowId, node);
+                  else itemRowRefs.current.delete(rowId);
+                },
+                onDescriptionRef: (rowId, node) => {
+                  if (node) itemDescriptionRefs.current.set(rowId, node);
+                  else itemDescriptionRefs.current.delete(rowId);
+                },
               }}
             />
           </div>

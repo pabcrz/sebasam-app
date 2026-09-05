@@ -18,7 +18,6 @@ import {
 import {
   itemTypeLabels,
   itemTypes,
-  ItemFormValue,
   SectionFormValue,
   maxUnitPrice,
   getMaxQuantityForType,
@@ -42,65 +41,46 @@ import {
 import { SortableSection, SortableItem, DragHandle } from "./quote-builder-dnd";
 import { QuoteTotalsCard } from "./quote-totals-card";
 import { SwipeableRow } from "./swipeable-row";
+import type { QuoteBuilderItemsAction } from "./quote-builder-state";
 
 function formatConceptSummaryDescription(description: string) {
   return description.trim().replace(/\p{L}/u, (letter) => letter.toLocaleUpperCase("es-MX"));
 }
 
-export interface QuoteBuilderItemsStepProps {
+export type QuoteBuilderItemsState = {
   sections: SectionFormValue[];
-  animatedRowId: string | null;
-  expandedItemRowId: string | null;
-  completeItemsCount: number;
   taxEnabled: boolean;
   discount: string;
+};
+
+export type QuoteBuilderItemsSummary = {
+  completeItemsCount: number;
   subtotalCents: number;
   discountCents: number;
   taxCents: number;
   totalCents: number;
-  onAddItem: (sectionIndex: number, type: QuoteItemType) => void;
-  onRemoveItem: (sectionIndex: number, itemIndex: number) => void;
-  onDuplicateItem: (sectionIndex: number, itemIndex: number) => void;
-  onUpdateItem: (sectionIndex: number, itemIndex: number, patch: Partial<ItemFormValue>) => void;
-  onAdjustQuantity: (sectionIndex: number, itemIndex: number, delta: number) => void;
+};
+
+export type QuoteBuilderItemsFocus = {
+  animatedRowId: string | null;
+  expandedItemRowId: string | null;
   onToggleItem: (rowId: string) => void;
-  onAddSection: () => void;
-  onRemoveSection: (sectionIndex: number) => void;
-  onUpdateSectionName: (sectionIndex: number, name: string) => void;
-  onTaxEnabledChange: (taxEnabled: boolean) => void;
-  onDiscountChange: (discount: string) => void;
-  onReorderSection: (oldIndex: number, newIndex: number) => void;
-  onReorderItem: (activeSectionIndex: number, activeItemIndex: number, overSectionIndex: number, overItemIndex: number) => void;
   onRowRef: (rowId: string, node: HTMLDivElement | null) => void;
   onDescriptionRef: (rowId: string, node: HTMLInputElement | null) => void;
+};
+
+export interface QuoteBuilderItemsStepProps {
+  state: QuoteBuilderItemsState;
+  summary: QuoteBuilderItemsSummary;
+  dispatch: (action: QuoteBuilderItemsAction) => void;
+  focus: QuoteBuilderItemsFocus;
 }
 
 export function QuoteBuilderItemsStep({
-  sections,
-  animatedRowId,
-  expandedItemRowId,
-  completeItemsCount,
-  taxEnabled,
-  discount,
-  subtotalCents,
-  discountCents,
-  taxCents,
-  totalCents,
-  onAddItem,
-  onRemoveItem,
-  onDuplicateItem,
-  onUpdateItem,
-  onAdjustQuantity,
-  onToggleItem,
-  onAddSection,
-  onRemoveSection,
-  onUpdateSectionName,
-  onTaxEnabledChange,
-  onDiscountChange,
-  onReorderSection,
-  onReorderItem,
-  onRowRef,
-  onDescriptionRef,
+  state: { sections, taxEnabled, discount },
+  summary: { completeItemsCount, subtotalCents, discountCents, taxCents, totalCents },
+  dispatch,
+  focus: { animatedRowId, expandedItemRowId, onToggleItem, onRowRef, onDescriptionRef },
 }: QuoteBuilderItemsStepProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -120,7 +100,7 @@ export function QuoteBuilderItemsStep({
         const oldIndex = sections.findIndex((s, i) => `section-${i}` === active.id);
         const newIndex = sections.findIndex((s, i) => `section-${i}` === over.id);
         if (oldIndex !== -1 && newIndex !== -1) {
-          onReorderSection(oldIndex, newIndex);
+          dispatch({ type: "reorderSection", oldIndex, newIndex });
         }
       } else if (active.data.current?.type === "Item" && over.data.current?.type === "Item") {
         let activeSectionIndex = -1;
@@ -142,7 +122,7 @@ export function QuoteBuilderItemsStep({
         });
 
         if (activeSectionIndex !== -1 && overSectionIndex !== -1) {
-          onReorderItem(activeSectionIndex, activeItemIndex, overSectionIndex, overItemIndex);
+          dispatch({ type: "reorderItem", activeSectionIndex, activeItemIndex, overSectionIndex, overItemIndex });
         }
       }
     }
@@ -176,7 +156,7 @@ export function QuoteBuilderItemsStep({
                       aria-label={`Nombre de la sección ${sectionIndex + 1}`}
                 placeholder="Nombre de la sección (ej. Parte delantera)"
                 value={section.name}
-                onChange={(e) => onUpdateSectionName(sectionIndex, e.target.value)}
+                onChange={(e) => dispatch({ type: "updateSectionName", sectionIndex, name: e.target.value })}
                 className="min-w-0 flex-1 bg-transparent p-0 text-sm font-semibold text-[var(--color-text-main)] outline-none placeholder:text-[var(--color-text-muted)]"
                 name={`sections.${sectionIndex}.name`}
               />
@@ -188,7 +168,7 @@ export function QuoteBuilderItemsStep({
                 variant="outline"
                 size="icon"
                 aria-label={`Eliminar sección ${sectionIndex + 1}`}
-                onClick={() => onRemoveSection(sectionIndex)}
+                onClick={() => dispatch({ type: "removeSection", sectionIndex })}
                 className="size-8 shrink-0 text-[var(--color-status-danger-fg)] hover:bg-[var(--color-status-danger-bg)]"
               >
                 <Trash2 className="size-3.5" aria-hidden="true" />
@@ -233,7 +213,7 @@ export function QuoteBuilderItemsStep({
                   <SortableItem key={rowId} id={rowId}>
                     <SwipeableRow
                       disabled={isExpanded}
-                      onConfirmDelete={() => onRemoveItem(sectionIndex, itemIndex)}
+                      onConfirmDelete={() => dispatch({ type: "removeItem", sectionIndex, itemIndex })}
                       aria-label={`Eliminar concepto ${displayIndex + 1}`}
                     >
                     <div
@@ -283,7 +263,7 @@ export function QuoteBuilderItemsStep({
                         <button
                           type="button"
                           aria-label={`Duplicar concepto ${displayIndex + 1}`}
-                          onClick={() => onDuplicateItem(sectionIndex, itemIndex)}
+                          onClick={() => dispatch({ type: "duplicateItem", sectionIndex, itemIndex })}
                           className="group inline-flex size-[var(--tap-min-height)] shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:h-8 sm:w-8"
                         >
                           <Copy className="size-4 icon-copy-hover" aria-hidden="true" />
@@ -291,7 +271,7 @@ export function QuoteBuilderItemsStep({
                         <button
                           type="button"
                           aria-label={`Eliminar concepto ${displayIndex + 1}`}
-                          onClick={() => onRemoveItem(sectionIndex, itemIndex)}
+                          onClick={() => dispatch({ type: "removeItem", sectionIndex, itemIndex })}
                           className="group hidden h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-status-danger-fg)] transition-colors hover:bg-[var(--color-status-danger-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:inline-flex"
                         >
                           <Trash2 className="size-4 icon-trash-hover" aria-hidden="true" />
@@ -303,7 +283,7 @@ export function QuoteBuilderItemsStep({
                     <Label htmlFor={`${fieldId}-type`}>Tipo</Label>
                     <Select
                       value={item.type}
-                      onValueChange={(value) => onUpdateItem(sectionIndex, itemIndex, { type: value as QuoteItemType })}
+                      onValueChange={(value) => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { type: value as QuoteItemType } })}
                     >
                       <SelectTrigger id={`${fieldId}-type`} aria-label={`Tipo del concepto ${displayIndex + 1}`} className="w-full sm:w-auto sm:min-w-36">
                         <SelectValue />
@@ -324,7 +304,7 @@ export function QuoteBuilderItemsStep({
                       id={`${fieldId}-description`}
                       name={`sections.${sectionIndex}.items.${itemIndex}.description`}
                       value={item.description}
-                      onChange={(event) => onUpdateItem(sectionIndex, itemIndex, { description: event.target.value })}
+                      onChange={(event) => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { description: event.target.value } })}
                       placeholder="Ej. Bajar dos muelles"
                       aria-describedby={itemErrors.description ? descriptionErrorId : undefined}
                       aria-invalid={itemErrors.description ? true : undefined}
@@ -349,7 +329,7 @@ export function QuoteBuilderItemsStep({
                           variant="outline"
                           size="sm"
                           aria-label={`Restar cantidad del concepto ${displayIndex + 1}`}
-                          onClick={() => onAdjustQuantity(sectionIndex, itemIndex, -1)}
+                          onClick={() => dispatch({ type: "adjustItemQuantity", sectionIndex, itemIndex, delta: -1 })}
                           disabled={Number(item.quantity) <= 1}
                           className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] shrink-0 rounded-none border-0 border-r border-[var(--color-border-light)] px-0"
                         >
@@ -366,13 +346,13 @@ export function QuoteBuilderItemsStep({
                           max={typeQuantityLimit}
                           value={item.quantity}
                           onChange={(event) => {
-                            onUpdateItem(sectionIndex, itemIndex, { quantity: event.target.value.replace(/\D/g, "") });
+                            dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { quantity: event.target.value.replace(/\D/g, "") } });
                           }}
                           onBlur={(event) => {
                             const digitsOnly = event.target.value.replace(/\D/g, "");
                             if (digitsOnly === "") return;
                             const clamped = String(Math.min(typeQuantityLimit, Math.max(1, Number(digitsOnly))));
-                            onUpdateItem(sectionIndex, itemIndex, { quantity: clamped });
+                            dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { quantity: clamped } });
                           }}
                           onWheel={(event) => event.currentTarget.blur()}
                           aria-describedby={itemErrors.quantity ? quantityErrorId : undefined}
@@ -383,7 +363,7 @@ export function QuoteBuilderItemsStep({
                           variant="outline"
                           size="sm"
                           aria-label={`Sumar cantidad del concepto ${displayIndex + 1}`}
-                          onClick={() => onAdjustQuantity(sectionIndex, itemIndex, 1)}
+                          onClick={() => dispatch({ type: "adjustItemQuantity", sectionIndex, itemIndex, delta: 1 })}
                           disabled={Number(item.quantity) >= typeQuantityLimit}
                           className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] shrink-0 rounded-none border-0 border-l border-[var(--color-border-light)] px-0"
                         >
@@ -421,7 +401,7 @@ export function QuoteBuilderItemsStep({
                           aria-describedby={`${unitPriceCurrencyId}${itemErrors.unitPrice ? ` ${unitPriceErrorId}` : ""}`}
                           aria-invalid={itemErrors.unitPrice ? true : undefined}
                           value={item.unitPrice}
-                          onChange={(event) => onUpdateItem(sectionIndex, itemIndex, { unitPrice: event.target.value })}
+                          onChange={(event) => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { unitPrice: event.target.value } })}
                           className="min-w-0 border-0 pl-1 shadow-none focus-visible:ring-0"
                         />
                       </div>
@@ -446,9 +426,14 @@ export function QuoteBuilderItemsStep({
                             id={`${fieldId}-includeInPayroll`}
                             name={`sections.${sectionIndex}.items.${itemIndex}.includeInPayroll`}
                             checked={Boolean(item.includeInPayroll)}
-                            onChange={(e) => onUpdateItem(sectionIndex, itemIndex, {
-                              includeInPayroll: e.target.checked,
-                              customRatePercent: item.customRatePercent || "40",
+                            onChange={(e) => dispatch({
+                              type: "updateItem",
+                              sectionIndex,
+                              itemIndex,
+                              patch: {
+                                includeInPayroll: e.target.checked,
+                                customRatePercent: item.customRatePercent || "40",
+                              },
                             })}
                             className="size-4 rounded border-[var(--color-border-input)] text-[var(--color-primary)] focus:ring-[var(--color-ring)]"
                           />
@@ -467,7 +452,7 @@ export function QuoteBuilderItemsStep({
                                 min={1}
                                 max={100}
                                 value={item.customRatePercent ?? "40"}
-                                onChange={(e) => onUpdateItem(sectionIndex, itemIndex, { customRatePercent: e.target.value })}
+                                onChange={(e) => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { customRatePercent: e.target.value } })}
                                 className="h-9 w-24 bg-[var(--color-surface)]"
                                 aria-describedby={itemErrors.customRatePercent ? `${fieldId}-rate-error` : undefined}
                                 aria-invalid={Boolean(itemErrors.customRatePercent)}
@@ -510,7 +495,7 @@ export function QuoteBuilderItemsStep({
               size="sm"
               aria-label={`Agregar Mano de obra a la sección ${sectionIndex + 1}`}
               title="Mano de obra"
-              onClick={() => onAddItem(sectionIndex, "LABOR")}
+              onClick={() => dispatch({ type: "addItem", sectionIndex, itemType: "LABOR" })}
               className="min-w-0 flex-1 px-1 sm:px-3"
             >
               <span className="sm:hidden">+ M. O.</span>
@@ -522,7 +507,7 @@ export function QuoteBuilderItemsStep({
               size="sm"
               aria-label={`Agregar Refacciones a la sección ${sectionIndex + 1}`}
               title="Refacciones"
-              onClick={() => onAddItem(sectionIndex, "REFACCIONES")}
+              onClick={() => dispatch({ type: "addItem", sectionIndex, itemType: "REFACCIONES" })}
               className="min-w-0 flex-1 px-1 sm:px-3"
             >
               <span className="sm:hidden">+ Refac.</span>
@@ -534,13 +519,13 @@ export function QuoteBuilderItemsStep({
               size="sm"
               aria-label={`Agregar Materiales a la sección ${sectionIndex + 1}`}
               title="Materiales"
-              onClick={() => onAddItem(sectionIndex, "MATERIAL")}
+              onClick={() => dispatch({ type: "addItem", sectionIndex, itemType: "MATERIAL" })}
               className="min-w-0 flex-1 px-1 sm:px-3"
             >
               <span className="sm:hidden">+ Mat.</span>
               <span className="hidden sm:inline">+ Materiales</span>
             </Button>
-            <ConceptTypePopover onSelect={(type) => onAddItem(sectionIndex, type)} />
+            <ConceptTypePopover onSelect={(itemType) => dispatch({ type: "addItem", sectionIndex, itemType })} />
           </div>
         </div>
       </SortableSection>
@@ -553,7 +538,7 @@ export function QuoteBuilderItemsStep({
         type="button"
         variant="outline"
         size="sm"
-        onClick={onAddSection}
+        onClick={() => dispatch({ type: "addSection" })}
         className="flex items-center gap-2 self-start"
       >
         <PlusCircle className="size-4" aria-hidden="true" />
@@ -570,7 +555,7 @@ export function QuoteBuilderItemsStep({
           <Checkbox
             label="Incluir IVA (16%)"
             checked={taxEnabled}
-            onCheckedChange={(checked) => onTaxEnabledChange(checked === true)}
+            onCheckedChange={(checked) => dispatch({ type: "setTaxEnabled", taxEnabled: checked === true })}
             className="shrink-0"
           />
         </div>
@@ -587,7 +572,7 @@ export function QuoteBuilderItemsStep({
               step="0.01"
               className="pl-7"
               value={discount}
-              onChange={(event) => onDiscountChange(event.target.value)}
+              onChange={(event) => dispatch({ type: "setDiscount", discount: event.target.value })}
               placeholder="0.00"
             />
           </div>
