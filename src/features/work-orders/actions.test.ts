@@ -1,12 +1,15 @@
-import { Prisma, QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
+import { AssignmentStatus, Prisma, QuoteDecisionOrigin, QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
+import { revalidatePath } from "next/cache";
 import {
   assignWorker,
   assignWorkOrder,
   createAndAssignWorkOrder,
   completeWorkOrder,
+  createDirectWorkOrder,
+  createDirectWorkOrderFromWorkspace,
   recordExecution,
   rollbackWorkOrder,
   rollbackWorkOrderAction,
@@ -14,12 +17,17 @@ import {
 import { WorkerUnavailableError } from "./domain";
 
 vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
-vi.mock("@/features/quotes/lib/sequence", () => ({ nextWorkOrderNumber: vi.fn().mockResolvedValue("T-0826-01") }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/features/quotes/lib/sequence", () => ({
+  nextQuoteNumber: vi.fn().mockResolvedValue("COT-0826-01"),
+  nextWorkOrderNumber: vi.fn().mockResolvedValue("T-0826-01"),
+  withQuoteNumberRetry: vi.fn().mockImplementation((fn: () => unknown) => fn()),
+}));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
     userProfile: { findFirst: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
-  workAssignment: { create: vi.fn(), createMany: vi.fn() },
+    workAssignment: { create: vi.fn(), createMany: vi.fn() },
     workOrder: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findUniqueOrThrow: vi.fn() },
     executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
   },
@@ -52,30 +60,40 @@ function operationalQuote(overrides: Record<string, unknown> = {}) {
 }
 
 type MockTx = {
-  quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
+  quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
+  quoteItem: { createMany: ReturnType<typeof vi.fn> };
+  quoteDecision: { create: ReturnType<typeof vi.fn> };
+  quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
   workOrder: { create: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn> };
-  userProfile: { findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
-  workAssignment: { createMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
+  userProfile: { findFirst: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
+  workAssignment: { create: ReturnType<typeof vi.fn>; createMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   executionRecord: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
   payment: { count: ReturnType<typeof vi.fn> };
   ledgerEntry: { count: ReturnType<typeof vi.fn> };
   sharedQuote: { create: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
-  quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
+  vehicle: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
 };
 
 function createTx(): MockTx {
   const tx = {
-    quote: { findUnique: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    quote: {
+      create: vi.fn().mockResolvedValue({ id: "quote-new", sections: [{ id: "sec-1", sortOrder: 0 }] }),
+      findUnique: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+    quoteItem: { createMany: vi.fn() },
+    quoteDecision: { create: vi.fn() },
+    quoteLifecycleEvent: { create: vi.fn() },
     workOrder: { create: vi.fn().mockResolvedValue({ id: "wo-new" }), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: vi.fn() },
-    userProfile: { findMany: vi.fn(), findUnique: vi.fn() },
-    workAssignment: { createMany: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
+    userProfile: { findFirst: vi.fn().mockResolvedValue(worker(masterId, WorkerKind.MASTER)), findMany: vi.fn(), findUnique: vi.fn() },
+    workAssignment: { create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
     executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
     payment: { count: vi.fn().mockResolvedValue(0) },
     ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
     sharedQuote: { create: vi.fn(), updateMany: vi.fn() },
     paymentRequest: { updateMany: vi.fn() },
-    quoteLifecycleEvent: { create: vi.fn() },
+    vehicle: { findFirst: vi.fn().mockResolvedValue({ id: "veh-1" }), create: vi.fn(), update: vi.fn().mockResolvedValue({ id: "veh-1" }) },
   };
   vi.mocked(prisma.$transaction).mockImplementation(
     // @ts-expect-error Mock
@@ -249,6 +267,13 @@ describe("work order actions", () => {
       }));
       // should set completedAt
       expect(tx.workOrder.updateMany.mock.calls[0][0].data.completedAt).toBeInstanceOf(Date);
+      expect(tx.workAssignment.updateMany).toHaveBeenCalledWith({
+        where: {
+          workOrderId: "wo-1",
+          status: { notIn: [AssignmentStatus.DONE, AssignmentStatus.CANCELLED] },
+        },
+        data: { status: AssignmentStatus.DONE },
+      });
     });
 
     it("completes a priced draft identified by unit without requiring a customer", async () => {
@@ -406,6 +431,229 @@ describe("work order actions", () => {
 
       await expect(rollbackWorkOrderAction({ workOrderId: "wo-1", targetQuoteStatus: "SENT", reason: "Corrección" }))
         .resolves.toEqual({ success: false, error: "La operación cambió mientras se corregía. Recarga e inténtalo de nuevo." });
+    });
+  });
+
+  describe("createDirectWorkOrder", () => {
+    const validDirectInput = {
+      customerId: "customer-1",
+      vehicle: { plate: "ABC-123", brand: "Toyota", model: "Corolla", year: 2020 },
+      title: "Direct Work Order",
+      description: "Direct creation",
+      administrative: false,
+      taxEnabled: true,
+      discountCents: 0,
+      operationalDate: "2026-08-31",
+      masterId,
+      isCompleted: false,
+      sections: [
+        {
+          name: "General",
+          isAuthorized: false,
+          items: [
+            {
+              type: "LABOR" as const,
+              description: "Brake repair",
+              quantity: 1,
+              unitPriceCents: 15_000,
+              includeInPayroll: true,
+            },
+          ],
+        },
+      ],
+    };
+
+    it("creates an open direct work order with ASSIGNED status and assigns the master", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      const result = await createDirectWorkOrder(validDirectInput);
+
+      expect(tx.quote.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          status: QuoteStatus.APPROVED,
+          customerId: "customer-1",
+          operationalDate: new Date("2026-08-31T00:00:00.000Z"),
+        }),
+      }));
+      expect(tx.quoteDecision.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          status: QuoteStatus.APPROVED,
+          origin: QuoteDecisionOrigin.ADMIN,
+          actorId: workerId,
+          note: "Trabajo creado directamente",
+        }),
+      }));
+      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          previousState: QuoteStatus.DRAFT,
+          nextState: QuoteStatus.APPROVED,
+          actorId: workerId,
+          reason: "Trabajo creado directamente",
+        }),
+      }));
+      expect(tx.workOrder.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          status: WorkOrderStatus.ASSIGNED,
+          completedAt: null,
+        }),
+      }));
+      expect(tx.workAssignment.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          workerId: masterId,
+          status: AssignmentStatus.ASSIGNED,
+        }),
+      }));
+      expect(result).toHaveProperty("quote");
+      expect(result).toHaveProperty("workOrder");
+    });
+
+    it("allows open direct work order creation with pending prices", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      const inputWithPendingPrice = {
+        ...validDirectInput,
+        sections: [
+          {
+            name: "General",
+            isAuthorized: false,
+            items: [
+              {
+                type: "LABOR" as const,
+                description: "Diagnosis",
+                quantity: 1,
+                unitPriceCents: undefined,
+              },
+            ],
+          },
+        ],
+      };
+
+      await expect(createDirectWorkOrder(inputWithPendingPrice)).resolves.toBeDefined();
+      expect(tx.workOrder.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ status: WorkOrderStatus.ASSIGNED, completedAt: null }),
+      }));
+    });
+
+    it("creates a completed direct work order with COMPLETED status and DONE assignment", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      await createDirectWorkOrder({
+        ...validDirectInput,
+        isCompleted: true,
+      });
+
+      expect(tx.workOrder.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          status: WorkOrderStatus.COMPLETED,
+          completedAt: expect.any(Date),
+        }),
+      }));
+      expect(tx.workAssignment.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          workerId: masterId,
+          status: AssignmentStatus.DONE,
+        }),
+      }));
+    });
+
+    it("sets completedAt to local noon in America/Mexico_City for retroactive completed work", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      await createDirectWorkOrder({
+        ...validDirectInput,
+        operationalDate: "2026-08-31",
+        isCompleted: true,
+      });
+
+      const completedAt = tx.workOrder.create.mock.calls[0][0].data.completedAt as Date;
+      expect(completedAt).toEqual(new Date("2026-08-31T18:00:00.000Z"));
+    });
+
+    it("rejects completed direct work order when concept prices are missing", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      const inputMissingPrice = {
+        ...validDirectInput,
+        isCompleted: true,
+        sections: [
+          {
+            name: "General",
+            isAuthorized: false,
+            items: [
+              {
+                type: "LABOR" as const,
+                description: "Brake repair",
+                quantity: 1,
+                unitPriceCents: undefined,
+              },
+            ],
+          },
+        ],
+      };
+
+      await expect(createDirectWorkOrder(inputMissingPrice)).rejects.toThrow(/precios válidos/i);
+      expect(tx.workOrder.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects creation when master is not found or inactive", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      tx.userProfile.findFirst.mockResolvedValue(null);
+
+      await expect(createDirectWorkOrder(validDirectInput)).rejects.toThrow(/maestro responsable/i);
+    });
+
+    it("rejects future operational dates", async () => {
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      await expect(createDirectWorkOrder({
+        ...validDirectInput,
+        operationalDate: "2099-01-01",
+      })).rejects.toThrow(/today or earlier|future/i);
+    });
+  });
+
+  describe("createDirectWorkOrderFromWorkspace", () => {
+    it("revalidates quotes, work-orders, and notas on success", async () => {
+      createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      const formData = new FormData();
+      formData.set("customerId", "customer-1");
+      formData.set("masterId", masterId);
+      formData.set("title", "Direct Work Order");
+      formData.set("operationalDate", "2026-08-31");
+      formData.set("sections.0.name", "General");
+      formData.set("sections.0.items.0.type", "LABOR");
+      formData.set("sections.0.items.0.description", "Service");
+      formData.set("sections.0.items.0.quantity", "1");
+      formData.set("sections.0.items.0.unitPrice", "10000");
+
+      const result = await createDirectWorkOrderFromWorkspace({}, formData);
+
+      expect(result).toEqual({ success: true });
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/work-orders");
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/notas");
+    });
+
+    it("returns validation error when master is missing", async () => {
+      const formData = new FormData();
+      formData.set("customerId", "customer-1");
+      formData.set("title", "Direct Work Order");
+      formData.set("sections.0.name", "General");
+      formData.set("sections.0.items.0.type", "LABOR");
+      formData.set("sections.0.items.0.description", "Service");
+      formData.set("sections.0.items.0.quantity", "1");
+
+      const result = await createDirectWorkOrderFromWorkspace({}, formData);
+
+      expect(result.error).toMatch(/maestro responsable/i);
     });
   });
 });

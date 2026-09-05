@@ -412,4 +412,28 @@ describe("QuoteBuilderDialog", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Crear cotización" })).not.toBeInTheDocument());
     expect(refresh).toHaveBeenCalledTimes(1);
   });
+
+  it("renders direct work order title, button, master selector, and completed checkbox", async () => {
+    const user = userEvent.setup();
+    const createAction = vi.fn().mockResolvedValue({ success: true });
+    const masters = [{ id: "m-1", displayName: "Maestro Pepe" }];
+
+    render(
+      <QuoteBuilderDialog
+        customers={customers}
+        createAction={createAction}
+        mode="direct-work-order"
+        masters={masters}
+        triggerLabel="Agregar trabajo"
+      />,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Agregar trabajo" });
+    expect(trigger).toBeInTheDocument();
+    await user.click(trigger);
+
+    expect(screen.getByRole("dialog", { name: "Agregar trabajo" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Maestro responsable *")).toBeInTheDocument();
+    expect(screen.getByLabelText("Trabajo finalizado")).toBeInTheDocument();
+  });
 });

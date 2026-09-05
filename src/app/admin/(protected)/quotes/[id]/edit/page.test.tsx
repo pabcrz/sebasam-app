@@ -62,6 +62,7 @@ describe("EditQuotePage", () => {
       include: expect.objectContaining({
         customer: true,
         vehicle: true,
+        items: { orderBy: { sortOrder: "asc" } },
         sections: {
           include: {
             items: {
