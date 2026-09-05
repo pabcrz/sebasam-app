@@ -21,6 +21,11 @@ export type QuoteBuilderInitialData = {
   sections: Array<{ name: string; isAuthorized?: boolean; items: ItemFormValue[] }>;
 };
 
+export type MasterOption = {
+  id: string;
+  displayName: string;
+};
+
 export type QuoteCustomerActionResult = {
   success: boolean;
   customer?: CustomerOption;
@@ -39,6 +44,8 @@ export type QuoteBuilderProps = {
   onDirtyChange?: (dirty: boolean) => void;
   onSuccess?: () => void;
   layout?: "page" | "dialog";
+  mode?: "quote" | "direct-work-order";
+  masters?: MasterOption[];
 };
 
 export type QuoteBuilderChromeHosts = {
@@ -59,6 +66,10 @@ export type QuoteBuilderDialogProps = {
   triggerVariant?: ButtonVariant;
   triggerIconOnlyMobile?: boolean;
   triggerIconOnly?: boolean;
+  triggerLabel?: string;
   createCustomerAction?: QuoteBuilderProps["createCustomerAction"];
   searchCustomersAction?: QuoteBuilderProps["searchCustomersAction"];
+  mode?: "quote" | "direct-work-order";
+  masters?: MasterOption[];
 };
+

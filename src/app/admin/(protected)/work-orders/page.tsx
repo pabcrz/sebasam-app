@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { WorkerKind } from "@prisma/client";
 import { listActiveWorkOrders, listActiveWorkers } from "@/features/work-orders/queries";
 import {
   Card,
@@ -10,9 +11,15 @@ import {
 import { WorkOrderActiveList } from "@/features/work-orders/components/work-order-active-list";
 import { listCustomers } from "@/features/customers/queries";
 import { listQuotes } from "@/features/quotes/queries";
-import { searchCustomersForQuote } from "@/features/customers/actions";
+import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
 import { duplicateQuoteFromForm, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
-import { assignWorkOrderAction, completeWorkOrderAction, rollbackWorkOrderAction } from "@/features/work-orders/actions";
+import {
+  assignWorkOrderAction,
+  completeWorkOrderAction,
+  createDirectWorkOrderFromWorkspace,
+  rollbackWorkOrderAction,
+} from "@/features/work-orders/actions";
+import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 
 export const metadata: Metadata = {
   title: "Trabajos en proceso",
@@ -24,6 +31,8 @@ export default async function WorkOrdersPage() {
     listActiveWorkers(),
     listCustomers(),
   ]);
+
+  const masters = workers.filter((w) => w.role === "WORKER" && w.workerKind === WorkerKind.MASTER);
 
   // Load full quote data (with paidCents, activeSharedQuote, etc.) for the
   // work-order builder dialogs. We filter by the quote IDs that have active work orders.
@@ -40,6 +49,17 @@ export default async function WorkOrdersPage() {
         <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
           Trabajos en proceso
         </h1>
+        <div className="hidden sm:block">
+          <QuoteBuilderDialog
+            customers={customers}
+            createAction={createDirectWorkOrderFromWorkspace}
+            createCustomerAction={createOrReuseCustomerForQuote}
+            searchCustomersAction={searchCustomersForQuote}
+            mode="direct-work-order"
+            masters={masters}
+            triggerLabel="Agregar trabajo"
+          />
+        </div>
       </div>
       <Card className="min-w-0">
         <CardHeader>
@@ -76,6 +96,25 @@ export default async function WorkOrdersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Mobile Floating Action Button */}
+      <div
+        className="fixed right-4 z-40 sm:hidden"
+        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <QuoteBuilderDialog
+          customers={customers}
+          createAction={createDirectWorkOrderFromWorkspace}
+          createCustomerAction={createOrReuseCustomerForQuote}
+          searchCustomersAction={searchCustomersForQuote}
+          mode="direct-work-order"
+          masters={masters}
+          triggerLabel="Agregar trabajo"
+          triggerVariant="primary"
+          triggerSize="sm"
+          triggerClassName="h-11 px-4 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-1.5 border border-white/20"
+        />
+      </div>
     </section>
   );
 }

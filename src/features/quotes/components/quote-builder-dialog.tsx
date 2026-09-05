@@ -13,7 +13,25 @@ import { mapPersistedQuoteToBuilderInitialData } from "./quote-builder-mapper";
 
 export type { QuoteBuilderDialogProps } from "./quote-builder-contracts";
 
-export function QuoteBuilderDialog({ customers, createAction, saveAction, initialData: initialDataProp, quote, quoteNumber, triggerClassName, triggerAriaLabel, triggerSize, triggerVariant, triggerIconOnlyMobile = false, triggerIconOnly = false, createCustomerAction, searchCustomersAction }: QuoteBuilderDialogProps) {
+export function QuoteBuilderDialog({
+  customers,
+  createAction,
+  saveAction,
+  initialData: initialDataProp,
+  quote,
+  quoteNumber,
+  triggerClassName,
+  triggerAriaLabel,
+  triggerSize,
+  triggerVariant,
+  triggerIconOnlyMobile = false,
+  triggerIconOnly = false,
+  triggerLabel,
+  createCustomerAction,
+  searchCustomersAction,
+  mode = "quote",
+  masters,
+}: QuoteBuilderDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [dirty, setDirty] = React.useState(false);
@@ -34,6 +52,7 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
     setChromeHosts((current) => (current.footerHost === el ? current : { ...current, footerHost: el }));
   }, []);
   const isEdit = saveAction != null;
+  const isDirectWorkOrder = mode === "direct-work-order";
   const initialData = initialDataProp ?? (quote ? mapPersistedQuoteToBuilderInitialData(quote) : undefined);
 
   const handleOpenChange = React.useCallback((nextOpen: boolean) => {
@@ -59,15 +78,28 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
     router.refresh();
   }, [router]);
 
+  const defaultButtonLabel = isEdit ? "Editar" : isDirectWorkOrder ? "Agregar trabajo" : "Nueva cotización";
+  const effectiveButtonLabel = triggerLabel ?? defaultButtonLabel;
+  const dialogTitle = isEdit
+    ? `Editar cotización ${quoteNumber}`
+    : isDirectWorkOrder
+      ? "Agregar trabajo"
+      : "Crear cotización";
+  const discardTitle = isEdit
+    ? "¿Descartar los cambios?"
+    : isDirectWorkOrder
+      ? "¿Descartar el trabajo?"
+      : "¿Descartar la cotización?";
+
   return (
     <QuoteBuilderChromeContext.Provider value={chromeHosts}>
       <MultiStepDialog
         open={open}
         onOpenChange={handleOpenChange}
-        title={isEdit ? `Editar cotización ${quoteNumber}` : "Crear cotización"}
+        title={dialogTitle}
         dirty={dirty}
         onDiscard={discardChanges}
-        discardTitle={isEdit ? "¿Descartar los cambios?" : "¿Descartar la cotización?"}
+        discardTitle={discardTitle}
         discardDescription={isEdit ? "Si sales sin guardar, perderás las modificaciones hechas a esta cotización." : "Se perderá todo el progreso que no hayas guardado."}
         discardCancelLabel="Seguir editando"
         discardConfirmLabel="Descartar cambios"
@@ -77,11 +109,11 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
             variant={triggerVariant ?? "primary"}
             size={triggerSize}
             className={triggerIconOnlyMobile ? `h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3 ${triggerClassName ?? ""}` : (triggerClassName ?? "w-full sm:w-fit")}
-            title={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : "Nueva cotización") : undefined)}
-            aria-label={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : "Nueva cotización") : undefined)}
+            title={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : effectiveButtonLabel) : undefined)}
+            aria-label={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : effectiveButtonLabel) : undefined)}
           >
             {isEdit ? <Pencil className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" /> : <Plus className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />}
-            <span className={triggerIconOnly ? "sr-only" : triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{isEdit ? "Editar" : "Nueva cotización"}</span>
+            <span className={triggerIconOnly ? "sr-only" : triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{effectiveButtonLabel}</span>
           </Button>
         }
         stepper={<div ref={attachStepperHost} />}
@@ -98,6 +130,8 @@ export function QuoteBuilderDialog({ customers, createAction, saveAction, initia
             layout="dialog"
             onDirtyChange={setDirty}
             onSuccess={handleSuccess}
+            mode={mode}
+            masters={masters}
           />
         }
       />
