@@ -449,6 +449,47 @@ describe("Payroll UI Components", () => {
       expect(inputs[0]).toHaveValue(0);
     });
 
+    it("normalizes pasted custom base values to integer cents at the exact client-total boundary", async () => {
+      (updatePayrollItemBase as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true });
+
+      render(<PayrollWorkerDetail workers={sampleWorkers} selectedWorkerId="w-1" />);
+      fireEvent.click(screen.getAllByRole("button", { name: /ajustar base/i })[0]);
+
+      const baseInputs = screen.getAllByDisplayValue("1000");
+      fireEvent.change(baseInputs[0], { target: { value: "999.999" } });
+
+      expect(baseInputs[0]).toHaveValue(1000);
+      expect(screen.getAllByDisplayValue("1000")).toHaveLength(2);
+
+      fireEvent.click(screen.getAllByRole("button", { name: /^guardar$/i })[0]);
+      await waitFor(() => {
+        expect(updatePayrollItemBase).toHaveBeenCalledWith({
+          itemId: "item-1",
+          customPayrollBaseCents: 100000,
+          customRatePercent: 40,
+        });
+      });
+    });
+
+    it("clamps and rounds commission rates to the shared integer 1..100 contract", () => {
+      render(<PayrollWorkerDetail workers={sampleWorkers} selectedWorkerId="w-1" />);
+      fireEvent.click(screen.getAllByRole("button", { name: /ajustar base/i })[0]);
+
+      const rateInput = screen.getAllByDisplayValue("40")[0];
+
+      fireEvent.change(rateInput, { target: { value: "0" } });
+      expect(rateInput).toHaveValue(1);
+      expect(screen.getAllByDisplayValue("1")).toHaveLength(2);
+
+      fireEvent.change(rateInput, { target: { value: "101" } });
+      expect(rateInput).toHaveValue(100);
+      expect(screen.getAllByDisplayValue("100")).toHaveLength(2);
+
+      fireEvent.change(rateInput, { target: { value: "40.6" } });
+      expect(rateInput).toHaveValue(41);
+      expect(screen.getAllByDisplayValue("41")).toHaveLength(2);
+    });
+
     it("allows resetting adjustment back to original base when item has custom base", async () => {
       (updatePayrollItemBase as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: true,

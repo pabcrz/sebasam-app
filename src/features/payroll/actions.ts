@@ -6,7 +6,7 @@ import { QuoteItemType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 
-export const updatePayrollItemAdjustmentSchema = z.object({
+const updatePayrollItemAdjustmentSchema = z.object({
   itemId: z.string().trim().min(1, "El identificador del concepto es obligatorio."),
   customPayrollBaseCents: z
     .number()
@@ -22,10 +22,6 @@ export const updatePayrollItemAdjustmentSchema = z.object({
     .nullable()
     .optional(),
 });
-
-export const updatePayrollItemBaseSchema = updatePayrollItemAdjustmentSchema;
-export type UpdatePayrollItemAdjustmentInput = z.infer<typeof updatePayrollItemAdjustmentSchema>;
-export type UpdatePayrollItemBaseInput = UpdatePayrollItemAdjustmentInput;
 
 export interface UpdatePayrollItemBaseResult {
   success: boolean;
@@ -127,5 +123,3 @@ export async function updatePayrollItemBase(
     };
   }
 }
-
-export const updatePayrollItemAdjustment = updatePayrollItemBase;

@@ -3,7 +3,9 @@ import { QuoteItemType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
-import { updatePayrollItemBase } from "./actions";
+import * as payrollActions from "./actions";
+
+const { updatePayrollItemBase } = payrollActions;
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -25,6 +27,11 @@ vi.mock("next/cache", () => ({
 describe("Payroll Actions - updatePayrollItemBase", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("exports only async functions from the use-server entry point", () => {
+    expect(Object.keys(payrollActions)).toEqual(["updatePayrollItemBase"]);
+    expect(updatePayrollItemBase.constructor.name).toBe("AsyncFunction");
   });
 
   it("successfully updates custom payroll base for a LABOR item", async () => {

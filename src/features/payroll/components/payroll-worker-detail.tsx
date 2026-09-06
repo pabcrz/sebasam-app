@@ -105,17 +105,11 @@ function PayrollOrderAccordionRow({
       setEditValue("");
       return;
     }
-    const maxPesos = maxCents / 100;
     const num = Number(val);
-    if (!isNaN(num)) {
-      if (num < 0) {
-        setEditValue("0");
-        return;
-      }
-      if (num > maxPesos) {
-        setEditValue(String(maxPesos));
-        return;
-      }
+    if (Number.isFinite(num)) {
+      const cents = Math.min(maxCents, Math.max(0, Math.round(num * 100)));
+      setEditValue(cents === num * 100 ? val : String(cents / 100));
+      return;
     }
     setEditValue(val);
   };
@@ -126,15 +120,9 @@ function PayrollOrderAccordionRow({
       return;
     }
     const num = Number(val);
-    if (!isNaN(num)) {
-      if (num <= 0) {
-        setEditRateValue("1");
-        return;
-      }
-      if (num > 100) {
-        setEditRateValue("100");
-        return;
-      }
+    if (Number.isFinite(num)) {
+      setEditRateValue(String(Math.min(100, Math.max(1, Math.round(num)))));
+      return;
     }
     setEditRateValue(val);
   };
