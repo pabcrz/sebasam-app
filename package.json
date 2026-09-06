@@ -17,6 +17,7 @@
     "db:backup:public": "tsx scripts/backup-public.ts",
     "db:seed": "tsx prisma/seed.ts",
     "bootstrap:admin-profile": "tsx scripts/bootstrap-admin-profile.ts",
+    "historical:import": "tsx scripts/import-historical.ts",
     "profiles:recover": "tsx scripts/recover-user-profiles.ts",
     "auth:set-password": "tsx scripts/set-auth-password.ts"
   },

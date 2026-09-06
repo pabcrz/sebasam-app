@@ -10,6 +10,7 @@ import {
   ClipboardList,
   FileCheck,
   FileText,
+  History,
   Home,
   Loader2,
   LogOut,
@@ -45,6 +46,7 @@ const navItems: NavItem[] = [
   { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
   { href: "/admin/notas", label: "Notas", icon: FileCheck },
   { href: "/admin/nomina", label: "Nómina", icon: Banknote },
+  { href: "/admin/historical", label: "Histórico", icon: History },
   { href: "/admin/configuracion-pago", label: "Configuración", icon: Bolt },
   { href: "/admin/users", label: "Usuarios", icon: Shield }, // Added for SUPER_ADMIN
 ];
@@ -56,6 +58,7 @@ const mobileNavItems: NavItem[] = [
   { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
   { href: "/admin/notas", label: "Notas", icon: FileCheck },
   { href: "/admin/nomina", label: "Nómina", icon: Banknote },
+  { href: "/admin/historical", label: "Histórico", mobileLabel: "Hist.", icon: History },
 ];
 
 function NavLink({
@@ -231,7 +234,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] text-white md:hidden print:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto grid w-full max-w-md grid-cols-5 gap-1 px-1 pt-2">
+        <div className="mx-auto grid w-full max-w-md grid-cols-6 gap-1 px-1 pt-2">
           {mobileNavItems.map((item) => (
             <NavLink key={item.href} {...item} mobile onNavStart={() => setGlobalPending(true)} />
           ))}
