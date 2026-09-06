@@ -323,27 +323,25 @@ export function QuoteBuilderItemsStep({
                   >
                     <div className="grid min-w-0 gap-2">
                       <Label htmlFor={`${fieldId}-quantity`}>Cantidad</Label>
-                      <div className="flex w-full min-w-0 max-w-35 items-center overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
-                        <Button
+                      <div className="flex w-full min-w-0 max-w-35 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-[3px] focus-within:ring-[var(--color-focus-ring)]">
+                        <button
                           type="button"
-                          variant="outline"
-                          size="sm"
                           aria-label={`Restar cantidad del concepto ${displayIndex + 1}`}
                           onClick={() => dispatch({ type: "adjustItemQuantity", sectionIndex, itemIndex, delta: -1 })}
                           disabled={Number(item.quantity) <= 1}
-                          className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] shrink-0 rounded-none border-0 border-r border-[var(--color-border-light)] px-0"
+                          className="inline-flex h-[var(--tap-min-height)] w-10 shrink-0 cursor-pointer items-center justify-center rounded-l-[calc(var(--radius-sm)-1px)] border-r border-[var(--color-border-light)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] active-press-subtle focus-visible:outline-none focus-visible:bg-[var(--color-bg-soft)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-11"
                         >
                           <Minus className="h-4 w-4" aria-hidden="true" />
-                        </Button>
-                        <Input
+                        </button>
+                        <input
                           id={`${fieldId}-quantity`}
                           name={`sections.${sectionIndex}.items.${itemIndex}.quantity`}
                           type="text"
                           inputMode="numeric"
                           pattern="[0-9]*"
                           min={1}
-                          className="min-w-0 rounded-none border-0 px-1 text-center shadow-none focus-visible:ring-inset"
                           max={typeQuantityLimit}
+                          className="h-[var(--tap-min-height)] min-w-0 flex-1 bg-transparent px-1 text-center text-base text-[var(--color-text-main)] outline-none placeholder:text-[var(--color-text-muted)] focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                           value={item.quantity}
                           onChange={(event) => {
                             dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { quantity: event.target.value.replace(/\D/g, "") } });
@@ -358,17 +356,15 @@ export function QuoteBuilderItemsStep({
                           aria-describedby={itemErrors.quantity ? quantityErrorId : undefined}
                           aria-invalid={itemErrors.quantity ? true : undefined}
                         />
-                        <Button
+                        <button
                           type="button"
-                          variant="outline"
-                          size="sm"
                           aria-label={`Sumar cantidad del concepto ${displayIndex + 1}`}
                           onClick={() => dispatch({ type: "adjustItemQuantity", sectionIndex, itemIndex, delta: 1 })}
                           disabled={Number(item.quantity) >= typeQuantityLimit}
-                          className="h-[var(--tap-min-height)] w-[var(--tap-min-height)] shrink-0 rounded-none border-0 border-l border-[var(--color-border-light)] px-0"
+                          className="inline-flex h-[var(--tap-min-height)] w-10 shrink-0 cursor-pointer items-center justify-center rounded-r-[calc(var(--radius-sm)-1px)] border-l border-[var(--color-border-light)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] active-press-subtle focus-visible:outline-none focus-visible:bg-[var(--color-bg-soft)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-11"
                         >
                           <Plus className="h-4 w-4" aria-hidden="true" />
-                        </Button>
+                        </button>
                       </div>
                       <span
                         id={quantityErrorId}
@@ -383,7 +379,7 @@ export function QuoteBuilderItemsStep({
                       <span id={unitPriceCurrencyId} className="sr-only">
                         Importe en pesos mexicanos.
                       </span>
-                      <div className="flex min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
+                      <div className="flex min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-[3px] focus-within:ring-[var(--color-focus-ring)]">
                         <span
                           className="flex items-center self-stretch pl-3 pr-1 text-[var(--color-text-muted)]"
                           data-testid={`currency-prefix-${displayIndex}`}
@@ -391,7 +387,7 @@ export function QuoteBuilderItemsStep({
                         >
                           $
                         </span>
-                        <Input
+                        <input
                           id={`${fieldId}-unitPrice`}
                           name={`sections.${sectionIndex}.items.${itemIndex}.unitPrice`}
                           type="number"
@@ -402,7 +398,7 @@ export function QuoteBuilderItemsStep({
                           aria-invalid={itemErrors.unitPrice ? true : undefined}
                           value={item.unitPrice}
                           onChange={(event) => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { unitPrice: event.target.value } })}
-                          className="min-w-0 border-0 pl-1 shadow-none focus-visible:ring-0"
+                          className="h-[var(--tap-min-height)] min-w-0 flex-1 bg-transparent py-2 pl-1 pr-3 text-base text-[var(--color-text-main)] outline-none placeholder:text-[var(--color-text-muted)] focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
                       </div>
                       <span
