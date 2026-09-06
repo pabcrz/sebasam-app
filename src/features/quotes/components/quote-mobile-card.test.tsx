@@ -82,6 +82,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
         totalCents: 10000,
         includeInPayroll: false,
         customRatePercent: null,
+        customPayrollBaseCents: null,
         sortOrder: 0,
       },
     ],

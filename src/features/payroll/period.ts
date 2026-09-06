@@ -113,17 +113,18 @@ export interface ParsedPayrollParams {
 }
 
 export function parsePayrollParams(
-  input: Record<string, string | string[] | undefined>,
+  input?: Record<string, string | string[] | undefined> | null,
   now = new Date()
 ): ParsedPayrollParams {
-  const rawMode = typeof input.mode === "string" ? input.mode : undefined;
+  const safeInput = input ?? {};
+  const rawMode = typeof safeInput.mode === "string" ? safeInput.mode : undefined;
   const mode: PayrollPeriodMode = rawMode === "monthly" ? "monthly" : "weekly";
 
   const rawAnchor =
-    typeof input.anchor === "string"
-      ? input.anchor
-      : typeof input.month === "string"
-        ? input.month
+    typeof safeInput.anchor === "string"
+      ? safeInput.anchor
+      : typeof safeInput.month === "string"
+        ? safeInput.month
         : undefined;
 
   if (mode === "monthly") {

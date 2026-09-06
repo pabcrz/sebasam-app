@@ -8,12 +8,10 @@ export const metadata: Metadata = {
   description: "Cálculo y liquidación de nómina de mano de obra por órdenes completadas.",
 };
 
-export default async function NominaPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+export default async function NominaPage(props?: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const resolvedParams = await searchParams;
+  const resolvedParams = (await props?.searchParams) ?? {};
   const period = parsePayrollParams(resolvedParams);
   const report = await getWeeklyPayroll(resolvedParams);
 
