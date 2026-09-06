@@ -35,9 +35,8 @@ export interface UpdatePayrollItemBaseResult {
 export async function updatePayrollItemBase(
   input: unknown
 ): Promise<UpdatePayrollItemBaseResult> {
-  await requireOperationalRole();
-
   try {
+    await requireOperationalRole();
     const parsed = updatePayrollItemAdjustmentSchema.safeParse(input);
     if (!parsed.success) {
       return {
@@ -107,6 +106,14 @@ export async function updatePayrollItemBase(
 
     return { success: true };
   } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "digest" in error &&
+      String((error as { digest?: unknown }).digest).startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
     if (error instanceof Error) {
       return {
         success: false,

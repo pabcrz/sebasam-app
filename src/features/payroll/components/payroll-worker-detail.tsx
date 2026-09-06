@@ -143,7 +143,12 @@ function PayrollOrderAccordionRow({
           toast.error(res.error || "No se pudo actualizar el ajuste.");
         }
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Error de conexión al guardar.");
+        const msg = err instanceof Error ? err.message : "";
+        const friendlyMsg =
+          msg.includes("Server Components render") || msg.includes("digest")
+            ? "Error en el servidor al actualizar la nómina. Intenta de nuevo."
+            : msg || "Error de conexión al guardar.";
+        toast.error(friendlyMsg);
       }
     });
   };
@@ -163,7 +168,12 @@ function PayrollOrderAccordionRow({
           toast.error(res.error || "Error al restablecer");
         }
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Error de conexión al restablecer.");
+        const msg = err instanceof Error ? err.message : "";
+        const friendlyMsg =
+          msg.includes("Server Components render") || msg.includes("digest")
+            ? "Error en el servidor al restablecer el ajuste."
+            : msg || "Error de conexión al restablecer.";
+        toast.error(friendlyMsg);
       }
     });
   };

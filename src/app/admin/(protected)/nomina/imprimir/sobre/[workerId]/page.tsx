@@ -26,7 +26,8 @@ export default async function WorkerEnvelopePrintPage({
   params,
   searchParams,
 }: WorkerEnvelopePrintPageProps) {
-  const [{ workerId }, resolvedParams] = await Promise.all([params, searchParams]);
+  const [{ workerId }, resolvedParamsRaw] = await Promise.all([params, searchParams]);
+  const resolvedParams = resolvedParamsRaw ?? {};
   const decodedWorkerId = decodeURIComponent(workerId);
   const period = parsePayrollParams(resolvedParams);
   const report = await getWeeklyPayroll(resolvedParams);

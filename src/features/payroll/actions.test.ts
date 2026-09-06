@@ -263,16 +263,19 @@ describe("Payroll Actions - updatePayrollItemBase", () => {
     expect(result.error).toMatch(/entero en centavos/i);
   });
 
-  it("requires operational role check", async () => {
+  it("requires operational role check and returns error gracefully", async () => {
     (requireOperationalRole as ReturnType<typeof vi.fn>).mockRejectedValue(
       new Error("Unauthorized")
     );
 
-    await expect(
-      updatePayrollItemBase({
-        itemId: "item-1",
-        customPayrollBaseCents: 100000,
-      })
-    ).rejects.toThrow("Unauthorized");
+    const result = await updatePayrollItemBase({
+      itemId: "item-1",
+      customPayrollBaseCents: 100000,
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "Unauthorized",
+    });
   });
 });

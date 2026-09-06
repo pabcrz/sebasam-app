@@ -14,7 +14,7 @@ export default async function SigningSheetPrintPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const resolvedParams = await searchParams;
+  const resolvedParams = (await searchParams) ?? {};
   const period = parsePayrollParams(resolvedParams);
   const report = await getWeeklyPayroll(resolvedParams);
 
