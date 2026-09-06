@@ -6,8 +6,8 @@ Esta app es el núcleo operativo limpio de SEBASAM: clientes, cotizaciones, órd
 
 | Área | Regla |
 |---|---|
-| Datos de negocio | Prisma es la única capa de acceso a datos operativos. No mezclar consultas de Supabase client con Prisma para las mismas tablas. |
-| Auth | Supabase Auth es dueño de la identidad. Los roles de la app viven en `UserProfile`. |
+| Datos de negocio y perímetro | Prisma (rol `postgres`) es el único actor autorizado para acceder a datos operativos. El esquema `public` está cerrado a PostgREST mediante RLS y revocación de permisos (`anon`/`authenticated`). No mezclar consultas de Supabase client con Prisma para las mismas tablas. |
+| Auth e infraestructura | Supabase Auth es dueño de la identidad. Los roles de la app viven en `UserProfile`. `SUPABASE_SERVICE_ROLE_KEY` queda reservada exclusivamente para operaciones server-side de Auth. |
 | Cotización → orden de trabajo | Estado actual: una `WorkOrder` referencia una `Quote` aprobada. Objetivo pendiente: soportar autorización administrativa auditada, autorización parcial por secciones y estado `ESPERA` antes de `EN_PROCESO`. |
 | URLs de base de datos | Runtime usa `DATABASE_URL` con el pooler de Supabase. Las migraciones usan `DIRECT_URL`. |
 | Despliegue | `next build` puede generar Prisma Client, pero las migraciones corren solo a través de `db:migrate:deploy`. |

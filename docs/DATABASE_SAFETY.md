@@ -34,6 +34,12 @@ No se escriben URLs ni credenciales en el comando, el manifiesto o los logs del 
 
 El respaldo cubre únicamente `public`. Supabase Auth y Storage administrados **no están incluidos** y requieren una exportación separada con el procedimiento autorizado para cada servicio. No uses `db:migrate:deploy`, migraciones de desarrollo ni un reset como sustituto de restauración.
 
+## Política de perímetro y RLS
+
+1. **Tablas nuevas en Prisma:** Toda tabla nueva generada en el esquema `public` mediante Prisma debe incorporar `ENABLE ROW LEVEL SECURITY` en su migración y verificar que los `ALTER DEFAULT PRIVILEGES` sigan vigentes.
+2. **Límite del modelo de amenazas:** Esta configuración bloquea únicamente los roles `anon` y `authenticated` de PostgREST. `SUPABASE_SERVICE_ROLE_KEY` bypassa RLS por diseño en PostgreSQL/Supabase y debe vivir exclusivamente server-side (nunca en bundles de cliente ni variables públicas). Si esa clave se filtra, el perímetro de base de datos no la detiene.
+3. **Mecanismo de excepción (escape hatch):** Cualquier exposición futura a través de PostgREST (por ejemplo, suscripciones de Realtime, accesos de Storage o un portal tokenizado en `/c/[token]`) debe ser deliberada, documentada y explícita: requiere un `GRANT` específico y una política RLS (`CREATE POLICY`) restringida por tabla. Nunca debe exponerse acceso por defecto.
+
 ## Checklist de release
 
 - [ ] La migración fue revisada y está versionada.
