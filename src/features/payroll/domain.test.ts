@@ -123,6 +123,110 @@ describe("Payroll Domain - Item Evaluation", () => {
     expect(res?.commissionCents).toBe(50000); // $500.00
   });
 
+  it("calculates 40% commission with adjusted base ($1,200 to client, base $1,000, 40% = $400)", () => {
+    const res = evaluatePayrollItem({
+      id: "item-5b",
+      type: QuoteItemType.LABOR,
+      description: "Soldadura chasis",
+      quantity: 1,
+      unitPriceCents: 120000,
+      totalCents: 120000,
+      customPayrollBaseCents: 100000,
+    });
+
+    expect(res).not.toBeNull();
+    expect(res?.clientTotalCents).toBe(120000);
+    expect(res?.payrollBaseCents).toBe(100000);
+    expect(res?.ratePercent).toBe(40); // Welding rate 40%
+    expect(res?.commissionCents).toBe(40000); // $400.00
+  });
+
+  it("does not re-multiply adjusted base by quantity when quantity > 1", () => {
+    const res = evaluatePayrollItem({
+      id: "item-qty-mult",
+      type: QuoteItemType.LABOR,
+      description: "Mano de obra reparación",
+      quantity: 3,
+      unitPriceCents: 40000, // 3 * 40,000 = 120,000 client total
+      totalCents: 120000,
+      customPayrollBaseCents: 100000, // Custom base for the entire line: $1,000.00
+    });
+
+    expect(res).not.toBeNull();
+    expect(res?.quantity).toBe(3);
+    expect(res?.clientTotalCents).toBe(120000);
+    expect(res?.payrollBaseCents).toBe(100000); // Must remain 100,000, NOT 300,000
+    expect(res?.commissionCents).toBe(50000); // 50% of 100,000 = 50,000 ($500.00)
+  });
+
+  it("handles explicit zero base ($0.00) resulting in $0.00 commission", () => {
+    const res = evaluatePayrollItem({
+      id: "item-zero-base",
+      type: QuoteItemType.LABOR,
+      description: "Mano de obra garantía",
+      quantity: 1,
+      unitPriceCents: 120000,
+      totalCents: 120000,
+      customPayrollBaseCents: 0,
+    });
+
+    expect(res).not.toBeNull();
+    expect(res?.clientTotalCents).toBe(120000);
+    expect(res?.payrollBaseCents).toBe(0);
+    expect(res?.commissionCents).toBe(0);
+  });
+
+  it("removes adjustment when customPayrollBaseCents is null or undefined", () => {
+    const resNull = evaluatePayrollItem({
+      id: "item-no-adjust",
+      type: QuoteItemType.LABOR,
+      description: "Mano de obra general",
+      quantity: 1,
+      unitPriceCents: 120000,
+      totalCents: 120000,
+      customPayrollBaseCents: null,
+    });
+
+    expect(resNull).not.toBeNull();
+    expect(resNull?.clientTotalCents).toBe(120000);
+    expect(resNull?.payrollBaseCents).toBe(120000);
+    expect(resNull?.commissionCents).toBe(60000); // 50% of 120,000
+  });
+
+  it("evaluates OTHER item with custom base when includeInPayroll is true", () => {
+    const res = evaluatePayrollItem({
+      id: "item-other-custom-base",
+      type: QuoteItemType.OTHER,
+      description: "Servicio foráneo",
+      quantity: 1,
+      unitPriceCents: 200000,
+      totalCents: 200000,
+      includeInPayroll: true,
+      customPayrollBaseCents: 150000, // $1,500.00
+    });
+
+    expect(res).not.toBeNull();
+    expect(res?.clientTotalCents).toBe(200000);
+    expect(res?.payrollBaseCents).toBe(150000);
+    expect(res?.ratePercent).toBe(40);
+    expect(res?.commissionCents).toBe(60000); // 40% of $1,500 = $600
+  });
+
+  it("ignores OTHER item with custom base when includeInPayroll is false", () => {
+    const res = evaluatePayrollItem({
+      id: "item-other-ignored",
+      type: QuoteItemType.OTHER,
+      description: "Servicio sin nómina",
+      quantity: 1,
+      unitPriceCents: 200000,
+      totalCents: 200000,
+      includeInPayroll: false,
+      customPayrollBaseCents: 150000,
+    });
+
+    expect(res).toBeNull();
+  });
+
   it("supports custom rate percent (e.g. 35% for new master)", () => {
     const res = evaluatePayrollItem({
       id: "item-6",

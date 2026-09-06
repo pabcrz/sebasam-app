@@ -767,6 +767,7 @@ async function duplicateQuoteAuthorized(quoteId: string) {
             totalCents: item.totalCents,
             includeInPayroll: item.includeInPayroll,
             customRatePercent: item.customRatePercent,
+            customPayrollBaseCents: item.customPayrollBaseCents,
             sortOrder: iIndex,
           });
         });

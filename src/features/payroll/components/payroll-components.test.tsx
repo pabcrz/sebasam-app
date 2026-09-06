@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QuoteItemType, WorkerKind } from "@prisma/client";
 import { PayrollPeriodNav } from "./payroll-period-nav";
 import { PayrollMetrics } from "./payroll-metrics";
@@ -9,6 +9,11 @@ import { PayrollWorkerDetail } from "./payroll-worker-detail";
 import { PayrollView } from "./payroll-view";
 import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
+import { updatePayrollItemBase } from "../actions";
+
+vi.mock("../actions", () => ({
+  updatePayrollItemBase: vi.fn(),
+}));
 
 const sampleWorkers: WorkerPayrollSummary[] = [
   {
@@ -279,5 +284,182 @@ describe("Payroll UI Components", () => {
     expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /imagen/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /whatsapp/i })).toBeInTheDocument();
+  });
+
+  describe("Inline Payroll Base Adjustment", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("renders adjust button and opens inline editing with live commission calculation", async () => {
+      render(
+        <PayrollWorkerDetail
+          workers={sampleWorkers}
+          selectedWorkerId="w-1"
+        />
+      );
+
+      // Verify initial state shows cobro and commission
+      expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
+      const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
+      expect(adjustBtns.length).toBeGreaterThanOrEqual(1);
+
+      // Open inline editor (click mobile button)
+      fireEvent.click(adjustBtns[0]);
+
+      // Input should be pre-filled with current base: 100000 / 100 = 1000
+      const inputs = screen.getAllByDisplayValue("1000");
+      expect(inputs.length).toBeGreaterThanOrEqual(1);
+
+      // Change base to 800 (80000 cents), 40% rate should calculate $320.00
+      fireEvent.change(inputs[0], { target: { value: "800" } });
+      expect(screen.getAllByText("$320.00").length).toBeGreaterThanOrEqual(1);
+
+      // Cancel editing
+      const cancelBtns = screen.getAllByRole("button", { name: /cancelar/i });
+      fireEvent.click(cancelBtns[0]);
+
+      // Editor should close
+      expect(screen.queryByDisplayValue("800")).not.toBeInTheDocument();
+    });
+
+    it("saves custom base successfully", async () => {
+      (updatePayrollItemBase as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+      });
+
+      render(
+        <PayrollWorkerDetail
+          workers={sampleWorkers}
+          selectedWorkerId="w-1"
+        />
+      );
+
+      const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
+      fireEvent.click(adjustBtns[0]);
+
+      const inputs = screen.getAllByDisplayValue("1000");
+      fireEvent.change(inputs[0], { target: { value: "750" } });
+
+      const saveBtns = screen.getAllByRole("button", { name: /^guardar$/i });
+      fireEvent.click(saveBtns[0]);
+
+      await waitFor(() => {
+        expect(updatePayrollItemBase).toHaveBeenCalledWith({
+          itemId: "item-1",
+          customPayrollBaseCents: 75000,
+          customRatePercent: 40,
+        });
+      });
+    });
+
+    it("saves custom rate percent override successfully", async () => {
+      (updatePayrollItemBase as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+      });
+
+      render(
+        <PayrollWorkerDetail
+          workers={sampleWorkers}
+          selectedWorkerId="w-1"
+        />
+      );
+
+      const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
+      fireEvent.click(adjustBtns[0]);
+
+      // Change rate from 40% to 45% ($1,000 * 45% = $450.00)
+      const rateInputs = screen.getAllByDisplayValue("40");
+      fireEvent.change(rateInputs[0], { target: { value: "45" } });
+
+      expect(screen.getAllByText("$450.00").length).toBeGreaterThanOrEqual(1);
+
+      const saveBtns = screen.getAllByRole("button", { name: /^guardar$/i });
+      fireEvent.click(saveBtns[0]);
+
+      await waitFor(() => {
+        expect(updatePayrollItemBase).toHaveBeenCalledWith({
+          itemId: "item-1",
+          customPayrollBaseCents: 100000,
+          customRatePercent: 45,
+        });
+      });
+    });
+
+    it("displays error feedback when saving fails", async () => {
+      (updatePayrollItemBase as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: false,
+        error: "Base no permitida",
+      });
+
+      render(
+        <PayrollWorkerDetail
+          workers={sampleWorkers}
+          selectedWorkerId="w-1"
+        />
+      );
+
+      const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
+      fireEvent.click(adjustBtns[0]);
+
+      const inputs = screen.getAllByDisplayValue("1000");
+      fireEvent.change(inputs[0], { target: { value: "500" } });
+
+      const saveBtns = screen.getAllByRole("button", { name: /^guardar$/i });
+      fireEvent.click(saveBtns[0]);
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Base no permitida").length).toBeGreaterThanOrEqual(1);
+      });
+    });
+
+    it("allows resetting adjustment back to original base when item has custom base", async () => {
+      (updatePayrollItemBase as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+      });
+
+      const workerWithAdjustedItem: WorkerPayrollSummary[] = [
+        {
+          ...sampleWorkers[0],
+          workOrders: [
+            {
+              ...sampleWorkers[0].workOrders[0],
+              items: [
+                {
+                  ...sampleWorkers[0].workOrders[0].items[0],
+                  clientTotalCents: 120000, // $1,200 charged to client
+                  payrollBaseCents: 100000, // $1,000 custom base
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      render(
+        <PayrollWorkerDetail
+          workers={workerWithAdjustedItem}
+          selectedWorkerId="w-1"
+        />
+      );
+
+      // Verify adjusted badge/text is shown
+      expect(screen.getAllByText(/\(Base: \$1,000\.00\)/i).length).toBeGreaterThanOrEqual(1);
+
+      const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
+      fireEvent.click(adjustBtns[0]);
+
+      // Reset button should be visible
+      const resetBtns = screen.getAllByRole("button", { name: /restablecer original|quitar/i });
+      fireEvent.click(resetBtns[0]);
+
+      await waitFor(() => {
+        expect(updatePayrollItemBase).toHaveBeenCalledWith({
+          itemId: "item-1",
+          customPayrollBaseCents: null,
+          customRatePercent: null,
+        });
+      });
+    });
   });
 });

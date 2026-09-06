@@ -55,6 +55,8 @@ export interface PayrollItemResult {
   category: LaborCategory;
   ratePercent: number;
   commissionCents: number;
+  hasCustomBase?: boolean;
+  hasCustomRate?: boolean;
 }
 
 export interface WorkOrderPayrollDetail {
@@ -143,6 +145,8 @@ export function evaluatePayrollItem(item: PayrollItemInput): PayrollItemResult |
     category,
     ratePercent,
     commissionCents,
+    hasCustomBase: item.customPayrollBaseCents != null,
+    hasCustomRate: item.customRatePercent != null,
   };
 }
 
