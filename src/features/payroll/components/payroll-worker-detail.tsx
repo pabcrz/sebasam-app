@@ -6,7 +6,6 @@ import { formatCents } from "@/features/quotes/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -87,48 +86,49 @@ function PayrollOrderAccordionRow({
   const [editingItemId, setEditingItemId] = React.useState<string | null>(null);
   const [editValue, setEditValue] = React.useState<string>("");
   const [editRateValue, setEditRateValue] = React.useState<string>("");
-  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [isPending, startTransition] = React.useTransition();
 
   const startEditing = (itemId: string, currentBaseCents: number, currentRatePercent: number) => {
     setEditingItemId(itemId);
     setEditValue(String(currentBaseCents / 100));
     setEditRateValue(String(currentRatePercent));
-    setErrorMessage(null);
   };
 
   const cancelEditing = () => {
     setEditingItemId(null);
     setEditValue("");
     setEditRateValue("");
-    setErrorMessage(null);
   };
 
-  const handleSave = (itemId: string) => {
+  const handleSave = (itemId: string, clientTotalCents: number) => {
     const trimmedBase = editValue.trim();
     if (trimmedBase === "") {
-      setErrorMessage("Ingresa un importe para la base o pulsa cancelar.");
+      toast.error("Ingresa un importe para la base o pulsa cancelar.");
       return;
     }
     const numericBase = Number(trimmedBase);
     if (isNaN(numericBase) || numericBase < 0) {
-      setErrorMessage("Ingresa un importe válido mayor o igual a 0.");
+      toast.error("Ingresa un importe válido mayor o igual a 0.");
       return;
     }
     const cents = Math.round(numericBase * 100);
+
+    if (cents > clientTotalCents) {
+      toast.error("La base de nómina no puede ser mayor al cobro del cliente.");
+      return;
+    }
 
     let ratePercentToSave: number | null = null;
     const trimmedRate = editRateValue.trim();
     if (trimmedRate !== "") {
       const numericRate = Number(trimmedRate);
       if (!Number.isInteger(numericRate) || numericRate < 1 || numericRate > 100) {
-        setErrorMessage("El porcentaje debe ser un número entero entre 1% y 100%.");
+        toast.error("El porcentaje debe ser un número entero entre 1% y 100%.");
         return;
       }
       ratePercentToSave = numericRate;
     }
 
-    setErrorMessage(null);
     startTransition(async () => {
       try {
         const res = await updatePayrollItemBase({
@@ -140,18 +140,15 @@ function PayrollOrderAccordionRow({
           toast.success("Ajuste de nómina actualizado");
           cancelEditing();
         } else {
-          setErrorMessage(res.error || "No se pudo actualizar el concepto.");
-          toast.error(res.error || "Error al actualizar");
+          toast.error(res.error || "No se pudo actualizar el ajuste.");
         }
-      } catch {
-        setErrorMessage("Error de conexión al guardar.");
-        toast.error("Error al actualizar");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Error de conexión al guardar.");
       }
     });
   };
 
   const handleReset = (itemId: string) => {
-    setErrorMessage(null);
     startTransition(async () => {
       try {
         const res = await updatePayrollItemBase({
@@ -163,12 +160,10 @@ function PayrollOrderAccordionRow({
           toast.success("Ajuste eliminado, valores originales restaurados");
           cancelEditing();
         } else {
-          setErrorMessage(res.error || "No se pudo restablecer el concepto.");
           toast.error(res.error || "Error al restablecer");
         }
-      } catch {
-        setErrorMessage("Error de conexión al restablecer.");
-        toast.error("Error al restablecer");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Error de conexión al restablecer.");
       }
     });
   };
@@ -274,14 +269,14 @@ function PayrollOrderAccordionRow({
                           >
                             Base nómina
                           </label>
-                          <div className="flex items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
+                          <div className="relative rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
                             <span
-                              className="pl-2 pr-0.5 text-[var(--color-text-muted)] text-xs font-medium"
+                              className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-xs text-[var(--color-text-muted)] font-medium"
                               aria-hidden="true"
                             >
                               $
                             </span>
-                            <Input
+                            <input
                               id={`base-input-m-${item.id}`}
                               type="number"
                               min="0"
@@ -289,7 +284,7 @@ function PayrollOrderAccordionRow({
                               placeholder="0.00"
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
-                              className="h-8 border-0 pl-0 text-xs shadow-none focus-visible:ring-0"
+                              className="block w-full h-8 pl-6 pr-2.5 bg-transparent text-xs text-[var(--color-text-main)] outline-none"
                               autoFocus
                             />
                           </div>
@@ -302,8 +297,8 @@ function PayrollOrderAccordionRow({
                           >
                             % Comisión
                           </label>
-                          <div className="flex items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
-                            <Input
+                          <div className="relative rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
+                            <input
                               id={`rate-input-m-${item.id}`}
                               type="number"
                               min="1"
@@ -312,10 +307,10 @@ function PayrollOrderAccordionRow({
                               placeholder="50"
                               value={editRateValue}
                               onChange={(e) => setEditRateValue(e.target.value)}
-                              className="h-8 border-0 pr-0 text-right text-xs shadow-none focus-visible:ring-0"
+                              className="block w-full h-8 pl-2.5 pr-6 text-right bg-transparent text-xs text-[var(--color-text-main)] outline-none"
                             />
                             <span
-                              className="pr-2 pl-0.5 text-[var(--color-text-muted)] text-xs font-medium"
+                              className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-xs text-[var(--color-text-muted)] font-medium"
                               aria-hidden="true"
                             >
                               %
@@ -333,12 +328,6 @@ function PayrollOrderAccordionRow({
                           {liveCommission != null ? formatCents(liveCommission) : "-"}
                         </span>
                       </div>
-
-                      {errorMessage && (
-                        <p className="text-[11px] text-[var(--color-status-danger-fg)]" role="alert">
-                          {errorMessage}
-                        </p>
-                      )}
                     </div>
 
                     {/* Actions */}
@@ -369,7 +358,7 @@ function PayrollOrderAccordionRow({
                         type="button"
                         variant="primary"
                         size="sm"
-                        onClick={() => handleSave(item.id)}
+                        onClick={() => handleSave(item.id, item.clientTotalCents)}
                         disabled={isPending}
                         className="h-7 text-xs px-3 font-semibold"
                       >
@@ -487,18 +476,21 @@ function PayrollOrderAccordionRow({
                           </TableCell>
                           <TableCell className="px-2 py-1.5 text-right">
                             <div className="flex items-center justify-end">
-                              <div className="flex items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)] w-28">
-                                <span className="pl-2 pr-0.5 text-[var(--color-text-muted)] text-xs" aria-hidden="true">
+                              <div className="relative w-28 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
+                                <span
+                                  className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-xs text-[var(--color-text-muted)] font-medium"
+                                  aria-hidden="true"
+                                >
                                   $
                                 </span>
-                                <Input
+                                <input
                                   id={`base-input-d-${item.id}`}
                                   type="number"
                                   min="0"
                                   step="0.01"
                                   value={editValue}
                                   onChange={(e) => setEditValue(e.target.value)}
-                                  className="h-6 border-0 px-1 text-right text-xs shadow-none focus-visible:ring-0"
+                                  className="block w-full h-7 pl-5 pr-2 text-right bg-transparent text-xs text-[var(--color-text-main)] outline-none font-medium"
                                   autoFocus
                                 />
                               </div>
@@ -506,8 +498,8 @@ function PayrollOrderAccordionRow({
                           </TableCell>
                           <TableCell className="px-2 py-1.5 text-center font-medium">
                             <div className="flex items-center justify-center">
-                              <div className="flex items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)] w-16">
-                                <Input
+                              <div className="relative w-20 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
+                                <input
                                   id={`rate-input-d-${item.id}`}
                                   type="number"
                                   min="1"
@@ -515,9 +507,12 @@ function PayrollOrderAccordionRow({
                                   step="1"
                                   value={editRateValue}
                                   onChange={(e) => setEditRateValue(e.target.value)}
-                                  className="h-6 border-0 px-1 text-right text-xs shadow-none focus-visible:ring-0"
+                                  className="block w-full h-7 pl-2 pr-6 text-center bg-transparent text-xs text-[var(--color-text-main)] outline-none font-medium"
                                 />
-                                <span className="pr-1 text-xs text-[var(--color-text-muted)]" aria-hidden="true">
+                                <span
+                                  className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-xs text-[var(--color-text-muted)] font-medium"
+                                  aria-hidden="true"
+                                >
                                   %
                                 </span>
                               </div>
@@ -531,8 +526,8 @@ function PayrollOrderAccordionRow({
                               <Button
                                 type="button"
                                 variant="primary"
-                                size="sm"
-                                onClick={() => handleSave(item.id)}
+                                 size="sm"
+                                onClick={() => handleSave(item.id, item.clientTotalCents)}
                                 disabled={isPending}
                                 className="h-6 text-xs px-2 font-medium"
                               >
@@ -564,13 +559,6 @@ function PayrollOrderAccordionRow({
                             </div>
                           </TableCell>
                         </TableRow>
-                        {errorMessage && (
-                          <TableRow className="bg-[var(--color-status-danger-bg)]/20 border-b border-[var(--color-border-light)]/40">
-                            <TableCell colSpan={6} className="px-2 py-1 text-xs text-[var(--color-status-danger-fg)]">
-                              {errorMessage}
-                            </TableCell>
-                          </TableRow>
-                        )}
                       </React.Fragment>
                     );
                   }

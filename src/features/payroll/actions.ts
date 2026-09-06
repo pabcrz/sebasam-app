@@ -37,62 +37,87 @@ export async function updatePayrollItemBase(
 ): Promise<UpdatePayrollItemBaseResult> {
   await requireOperationalRole();
 
-  const parsed = updatePayrollItemAdjustmentSchema.safeParse(input);
-  if (!parsed.success) {
+  try {
+    const parsed = updatePayrollItemAdjustmentSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: parsed.error.issues[0]?.message ?? "Datos de ajuste inválidos.",
+      };
+    }
+
+    const { itemId, customPayrollBaseCents, customRatePercent } = parsed.data;
+
+    const item = await prisma.quoteItem.findUnique({
+      where: { id: itemId },
+      select: {
+        id: true,
+        type: true,
+        totalCents: true,
+        includeInPayroll: true,
+      },
+    });
+
+    if (!item) {
+      return {
+        success: false,
+        error: "El concepto no existe o no fue encontrado.",
+      };
+    }
+
+    const isCommissionable =
+      item.type === QuoteItemType.LABOR ||
+      (item.type === QuoteItemType.OTHER && Boolean(item.includeInPayroll));
+
+    if (!isCommissionable) {
+      return {
+        success: false,
+        error: "Solo los conceptos de mano de obra o servicios comisionables permiten ajuste de base de nómina.",
+      };
+    }
+
+    if (
+      customPayrollBaseCents !== null &&
+      item.totalCents !== null &&
+      customPayrollBaseCents > item.totalCents
+    ) {
+      return {
+        success: false,
+        error: "La base de nómina no puede ser mayor al cobro del cliente.",
+      };
+    }
+
+    const dataToUpdate: {
+      customPayrollBaseCents: number | null;
+      customRatePercent?: number | null;
+    } = {
+      customPayrollBaseCents,
+    };
+
+    if (customRatePercent !== undefined) {
+      dataToUpdate.customRatePercent = customRatePercent;
+    }
+
+    await prisma.quoteItem.update({
+      where: { id: itemId },
+      data: dataToUpdate,
+    });
+
+    revalidatePath("/admin/nomina");
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof Error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
     return {
       success: false,
-      error: parsed.error.issues[0]?.message ?? "Datos de ajuste inválidos.",
+      error: "Error inesperado al actualizar la base de nómina.",
     };
   }
-
-  const { itemId, customPayrollBaseCents, customRatePercent } = parsed.data;
-
-  const item = await prisma.quoteItem.findUnique({
-    where: { id: itemId },
-    select: {
-      id: true,
-      type: true,
-      includeInPayroll: true,
-    },
-  });
-
-  if (!item) {
-    return {
-      success: false,
-      error: "El concepto no existe o no fue encontrado.",
-    };
-  }
-
-  const isCommissionable =
-    item.type === QuoteItemType.LABOR ||
-    (item.type === QuoteItemType.OTHER && Boolean(item.includeInPayroll));
-
-  if (!isCommissionable) {
-    return {
-      success: false,
-      error: "Solo los conceptos de mano de obra o servicios comisionables permiten ajuste de base de nómina.",
-    };
-  }
-
-  const dataToUpdate: {
-    customPayrollBaseCents: number | null;
-    customRatePercent?: number | null;
-  } = {
-    customPayrollBaseCents,
-  };
-
-  if (customRatePercent !== undefined) {
-    dataToUpdate.customRatePercent = customRatePercent;
-  }
-
-  await prisma.quoteItem.update({
-    where: { id: itemId },
-    data: dataToUpdate,
-  });
-
-  revalidatePath("/admin/nomina");
-
-  return { success: true };
 }
 
 export const updatePayrollItemAdjustment = updatePayrollItemBase;

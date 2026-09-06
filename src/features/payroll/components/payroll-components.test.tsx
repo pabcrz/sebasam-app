@@ -9,7 +9,19 @@ import { PayrollWorkerDetail } from "./payroll-worker-detail";
 import { PayrollView } from "./payroll-view";
 import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
+import toast from "react-hot-toast";
 import { updatePayrollItemBase } from "../actions";
+
+vi.mock("react-hot-toast", () => {
+  const toastMock = {
+    success: vi.fn(),
+    error: vi.fn(),
+  };
+  return {
+    default: toastMock,
+    toast: toastMock,
+  };
+});
 
 vi.mock("../actions", () => ({
   updatePayrollItemBase: vi.fn(),
@@ -386,7 +398,7 @@ describe("Payroll UI Components", () => {
       });
     });
 
-    it("displays error feedback when saving fails", async () => {
+    it("displays error feedback via toast when saving fails", async () => {
       (updatePayrollItemBase as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: false,
         error: "Base no permitida",
@@ -409,8 +421,32 @@ describe("Payroll UI Components", () => {
       fireEvent.click(saveBtns[0]);
 
       await waitFor(() => {
-        expect(screen.getAllByText("Base no permitida").length).toBeGreaterThanOrEqual(1);
+        expect(toast.error).toHaveBeenCalledWith("Base no permitida");
       });
+    });
+
+    it("rejects custom base greater than client total cents via toast", async () => {
+      render(
+        <PayrollWorkerDetail
+          workers={sampleWorkers}
+          selectedWorkerId="w-1"
+        />
+      );
+
+      const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
+      fireEvent.click(adjustBtns[0]);
+
+      // clientTotalCents is $1,000 (100000 cents). Entering $1,500 should trigger toast.error
+      const inputs = screen.getAllByDisplayValue("1000");
+      fireEvent.change(inputs[0], { target: { value: "1500" } });
+
+      const saveBtns = screen.getAllByRole("button", { name: /^guardar$/i });
+      fireEvent.click(saveBtns[0]);
+
+      expect(toast.error).toHaveBeenCalledWith(
+        "La base de nómina no puede ser mayor al cobro del cliente."
+      );
+      expect(updatePayrollItemBase).not.toHaveBeenCalled();
     });
 
     it("allows resetting adjustment back to original base when item has custom base", async () => {

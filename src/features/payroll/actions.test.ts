@@ -31,6 +31,7 @@ describe("Payroll Actions - updatePayrollItemBase", () => {
     (prisma.quoteItem.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "item-1",
       type: QuoteItemType.LABOR,
+      totalCents: 200000,
       includeInPayroll: false,
     });
     (prisma.quoteItem.update as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -56,6 +57,7 @@ describe("Payroll Actions - updatePayrollItemBase", () => {
     (prisma.quoteItem.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "item-1",
       type: QuoteItemType.LABOR,
+      totalCents: 200000,
       includeInPayroll: false,
     });
     (prisma.quoteItem.update as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -79,6 +81,7 @@ describe("Payroll Actions - updatePayrollItemBase", () => {
     (prisma.quoteItem.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "item-1",
       type: QuoteItemType.LABOR,
+      totalCents: 200000,
       includeInPayroll: false,
     });
 
@@ -99,6 +102,7 @@ describe("Payroll Actions - updatePayrollItemBase", () => {
     (prisma.quoteItem.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "item-1",
       type: QuoteItemType.LABOR,
+      totalCents: 200000,
       includeInPayroll: false,
     });
 
@@ -113,6 +117,26 @@ describe("Payroll Actions - updatePayrollItemBase", () => {
       data: { customPayrollBaseCents: null, customRatePercent: null },
     });
     expect(result).toEqual({ success: true });
+  });
+
+  it("rejects custom base greater than client total cents", async () => {
+    (prisma.quoteItem.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "item-1",
+      type: QuoteItemType.LABOR,
+      totalCents: 100000, // $1,000 charged to client
+      includeInPayroll: false,
+    });
+
+    const result = await updatePayrollItemBase({
+      itemId: "item-1",
+      customPayrollBaseCents: 120000, // $1,200 > $1,000
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "La base de nómina no puede ser mayor al cobro del cliente.",
+    });
+    expect(prisma.quoteItem.update).not.toHaveBeenCalled();
   });
 
   it("validates input: rejects custom rate percent out of range (< 1 or > 100)", async () => {
@@ -135,6 +159,7 @@ describe("Payroll Actions - updatePayrollItemBase", () => {
     (prisma.quoteItem.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "item-1",
       type: QuoteItemType.LABOR,
+      totalCents: 100000,
       includeInPayroll: false,
     });
 
@@ -154,6 +179,7 @@ describe("Payroll Actions - updatePayrollItemBase", () => {
     (prisma.quoteItem.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "item-other",
       type: QuoteItemType.OTHER,
+      totalCents: 100000,
       includeInPayroll: true,
     });
 

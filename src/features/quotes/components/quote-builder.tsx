@@ -15,7 +15,11 @@ import {
   Textarea,
 } from "@/components/ui";
 import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
-import { mexicoCityCalendarDate } from "@/features/quotes/lib/operational-date";
+import {
+  defaultOperationalCalendarDate,
+  isSundayOperationalDate,
+  mexicoCityCalendarDate,
+} from "@/features/quotes/lib/operational-date";
 import {
   getStepError,
   normalizeSections,
@@ -125,7 +129,7 @@ export function QuoteBuilder({
   const [builderState, dispatch] = React.useReducer(
     quoteBuilderReducer,
     undefined,
-    () => initializeQuoteBuilderState(initialData, mexicoCityCalendarDate()),
+    () => initializeQuoteBuilderState(initialData, defaultOperationalCalendarDate()),
   );
   const {
     customerId,
@@ -440,6 +444,11 @@ export function QuoteBuilder({
         return;
       }
 
+      if (step === "notes" && isSundayOperationalDate(operationalDate)) {
+        setStepError("No se pueden registrar trabajos en domingo. Selecciona una fecha válida de lunes a sábado.");
+        return;
+      }
+
       setStepError(null);
     }
 
@@ -478,6 +487,12 @@ export function QuoteBuilder({
 
     if (error) {
       setStepError(error);
+      return false;
+    }
+
+    if (isSundayOperationalDate(operationalDate)) {
+      setStep("notes");
+      setStepError("No se pueden registrar trabajos en domingo. Selecciona una fecha válida de lunes a sábado.");
       return false;
     }
 
@@ -939,6 +954,11 @@ export function QuoteBuilder({
                 onChange={(event) => dispatch({ type: "setOperationalDate", operationalDate: event.target.value })}
               />
               {!isOperationalDateEditable ? <input type="hidden" name="operationalDate" value={operationalDate} /> : null}
+              {isSundayOperationalDate(operationalDate) && (
+                <p className="text-xs font-medium text-[var(--color-status-danger-fg)]" role="alert">
+                  No se pueden registrar trabajos en domingo. Selecciona una fecha de lunes a sábado.
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Descripción</Label>
