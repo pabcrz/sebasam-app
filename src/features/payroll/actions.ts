@@ -106,6 +106,7 @@ export async function updatePayrollItemBase(
 
     return { success: true };
   } catch (error) {
+    console.error("[updatePayrollItemBase] error:", error);
     if (
       typeof error === "object" &&
       error !== null &&

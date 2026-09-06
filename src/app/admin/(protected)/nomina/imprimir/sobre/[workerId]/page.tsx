@@ -22,11 +22,11 @@ export async function generateMetadata({
   };
 }
 
-export default async function WorkerEnvelopePrintPage({
-  params,
-  searchParams,
-}: WorkerEnvelopePrintPageProps) {
-  const [{ workerId }, resolvedParamsRaw] = await Promise.all([params, searchParams]);
+export default async function WorkerEnvelopePrintPage(props?: WorkerEnvelopePrintPageProps) {
+  const [{ workerId }, resolvedParamsRaw] = await Promise.all([
+    props?.params ?? Promise.resolve({ workerId: "" }),
+    props?.searchParams ?? Promise.resolve({}),
+  ]);
   const resolvedParams = resolvedParamsRaw ?? {};
   const decodedWorkerId = decodeURIComponent(workerId);
   const period = parsePayrollParams(resolvedParams);
