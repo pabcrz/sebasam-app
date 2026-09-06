@@ -495,3 +495,50 @@ model BankAccount {
 
   @@index([paymentSettingsId])
 }
+
+model HistoricalWork {
+  id           String   @id @default(cuid())
+  batchId      String
+  workRef      String
+  workDate     DateTime @db.Date
+  customerName String?
+  plate        String?
+  brand        String?
+  model        String?
+  masterName   String?
+  masterId     String?  @db.Uuid
+  source       String   @default("text")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items HistoricalWorkItem[]
+
+  @@unique([batchId, workRef])
+  @@index([workDate])
+  @@map("historical_works")
+}
+
+model HistoricalWorkItem {
+  id                 String             @id @default(cuid())
+  workId             String
+  type               QuoteItemType
+  description        String
+  quantity           Decimal?           @db.Decimal(10, 2)
+  customerPriceCents Int?
+  payrollBaseCents   Int?
+  ratePercent        Int?
+  includeInPayroll   Boolean            @default(false)
+  isKit              Boolean            @default(false)
+  sortOrder          Int                @default(0)
+  embedding          Unsupported("vector(1536)")
+  metadata           Json               @default("{}")
+  contentHash        String             @unique
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  work HistoricalWork @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@index([workId])
+  @@index([type, description])
+  @@map("historical_work_items")
+}
