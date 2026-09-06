@@ -425,7 +425,7 @@ describe("Payroll UI Components", () => {
       });
     });
 
-    it("rejects custom base greater than client total cents via toast", async () => {
+    it("reactively clamps custom base input to client total cents and prevents higher values", async () => {
       render(
         <PayrollWorkerDetail
           workers={sampleWorkers}
@@ -436,17 +436,17 @@ describe("Payroll UI Components", () => {
       const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
       fireEvent.click(adjustBtns[0]);
 
-      // clientTotalCents is $1,000 (100000 cents). Entering $1,500 should trigger toast.error
+      // clientTotalCents is $1,000 (100000 cents). Max attribute should be 1000
       const inputs = screen.getAllByDisplayValue("1000");
+      expect(inputs[0]).toHaveAttribute("max", "1000");
+
+      // Typing $1,500 should be reactively clamped to $1,000
       fireEvent.change(inputs[0], { target: { value: "1500" } });
+      expect(inputs[0]).toHaveValue(1000);
 
-      const saveBtns = screen.getAllByRole("button", { name: /^guardar$/i });
-      fireEvent.click(saveBtns[0]);
-
-      expect(toast.error).toHaveBeenCalledWith(
-        "La base de nómina no puede ser mayor al cobro del cliente."
-      );
-      expect(updatePayrollItemBase).not.toHaveBeenCalled();
+      // Typing negative should clamp to 0
+      fireEvent.change(inputs[0], { target: { value: "-50" } });
+      expect(inputs[0]).toHaveValue(0);
     });
 
     it("allows resetting adjustment back to original base when item has custom base", async () => {

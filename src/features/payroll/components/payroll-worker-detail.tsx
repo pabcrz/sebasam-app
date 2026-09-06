@@ -100,6 +100,45 @@ function PayrollOrderAccordionRow({
     setEditRateValue("");
   };
 
+  const handleBaseChange = (val: string, maxCents: number) => {
+    if (val === "") {
+      setEditValue("");
+      return;
+    }
+    const maxPesos = maxCents / 100;
+    const num = Number(val);
+    if (!isNaN(num)) {
+      if (num < 0) {
+        setEditValue("0");
+        return;
+      }
+      if (num > maxPesos) {
+        setEditValue(String(maxPesos));
+        return;
+      }
+    }
+    setEditValue(val);
+  };
+
+  const handleRateChange = (val: string) => {
+    if (val === "") {
+      setEditRateValue("");
+      return;
+    }
+    const num = Number(val);
+    if (!isNaN(num)) {
+      if (num <= 0) {
+        setEditRateValue("1");
+        return;
+      }
+      if (num > 100) {
+        setEditRateValue("100");
+        return;
+      }
+    }
+    setEditRateValue(val);
+  };
+
   const handleSave = (itemId: string, clientTotalCents: number) => {
     const trimmedBase = editValue.trim();
     if (trimmedBase === "") {
@@ -277,7 +316,10 @@ function PayrollOrderAccordionRow({
                             htmlFor={`base-input-m-${item.id}`}
                             className="block text-[11px] font-medium text-[var(--color-text-main)]"
                           >
-                            Base nómina
+                            Base nómina{" "}
+                            <span className="text-[var(--color-text-muted)] font-normal text-[10px]">
+                              (máx: {formatCents(item.clientTotalCents)})
+                            </span>
                           </label>
                           <div className="relative rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:border-[var(--color-primary)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
                             <span
@@ -290,10 +332,11 @@ function PayrollOrderAccordionRow({
                               id={`base-input-m-${item.id}`}
                               type="number"
                               min="0"
+                              max={item.clientTotalCents / 100}
                               step="0.01"
                               placeholder="0.00"
                               value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
+                              onChange={(e) => handleBaseChange(e.target.value, item.clientTotalCents)}
                               className="block w-full h-8 pl-6 pr-2.5 bg-transparent text-xs text-[var(--color-text-main)] outline-none"
                               autoFocus
                             />
@@ -316,7 +359,7 @@ function PayrollOrderAccordionRow({
                               step="1"
                               placeholder="50"
                               value={editRateValue}
-                              onChange={(e) => setEditRateValue(e.target.value)}
+                              onChange={(e) => handleRateChange(e.target.value)}
                               className="block w-full h-8 pl-2.5 pr-6 text-right bg-transparent text-xs text-[var(--color-text-main)] outline-none"
                             />
                             <span
@@ -497,10 +540,12 @@ function PayrollOrderAccordionRow({
                                   id={`base-input-d-${item.id}`}
                                   type="number"
                                   min="0"
+                                  max={item.clientTotalCents / 100}
                                   step="0.01"
                                   value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onChange={(e) => handleBaseChange(e.target.value, item.clientTotalCents)}
                                   className="block w-full h-7 pl-5 pr-2 text-right bg-transparent text-xs text-[var(--color-text-main)] outline-none font-medium"
+                                  title={`Máximo permitido: ${formatCents(item.clientTotalCents)}`}
                                   autoFocus
                                 />
                               </div>
@@ -516,7 +561,7 @@ function PayrollOrderAccordionRow({
                                   max="100"
                                   step="1"
                                   value={editRateValue}
-                                  onChange={(e) => setEditRateValue(e.target.value)}
+                                  onChange={(e) => handleRateChange(e.target.value)}
                                   className="block w-full h-7 pl-2 pr-6 text-center bg-transparent text-xs text-[var(--color-text-main)] outline-none font-medium"
                                 />
                                 <span
