@@ -12,6 +12,7 @@ import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-d
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 import type { OperationalDashboardSnapshot } from "../types";
 import { QueueSnapshotCards } from "./queue-snapshot-cards";
+import { PendingAttentionSection } from "./pending-attention-section";
 import { KpiPeriodMetrics } from "./kpi-period-metrics";
 import { PayrollEstimateCard } from "./payroll-estimate-card";
 
@@ -105,7 +106,10 @@ export function DashboardView({
         {/* 1. Live Queues Snapshot */}
         <QueueSnapshotCards queues={snapshot.queues} />
 
-        {/* 2. Operational KPIs per Period */}
+        {/* 2. Por atender */}
+        <PendingAttentionSection items={snapshot.pendingAttention} />
+
+        {/* 3. Operational KPIs per Period */}
         <KpiPeriodMetrics kpis={snapshot.kpis} />
 
         {/* 3. Weekly Payroll Estimate */}

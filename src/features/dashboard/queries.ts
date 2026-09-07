@@ -6,6 +6,7 @@ import { getDashboardPeriodRanges } from "./period";
 import type {
   DashboardPeriodKey,
   OperationalDashboardSnapshot,
+  PendingAttentionItem,
   PeriodMetrics,
   QueueMetrics,
   WeeklyPayrollEstimate,
@@ -16,8 +17,8 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
 
   const ranges = getDashboardPeriodRanges(now);
 
-  // 1. Live Queues
-  const [commercialQueueCount, activeExecutionCount] = await Promise.all([
+  // 1. Live Queues & Items Pending Attention
+  const [commercialQueueCount, activeExecutionCount, pendingQuotes, pendingWorkOrders] = await Promise.all([
     prisma.quote.count({
       where: {
         deletedAt: null,
@@ -39,12 +40,108 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
         status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
       },
     }),
+    prisma.quote.findMany({
+      where: {
+        deletedAt: null,
+        status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.APPROVED] },
+        OR: [
+          { workOrder: null },
+          {
+            workOrder: {
+              status: {
+                notIn: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED],
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        customer: { select: { name: true } },
+        vehicle: { select: { brand: true, model: true, year: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 6,
+    }),
+    prisma.workOrder.findMany({
+      where: {
+        status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
+      },
+      include: {
+        quote: {
+          include: {
+            customer: { select: { name: true } },
+            vehicle: { select: { brand: true, model: true, year: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 6,
+    }),
   ]);
 
   const queues: QueueMetrics = {
     commercialQueueCount,
     activeExecutionCount,
   };
+
+  const pendingAttention: PendingAttentionItem[] = [
+    ...pendingQuotes.map((q) => {
+      let statusLabel = "Borrador";
+      let statusVariant: PendingAttentionItem["statusVariant"] = "warning";
+      let nextStep = "Enviar cotización";
+      if (q.status === QuoteStatus.SENT) {
+        statusLabel = "Enviada";
+        statusVariant = "info";
+        nextStep = "Esperando respuesta / Aprobar";
+      } else if (q.status === QuoteStatus.APPROVED) {
+        statusLabel = "Aprobada";
+        statusVariant = "success";
+        nextStep = "Iniciar trabajo";
+      }
+
+      const vehicleParts = q.vehicle
+        ? [q.vehicle.brand, q.vehicle.model, q.vehicle.year ? String(q.vehicle.year) : ""].filter(Boolean)
+        : [];
+      const vehicleDescription = vehicleParts.length > 0 ? vehicleParts.join(" ") : "Sin vehículo";
+
+      return {
+        id: q.id,
+        type: "quote" as const,
+        href: `/admin/quotes/${q.id}`,
+        customerName: q.customer?.name || "Sin cliente",
+        vehicleDescription,
+        statusLabel,
+        statusVariant,
+        nextStep,
+        updatedAt: q.updatedAt,
+      };
+    }),
+    ...pendingWorkOrders.map((wo) => {
+      const isAssigned = wo.status === WorkOrderStatus.ASSIGNED;
+      const statusLabel = isAssigned ? "Asignado" : "En progreso";
+      const nextStep = isAssigned ? "Comenzar trabajo" : "Finalizar trabajo";
+
+      const vehicle = wo.quote?.vehicle;
+      const vehicleParts = vehicle
+        ? [vehicle.brand, vehicle.model, vehicle.year ? String(vehicle.year) : ""].filter(Boolean)
+        : [];
+      const vehicleDescription = vehicleParts.length > 0 ? vehicleParts.join(" ") : "Sin vehículo";
+
+      return {
+        id: wo.id,
+        type: "work_order" as const,
+        href: `/admin/work-orders/${wo.id}`,
+        customerName: wo.quote?.customer?.name || "Sin cliente",
+        vehicleDescription,
+        statusLabel,
+        statusVariant: "info" as const,
+        nextStep,
+        updatedAt: wo.updatedAt,
+      };
+    }),
+  ]
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    .slice(0, 6);
 
   // 2. Payments Collected per Period (grouped by createdAt for status=PAID)
   const [weekPayments, monthPayments, yearPayments] = await Promise.all([
@@ -337,6 +434,7 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
   return {
     generatedAt: now,
     queues,
+    pendingAttention,
     kpis,
     weeklyPayroll,
   };

@@ -33,6 +33,7 @@ describe("AdminHomePage", () => {
         commercialQueueCount: 4,
         activeExecutionCount: 2,
       },
+      pendingAttention: [],
       kpis: {
         week: {
           period: "week",
@@ -90,6 +91,8 @@ describe("AdminHomePage", () => {
     expect(screen.getByText("Trabajos activos")).toBeInTheDocument();
     const activeExecutionCard = screen.getByRole("link", { name: /trabajos activos · 2/i });
     expect(within(activeExecutionCard).getByText("2")).toHaveAttribute("data-numeric-role", "count");
+    expect(screen.getByText("Por atender")).toBeInTheDocument();
+    expect(screen.getByText("Resumen del período")).toBeInTheDocument();
     expect(screen.getByText("Nómina Semanal (Estimada)")).toBeInTheDocument();
     expect(screen.getByText("Cálculo estimado")).toBeInTheDocument();
     expect(screen.getByText("Clientes")).toBeInTheDocument();

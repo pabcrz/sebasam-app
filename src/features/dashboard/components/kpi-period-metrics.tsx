@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Boxes, CheckCircle2, CircleDollarSign, Coins, TrendingUp } from "lucide-react";
-import { Card, MetricCardGroup, StatCard, Tabs } from "@/components/ui";
+import { StatCard, Tabs } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import type { DashboardPeriodKey, PeriodMetrics } from "../types";
 
@@ -15,9 +15,9 @@ interface KpiPeriodMetricsProps {
 }
 
 const PERIOD_LABELS: Record<DashboardPeriodKey, string> = {
-  week: "Esta semana",
-  month: "Este mes",
-  year: "Este año",
+  week: "Semana",
+  month: "Mes",
+  year: "Año",
 };
 
 export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
@@ -25,7 +25,7 @@ export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
   const activeMetrics = kpis[selectedPeriod];
 
   return (
-    <Card className="p-0 shadow-sm">
+    <section aria-labelledby="kpis-heading" className="w-full">
       <Tabs
         tabs={(["week", "month", "year"] as DashboardPeriodKey[]).map((periodKey) => ({
           value: periodKey,
@@ -39,30 +39,32 @@ export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
           <div>
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
-              <h2 className="text-lg font-semibold text-[var(--color-text-main)]">Rendimiento Operativo y Cobranza</h2>
+              <h2 id="kpis-heading" className="text-lg font-semibold text-[var(--color-text-main)]">
+                Resumen del período
+              </h2>
             </div>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
               Período: <span className="font-medium text-[var(--color-text-main)]">{activeMetrics.rangeLabel}</span>
             </p>
           </div>
         }
-        headerClassName="flex flex-col gap-4 border-b border-[var(--color-border-light)] p-[var(--space-md)] sm:flex-row sm:items-center sm:justify-between"
+        headerClassName="sticky top-0 z-10 flex flex-col gap-3 bg-[var(--background)]/95 backdrop-blur-xs py-2 pb-3 sm:flex-row sm:items-center sm:justify-between"
         tabListClassName="self-start sm:self-auto"
-        panelContainerClassName="p-[var(--space-md)] pt-6"
+        panelContainerClassName="pt-2"
       />
-    </Card>
+    </section>
   );
 }
 
 function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
   return (
     <>
-      <MetricCardGroup columns={4}>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Trabajos Finalizados"
           value={metrics.completedWorkOrdersCount}
           numericRole="count"
-          description="Órdenes completadas en el período"
+          description="Órdenes completadas"
           icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
           iconVariant="success"
         />
@@ -70,7 +72,7 @@ function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
           label="Mano de Obra"
           value={formatCents(metrics.completedLaborBilledCents)}
           numericRole="currency"
-          description="Mano de obra finalizada facturada"
+          description="Facturada finalizada"
           icon={<Coins className="h-4 w-4" aria-hidden="true" />}
           iconVariant="info"
         />
@@ -78,7 +80,7 @@ function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
           label="Materiales y Refacciones"
           value={formatCents(metrics.completedMaterialsBilledCents)}
           numericRole="currency"
-          description="Materiales y repuestos finalizados"
+          description="Materiales y repuestos"
           icon={<Boxes className="h-4 w-4" aria-hidden="true" />}
           iconVariant="primary"
         />
@@ -92,15 +94,14 @@ function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
               <span data-numeric-role="supporting-count" className="font-medium tabular-nums">
                 {metrics.collectedPaymentsCount}
               </span>{" "}
-              pago{metrics.collectedPaymentsCount === 1 ? "" : "s"} registrado
-              {metrics.collectedPaymentsCount === 1 ? "" : "s"}
+              pago{metrics.collectedPaymentsCount === 1 ? "" : "s"}
             </>
           }
           icon={<CircleDollarSign className="h-4 w-4" aria-hidden="true" />}
           iconVariant="success"
         />
-      </MetricCardGroup>
-      <p className="mt-4 text-right text-[11px] text-[var(--color-text-muted)] italic">
+      </div>
+      <p className="mt-3 text-right text-[11px] text-[var(--color-text-muted)] italic">
         * Los cobros se agrupan según su fecha de registro en el sistema.
       </p>
     </>

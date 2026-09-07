@@ -12,6 +12,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     quote: {
       count: vi.fn(),
+      findMany: vi.fn(),
     },
     workOrder: {
       count: vi.fn(),
@@ -102,13 +103,42 @@ describe("getOperationalDashboardSnapshot", () => {
       },
     ];
 
-    vi.mocked(prisma.workOrder.findMany).mockResolvedValueOnce(sampleCompletedOrders as never);
+    // 3. Mock pending attention items
+    vi.mocked(prisma.quote.findMany).mockResolvedValueOnce([
+      {
+        id: "q-10",
+        status: "DRAFT",
+        customer: { name: "Cliente Borrador" },
+        vehicle: { brand: "Nissan", model: "Sentra", year: 2020 },
+        updatedAt: new Date("2026-08-19T12:00:00.000Z"),
+      },
+    ] as never);
+    vi.mocked(prisma.workOrder.findMany)
+      .mockResolvedValueOnce([
+        {
+          id: "wo-10",
+          status: WorkOrderStatus.IN_PROGRESS,
+          quote: {
+            customer: { name: "Cliente Activo" },
+            vehicle: { brand: "Toyota", model: "Corolla", year: 2022 },
+          },
+          updatedAt: new Date("2026-08-19T13:00:00.000Z"),
+        },
+      ] as never)
+      .mockResolvedValueOnce(sampleCompletedOrders as never);
 
     const snapshot = await getOperationalDashboardSnapshot(fixedNow);
 
     // Verify Queues
     expect(snapshot.queues.commercialQueueCount).toBe(5);
     expect(snapshot.queues.activeExecutionCount).toBe(3);
+
+    // Verify Pending Attention
+    expect(snapshot.pendingAttention).toHaveLength(2);
+    expect(snapshot.pendingAttention[0].customerName).toBe("Cliente Activo");
+    expect(snapshot.pendingAttention[0].nextStep).toBe("Finalizar trabajo");
+    expect(snapshot.pendingAttention[1].customerName).toBe("Cliente Borrador");
+    expect(snapshot.pendingAttention[1].nextStep).toBe("Enviar cotización");
 
     // Verify Week KPI
     expect(snapshot.kpis.week.completedWorkOrdersCount).toBe(1);
@@ -139,12 +169,16 @@ describe("getOperationalDashboardSnapshot", () => {
       .mockResolvedValueOnce({ _count: { _all: 0 }, _sum: { amountCents: null } } as never)
       .mockResolvedValueOnce({ _count: { _all: 0 }, _sum: { amountCents: null } } as never);
 
-    vi.mocked(prisma.workOrder.findMany).mockResolvedValueOnce([]);
+    vi.mocked(prisma.quote.findMany).mockResolvedValueOnce([]);
+    vi.mocked(prisma.workOrder.findMany)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
 
     const snapshot = await getOperationalDashboardSnapshot(fixedNow);
 
     expect(snapshot.queues.commercialQueueCount).toBe(0);
     expect(snapshot.queues.activeExecutionCount).toBe(0);
+    expect(snapshot.pendingAttention).toEqual([]);
     expect(snapshot.kpis.week.completedWorkOrdersCount).toBe(0);
     expect(snapshot.kpis.week.completedLaborBilledCents).toBe(0);
     expect(snapshot.kpis.week.completedMaterialsBilledCents).toBe(0);
