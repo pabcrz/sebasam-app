@@ -50,6 +50,14 @@ enum WorkOrderStatus {
   CANCELLED
 }
 
+enum KnowledgeIndexState {
+  PENDING
+  INDEXING
+  INDEXED
+  FAILED
+  INELIGIBLE
+}
+
 enum AssignmentStatus {
   ASSIGNED
   ACCEPTED
@@ -273,6 +281,7 @@ model QuoteItem {
 
   quote   Quote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   section QuoteSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  completedWorkKnowledgeSources CompletedWorkKnowledgeSource[]
   
   @@index([sectionId])
 }
@@ -297,8 +306,33 @@ model WorkOrder {
   paymentRequests     PaymentRequest[]
   paymentApplications PaymentApplication[]
   ledgerEntries       LedgerEntry[]
+  completedWorkKnowledgeSources CompletedWorkKnowledgeSource[]
 
   @@index([status, completedAt])
+}
+
+model CompletedWorkKnowledgeSource {
+  id                String              @id @default(cuid())
+  originKey         String              @unique
+  workOrderId       String
+  quoteItemId       String
+  contextText       String
+  contextHash       String
+  embedding         Unsupported("vector(1536)")?
+  indexState        KnowledgeIndexState @default(PENDING)
+  indexingAttempts  Int                 @default(0)
+  lastIndexError    String?
+  lastAttemptedAt   DateTime?
+  indexedAt         DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  quoteItem QuoteItem @relation(fields: [quoteItemId], references: [id], onDelete: Cascade)
+
+  @@unique([workOrderId, quoteItemId])
+  @@index([workOrderId, indexState])
+  @@map("completed_work_knowledge_sources")
 }
 
 model WorkAssignment {
