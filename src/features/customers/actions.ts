@@ -315,3 +315,102 @@ export async function deleteCustomerFromForm(formData: FormData) {
   redirect(`${customersPath}?deleted=1`);
 }
 
+export async function deleteCustomerAction(customerId: string) {
+  try {
+    await requireOperationalRole();
+    await deleteCustomerAuthorized(customerId);
+    revalidatePath(customersPath);
+    return { success: true } as const;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al eliminar cliente",
+    } as const;
+  }
+}
+
+export async function deleteCustomersBatchAction(customerIds: string[]) {
+  try {
+    await requireOperationalRole();
+    if (!Array.isArray(customerIds) || customerIds.length === 0) {
+      return { success: false, deletedCount: 0, error: "No customers selected." } as const;
+    }
+
+    const deletedCount = await prisma.$transaction(async (tx) => {
+      let count = 0;
+      for (const customerId of customerIds) {
+        const customer = await tx.customer.findUnique({ where: { id: customerId } });
+        if (!customer) continue;
+
+        if (await tx.quote.count({ where: { customerId } })) {
+          throw new Error("This customer has quotes and cannot be deleted.");
+        }
+        if (await tx.payment.count({ where: { customerId } })) {
+          throw new Error("This customer has financial activity and cannot be deleted.");
+        }
+        if (await tx.paymentRequest.count({ where: { customerId } })) {
+          throw new Error("This customer has payment requests and cannot be deleted.");
+        }
+        if (await tx.ledgerEntry.count({ where: { customerId } })) {
+          throw new Error("This customer has ledger entries and cannot be deleted.");
+        }
+
+        await tx.vehicle.deleteMany({ where: { customerId } });
+        await tx.customerFiscalProfile.deleteMany({ where: { customerId } });
+        await tx.customer.delete({ where: { id: customerId } });
+        count++;
+      }
+      return count;
+    });
+
+    revalidatePath(customersPath);
+    return { success: true, deletedCount } as const;
+  } catch (error) {
+    return {
+      success: false,
+      deletedCount: 0,
+      error: error instanceof Error ? error.message : "Error al eliminar clientes",
+    } as const;
+  }
+}
+
+export async function updateCustomerAction(input: unknown) {
+  try {
+    await requireOperationalRole();
+    if (!input || typeof input !== "object") {
+      return { success: false, error: "invalid" } as const;
+    }
+    const { id, ...data } = input as { id?: string; [key: string]: unknown };
+    if (!id || typeof id !== "string") {
+      return { success: false, error: "invalid" } as const;
+    }
+
+    const currentCustomer = await prisma.customer.findUnique({
+      where: { id },
+      select: { phone: true },
+    });
+    if (!currentCustomer) {
+      return { success: false, error: "not-found" } as const;
+    }
+
+    const { parsed, preserveLegacyPhone } = prepareCustomerUpdate(data, currentCustomer.phone);
+    if (!parsed.success) {
+      return { success: false, error: "invalid" } as const;
+    }
+
+    const customer = await prisma.customer.update({
+      where: { id },
+      data: toCustomerUpdateData(parsed.data, preserveLegacyPhone),
+    });
+
+    revalidatePath(customersPath);
+    return { success: true, customer } as const;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al actualizar cliente",
+    } as const;
+  }
+}
+
+
