@@ -66,6 +66,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
         totalCents: 100_00,
         includeInPayroll: false,
         customRatePercent: null,
+        customPayrollBaseCents: null,
         sortOrder: 0,
       },
     ],
@@ -99,6 +100,7 @@ function makeMultiSectionQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQu
             totalCents: 40_00,
             includeInPayroll: false,
             customRatePercent: null,
+            customPayrollBaseCents: null,
             sortOrder: 0,
           },
         ],
@@ -121,6 +123,7 @@ function makeMultiSectionQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQu
             totalCents: 60_00,
             includeInPayroll: false,
             customRatePercent: null,
+            customPayrollBaseCents: null,
             sortOrder: 0,
           },
         ],
@@ -294,6 +297,7 @@ describe("SharedQuoteView", () => {
       totalCents: 2_000,
       includeInPayroll: false,
       customRatePercent: null,
+      customPayrollBaseCents: null,
       sortOrder: 0,
     }, ...quote.sections.flatMap((section) => section.items)];
 

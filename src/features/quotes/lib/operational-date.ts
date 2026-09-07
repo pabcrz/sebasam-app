@@ -22,8 +22,29 @@ export function mexicoCityCalendarDate(now = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+export function isSundayOperationalDate(calendarDate: string): boolean {
+  if (!calendarDatePattern.test(calendarDate)) return false;
+  const [year, month, day] = calendarDate.split("-").map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return d.getUTCDay() === 0;
+}
+
+export function defaultOperationalCalendarDate(now = new Date()): string {
+  const today = mexicoCityCalendarDate(now);
+  if (isSundayOperationalDate(today)) {
+    // If current day in Mexico City is Sunday, fall back to Saturday
+    const [year, month, day] = today.split("-").map(Number);
+    const saturday = new Date(Date.UTC(year, month - 1, day - 1));
+    const sYear = saturday.getUTCFullYear();
+    const sMonth = String(saturday.getUTCMonth() + 1).padStart(2, "0");
+    const sDay = String(saturday.getUTCDate()).padStart(2, "0");
+    return `${sYear}-${sMonth}-${sDay}`;
+  }
+  return today;
+}
+
 export function normalizeOperationalDate(value: string | undefined, now = new Date()) {
-  const calendarDate = value ?? mexicoCityCalendarDate(now);
+  const calendarDate = value ?? defaultOperationalCalendarDate(now);
 
   if (!calendarDatePattern.test(calendarDate)) {
     throw new Error("Operational date must be a valid YYYY-MM-DD date.");
@@ -42,6 +63,10 @@ export function normalizeOperationalDate(value: string | undefined, now = new Da
 
   if (calendarDate > mexicoCityCalendarDate(now)) {
     throw new Error("Operational date cannot be in the future.");
+  }
+
+  if (normalized.getUTCDay() === 0) {
+    throw new Error("No se pueden registrar trabajos en domingo. Ingresa una fecha válida de lunes a sábado.");
   }
 
   return normalized;
@@ -84,7 +109,7 @@ export function localDateToMexicoCityInstant(
 }
 
 export function operationalDateToCompletedAt(value: string | undefined, now = new Date()): Date {
-  const calendarDate = value ?? mexicoCityCalendarDate(now);
+  const calendarDate = value ?? defaultOperationalCalendarDate(now);
 
   if (!calendarDatePattern.test(calendarDate)) {
     throw new Error("Operational date must be a valid YYYY-MM-DD date.");
@@ -104,6 +129,10 @@ export function operationalDateToCompletedAt(value: string | undefined, now = ne
   const todayMexicoCity = mexicoCityCalendarDate(now);
   if (calendarDate > todayMexicoCity) {
     throw new Error("Operational date cannot be in the future.");
+  }
+
+  if (normalized.getUTCDay() === 0) {
+    throw new Error("No se pueden registrar trabajos en domingo. Ingresa una fecha válida de lunes a sábado.");
   }
 
   if (calendarDate === todayMexicoCity) {

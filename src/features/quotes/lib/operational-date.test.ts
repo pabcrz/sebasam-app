@@ -28,6 +28,20 @@ describe("operational date normalization", () => {
     },
   );
 
+  it("rejects Sunday operational dates with helpful message", () => {
+    // 2026-09-06 is Sunday
+    expect(() => normalizeOperationalDate("2026-09-06", new Date("2026-09-07T12:00:00.000Z")))
+      .toThrow(/domingo/i);
+    expect(() => operationalDateToCompletedAt("2026-09-06", new Date("2026-09-07T12:00:00.000Z")))
+      .toThrow(/domingo/i);
+  });
+
+  it("falls back to Saturday when today is Sunday in Mexico City", () => {
+    // Sunday 2026-09-06 at 08:00 UTC (02:00 AM Mexico City)
+    const sunday = new Date("2026-09-06T08:00:00.000Z");
+    expect(normalizeOperationalDate(undefined, sunday)).toEqual(new Date("2026-09-05T00:00:00.000Z"));
+  });
+
   describe("operationalDateToCompletedAt", () => {
     it("assigns completedAt to the past selected date in America/Mexico_City, not capture time", () => {
       // Captured on Saturday 2026-09-05 at 15:00 UTC

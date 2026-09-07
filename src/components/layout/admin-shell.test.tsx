@@ -66,6 +66,8 @@ describe("AdminShell", () => {
     ["/admin/work-orders", "/admin/work-orders", "Trabajos"],
     ["/admin/notas", "/admin/notas", "Notas"],
     ["/admin/nomina", "/admin/nomina", "Nómina"],
+    ["/admin/historical", "/admin/historical", "Histórico"],
+    ["/asistente", "/asistente", "Asistente"],
   ])("marks only the matching desktop item as current for %s", (pathname, href, label) => {
     mockPathname = pathname;
     render(
@@ -88,6 +90,8 @@ describe("AdminShell", () => {
     ["/admin/work-orders", "/admin/work-orders"],
     ["/admin/notas", "/admin/notas"],
     ["/admin/nomina", "/admin/nomina"],
+    ["/admin/historical", "/admin/historical"],
+    ["/asistente", "/asistente"],
     ["/admin/nomina/worker-1", "/admin/nomina"],
   ])("marks only the matching mobile item as current for %s", (pathname, href) => {
     mockPathname = pathname;
@@ -104,7 +108,7 @@ describe("AdminShell", () => {
     expect(current[0]).toHaveAttribute("href", href);
   });
 
-  it("provides the five primary routes as keyboard-accessible mobile links", () => {
+  it("provides the seven primary routes as keyboard-accessible mobile links", () => {
     render(
       <AdminShell displayName="Admin User" role="admin">
         <div>Content</div>
@@ -114,13 +118,15 @@ describe("AdminShell", () => {
     const mobileNav = screen.getByRole("navigation", { name: "Navegación móvil" });
     const links = within(mobileNav).getAllByRole("link");
 
-    expect(links).toHaveLength(5);
+    expect(links).toHaveLength(7);
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/admin/customers",
       "/admin/quotes",
       "/admin/work-orders",
       "/admin/notas",
       "/admin/nomina",
+      "/admin/historical",
+      "/asistente",
     ]);
     expect(links.map((link) => link.getAttribute("aria-label"))).toEqual([
       "Clientes",
@@ -128,16 +134,24 @@ describe("AdminShell", () => {
       "Trabajos",
       "Notas",
       "Nómina",
+      "Histórico",
+      "Asistente",
     ]);
     expect(links.every((link) => link.className.includes("focus-visible:ring-2"))).toBe(true);
     expect(links.every((link) => link.className.includes("min-h-[var(--tap-min-height)]"))).toBe(true);
     expect(links.every((link) => link.querySelector(".whitespace-nowrap"))).toBe(true);
     expect(links.every((link) => link.textContent?.trim() && !link.textContent.includes("\n"))).toBe(true);
     expect(within(mobileNav).getByText("Cotiz.")).toBeInTheDocument();
+    expect(within(mobileNav).getByText("Hist.")).toBeInTheDocument();
+    expect(within(mobileNav).getByText("IA")).toBeInTheDocument();
     const payrollLink = within(mobileNav).getByRole("link", { name: "Nómina" });
     expect(payrollLink).toHaveAttribute("href", "/admin/nomina");
     expect(within(payrollLink).getByTestId("payroll-icon")).toBeInTheDocument();
-    expect(mobileNav.querySelector(".grid-cols-5")).toBeInTheDocument();
+    const historicalLink = within(mobileNav).getByRole("link", { name: "Histórico" });
+    expect(historicalLink).toHaveAttribute("href", "/admin/historical");
+    const assistantLink = within(mobileNav).getByRole("link", { name: "Asistente" });
+    expect(assistantLink).toHaveAttribute("href", "/asistente");
+    expect(mobileNav.querySelector(".grid-cols-7")).toBeInTheDocument();
     expect(mobileNav).toHaveStyle({ paddingBottom: "env(safe-area-inset-bottom)" });
   });
 

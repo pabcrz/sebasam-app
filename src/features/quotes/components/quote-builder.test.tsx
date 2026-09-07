@@ -1589,4 +1589,73 @@ describe("QuoteBuilder", () => {
     expect(screen.queryByText("El concepto 1 necesita una descripción.")).not.toBeInTheDocument();
     expect(screen.getByText("No se pudo guardar.")).toBeInTheDocument();
   });
+
+  it("verifies compound control structure, border and focus ownership, separators, and accessible states for quantity and unit price (issue #475)", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    // 1. Structural ownership of borders and focus
+    const quantityInput = screen.getByLabelText("Cantidad");
+    const unitPriceInput = screen.getByLabelText("Precio unitario");
+    const quantityContainer = quantityInput.parentElement!;
+    const unitPriceContainer = unitPriceInput.parentElement!;
+
+    // Outer containers own the continuous border and focus ring
+    expect(quantityContainer).toHaveClass("border", "border-[var(--color-border-light)]");
+    expect(quantityContainer).toHaveClass("focus-within:ring-[3px]", "focus-within:ring-[var(--color-focus-ring)]");
+    expect(quantityContainer).not.toHaveClass("overflow-hidden");
+
+    expect(unitPriceContainer).toHaveClass("border", "border-[var(--color-border-light)]");
+    expect(unitPriceContainer).toHaveClass("focus-within:ring-[3px]", "focus-within:ring-[var(--color-focus-ring)]");
+
+    // Inner inputs do not own outer border or competing focus ring
+    expect(quantityInput).toHaveClass("outline-none", "bg-transparent", "px-1");
+    expect(quantityInput).not.toHaveClass("border", "shadow-sm");
+
+    expect(unitPriceInput).toHaveClass("outline-none", "bg-transparent");
+    expect(unitPriceInput).not.toHaveClass("border", "shadow-sm");
+
+    // Currency prefix
+    const currencyPrefix = screen.getByTestId("currency-prefix-0");
+    expect(currencyPrefix).toHaveTextContent("$");
+    expect(unitPriceContainer).toContainElement(currencyPrefix);
+    expect(unitPriceInput).toHaveAccessibleDescription("Importe en pesos mexicanos.");
+
+    // 2. Internal separators on buttons without double borders
+    const minusButton = screen.getByRole("button", { name: "Restar cantidad del concepto 1" });
+    const plusButton = screen.getByRole("button", { name: "Sumar cantidad del concepto 1" });
+
+    expect(minusButton).toHaveClass("border-r", "border-[var(--color-border-light)]");
+    expect(minusButton).not.toHaveClass("border-l", "border-t", "border-b");
+
+    expect(plusButton).toHaveClass("border-l", "border-[var(--color-border-light)]");
+    expect(plusButton).not.toHaveClass("border-r", "border-t", "border-b");
+
+    // 3. Disabled states
+    // Default quantity is 1 -> minus button disabled
+    expect(minusButton).toBeDisabled();
+    expect(plusButton).not.toBeDisabled();
+
+    // Increment with plus button
+    await user.click(plusButton);
+    expect(quantityInput).toHaveValue("2");
+    expect(minusButton).not.toBeDisabled();
+
+    // Set quantity to maximum for default LABOR (limit = 100)
+    await user.clear(quantityInput);
+    await user.type(quantityInput, "100");
+    expect(plusButton).toBeDisabled();
+
+    // 4. Error states and accessibility
+    // Clear quantity to empty -> triggers invalid state
+    await user.clear(quantityInput);
+    expect(quantityInput).toHaveAttribute("aria-invalid", "true");
+    const quantityErrorId = quantityInput.getAttribute("aria-describedby");
+    expect(quantityErrorId).toBeTruthy();
+    expect(document.getElementById(quantityErrorId!)).toHaveTextContent("El concepto 1 necesita una cantidad.");
+  });
 });
+
