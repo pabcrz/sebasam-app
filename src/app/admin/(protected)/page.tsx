@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getOperationalDashboardSnapshot } from "@/features/dashboard/queries";
 import { listCustomers } from "@/features/customers/queries";
-import { createCustomerFromForm, createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
+import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
 import { createQuoteFromWorkspace } from "@/features/quotes/actions";
 import { DashboardView } from "@/features/dashboard/components/dashboard-view";
 
@@ -19,7 +19,6 @@ export default async function AdminHomePage() {
     <DashboardView
       snapshot={snapshot}
       customers={customers}
-      createCustomerAction={createCustomerFromForm}
       createQuoteAction={createQuoteFromWorkspace}
       createCustomerForQuoteAction={createOrReuseCustomerForQuote}
       searchCustomersAction={searchCustomersForQuote}

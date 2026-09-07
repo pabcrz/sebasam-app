@@ -33,6 +33,7 @@ describe("AdminHomePage", () => {
         commercialQueueCount: 4,
         activeExecutionCount: 2,
       },
+      pendingAttention: [],
       kpis: {
         week: {
           period: "week",
@@ -83,16 +84,21 @@ describe("AdminHomePage", () => {
     render(page);
 
     expect(screen.getByRole("heading", { name: "Inicio", level: 1 })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /nuevo cliente/i })[0]).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /nueva cotización/i })[0]).toBeInTheDocument();
-    expect(screen.getByText("Cola Comercial (Cotizaciones)")).toBeInTheDocument();
-    expect(screen.getByText("4")).toBeInTheDocument();
-    expect(screen.getByText("Ejecución Activa (Taller)")).toBeInTheDocument();
-    const activeExecutionCard = screen.getByRole("link", { name: /Ejecución Activa \(Taller\)/ });
+    expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /nuevo cliente/i })).not.toBeInTheDocument();
+    const quotesQueueCard = screen.getByRole("link", { name: /cotizaciones · 4/i });
+    expect(within(quotesQueueCard).getByText("4")).toHaveAttribute("data-numeric-role", "count");
+    const activeExecutionCard = screen.getByRole("link", { name: /trabajos · 2/i });
     expect(within(activeExecutionCard).getByText("2")).toHaveAttribute("data-numeric-role", "count");
+    expect(screen.getByText("Por atender")).toBeInTheDocument();
+    expect(screen.getByText("Resumen del período")).toBeInTheDocument();
     expect(screen.getByText("Nómina Semanal (Estimada)")).toBeInTheDocument();
     expect(screen.getByText("Cálculo estimado")).toBeInTheDocument();
-    expect(screen.getByText("Clientes")).toBeInTheDocument();
     expect(screen.getByText("Cotizaciones")).toBeInTheDocument();
+    expect(screen.getByText("Trabajos")).toBeInTheDocument();
+    expect(screen.getByText("Clientes")).toBeInTheDocument();
+    expect(screen.getByText("Nómina")).toBeInTheDocument();
+    expect(screen.getByText("Trabajadores")).toBeInTheDocument();
+    expect(screen.queryByText("Notas")).not.toBeInTheDocument();
   });
 });

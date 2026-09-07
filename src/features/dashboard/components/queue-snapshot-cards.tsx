@@ -1,5 +1,4 @@
 import { ClipboardList, FileText } from "lucide-react";
-import { MetricCardGroup } from "@/components/ui/metric-card-group";
 import type { QueueMetrics } from "../types";
 import { QueueMetricCard } from "./queue-metric-card";
 
@@ -13,29 +12,25 @@ export function QueueSnapshotCards({ queues }: QueueSnapshotCardsProps) {
       <h2 id="queues-heading" className="sr-only">
         Colas operativas en tiempo real
       </h2>
-      <MetricCardGroup columns={2}>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {/* Commercial Queue Card */}
         <QueueMetricCard
-          label="Cola Comercial (Cotizaciones)"
+          label="Cotizaciones"
           value={queues.commercialQueueCount}
-          description="Borradores, enviadas o aprobadas pendientes de inicio de trabajo"
           href="/admin/quotes"
           icon={FileText}
           accent="warning"
-          ctaLabel="Ver cotizaciones"
         />
 
         {/* Active Execution Queue Card */}
         <QueueMetricCard
-          label="Ejecución Activa (Taller)"
+          label="Trabajos"
           value={queues.activeExecutionCount}
-          description="Trabajos actualmente asignados o en progreso en taller"
           href="/admin/work-orders"
           icon={ClipboardList}
           accent="primary"
-          ctaLabel="Ver trabajos"
         />
-      </MetricCardGroup>
+      </div>
     </section>
   );
 }

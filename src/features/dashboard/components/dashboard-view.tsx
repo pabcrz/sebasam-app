@@ -1,18 +1,15 @@
 import Link from "next/link";
 import {
   Banknote,
-  ClipboardList,
-  FileCheck,
-  FileText,
   UserCog,
   Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, SectionLabel } from "@/components/ui";
-import { CustomerCreateForm } from "@/features/customers/components/customer-create-form";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 import type { OperationalDashboardSnapshot } from "../types";
 import { QueueSnapshotCards } from "./queue-snapshot-cards";
+import { PendingAttentionSection } from "./pending-attention-section";
 import { KpiPeriodMetrics } from "./kpi-period-metrics";
 import { PayrollEstimateCard } from "./payroll-estimate-card";
 
@@ -24,7 +21,7 @@ type CustomerOption = {
 interface DashboardViewProps {
   snapshot: OperationalDashboardSnapshot;
   customers: CustomerOption[];
-  createCustomerAction: (formData: FormData) => void | Promise<void>;
+  createCustomerAction?: (formData: FormData) => void | Promise<void>;
   createQuoteAction: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   createCustomerForQuoteAction?: (input: unknown) => Promise<{
     success: boolean;
@@ -43,24 +40,6 @@ const modules = [
     icon: Users,
   },
   {
-    href: "/admin/quotes",
-    title: "Cotizaciones",
-    description: "Crear y gestionar cotizaciones en borrador.",
-    icon: FileText,
-  },
-  {
-    href: "/admin/work-orders",
-    title: "Trabajos",
-    description: "Trabajos en proceso. Asignación de maestro y cierre.",
-    icon: ClipboardList,
-  },
-  {
-    href: "/admin/notas",
-    title: "Notas",
-    description: "Trabajos finalizados e impresión de nota de entrega.",
-    icon: FileCheck,
-  },
-  {
     href: "/admin/nomina",
     title: "Nómina",
     description: "Cálculo y liquidación semanal de mano de obra.",
@@ -77,21 +56,17 @@ const modules = [
 export function DashboardView({
   snapshot,
   customers,
-  createCustomerAction,
   createQuoteAction,
   createCustomerForQuoteAction,
   searchCustomersAction,
 }: DashboardViewProps) {
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">Inicio</h1>
-        <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-2">
-          <CustomerCreateForm
-            action={createCustomerAction}
-            triggerVariant="outline"
-            triggerSize="sm"
-          />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">Inicio</h1>
+        </div>
+        <div>
           <QuoteBuilderDialog
             customers={customers}
             createAction={createQuoteAction}
@@ -99,6 +74,7 @@ export function DashboardView({
             searchCustomersAction={searchCustomersAction}
             triggerVariant="primary"
             triggerSize="sm"
+            triggerClassName="w-full sm:w-auto"
           />
         </div>
       </div>
@@ -108,7 +84,10 @@ export function DashboardView({
         {/* 1. Live Queues Snapshot */}
         <QueueSnapshotCards queues={snapshot.queues} />
 
-        {/* 2. Operational KPIs per Period */}
+        {/* 2. Por atender */}
+        <PendingAttentionSection items={snapshot.pendingAttention} />
+
+        {/* 3. Operational KPIs per Period */}
         <KpiPeriodMetrics kpis={snapshot.kpis} />
 
         {/* 3. Weekly Payroll Estimate */}
@@ -141,28 +120,6 @@ export function DashboardView({
             ))}
           </div>
         </div>
-      </div>
-
-      {/* Mobile Floating Action Buttons */}
-      <div
-        className="fixed right-4 z-40 flex items-center gap-2 sm:hidden"
-        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
-      >
-        <CustomerCreateForm
-          action={createCustomerAction}
-          triggerVariant="outline"
-          triggerSize="sm"
-          triggerClassName="h-11 px-3.5 rounded-2xl shadow-lg border border-[var(--color-border-light)] bg-[var(--color-surface)]/95 backdrop-blur-md text-xs font-semibold flex items-center gap-1.5"
-        />
-        <QuoteBuilderDialog
-          customers={customers}
-          createAction={createQuoteAction}
-          createCustomerAction={createCustomerForQuoteAction}
-          searchCustomersAction={searchCustomersAction}
-          triggerVariant="primary"
-          triggerSize="sm"
-          triggerClassName="h-11 px-3.5 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-1.5 border border-white/20"
-        />
       </div>
     </section>
   );
