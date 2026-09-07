@@ -1,11 +1,8 @@
 import Link from "next/link";
 import {
   Banknote,
-  ClipboardList,
   FileCheck,
-  FileText,
   UserCog,
-  Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, SectionLabel } from "@/components/ui";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
@@ -36,24 +33,6 @@ interface DashboardViewProps {
 }
 
 const modules = [
-  {
-    href: "/admin/customers",
-    title: "Clientes",
-    description: "Alta, búsqueda y edición de clientes.",
-    icon: Users,
-  },
-  {
-    href: "/admin/quotes",
-    title: "Cotizaciones",
-    description: "Crear y gestionar cotizaciones en borrador.",
-    icon: FileText,
-  },
-  {
-    href: "/admin/work-orders",
-    title: "Trabajos",
-    description: "Trabajos en proceso. Asignación de maestro y cierre.",
-    icon: ClipboardList,
-  },
   {
     href: "/admin/notas",
     title: "Notas",

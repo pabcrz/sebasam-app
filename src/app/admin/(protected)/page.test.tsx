@@ -94,8 +94,11 @@ describe("AdminHomePage", () => {
     expect(screen.getByText("Resumen del período")).toBeInTheDocument();
     expect(screen.getByText("Nómina Semanal (Estimada)")).toBeInTheDocument();
     expect(screen.getByText("Cálculo estimado")).toBeInTheDocument();
-    expect(screen.getByText("Clientes")).toBeInTheDocument();
-    expect(screen.getAllByText("Cotizaciones").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText("Trabajos").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Cotizaciones")).toBeInTheDocument();
+    expect(screen.getByText("Trabajos")).toBeInTheDocument();
+    expect(screen.getByText("Notas")).toBeInTheDocument();
+    expect(screen.getByText("Nómina")).toBeInTheDocument();
+    expect(screen.getByText("Trabajadores")).toBeInTheDocument();
+    expect(screen.queryByText("Clientes")).not.toBeInTheDocument();
   });
 });

@@ -250,6 +250,10 @@ describe("DashboardView", () => {
     expect(screen.getByText("Por atender")).toBeInTheDocument();
     expect(screen.getByText("Resumen del período")).toBeInTheDocument();
     expect(screen.getByText("Módulos del Sistema")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Notas" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Nómina" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Trabajadores" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 3, name: "Clientes" })).not.toBeInTheDocument();
     expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
   });
 });
