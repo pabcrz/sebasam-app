@@ -119,11 +119,11 @@ describe("QueueSnapshotCards", () => {
   it("renders each queue as a single link to its management screen", () => {
     render(<QueueSnapshotCards queues={{ commercialQueueCount: 12, activeExecutionCount: 8 }} />);
 
-    expect(screen.getByRole("link", { name: /ver cotizaciones/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /cotizaciones pendientes · 12/i })).toHaveAttribute(
       "href",
       "/admin/quotes"
     );
-    expect(screen.getByRole("link", { name: /ver trabajos/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /trabajos activos · 8/i })).toHaveAttribute(
       "href",
       "/admin/work-orders"
     );
@@ -185,14 +185,13 @@ describe("DashboardView", () => {
       <DashboardView
         snapshot={sampleSnapshot}
         customers={[]}
-        createCustomerAction={vi.fn()}
         createQuoteAction={vi.fn()}
       />
     );
 
     expect(screen.getByRole("heading", { level: 1, name: "Inicio" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /nuevo cliente/i })[0]).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /nueva cotización/i })[0]).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /nuevo cliente/i })).not.toBeInTheDocument();
     expect(screen.getByText("Módulos del Sistema")).toBeInTheDocument();
     expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
   });
