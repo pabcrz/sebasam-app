@@ -77,7 +77,6 @@ const modules = [
 export function DashboardView({
   snapshot,
   customers,
-  createCustomerAction,
   createQuoteAction,
   createCustomerForQuoteAction,
   searchCustomersAction,

@@ -151,8 +151,10 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
 
   // Reset global pending indicator and close more drawer when pathname changes
   React.useEffect(() => {
-    const timer = setTimeout(() => setGlobalPending(false), 0);
-    setIsMoreOpen(false);
+    const timer = setTimeout(() => {
+      setGlobalPending(false);
+      setIsMoreOpen(false);
+    }, 0);
     return () => clearTimeout(timer);
   }, [pathname]);
 
