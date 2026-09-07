@@ -15,7 +15,7 @@ export function QueueSnapshotCards({ queues }: QueueSnapshotCardsProps) {
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {/* Commercial Queue Card */}
         <QueueMetricCard
-          label="Cotizaciones pendientes"
+          label="Cotizaciones"
           value={queues.commercialQueueCount}
           href="/admin/quotes"
           icon={FileText}
@@ -24,7 +24,7 @@ export function QueueSnapshotCards({ queues }: QueueSnapshotCardsProps) {
 
         {/* Active Execution Queue Card */}
         <QueueMetricCard
-          label="Trabajos activos"
+          label="Trabajos"
           value={queues.activeExecutionCount}
           href="/admin/work-orders"
           icon={ClipboardList}

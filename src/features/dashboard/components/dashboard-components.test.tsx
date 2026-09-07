@@ -120,14 +120,13 @@ describe("QueueSnapshotCards", () => {
   it("renders each queue as a single link to its management screen", () => {
     render(<QueueSnapshotCards queues={{ commercialQueueCount: 12, activeExecutionCount: 8 }} />);
 
-    expect(screen.getByRole("link", { name: /cotizaciones pendientes · 12/i })).toHaveAttribute(
-      "href",
-      "/admin/quotes"
-    );
-    expect(screen.getByRole("link", { name: /trabajos activos · 8/i })).toHaveAttribute(
-      "href",
-      "/admin/work-orders"
-    );
+    const quoteLink = screen.getByRole("link", { name: /cotizaciones · 12/i });
+    expect(quoteLink).toHaveAttribute("href", "/admin/quotes");
+    expect(quoteLink).toHaveAttribute("title", "Cotizaciones · 12");
+
+    const workOrderLink = screen.getByRole("link", { name: /trabajos · 8/i });
+    expect(workOrderLink).toHaveAttribute("href", "/admin/work-orders");
+    expect(workOrderLink).toHaveAttribute("title", "Trabajos · 8");
   });
 });
 

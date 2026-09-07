@@ -36,6 +36,7 @@ export function QueueMetricCard({
   return (
     <Link
       href={href}
+      title={`${label} · ${value}`}
       aria-label={`${label} · ${value}`}
       className={clsx(
         "group flex min-w-0 flex-col justify-between rounded-[var(--radius-md)] border border-[var(--color-border-light)] border-l-4 bg-[var(--color-surface)] p-3 shadow-xs transition-all hover:shadow-md active-press-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] sm:p-4",
@@ -43,8 +44,8 @@ export function QueueMetricCard({
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)] truncate">
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-xs font-semibold text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)] break-words leading-tight">
           {label}
         </span>
         <div
