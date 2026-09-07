@@ -19,6 +19,8 @@ type WorkerEditFormWorker = {
   username: string;
   email: string;
   workerKind: "MASTER" | "HELPER" | null;
+  fixedWeeklyPayCents?: number | null;
+  fixedDailyPayCents?: number | null;
 };
 
 type WorkerEditFormProps = {
@@ -29,6 +31,7 @@ type WorkerEditFormProps = {
 
 export function WorkerEditForm({ action, worker, returnTo }: WorkerEditFormProps) {
   const [username, setUsername] = React.useState(worker.username);
+  const [workerKind, setWorkerKind] = React.useState<"MASTER" | "HELPER">(worker.workerKind ?? "MASTER");
   const generatedEmail = usernameToInternalEmail(username.trim().toLowerCase());
 
   return (
@@ -64,7 +67,7 @@ export function WorkerEditForm({ action, worker, returnTo }: WorkerEditFormProps
         </div>
         <div className="grid gap-2">
           <Label htmlFor="workerKind">Tipo de trabajador</Label>
-          <Select name="workerKind" defaultValue={worker.workerKind ?? undefined}>
+          <Select name="workerKind" value={workerKind} onValueChange={(value) => setWorkerKind(value as "MASTER" | "HELPER")}>
             <SelectTrigger id="workerKind">
               <SelectValue placeholder="Selecciona un tipo" />
             </SelectTrigger>
@@ -74,6 +77,32 @@ export function WorkerEditForm({ action, worker, returnTo }: WorkerEditFormProps
             </SelectContent>
           </Select>
         </div>
+        {workerKind === "HELPER" && (
+          <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="fixedWeeklyPay">Sueldo semanal</Label>
+              <Input
+                id="fixedWeeklyPay"
+                name="fixedWeeklyPay"
+                type="number"
+                min="0.01"
+                step="0.01"
+                defaultValue={worker.fixedWeeklyPayCents ? worker.fixedWeeklyPayCents / 100 : ""}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="fixedDailyPay">Sueldo diario</Label>
+              <Input
+                id="fixedDailyPay"
+                name="fixedDailyPay"
+                type="number"
+                min="0.01"
+                step="0.01"
+                defaultValue={worker.fixedDailyPayCents ? worker.fixedDailyPayCents / 100 : ""}
+              />
+            </div>
+          </div>
+        )}
       </fieldset>
       <Button type="submit" variant="primary" className="w-full sm:w-fit">
         Guardar trabajador

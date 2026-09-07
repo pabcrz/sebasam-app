@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType, UserRole, WorkerKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 
@@ -26,6 +26,71 @@ const updatePayrollItemAdjustmentSchema = z.object({
 export interface UpdatePayrollItemBaseResult {
   success: boolean;
   error?: string;
+}
+
+const updateFixedPayHelperSchema = z.object({
+  workerId: z.string().trim().min(1, "Worker identifier is required."),
+  weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Week start is invalid."),
+  absenceDays: z.number().int().min(0).max(6),
+  manualCommissionCents: z.number().int().min(0).max(100_000_000),
+});
+
+export async function updateFixedPayHelperAdjustments(input: unknown): Promise<UpdatePayrollItemBaseResult> {
+  try {
+    await requireOperationalRole();
+    const parsed = updateFixedPayHelperSchema.safeParse(input);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid helper payroll data." };
+    }
+
+    const { workerId, weekStart, absenceDays, manualCommissionCents } = parsed.data;
+    const helper = await prisma.userProfile.findFirst({
+      where: {
+        id: workerId,
+        role: UserRole.WORKER,
+        workerKind: WorkerKind.HELPER,
+        fixedWeeklyPayCents: { not: null },
+        fixedDailyPayCents: { not: null },
+      },
+      select: { id: true, fixedWeeklyPayCents: true, fixedDailyPayCents: true },
+    });
+
+    if (!helper) {
+      return { success: false, error: "The helper does not have a fixed-pay configuration." };
+    }
+
+    await prisma.helperPayrollWeek.upsert({
+      where: {
+        workerId_weekStart: {
+          workerId,
+          weekStart: new Date(`${weekStart}T00:00:00.000Z`),
+        },
+      },
+      create: {
+        workerId,
+        weekStart: new Date(`${weekStart}T00:00:00.000Z`),
+        weeklyRateCents: helper.fixedWeeklyPayCents!,
+        dailyRateCents: helper.fixedDailyPayCents!,
+        absenceDays,
+        manualCommissionCents,
+      },
+      update: { absenceDays, manualCommissionCents },
+    });
+
+    revalidatePath("/admin/nomina");
+    return { success: true };
+  } catch (error) {
+    console.error("[updateFixedPayHelperAdjustments] error:", error);
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "digest" in error &&
+      String((error as { digest?: unknown }).digest).startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+    return { success: false, error: error instanceof Error ? error.message : "Unable to update helper payroll." };
+  }
 }
 
 export async function updatePayrollItemBase(

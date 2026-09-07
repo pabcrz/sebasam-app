@@ -92,6 +92,24 @@ describe("worker actions", () => {
     });
   });
 
+  it("persists editable fixed-pay rates for a helper", async () => {
+    await updateWorker("worker-1", {
+      ...workerInput,
+      workerKind: "HELPER",
+      fixedWeeklyPayCents: 6_00000,
+      fixedDailyPayCents: 1_00000,
+    });
+
+    expect(prisma.userProfile.update).toHaveBeenCalledWith({
+      where: { id: "worker-1" },
+      data: expect.objectContaining({
+        workerKind: "HELPER",
+        fixedWeeklyPayCents: 6_00000,
+        fixedDailyPayCents: 1_00000,
+      }),
+    });
+  });
+
   it("deactivates through a status update and never deletes history", async () => {
     await setWorkerActive("worker-1", false);
 

@@ -3,6 +3,7 @@ import { QuoteItemType, WorkerKind } from "@prisma/client";
 import {
   buildWeeklyPayrollReport,
   computeCommissionCents,
+  calculateFixedPayHelperPayroll,
   DEFAULT_GENERAL_LABOR_RATE,
   DEFAULT_WELDING_LABOR_RATE,
   detectLaborCategory,
@@ -446,5 +447,35 @@ describe("Payroll Domain - Report Builder", () => {
     expect(special).toBeDefined();
     expect(special?.completedOrderCount).toBe(1);
     expect(special?.totalCommissionCents).toBe(30000);
+  });
+});
+
+describe("Fixed-pay helper payroll", () => {
+  it("deducts absence days and adds a manual commission to weekly pay", () => {
+    expect(
+      calculateFixedPayHelperPayroll({
+        weeklyRateCents: 6_00000,
+        dailyRateCents: 1_00000,
+        absenceDays: 2,
+        manualCommissionCents: 2_5000,
+      })
+    ).toEqual({
+      absenceDeductionCents: 2_00000,
+      totalPayableCents: 4_25000,
+    });
+  });
+
+  it("never deducts more than the captured weekly rate", () => {
+    expect(
+      calculateFixedPayHelperPayroll({
+        weeklyRateCents: 5_0000,
+        dailyRateCents: 1_0000,
+        absenceDays: 6,
+        manualCommissionCents: 0,
+      })
+    ).toEqual({
+      absenceDeductionCents: 5_0000,
+      totalPayableCents: 0,
+    });
   });
 });

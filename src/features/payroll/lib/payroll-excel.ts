@@ -16,8 +16,8 @@ export function exportPayrollToExcel(report: WeeklyPayrollReport, period: Parsed
       "Trabajador / Maestro",
       "Tipo",
       "Órdenes Terminadas",
-      "Mano de Obra Taller ($)",
-      "Comisión a Liquidar ($)",
+      "Base de Pago ($)",
+      "Total a Liquidar ($)",
     ],
   ];
 
@@ -32,14 +32,26 @@ export function exportPayrollToExcel(report: WeeklyPayrollReport, period: Parsed
     ]);
   });
 
+  const fixedPayHelpers = report.fixedPayHelpers ?? [];
+  fixedPayHelpers.forEach((helper, index) => {
+    summaryAoa.push([
+      report.workers.length + index + 1,
+      helper.displayName,
+      "Ayudante general",
+      0,
+      helper.weeklyRateCents / 100,
+      helper.totalPayableCents / 100,
+    ]);
+  });
+
   // Totals Row
   summaryAoa.push([
     "",
     "TOTAL GENERAL",
     "",
     report.totalCompletedOrders,
-    report.totalPayrollBaseCents / 100,
-    report.totalCommissionCents / 100,
+    (report.totalPayrollBaseCents + (report.totalFixedWeeklyPayCents ?? 0)) / 100,
+    (report.totalPayableCents ?? report.totalCommissionCents) / 100,
   ]);
 
   const summaryWs = XLSX.utils.aoa_to_sheet(summaryAoa);
