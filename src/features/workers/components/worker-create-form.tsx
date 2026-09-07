@@ -23,6 +23,7 @@ type WorkerCreateFormProps = {
 
 export function WorkerCreateForm({ action, isPending, onSubmit }: WorkerCreateFormProps) {
   const [username, setUsername] = React.useState("");
+  const [workerKind, setWorkerKind] = React.useState<"MASTER" | "HELPER">("MASTER");
   const generatedEmail = usernameToInternalEmail(username.trim().toLowerCase());
 
   return (
@@ -59,7 +60,7 @@ export function WorkerCreateForm({ action, isPending, onSubmit }: WorkerCreateFo
       </div>
       <div className="grid gap-2">
         <Label htmlFor="workerKind">Tipo de trabajador</Label>
-        <Select name="workerKind" defaultValue="MASTER" disabled={isPending}>
+        <Select name="workerKind" value={workerKind} onValueChange={(value) => setWorkerKind(value as "MASTER" | "HELPER")} disabled={isPending}>
           <SelectTrigger id="workerKind">
             <SelectValue placeholder="Selecciona un tipo" />
           </SelectTrigger>
@@ -69,6 +70,32 @@ export function WorkerCreateForm({ action, isPending, onSubmit }: WorkerCreateFo
           </SelectContent>
         </Select>
       </div>
+      {workerKind === "HELPER" && (
+        <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="fixedWeeklyPay">Sueldo semanal</Label>
+            <Input
+              id="fixedWeeklyPay"
+              name="fixedWeeklyPay"
+              type="number"
+              min="0.01"
+              step="0.01"
+              disabled={isPending}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="fixedDailyPay">Sueldo diario</Label>
+            <Input
+              id="fixedDailyPay"
+              name="fixedDailyPay"
+              type="number"
+              min="0.01"
+              step="0.01"
+              disabled={isPending}
+            />
+          </div>
+        </div>
+      )}
       <p role="status" className="sr-only">
         {isPending ? "Creando trabajador..." : ""}
       </p>

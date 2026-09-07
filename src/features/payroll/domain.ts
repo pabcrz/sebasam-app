@@ -89,6 +89,40 @@ export interface WorkerPayrollSummary {
   workOrders: WorkOrderPayrollDetail[];
 }
 
+export interface FixedPayHelperPayrollSummary {
+  workerId: string;
+  displayName: string;
+  weeklyRateCents: number;
+  dailyRateCents: number;
+  absenceDays: number;
+  absenceDeductionCents: number;
+  manualCommissionCents: number;
+  totalPayableCents: number;
+}
+
+export interface FixedPayHelperCalculationInput {
+  weeklyRateCents: number;
+  dailyRateCents: number;
+  absenceDays: number;
+  manualCommissionCents: number;
+}
+
+export function calculateFixedPayHelperPayroll({
+  weeklyRateCents,
+  dailyRateCents,
+  absenceDays,
+  manualCommissionCents,
+}: FixedPayHelperCalculationInput) {
+  const absenceDeductionCents = Math.min(
+    Math.max(0, weeklyRateCents),
+    Math.max(0, dailyRateCents) * Math.max(0, absenceDays)
+  );
+  const totalPayableCents =
+    Math.max(0, weeklyRateCents) - absenceDeductionCents + Math.max(0, manualCommissionCents);
+
+  return { absenceDeductionCents, totalPayableCents };
+}
+
 export interface WeeklyPayrollReport {
   mode?: "weekly" | "monthly";
   startDate: Date;
@@ -100,7 +134,12 @@ export interface WeeklyPayrollReport {
   totalClientLaborCents: number;
   totalPayrollBaseCents: number;
   totalCommissionCents: number;
+  totalFixedWeeklyPayCents?: number;
+  totalAbsenceDeductionsCents?: number;
+  totalManualCommissionsCents?: number;
+  totalPayableCents?: number;
   workers: WorkerPayrollSummary[];
+  fixedPayHelpers?: FixedPayHelperPayrollSummary[];
   unassignedOrders: WorkOrderPayrollDetail[];
 }
 

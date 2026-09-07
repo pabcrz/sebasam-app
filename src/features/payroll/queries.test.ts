@@ -5,6 +5,8 @@ import { getWeeklyPayroll } from "./queries";
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     workOrder: { findMany: vi.fn() },
+    userProfile: { findMany: vi.fn() },
+    helperPayrollWeek: { findMany: vi.fn(), upsert: vi.fn() },
   },
 }));
 
@@ -16,6 +18,8 @@ describe("Payroll Queries", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (prisma.userProfile.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (prisma.helperPayrollWeek.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
   });
 
   it("queries completed work orders within the weekly window", async () => {
@@ -102,5 +106,77 @@ describe("Payroll Queries", () => {
     expect(evaluatedItem.clientTotalCents).toBe(120000);
     expect(evaluatedItem.payrollBaseCents).toBe(100000);
     expect(evaluatedItem.commissionCents).toBe(50000);
+  });
+
+  it("uses captured helper rates and adjustments instead of later worker configuration", async () => {
+    (prisma.helperPayrollWeek.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        workerId: "helper-1",
+        weeklyRateCents: 6_00000,
+        dailyRateCents: 1_00000,
+        absenceDays: 1,
+        manualCommissionCents: 2_5000,
+        worker: { id: "helper-1", displayName: "Helper One" },
+      },
+    ]);
+    (prisma.userProfile.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "helper-1",
+        displayName: "Helper One",
+        fixedWeeklyPayCents: 8_00000,
+        fixedDailyPayCents: 1_30000,
+      },
+    ]);
+
+    const report = await getWeeklyPayroll({ anchor: "2026-08-19" });
+
+    expect(report.fixedPayHelpers).toEqual([
+      expect.objectContaining({
+        workerId: "helper-1",
+        weeklyRateCents: 6_00000,
+        dailyRateCents: 1_00000,
+        absenceDays: 1,
+        absenceDeductionCents: 1_00000,
+        manualCommissionCents: 2_5000,
+        totalPayableCents: 5_25000,
+      }),
+    ]);
+    expect(report.totalPayableCents).toBe(5_25000);
+    expect(prisma.helperPayrollWeek.upsert).not.toHaveBeenCalled();
+  });
+
+  it("captures configured helper rates once for a new payroll week", async () => {
+    (prisma.userProfile.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "helper-1",
+        displayName: "Helper One",
+        fixedWeeklyPayCents: 6_00000,
+        fixedDailyPayCents: 1_00000,
+      },
+    ]);
+    (prisma.helperPayrollWeek.upsert as ReturnType<typeof vi.fn>).mockResolvedValue({
+      workerId: "helper-1",
+      weeklyRateCents: 6_00000,
+      dailyRateCents: 1_00000,
+      absenceDays: 0,
+      manualCommissionCents: 0,
+    });
+
+    const report = await getWeeklyPayroll({ anchor: "2026-08-19" });
+
+    expect(prisma.helperPayrollWeek.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          weeklyRateCents: 6_00000,
+          dailyRateCents: 1_00000,
+        }),
+      })
+    );
+    expect(report.fixedPayHelpers?.[0]).toEqual(
+      expect.objectContaining({
+        workerId: "helper-1",
+        totalPayableCents: 6_00000,
+      })
+    );
   });
 });

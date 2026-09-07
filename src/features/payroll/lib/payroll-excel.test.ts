@@ -26,6 +26,8 @@ describe("exportPayrollToExcel", () => {
       totalClientLaborCents: 100000,
       totalPayrollBaseCents: 100000,
       totalCommissionCents: 50000,
+      totalFixedWeeklyPayCents: 600000,
+      totalPayableCents: 625000,
       workers: [
         {
           workerId: "w-1",
@@ -69,6 +71,18 @@ describe("exportPayrollToExcel", () => {
           ],
         },
       ],
+      fixedPayHelpers: [
+        {
+          workerId: "helper-1",
+          displayName: "Helper One",
+          weeklyRateCents: 600000,
+          dailyRateCents: 100000,
+          absenceDays: 1,
+          absenceDeductionCents: 100000,
+          manualCommissionCents: 75000,
+          totalPayableCents: 575000,
+        },
+      ],
       unassignedOrders: [],
     };
 
@@ -90,5 +104,12 @@ describe("exportPayrollToExcel", () => {
       expect.anything(),
       "Nomina_SEBASAM_Semanal_2026-08-17.xlsx"
     );
+
+    const workbook = vi.mocked(XLSX.writeFile).mock.calls[0]?.[0] as XLSX.WorkBook;
+    const summaryRows = XLSX.utils.sheet_to_json<(string | number)[]>(workbook.Sheets["Resumen Nómina"], {
+      header: 1,
+    });
+    expect(summaryRows).toContainEqual([2, "Helper One", "Ayudante general", 0, 6000, 5750]);
+    expect(summaryRows).toContainEqual(["", "TOTAL GENERAL", "", 1, 7000, 6250]);
   });
 });

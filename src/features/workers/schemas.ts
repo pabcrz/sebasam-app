@@ -8,6 +8,8 @@ export function usernameToInternalEmail(username: string) {
 
 export const workerKindSchema = z.enum(["MASTER", "HELPER"]);
 
+const fixedPayCentsSchema = z.number().int().min(1).max(100_000_000).nullable().optional().default(null);
+
 const usernameSchema = z
   .string()
   .trim()
@@ -20,10 +22,27 @@ export const workerInputSchema = z.object({
   displayName: z.string().trim().min(1, "Worker name is required").max(160),
   username: usernameSchema,
   workerKind: workerKindSchema,
-}).transform((data) => ({
-  ...data,
-  email: usernameToInternalEmail(data.username),
-}));
+  fixedWeeklyPayCents: fixedPayCentsSchema,
+  fixedDailyPayCents: fixedPayCentsSchema,
+})
+  .superRefine((data, ctx) => {
+    if (
+      data.workerKind === "HELPER" &&
+      (data.fixedWeeklyPayCents === null) !== (data.fixedDailyPayCents === null)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Fixed-pay helpers need both weekly and daily rates",
+        path: ["fixedWeeklyPayCents"],
+      });
+    }
+  })
+  .transform((data) => ({
+    ...data,
+    fixedWeeklyPayCents: data.workerKind === "HELPER" ? data.fixedWeeklyPayCents : null,
+    fixedDailyPayCents: data.workerKind === "HELPER" ? data.fixedDailyPayCents : null,
+    email: usernameToInternalEmail(data.username),
+  }));
 
 export const workerStatusSchema = z.enum(["ALL", "ACTIVE", "INACTIVE"]);
 

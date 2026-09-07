@@ -25,6 +25,7 @@ vi.mock("react-hot-toast", () => {
 
 vi.mock("../actions", () => ({
   updatePayrollItemBase: vi.fn(),
+  updateFixedPayHelperAdjustments: vi.fn(),
 }));
 
 const sampleWorkers: WorkerPayrollSummary[] = [
@@ -279,6 +280,53 @@ describe("Payroll UI Components", () => {
     render(<PayrollView report={emptyReport} period={period} />);
 
     expect(screen.getByText(/No hay órdenes completadas en este período/i)).toBeInTheDocument();
+  });
+
+  it("shows fixed-pay helpers separately without a work-order breakdown", () => {
+    const period: ParsedPayrollParams = {
+      mode: "weekly",
+      anchor: "2026-08-17",
+      prevAnchor: "2026-08-10",
+      nextAnchor: "2026-08-24",
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      isCurrentPeriod: true,
+      start: new Date("2026-08-17T06:00:00Z"),
+      end: new Date("2026-08-23T06:00:00Z"),
+    };
+    const report: WeeklyPayrollReport = {
+      startDate: period.start,
+      endDate: period.end,
+      rangeLabel: period.rangeLabel,
+      isCurrentWeek: true,
+      totalWorkers: 1,
+      totalCompletedOrders: 0,
+      totalClientLaborCents: 0,
+      totalPayrollBaseCents: 0,
+      totalCommissionCents: 0,
+      totalFixedWeeklyPayCents: 600000,
+      totalPayableCents: 600000,
+      workers: [],
+      fixedPayHelpers: [
+        {
+          workerId: "helper-1",
+          displayName: "Helper One",
+          weeklyRateCents: 600000,
+          dailyRateCents: 100000,
+          absenceDays: 0,
+          absenceDeductionCents: 0,
+          manualCommissionCents: 0,
+          totalPayableCents: 600000,
+        },
+      ],
+      unassignedOrders: [],
+    };
+
+    render(<PayrollView report={report} period={period} />);
+
+    expect(screen.getByText("Ayudantes generales")).toBeInTheDocument();
+    expect(screen.getByText("Helper One")).toBeInTheDocument();
+    expect(screen.queryByText("Mano de obra - Helper One")).not.toBeInTheDocument();
   });
 
   it("opens the confidential signing sheet modal when clicking Hoja de Firmas", () => {
