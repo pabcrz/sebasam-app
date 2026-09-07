@@ -1,8 +1,8 @@
 import Link from "next/link";
 import {
   Banknote,
-  FileCheck,
   UserCog,
+  Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, SectionLabel } from "@/components/ui";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
@@ -34,10 +34,10 @@ interface DashboardViewProps {
 
 const modules = [
   {
-    href: "/admin/notas",
-    title: "Notas",
-    description: "Trabajos finalizados e impresión de nota de entrega.",
-    icon: FileCheck,
+    href: "/admin/customers",
+    title: "Clientes",
+    description: "Alta, búsqueda y edición de clientes.",
+    icon: Users,
   },
   {
     href: "/admin/nomina",

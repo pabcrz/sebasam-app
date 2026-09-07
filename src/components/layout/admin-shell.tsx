@@ -60,12 +60,12 @@ export const primaryMobileNavItems: NavItem[] = [
   { href: "/admin", label: "Inicio", icon: Home },
   { href: "/admin/quotes", label: "Cotizaciones", mobileLabel: "Cotiz.", icon: FileText },
   { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
-  { href: "/admin/customers", label: "Clientes", icon: Users },
+  { href: "/admin/notas", label: "Notas", icon: FileCheck },
 ];
 
 /** Secondary destinations accessible via the 'Más' bottom sheet. */
 export const secondaryMobileNavItems: NavItem[] = [
-  { href: "/admin/notas", label: "Notas", icon: FileCheck },
+  { href: "/admin/customers", label: "Clientes", icon: Users },
   { href: "/admin/nomina", label: "Nómina", icon: Banknote },
   { href: "/admin/historical", label: "Histórico", mobileLabel: "Hist.", icon: History },
   { href: "/asistente", label: "Asistente", mobileLabel: "IA", icon: MessageCircleQuestion },

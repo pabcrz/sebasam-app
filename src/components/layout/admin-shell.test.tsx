@@ -89,7 +89,7 @@ describe("AdminShell", () => {
     ["/admin", "/admin"],
     ["/admin/quotes", "/admin/quotes"],
     ["/admin/work-orders", "/admin/work-orders"],
-    ["/admin/customers", "/admin/customers"],
+    ["/admin/notas", "/admin/notas"],
   ])("marks only the matching primary mobile item as current for %s", (pathname, href) => {
     mockPathname = pathname;
     render(
@@ -106,7 +106,7 @@ describe("AdminShell", () => {
   });
 
   it.each([
-    "/admin/notas",
+    "/admin/customers",
     "/admin/nomina",
     "/admin/historical",
     "/asistente",
@@ -142,13 +142,13 @@ describe("AdminShell", () => {
       "/admin",
       "/admin/quotes",
       "/admin/work-orders",
-      "/admin/customers",
+      "/admin/notas",
     ]);
     expect(links.map((link) => link.getAttribute("aria-label"))).toEqual([
       "Inicio",
       "Cotizaciones",
       "Trabajos",
-      "Clientes",
+      "Notas",
     ]);
     expect(links.every((link) => link.className.includes("focus-visible:ring-2"))).toBe(true);
     expect(links.every((link) => link.className.includes("min-h-[var(--tap-min-height)]"))).toBe(true);
@@ -165,7 +165,7 @@ describe("AdminShell", () => {
     expect(dialog).toBeInTheDocument();
 
     const drawerLinks = within(dialog).getAllByRole("link");
-    expect(drawerLinks.map((link) => link.getAttribute("href"))).toContain("/admin/notas");
+    expect(drawerLinks.map((link) => link.getAttribute("href"))).toContain("/admin/customers");
     expect(drawerLinks.map((link) => link.getAttribute("href"))).toContain("/admin/nomina");
     expect(drawerLinks.map((link) => link.getAttribute("href"))).toContain("/admin/historical");
     expect(drawerLinks.map((link) => link.getAttribute("href"))).toContain("/asistente");
