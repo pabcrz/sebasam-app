@@ -35,7 +35,7 @@ beforeEach(() => {
   fetchMock.mockResolvedValue({
     ok: true,
     json: async () => ({
-      answer: "Por los 4 tornillos cobramos $200 en total, es decir $50 por pieza [1].",
+      answer: "Por los 4 tornillos cobramos **$200 en total**, es decir $50 por pieza.",
       sources: [source],
       aggregation: null,
       filters: { wantsStats: false },
@@ -53,7 +53,7 @@ describe("AssistantChat", () => {
     await user.click(screen.getByRole("button", { name: "Enviar pregunta" }));
 
     await waitFor(() => {
-      expect(screen.getByText(/cobramos \$200 en total/)).toBeInTheDocument();
+      expect(screen.getByText("$200 en total").tagName).toBe("STRONG");
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
