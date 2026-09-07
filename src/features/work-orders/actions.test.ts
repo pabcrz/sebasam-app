@@ -16,8 +16,21 @@ import {
 } from "./actions";
 import { WorkerUnavailableError } from "./domain";
 
+const { after, ineligibleCompletedWorkKnowledge, prepareCompletedWorkKnowledge, synchronizeCompletedWorkKnowledge } = vi.hoisted(() => ({
+  after: vi.fn(),
+  ineligibleCompletedWorkKnowledge: vi.fn(),
+  prepareCompletedWorkKnowledge: vi.fn(),
+  synchronizeCompletedWorkKnowledge: vi.fn(),
+}));
+
 vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/server", () => ({ after }));
+vi.mock("@/features/completed-work-knowledge/service", () => ({
+  ineligibleCompletedWorkKnowledge,
+  prepareCompletedWorkKnowledge,
+  synchronizeCompletedWorkKnowledge,
+}));
 vi.mock("@/features/quotes/lib/sequence", () => ({
   nextQuoteNumber: vi.fn().mockResolvedValue("COT-0826-01"),
   nextWorkOrderNumber: vi.fn().mockResolvedValue("T-0826-01"),
@@ -72,6 +85,7 @@ type MockTx = {
   ledgerEntry: { count: ReturnType<typeof vi.fn> };
   sharedQuote: { create: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
+  completedWorkKnowledgeSource: { updateMany: ReturnType<typeof vi.fn> };
   vehicle: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
 };
 
@@ -93,6 +107,7 @@ function createTx(): MockTx {
     ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
     sharedQuote: { create: vi.fn(), updateMany: vi.fn() },
     paymentRequest: { updateMany: vi.fn() },
+    completedWorkKnowledgeSource: { updateMany: vi.fn() },
     vehicle: { findFirst: vi.fn().mockResolvedValue({ id: "veh-1" }), create: vi.fn(), update: vi.fn().mockResolvedValue({ id: "veh-1" }) },
   };
   vi.mocked(prisma.$transaction).mockImplementation(
@@ -107,6 +122,7 @@ describe("work order worker guards", () => {
     vi.clearAllMocks();
     vi.mocked(requireOperationalRole).mockResolvedValue({} as never);
     vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId } as never);
+    vi.mocked(after).mockImplementation(() => undefined);
     vi.mocked(prisma.workAssignment.create).mockResolvedValue({ id: "assignment-1" } as never);
   });
 
@@ -274,6 +290,9 @@ describe("work order actions", () => {
         },
         data: { status: AssignmentStatus.DONE },
       });
+      expect(prepareCompletedWorkKnowledge).toHaveBeenCalledWith("wo-1");
+      expect(after).toHaveBeenCalledOnce();
+      expect(synchronizeCompletedWorkKnowledge).not.toHaveBeenCalled();
     });
 
     it("completes a priced draft identified by unit without requiring a customer", async () => {
@@ -312,6 +331,25 @@ describe("work order actions", () => {
       tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.COMPLETED, quote: operationalQuote() });
 
       await expect(completeWorkOrder({ workOrderId: "wo-1" })).rejects.toThrow("en proceso para poder finalizarse");
+    });
+
+    it("preserves completion when deferred semantic indexing fails", async () => {
+      const tx = createTx();
+      const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      tx.workOrder.findUnique.mockResolvedValue({ status: WorkOrderStatus.ASSIGNED, quote: operationalQuote() });
+      vi.mocked(synchronizeCompletedWorkKnowledge).mockRejectedValueOnce(new Error("Gemini unavailable"));
+
+      await expect(completeWorkOrder({ workOrderId: "wo-1" })).resolves.toBeUndefined();
+
+      expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ status: WorkOrderStatus.COMPLETED }),
+      }));
+      expect(synchronizeCompletedWorkKnowledge).not.toHaveBeenCalled();
+      await vi.mocked(after).mock.calls[0]![0]();
+      expect(log).toHaveBeenCalledWith("Completed work knowledge synchronization failed", expect.objectContaining({
+        workOrderId: "wo-1",
+      }));
+      log.mockRestore();
     });
   });
 
@@ -374,6 +412,7 @@ describe("work order actions", () => {
       expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({ previousState: quoteStatus, actorId: workerId, reason: "Captura equivocada" }),
       }));
+      expect(ineligibleCompletedWorkKnowledge).toHaveBeenCalledWith("wo-1", tx);
       expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       });
@@ -398,6 +437,7 @@ describe("work order actions", () => {
       await expect(rollbackWorkOrder({ workOrderId: "wo-1", targetQuoteStatus: "DRAFT", reason: "Corrección" })).rejects.toThrow("movimientos en el ledger");
       expect(tx.workOrder.updateMany).not.toHaveBeenCalled();
     });
+
   });
 
   describe("rollbackWorkOrderAction", () => {
@@ -557,6 +597,9 @@ describe("work order actions", () => {
           status: AssignmentStatus.DONE,
         }),
       }));
+      expect(prepareCompletedWorkKnowledge).toHaveBeenCalledWith("wo-new");
+      expect(after).toHaveBeenCalledOnce();
+      expect(synchronizeCompletedWorkKnowledge).not.toHaveBeenCalled();
     });
 
     it("sets completedAt to local noon in America/Mexico_City for retroactive completed work", async () => {

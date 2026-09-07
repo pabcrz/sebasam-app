@@ -12,6 +12,7 @@ import {
   WorkerKind,
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
@@ -52,6 +53,11 @@ import {
 } from "./domain";
 import { ZodError } from "zod";
 import { assertOperationalClosureQuote, assertOperationalStartQuote } from "./operational-validation";
+import {
+  ineligibleCompletedWorkKnowledge,
+  prepareCompletedWorkKnowledge,
+  synchronizeCompletedWorkKnowledge,
+} from "@/features/completed-work-knowledge/service";
 
 const quotesPath = "/admin/quotes";
 const workOrdersPath = "/admin/work-orders";
@@ -71,6 +77,33 @@ function toActionResult(error: unknown, fallback: string): ActionResult {
     success: false,
     error: error instanceof WorkOrderOperationError ? error.message : fallback,
   };
+}
+
+async function synchronizeCompletedWorkKnowledgeSafely(workOrderId: string) {
+  try {
+    await synchronizeCompletedWorkKnowledge(workOrderId);
+  } catch (error) {
+    console.error("Completed work knowledge synchronization failed", { workOrderId, error });
+  }
+}
+
+async function prepareCompletedWorkKnowledgeSafely(workOrderId: string) {
+  try {
+    await prepareCompletedWorkKnowledge(workOrderId);
+  } catch (error) {
+    console.error("Completed work knowledge preparation failed", { workOrderId, error });
+  }
+}
+
+async function scheduleCompletedWorkKnowledge(workOrderId: string) {
+  await prepareCompletedWorkKnowledgeSafely(workOrderId);
+  try {
+    after(async () => {
+      await synchronizeCompletedWorkKnowledgeSafely(workOrderId);
+    });
+  } catch (error) {
+    console.error("Completed work knowledge scheduling failed", { workOrderId, error });
+  }
 }
 
 async function requireActiveWorker(workerId: string) {
@@ -337,7 +370,7 @@ export async function completeWorkOrder(input: unknown) {
 
   const data = completeWorkOrderInputSchema.parse(input);
 
-  return prisma.$transaction(async (tx) => {
+  const completedWorkOrder = await prisma.$transaction(async (tx) => {
     const workOrder = await tx.workOrder.findUnique({
       where: { id: data.workOrderId },
       include: { quote: { include: { vehicle: true, items: true, sections: { include: { items: true } } } } },
@@ -373,13 +406,16 @@ export async function completeWorkOrder(input: unknown) {
 
     return tx.workOrder.findUniqueOrThrow({ where: { id: data.workOrderId } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  await scheduleCompletedWorkKnowledge(data.workOrderId);
+  return completedWorkOrder;
 }
 
 export async function rollbackWorkOrder(input: unknown) {
   const { profile } = await requireOperationalRole();
   const data = rollbackWorkOrderInputSchema.parse(input);
 
-  return prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx) => {
     const workOrder = await tx.workOrder.findUnique({
       where: { id: data.workOrderId },
       include: { quote: true },
@@ -454,6 +490,7 @@ export async function rollbackWorkOrder(input: unknown) {
         reason: data.reason,
       },
     });
+    await ineligibleCompletedWorkKnowledge(workOrder.id, tx);
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
@@ -644,7 +681,7 @@ export async function createDirectWorkOrder(input: unknown) {
     assertOperationalClosureQuote(quoteLike);
   }
 
-  return withQuoteNumberRetry(() =>
+  const result = await withQuoteNumberRetry(() =>
     prisma.$transaction(
       async (tx) => {
         const master = await tx.userProfile.findFirst({
@@ -786,6 +823,12 @@ export async function createDirectWorkOrder(input: unknown) {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     ),
   );
+
+  if (data.isCompleted) {
+    await scheduleCompletedWorkKnowledge(result.workOrder.id);
+  }
+
+  return result;
 }
 
 export async function createDirectWorkOrderFromWorkspace(
@@ -814,4 +857,3 @@ export async function createDirectWorkOrderFromWorkspace(
   revalidatePath(notasPath);
   return { success: true };
 }
-
