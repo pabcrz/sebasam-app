@@ -46,7 +46,7 @@ describe("AdminShell", () => {
     mockPathname = "/admin";
   });
 
-  it("does not mark a mobile tab as current on the dashboard route", () => {
+  it("marks the Inicio mobile tab as current on the dashboard route", () => {
     mockPathname = "/admin";
     render(
       <AdminShell displayName="Admin User" role="admin">
@@ -56,7 +56,8 @@ describe("AdminShell", () => {
 
     const mobileNav = screen.getByRole("navigation", { name: "Navegación móvil" });
     const current = mobileNav.querySelectorAll('[aria-current="page"]');
-    expect(current).toHaveLength(0);
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveAttribute("href", "/admin");
   });
 
   it.each([
@@ -85,15 +86,11 @@ describe("AdminShell", () => {
   });
 
   it.each([
-    ["/admin/customers", "/admin/customers"],
+    ["/admin", "/admin"],
     ["/admin/quotes", "/admin/quotes"],
     ["/admin/work-orders", "/admin/work-orders"],
-    ["/admin/notas", "/admin/notas"],
-    ["/admin/nomina", "/admin/nomina"],
-    ["/admin/historical", "/admin/historical"],
-    ["/asistente", "/asistente"],
-    ["/admin/nomina/worker-1", "/admin/nomina"],
-  ])("marks only the matching mobile item as current for %s", (pathname, href) => {
+    ["/admin/customers", "/admin/customers"],
+  ])("marks only the matching primary mobile item as current for %s", (pathname, href) => {
     mockPathname = pathname;
     render(
       <AdminShell displayName="Admin User" role="admin">
@@ -108,7 +105,29 @@ describe("AdminShell", () => {
     expect(current[0]).toHaveAttribute("href", href);
   });
 
-  it("provides the seven primary routes as keyboard-accessible mobile links", () => {
+  it.each([
+    "/admin/notas",
+    "/admin/nomina",
+    "/admin/historical",
+    "/asistente",
+    "/admin/nomina/worker-1",
+  ])("marks the Más button as current for secondary route %s", (pathname) => {
+    mockPathname = pathname;
+    render(
+      <AdminShell displayName="Admin User" role="admin">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const mobileNav = screen.getByRole("navigation", { name: "Navegación móvil" });
+    const current = mobileNav.querySelectorAll('[aria-current="page"]');
+
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveAttribute("aria-label", "Más");
+  });
+
+  it("provides 5 items in mobile nav and opens secondary destinations on Más tap", async () => {
+    const { fireEvent } = await import("@testing-library/react");
     render(
       <AdminShell displayName="Admin User" role="admin">
         <div>Content</div>
@@ -118,41 +137,43 @@ describe("AdminShell", () => {
     const mobileNav = screen.getByRole("navigation", { name: "Navegación móvil" });
     const links = within(mobileNav).getAllByRole("link");
 
-    expect(links).toHaveLength(7);
+    expect(links).toHaveLength(4);
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/admin/customers",
+      "/admin",
       "/admin/quotes",
       "/admin/work-orders",
-      "/admin/notas",
-      "/admin/nomina",
-      "/admin/historical",
-      "/asistente",
+      "/admin/customers",
     ]);
     expect(links.map((link) => link.getAttribute("aria-label"))).toEqual([
-      "Clientes",
+      "Inicio",
       "Cotizaciones",
       "Trabajos",
-      "Notas",
-      "Nómina",
-      "Histórico",
-      "Asistente",
+      "Clientes",
     ]);
     expect(links.every((link) => link.className.includes("focus-visible:ring-2"))).toBe(true);
     expect(links.every((link) => link.className.includes("min-h-[var(--tap-min-height)]"))).toBe(true);
-    expect(links.every((link) => link.querySelector(".whitespace-nowrap"))).toBe(true);
-    expect(links.every((link) => link.textContent?.trim() && !link.textContent.includes("\n"))).toBe(true);
     expect(within(mobileNav).getByText("Cotiz.")).toBeInTheDocument();
-    expect(within(mobileNav).getByText("Hist.")).toBeInTheDocument();
-    expect(within(mobileNav).getByText("IA")).toBeInTheDocument();
-    const payrollLink = within(mobileNav).getByRole("link", { name: "Nómina" });
-    expect(payrollLink).toHaveAttribute("href", "/admin/nomina");
-    expect(within(payrollLink).getByTestId("payroll-icon")).toBeInTheDocument();
-    const historicalLink = within(mobileNav).getByRole("link", { name: "Histórico" });
-    expect(historicalLink).toHaveAttribute("href", "/admin/historical");
-    const assistantLink = within(mobileNav).getByRole("link", { name: "Asistente" });
-    expect(assistantLink).toHaveAttribute("href", "/asistente");
-    expect(mobileNav.querySelector(".grid-cols-7")).toBeInTheDocument();
+
+    const moreButton = within(mobileNav).getByRole("button", { name: "Más" });
+    expect(moreButton).toBeInTheDocument();
+    expect(mobileNav.querySelector(".grid-cols-5")).toBeInTheDocument();
     expect(mobileNav).toHaveStyle({ paddingBottom: "env(safe-area-inset-bottom)" });
+
+    // Open Más drawer
+    fireEvent.click(moreButton);
+    const dialog = screen.getByRole("dialog", { name: "Menú secundario" });
+    expect(dialog).toBeInTheDocument();
+
+    const drawerLinks = within(dialog).getAllByRole("link");
+    expect(drawerLinks.map((link) => link.getAttribute("href"))).toContain("/admin/notas");
+    expect(drawerLinks.map((link) => link.getAttribute("href"))).toContain("/admin/nomina");
+    expect(drawerLinks.map((link) => link.getAttribute("href"))).toContain("/admin/historical");
+    expect(drawerLinks.map((link) => link.getAttribute("href"))).toContain("/asistente");
+
+    // Close button
+    const closeBtn = within(dialog).getByRole("button", { name: "Cerrar menú" });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByRole("dialog", { name: "Menú secundario" })).not.toBeInTheDocument();
   });
 
   it("does not render static Operaciones subtitle under sidebar brand mark", () => {
