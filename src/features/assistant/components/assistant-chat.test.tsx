@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteItemType } from "@prisma/client";
 import type { HistoricalMatchSource } from "@/features/historical/repository";
+import type { CompletedWorkMatchSource } from "@/features/completed-work-knowledge/repository";
 import { AssistantChat } from "./assistant-chat";
 
 const source: HistoricalMatchSource = {
@@ -26,6 +27,12 @@ const source: HistoricalMatchSource = {
   contentHash: "h",
   metadata: {},
   similarity: 0.91,
+};
+
+const completedSource: CompletedWorkMatchSource = {
+  provenance: "completed-work", itemId: "item-2", workOrderId: "order-2", workOrderNumber: "OT-02", completedAt: "2026-09-02",
+  brand: "Nissan", model: "NP300", plate: "ABC123", responsibleWorker: "Ana", type: QuoteItemType.LABOR,
+  description: "Cambiar bujes", quantity: 1, itemTotalCents: 1000, currentQuoteTotalCents: 3200, generatedCommissionCents: 500, similarity: 0.95,
 };
 
 const fetchMock = vi.fn();
@@ -64,7 +71,7 @@ describe("AssistantChat", () => {
       }),
     );
 
-    const expand = screen.getByRole("button", { name: /4 tornillos/ });
+    const expand = screen.getByRole("button", { name: /Historial importado.*Refacciones.*4 tornillos/ });
     await user.click(expand);
 
     expect(screen.getByText("E-01")).toBeInTheDocument();
@@ -89,6 +96,23 @@ describe("AssistantChat", () => {
     await waitFor(() => {
       expect(screen.getByText(/Solicitud de embedding falló/)).toBeInTheDocument();
     });
+  });
+
+  it("renders completed-work provenance and generated operational values", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ answer: "Respuesta", sources: [completedSource] }) });
+    const user = userEvent.setup();
+    render(<AssistantChat />);
+
+    await user.type(screen.getByLabelText("Pregunta al asistente"), "bujes");
+    await user.click(screen.getByRole("button", { name: "Enviar pregunta" }));
+    const expand = await screen.findByRole("button", { name: /Trabajo completado.*Cambiar bujes/ });
+    await user.click(expand);
+
+    expect(screen.getByText("OT-02")).toBeInTheDocument();
+    expect(screen.getByText("Ingreso generado")).toBeInTheDocument();
+    expect(screen.getByText("$32.00")).toBeInTheDocument();
+    expect(screen.getByText("Comisión generada")).toBeInTheDocument();
+    expect(screen.getByText("Trabajo completado")).toBeInTheDocument();
   });
 
   it("shows a connection error when the request fails", async () => {
