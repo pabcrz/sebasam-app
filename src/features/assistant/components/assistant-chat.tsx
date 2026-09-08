@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Send } from "lucide-react";
-import type { HistoricalMatchSource } from "@/features/historical/repository";
+import type { AssistantSource } from "@/features/assistant/service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,13 +12,13 @@ import { AssistantMarkdown } from "./assistant-markdown";
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
-  sources?: HistoricalMatchSource[];
+  sources?: AssistantSource[];
   error?: boolean;
 }
 
 interface ChatResponse {
   answer?: string;
-  sources?: HistoricalMatchSource[];
+  sources?: AssistantSource[];
   error?: string;
 }
 
@@ -105,7 +105,7 @@ export function AssistantChat() {
                       Fuentes ({message.sources.length})
                     </p>
                     {message.sources.map((source) => (
-                      <SourcePanel key={source.itemId} source={source} />
+                      <SourcePanel key={`${source.provenance}-${source.itemId}`} source={source} />
                     ))}
                   </div>
                 ) : null}
