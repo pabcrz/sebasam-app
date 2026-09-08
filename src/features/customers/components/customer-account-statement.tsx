@@ -3,7 +3,9 @@
 import * as React from "react";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
+import type { CorrectPaymentResult } from "@/features/payments/domain";
 import { ReversePaymentDialog } from "@/features/payments/components/reverse-payment-dialog";
+import { PaymentCorrectionDialog } from "@/features/payments/components/payment-correction-dialog";
 import { reversePaymentCaptureAction } from "@/features/payments/actions";
 import type { CustomerAccountStatement as CustomerAccountStatementType } from "../queries";
 
@@ -28,13 +30,23 @@ const paymentMethodLabels: Record<string, string> = {
 type CustomerAccountStatementProps = {
   statement: CustomerAccountStatementType;
   reversePaymentAction?: (paymentId: string, reason: string, operationKey?: string) => Promise<unknown>;
+  correctPaymentAction?: (
+    paymentId: string,
+    amount: string,
+    method: string,
+    reason: string,
+    operationKey: string,
+  ) => Promise<CorrectPaymentResult>;
   onPaymentReversed?: () => void;
+  onPaymentCorrected?: () => void;
 };
 
 export function CustomerAccountStatement({
   statement,
   reversePaymentAction = reversePaymentCaptureAction,
+  correctPaymentAction,
   onPaymentReversed,
+  onPaymentCorrected,
 }: CustomerAccountStatementProps) {
   const isSettled = statement.pendingBalanceCents === 0;
 
@@ -143,6 +155,18 @@ export function CustomerAccountStatement({
                             triggerSize="sm"
                             triggerVariant="outline"
                             onSuccess={onPaymentReversed}
+                          />
+                        )}
+                        {correctPaymentAction && movement.payment && movement.payment.quote && isPaymentCapture && !isReversed && (
+                          <PaymentCorrectionDialog
+                            paymentId={movement.payment.id}
+                            originalAmountCents={movement.payment.amountCents}
+                            originalMethod={movement.payment.method}
+                            reference={movement.payment.operationKey}
+                            paymentDate={movement.createdAt}
+                            quoteNumber={movement.payment.quote.number}
+                            action={correctPaymentAction}
+                            onSuccess={onPaymentCorrected}
                           />
                         )}
                       </div>

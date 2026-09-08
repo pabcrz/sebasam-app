@@ -47,6 +47,37 @@ export type ReversePaymentInput = {
   operationKey?: string;
 };
 
+export type CorrectPaymentInput = {
+  originalPaymentId: string;
+  amountCents: number;
+  method: PaymentMethod;
+  reason: string;
+  operationKey: string;
+  actorId: string;
+};
+
+export type CorrectPaymentResult = {
+  correctionId: string;
+  originalPaymentId: string;
+  replacementPaymentId: string;
+  replacementAmountCents: number;
+  method: PaymentMethod;
+  reversedApplicationsCount: number;
+  appliedApplicationsCount: number;
+  totalShortfallCents: number;
+  excessCreditCents: number;
+  reason: string;
+  actorId: string;
+  actorName: string | null;
+  createdAt: Date;
+  applications: Array<{
+    workOrderId: string;
+    originalAmountCents: number;
+    replacementAmountCents: number;
+    shortfallCents: number;
+  }>;
+};
+
 export type NoteFinancialSummary = {
   workOrderId: string;
   quoteId: string;
@@ -350,6 +381,21 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
         }
       }
 
+      if (!customerId && quoteId) {
+        const quoteForCustomer = await tx.quote.findUnique({
+          where: { id: quoteId },
+          select: { customerId: true },
+        });
+        customerId = quoteForCustomer?.customerId ?? undefined;
+      }
+
+      if (!customerId) {
+        throw new PaymentOperationError("No se pudo determinar el cliente para el pago.");
+      }
+
+      await lockPaymentMutationScope(tx, { quoteIds: quoteId ? [quoteId] : [] });
+
+      // Re-read the locked quote and enforce commercial validation after locking.
       if (quoteId) {
         const quote = await tx.quote.findUnique({
           where: { id: quoteId },
@@ -365,14 +411,6 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
             throw new PaymentOperationError("Solo se pueden registrar pagos en cotizaciones aprobadas.");
           }
         }
-
-        if (!customerId) {
-          customerId = quote.customerId ?? undefined;
-        }
-      }
-
-      if (!customerId) {
-        throw new PaymentOperationError("No se pudo determinar el cliente para el pago.");
       }
 
       // 1. Record immutable Payment capture
@@ -531,36 +569,42 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
         throw new PaymentOperationError("La nota no pertenece a este cliente.");
       }
 
-      // 2. Validate Note pending balance
+      // 2. Pre-scan candidate payment ids so we can lock all candidates in canonical order.
+      const candidatePaymentIds = (
+        await tx.payment.findMany({
+          where: {
+            customerId: input.customerId,
+            status: PaymentStatus.PAID,
+            reversedAt: null,
+          },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          select: { id: true },
+        })
+      ).map((p) => p.id);
+
+      // 3. Lock candidates and the target quote, then re-read the locked payments.
+      const lock = await lockPaymentMutationScope(tx, {
+        paymentIds: candidatePaymentIds,
+        quoteIds: [workOrder.quoteId],
+      });
+
+      // 4. Validate Note pending balance and customer credit after locking.
       const noteSummary = await getNoteFinancialSummary(tx, input.workOrderId);
       if (input.amountCents > noteSummary.pendingBalanceCents) {
         throw new PaymentOperationError("El monto excede el saldo pendiente de la nota.");
       }
 
-      // 3. Validate customer available credit
       const creditSummary = await getCustomerCreditSummary(tx, input.customerId);
       if (input.amountCents > creditSummary.availableCreditCents) {
         throw new PaymentOperationError("El cliente no cuenta con saldo a favor suficiente.");
       }
 
-      // 4. Find customer's active payments with unapplied credit
-      const activePayments = await tx.payment.findMany({
-        where: {
-          customerId: input.customerId,
-          status: PaymentStatus.PAID,
-          reversedAt: null,
-        },
-        include: {
-          applications: {
-            where: { reversedAt: null },
-          },
-        },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      });
-
-      let backingPayment: (typeof activePayments)[number] | null = null;
-      for (const p of activePayments) {
-        const applied = p.applications.reduce((acc, app) => acc + app.amountCents, 0);
+      // 5. Select a backing payment from the post-lock set.
+      let backingPayment: (typeof lock.lockedPayments)[number] | null = null;
+      for (const p of lock.lockedPayments) {
+        const applied = lock.activeApplications
+          .filter((a) => a.paymentId === p.id)
+          .reduce((acc, app) => acc + app.amountCents, 0);
         const unapplied = p.amountCents - applied;
         if (unapplied >= input.amountCents) {
           backingPayment = p;
@@ -568,10 +612,11 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
         }
       }
 
-      // Fallback: pick earliest payment with any unapplied credit
       if (!backingPayment) {
-        for (const p of activePayments) {
-          const applied = p.applications.reduce((acc, app) => acc + app.amountCents, 0);
+        for (const p of lock.lockedPayments) {
+          const applied = lock.activeApplications
+            .filter((a) => a.paymentId === p.id)
+            .reduce((acc, app) => acc + app.amountCents, 0);
           if (p.amountCents - applied > 0) {
             backingPayment = p;
             break;
@@ -579,11 +624,19 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
         }
       }
 
-      if (!backingPayment) {
+      if (!backingPayment || backingPayment.reversedAt) {
         throw new PaymentOperationError("No se encontró un pago activo para respaldar la aplicación.");
       }
 
-      // 5. Create PaymentApplication
+      const lockedApplied = lock.activeApplications
+        .filter((a) => a.paymentId === backingPayment.id)
+        .reduce((acc, app) => acc + app.amountCents, 0);
+      const lockedUnapplied = backingPayment.amountCents - lockedApplied;
+      if (lockedUnapplied < input.amountCents) {
+        throw new PaymentOperationError("El pago seleccionado ya no tiene saldo suficiente. Recarga e intenta de nuevo.");
+      }
+
+      // 6. Create PaymentApplication
       const application = await tx.paymentApplication.create({
         data: {
           operationKey: input.operationKey,
@@ -626,6 +679,367 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
   );
 }
 
+export type PaymentMutationScope = {
+  paymentIds?: string[];
+  quoteIds?: string[];
+};
+
+export async function lockPaymentMutationScope(
+  tx: Prisma.TransactionClient,
+  scope: PaymentMutationScope,
+) {
+  const paymentIds = scope.paymentIds ?? [];
+  const quoteIds = scope.quoteIds ?? [];
+
+  // Canonical lock order: source payments by id, then quotes by id.
+  // This uses explicit row-level FOR UPDATE locks so concurrent mutations
+  // of the same scope block or abort instead of committing interleaved state.
+  if (paymentIds.length > 0) {
+    await tx.$queryRawUnsafe(
+      `SELECT id FROM "Payment" WHERE id = ANY($1::text[]) ORDER BY id FOR UPDATE`,
+      paymentIds,
+    );
+  }
+
+  if (quoteIds.length > 0) {
+    await tx.$queryRawUnsafe(
+      `SELECT id FROM "Quote" WHERE id = ANY($1::text[]) ORDER BY id FOR UPDATE`,
+      quoteIds,
+    );
+  }
+
+  // Re-read the locked rows and active applications after acquiring locks.
+  const lockedPayments = paymentIds.length > 0
+    ? await tx.payment.findMany({
+        where: { id: { in: paymentIds } },
+        orderBy: [{ id: "asc" }],
+      })
+    : [];
+
+  const lockedQuotes = quoteIds.length > 0
+    ? await tx.quote.findMany({
+        where: { id: { in: quoteIds } },
+        orderBy: [{ id: "asc" }],
+      })
+    : [];
+
+  const activeApplications = paymentIds.length > 0
+    ? await tx.paymentApplication.findMany({
+        where: {
+          paymentId: { in: paymentIds },
+          reversedAt: null,
+        },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      })
+    : [];
+
+  return { lockedPayments, lockedQuotes, activeApplications };
+}
+
+function validateCorrectPaymentInput(input: CorrectPaymentInput) {
+  if (!input.originalPaymentId) {
+    throw new PaymentOperationError("Selecciona el pago original a corregir.");
+  }
+  if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
+    throw new PaymentOperationError("El monto de corrección debe ser mayor que cero.");
+  }
+  if (!Object.values(PaymentMethod).includes(input.method)) {
+    throw new PaymentOperationError("El método de pago no es válido.");
+  }
+  if (typeof input.reason !== "string" || input.reason.trim().length === 0) {
+    throw new PaymentOperationError("El motivo de la corrección es obligatorio.");
+  }
+  if (typeof input.actorId !== "string" || input.actorId.trim().length === 0) {
+    throw new PaymentOperationError("El usuario responsable de la corrección es obligatorio.");
+  }
+  if (typeof input.operationKey !== "string" || input.operationKey.trim().length === 0) {
+    throw new PaymentOperationError("No se pudo identificar la operación de corrección.");
+  }
+}
+
+async function buildCorrectPaymentResult(
+  tx: Prisma.TransactionClient,
+  correction: { id: string; originalPaymentId: string; replacementPaymentId: string; operationKey: string; reason: string; actorId: string; actorName: string | null; createdAt: Date },
+): Promise<CorrectPaymentResult> {
+  const replacement = await tx.payment.findUnique({ where: { id: correction.replacementPaymentId } });
+  const mappings = await tx.paymentCorrectionApplication.findMany({
+    where: { paymentCorrectionId: correction.id },
+    orderBy: [{ sortOrder: "asc" }],
+  });
+  const totalShortfallCents = mappings.reduce((sum, m) => sum + m.shortfallCents, 0);
+  const appliedApplicationsCount = mappings.filter((m) => m.replacementApplicationId !== null).length;
+  const replacementAmountCents = replacement?.amountCents ?? 0;
+  const appliedTotal = mappings.reduce((sum, m) => sum + m.replacementAmountCents, 0);
+  const excessCreditCents = Math.max(0, replacementAmountCents - appliedTotal);
+
+  return {
+    correctionId: correction.id,
+    originalPaymentId: correction.originalPaymentId,
+    replacementPaymentId: correction.replacementPaymentId,
+    replacementAmountCents,
+    method: replacement?.method ?? PaymentMethod.CASH,
+    reversedApplicationsCount: mappings.length,
+    appliedApplicationsCount,
+    totalShortfallCents,
+    excessCreditCents,
+    reason: correction.reason,
+    actorId: correction.actorId,
+    actorName: correction.actorName,
+    createdAt: correction.createdAt,
+    applications: mappings.map((m) => ({
+      workOrderId: m.workOrderId,
+      originalAmountCents: m.originalAmountCents,
+      replacementAmountCents: m.replacementAmountCents,
+      shortfallCents: m.shortfallCents,
+    })),
+  };
+}
+
+export async function correctPayment(input: CorrectPaymentInput): Promise<CorrectPaymentResult> {
+  validateCorrectPaymentInput(input);
+
+  return prisma.$transaction(
+    async (tx) => {
+      // 1. Lock the original payment first so idempotency/corrected checks are
+      // evaluated against the post-lock state.
+      await lockPaymentMutationScope(tx, { paymentIds: [input.originalPaymentId] });
+
+      const existingCorrection = await tx.paymentCorrection.findUnique({
+        where: { operationKey: input.operationKey },
+        include: { actor: { select: { id: true, displayName: true } } },
+      });
+      if (existingCorrection) {
+        return buildCorrectPaymentResult(tx, {
+          ...existingCorrection,
+          actorName: existingCorrection.actor?.displayName ?? null,
+        });
+      }
+
+      const original = await tx.payment.findUnique({
+        where: { id: input.originalPaymentId },
+        include: {
+          applications: {
+            where: { reversedAt: null },
+            include: { workOrder: true },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          },
+        },
+      });
+
+      if (!original) {
+        throw new PaymentOperationError("El pago original no existe.");
+      }
+      if (original.reversedAt) {
+        throw new PaymentOperationError("El pago original ya fue reversado.");
+      }
+
+      const alreadyCorrected = await tx.paymentCorrection.findFirst({
+        where: { originalPaymentId: original.id },
+      });
+      if (alreadyCorrected) {
+        throw new PaymentOperationError("Este pago ya fue corregido.");
+      }
+
+      // 2. Lock affected quote rows in canonical order, then re-read active apps.
+      const preLockQuoteIds = Array.from(
+        new Set(original.applications.map((app) => app.workOrder?.quoteId).filter(Boolean) as string[]),
+      );
+      const lock = await lockPaymentMutationScope(tx, { paymentIds: [original.id], quoteIds: preLockQuoteIds });
+      const activeApplications = lock.activeApplications;
+
+      const now = new Date();
+      const reason = input.reason.trim();
+      const actorId = input.actorId;
+
+      // 1. Reverse original payment
+      await tx.payment.update({
+        where: { id: original.id },
+        data: {
+          reversedAt: now,
+          reversalReason: reason,
+          reversedById: actorId,
+        },
+      });
+
+      // 2. Reverse original capture ledger entry
+      const originalCaptureEntries = await tx.ledgerEntry.findMany({
+        where: { movementType: LedgerMovementType.PAYMENT_CAPTURE, paymentId: original.id },
+      });
+      const originalCapture = originalCaptureEntries[0];
+      await tx.ledgerEntry.create({
+        data: {
+          customerId: original.customerId,
+          type: LedgerEntryType.DEBIT,
+          movementType: LedgerMovementType.PAYMENT_REVERSAL,
+          amountCents: original.amountCents,
+          paymentId: original.id,
+          actorId,
+          reason,
+          reversedMovementId: originalCapture?.id ?? null,
+        },
+      });
+
+      // 3. Reverse each active application (re-read after locking)
+      for (const app of activeApplications) {
+        await tx.paymentApplication.update({
+          where: { id: app.id },
+          data: {
+            reversedAt: now,
+            reversalReason: reason,
+            reversedById: actorId,
+          },
+        });
+
+        const originalApplicationEntries = await tx.ledgerEntry.findMany({
+          where: { movementType: LedgerMovementType.PAYMENT_APPLICATION, paymentApplicationId: app.id },
+        });
+        const originalApplicationEntry = originalApplicationEntries[0];
+        await tx.ledgerEntry.create({
+          data: {
+            customerId: original.customerId,
+            type: LedgerEntryType.DEBIT,
+            movementType: LedgerMovementType.APPLICATION_REVERSAL,
+            amountCents: app.amountCents,
+            paymentId: original.id,
+            paymentApplicationId: app.id,
+            workOrderId: app.workOrderId,
+            actorId,
+            reason,
+            reversedMovementId: originalApplicationEntry?.id ?? null,
+          },
+        });
+      }
+
+      // 4. Create replacement payment capture
+      const replacement = await tx.payment.create({
+        data: {
+          operationKey: `${input.operationKey}:payment`,
+          customerId: original.customerId,
+          quoteId: original.quoteId,
+          paymentRequestId: original.paymentRequestId,
+          method: input.method,
+          amountCents: input.amountCents,
+          status: PaymentStatus.PAID,
+        },
+      });
+
+      await tx.ledgerEntry.create({
+        data: {
+          customerId: original.customerId,
+          type: LedgerEntryType.CREDIT,
+          movementType: LedgerMovementType.PAYMENT_CAPTURE,
+          amountCents: input.amountCents,
+          paymentId: replacement.id,
+          actorId,
+          reason,
+        },
+      });
+
+      // 5. Persist durable correction linkage up front
+      const correction = await tx.paymentCorrection.create({
+        data: {
+          operationKey: input.operationKey,
+          originalPaymentId: original.id,
+          replacementPaymentId: replacement.id,
+          reason,
+          actorId,
+        },
+      });
+
+      // 6. Replay applications in original createdAt,id order
+      let remainingCents = input.amountCents;
+      let totalShortfallCents = 0;
+      let appliedApplicationsCount = 0;
+      const applications: CorrectPaymentResult["applications"] = [];
+
+      for (let index = 0; index < activeApplications.length; index++) {
+        const app = activeApplications[index];
+        const noteSummary = await getNoteFinancialSummary(tx, app.workOrderId);
+        const applyAmount = Math.min(app.amountCents, remainingCents, noteSummary.pendingBalanceCents);
+
+        let replacementApplicationId: string | null = null;
+        if (applyAmount > 0) {
+          const replacementApplication = await tx.paymentApplication.create({
+            data: {
+              operationKey: `${input.operationKey}:app:${index}`,
+              paymentId: replacement.id,
+              workOrderId: app.workOrderId,
+              amountCents: applyAmount,
+              actorId,
+            },
+          });
+
+          await tx.ledgerEntry.create({
+            data: {
+              customerId: original.customerId,
+              type: LedgerEntryType.CREDIT,
+              movementType: LedgerMovementType.PAYMENT_APPLICATION,
+              amountCents: applyAmount,
+              paymentId: replacement.id,
+              paymentApplicationId: replacementApplication.id,
+              workOrderId: app.workOrderId,
+              actorId,
+              reason,
+            },
+          });
+
+          replacementApplicationId = replacementApplication.id;
+          remainingCents -= applyAmount;
+          appliedApplicationsCount += 1;
+        }
+
+        const shortfallCents = app.amountCents - applyAmount;
+        totalShortfallCents += shortfallCents;
+
+        applications.push({
+          workOrderId: app.workOrderId,
+          originalAmountCents: app.amountCents,
+          replacementAmountCents: applyAmount,
+          shortfallCents,
+        });
+
+        await tx.paymentCorrectionApplication.create({
+          data: {
+            paymentCorrectionId: correction.id,
+            originalApplicationId: app.id,
+            replacementApplicationId,
+            workOrderId: app.workOrderId,
+            originalAmountCents: app.amountCents,
+            replacementAmountCents: applyAmount,
+            shortfallCents,
+            sortOrder: index,
+          },
+        });
+      }
+
+      const excessCreditCents = remainingCents;
+
+      const actor = await tx.userProfile.findUnique({
+        where: { id: correction.actorId },
+        select: { displayName: true },
+      });
+
+      return {
+        correctionId: correction.id,
+        originalPaymentId: original.id,
+        replacementPaymentId: replacement.id,
+        replacementAmountCents: replacement.amountCents,
+        method: replacement.method,
+        reversedApplicationsCount: activeApplications.length,
+        appliedApplicationsCount,
+        totalShortfallCents,
+        excessCreditCents,
+        reason: correction.reason,
+        actorId: correction.actorId,
+        actorName: actor?.displayName ?? null,
+        createdAt: correction.createdAt,
+        applications,
+      };
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
+}
+
 export async function reversePaymentCapture(input: ReversePaymentInput): Promise<{
   paymentId: string;
   reversedApplicationsCount: number;
@@ -641,6 +1055,9 @@ export async function reversePaymentCapture(input: ReversePaymentInput): Promise
 
   return prisma.$transaction(
     async (tx) => {
+      // Lock the payment first, then re-read it to evaluate idempotency/reversal state.
+      await lockPaymentMutationScope(tx, { paymentIds: [input.paymentId] });
+
       const payment = await tx.payment.findUnique({
         where: { id: input.paymentId },
         include: {
@@ -662,6 +1079,9 @@ export async function reversePaymentCapture(input: ReversePaymentInput): Promise
           restoredCustomerCreditCents: credit.availableCreditCents,
         };
       }
+
+      const lock = await lockPaymentMutationScope(tx, { paymentIds: [payment.id] });
+      const activeApplications = lock.activeApplications;
 
       const now = new Date();
       const reason = input.reason.trim();
@@ -690,7 +1110,7 @@ export async function reversePaymentCapture(input: ReversePaymentInput): Promise
       });
 
       // 3. Atomically reverse all active applications tied to this payment
-      for (const app of payment.applications) {
+      for (const app of activeApplications) {
         await tx.paymentApplication.update({
           where: { id: app.id },
           data: {
@@ -719,7 +1139,7 @@ export async function reversePaymentCapture(input: ReversePaymentInput): Promise
 
       return {
         paymentId: payment.id,
-        reversedApplicationsCount: payment.applications.length,
+        reversedApplicationsCount: activeApplications.length,
         restoredCustomerCreditCents: updatedCredit.availableCreditCents,
       };
     },

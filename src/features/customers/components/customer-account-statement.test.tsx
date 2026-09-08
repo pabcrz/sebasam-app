@@ -112,4 +112,11 @@ describe("CustomerAccountStatement", () => {
 
     expect(screen.getByText("Este cliente todavía no tiene movimientos financieros registrados.")).toBeInTheDocument();
   });
+
+  it("shows a correction trigger for an active payment capture when an admin action is provided", () => {
+    const correctPaymentAction = vi.fn().mockResolvedValue({});
+    render(<CustomerAccountStatement statement={statement} correctPaymentAction={correctPaymentAction} />);
+
+    expect(screen.getByRole("button", { name: /corregir pago de \$50\.00/i })).toBeInTheDocument();
+  });
 });

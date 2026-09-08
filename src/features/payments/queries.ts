@@ -1,5 +1,5 @@
-import { PaymentStatus, WorkOrderStatus } from "@prisma/client";
-import { requireOperationalRole } from "@/lib/auth/session";
+import { PaymentMethod, PaymentStatus, WorkOrderStatus } from "@prisma/client";
+import { requireAdmin, requireOperationalRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
   getCustomerCreditSummary,
@@ -86,4 +86,73 @@ export async function getEligibleNotesForCreditApplication(customerId: string): 
       };
     })
     .filter((note) => note.pendingBalanceCents > 0);
+}
+
+export type PaymentCorrectionDetail = {
+  id: string;
+  reason: string;
+  createdAt: Date;
+  actor: { id: string; displayName: string } | null;
+  originalPayment: { id: string; amountCents: number; method: PaymentMethod; operationKey: string };
+  replacementPayment: { id: string; amountCents: number; method: PaymentMethod; operationKey: string };
+  applications: Array<{
+    id: string;
+    workOrder: { id: string; number: string } | null;
+    originalAmountCents: number;
+    replacementAmountCents: number;
+    shortfallCents: number;
+  }>;
+};
+
+export async function hasActivePaymentApplicationForWorkOrder(workOrderId: string): Promise<boolean> {
+  await requireOperationalRole();
+
+  const count = await prisma.paymentApplication.count({
+    where: {
+      workOrderId,
+      reversedAt: null,
+      payment: { reversedAt: null },
+    },
+  });
+
+  return count > 0;
+}
+
+export async function getPaymentCorrectionDetail(paymentId: string): Promise<PaymentCorrectionDetail | null> {
+  await requireAdmin();
+
+  const correction = await prisma.paymentCorrection.findFirst({
+    where: {
+      OR: [{ originalPaymentId: paymentId }, { replacementPaymentId: paymentId }],
+    },
+    include: {
+      actor: { select: { id: true, displayName: true } },
+      originalPayment: { select: { id: true, amountCents: true, method: true, operationKey: true } },
+      replacementPayment: { select: { id: true, amountCents: true, method: true, operationKey: true } },
+      applications: {
+        orderBy: { sortOrder: "asc" },
+        include: {
+          workOrder: { select: { id: true, number: true } },
+        },
+      },
+    },
+  });
+
+  if (!correction) return null;
+
+  return {
+    id: correction.id,
+    reason: correction.reason,
+    createdAt: correction.createdAt,
+    actor: correction.actor,
+    originalPayment: correction.originalPayment,
+    replacementPayment: correction.replacementPayment,
+    applications: correction.applications.map((app) => ({
+      id: app.id,
+      workOrder: app.workOrder,
+      originalAmountCents: app.originalAmountCents,
+      replacementAmountCents: app.replacementAmountCents,
+      shortfallCents: app.shortfallCents,
+    })),
+  };
 }
