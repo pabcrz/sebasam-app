@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { getCustomerAccountStatement, listCustomers } from "./queries";
+import { getCustomerAccountStatement, getCustomerDeletionBlocker, listCustomers } from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -50,11 +50,68 @@ describe("listCustomers search", () => {
     });
   });
 
-  it("limits results to 50 customers", async () => {
+  it("limits results to 50 customers and includes relation counts", async () => {
     await listCustomers();
 
     const call = getFindManyCall();
     expect(call.take).toBe(50);
+    expect(call.include).toEqual({
+      _count: {
+        select: {
+          quotes: true,
+          payments: true,
+          paymentRequests: true,
+          ledgerEntries: true,
+        },
+      },
+    });
+  });
+});
+
+describe("getCustomerDeletionBlocker", () => {
+  it("allows deletion when customer has zero related quotes and financial records", () => {
+    const blocker = getCustomerDeletionBlocker({
+      _count: { quotes: 0, payments: 0, paymentRequests: 0, ledgerEntries: 0 },
+    });
+    expect(blocker).toEqual({ canDelete: true, reason: null });
+  });
+
+  it("blocks deletion with singular quote reason when customer has 1 quote", () => {
+    const blocker = getCustomerDeletionBlocker({
+      _count: { quotes: 1, payments: 0, paymentRequests: 0, ledgerEntries: 0 },
+    });
+    expect(blocker).toEqual({
+      canDelete: false,
+      reason: "No se puede eliminar: tiene 1 cotización asociada",
+    });
+  });
+
+  it("blocks deletion with plural quote reason when customer has multiple quotes", () => {
+    const blocker = getCustomerDeletionBlocker({
+      _count: { quotes: 3, payments: 0, paymentRequests: 0, ledgerEntries: 0 },
+    });
+    expect(blocker).toEqual({
+      canDelete: false,
+      reason: "No se puede eliminar: tiene 3 cotizaciones asociadas",
+    });
+  });
+
+  it("blocks deletion with financial activity reason when customer has payments or ledger entries", () => {
+    const paymentBlocker = getCustomerDeletionBlocker({
+      _count: { quotes: 0, payments: 1, paymentRequests: 0, ledgerEntries: 0 },
+    });
+    expect(paymentBlocker).toEqual({
+      canDelete: false,
+      reason: "No se puede eliminar: tiene actividad financiera asociada",
+    });
+
+    const ledgerBlocker = getCustomerDeletionBlocker({
+      _count: { quotes: 0, payments: 0, paymentRequests: 0, ledgerEntries: 2 },
+    });
+    expect(ledgerBlocker).toEqual({
+      canDelete: false,
+      reason: "No se puede eliminar: tiene actividad financiera asociada",
+    });
   });
 });
 

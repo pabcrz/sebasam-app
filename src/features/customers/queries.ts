@@ -45,6 +45,11 @@ export type CustomerAccountStatement = {
   }>;
 };
 
+export {
+  type CustomerDeletionBlocker,
+  getCustomerDeletionBlocker,
+} from "./domain";
+
 export async function listCustomers(input: unknown = {}) {
   await requireOperationalRole();
 
@@ -64,6 +69,16 @@ export async function listCustomers(input: unknown = {}) {
           ],
         }
       : undefined,
+    include: {
+      _count: {
+        select: {
+          quotes: true,
+          payments: true,
+          paymentRequests: true,
+          ledgerEntries: true,
+        },
+      },
+    },
     orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
     take: 50,
   });
