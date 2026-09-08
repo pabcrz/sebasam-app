@@ -18,13 +18,18 @@ vi.mock("@/features/work-orders/queries", () => ({ getWorkOrderById: getWorkOrde
 vi.mock("@/features/workers/queries", () => ({ listActiveWorkers: listActiveWorkersMock }));
 vi.mock("@/features/customers/queries", () => ({ listCustomers: listCustomersMock }));
 vi.mock("@/features/customers/actions", () => ({ searchCustomersForQuote: vi.fn() }));
-vi.mock("@/features/quotes/actions", () => ({ updateDraftQuoteFromWorkspace: vi.fn() }));
+vi.mock("@/features/quotes/actions", () => ({
+  correctCompletedWorkQuoteFromWorkspace: vi.fn(),
+  updateDraftQuoteFromWorkspace: vi.fn(),
+}));
 vi.mock("@/features/work-orders/actions", () => ({
   createAndAssignWorkOrderAction: vi.fn(),
   completeWorkOrderAction: vi.fn(),
   rollbackWorkOrderAction: vi.fn(),
 }));
-vi.mock("@/features/quotes/components/quote-builder-dialog", () => ({ QuoteBuilderDialog: () => <div /> }));
+vi.mock("@/features/quotes/components/quote-builder-dialog", () => ({
+  QuoteBuilderDialog: ({ triggerLabel = "Editar" }: { triggerLabel?: string }) => <button>{triggerLabel}</button>,
+}));
 vi.mock("@/features/work-orders/components/work-order-operations-dialog", () => ({ WorkOrderOperationsDialog: () => <div /> }));
 
 import WorkOrderDetailPage from "./page";
@@ -43,6 +48,7 @@ describe("WorkOrderDetailPage", () => {
       status: "ASSIGNED",
       isSpecial: true,
       assignments: [],
+      paymentApplications: [],
       quote: {
         id: "quote-detail-1",
         number: "COT-001",
@@ -74,6 +80,7 @@ describe("WorkOrderDetailPage", () => {
       status: "COMPLETED",
       isSpecial: true,
       assignments: [],
+      paymentApplications: [],
       quote: {
         id: "quote-detail-completed-1",
         number: "COT-002",
@@ -91,5 +98,32 @@ describe("WorkOrderDetailPage", () => {
     const print = screen.getByRole("link", { name: /imprimir orden/i });
     expect(print).toHaveAttribute("href", "/admin/notas/wo-detail-completed-1/print?returnTo=/admin/notas");
     expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+    expect(screen.getByRole("button", { name: "Corregir trabajo" })).toBeInTheDocument();
+  });
+
+  it("keeps commercial correction unavailable when completed work has an active payment", async () => {
+    getWorkOrderByIdMock.mockResolvedValue({
+      id: "wo-detail-paid-1",
+      number: "OT-003",
+      status: "COMPLETED",
+      isSpecial: true,
+      assignments: [],
+      paymentApplications: [{ id: "application-1" }],
+      quote: {
+        id: "quote-detail-paid-1",
+        number: "COT-003",
+        status: "APPROVED",
+        customer: { name: "Cliente de prueba" },
+        vehicle: null,
+        totalCents: 12500,
+        items: [],
+        sections: [],
+      },
+    });
+
+    render(await WorkOrderDetailPage({ params: Promise.resolve({ id: "wo-detail-paid-1" }) }));
+
+    expect(screen.queryByRole("button", { name: "Corregir trabajo" })).not.toBeInTheDocument();
+    expect(screen.getByText(/corrige el pago desde notas/i)).toBeInTheDocument();
   });
 });

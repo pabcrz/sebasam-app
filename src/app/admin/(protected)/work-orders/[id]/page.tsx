@@ -6,7 +6,7 @@ import { AdminPageHeader } from "@/components/admin-page-header";
 import { getWorkOrderById } from "@/features/work-orders/queries";
 import { listActiveWorkers } from "@/features/workers/queries";
 import { searchCustomersForQuote } from "@/features/customers/actions";
-import { updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
+import { correctCompletedWorkQuoteFromWorkspace, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
 import { listCustomers } from "@/features/customers/queries";
 import {
   Badge,
@@ -18,7 +18,7 @@ import { WorkOrderOperationsDialog } from "@/features/work-orders/components/wor
 import { createAndAssignWorkOrderAction, completeWorkOrderAction, rollbackWorkOrderAction } from "@/features/work-orders/actions";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { formatCents, formatVehicle } from "@/features/quotes/lib/format";
-import { isQuoteEditable } from "@/features/quotes/lib/editability";
+import { isCompletedWorkCorrectable, isQuoteEditable } from "@/features/quotes/lib/editability";
 
 export const metadata: Metadata = {
   title: "Detalle de Trabajo",
@@ -42,6 +42,8 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
 
   const { quote } = workOrder;
   const editable = isQuoteEditable({ ...quote, workOrder: { status: workOrder.status } });
+  const correctable = isCompletedWorkCorrectable({ ...quote, workOrder: { status: workOrder.status } })
+    && workOrder.paymentApplications.length === 0;
   const master = workOrder.assignments.find((a) => a.worker.workerKind === "MASTER");
   const helpers = workOrder.assignments.filter((a) => a.worker.workerKind === "HELPER");
   const printHref = workOrder.status === "COMPLETED"
@@ -117,9 +119,18 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
                   saveAction={updateDraftQuoteFromWorkspace.bind(null, quote.id)}
                   searchCustomersAction={searchCustomersForQuote}
                 />
+              ) : correctable ? (
+                <QuoteBuilderDialog
+                  customers={customers}
+                  quote={quote as never}
+                  quoteNumber={quote.number}
+                  saveAction={correctCompletedWorkQuoteFromWorkspace.bind(null, quote.id)}
+                  searchCustomersAction={searchCustomersForQuote}
+                  triggerLabel="Corregir trabajo"
+                />
               ) : (
                 <p className="text-xs text-[var(--color-text-muted)]">
-                  Los conceptos están congelados porque la orden fue finalizada.
+                  El trabajo tiene pagos activos. Corrige el pago desde Notas antes de modificar conceptos.
                 </p>
               )}
             </div>

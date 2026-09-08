@@ -8,6 +8,8 @@ import {
   createQuote,
   createQuoteFromForm,
   createQuoteFromWorkspace,
+  correctCompletedWorkQuote,
+  correctCompletedWorkQuoteFromWorkspace,
   deleteQuote,
   deleteQuoteFromForm,
   duplicateQuote,
@@ -59,35 +61,40 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 import { authorizeQuote, getOrCreateSharedQuoteForQuote } from "./domain";
 
 type MockTx = {
-  quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
+  $queryRawUnsafe: ReturnType<typeof vi.fn>;
+  quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> };
   quoteItem: { deleteMany: ReturnType<typeof vi.fn>; createMany: ReturnType<typeof vi.fn> };
   quoteSection: { deleteMany: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
-  payment: { count: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn> };
+  payment: { count: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  paymentApplication: { findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
   sharedQuote: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
-  workOrder: { count: ReturnType<typeof vi.fn> };
+  workOrder: { count: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   const tx: MockTx = {
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
     quote: {
       create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", isAuthorized: false, sortOrder: 0 }] }),
-      findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, customerId: "cust-1", subtotalCents: 10000, discountCents: 0, taxCents: 1600, totalCents: 11600, taxEnabled: true, operationalDate: new Date("2026-07-14T00:00:00.000Z"), items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }], sections: [{ id: "sec-1", sortOrder: 0, items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }] }] }),
+      findUnique: vi.fn().mockResolvedValue({ id: "quote-1", status, customerId: "cust-1", subtotalCents: 10000, discountCents: 0, taxCents: 1600, totalCents: 11600, taxEnabled: true, operationalDate: new Date("2026-07-14T00:00:00.000Z"), approvedAt: new Date("2026-07-10T00:00:00.000Z"), items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }], sections: [{ id: "sec-1", sortOrder: 0, items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }] }] }),
       update: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", sortOrder: 0 }] }),
       delete: vi.fn().mockResolvedValue({ id: "quote-1" }),
       findUniqueOrThrow: vi.fn(),
       updateMany: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
     },
     quoteItem: { deleteMany: vi.fn(), createMany: vi.fn() },
     quoteSection: { deleteMany: vi.fn() },
     quoteDecision: { create: vi.fn(), deleteMany: vi.fn() },
-    payment: { count: vi.fn().mockResolvedValue(0), aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: null } }) },
+    payment: { count: vi.fn().mockResolvedValue(0), aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: null } }), findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    paymentApplication: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
     sharedQuote: { updateMany: vi.fn(), deleteMany: vi.fn() },
     paymentRequest: { updateMany: vi.fn(), deleteMany: vi.fn() },
     quoteLifecycleEvent: { create: vi.fn(), deleteMany: vi.fn() },
-    workOrder: { count: vi.fn().mockResolvedValue(0) },
+    workOrder: { count: vi.fn().mockResolvedValue(0), findUnique: vi.fn().mockResolvedValue(null) },
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
   (findOrCreateVehicle as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "vehicle-1" });
@@ -886,7 +893,7 @@ describe("duplicateQuoteFromForm", () => {
 describe("deleteQuote", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("authorizes direct deletion and permanently deletes quote and related records when there are no active payments", async () => {
+  it("authorizes direct deletion and permanently deletes quote and related records when there are no pago activos", async () => {
     const tx = mockTx();
     tx.payment.count.mockResolvedValue(0);
 
@@ -1042,6 +1049,112 @@ describe("quote lifecycle", () => {
     expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({ previousState: QuoteStatus.ARCHIVED, nextState: QuoteStatus.DRAFT }) });
     expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
     expect(tx.paymentRequest.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+function completedWorkQuoteSetup(tx: MockTx, overrides: { status?: QuoteStatus; workOrder?: unknown; applications?: { id: string; paymentId: string; amountCents: number; reversedAt: Date | null }[] } = {}) {
+  tx.quote.findUnique.mockResolvedValue({
+    id: "quote-1",
+    status: overrides.status ?? QuoteStatus.APPROVED,
+    customerId: "cust-1",
+    subtotalCents: 10000,
+    discountCents: 0,
+    taxCents: 1600,
+    totalCents: 11600,
+    taxEnabled: true,
+    operationalDate: new Date("2026-07-14T00:00:00.000Z"),
+    approvedAt: new Date("2026-07-10T00:00:00.000Z"),
+    completedAt: null,
+    items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }],
+    sections: [{ id: "sec-1", sortOrder: 0, items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }] }],
+    workOrder: overrides.workOrder ?? { id: "wo-1", status: "COMPLETED", completedAt: new Date("2026-07-15T00:00:00.000Z"), assignments: [{ id: "assign-1" }], executionRecords: [{ id: "exec-1" }] },
+  });
+    tx.paymentApplication.findMany.mockResolvedValue(overrides.applications?.filter((a) => a.reversedAt === null) ?? []);
+    tx.quote.update.mockResolvedValue({ id: "quote-1", totalCents: 197200, status: overrides.status ?? QuoteStatus.APPROVED, sections: [{ id: "sec-1", sortOrder: 0 }] });
+}
+
+describe("correctCompletedWorkQuote", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("corrects commercial data on unpaid completed work and preserves operational state", async () => {
+    const tx = mockTx();
+    completedWorkQuoteSetup(tx);
+
+    const result = await correctCompletedWorkQuote("quote-1", validInput());
+
+    expect(tx.quote.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "quote-1" } }));
+    expect(tx.paymentApplication.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ workOrderId: "wo-1", reversedAt: null }) }));
+    expect(tx.quote.update).toHaveBeenCalledTimes(1);
+    const updateData = tx.quote.update.mock.calls[0][0].data;
+    expect(updateData.status).toBe(QuoteStatus.APPROVED);
+    expect(updateData.approvedAt).toEqual(new Date("2026-07-10T00:00:00.000Z"));
+    expect(updateData.operationalDate).toEqual(new Date("2026-07-14T00:00:00.000Z"));
+    expect(result.totalCents).toBe(197200);
+  });
+
+  it("allows correction when the only payments are fully reversed", async () => {
+    const tx = mockTx();
+    completedWorkQuoteSetup(tx, {
+      applications: [{ id: "app-1", paymentId: "pay-1", amountCents: 5000, reversedAt: new Date("2026-07-16T00:00:00.000Z") }],
+    });
+
+    await expect(correctCompletedWorkQuote("quote-1", validInput())).resolves.toBeDefined();
+    expect(tx.quote.update).toHaveBeenCalled();
+  });
+
+  it("rejects correction while an active unreversed payment exists", async () => {
+    const tx = mockTx();
+    completedWorkQuoteSetup(tx, {
+      applications: [{ id: "app-1", paymentId: "pay-1", amountCents: 5000, reversedAt: null }],
+    });
+
+    await expect(correctCompletedWorkQuote("quote-1", validInput())).rejects.toThrow("pago activo");
+    expect(tx.quote.update).not.toHaveBeenCalled();
+  });
+
+  it("preserves quote lifecycle and work-order operational fields", async () => {
+    const tx = mockTx();
+    const completedAt = new Date("2026-07-15T12:00:00.000Z");
+    completedWorkQuoteSetup(tx, {
+      workOrder: { id: "wo-1", status: "COMPLETED", completedAt, assignments: [{ id: "assign-1" }], executionRecords: [{ id: "exec-1" }] },
+    });
+
+    await correctCompletedWorkQuote("quote-1", validInput());
+
+    const updateData = tx.quote.update.mock.calls[0][0].data;
+    expect(updateData).not.toHaveProperty("completedAt");
+    expect(updateData).not.toHaveProperty("assignments");
+    expect(updateData).not.toHaveProperty("executionRecords");
+    expect(updateData.status).toBe(QuoteStatus.APPROVED);
+  });
+
+  it("detects a payment that became active after locking and aborts", async () => {
+    const tx = mockTx();
+    completedWorkQuoteSetup(tx);
+    tx.paymentApplication.findMany.mockResolvedValue([{ id: "app-race", paymentId: "pay-race", amountCents: 5000, reversedAt: null }]);
+
+    await expect(correctCompletedWorkQuote("quote-1", validInput())).rejects.toThrow("pago activo");
+    expect(tx.quote.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("correctCompletedWorkQuoteFromWorkspace", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns success for a valid unpaid correction", async () => {
+    const tx = mockTx();
+    completedWorkQuoteSetup(tx);
+
+    await expect(correctCompletedWorkQuoteFromWorkspace("quote-1", {}, buildFormData({ "sections.0.items.0.unitPrice": "850" }) as unknown as FormData)).resolves.toEqual({ success: true });
+  });
+
+  it("returns an actionable error when an pago activo blocks correction", async () => {
+    const tx = mockTx();
+    completedWorkQuoteSetup(tx, {
+      applications: [{ id: "app-1", paymentId: "pay-1", amountCents: 5000, reversedAt: null }],
+    });
+
+    await expect(correctCompletedWorkQuoteFromWorkspace("quote-1", {}, buildFormData() as unknown as FormData)).resolves.toEqual({ error: expect.stringContaining("pago activo") });
   });
 });
 

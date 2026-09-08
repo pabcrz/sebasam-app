@@ -69,4 +69,20 @@ describe("WorkOrderCompletedList", () => {
     expect(print).not.toHaveAttribute("target");
     expect(print).not.toHaveAttribute("rel");
   });
+
+  it("renders a correction trigger for the active payment when an admin action is provided", () => {
+    const correctableWorkOrder = {
+      ...workOrder,
+      quote: { ...workOrder.quote, activePaymentId: "pay-1", activePaymentMethod: "CASH", activePaymentAmountCents: 12_500 },
+    } as unknown as CompletedListProps["workOrders"][number];
+
+    render(
+      <WorkOrderCompletedList
+        workOrders={[correctableWorkOrder]}
+        correctionActions={[{ workOrderId: correctableWorkOrder.id, action: vi.fn() }]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /corregir pago de \$125\.00/i })).toBeInTheDocument();
+  });
 });

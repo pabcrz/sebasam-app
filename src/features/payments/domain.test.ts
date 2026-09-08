@@ -10,12 +10,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
   applyCustomerCredit,
-  getCustomerBalanceSummary,
+  correctPayment,
   getCustomerCreditSummary,
   getNoteFinancialSummary,
-  parseCashAmountCents,
-  PaymentOperationError,
-  recordCashPayment,
+  lockPaymentMutationScope,
   recordPayment,
   reversePaymentCapture,
 } from "./domain";
@@ -29,8 +27,11 @@ vi.mock("@/lib/prisma", () => ({
     workOrder: { findUnique: vi.fn(), findMany: vi.fn() },
     payment: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), aggregate: vi.fn() },
     paymentApplication: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), aggregate: vi.fn() },
+    paymentCorrection: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
+    paymentCorrectionApplication: { findMany: vi.fn(), create: vi.fn() },
     paymentRequest: { findUnique: vi.fn() },
     ledgerEntry: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn() },
+    userProfile: { findUnique: vi.fn() },
   },
 }));
 
@@ -100,12 +101,40 @@ type LedgerEntryDouble = {
   [key: string]: unknown;
 };
 
+type CorrectionDouble = {
+  id: string;
+  operationKey: string;
+  originalPaymentId: string;
+  replacementPaymentId: string;
+  reason: string;
+  actorId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  [key: string]: unknown;
+};
+
+type CorrectionApplicationDouble = {
+  id: string;
+  paymentCorrectionId: string;
+  originalApplicationId: string;
+  replacementApplicationId: string | null;
+  workOrderId: string;
+  originalAmountCents: number;
+  replacementAmountCents: number;
+  shortfallCents: number;
+  sortOrder: number;
+  createdAt: Date;
+  [key: string]: unknown;
+};
+
 type Store = {
   quotes: Map<string, QuoteDouble>;
   workOrders: Map<string, WorkOrderDouble>;
   payments: Map<string, PaymentDouble>;
   applications: Map<string, PaymentApplicationDouble>;
   ledgerEntries: LedgerEntryDouble[];
+  corrections: Map<string, CorrectionDouble>;
+  correctionApplications: Map<string, CorrectionApplicationDouble>;
 };
 
 function createMockDb(initialState?: Partial<Store>) {
@@ -115,14 +144,23 @@ function createMockDb(initialState?: Partial<Store>) {
     payments: new Map(initialState?.payments ?? []),
     applications: new Map(initialState?.applications ?? []),
     ledgerEntries: [...(initialState?.ledgerEntries ?? [])],
+    corrections: new Map(initialState?.corrections ?? []),
+    correctionApplications: new Map(initialState?.correctionApplications ?? []),
   };
 
   let idCounter = 1;
 
   const mockTx = {
+    $queryRawUnsafe: vi.fn().mockResolvedValue([]),
     quote: {
       findUnique: vi.fn().mockImplementation(async ({ where }) => {
         return store.quotes.get(where.id) ?? null;
+      }),
+      findMany: vi.fn().mockImplementation(async ({ where }) => {
+        if (where?.id?.in) {
+          return Array.from(store.quotes.values()).filter((q) => where.id.in.includes(q.id));
+        }
+        return Array.from(store.quotes.values());
       }),
       aggregate: vi.fn().mockImplementation(async ({ where }) => {
         let total = 0;
@@ -244,6 +282,28 @@ function createMockDb(initialState?: Partial<Store>) {
         }
         return null;
       }),
+      findMany: vi.fn().mockImplementation(async ({ where }) => {
+        let list = Array.from(store.applications.values());
+        if (where?.workOrderId) {
+          const ids = where.workOrderId.in ? where.workOrderId.in : [where.workOrderId];
+          list = list.filter((a) => ids.includes(a.workOrderId));
+        }
+        if (where?.paymentId) {
+          const ids = where.paymentId.in ? where.paymentId.in : [where.paymentId];
+          list = list.filter((a) => ids.includes(a.paymentId));
+        }
+        if (where?.reversedAt === null) list = list.filter((a) => a.reversedAt === null);
+        if (where?.payment?.reversedAt === null) {
+          list = list.filter((a) => {
+            const p = store.payments.get(a.paymentId);
+            return p && p.reversedAt === null;
+          });
+        }
+        return list.map((a) => {
+          const wo = store.workOrders.get(a.workOrderId);
+          return { ...a, workOrder: wo ? { ...wo, quote: store.quotes.get(wo.quoteId) } : null };
+        });
+      }),
       create: vi.fn().mockImplementation(async ({ data }) => {
         const id = `app-${idCounter++}`;
         const record = {
@@ -279,6 +339,50 @@ function createMockDb(initialState?: Partial<Store>) {
         return { _sum: { amountCents: total } };
       }),
     },
+    paymentCorrection: {
+      findUnique: vi.fn().mockImplementation(async ({ where }) => {
+        if (where.operationKey) {
+          for (const c of store.corrections.values()) {
+            if (c.operationKey === where.operationKey) return c;
+          }
+        }
+        if (where.id) return store.corrections.get(where.id) ?? null;
+        return null;
+      }),
+      findFirst: vi.fn().mockImplementation(async ({ where }) => {
+        if (where?.originalPaymentId) {
+          for (const c of store.corrections.values()) {
+            if (c.originalPaymentId === where.originalPaymentId) return c;
+          }
+        }
+        return null;
+      }),
+      create: vi.fn().mockImplementation(async ({ data }) => {
+        const id = `corr-${idCounter++}`;
+        const record = { id, createdAt: new Date(), updatedAt: new Date(), ...data };
+        store.corrections.set(id, record);
+        return record;
+      }),
+    },
+    paymentCorrectionApplication: {
+      create: vi.fn().mockImplementation(async ({ data }) => {
+        const id = `capp-${idCounter++}`;
+        const record = { id, createdAt: new Date(), ...data };
+        store.correctionApplications.set(id, record);
+        return record;
+      }),
+      findMany: vi.fn().mockImplementation(async ({ where }) => {
+        let list = Array.from(store.correctionApplications.values());
+        if (where?.paymentCorrectionId) list = list.filter((a) => a.paymentCorrectionId === where.paymentCorrectionId);
+        return list;
+      }),
+    },
+    userProfile: {
+      findUnique: vi.fn().mockImplementation(async ({ where }) => {
+        if (!where?.id) return null;
+        return { id: where.id, displayName: "Admin User" };
+      }),
+    },
     ledgerEntry: {
       create: vi.fn().mockImplementation(async ({ data }) => {
         const id = `ledger-${idCounter++}`;
@@ -289,6 +393,9 @@ function createMockDb(initialState?: Partial<Store>) {
       findMany: vi.fn().mockImplementation(async ({ where }) => {
         let list = [...store.ledgerEntries];
         if (where?.customerId) list = list.filter((e) => e.customerId === where.customerId);
+        if (where?.movementType) list = list.filter((e) => e.movementType === where.movementType);
+        if (where?.paymentId) list = list.filter((e) => e.paymentId === where.paymentId);
+        if (where?.paymentApplicationId) list = list.filter((e) => e.paymentApplicationId === where.paymentApplicationId);
         return list.map((e) => {
           const p = e.paymentId ? store.payments.get(e.paymentId) : null;
           const q = p?.quoteId ? store.quotes.get(p.quoteId) : null;
@@ -320,6 +427,9 @@ function createMockDb(initialState?: Partial<Store>) {
   Object.assign(prisma.payment, mockTx.payment);
   Object.assign(prisma.paymentApplication, mockTx.paymentApplication);
   Object.assign(prisma.ledgerEntry, mockTx.ledgerEntry);
+  Object.assign(prisma.paymentCorrection, mockTx.paymentCorrection);
+  Object.assign(prisma.paymentCorrectionApplication, mockTx.paymentCorrectionApplication);
+  Object.assign(prisma.userProfile, mockTx.userProfile);
 
   return { store, transaction };
 }
@@ -462,7 +572,7 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
       ],
     ]);
 
-    const { store, transaction } = createMockDb({ quotes, workOrders });
+    const { transaction } = createMockDb({ quotes, workOrders });
 
     // Step 1: Capture 10,000 for Note 1 (8,000 applied, 2,000 unapplied credit)
     await recordPayment({
@@ -858,5 +968,260 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
     const reversalMovement = statement.movements.find((m) => m.movementType === LedgerMovementType.PAYMENT_REVERSAL);
     expect(reversalMovement?.reason).toBe("Customer check bounced");
     expect(reversalMovement?.actor?.displayName).toBe("Admin User");
+  });
+});
+
+describe("lockPaymentMutationScope", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("locks payments and quotes in ascending id order and re-reads active applications", async () => {
+    const quotes = new Map([
+      ["quote-1", { id: "quote-1", customerId: "cust-1", status: QuoteStatus.APPROVED, totalCents: 10000 }],
+    ]);
+    const workOrders = new Map([
+      ["wo-1", { id: "wo-1", quoteId: "quote-1", status: WorkOrderStatus.COMPLETED }],
+    ]);
+    const payments = new Map([
+      ["pay-1", { id: "pay-1", customerId: "cust-1", amountCents: 10000, status: PaymentStatus.PAID, reversedAt: null, operationKey: "op-1" }],
+    ]);
+    const applications = new Map([
+      ["app-1", { id: "app-1", paymentId: "pay-1", workOrderId: "wo-1", amountCents: 10000, reversedAt: null, operationKey: "op-1:app" }],
+    ]);
+
+    const { transaction } = createMockDb({ quotes, workOrders, payments, applications });
+
+    const result = await lockPaymentMutationScope(transaction, { paymentIds: ["pay-1"], quoteIds: ["quote-1"] });
+
+    expect(result.lockedPayments.map((p) => p.id)).toEqual(["pay-1"]);
+    expect(result.lockedQuotes.map((q) => q.id)).toEqual(["quote-1"]);
+    expect(result.activeApplications.map((a) => a.id)).toEqual(["app-1"]);
+  });
+});
+
+describe("correctPayment", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  function baseCorrectionStore() {
+    const quotes = new Map([
+      [
+        "quote-1",
+        { id: "quote-1", customerId: "cust-1", status: QuoteStatus.APPROVED, totalCents: 10000, subtotalCents: 10000, taxCents: 0, discountCents: 0, taxEnabled: false, items: [{ description: "Repair", quantity: 1, unitPriceCents: 10000 }] },
+      ],
+    ]);
+    const workOrders = new Map([
+      ["wo-1", { id: "wo-1", quoteId: "quote-1", status: WorkOrderStatus.COMPLETED, completedAt: new Date("2026-08-20T10:00:00Z") }],
+    ]);
+    const { store, transaction } = createMockDb({ quotes, workOrders });
+    return { store, transaction };
+  }
+
+  it("returns correction audit fields and per-application allocation summary", async () => {
+    const { store } = baseCorrectionStore();
+    const paymentResult = await recordPayment({ workOrderId: "wo-1", amountCents: 10_000, operationKey: "op-original-audit", actorId: "user-1" });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-25T10:00:00.000Z"));
+    const result = await correctPayment({
+      originalPaymentId: paymentResult.payment.id,
+      amountCents: 10_000,
+      method: PaymentMethod.TRANSFER,
+      reason: "Audit fields test",
+      operationKey: "op-correct-audit",
+      actorId: "admin-1",
+    });
+    vi.useRealTimers();
+
+    expect(result.reason).toBe("Audit fields test");
+    expect(result.actorId).toBe("admin-1");
+    expect(result.createdAt).toEqual(new Date("2026-08-25T10:00:00.000Z"));
+    expect(result.applications).toHaveLength(1);
+    expect(result.applications[0]).toMatchObject({
+      workOrderId: "wo-1",
+      originalAmountCents: 10_000,
+      replacementAmountCents: 10_000,
+      shortfallCents: 0,
+    });
+  });
+
+  it("records actor, reason and a current-timestamp correction", async () => {
+    const { store } = baseCorrectionStore();
+    const paymentResult = await recordPayment({ workOrderId: "wo-1", amountCents: 10000, operationKey: "op-original", actorId: "user-1" });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-25T10:00:00.000Z"));
+    const result = await correctPayment({
+      originalPaymentId: paymentResult.payment.id,
+      amountCents: 10000,
+      method: PaymentMethod.TRANSFER,
+      reason: "Wrong method recorded",
+      operationKey: "op-correct-1",
+      actorId: "admin-1",
+    });
+    vi.useRealTimers();
+
+    expect(result.originalPaymentId).toBe(paymentResult.payment.id);
+    expect(result.replacementAmountCents).toBe(10000);
+    expect(result.method).toBe(PaymentMethod.TRANSFER);
+
+    const correction = Array.from(store.corrections.values())[0];
+    expect(correction.reason).toBe("Wrong method recorded");
+    expect(correction.actorId).toBe("admin-1");
+    expect(correction.createdAt).toEqual(new Date("2026-08-25T10:00:00.000Z"));
+
+    const original = store.payments.get(paymentResult.payment.id);
+    expect(original?.reversedAt).not.toBeNull();
+  });
+
+  it("rejects a second correction for the same original payment", async () => {
+    baseCorrectionStore();
+    const paymentResult = await recordPayment({ workOrderId: "wo-1", amountCents: 10000, operationKey: "op-original-2" });
+
+    await correctPayment({
+      originalPaymentId: paymentResult.payment.id,
+      amountCents: 10000,
+      method: PaymentMethod.TRANSFER,
+      reason: "First correction",
+      operationKey: "op-correct-2a",
+      actorId: "admin-1",
+    });
+
+    await expect(
+      correctPayment({
+        originalPaymentId: paymentResult.payment.id,
+        amountCents: 10000,
+        method: PaymentMethod.CASH,
+        reason: "Second correction",
+        operationKey: "op-correct-2b",
+        actorId: "admin-1",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("is idempotent when retried with the same operation key", async () => {
+    const { store } = baseCorrectionStore();
+    const paymentResult = await recordPayment({ workOrderId: "wo-1", amountCents: 10000, operationKey: "op-original-3" });
+
+    const first = await correctPayment({
+      originalPaymentId: paymentResult.payment.id,
+      amountCents: 10000,
+      method: PaymentMethod.TRANSFER,
+      reason: "Retry test",
+      operationKey: "op-correct-3",
+      actorId: "admin-1",
+    });
+
+    const second = await correctPayment({
+      originalPaymentId: paymentResult.payment.id,
+      amountCents: 10000,
+      method: PaymentMethod.TRANSFER,
+      reason: "Retry test",
+      operationKey: "op-correct-3",
+      actorId: "admin-1",
+    });
+
+    expect(second.correctionId).toBe(first.correctionId);
+    expect(second.replacementPaymentId).toBe(first.replacementPaymentId);
+    expect(store.payments.size).toBe(2); // original + replacement
+    expect(store.corrections.size).toBe(1);
+  });
+
+  it("replays applications in order and records per-target shortfall when replacement is smaller", async () => {
+    const { store, transaction } = baseCorrectionStore();
+
+    const paymentResult = await recordPayment({ workOrderId: "wo-1", amountCents: 5000, operationKey: "op-split-original" });
+
+    const originalApp = Array.from(store.applications.values()).find((a) => a.paymentId === paymentResult.payment.id);
+    expect(originalApp).toBeDefined();
+
+    const result = await correctPayment({
+      originalPaymentId: paymentResult.payment.id,
+      amountCents: 4000,
+      method: PaymentMethod.CASH,
+      reason: "Smaller correction",
+      operationKey: "op-correct-small",
+      actorId: "admin-1",
+    });
+
+    expect(result.totalShortfallCents).toBe(1000);
+    expect(result.appliedApplicationsCount).toBe(1);
+
+    const mappings = Array.from(store.correctionApplications.values()).sort((a, b) => a.sortOrder - b.sortOrder);
+    expect(mappings).toHaveLength(1);
+    expect(mappings[0].originalApplicationId).toBe(originalApp!.id);
+    expect(mappings[0].originalAmountCents).toBe(5000);
+    expect(mappings[0].replacementAmountCents).toBe(4000);
+    expect(mappings[0].shortfallCents).toBe(1000);
+
+    const note1 = await getNoteFinancialSummary(transaction, "wo-1");
+    expect(note1.pendingBalanceCents).toBe(6000);
+  });
+
+  it("leaves excess replacement amount as customer credit", async () => {
+    const { transaction } = baseCorrectionStore();
+    const paymentResult = await recordPayment({ workOrderId: "wo-1", amountCents: 10000, operationKey: "op-excess-original" });
+
+    const result = await correctPayment({
+      originalPaymentId: paymentResult.payment.id,
+      amountCents: 12000,
+      method: PaymentMethod.CASH,
+      reason: "Customer paid more than expected",
+      operationKey: "op-correct-excess",
+      actorId: "admin-1",
+    });
+
+    expect(result.excessCreditCents).toBe(2000);
+    const credit = await getCustomerCreditSummary(transaction, "cust-1");
+    expect(credit.availableCreditCents).toBe(2000);
+  });
+
+  it("links reversal ledger entries to their original movements", async () => {
+    const { store } = baseCorrectionStore();
+    const paymentResult = await recordPayment({ workOrderId: "wo-1", amountCents: 10000, operationKey: "op-ledger-original", actorId: "user-1" });
+
+    await correctPayment({
+      originalPaymentId: paymentResult.payment.id,
+      amountCents: 10000,
+      method: PaymentMethod.TRANSFER,
+      reason: "Ledger link test",
+      operationKey: "op-correct-ledger",
+      actorId: "admin-1",
+    });
+
+    const originalCapture = store.ledgerEntries.find((e) => e.movementType === LedgerMovementType.PAYMENT_CAPTURE && e.paymentId === paymentResult.payment.id);
+    const reversalCapture = store.ledgerEntries.find((e) => e.movementType === LedgerMovementType.PAYMENT_REVERSAL && e.paymentId === paymentResult.payment.id);
+    expect(reversalCapture?.reversedMovementId).toBe(originalCapture?.id);
+  });
+
+  it("uses the post-lock active application set, not a stale initial read", async () => {
+    const { store, transaction } = baseCorrectionStore();
+    const paymentResult = await recordPayment({ workOrderId: "wo-1", amountCents: 10000, operationKey: "op-stale-original", actorId: "user-1" });
+
+    // Simulate a concurrent reversal that happens after the initial payment
+    // read but before the correction acquires its locks: the lock re-read sees
+    // no active applications, so the correction must not replay the stale app.
+    const originalFindMany = transaction.paymentApplication.findMany;
+    transaction.paymentApplication.findMany = vi.fn(async ({ where }: { where?: { paymentId?: { in?: string[] } | string } }) => {
+      const maybeIds = where?.paymentId && typeof where.paymentId === "object" && "in" in where.paymentId ? where.paymentId.in : [];
+      const ids = Array.isArray(maybeIds) ? maybeIds : [];
+      if (ids.includes(paymentResult.payment.id)) {
+        return [];
+      }
+      return originalFindMany({ where });
+    }) as typeof originalFindMany;
+
+    const result = await correctPayment({
+      originalPaymentId: paymentResult.payment.id,
+      amountCents: 10000,
+      method: PaymentMethod.CASH,
+      reason: "Stale read race",
+      operationKey: "op-stale-correct",
+      actorId: "admin-1",
+    });
+
+    expect(result.reversedApplicationsCount).toBe(0);
+    expect(result.appliedApplicationsCount).toBe(0);
+    expect(result.totalShortfallCents).toBe(0);
+    expect(result.excessCreditCents).toBe(10000);
+    expect(store.correctionApplications.size).toBe(0);
   });
 });
