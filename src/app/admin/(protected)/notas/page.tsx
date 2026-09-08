@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui";
 import { WorkOrderCompletedList } from "@/features/work-orders/components/work-order-completed-list";
-import { recordPaymentAction } from "@/features/payments/actions";
+import { correctPaymentAction, recordPaymentAction } from "@/features/payments/actions";
 import { rollbackWorkOrderAction } from "@/features/work-orders/actions";
 import { listActiveMasters } from "@/features/workers/queries";
 import { getCurrentProfile, isAdminRole } from "@/lib/auth/session";
@@ -55,6 +55,12 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
                 workOrderId: wo.id,
                 action: recordPaymentAction.bind(null, wo.id),
               })) : []}
+              correctionActions={isAdminRole(currentProfile?.profile.role) ? workOrders.flatMap((wo) =>
+                wo.quote.activePaymentId ? [{
+                  workOrderId: wo.id,
+                  action: correctPaymentAction.bind(null, wo.quote.activePaymentId),
+                }] : []
+              ) : []}
               rollbackAction={rollbackWorkOrderAction}
               noteReturnTo={noteReturnTo}
             />

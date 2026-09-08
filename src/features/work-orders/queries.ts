@@ -90,7 +90,8 @@ export async function listActiveWorkOrders() {
 export async function listCompletedWorkOrders(input: { start: Date; end: Date; payment: "all" | "pending" | "paid"; assignee: "all" | "workshop" | string; page: number }) {
   await requireOperationalRole();
   const pageSize = 20;
-  const balance = Prisma.sql`q."totalCents" - COALESCE(SUM(p."amountCents") FILTER (WHERE p.status::text = ${PaymentStatus.PAID}), 0)`;
+  const activePaymentCondition = Prisma.sql`p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL`;
+  const balance = Prisma.sql`q."totalCents" - COALESCE(SUM(p."amountCents") FILTER (WHERE ${activePaymentCondition}), 0)`;
   const paymentFilter = input.payment === "pending" ? Prisma.sql`HAVING ${balance} > 0` : input.payment === "paid" ? Prisma.sql`HAVING ${balance} = 0` : Prisma.empty;
   const assigneeFilter = input.assignee === "all"
     ? Prisma.empty
@@ -104,8 +105,13 @@ export async function listCompletedWorkOrders(input: { start: Date; end: Date; p
           AND worker."workerKind"::text = ${WorkerKind.MASTER}
           AND worker.id = ${input.assignee}
       )`;
-  const eligible = await prisma.$queryRaw<Array<{ id: string; paidCents: bigint }>>(Prisma.sql`
-    SELECT wo.id, COALESCE(SUM(p."amountCents") FILTER (WHERE p.status::text = ${PaymentStatus.PAID}), 0) AS "paidCents"
+  const eligible = await prisma.$queryRaw<Array<{ id: string; paidCents: bigint; activePaymentId: string | null; activePaymentMethod: string | null; activePaymentAmountCents: bigint | null }>>(Prisma.sql`
+    SELECT
+      wo.id,
+      COALESCE(SUM(p."amountCents") FILTER (WHERE ${activePaymentCondition}), 0) AS "paidCents",
+      (array_agg(p.id ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE ${activePaymentCondition}))[1] AS "activePaymentId",
+      (array_agg(p.method::text ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE ${activePaymentCondition}))[1] AS "activePaymentMethod",
+      (array_agg(p."amountCents" ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE ${activePaymentCondition}))[1] AS "activePaymentAmountCents"
     FROM "WorkOrder" wo JOIN "Quote" q ON q.id = wo."quoteId" LEFT JOIN "Payment" p ON p."quoteId" = q.id
     WHERE wo.status::text = ${WorkOrderStatus.COMPLETED} AND wo."completedAt" >= ${input.start} AND wo."completedAt" < ${input.end} ${assigneeFilter}
     GROUP BY wo.id, wo."completedAt", q."totalCents" ${paymentFilter}
@@ -117,13 +123,20 @@ export async function listCompletedWorkOrders(input: { start: Date; end: Date; p
     include: workOrderInclude,
   });
   const byId = new Map(workOrders.map((wo) => [wo.id, wo]));
-  return { page: input.page, hasNextPage: eligible.length > pageSize, workOrders: pageRows.flatMap(({ id, paidCents }) => {
+  return { page: input.page, hasNextPage: eligible.length > pageSize, workOrders: pageRows.flatMap(({ id, paidCents, activePaymentId, activePaymentMethod, activePaymentAmountCents }) => {
     const wo = byId.get(id); if (!wo) return [];
     const serialized = serializeWorkOrder(wo);
     const totalCents = Number(wo.quote.totalCents);
     return [{
       ...serialized,
-      quote: { ...serialized.quote, paidCents: Number(paidCents), remainingCents: totalCents - Number(paidCents) },
+      quote: {
+        ...serialized.quote,
+        paidCents: Number(paidCents),
+        remainingCents: totalCents - Number(paidCents),
+        activePaymentId: activePaymentId ?? null,
+        activePaymentMethod: activePaymentMethod ?? null,
+        activePaymentAmountCents: activePaymentAmountCents == null ? null : Number(activePaymentAmountCents),
+      },
     }];
   }) };
 }
@@ -144,6 +157,14 @@ export async function getWorkOrderById(workOrderId: string) {
         orderBy: { createdAt: "desc" },
         take: 1,
         select: { id: true, status: true },
+      },
+      paymentApplications: {
+        where: {
+          reversedAt: null,
+          payment: { status: PaymentStatus.PAID, reversedAt: null },
+        },
+        take: 1,
+        select: { id: true },
       },
     },
   });

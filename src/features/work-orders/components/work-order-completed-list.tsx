@@ -6,8 +6,10 @@ import Link from "next/link";
 import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
 import { Badge, Button, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
+import type { CorrectPaymentResult } from "@/features/payments/domain";
 import { derivePaymentState } from "@/features/work-orders/payment-state";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
+import { PaymentCorrectionDialog } from "@/features/payments/components/payment-correction-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 
@@ -24,10 +26,22 @@ type WorkOrderPaymentAction = {
   action: (amount: string, operationKey: string, method: string) => Promise<PaymentResult>;
 };
 
+type WorkOrderCorrectionAction = {
+  workOrderId: string;
+  action: (
+    paymentId: string,
+    amount: string,
+    method: string,
+    reason: string,
+    operationKey: string,
+  ) => Promise<CorrectPaymentResult>;
+};
+
 interface WorkOrderCompletedListProps {
   workOrders: WorkOrderItem[];
   quoteMap?: Map<string, WorkOrderItem["quote"]>;
   recordPaymentActions?: WorkOrderPaymentAction[];
+  correctionActions?: WorkOrderCorrectionAction[];
   rollbackAction?: WorkOrderActions["rollback"];
   noteReturnTo?: string;
 }
@@ -43,8 +57,9 @@ function formatVehicle(wo: WorkOrderItem) {
   return [v.brand, v.model, v.year, v.plate ? `· ${v.plate}` : null].filter(Boolean).join(" ");
 }
 
-export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActions = [], rollbackAction, noteReturnTo = "/admin/notas" }: WorkOrderCompletedListProps) {
+export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActions = [], correctionActions = [], rollbackAction, noteReturnTo = "/admin/notas" }: WorkOrderCompletedListProps) {
   const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
+  const correctionActionMap = new Map(correctionActions.map((p) => [p.workOrderId, p.action]));
   const [selectedQuoteId, setSelectedQuoteId] = React.useState<string | null>(null);
 
   const selectedQuote = React.useMemo(() => {
@@ -57,13 +72,13 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
       <div className="grid gap-3 lg:grid-cols-2">
       {workOrders.map((wo) => {
         const paymentAction = paymentActionMap.get(wo.id);
+        const correctionAction = correctionActionMap.get(wo.id);
         const totalCents = Number(wo.quote.totalCents);
         const paymentState = derivePaymentState({
           completedAt: wo.completedAt,
           paidCents: wo.quote.paidCents ?? 0,
           remainingCents: wo.quote.remainingCents ?? totalCents,
         });
-
         return (
           <OperationalCard
             key={wo.id}
@@ -98,6 +113,17 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     </Link>
                   </Button>
                   <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile noteReturnTo={noteReturnTo} />
+                  {correctionAction && wo.quote.activePaymentId && wo.quote.activePaymentAmountCents != null ? (
+                    <PaymentCorrectionDialog
+                      paymentId={wo.quote.activePaymentId}
+                      originalAmountCents={wo.quote.activePaymentAmountCents}
+                      originalMethod={wo.quote.activePaymentMethod ?? "CASH"}
+                      reference={wo.quote.number}
+                      paymentDate={wo.completedAt}
+                      quoteNumber={wo.quote.number}
+                      action={correctionAction}
+                    />
+                  ) : null}
                 </OperationalActionRow>
               </>
             }

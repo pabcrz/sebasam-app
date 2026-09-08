@@ -179,4 +179,89 @@ describe("Payroll Queries", () => {
       })
     );
   });
+
+  it("remains driven by corrected quote concepts after completed-work correction", async () => {
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "wo-corrected",
+        number: "OT-CORR",
+        status: "COMPLETED",
+        completedAt: new Date("2026-08-19T12:00:00Z"),
+        isSpecial: false,
+        specialAssigneeName: null,
+        quote: {
+          id: "q-corrected",
+          number: "COT-CORR",
+          customer: { name: "Cliente Corrección" },
+          vehicle: { brand: "Kenworth", model: "T680", year: 2022, plate: "CORR-1" },
+          items: [
+            {
+              id: "item-corr-weld",
+              type: "LABOR",
+              description: "Soldadura de escape corregida",
+              quantity: 1,
+              unitPriceCents: 150000,
+              totalCents: 150000,
+              includeInPayroll: false,
+              customRatePercent: null,
+              customPayrollBaseCents: 120000,
+            },
+            {
+              id: "item-corr-gen",
+              type: "LABOR",
+              description: "Alineación corregida",
+              quantity: 1,
+              unitPriceCents: 80000,
+              totalCents: 80000,
+              includeInPayroll: false,
+              customRatePercent: null,
+              customPayrollBaseCents: null,
+            },
+          ],
+          sections: [],
+        },
+        assignments: [
+          {
+            workerId: "worker-1",
+            status: "ASSIGNED",
+            worker: {
+              id: "worker-1",
+              displayName: "Maestro Pedro",
+              workerKind: "MASTER",
+              role: "OPERATIONAL",
+            },
+          },
+        ],
+      },
+    ]);
+
+    const report = await getWeeklyPayroll({ anchor: "2026-08-19" });
+
+    expect(report.totalCompletedOrders).toBe(1);
+    const worker = report.workers[0];
+    expect(worker.totalClientLaborCents).toBe(230000);
+    expect(worker.totalPayrollBaseCents).toBe(200000);
+    expect(worker.totalCommissionCents).toBe(88000);
+
+    const orderDetail = worker.workOrders[0];
+    expect(orderDetail.totalClientLaborCents).toBe(230000);
+    expect(orderDetail.totalPayrollBaseCents).toBe(200000);
+    expect(orderDetail.totalCommissionCents).toBe(88000);
+
+    const weldedItem = orderDetail.items.find((item) => item.id === "item-corr-weld");
+    expect(weldedItem).toBeDefined();
+    expect(weldedItem?.description).toBe("Soldadura de escape corregida");
+    expect(weldedItem?.category).toBe("WELDING");
+    expect(weldedItem?.clientTotalCents).toBe(150000);
+    expect(weldedItem?.payrollBaseCents).toBe(120000);
+    expect(weldedItem?.commissionCents).toBe(48000);
+
+    const generalItem = orderDetail.items.find((item) => item.id === "item-corr-gen");
+    expect(generalItem).toBeDefined();
+    expect(generalItem?.description).toBe("Alineación corregida");
+    expect(generalItem?.category).toBe("GENERAL");
+    expect(generalItem?.clientTotalCents).toBe(80000);
+    expect(generalItem?.payrollBaseCents).toBe(80000);
+    expect(generalItem?.commissionCents).toBe(40000);
+  });
 });

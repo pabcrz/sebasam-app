@@ -15,3 +15,13 @@ type QuoteForEditability = {
 export function isQuoteEditable(quote: QuoteForEditability): boolean {
   return quote.status !== "CANCELLED" && quote.workOrder?.status !== "COMPLETED";
 }
+
+/**
+ * Determines if a completed work order's commercial data can be corrected.
+ *
+ * Correction is allowed only when the work order is completed and the caller
+ * will verify at commit time that no active payment exists.
+ */
+export function isCompletedWorkCorrectable(quote: QuoteForEditability): boolean {
+  return quote.workOrder?.status === "COMPLETED";
+}
