@@ -74,8 +74,10 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
         const paymentAction = paymentActionMap.get(wo.id);
         const correctionAction = correctionActionMap.get(wo.id);
         const totalCents = Number(wo.quote.totalCents);
+        const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
         const paymentState = derivePaymentState({
           completedAt: wo.completedAt,
+          paymentDueDate: dueDate,
           paidCents: wo.quote.paidCents ?? 0,
           remainingCents: wo.quote.remainingCents ?? totalCents,
         });
@@ -134,13 +136,15 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
                       <Badge variant={paymentState.variant} className="w-fit">
-                        {paymentState.label}{paymentState.label === "Pago parcial" || paymentState.label === "Cobro urgente" ? ` · Saldo ${formatCents(paymentState.balanceCents!)}` : ""}
+                        {paymentState.label}{paymentState.label === "Pago parcial" || paymentState.label === "Vencida" ? ` · Saldo ${formatCents(paymentState.balanceCents!)}` : ""}
                       </Badge>
                       {wo.quote.isLocked ? (
                         <Badge variant="warning">Bloqueado</Badge>
                       ) : null}
                     </div>
-                    <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer?.name ?? "Sin cliente"}</p>
+                    <p className="mt-1 font-semibold text-[var(--color-text-main)]">
+                      {wo.quote.customer?.commercialName || wo.quote.customer?.name || "Sin cliente"}
+                    </p>
                     <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
                   </div>
                   <div className="text-right">
@@ -150,9 +154,9 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     <p className="text-xs text-[var(--color-text-muted)]">
                       Finalizada {formatDate(wo.completedAt)}
                     </p>
-                    {wo.quote.paymentDueDate ? (
+                    {dueDate ? (
                       <p className="text-xs text-[var(--color-text-muted)]">
-                        Vence {formatDate(wo.quote.paymentDueDate)}
+                        Vence {formatDate(dueDate)}
                       </p>
                     ) : null}
                   </div>

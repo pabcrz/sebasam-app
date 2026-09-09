@@ -62,6 +62,8 @@ import {
   prepareCompletedWorkKnowledge,
   synchronizeCompletedWorkKnowledge,
 } from "@/features/completed-work-knowledge/service";
+import { calculateDefaultPaymentDueDate } from "./receivables-policy";
+import { notifyCustomerWorkOrderCompleted } from "./notifications";
 
 const quotesPath = "/admin/quotes";
 const workOrdersPath = "/admin/work-orders";
@@ -388,11 +390,18 @@ export async function completeWorkOrder(input: unknown) {
     assertWorkOrderCanBeCompleted(workOrder.status);
     assertOperationalClosureQuote(workOrder.quote);
 
+    const completedAt = new Date();
+    const paymentDueDate =
+      workOrder.paymentDueDate ??
+      workOrder.quote.paymentDueDate ??
+      calculateDefaultPaymentDueDate(completedAt);
+
     const updated = await tx.workOrder.updateMany({
       where: { id: data.workOrderId, status: WorkOrderStatus.ASSIGNED },
       data: {
         status: WorkOrderStatus.COMPLETED,
-        completedAt: new Date(),
+        completedAt,
+        paymentDueDate,
       },
     });
 
@@ -412,6 +421,7 @@ export async function completeWorkOrder(input: unknown) {
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
   await scheduleCompletedWorkKnowledge(data.workOrderId);
+  await notifyCustomerWorkOrderCompleted(data.workOrderId);
   return completedWorkOrder;
 }
 
@@ -810,12 +820,17 @@ export async function createDirectWorkOrder(input: unknown) {
           },
         });
 
+        const calculatedDueDate = data.isCompleted
+          ? (data.paymentDueDate ?? calculateDefaultPaymentDueDate(completedAt ?? effectiveDate))
+          : (data.paymentDueDate ?? null);
+
         const workOrder = await tx.workOrder.create({
           data: {
             quoteId: createdQuote.id,
             number: workOrderNumber,
             status: data.isCompleted ? WorkOrderStatus.COMPLETED : WorkOrderStatus.ASSIGNED,
             completedAt,
+            paymentDueDate: calculatedDueDate,
           },
         });
 
@@ -836,6 +851,7 @@ export async function createDirectWorkOrder(input: unknown) {
 
   if (data.isCompleted) {
     await scheduleCompletedWorkKnowledge(result.workOrder.id);
+    await notifyCustomerWorkOrderCompleted(result.workOrder.id);
   }
 
   return result;
@@ -974,6 +990,11 @@ export async function convertQuoteToNoteAction(input: unknown) {
         });
       }
 
+      const notePaymentDueDate =
+        data.paymentDueDate ??
+        quote.paymentDueDate ??
+        calculateDefaultPaymentDueDate(effectiveDate);
+
       const workOrderNumber = await nextWorkOrderNumber(tx);
       const createdWorkOrder = await tx.workOrder.create({
         data: {
@@ -981,6 +1002,7 @@ export async function convertQuoteToNoteAction(input: unknown) {
           number: workOrderNumber,
           status: WorkOrderStatus.COMPLETED,
           completedAt: effectiveDate,
+          paymentDueDate: notePaymentDueDate,
         },
         include: { assignments: true },
       });
@@ -1006,12 +1028,19 @@ export async function convertQuoteToNoteAction(input: unknown) {
         });
       }
 
+      const notePaymentDueDate =
+        data.paymentDueDate ??
+        workOrder.paymentDueDate ??
+        quote.paymentDueDate ??
+        calculateDefaultPaymentDueDate(effectiveDate);
+
       if (workOrder.status !== WorkOrderStatus.COMPLETED) {
         await tx.workOrder.update({
           where: { id: workOrder.id },
           data: {
             status: WorkOrderStatus.COMPLETED,
             completedAt: effectiveDate,
+            paymentDueDate: notePaymentDueDate,
           },
         });
 
@@ -1044,6 +1073,7 @@ export async function convertQuoteToNoteAction(input: unknown) {
 
   if (result.workOrder) {
     await scheduleCompletedWorkKnowledge(result.workOrder.id);
+    await notifyCustomerWorkOrderCompleted(result.workOrder.id);
   }
 
   revalidatePath(quotesPath);

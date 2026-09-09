@@ -57,4 +57,25 @@ describe("Notas periods", () => {
     expect(notasHref({ mode: "month", anchor: "2026-08-12", payment: "paid", assignee: "workshop", page: 1 })).toBe("/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=workshop");
     expect(notasHref({ mode: "week", anchor: "2026-08-12", payment: "pending", assignee: "A0B1C2D3-1234-4ABC-8DEF-1234567890AB", page: 2 })).toBe("/admin/notas?mode=week&anchor=2026-08-12&payment=pending&assignee=a0b1c2d3-1234-4abc-8def-1234567890ab&page=2");
   });
+
+  it("parses and serializes customerId and overdue params", () => {
+    const parsed = parseNotasParams({ customerId: "cust-99", overdue: "overdue" });
+    expect(parsed.customerId).toBe("cust-99");
+    expect(parsed.overdue).toBe("overdue");
+
+    const invalid = parseNotasParams({ customerId: "   ", overdue: "invalid-value" });
+    expect(invalid.customerId).toBeUndefined();
+    expect(invalid.overdue).toBe("all");
+
+    const href = notasHref({
+      mode: "week",
+      anchor: "2026-08-12",
+      payment: "all",
+      assignee: "all",
+      customerId: "cust-99",
+      overdue: "overdue",
+    });
+    expect(href).toContain("customerId=cust-99");
+    expect(href).toContain("overdue=overdue");
+  });
 });

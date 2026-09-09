@@ -376,6 +376,7 @@ model WorkOrder {
   siteAddress                   String?
   notes                         String?
   completedAt                   DateTime?
+  paymentDueDate                DateTime?
   isSpecial                     Boolean         @default(false)
   specialAssigneeName           String?
   createdAt                     DateTime        @default(now())
@@ -391,6 +392,7 @@ model WorkOrder {
   paymentCorrectionApplications PaymentCorrectionApplication[]
 
   @@index([status, completedAt])
+  @@index([status, paymentDueDate])
 }
 
 model CompletedWorkKnowledgeSource {
