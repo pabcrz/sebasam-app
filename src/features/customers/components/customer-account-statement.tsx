@@ -64,13 +64,19 @@ export function CustomerAccountStatement({
       <CardContent>
         <dl className="grid gap-3 grid-cols-2">
           <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
-            <dt className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Total contratado</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Importe nominal</dt>
+            <dd className="mt-1 text-base font-semibold tabular-nums text-[var(--color-text-main)]">
+              {formatCents(statement.nominalContractedCents)}
+            </dd>
+          </div>
+          <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+            <dt className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Importe liquidable</dt>
             <dd className="mt-1 text-base font-semibold tabular-nums text-[var(--color-text-main)]">
               {formatCents(statement.totalContractedCents)}
             </dd>
           </div>
           <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
-            <dt className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Total pagado</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Cobrado</dt>
             <dd className="mt-1 text-base font-semibold tabular-nums text-[var(--color-text-main)]">
               {formatCents(statement.totalPaidCents)}
             </dd>

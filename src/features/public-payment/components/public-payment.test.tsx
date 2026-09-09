@@ -20,6 +20,10 @@ function createMockRequest(requiresInvoice = false) {
     fiscalSnapshot: null,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     viewedAt: null,
+    payableSubtotalCents: null as number | null,
+    payableTaxCents: null as number | null,
+    payableTotalCents: null as number | null,
+    settlementAgreementId: null as string | null,
     createdAt: new Date(),
     updatedAt: new Date(),
     customer: { id: "customer-123", name: "Test Customer" },
@@ -264,6 +268,19 @@ describe("PublicPaymentPage", () => {
     expect(screen.queryByRole("heading", { name: /qué necesitas compartir/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /captura de datos fiscales/i })).not.toBeInTheDocument();
     expect(screen.getByText("Q-001")).toBeInTheDocument();
+  });
+
+  it("uses the issued payable snapshot without exposing agreement audit data", () => {
+    const request = createMockRequest();
+    request.payableSubtotalCents = 30000;
+    request.payableTaxCents = 4800;
+    request.payableTotalCents = 34800;
+    request.settlementAgreementId = "agreement-private-id";
+    render(<PublicPaymentPage request={request} />);
+
+    expect(screen.getByText(/Total: \$348\.00/)).toBeInTheDocument();
+    expect(screen.queryByText("agreement-private-id")).not.toBeInTheDocument();
+    expect(screen.queryByText(/motivo del acuerdo/i)).not.toBeInTheDocument();
   });
 
   it("shows the payment badge in the shell", () => {

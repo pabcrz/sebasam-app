@@ -5,6 +5,7 @@ import { getCustomerBalanceSummary } from "@/features/payments/domain";
 import { customerSearchSchema } from "./schemas";
 
 export type CustomerAccountStatement = {
+  nominalContractedCents: number;
   totalContractedCents: number;
   totalPaidCents: number;
   pendingBalanceCents: number;

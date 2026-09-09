@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
 import { fiscalDataInputSchema, invoicePreferenceSchema } from "./schemas";
 import { generatePaymentSlugFromNumber, generateUniqueSlug } from "@/lib/slug";
+import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
 
 const ACTIVE_STATUSES: PaymentRequestStatus[] = [
   PaymentRequestStatus.PENDING,
@@ -85,6 +86,10 @@ type TransactionClient = Prisma.TransactionClient;
 
 const defaultInclude = {
   customer: true,
+  payableSubtotalCents: true,
+  payableTaxCents: true,
+  payableTotalCents: true,
+  settlementAgreementId: true,
   quote: {
     select: {
       id: true,
@@ -158,7 +163,7 @@ async function createPaymentRequestForQuoteInTransaction(
 ) {
   const quote = await tx.quote.findUnique({
     where: { id: quoteId },
-    include: { customer: true, items: true, sections: { include: { items: true } } },
+    include: { customer: true, items: true, sections: { include: { items: true } }, settlementAgreement: true },
   });
 
   if (!quote) {
@@ -168,6 +173,7 @@ async function createPaymentRequestForQuoteInTransaction(
   assertCommercialQuote(quote);
 
   const requiresInvoice = quote.taxEnabled;
+  const payable = getEffectiveSettlementTotals(quote, quote.settlementAgreement);
 
   const token = await generateUniqueSlug(
     `P${quote.number.slice(1)}`,
@@ -187,6 +193,10 @@ async function createPaymentRequestForQuoteInTransaction(
       customerId: quote.customerId!,
       quoteId: quote.id,
       requiresInvoice,
+      payableSubtotalCents: payable.subtotalCents,
+      payableTaxCents: payable.taxCents,
+      payableTotalCents: payable.totalCents,
+      settlementAgreementId: payable.agreementId,
       expiresAt: createExpirationDate(),
     },
   });
@@ -217,7 +227,7 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
   return prisma.$transaction(async (tx) => {
     const workOrder = await tx.workOrder.findUnique({
       where: { id: workOrderId },
-      include: { quote: { include: { customer: true, items: true, sections: { include: { items: true } } } } },
+      include: { quote: { include: { customer: true, items: true, sections: { include: { items: true } }, settlementAgreement: true } } },
     });
 
     if (!workOrder) {
@@ -233,6 +243,7 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
     await assertNoActiveRequest(tx, { workOrderId: workOrder.id });
 
     const requiresInvoice = workOrder.quote.taxEnabled;
+    const payable = getEffectiveSettlementTotals(workOrder.quote, workOrder.quote.settlementAgreement);
 
     const slugPrefix = `P${workOrder.number.slice(1)}`;
     const token = await generateUniqueSlug(
@@ -253,6 +264,10 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
         customerId: workOrder.quote.customerId!,
         workOrderId: workOrder.id,
         requiresInvoice,
+        payableSubtotalCents: payable.subtotalCents,
+        payableTaxCents: payable.taxCents,
+        payableTotalCents: payable.totalCents,
+        settlementAgreementId: payable.agreementId,
         expiresAt: createExpirationDate(),
       },
     });

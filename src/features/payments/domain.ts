@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
+import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
 
 const CASH_PAYMENT_QUOTE_STATUSES: QuoteStatus[] = [QuoteStatus.APPROVED];
 
@@ -96,6 +97,7 @@ export type CustomerCreditSummary = {
 };
 
 export type CustomerBalanceSummary = {
+  nominalContractedCents: number;
   totalContractedCents: number;
   totalPaidCents: number;
   pendingBalanceCents: number;
@@ -146,7 +148,7 @@ export async function getNoteFinancialSummary(
     where: { id: workOrderId },
     include: {
       quote: {
-        include: { items: true, sections: { include: { items: true } } },
+        include: { items: true, sections: { include: { items: true } }, settlementAgreement: true },
       },
     },
   });
@@ -161,7 +163,7 @@ export async function getNoteFinancialSummary(
 
   assertCommercialQuote(workOrder.quote);
 
-  const chargedCents = workOrder.quote.totalCents ?? 0;
+  const chargedCents = getEffectiveSettlementTotals(workOrder.quote, workOrder.quote.settlementAgreement).totalCents;
 
   const applications = await tx.paymentApplication.aggregate({
     where: {
@@ -223,9 +225,9 @@ export async function getCustomerBalanceSummary(
   customerId: string,
 ): Promise<CustomerBalanceSummary> {
   const [charges, captures, applications] = await Promise.all([
-    client.quote.aggregate({
+    client.quote.findMany({
       where: { customerId, status: QuoteStatus.APPROVED },
-      _sum: { totalCents: true },
+      select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true },
     }),
     client.payment.aggregate({
       where: {
@@ -246,13 +248,18 @@ export async function getCustomerBalanceSummary(
       : Promise.resolve({ _sum: { amountCents: 0 } }),
   ]);
 
-  const totalContractedCents = charges._sum.totalCents ?? 0;
+  const nominalContractedCents = charges.reduce((total, quote) => total + (quote.totalCents ?? 0), 0);
+  const totalContractedCents = charges.reduce(
+    (total, quote) => total + getEffectiveSettlementTotals(quote, quote.settlementAgreement).totalCents,
+    0,
+  );
   const totalPaidCents = captures._sum.amountCents ?? 0;
   const totalAppliedCents = applications._sum.amountCents ?? 0;
   const availableCreditCents = Math.max(0, totalPaidCents - totalAppliedCents);
   const pendingBalanceCents = Math.max(0, totalContractedCents - totalAppliedCents);
 
   return {
+    nominalContractedCents,
     totalContractedCents,
     totalPaidCents,
     pendingBalanceCents,
