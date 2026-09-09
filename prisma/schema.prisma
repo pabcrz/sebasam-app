@@ -206,7 +206,7 @@ model CustomerContact {
   id         String              @id @default(cuid())
   customerId String
   name       String
-  phone      String
+  phone      String?
   role       CustomerContactRole @default(CONTACT)
   isActive   Boolean             @default(true)
   createdAt  DateTime            @default(now())

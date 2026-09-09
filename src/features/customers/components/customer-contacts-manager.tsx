@@ -39,7 +39,7 @@ import {
 export type CustomerContactItem = {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
   role: CustomerContactRole;
   notes?: string | null;
   isActive: boolean;
@@ -63,7 +63,8 @@ const roleBadgeVariants: Record<CustomerContactRole, "info" | "default" | "warni
   BILLING: "warning",
 };
 
-function formatPhone(phone: string): string {
+function formatPhone(phone?: string | null): string {
+  if (!phone) return "";
   const digits = phone.replace(/\D/g, "");
   if (digits.length === 10) {
     return `${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6)}`;
@@ -103,7 +104,7 @@ export function CustomerContactsManager({
   const handleOpenEdit = (contact: CustomerContactItem) => {
     setEditingContact(contact);
     setEditName(contact.name);
-    setEditPhone(contact.phone);
+    setEditPhone(contact.phone ?? "");
     setEditRole(contact.role);
     setEditNotes(contact.notes ?? "");
     setEditIsActive(contact.isActive);
@@ -114,7 +115,7 @@ export function CustomerContactsManager({
     startTransition(async () => {
       const result = await createCustomerContactAction(customerId, {
         name: addName.trim(),
-        phone: addPhone.trim(),
+        phone: addPhone.trim() || undefined,
         role: addRole,
         notes: addNotes.trim() || undefined,
         isActive: true,
@@ -138,7 +139,7 @@ export function CustomerContactsManager({
     startTransition(async () => {
       const result = await updateCustomerContactAction(editingContact.id, {
         name: editName.trim(),
-        phone: editPhone.trim(),
+        phone: editPhone.trim() || undefined,
         role: editRole,
         notes: editNotes.trim() || undefined,
         isActive: editIsActive,
@@ -220,7 +221,7 @@ export function CustomerContactsManager({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="contact-add-phone">Teléfono (10 dígitos) *</Label>
+                <Label htmlFor="contact-add-phone">Teléfono (10 dígitos, opcional)</Label>
                 <Input
                   id="contact-add-phone"
                   type="tel"
@@ -229,7 +230,6 @@ export function CustomerContactsManager({
                   value={addPhone}
                   onChange={(e) => setAddPhone(e.target.value)}
                   placeholder="Ej. 777 123 4567"
-                  required
                 />
               </div>
 
@@ -299,10 +299,12 @@ export function CustomerContactsManager({
                       </Badge>
                     ) : null}
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-                    <Phone className="h-3.5 w-3.5 shrink-0" />
-                    <span>{formatPhone(contact.phone)}</span>
-                  </div>
+                  {contact.phone ? (
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                      <span>{formatPhone(contact.phone)}</span>
+                    </div>
+                  ) : null}
                   {contact.notes ? (
                     <p className="text-xs text-[var(--color-text-muted)] italic">
                       {contact.notes}
@@ -380,7 +382,7 @@ export function CustomerContactsManager({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="contact-edit-phone">Teléfono (10 dígitos) *</Label>
+              <Label htmlFor="contact-edit-phone">Teléfono (10 dígitos, opcional)</Label>
               <Input
                 id="contact-edit-phone"
                 type="tel"
@@ -388,7 +390,6 @@ export function CustomerContactsManager({
                 maxLength={15}
                 value={editPhone}
                 onChange={(e) => setEditPhone(e.target.value)}
-                required
               />
             </div>
 

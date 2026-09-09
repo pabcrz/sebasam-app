@@ -375,11 +375,11 @@ export function QuoteBuilder({
 
     const createdCustomer = result.customer;
 
-    if (newCustomerContactName.trim() && newCustomerContactPhone.trim() && createdCustomer.id) {
+    if (newCustomerContactName.trim() && createdCustomer.id) {
       try {
         const contactRes = await createCustomerContactAction(createdCustomer.id, {
           name: newCustomerContactName.trim(),
-          phone: newCustomerContactPhone.trim(),
+          phone: newCustomerContactPhone.trim() || undefined,
           role: "DRIVER",
           isActive: true,
         });
@@ -908,7 +908,7 @@ export function QuoteBuilder({
                         </div>
                         <div className="grid gap-1.5">
                           <Label htmlFor="quoteCustomerContactPhone" className="text-xs">
-                            Teléfono del chofer
+                            Teléfono del chofer (opcional)
                           </Label>
                           <Input
                             id="quoteCustomerContactPhone"

@@ -15,7 +15,7 @@ export type CustomerSnapshotData = {
 export type ContactSnapshotData = {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
   role: string;
 };
 

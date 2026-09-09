@@ -278,16 +278,19 @@ export async function createCustomerFromForm(formData: FormData) {
 
   if (
     typeof initialContactName === "string" &&
-    initialContactName.trim() !== "" &&
-    typeof initialContactPhone === "string" &&
-    initialContactPhone.trim() !== ""
+    initialContactName.trim() !== ""
   ) {
     try {
+      const contactPhone =
+        typeof initialContactPhone === "string" && initialContactPhone.trim() !== ""
+          ? normalizeMexicanPhone(initialContactPhone) ?? null
+          : null;
+
       await prisma.customerContact.create({
         data: {
           customerId: customer.id,
           name: initialContactName.trim(),
-          phone: initialContactPhone.trim(),
+          phone: contactPhone,
           role: "DRIVER",
           isActive: true,
         },
@@ -514,7 +517,7 @@ export async function createCustomerContactAction(customerId: string, input: unk
       data: {
         customerId,
         name: data.name,
-        phone: data.phone,
+        phone: data.phone ?? null,
         role: data.role,
         isActive: data.isActive,
       },
@@ -540,7 +543,7 @@ export async function updateCustomerContactAction(contactId: string, input: unkn
       where: { id: contactId },
       data: {
         name: data.name,
-        phone: data.phone,
+        phone: data.phone ?? null,
         role: data.role,
         isActive: data.isActive,
       },

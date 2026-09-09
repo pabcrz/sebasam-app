@@ -36,25 +36,11 @@ const optionalMexicanPhone = z.preprocess(
     .optional(),
 );
 
-const requiredMexicanPhone = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
-  z
-    .string()
-    .transform((value, context) => {
-      const phone = normalizeMexicanPhone(value);
-      if (!phone) {
-        context.addIssue({ code: "custom", message: "Ingresa un teléfono mexicano válido a 10 dígitos" });
-        return z.NEVER;
-      }
-      return phone;
-    }),
-);
-
 export const customerContactRoleSchema = z.enum(["DRIVER", "CONTACT", "BILLING"]);
 
 export const customerContactInputSchema = z.object({
   name: z.string().trim().min(1, "El nombre del contacto es obligatorio").max(160),
-  phone: requiredMexicanPhone,
+  phone: optionalMexicanPhone,
   role: customerContactRoleSchema.default("CONTACT"),
   isActive: z.boolean().default(true),
 });
