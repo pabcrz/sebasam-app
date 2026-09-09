@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, FileText, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
@@ -44,7 +44,17 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         title={displayName}
         description={subtitle ?? "Detalle de cliente"}
         variant="expanded"
-        actions={<CustomerEditButton customer={customer} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline">
+              <Link href={`/admin/customers/${customer.id}/estado-de-cuenta`}>
+                <FileText className="h-4 w-4" aria-hidden="true" />
+                Estado de cuenta
+              </Link>
+            </Button>
+            <CustomerEditButton customer={customer} />
+          </div>
+        }
       />
 
       <Card>

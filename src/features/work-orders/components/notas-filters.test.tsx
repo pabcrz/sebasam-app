@@ -56,6 +56,10 @@ describe("NotasFilters", () => {
     // Active badge count should be 3 (assignee=workshop, customerId=cust-1, overdue=overdue)
     expect(screen.getByText("3")).toBeInTheDocument();
 
+    const statementLink = screen.getByRole("link", { name: /estado de cuenta/i });
+    expect(statementLink).toBeInTheDocument();
+    expect(statementLink).toHaveAttribute("href", "/admin/customers/cust-1/estado-de-cuenta");
+
     // Open filters dialog
     const filterBtn = screen.getByRole("button", { name: /abrir filtros de cartera/i });
     fireEvent.click(filterBtn);
