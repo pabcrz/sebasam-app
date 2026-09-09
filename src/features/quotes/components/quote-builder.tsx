@@ -31,6 +31,7 @@ import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderStepper } from "./quote-builder-stepper";
 import { QuotePreviewCard } from "./quote-preview-card";
 import type { QuoteFormActionState } from "../actions";
+import { createCustomerContactAction } from "@/features/customers/actions";
 import {
   initializeQuoteBuilderState,
   quoteBuilderReducer,
@@ -123,6 +124,9 @@ export function QuoteBuilder({
   const [stepError, setStepError] = React.useState<string | null>(null);
   const [showCreateCustomer, setShowCreateCustomer] = React.useState(false);
   const [newCustomerName, setNewCustomerName] = React.useState("");
+  const [newCustomerLegalName, setNewCustomerLegalName] = React.useState("");
+  const [newCustomerContactName, setNewCustomerContactName] = React.useState("");
+  const [newCustomerContactPhone, setNewCustomerContactPhone] = React.useState("");
   const [newCustomerEmail, setNewCustomerEmail] = React.useState("");
   const [newCustomerPhone, setNewCustomerPhone] = React.useState("");
   const [createCustomerMessage, setCreateCustomerMessage] = React.useState<string | null>(null);
@@ -350,6 +354,7 @@ export function QuoteBuilder({
     try {
       result = await createCustomerAction({
         name: newCustomerName,
+        ...(newCustomerLegalName.trim() ? { legalName: newCustomerLegalName.trim() } : {}),
         email: newCustomerEmail,
         phone: newCustomerPhone,
         address: "",
@@ -370,9 +375,32 @@ export function QuoteBuilder({
 
     const createdCustomer = result.customer;
 
+    if (newCustomerContactName.trim() && newCustomerContactPhone.trim() && createdCustomer.id) {
+      try {
+        const contactRes = await createCustomerContactAction(createdCustomer.id, {
+          name: newCustomerContactName.trim(),
+          phone: newCustomerContactPhone.trim(),
+          role: "DRIVER",
+          isActive: true,
+        });
+        if (contactRes.success && contactRes.contact) {
+          createdCustomer.contacts = [contactRes.contact];
+          dispatch({
+            type: "setCustomerContactId",
+            customerContactId: contactRes.contact.id,
+          });
+        }
+      } catch {
+        // Non-blocking fallback
+      }
+    }
+
     customerQueryCache.current.clear();
     selectCustomer(createdCustomer);
     setNewCustomerName("");
+    setNewCustomerLegalName("");
+    setNewCustomerContactName("");
+    setNewCustomerContactPhone("");
     setNewCustomerEmail("");
     setNewCustomerPhone("");
     setShowCreateCustomer(false);
@@ -791,7 +819,11 @@ export function QuoteBuilder({
                         </SelectContent>
                       </Select>
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-light)] p-2.5 text-xs text-[var(--color-text-muted)]">
+                      <span>Sin choferes o contactos registrados aún para este cliente.</span>
+                    </div>
+                  )}
 
                   {selectedCustomer.fiscalProfiles && selectedCustomer.fiscalProfiles.length > 0 ? (
                     <div className="grid gap-1.5">
@@ -849,9 +881,45 @@ export function QuoteBuilder({
                           id="quoteCustomerName"
                           value={newCustomerName}
                           onChange={(event) => setNewCustomerName(event.target.value)}
-                          placeholder="Nombre del cliente"
+                          placeholder="Ej. Juan Pérez o Grúas Mejía"
                           required
                         />
+                      </div>
+                      <div className="grid gap-2 sm:col-span-2">
+                        <Label htmlFor="quoteCustomerLegalName">Razón social formal (opcional)</Label>
+                        <Input
+                          id="quoteCustomerLegalName"
+                          value={newCustomerLegalName}
+                          onChange={(event) => setNewCustomerLegalName(event.target.value)}
+                          placeholder="Ej. Grúas Mejía Cuautla S.A. de C.V."
+                        />
+                      </div>
+                      <div className="grid gap-3 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-light)] bg-[var(--color-surface)] p-2.5 sm:col-span-2 sm:grid-cols-2">
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="quoteCustomerContactName" className="text-xs">
+                            Chofer u operador inicial (opcional)
+                          </Label>
+                          <Input
+                            id="quoteCustomerContactName"
+                            value={newCustomerContactName}
+                            onChange={(event) => setNewCustomerContactName(event.target.value)}
+                            placeholder="Ej. El Mariachi / Juanito"
+                          />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="quoteCustomerContactPhone" className="text-xs">
+                            Teléfono del chofer
+                          </Label>
+                          <Input
+                            id="quoteCustomerContactPhone"
+                            type="tel"
+                            inputMode="tel"
+                            maxLength={20}
+                            value={newCustomerContactPhone}
+                            onChange={(event) => setNewCustomerContactPhone(event.target.value)}
+                            placeholder="55 1234 5678"
+                          />
+                        </div>
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="quoteCustomerEmail">Correo electrónico</Label>

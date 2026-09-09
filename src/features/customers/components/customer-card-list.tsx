@@ -199,6 +199,7 @@ export function CustomerCardList({
                       getCustomerDetail={getCustomerDetail}
                       open={activeDetailId === customer.id}
                       onOpenChange={(open) => setActiveDetailId(open ? customer.id : null)}
+                      onUpdateCustomer={onUpdateCustomer}
                     />
                   )}
 

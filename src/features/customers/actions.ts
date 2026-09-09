@@ -271,7 +271,32 @@ export async function createCustomerFromForm(formData: FormData) {
     redirect(`${customersPath}?error=invalid`);
   }
 
-  await createCustomer(parsed.data);
+  const initialContactName = formData.get("initialContactName");
+  const initialContactPhone = formData.get("initialContactPhone");
+
+  const customer = await createCustomer(parsed.data);
+
+  if (
+    typeof initialContactName === "string" &&
+    initialContactName.trim() !== "" &&
+    typeof initialContactPhone === "string" &&
+    initialContactPhone.trim() !== ""
+  ) {
+    try {
+      await prisma.customerContact.create({
+        data: {
+          customerId: customer.id,
+          name: initialContactName.trim(),
+          phone: initialContactPhone.trim(),
+          role: "DRIVER",
+          isActive: true,
+        },
+      });
+    } catch {
+      // Non-blocking fallback if initial contact creation fails
+    }
+  }
+
   revalidatePath(customersPath);
   redirect(`${customersPath}?created=1`);
 }
@@ -305,7 +330,7 @@ export async function updateCustomerBasicsFromForm(customerId: string, formData:
   );
 
   if (!parsed.success) {
-    redirect(`${customersPath}/${customerId}/edit?error=invalid`);
+    redirect(`${customersPath}/${customerId}?error=invalid`);
   }
 
   await prisma.customer.update({
@@ -313,7 +338,7 @@ export async function updateCustomerBasicsFromForm(customerId: string, formData:
     data: toCustomerUpdateData(parsed.data, preserveLegacyPhone),
   });
   revalidatePath(customersPath);
-  revalidatePath(`${customersPath}/${customerId}/edit`);
+  revalidatePath(`${customersPath}/${customerId}`);
   redirect(`${customersPath}?updated=1`);
 }
 
@@ -371,14 +396,13 @@ export async function deleteCustomerFromForm(formData: FormData) {
     await deleteCustomerAuthorized(customerId);
   } catch (error) {
     if (error instanceof Error && (error.message.includes("cannot be deleted") || error.message.includes("not found"))) {
-      redirect(`${customersPath}/${customerId}/edit?error=cannot-delete`);
+      redirect(`${customersPath}/${customerId}?error=cannot-delete`);
     }
     redirect(`${customersPath}?error=invalid-deletion`);
   }
 
   revalidatePath(customersPath);
   revalidatePath(`${customersPath}/${customerId}`);
-  revalidatePath(`${customersPath}/${customerId}/edit`);
   redirect(`${customersPath}?deleted=1`);
 }
 
@@ -497,7 +521,6 @@ export async function createCustomerContactAction(customerId: string, input: unk
     });
 
     revalidatePath(`${customersPath}/${customerId}`);
-    revalidatePath(`${customersPath}/${customerId}/edit`);
     revalidatePath(quotesPath);
     return { success: true, contact } as const;
   } catch (error) {
@@ -524,7 +547,6 @@ export async function updateCustomerContactAction(contactId: string, input: unkn
     });
 
     revalidatePath(`${customersPath}/${contact.customerId}`);
-    revalidatePath(`${customersPath}/${contact.customerId}/edit`);
     revalidatePath(quotesPath);
     return { success: true, contact } as const;
   } catch (error) {
@@ -544,7 +566,6 @@ export async function toggleCustomerContactActiveAction(contactId: string, isAct
     });
 
     revalidatePath(`${customersPath}/${contact.customerId}`);
-    revalidatePath(`${customersPath}/${contact.customerId}/edit`);
     revalidatePath(quotesPath);
     return { success: true, contact } as const;
   } catch (error) {
@@ -563,7 +584,6 @@ export async function deleteCustomerContactAction(contactId: string) {
     });
 
     revalidatePath(`${customersPath}/${contact.customerId}`);
-    revalidatePath(`${customersPath}/${contact.customerId}/edit`);
     revalidatePath(quotesPath);
     return { success: true } as const;
   } catch (error) {

@@ -39,7 +39,7 @@ function createDialogContext(overrides: Partial<PaymentRequestDialogContext> = {
     requiresInvoice: true,
     paymentRequestStatus: "FISCAL_DATA_REQUIRED",
     fiscalProfile: null,
-    fiscalActionHref: "/admin/customers/cust-123/edit",
+    fiscalActionHref: "/admin/customers/cust-123",
     bankAccount: {
       accountHolder: "Federico Cruz",
       bankName: "Santander",
@@ -187,7 +187,7 @@ describe("PaymentRequestLinkDialog", () => {
     expect(screen.getByText("Factura requerida")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /revisar cliente/i })).toHaveAttribute(
       "href",
-      "/admin/customers/cust-123/edit",
+      "/admin/customers/cust-123",
     );
     expect(screen.getByText("Santander")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /copiar clabe al portapapeles/i })).toBeInTheDocument();
