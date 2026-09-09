@@ -11,7 +11,10 @@ import { QuotePaymentBalanceIndicator } from "./quote-payment-balance-indicator"
 
 export interface QuotePreviewCardProps {
   customerName: string;
-  vehicle: { plate: string; brand: string; model: string; year: string };
+  contactName?: string | null;
+  contactRole?: string | null;
+  legalName?: string | null;
+  vehicle: { plate: string; brand: string; model: string; year: string; economicNumber?: string };
   title: string;
   description: string;
   administrative: boolean;
@@ -38,6 +41,9 @@ export interface QuotePreviewCardProps {
 
 export function QuotePreviewCard({
   customerName,
+  contactName,
+  contactRole,
+  legalName,
   vehicle,
   title,
   description,
@@ -58,7 +64,13 @@ export function QuotePreviewCard({
   selectableSectionIds,
   onSectionToggle,
 }: QuotePreviewCardProps) {
-  const vehicleDescription = [vehicle.brand, vehicle.model, vehicle.year, vehicle.plate]
+  const vehicleDescription = [
+    vehicle.economicNumber ? `ECO: ${vehicle.economicNumber}` : null,
+    vehicle.brand,
+    vehicle.model,
+    vehicle.year,
+    vehicle.plate ? `Placas: ${vehicle.plate}` : null,
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -149,6 +161,16 @@ export function QuotePreviewCard({
                 <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
                   {customerName || "Sin cliente"}
                 </p>
+                {legalName && legalName !== customerName ? (
+                  <p className="text-xs text-[var(--color-text-muted)] print:text-gray-600">
+                    Razón social: {legalName}
+                  </p>
+                ) : null}
+                {contactName ? (
+                  <p className="text-xs text-[var(--color-text-muted)] print:text-gray-600">
+                    {contactRole ? `${contactRole}: ` : "Contacto: "}{contactName}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">

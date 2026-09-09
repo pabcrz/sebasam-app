@@ -67,6 +67,38 @@ export default async function QuotePrintPage({ params }: PrintPageProps) {
     workOrder: quote.workOrder ? { status: quote.workOrder.status } : null,
   };
 
+  const customerSnapshot = quote.customerSnapshot as {
+    name?: string;
+    commercialName?: string | null;
+    legalName?: string | null;
+    fiscalBusinessName?: string | null;
+  } | null;
+  const contactSnapshot = quote.contactSnapshot as {
+    name?: string;
+    phone?: string;
+    role?: string;
+  } | null;
+
+  const customerDisplayName =
+    customerSnapshot?.commercialName ||
+    quote.customer?.commercialName ||
+    customerSnapshot?.name ||
+    quote.customer?.name ||
+    "Sin cliente";
+
+  const customerSubtitleParts = [
+    customerSnapshot?.fiscalBusinessName ||
+      customerSnapshot?.legalName ||
+      quote.customerFiscalProfile?.businessName ||
+      quote.customer?.legalName
+      ? `Razón social: ${customerSnapshot?.fiscalBusinessName || customerSnapshot?.legalName || quote.customerFiscalProfile?.businessName || quote.customer?.legalName}`
+      : null,
+    contactSnapshot?.name || quote.customerContact?.name
+      ? `${contactSnapshot?.role === "DRIVER" || quote.customerContact?.role === "DRIVER" ? "Chofer" : "Contacto"}: ${contactSnapshot?.name || quote.customerContact?.name}`
+      : null,
+  ].filter(Boolean);
+  const customerSubtitle = customerSubtitleParts.length > 0 ? customerSubtitleParts.join(" · ") : undefined;
+
   return (
     <div className="bg-[var(--background)] min-h-screen flex flex-col print:min-h-0">
       <Suspense fallback={null}><PrintControls backLabel="Volver a cotizaciones" /></Suspense>
@@ -77,7 +109,8 @@ export default async function QuotePrintPage({ params }: PrintPageProps) {
         documentNumber={quote.number}
         date={quote.operationalDate}
         title={quote.title}
-        customerName={quote.customer?.name ?? "Sin cliente"}
+        customerName={customerDisplayName}
+        customerSubtitle={customerSubtitle}
         vehicleDescription={
           quote.vehicle
             ? formatVehicle(quote.vehicle)

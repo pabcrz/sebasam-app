@@ -35,7 +35,9 @@ describe("mapPersistedQuoteToBuilderInitialData", () => {
   it("maps sections, vehicle fallbacks, payroll fields, and pending prices", () => {
     expect(mapPersistedQuoteToBuilderInitialData(persistedQuote)).toEqual({
       customerId: "customer-1",
-      vehicle: { plate: "ABC-123", brand: "Ford", model: "Transit", year: "2024" },
+      customerContactId: null,
+      customerFiscalProfileId: null,
+      vehicle: { plate: "ABC-123", brand: "Ford", model: "Transit", year: "2024", economicNumber: "" },
       title: "Service",
       description: "",
       administrative: true,
@@ -62,6 +64,25 @@ describe("mapPersistedQuoteToBuilderInitialData", () => {
     });
   });
 
+  it("maps contacts, fiscal profiles, and vehicle economic number when present", () => {
+    const mapped = mapPersistedQuoteToBuilderInitialData({
+      ...persistedQuote,
+      customerContactId: "contact-1",
+      customerFiscalProfileId: "fiscal-1",
+      vehicle: {
+        plate: "XYZ-789",
+        brand: "Kenworth",
+        model: "T680",
+        year: 2022,
+        economicNumber: "ECO-104",
+      },
+    });
+
+    expect(mapped.customerContactId).toBe("contact-1");
+    expect(mapped.customerFiscalProfileId).toBe("fiscal-1");
+    expect(mapped.vehicle.economicNumber).toBe("ECO-104");
+  });
+
   it("maps legacy root items into a General section", () => {
     const mapped = mapPersistedQuoteToBuilderInitialData({
       ...persistedQuote,
@@ -79,7 +100,7 @@ describe("mapPersistedQuoteToBuilderInitialData", () => {
       ],
     });
 
-    expect(mapped.vehicle).toEqual({ plate: "OLD", brand: "Ford", model: "Old", year: "2020" });
+    expect(mapped.vehicle).toEqual({ plate: "OLD", brand: "Ford", model: "Old", year: "2020", economicNumber: "" });
     expect(mapped.operationalDate).toBe("2026-08-31");
     expect(mapped.isOperationalDateEditable).toBe(false);
     expect(mapped.sections[0]?.name).toBe("General");

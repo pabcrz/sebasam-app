@@ -21,6 +21,12 @@ enum WorkerKind {
   HELPER
 }
 
+enum CustomerContactRole {
+  DRIVER
+  CONTACT
+  BILLING
+}
+
 enum CustomerStatus {
   ACTIVE
   INACTIVE
@@ -154,78 +160,114 @@ model HelperPayrollWeek {
 }
 
 model Customer {
-  id        String         @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  address   String?
-  status    CustomerStatus @default(ACTIVE)
-  notes     String?
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id             String         @id @default(cuid())
+  name           String
+  commercialName String?
+  legalName      String?
+  email          String?
+  phone          String?
+  address        String?
+  status         CustomerStatus @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   quotes          Quote[]
   vehicles        Vehicle[]
+  contacts        CustomerContact[]
   fiscalProfiles  CustomerFiscalProfile[]
   paymentRequests PaymentRequest[]
   payments        Payment[]
   ledgerEntries   LedgerEntry[]
+
+  @@index([name])
+  @@index([commercialName])
+  @@index([phone])
+}
+
+model CustomerContact {
+  id         String              @id @default(cuid())
+  customerId String
+  name       String
+  phone      String
+  role       CustomerContactRole @default(CONTACT)
+  isActive   Boolean             @default(true)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  quotes   Quote[]
+
+  @@index([customerId])
+  @@index([phone])
+  @@index([name])
+  @@index([role])
 }
 
 model Vehicle {
-  id         String   @id @default(cuid())
-  customerId String
-  brand      String?
-  model      String?
-  year       Int?
-  color      String?
-  plate      String?
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String   @id @default(cuid())
+  customerId     String
+  economicNumber String?
+  brand          String?
+  model          String?
+  year           Int?
+  color          String?
+  plate          String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   quotes   Quote[]
 
   @@unique([customerId, plate])
+  @@index([economicNumber])
 }
 
 model Quote {
-  id              String      @id @default(cuid())
-  submissionKey   String?     @unique
-  submissionHash  String?
-  customerId      String?
-  vehicleId       String?
-  number          String      @unique
-  status          QuoteStatus @default(DRAFT)
-  title           String
-  description     String?
-  vehicleSnapshot Json?
-  subtotalCents   Int?
-  discountCents   Int         @default(0)
-  taxCents        Int?
-  totalCents      Int?
-  taxEnabled      Boolean     @default(true)
-  validUntil      DateTime    @default(dbgenerated("CURRENT_TIMESTAMP + INTERVAL '7 days'"))
-  approvedAt      DateTime?
-  administrative  Boolean     @default(false)
-  operationalDate DateTime    @db.Date
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  deletedAt       DateTime?
+  id                      String      @id @default(cuid())
+  submissionKey           String?     @unique
+  submissionHash          String?
+  customerId              String?
+  vehicleId               String?
+  customerContactId       String?
+  customerFiscalProfileId String?
+  number                  String      @unique
+  status                  QuoteStatus @default(DRAFT)
+  title                   String
+  description             String?
+  vehicleSnapshot         Json?
+  customerSnapshot        Json?
+  contactSnapshot         Json?
+  subtotalCents           Int?
+  discountCents           Int         @default(0)
+  taxCents                Int?
+  totalCents              Int?
+  taxEnabled              Boolean     @default(true)
+  validUntil              DateTime    @default(dbgenerated("CURRENT_TIMESTAMP + INTERVAL '7 days'"))
+  approvedAt              DateTime?
+  administrative          Boolean     @default(false)
+  operationalDate         DateTime    @db.Date
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+  deletedAt               DateTime?
 
-  customer        Customer?        @relation(fields: [customerId], references: [id])
-  vehicle         Vehicle?         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  sections        QuoteSection[]
-  items           QuoteItem[]
-  workOrder       WorkOrder?
-  paymentRequests PaymentRequest[]
-  payments        Payment[]
-  sharedQuotes    SharedQuote[]
-  decisions       QuoteDecision[]
-  lifecycleEvents QuoteLifecycleEvent[]
+  customer              Customer?              @relation(fields: [customerId], references: [id])
+  vehicle               Vehicle?               @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  customerContact       CustomerContact?       @relation(fields: [customerContactId], references: [id], onDelete: SetNull)
+  customerFiscalProfile CustomerFiscalProfile? @relation(fields: [customerFiscalProfileId], references: [id], onDelete: SetNull)
+  sections              QuoteSection[]
+  items                 QuoteItem[]
+  workOrder             WorkOrder?
+  paymentRequests       PaymentRequest[]
+  payments              Payment[]
+  sharedQuotes          SharedQuote[]
+  decisions             QuoteDecision[]
+  lifecycleEvents       QuoteLifecycleEvent[]
 
   @@index([operationalDate])
+  @@index([customerContactId])
+  @@index([customerFiscalProfileId])
 }
 
 model SharedQuote {
@@ -404,9 +446,11 @@ model CustomerFiscalProfile {
 
   customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
   paymentRequests PaymentRequest[]
+  quotes          Quote[]
 
   @@unique([customerId, taxId])
   @@index([customerId])
+  @@index([businessName])
 }
 
 model PaymentRequest {

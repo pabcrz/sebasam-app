@@ -23,6 +23,18 @@ This is the canonical workflow for AI assistants working in this private reposit
 | PR type label | Every PR must have exactly one `type:*` label. Create the missing label before opening PRs if the repo workflow requires it. |
 | Chained PRs | When a change exceeds the 400-line review budget, split it into stacked PRs or record an explicit `size:exception` from the maintainer. |
 
+### PR description standards
+
+Every PR description must follow `.github/pull_request_template.md`:
+
+1. **Issue linkage**: First line must state `Closes #<number>`.
+2. **`## PR Type`**: Single-select checkbox indicating the change category (`type:*`).
+3. **`## Summary`**: Bulleted explanation of why the change was made and what it accomplishes.
+4. **`## Changes`**: Markdown table mapping affected areas/layers to specific changes.
+5. **`## Test Plan`**: Checklist of executed checks (`prisma generate`, `typecheck`, `lint`, `test:ui`, `pnpm build`, etc.).
+6. **`## Warnings`**: Document approved scope extensions, size exceptions (>400 lines), or migration cautions.
+7. **`## Contributor Checklist`**: Verifies linkage, label, conventional commits, zero AI attribution, and secrets safety.
+
 ## Change discipline
 
 - Do not bundle unrelated changes.

@@ -34,18 +34,51 @@ describe("listCustomers search", () => {
     expect(call.where).toBeUndefined();
   });
 
-  it("searches name, email, phone, address, notes and related vehicle plates", async () => {
+  it("searches all customer, contact, fiscal and vehicle fields", async () => {
     await listCustomers({ query: "ABC-123" });
 
     const call = getFindManyCall();
     expect(call.where).toEqual({
       OR: [
         { name: { contains: "ABC-123", mode: "insensitive" } },
+        { commercialName: { contains: "ABC-123", mode: "insensitive" } },
+        { legalName: { contains: "ABC-123", mode: "insensitive" } },
         { email: { contains: "ABC-123", mode: "insensitive" } },
         { phone: { contains: "ABC-123", mode: "insensitive" } },
         { address: { contains: "ABC-123", mode: "insensitive" } },
         { notes: { contains: "ABC-123", mode: "insensitive" } },
-        { vehicles: { some: { plate: { contains: "ABC-123", mode: "insensitive" } } } },
+        {
+          vehicles: {
+            some: {
+              OR: [
+                { plate: { contains: "ABC-123", mode: "insensitive" } },
+                { economicNumber: { contains: "ABC-123", mode: "insensitive" } },
+              ],
+            },
+          },
+        },
+        {
+          fiscalProfiles: {
+            some: {
+              OR: [
+                { businessName: { contains: "ABC-123", mode: "insensitive" } },
+                { taxId: { contains: "ABC-123", mode: "insensitive" } },
+              ],
+            },
+          },
+        },
+        {
+          contacts: {
+            some: {
+              OR: [
+                { name: { contains: "ABC-123", mode: "insensitive" } },
+                { phone: { contains: "ABC-123", mode: "insensitive" } },
+              ],
+            },
+          },
+        },
+        { phone: { contains: "123" } },
+        { contacts: { some: { phone: { contains: "123" } } } },
       ],
     });
   });
@@ -63,6 +96,19 @@ describe("listCustomers search", () => {
           paymentRequests: true,
           ledgerEntries: true,
         },
+      },
+      contacts: {
+        orderBy: [
+          { isActive: "desc" },
+          { role: "asc" },
+          { name: "asc" },
+        ],
+      },
+      fiscalProfiles: {
+        orderBy: [
+          { isDefault: "desc" },
+          { createdAt: "asc" },
+        ],
       },
     });
   });

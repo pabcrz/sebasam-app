@@ -6,8 +6,10 @@ type VehicleTransactionClient = Pick<Prisma.TransactionClient, "vehicle">;
 export async function findOrCreateVehicle(tx: VehicleTransactionClient, input: VehicleInput): Promise<Vehicle | null> {
   const data = vehicleInputSchema.parse(input);
   const plate = normalizeVehiclePlate(data.plate);
+  const economicNumber = data.economicNumber?.trim() || null;
   const hasAnyVehicleData =
     plate !== null ||
+    economicNumber !== null ||
     data.brand !== undefined ||
     data.model !== undefined ||
     data.color !== undefined ||
@@ -25,10 +27,21 @@ export async function findOrCreateVehicle(tx: VehicleTransactionClient, input: V
           plate,
         },
       })
-    : null;
+    : economicNumber
+      ? await tx.vehicle.findFirst({
+          where: {
+            customerId: data.customerId,
+            economicNumber,
+          },
+        })
+      : null;
 
   if (existingVehicle) {
     const updateData: Prisma.VehicleUpdateInput = {};
+
+    if (economicNumber !== null && existingVehicle.economicNumber !== economicNumber) {
+      updateData.economicNumber = economicNumber;
+    }
 
     if (data.model !== undefined) {
       updateData.model = data.model;
@@ -53,6 +66,7 @@ export async function findOrCreateVehicle(tx: VehicleTransactionClient, input: V
     if (
       Object.keys(updateData).length > 0 &&
       (
+        (data.economicNumber !== undefined && existingVehicle.economicNumber !== data.economicNumber) ||
         (data.model !== undefined && existingVehicle.model !== data.model) ||
         (data.brand !== undefined && existingVehicle.brand !== data.brand) ||
         (data.color !== undefined && existingVehicle.color !== data.color) ||
@@ -73,6 +87,7 @@ export async function findOrCreateVehicle(tx: VehicleTransactionClient, input: V
     data: {
       customerId: data.customerId,
       plate,
+      economicNumber,
       brand: data.brand ?? null,
       model: data.model ?? null,
       color: data.color ?? null,

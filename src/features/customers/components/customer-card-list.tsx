@@ -11,6 +11,8 @@ import { deleteCustomerAction, deleteCustomersBatchAction, updateCustomerAction 
 export type CustomerCardListItem = {
   id: string;
   name: string;
+  commercialName?: string | null;
+  legalName?: string | null;
   email: string | null;
   phone: string | null;
   address?: string | null;
@@ -202,7 +204,14 @@ export function CustomerCardList({
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-[var(--color-text-main)]">
-                      {customer.name}
+                      {customer.commercialName ? (
+                        <>
+                          <span>{customer.commercialName}</span>
+                          <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)]">({customer.name})</span>
+                        </>
+                      ) : (
+                        customer.name
+                      )}
                     </p>
                     <div className="mt-0.5 grid gap-0.5 text-sm text-[var(--color-text-muted)]">
                       {customer.email ? <p className="truncate">{customer.email}</p> : null}

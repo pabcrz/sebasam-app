@@ -133,6 +133,8 @@ export function QuoteBuilder({
   );
   const {
     customerId,
+    customerContactId,
+    customerFiscalProfileId,
     vehicle,
     title,
     description,
@@ -293,6 +295,10 @@ export function QuoteBuilder({
       current.some((option) => option.id === customer.id) ? current : [customer, ...current],
     );
     dispatch({ type: "setCustomerId", customerId: customer.id });
+    const defaultFp = customer.fiscalProfiles?.find((fp) => fp.isDefault);
+    if (defaultFp) {
+      dispatch({ type: "setCustomerFiscalProfileId", customerFiscalProfileId: defaultFp.id });
+    }
     setCustomerSearch(customer.name);
     setCustomerSearchError(null);
     setIsSearchingCustomers(false);
@@ -673,6 +679,8 @@ export function QuoteBuilder({
             <div className="grid gap-2">
               <Label htmlFor="customerId">Cliente</Label>
               <input type="hidden" name="customerId" value={customerId} />
+              <input type="hidden" name="customerContactId" value={customerContactId} />
+              <input type="hidden" name="customerFiscalProfileId" value={customerFiscalProfileId} />
               <Input
                 ref={customerInputRef}
                 id="customerId"
@@ -728,7 +736,88 @@ export function QuoteBuilder({
                 </div>,
                 document.body,
               ) : null}
-              {selectedCustomer ? <p className="text-sm text-[var(--color-text-muted)]">Cliente seleccionado: <strong className="text-[var(--color-text-main)]">{selectedCustomer.name}</strong></p> : null}
+              {selectedCustomer ? (
+                <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+                  <div>
+                    <p className="text-sm text-[var(--color-text-muted)]">
+                      Cliente seleccionado: <strong className="text-[var(--color-text-main)]">{selectedCustomer.name}</strong>
+                    </p>
+                    {selectedCustomer.legalName ? (
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        Razón social: {selectedCustomer.legalName}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {selectedCustomer.contacts && selectedCustomer.contacts.length > 0 ? (
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="quoteCustomerContact" className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                        Contacto operativo / Chofer (opcional)
+                      </Label>
+                      <Select
+                        value={customerContactId || "none"}
+                        onValueChange={(value) =>
+                          dispatch({
+                            type: "setCustomerContactId",
+                            customerContactId: value === "none" ? "" : value,
+                          })
+                        }
+                      >
+                        <SelectTrigger id="quoteCustomerContact" className="bg-[var(--color-surface)]">
+                          <SelectValue placeholder="Sin contacto específico asignado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sin contacto asignado</SelectItem>
+                          {selectedCustomer.contacts
+                            .filter((c) => c.isActive || c.id === customerContactId)
+                            .map((c) => {
+                              const roleBadge =
+                                c.role === "DRIVER"
+                                  ? "Chofer"
+                                  : c.role === "BILLING"
+                                    ? "Facturación"
+                                    : "Contacto";
+                              return (
+                                <SelectItem key={c.id} value={c.id}>
+                                  {c.name} ({roleBadge}{c.phone ? ` · ${c.phone}` : ""})
+                                </SelectItem>
+                              );
+                            })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+
+                  {selectedCustomer.fiscalProfiles && selectedCustomer.fiscalProfiles.length > 0 ? (
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="quoteCustomerFiscalProfile" className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                        Razón social / Perfil fiscal (opcional)
+                      </Label>
+                      <Select
+                        value={customerFiscalProfileId || "none"}
+                        onValueChange={(value) =>
+                          dispatch({
+                            type: "setCustomerFiscalProfileId",
+                            customerFiscalProfileId: value === "none" ? "" : value,
+                          })
+                        }
+                      >
+                        <SelectTrigger id="quoteCustomerFiscalProfile" className="bg-[var(--color-surface)]">
+                          <SelectValue placeholder="Sin perfil fiscal específico" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sin perfil fiscal específico</SelectItem>
+                          {selectedCustomer.fiscalProfiles.map((fp) => (
+                            <SelectItem key={fp.id} value={fp.id}>
+                              {fp.businessName} ({fp.taxId}){fp.isDefault ? " · Predeterminado" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               {createCustomerAction ? (
                 <div className="grid gap-3 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -858,6 +947,17 @@ export function QuoteBuilder({
                   />
                 </div>
                 <div className="grid gap-2">
+                  <Label htmlFor="economicNumber">Número económico / ECO (opcional)</Label>
+                  <Input
+                    id="economicNumber"
+                    name="economicNumber"
+                    maxLength={30}
+                    value={vehicle.economicNumber}
+                    onChange={(event) => dispatch({ type: "setVehicleField", field: "economicNumber", value: event.target.value })}
+                    placeholder="Ej. ECO-104"
+                  />
+                </div>
+                <div className="grid gap-2">
                   <Label htmlFor="brand">Marca (opcional)</Label>
                   <Input
                     id="brand"
@@ -984,20 +1084,41 @@ export function QuoteBuilder({
             <h2 className="sr-only" tabIndex={-1} data-step-heading="preview">
               {mode === "direct-work-order" ? "Revisar y confirmar trabajo" : "Revisar y enviar cotización"}
             </h2>
-            <QuotePreviewCard
-              customerName={selectedCustomer?.name ?? ""}
-              vehicle={vehicle}
-              title={title}
-              description={description}
-              administrative={administrative}
-              sections={sections}
-              subtotalCents={subtotalCents}
-              discountCents={discountCents}
-              taxCents={taxCents}
-              totalCents={totalCents}
-              validUntil={validUntil}
-              compactItems
-            />
+            {(() => {
+              const selectedContact = selectedCustomer?.contacts?.find((c) => c.id === customerContactId);
+              const selectedFiscal = selectedCustomer?.fiscalProfiles?.find((fp) => fp.id === customerFiscalProfileId);
+              const customerDisplayName = selectedCustomer?.commercialName || selectedCustomer?.name || "";
+              const legalDisplayName =
+                selectedFiscal?.businessName ||
+                selectedCustomer?.legalName ||
+                (selectedCustomer?.commercialName ? selectedCustomer?.name : null);
+              const contactRoleBadge =
+                selectedContact?.role === "DRIVER"
+                  ? "Chofer"
+                  : selectedContact?.role === "BILLING"
+                    ? "Facturación"
+                    : "Contacto";
+
+              return (
+                <QuotePreviewCard
+                  customerName={customerDisplayName}
+                  legalName={legalDisplayName}
+                  contactName={selectedContact?.name}
+                  contactRole={contactRoleBadge}
+                  vehicle={vehicle}
+                  title={title}
+                  description={description}
+                  administrative={administrative}
+                  sections={sections}
+                  subtotalCents={subtotalCents}
+                  discountCents={discountCents}
+                  taxCents={taxCents}
+                  totalCents={totalCents}
+                  validUntil={validUntil}
+                  compactItems
+                />
+              );
+            })()}
           </section>
             </div>
           </div>

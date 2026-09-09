@@ -17,10 +17,11 @@ export interface PublicQuoteShellProps {
   date?: Date | null;
   title?: string;
   customerName?: string;
+  customerSubtitle?: string;
   vehicleDescription?: string;
 }
 
-export function PublicQuoteShell({ children, business, location, logoSrc, documentType = "Cotización", documentNumber, date, customerName, vehicleDescription }: PublicQuoteShellProps) {
+export function PublicQuoteShell({ children, business, location, logoSrc, documentType = "Cotización", documentNumber, date, customerName, customerSubtitle, vehicleDescription }: PublicQuoteShellProps) {
   const resolvedBusiness = business ?? {};
   const resolvedLogoSrc = logoSrc ?? (resolvedBusiness.businessName ? defaultQuoteLogoSrc : undefined);
   const mapsUrl = getPublicMapsUrl(location?.mapsUrl);
@@ -43,6 +44,11 @@ export function PublicQuoteShell({ children, business, location, logoSrc, docume
                   {customerName && (
                     <p className="text-base print:text-base font-extrabold text-white print:text-black leading-snug">
                       {customerName}
+                    </p>
+                  )}
+                  {customerSubtitle && (
+                    <p className="text-xs print:text-xs font-medium text-white/80 print:text-gray-600">
+                      {customerSubtitle}
                     </p>
                   )}
                   {vehicleDescription && (
