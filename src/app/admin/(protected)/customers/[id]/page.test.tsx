@@ -27,6 +27,7 @@ vi.mock("@/features/customers/queries", () => ({
 vi.mock("@/features/customers/components/customer-account-statement", () => ({
   CustomerAccountStatement: customerAccountStatementMock,
 }));
+vi.mock("@/features/payments/actions", () => ({ correctPaymentAction: vi.fn() }));
 
 import CustomerDetailPage from "./page";
 
@@ -64,7 +65,10 @@ describe("CustomerDetailPage", () => {
     expect(screen.queryByTestId("customer-edit-form")).not.toBeInTheDocument();
     expect(getCustomerByIdMock).toHaveBeenCalledWith(customer.id);
     expect(getCustomerAccountStatementMock).toHaveBeenCalledWith(customer.id);
-    expect(customerAccountStatementMock).toHaveBeenCalledWith({ statement }, undefined);
+    expect(customerAccountStatementMock).toHaveBeenCalledWith(
+      { statement, correctPaymentAction: expect.any(Function) },
+      undefined,
+    );
   });
 
   it("uses the existing not-found boundary for an unknown customer", async () => {

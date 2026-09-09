@@ -6,6 +6,7 @@ import { StatCard } from "@/components/ui/stat-card";
 
 interface PayrollMetricsProps {
   totalCommissionCents: number;
+  totalPayableCents?: number;
   totalClientLaborCents: number;
   totalPayrollBaseCents: number;
   totalCompletedOrders: number;
@@ -14,12 +15,14 @@ interface PayrollMetricsProps {
 
 export function PayrollMetrics({
   totalCommissionCents,
+  totalPayableCents,
   totalClientLaborCents,
   totalPayrollBaseCents,
   totalCompletedOrders,
   totalWorkers,
 }: PayrollMetricsProps) {
   const hasBaseAdjustment = totalPayrollBaseCents !== totalClientLaborCents;
+  const payableCents = totalPayableCents ?? totalCommissionCents;
 
   return (
     <>
@@ -31,7 +34,7 @@ export function PayrollMetrics({
               Total Nómina a Liquidar
             </span>
             <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-              {formatCents(totalCommissionCents)}
+              {formatCents(payableCents)}
             </span>
           </div>
           <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -66,9 +69,9 @@ export function PayrollMetrics({
         <MetricCardGroup columns={4}>
           <StatCard
             label="Total Nómina a Pagar"
-            value={formatCents(totalCommissionCents)}
+            value={formatCents(payableCents)}
             numericRole="currency"
-            description="Comisiones calculadas a liquidar"
+            description="Comisiones y sueldos fijos a liquidar"
             icon={<Banknote className="h-4 w-4" aria-hidden="true" />}
             iconVariant="success"
           />

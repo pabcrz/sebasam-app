@@ -79,6 +79,11 @@ export function PayrollSigningSheetModal({
       name: w.displayName,
       isCustom: false,
     })),
+    ...(report.fixedPayHelpers ?? []).map((helper) => ({
+      id: helper.workerId,
+      name: helper.displayName,
+      isCustom: false,
+    })),
     ...customRows.map((r) => ({
       id: r.id,
       name: r.name,

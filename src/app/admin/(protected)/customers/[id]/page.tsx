@@ -6,6 +6,7 @@ import { AdminPageHeader } from "@/components/admin-page-header";
 import { Button, Card, CardContent } from "@/components/ui";
 import { CustomerAccountStatement } from "@/features/customers/components/customer-account-statement";
 import { getCustomerAccountStatement, getCustomerById } from "@/features/customers/queries";
+import { correctPaymentAction } from "@/features/payments/actions";
 
 export const metadata: Metadata = {
   title: "Detalle de cliente",
@@ -66,7 +67,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         </CardContent>
       </Card>
 
-      <CustomerAccountStatement statement={statement} />
+      <CustomerAccountStatement statement={statement} correctPaymentAction={correctPaymentAction} />
     </section>
   );
 }

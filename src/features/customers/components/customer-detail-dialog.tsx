@@ -31,15 +31,25 @@ export type CustomerDetailLoader = (customerId: string) => Promise<CustomerDetai
 type CustomerDetailDialogProps = {
   customer: CustomerCardListItem;
   getCustomerDetail: CustomerDetailLoader;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
-export function CustomerDetailDialog({ customer, getCustomerDetail }: CustomerDetailDialogProps) {
-  const [open, setOpen] = React.useState(false);
+export function CustomerDetailDialog({
+  customer,
+  getCustomerDetail,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: CustomerDetailDialogProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+
   const [detail, setDetail] = React.useState<CustomerDetail | null>(null);
   const [state, setState] = React.useState<"idle" | "loading" | "error">("idle");
   const requestId = React.useRef(0);
 
-  const loadDetail = () => {
+  const loadDetail = React.useCallback(() => {
     const currentRequestId = ++requestId.current;
     setDetail(null);
     setState("loading");
@@ -53,10 +63,13 @@ export function CustomerDetailDialog({ customer, getCustomerDetail }: CustomerDe
       .catch(() => {
         if (currentRequestId === requestId.current) setState("error");
       });
-  };
+  }, [customer.id, getCustomerDetail]);
 
   const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen);
+    if (!isControlled) {
+      setUncontrolledOpen(nextOpen);
+    }
+    controlledOnOpenChange?.(nextOpen);
 
     if (!nextOpen) {
       requestId.current += 1;
@@ -64,6 +77,14 @@ export function CustomerDetailDialog({ customer, getCustomerDetail }: CustomerDe
       setState("idle");
     }
   };
+
+  const prevControlledOpenRef = React.useRef(controlledOpen);
+  React.useEffect(() => {
+    if (isControlled && controlledOpen && !prevControlledOpenRef.current) {
+      loadDetail();
+    }
+    prevControlledOpenRef.current = controlledOpen;
+  }, [isControlled, controlledOpen, loadDetail]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

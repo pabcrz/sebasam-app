@@ -2,14 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireAdmin } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { recordCashPayment, reversePaymentCapture } from "./domain";
-import { recordPaymentAction, reversePaymentCaptureAction } from "./actions";
+import { correctPayment, recordCashPayment, reversePaymentCapture } from "./domain";
+import { correctPaymentAction, recordPaymentAction, reversePaymentCaptureAction } from "./actions";
 
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({ prisma: { workOrder: { findUnique: vi.fn() } } }));
 vi.mock("./domain", async () => ({
   ...(await vi.importActual<typeof import("./domain")>("./domain")),
+  correctPayment: vi.fn(),
   recordCashPayment: vi.fn(),
   reversePaymentCapture: vi.fn(),
 }));
@@ -111,5 +112,45 @@ describe("reversePaymentCaptureAction", () => {
       reversedApplicationsCount: 1,
       restoredCustomerCreditCents: 5000,
     });
+  });
+});
+
+describe("correctPaymentAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireAdmin as ReturnType<typeof vi.fn>).mockResolvedValue({
+      profile: { id: "admin-user-1" },
+    });
+  });
+
+  it("requires admin and maps amount, method and reason to the domain correction", async () => {
+    (correctPayment as ReturnType<typeof vi.fn>).mockResolvedValue({
+      correctionId: "corr-1",
+      originalPaymentId: "pay-1",
+      replacementPaymentId: "pay-2",
+      replacementAmountCents: 12500,
+      method: "TRANSFER",
+    });
+
+    const result = await correctPaymentAction("pay-1", "125.00", "TRANSFER", "Fix method", "op-correct-1");
+
+    expect(requireAdmin).toHaveBeenCalledOnce();
+    expect(correctPayment).toHaveBeenCalledWith({
+      originalPaymentId: "pay-1",
+      amountCents: 12500,
+      method: "TRANSFER",
+      reason: "Fix method",
+      operationKey: "op-correct-1",
+      actorId: "admin-user-1",
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
+    expect(result.replacementAmountCents).toBe(12500);
+  });
+
+  it("rejects non-admin callers before touching the domain", async () => {
+    (requireAdmin as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Unauthorized"));
+
+    await expect(correctPaymentAction("pay-1", "100.00", "CASH", "Reason", "op-1")).rejects.toThrow("Unauthorized");
+    expect(correctPayment).not.toHaveBeenCalled();
   });
 });

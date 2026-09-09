@@ -25,6 +25,7 @@ vi.mock("react-hot-toast", () => {
 
 vi.mock("../actions", () => ({
   updatePayrollItemBase: vi.fn(),
+  updateFixedPayHelperAdjustments: vi.fn(),
 }));
 
 const sampleWorkers: WorkerPayrollSummary[] = [
@@ -153,6 +154,75 @@ describe("Payroll UI Components", () => {
     expect(screen.getByText("Soldadura / Soplete")).toBeInTheDocument();
   });
 
+  it("expands every order for the selected worker while keeping each accordion controllable", () => {
+    const selectedWorkerWithTwoOrders: WorkerPayrollSummary = {
+      ...sampleWorkers[0],
+      completedOrderCount: 2,
+      totalClientLaborCents: 150000,
+      totalPayrollBaseCents: 150000,
+      totalCommissionCents: 60000,
+      workOrders: [
+        ...sampleWorkers[0].workOrders,
+        {
+          ...sampleWorkers[0].workOrders[0],
+          workOrderId: "wo-2",
+          workOrderNumber: "OT-011",
+          quoteId: "q-2",
+          quoteNumber: "COT-011",
+          items: [
+            {
+              ...sampleWorkers[0].workOrders[0].items[0],
+              id: "item-2",
+              description: "Instalación de frenos",
+              clientTotalCents: 50000,
+              payrollBaseCents: 50000,
+              commissionCents: 20000,
+            },
+          ],
+          totalClientLaborCents: 50000,
+          totalPayrollBaseCents: 50000,
+          totalCommissionCents: 20000,
+        },
+      ],
+    };
+    const otherWorker: WorkerPayrollSummary = {
+      ...sampleWorkers[1],
+      workOrders: [
+        {
+          ...sampleWorkers[0].workOrders[0],
+          workOrderId: "wo-other",
+          workOrderNumber: "OT-OTHER",
+          items: [
+            {
+              ...sampleWorkers[0].workOrders[0].items[0],
+              id: "item-other",
+              description: "Trabajo de otro maestro",
+            },
+          ],
+        },
+      ],
+    };
+
+    render(
+      <PayrollWorkerDetail
+        workers={[selectedWorkerWithTwoOrders, otherWorker]}
+        selectedWorkerId="w-1"
+      />
+    );
+
+    expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Instalación de frenos").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Trabajo de otro maestro")).not.toBeInTheDocument();
+
+    const hideButtons = screen.getAllByRole("button", { name: "Ocultar conceptos" });
+    expect(hideButtons).toHaveLength(2);
+
+    fireEvent.click(hideButtons[1]);
+
+    expect(screen.queryByText("Instalación de frenos")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver conceptos" })).toBeInTheDocument();
+  });
+
   it("renders unassigned card warning when orders exist without master", () => {
     render(
       <PayrollUnassignedCard
@@ -210,6 +280,53 @@ describe("Payroll UI Components", () => {
     render(<PayrollView report={emptyReport} period={period} />);
 
     expect(screen.getByText(/No hay órdenes completadas en este período/i)).toBeInTheDocument();
+  });
+
+  it("shows fixed-pay helpers separately without a work-order breakdown", () => {
+    const period: ParsedPayrollParams = {
+      mode: "weekly",
+      anchor: "2026-08-17",
+      prevAnchor: "2026-08-10",
+      nextAnchor: "2026-08-24",
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      isCurrentPeriod: true,
+      start: new Date("2026-08-17T06:00:00Z"),
+      end: new Date("2026-08-23T06:00:00Z"),
+    };
+    const report: WeeklyPayrollReport = {
+      startDate: period.start,
+      endDate: period.end,
+      rangeLabel: period.rangeLabel,
+      isCurrentWeek: true,
+      totalWorkers: 1,
+      totalCompletedOrders: 0,
+      totalClientLaborCents: 0,
+      totalPayrollBaseCents: 0,
+      totalCommissionCents: 0,
+      totalFixedWeeklyPayCents: 600000,
+      totalPayableCents: 600000,
+      workers: [],
+      fixedPayHelpers: [
+        {
+          workerId: "helper-1",
+          displayName: "Helper One",
+          weeklyRateCents: 600000,
+          dailyRateCents: 100000,
+          absenceDays: 0,
+          absenceDeductionCents: 0,
+          manualCommissionCents: 0,
+          totalPayableCents: 600000,
+        },
+      ],
+      unassignedOrders: [],
+    };
+
+    render(<PayrollView report={report} period={period} />);
+
+    expect(screen.getByText("Ayudantes generales")).toBeInTheDocument();
+    expect(screen.getByText("Helper One")).toBeInTheDocument();
+    expect(screen.queryByText("Mano de obra - Helper One")).not.toBeInTheDocument();
   });
 
   it("opens the confidential signing sheet modal when clicking Hoja de Firmas", () => {

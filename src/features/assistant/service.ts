@@ -11,6 +11,13 @@ import {
   type HistoricalAggregateRow,
   type HistoricalMatchSource,
 } from "@/features/historical/repository";
+import {
+  aggregateCompletedWork,
+  matchCompletedWork,
+  type AggregateCompletedWorkInput,
+  type CompletedWorkAggregate,
+  type CompletedWorkMatchSource,
+} from "@/features/completed-work-knowledge/repository";
 import { formatCents } from "@/features/quotes/lib/format";
 
 export interface AssistantFilters {
@@ -27,9 +34,16 @@ export interface AssistantFilters {
 export interface AssistantAnswer {
   answer: string;
   filters: AssistantFilters;
-  sources: HistoricalMatchSource[];
-  aggregation: HistoricalAggregateRow[] | null;
+  sources: AssistantSource[];
+  aggregation: AssistantAggregations | null;
   envError: string | null;
+}
+
+export type AssistantSource = (HistoricalMatchSource & { provenance: "historical" }) | CompletedWorkMatchSource;
+
+export interface AssistantAggregations {
+  historical: HistoricalAggregateRow[];
+  completedWork: CompletedWorkAggregate;
 }
 
 export function emptyFilters(): AssistantFilters {
@@ -112,15 +126,20 @@ Responde ÚNICAMENTE con un objeto JSON con estas claves (todas opcionales, sin 
 
 const ANSWER_SYSTEM_PROMPT = `
 Eres el asistente del taller SEBASAM. Respondés en español, claro y breve, sobre trabajos históricos capturados de la libreta.
-Tus únicas fuentes son los conceptos (con su contexto de trabajo) y la agregación exacta que se te entregan. NUNCA inventes precios, fechas, vehículos, clientes o maestros: si un dato no está en las fuentes, decilo explícitamente ("no tengo ese dato").
+Tus únicas fuentes son los conceptos (con su contexto de trabajo) y la agregación exacta que se te entregan. NUNCA inventes precios, fechas, vehículos, clientes o maestros: si un dato no está en las fuentes, decilo explícitamente ("No registrado").
 
-Reglas obligatorias:
-1. Cada cifra debe etiquetarse: [capturado] si viene directo de la libreta, [derivado] si es un cálculo (unitario = importe ÷ cantidad, o comisión = base taller × porcentaje), o [desconocido] si no hay dato.
-2. Para refacciones/materiales mostrá SIEMPRE la línea original (cantidad × importe total) y el unitario derivado (precio real por pieza), salvo kits: el importe del kit NO se divide, el unitario es el total del kit.
-3. La comisión SIEMPRE es "generada"/"comisionó" (cálculo), NUNCA "recibió" ni "cobró" — la comisión generada no es dinero pagado.
-4. La base "taller" es la base de nómina, no el precio al cliente; la diferencia entre importe al cliente y base taller no es ganancia ni margen. No la reportes como tal.
-5. Citá cada fuente con su índice entre corchetes, ej. [1]. Cuando haya agregación exacta, preferila para cifras globales y aclará que es cálculo sobre columnas reales.
-6. Si la pregunta pide estadísticas y no hay agregación, respondé con lo que haya y aclará qué falta.
+Formato de respuesta (obligatorio):
+1. Texto plano con markdown mínimo: **negritas** para etiquetas o cifras clave, guiones "-" para listas y saltos de línea. No uses asteriscos sueltos, ni HTML, ni tablas.
+2. No uses citas [n] inline ni etiquetas [capturado]/[derivado]/[desconocido]. El dato capturado es el valor por defecto y NO se marca. Solo mencioná de forma natural cuando un valor sea calculado (ej. "unitario calculado $50") o falte ("No registrado").
+3. Al final, cuando aplique, agregá una línea compacta "**Fuentes:** E-01" con las referencias de trabajo que sustentan la respuesta (sin índices).
+
+Reglas de contenido:
+1. Para refacciones/materiales mostrá SIEMPRE la línea original (cantidad × importe total) y el unitario calculado (precio real por pieza), salvo kits: el importe del kit NO se divide, el unitario es el total del kit.
+2. La comisión SIEMPRE es "generada"/"comisionó" (cálculo), NUNCA "recibió" ni "cobró" — la comisión generada no es dinero pagado.
+3. La base "taller" es la base de nómina, no el precio al cliente; la diferencia entre importe al cliente y base taller no es ganancia ni margen. No la reportes como tal.
+4. Si la pregunta pide estadísticas y no hay agregación, respondé con lo que haya y aclará qué falta.
+5. Las fuentes semánticas pueden ser historial importado o trabajo completado. NUNCA presentes una suma de la lista semántica como total: solo las secciones de agregación exacta son totales.
+6. Para trabajo completado, ingreso y comisión siempre son "generados"; NUNCA los describas como cobrados, recaudados o pagados. No respondas sobre referencias de precios de cotizaciones.
 `.trim();
 
 function sourceToPromptBlock(source: HistoricalMatchSource, index: number): string {
@@ -136,7 +155,7 @@ function sourceToPromptBlock(source: HistoricalMatchSource, index: number): stri
     ? `${source.quantity} × ${formatCents(source.customerPriceCents)}`
     : formatCents(source.customerPriceCents);
   return [
-    `[${index}] Trabajo ${source.workRef} · fecha ${source.workDate ?? "desconocida"} · cliente ${source.customerName ?? "desconocido"} · ${vehicle}${source.plate ? ` (${source.plate})` : ""} · maestro ${source.masterName ?? "desconocido"}`,
+    `[${index}] Historial importado · trabajo ${source.workRef} · fecha ${source.workDate ?? "desconocida"} · cliente ${source.customerName ?? "desconocido"} · ${vehicle}${source.plate ? ` (${source.plate})` : ""} · maestro ${source.masterName ?? "desconocido"}`,
     `    Concepto: ${source.description} (${source.type})`,
     `    Línea original: ${line} [capturado]`,
     source.quantity != null && source.isKit
@@ -156,14 +175,14 @@ function sourceToPromptBlock(source: HistoricalMatchSource, index: number): stri
 function buildAnswerUserPrompt(
   question: string,
   filters: AssistantFilters,
-  sources: HistoricalMatchSource[],
-  aggregation: HistoricalAggregateRow[] | null,
+  sources: AssistantSource[],
+  aggregation: AssistantAggregations | null,
 ): string {
   const parts: string[] = [`Pregunta: ${question}`];
   parts.push(`Filtros detectados: ${JSON.stringify(filters)}`);
-  if (aggregation && aggregation.length > 0) {
+  if (aggregation?.historical.length) {
     parts.push(
-      `Agregación exacta (SQL sobre columnas reales):\n${aggregation
+      `Agregación exacta de historial importado (SQL sobre columnas reales):\n${aggregation.historical
         .map((row) =>
           [
             `- grupo "${row.groupKey}": ${row.itemCount} conceptos en ${row.workCount} trabajos`,
@@ -174,12 +193,22 @@ function buildAnswerUserPrompt(
         .join("\n")}`,
     );
   } else {
-    parts.push("Agregación exacta: no solicitada o sin resultados.");
+    parts.push("Agregación exacta de historial importado: no solicitada o sin resultados.");
   }
+  const completed = aggregation?.completedWork;
+  parts.push(completed && completed.workCount > 0
+    ? `Agregación exacta de trabajo completado (valores operativos actuales): ${completed.itemCount} conceptos en ${completed.workCount} órdenes; ingreso generado ${formatCents(completed.totalGeneratedIncomeCents)}; comisión generada ${formatCents(completed.totalGeneratedCommissionCents)}.`
+    : "Agregación exacta de trabajo completado: no solicitada o sin resultados.");
   if (sources.length === 0) {
     parts.push("Fuentes semánticas: ninguna coincidencia.");
   } else {
-    parts.push(`Fuentes semánticas (${sources.length}):\n${sources.map(sourceToPromptBlock).join("\n")}`);
+    parts.push(`Fuentes semánticas (${sources.length}, no son una agregación):\n${sources.map((source, index) => source.provenance === "historical"
+      ? sourceToPromptBlock(source, index + 1)
+      : [`[${index + 1}] Trabajo completado ${source.workOrderNumber} · fecha ${source.completedAt} · ${[source.brand, source.model].filter(Boolean).join(" ") || "sin unidad"}${source.plate ? ` (${source.plate})` : ""} · responsable ${source.responsibleWorker}`,
+        `    Concepto actual: ${source.description} (${source.type}) · importe ${formatCents(source.itemTotalCents)}`,
+        `    Ingreso generado por la orden (cotización actual): ${formatCents(source.currentQuoteTotalCents)} [derivado]`,
+        `    Comisión generada: ${formatCents(source.generatedCommissionCents)} [derivado]`,
+      ].join("\n")).join("\n")}`);
   }
   return parts.join("\n\n");
 }
@@ -193,6 +222,20 @@ export function mapFiltersToAggregateInput(filters: AssistantFilters): Aggregate
     dateFrom: filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00.000Z`) : null,
     dateTo: filters.dateTo ? new Date(`${filters.dateTo}T23:59:59.999Z`) : null,
     groupBy: "all",
+  };
+}
+
+function mapFiltersToCompletedAggregateInput(
+  filters: AssistantFilters,
+): AggregateCompletedWorkInput {
+  return {
+    filterType: filters.type,
+    filterBrand: filters.brand,
+    filterModel: filters.model,
+    filterDescription: filters.description,
+    filterMaster: filters.master,
+    dateFrom: filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00.000Z`) : null,
+    dateTo: filters.dateTo ? new Date(`${filters.dateTo}T23:59:59.999Z`) : null,
   };
 }
 
@@ -223,19 +266,28 @@ export async function answerHistoricalQuestion(question: string): Promise<Assist
     await provider.generateText({ system: EXTRACTION_SYSTEM_PROMPT, user: question }),
   );
 
-  const aggregation = filters.wantsStats
-    ? await aggregateHistoricalItems(mapFiltersToAggregateInput(filters))
+  const aggregationPromise = filters.wantsStats
+    ? Promise.all([
+      aggregateHistoricalItems(mapFiltersToAggregateInput(filters)),
+      aggregateCompletedWork(mapFiltersToCompletedAggregateInput(filters)),
+    ])
     : null;
 
   const embedding = await provider.embedText(question);
-  const sources = await matchHistoricalItems({
-    embedding,
-    threshold: 0.4,
-    count: 5,
-    filterType: filters.type,
-    filterBrand: filters.brand,
-    filterModel: filters.model,
-  });
+  const [[historicalSources, completedSources], aggregateResults] = await Promise.all([
+    Promise.all([
+      matchHistoricalItems({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model }),
+      matchCompletedWork({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model }),
+    ]),
+    aggregationPromise,
+  ]);
+  const sources: AssistantSource[] = [
+    ...historicalSources.map((source) => ({ ...source, provenance: "historical" as const })),
+    ...completedSources,
+  ].sort((left, right) => right.similarity - left.similarity).slice(0, 5);
+  const aggregation = aggregateResults
+    ? { historical: aggregateResults[0], completedWork: aggregateResults[1] }
+    : null;
 
   const answer = await provider.generateText({
     system: ANSWER_SYSTEM_PROMPT,

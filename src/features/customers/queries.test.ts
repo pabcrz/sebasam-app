@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { getCustomerAccountStatement, listCustomers } from "./queries";
+import { getCustomerAccountStatement, getCustomerDeletionBlocker, listCustomers } from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -50,11 +50,68 @@ describe("listCustomers search", () => {
     });
   });
 
-  it("limits results to 50 customers", async () => {
+  it("limits results to 50 customers and includes relation counts", async () => {
     await listCustomers();
 
     const call = getFindManyCall();
     expect(call.take).toBe(50);
+    expect(call.include).toEqual({
+      _count: {
+        select: {
+          quotes: true,
+          payments: true,
+          paymentRequests: true,
+          ledgerEntries: true,
+        },
+      },
+    });
+  });
+});
+
+describe("getCustomerDeletionBlocker", () => {
+  it("allows deletion when customer has zero related quotes and financial records", () => {
+    const blocker = getCustomerDeletionBlocker({
+      _count: { quotes: 0, payments: 0, paymentRequests: 0, ledgerEntries: 0 },
+    });
+    expect(blocker).toEqual({ canDelete: true, reason: null });
+  });
+
+  it("blocks deletion with singular quote reason when customer has 1 quote", () => {
+    const blocker = getCustomerDeletionBlocker({
+      _count: { quotes: 1, payments: 0, paymentRequests: 0, ledgerEntries: 0 },
+    });
+    expect(blocker).toEqual({
+      canDelete: false,
+      reason: "No se puede eliminar: tiene 1 cotización asociada",
+    });
+  });
+
+  it("blocks deletion with plural quote reason when customer has multiple quotes", () => {
+    const blocker = getCustomerDeletionBlocker({
+      _count: { quotes: 3, payments: 0, paymentRequests: 0, ledgerEntries: 0 },
+    });
+    expect(blocker).toEqual({
+      canDelete: false,
+      reason: "No se puede eliminar: tiene 3 cotizaciones asociadas",
+    });
+  });
+
+  it("blocks deletion with financial activity reason when customer has payments or ledger entries", () => {
+    const paymentBlocker = getCustomerDeletionBlocker({
+      _count: { quotes: 0, payments: 1, paymentRequests: 0, ledgerEntries: 0 },
+    });
+    expect(paymentBlocker).toEqual({
+      canDelete: false,
+      reason: "No se puede eliminar: tiene actividad financiera asociada",
+    });
+
+    const ledgerBlocker = getCustomerDeletionBlocker({
+      _count: { quotes: 0, payments: 0, paymentRequests: 0, ledgerEntries: 2 },
+    });
+    expect(ledgerBlocker).toEqual({
+      canDelete: false,
+      reason: "No se puede eliminar: tiene actividad financiera asociada",
+    });
   });
 });
 
@@ -159,6 +216,79 @@ describe("getCustomerAccountStatement", () => {
         resultingBalanceCents: 20000,
       }),
     ]);
+  });
+
+  it("keeps statement totals active-only and surfaces correction history movements", async () => {
+    (prisma.quote.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { totalCents: 10000 } });
+    // Only the replacement capture counts as paid; original reversed capture is excluded.
+    (prisma.payment.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { amountCents: 9000 } });
+    (prisma.paymentApplication.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { amountCents: 9000 } });
+    (prisma.ledgerEntry.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "ledger-charge",
+        createdAt: new Date("2026-08-01T10:00:00.000Z"),
+        type: "DEBIT",
+        movementType: "NOTE_CHARGE",
+        amountCents: 10000,
+        resultingBalanceCents: 10000,
+        actor: null,
+        reason: null,
+        payment: null,
+        paymentApplication: null,
+        workOrder: { id: "wo-1", number: "OT-001", status: "COMPLETED" },
+      },
+      {
+        id: "ledger-original-capture",
+        createdAt: new Date("2026-08-02T10:00:00.000Z"),
+        type: "CREDIT",
+        movementType: "PAYMENT_CAPTURE",
+        amountCents: 10000,
+        resultingBalanceCents: 0,
+        actor: null,
+        reason: null,
+        payment: { id: "p-1", method: "CASH", amountCents: 10000, operationKey: "op-original", reversedAt: new Date("2026-08-03T10:00:00.000Z"), quote: { id: "quote-1", number: "COT-001" } },
+        paymentApplication: null,
+        workOrder: null,
+      },
+      {
+        id: "ledger-reversal",
+        createdAt: new Date("2026-08-03T10:00:00.000Z"),
+        type: "DEBIT",
+        movementType: "PAYMENT_REVERSAL",
+        amountCents: 10000,
+        resultingBalanceCents: 10000,
+        actor: { id: "admin-1", displayName: "Admin User" },
+        reason: "Wrong method recorded",
+        payment: { id: "p-1", method: "CASH", amountCents: 10000, operationKey: "op-original", reversedAt: new Date("2026-08-03T10:00:00.000Z"), quote: { id: "quote-1", number: "COT-001" } },
+        paymentApplication: null,
+        workOrder: null,
+      },
+      {
+        id: "ledger-replacement-capture",
+        createdAt: new Date("2026-08-03T10:00:01.000Z"),
+        type: "CREDIT",
+        movementType: "PAYMENT_CAPTURE",
+        amountCents: 9000,
+        resultingBalanceCents: 1000,
+        actor: { id: "admin-1", displayName: "Admin User" },
+        reason: "Wrong method recorded",
+        payment: { id: "p-2", method: "TRANSFER", amountCents: 9000, operationKey: "op-replacement", reversedAt: null, quote: { id: "quote-1", number: "COT-001" } },
+        paymentApplication: null,
+        workOrder: null,
+      },
+    ]);
+
+    const statement = await getCustomerAccountStatement("customer-1");
+
+    expect(statement.totalContractedCents).toBe(10000);
+    expect(statement.totalPaidCents).toBe(9000);
+    expect(statement.pendingBalanceCents).toBe(1000);
+    const movementTypes = statement.movements.map((m) => m.movementType);
+    expect(movementTypes).toContain("PAYMENT_REVERSAL");
+    expect(movementTypes).toContain("PAYMENT_CAPTURE");
+    const reversal = statement.movements.find((m) => m.movementType === "PAYMENT_REVERSAL");
+    expect(reversal?.reason).toBe("Wrong method recorded");
+    expect(reversal?.actor?.displayName).toBe("Admin User");
   });
 
   it("allows an account with no approved quotes or movements", async () => {

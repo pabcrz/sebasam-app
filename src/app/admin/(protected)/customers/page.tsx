@@ -30,7 +30,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const customers = await listCustomers({ query });
 
   return (
-    <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
+    <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 pb-28 sm:pb-10 md:gap-6 md:px-6 md:py-10">
       {params.created ? (
         <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]" role="status">
           Cliente creado.

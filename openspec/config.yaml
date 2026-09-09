@@ -1,0 +1,60 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, Prisma ORM, Supabase / PostgreSQL.
+  Architecture: Feature-sliced (src/features/*) + Route handlers / Server actions + Container-presentational UI.
+  Testing: Vitest (unit/UI), React Testing Library, custom contract verifications.
+  Style: Mobile-first responsive, custom design tokens in globals.css/ui.tsx (Navy/White theme).
+
+testing:
+  strict_tdd: true
+  detected: "2026-09-07"
+  runner:
+    command: "pnpm test:ui"
+    framework: "vitest"
+  layers:
+    unit:
+      available: true
+      tool: "vitest"
+    integration:
+      available: true
+      tool: "@testing-library/react"
+    e2e:
+      available: false
+      tool: null
+  coverage:
+    available: true
+    command: "pnpm test:ui -- --coverage"
+  quality:
+    linter:
+      available: true
+      command: "pnpm lint"
+    typechecker:
+      available: true
+      command: "pnpm typecheck"
+    formatter:
+      available: true
+      command: "pnpm lint"
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include component contracts and interaction flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns and container-presentational design
+    tdd: true
+    test_command: "pnpm test:ui"
+  verify:
+    test_command: "pnpm test:ui"
+    build_command: "pnpm build"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

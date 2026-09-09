@@ -4,9 +4,12 @@ import { requireOperationalRole } from "@/lib/auth/session";
 import {
   createOrReuseCustomerForQuote,
   deleteCustomer,
+  deleteCustomerAction,
   deleteCustomerFromForm,
+  deleteCustomersBatchAction,
   getCustomerDetail,
   searchCustomersForQuote,
+  updateCustomerAction,
   updateCustomerBasics,
   updateCustomerBasicsFromForm,
 } from "./actions";
@@ -487,6 +490,171 @@ describe("deleteCustomerFromForm", () => {
     await deleteCustomerFromForm(formData);
 
     expect(redirect).toHaveBeenCalledWith("/admin/customers/cust-1/edit?error=cannot-delete");
+  });
+});
+
+describe("deleteCustomerAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({ profile: { id: "admin-1" } });
+  });
+
+  it("deletes customer, revalidates /admin/customers and returns success", async () => {
+    const tx = {
+      customer: {
+        findUnique: vi.fn().mockResolvedValue({ id: "cust-1", name: "Cliente Prueba" }),
+        delete: vi.fn().mockResolvedValue({ id: "cust-1" }),
+      },
+      quote: { count: vi.fn().mockResolvedValue(0) },
+      payment: { count: vi.fn().mockResolvedValue(0) },
+      paymentRequest: { count: vi.fn().mockResolvedValue(0) },
+      ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
+      vehicle: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      customerFiscalProfile: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    };
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
+
+    const result = await deleteCustomerAction("cust-1");
+
+    expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    expect(tx.customer.delete).toHaveBeenCalledWith({ where: { id: "cust-1" } });
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/customers");
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns error without throwing when customer has quotes or financial activity", async () => {
+    const tx = {
+      customer: {
+        findUnique: vi.fn().mockResolvedValue({ id: "cust-1", name: "Cliente Prueba" }),
+        delete: vi.fn(),
+      },
+      quote: { count: vi.fn().mockResolvedValue(2) },
+      payment: { count: vi.fn().mockResolvedValue(0) },
+      paymentRequest: { count: vi.fn().mockResolvedValue(0) },
+      ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
+      vehicle: { deleteMany: vi.fn() },
+      customerFiscalProfile: { deleteMany: vi.fn() },
+    };
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
+
+    const result = await deleteCustomerAction("cust-1");
+
+    expect(result).toEqual({
+      success: false,
+      error: "This customer has quotes and cannot be deleted.",
+    });
+  });
+});
+
+describe("deleteCustomersBatchAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({ profile: { id: "admin-1" } });
+  });
+
+  it("deletes multiple eligible customers atomically and revalidates /admin/customers", async () => {
+    const tx = {
+      customer: {
+        findUnique: vi.fn().mockImplementation(({ where }: { where: { id: string } }) =>
+          Promise.resolve({ id: where.id, name: `Cliente ${where.id}` }),
+        ),
+        delete: vi.fn().mockResolvedValue({}),
+      },
+      quote: { count: vi.fn().mockResolvedValue(0) },
+      payment: { count: vi.fn().mockResolvedValue(0) },
+      paymentRequest: { count: vi.fn().mockResolvedValue(0) },
+      ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
+      vehicle: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      customerFiscalProfile: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    };
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
+
+    const result = await deleteCustomersBatchAction(["cust-1", "cust-2", "cust-3"]);
+
+    expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    expect(tx.customer.delete).toHaveBeenCalledTimes(3);
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/customers");
+    expect(result).toEqual({ success: true, deletedCount: 3 });
+  });
+
+  it("returns error if any customer in the batch has related records", async () => {
+    const tx = {
+      customer: {
+        findUnique: vi.fn().mockResolvedValue({ id: "cust-1", name: "Cliente 1" }),
+        delete: vi.fn(),
+      },
+      quote: { count: vi.fn().mockResolvedValue(1) },
+      payment: { count: vi.fn().mockResolvedValue(0) },
+      paymentRequest: { count: vi.fn().mockResolvedValue(0) },
+      ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
+      vehicle: { deleteMany: vi.fn() },
+      customerFiscalProfile: { deleteMany: vi.fn() },
+    };
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
+
+    const result = await deleteCustomersBatchAction(["cust-1"]);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("This customer has quotes and cannot be deleted.");
+  });
+
+  it("returns error if customerIds array is empty", async () => {
+    const result = await deleteCustomersBatchAction([]);
+    expect(result).toEqual({ success: false, deletedCount: 0, error: "No customers selected." });
+  });
+});
+
+describe("updateCustomerAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({ profile: { id: "admin-1" } });
+  });
+
+  it("updates customer basics and revalidates /admin/customers", async () => {
+    (prisma.customer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(existingCustomer);
+    (prisma.customer.update as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...existingCustomer,
+      name: "Taller Actualizado",
+      phone: "55 9999 8888",
+    });
+
+    const result = await updateCustomerAction({
+      id: "cust-existing",
+      name: "Taller Actualizado",
+      phone: "5599998888",
+      status: "ACTIVE",
+    });
+
+    expect(requireOperationalRole).toHaveBeenCalledTimes(1);
+    expect(prisma.customer.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "cust-existing" },
+        data: expect.objectContaining({
+          name: "Taller Actualizado",
+          phone: "5599998888",
+        }),
+      }),
+    );
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/customers");
+    expect(result).toEqual(
+      expect.objectContaining({
+        success: true,
+        customer: expect.objectContaining({ name: "Taller Actualizado" }),
+      }),
+    );
+  });
+
+  it("returns validation error for invalid customer payload", async () => {
+    const result = await updateCustomerAction({
+      id: "cust-existing",
+      name: "", // name is required
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "invalid",
+    });
+    expect(prisma.customer.update).not.toHaveBeenCalled();
   });
 });
 

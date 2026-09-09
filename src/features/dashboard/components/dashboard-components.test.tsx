@@ -4,6 +4,7 @@ import { DashboardView } from "./dashboard-view";
 import { KpiPeriodMetrics } from "./kpi-period-metrics";
 import { PayrollEstimateCard } from "./payroll-estimate-card";
 import { QueueSnapshotCards } from "./queue-snapshot-cards";
+import { PendingAttentionSection } from "./pending-attention-section";
 
 describe("KpiPeriodMetrics", () => {
   const sampleKpis = {
@@ -45,10 +46,10 @@ describe("KpiPeriodMetrics", () => {
   it("renders week KPIs by default and switches periods with keyboard tabs", () => {
     render(<KpiPeriodMetrics kpis={sampleKpis} />);
 
-    const week = screen.getByRole("tab", { name: "Esta semana" });
-    const month = screen.getByRole("tab", { name: "Este mes" });
-    const year = screen.getByRole("tab", { name: "Este año" });
-    const weekPanel = screen.getByRole("tabpanel", { name: "Esta semana" });
+    const week = screen.getByRole("tab", { name: "Semana" });
+    const month = screen.getByRole("tab", { name: "Mes" });
+    const year = screen.getByRole("tab", { name: "Año" });
+    const weekPanel = screen.getByRole("tabpanel", { name: "Semana" });
 
     // Default: Week
     expect(screen.getByText("17–22 de ago de 2026")).toBeInTheDocument();
@@ -65,7 +66,7 @@ describe("KpiPeriodMetrics", () => {
     fireEvent.keyDown(week, { key: "ArrowRight" });
     expect(month).toHaveFocus();
     expect(month).toHaveAttribute("aria-selected", "true");
-    const monthPanel = screen.getByRole("tabpanel", { name: "Este mes" });
+    const monthPanel = screen.getByRole("tabpanel", { name: "Mes" });
     expect(screen.getByText("agosto de 2026")).toBeInTheDocument();
     expect(within(monthPanel).getByText("22")).toBeInTheDocument();
 
@@ -73,7 +74,7 @@ describe("KpiPeriodMetrics", () => {
     fireEvent.keyDown(month, { key: "ArrowRight" });
     expect(year).toHaveFocus();
     expect(year).toHaveAttribute("aria-selected", "true");
-    const yearPanel = screen.getByRole("tabpanel", { name: "Este año" });
+    const yearPanel = screen.getByRole("tabpanel", { name: "Año" });
     expect(screen.getByText("2026")).toBeInTheDocument();
     expect(within(yearPanel).getByText("150")).toBeInTheDocument();
   });
@@ -119,20 +120,74 @@ describe("QueueSnapshotCards", () => {
   it("renders each queue as a single link to its management screen", () => {
     render(<QueueSnapshotCards queues={{ commercialQueueCount: 12, activeExecutionCount: 8 }} />);
 
-    expect(screen.getByRole("link", { name: /ver cotizaciones/i })).toHaveAttribute(
-      "href",
-      "/admin/quotes"
+    const quoteLink = screen.getByRole("link", { name: /cotizaciones · 12/i });
+    expect(quoteLink).toHaveAttribute("href", "/admin/quotes");
+    expect(quoteLink).toHaveAttribute("title", "Cotizaciones · 12");
+
+    const workOrderLink = screen.getByRole("link", { name: /trabajos · 8/i });
+    expect(workOrderLink).toHaveAttribute("href", "/admin/work-orders");
+    expect(workOrderLink).toHaveAttribute("title", "Trabajos · 8");
+  });
+});
+
+describe("PendingAttentionSection", () => {
+  it("renders empty state when there are no pending attention items", () => {
+    render(<PendingAttentionSection items={[]} />);
+
+    expect(screen.getByText("Por atender")).toBeInTheDocument();
+    expect(screen.getByText("Nada pendiente por ahora")).toBeInTheDocument();
+    expect(screen.getByText("Todas las cotizaciones y trabajos activos están al día.")).toBeInTheDocument();
+  });
+
+  it("renders pending attention items with customer, vehicle, status, and next step", () => {
+    render(
+      <PendingAttentionSection
+        items={[
+          {
+            id: "q-1",
+            type: "quote",
+            href: "/admin/quotes/q-1",
+            customerName: "Juan Pérez",
+            vehicleDescription: "Nissan Versa 2021",
+            statusLabel: "Borrador",
+            statusVariant: "warning",
+            nextStep: "Enviar cotización",
+            updatedAt: new Date("2026-08-20T10:00:00.000Z"),
+          },
+          {
+            id: "wo-1",
+            type: "work_order",
+            href: "/admin/work-orders/wo-1",
+            customerName: "María López",
+            vehicleDescription: "Ford Ranger 2019",
+            statusLabel: "En progreso",
+            statusVariant: "info",
+            nextStep: "Finalizar trabajo",
+            updatedAt: new Date("2026-08-20T11:00:00.000Z"),
+          },
+        ]}
+      />
     );
-    expect(screen.getByRole("link", { name: /ver trabajos/i })).toHaveAttribute(
-      "href",
-      "/admin/work-orders"
-    );
+
+    expect(screen.getByText("Juan Pérez")).toBeInTheDocument();
+    expect(screen.getByText("Nissan Versa 2021")).toBeInTheDocument();
+    expect(screen.getByText("Borrador")).toBeInTheDocument();
+    expect(screen.getByText("Enviar cotización")).toBeInTheDocument();
+
+    expect(screen.getByText("María López")).toBeInTheDocument();
+    expect(screen.getByText("Ford Ranger 2019")).toBeInTheDocument();
+    expect(screen.getByText("En progreso")).toBeInTheDocument();
+    expect(screen.getByText("Finalizar trabajo")).toBeInTheDocument();
+
+    expect(screen.getByRole("link", { name: /juan pérez/i })).toHaveAttribute("href", "/admin/quotes/q-1");
+    expect(screen.getByRole("link", { name: /maría lópez/i })).toHaveAttribute("href", "/admin/work-orders/wo-1");
   });
 });
 
 describe("DashboardView", () => {
   const sampleSnapshot = {
     queues: { commercialQueueCount: 12, activeExecutionCount: 8 },
+    pendingAttention: [],
     kpis: {
       week: {
         period: "week" as const,
@@ -185,15 +240,20 @@ describe("DashboardView", () => {
       <DashboardView
         snapshot={sampleSnapshot}
         customers={[]}
-        createCustomerAction={vi.fn()}
         createQuoteAction={vi.fn()}
       />
     );
 
     expect(screen.getByRole("heading", { level: 1, name: "Inicio" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /nuevo cliente/i })[0]).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /nueva cotización/i })[0]).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /nuevo cliente/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Por atender")).toBeInTheDocument();
+    expect(screen.getByText("Resumen del período")).toBeInTheDocument();
     expect(screen.getByText("Módulos del Sistema")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Clientes" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Nómina" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Trabajadores" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 3, name: "Notas" })).not.toBeInTheDocument();
     expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
   });
 });

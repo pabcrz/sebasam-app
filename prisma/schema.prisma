@@ -50,6 +50,14 @@ enum WorkOrderStatus {
   CANCELLED
 }
 
+enum KnowledgeIndexState {
+  PENDING
+  INDEXING
+  INDEXED
+  FAILED
+  INELIGIBLE
+}
+
 enum AssignmentStatus {
   ASSIGNED
   ACCEPTED
@@ -110,6 +118,8 @@ model UserProfile {
   displayName String
   role        UserRole    @default(WORKER)
   workerKind  WorkerKind?
+  fixedWeeklyPayCents Int?
+  fixedDailyPayCents  Int?
   isActive    Boolean     @default(true)
   mustChangePassword Boolean @default(false)
   createdAt   DateTime    @default(now())
@@ -122,6 +132,25 @@ model UserProfile {
   createdApplications PaymentApplication[] @relation("PaymentApplicationCreator")
   reversedApplications PaymentApplication[] @relation("PaymentApplicationReverser")
   ledgerEntries        LedgerEntry[]        @relation("LedgerEntryActor")
+  helperPayrollWeeks   HelperPayrollWeek[]
+  paymentCorrections   PaymentCorrection[]
+}
+
+model HelperPayrollWeek {
+  id                    String   @id @default(cuid())
+  workerId              String   @db.Uuid
+  weekStart             DateTime @db.Date
+  weeklyRateCents       Int
+  dailyRateCents        Int
+  absenceDays           Int      @default(0)
+  manualCommissionCents Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  worker UserProfile @relation(fields: [workerId], references: [id], onDelete: Restrict)
+
+  @@unique([workerId, weekStart])
+  @@index([weekStart])
 }
 
 model Customer {
@@ -273,6 +302,7 @@ model QuoteItem {
 
   quote   Quote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   section QuoteSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  completedWorkKnowledgeSources CompletedWorkKnowledgeSource[]
   
   @@index([sectionId])
 }
@@ -291,14 +321,40 @@ model WorkOrder {
   createdAt                     DateTime        @default(now())
   updatedAt                     DateTime        @updatedAt
 
-  quote               Quote                @relation(fields: [quoteId], references: [id])
-  assignments         WorkAssignment[]
-  executionRecords    ExecutionRecord[]
-  paymentRequests     PaymentRequest[]
-  paymentApplications PaymentApplication[]
-  ledgerEntries       LedgerEntry[]
+  quote                         Quote                          @relation(fields: [quoteId], references: [id])
+  assignments                   WorkAssignment[]
+  executionRecords              ExecutionRecord[]
+  paymentRequests               PaymentRequest[]
+  paymentApplications           PaymentApplication[]
+  ledgerEntries                 LedgerEntry[]
+  completedWorkKnowledgeSources CompletedWorkKnowledgeSource[]
+  paymentCorrectionApplications PaymentCorrectionApplication[]
 
   @@index([status, completedAt])
+}
+
+model CompletedWorkKnowledgeSource {
+  id                String              @id @default(cuid())
+  originKey         String              @unique
+  workOrderId       String
+  quoteItemId       String
+  contextText       String
+  contextHash       String
+  embedding         Unsupported("vector(1536)")?
+  indexState        KnowledgeIndexState @default(PENDING)
+  indexingAttempts  Int                 @default(0)
+  lastIndexError    String?
+  lastAttemptedAt   DateTime?
+  indexedAt         DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  quoteItem QuoteItem @relation(fields: [quoteItemId], references: [id], onDelete: Cascade)
+
+  @@unique([workOrderId, quoteItemId])
+  @@index([workOrderId, indexState])
+  @@map("completed_work_knowledge_sources")
 }
 
 model WorkAssignment {
@@ -395,12 +451,14 @@ model Payment {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  customer       Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  quote          Quote?               @relation(fields: [quoteId], references: [id], onDelete: Restrict)
-  paymentRequest PaymentRequest?      @relation(fields: [paymentRequestId], references: [id], onDelete: SetNull)
-  reversedBy     UserProfile?         @relation("PaymentReverser", fields: [reversedById], references: [id], onDelete: Restrict)
-  applications   PaymentApplication[]
-  ledgerEntries  LedgerEntry[]
+  customer             Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  quote                Quote?               @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  paymentRequest       PaymentRequest?      @relation(fields: [paymentRequestId], references: [id], onDelete: SetNull)
+  reversedBy           UserProfile?         @relation("PaymentReverser", fields: [reversedById], references: [id], onDelete: Restrict)
+  applications         PaymentApplication[]
+  ledgerEntries        LedgerEntry[]
+  correctionsOriginal  PaymentCorrection[]  @relation("OriginalPaymentCorrection")
+  correctionsReplacement PaymentCorrection[] @relation("ReplacementPaymentCorrection")
 
   @@index([customerId])
   @@index([quoteId])
@@ -422,15 +480,60 @@ model PaymentApplication {
   reversedById   String?   @db.Uuid
   createdAt      DateTime  @default(now())
 
-  payment       Payment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
-  workOrder     WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
-  actor         UserProfile?  @relation("PaymentApplicationCreator", fields: [actorId], references: [id], onDelete: Restrict)
-  reversedBy    UserProfile?  @relation("PaymentApplicationReverser", fields: [reversedById], references: [id], onDelete: Restrict)
-  ledgerEntries LedgerEntry[]
+  payment                    Payment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  workOrder                  WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  actor                      UserProfile?  @relation("PaymentApplicationCreator", fields: [actorId], references: [id], onDelete: Restrict)
+  reversedBy                 UserProfile?  @relation("PaymentApplicationReverser", fields: [reversedById], references: [id], onDelete: Restrict)
+  ledgerEntries              LedgerEntry[]
+  originalCorrectionMappings PaymentCorrectionApplication[] @relation("OriginalCorrectionApplication")
+  replacementCorrectionMappings PaymentCorrectionApplication[] @relation("ReplacementCorrectionApplication")
 
   @@index([paymentId])
   @@index([workOrderId])
   @@index([reversedAt])
+}
+
+model PaymentCorrection {
+  id                   String   @id @default(cuid())
+  operationKey         String   @unique
+  originalPaymentId    String
+  replacementPaymentId String
+  reason               String
+  actorId              String   @db.Uuid
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  originalPayment    Payment                     @relation("OriginalPaymentCorrection", fields: [originalPaymentId], references: [id], onDelete: Restrict)
+  replacementPayment Payment                     @relation("ReplacementPaymentCorrection", fields: [replacementPaymentId], references: [id], onDelete: Restrict)
+  actor              UserProfile                 @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  applications       PaymentCorrectionApplication[]
+
+  @@unique([originalPaymentId])
+  @@index([originalPaymentId])
+  @@index([replacementPaymentId])
+  @@index([actorId])
+}
+
+model PaymentCorrectionApplication {
+  id                       String  @id @default(cuid())
+  paymentCorrectionId      String
+  originalApplicationId    String
+  replacementApplicationId String?
+  workOrderId              String
+  originalAmountCents      Int
+  replacementAmountCents   Int
+  shortfallCents           Int     @default(0)
+  sortOrder                Int     @default(0)
+  createdAt                DateTime @default(now())
+
+  paymentCorrection      PaymentCorrection  @relation(fields: [paymentCorrectionId], references: [id], onDelete: Cascade)
+  originalApplication    PaymentApplication @relation("OriginalCorrectionApplication", fields: [originalApplicationId], references: [id], onDelete: Restrict)
+  replacementApplication PaymentApplication? @relation("ReplacementCorrectionApplication", fields: [replacementApplicationId], references: [id], onDelete: SetNull)
+  workOrder              WorkOrder          @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+
+  @@unique([paymentCorrectionId, originalApplicationId])
+  @@index([paymentCorrectionId])
+  @@index([workOrderId])
 }
 
 model LedgerEntry {

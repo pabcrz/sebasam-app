@@ -22,6 +22,8 @@ function toWorkerData(data: WorkerInput) {
     email: data.email,
     role: UserRole.WORKER,
     workerKind: data.workerKind,
+    fixedWeeklyPayCents: data.fixedWeeklyPayCents,
+    fixedDailyPayCents: data.fixedDailyPayCents,
   };
 }
 
@@ -87,10 +89,18 @@ export async function setWorkerActive(workerId: string, isActive: boolean) {
 }
 
 function workerFormDataToInput(formData: FormData) {
+  const centsFromFormValue = (value: FormDataEntryValue | null) => {
+    if (typeof value !== "string" || value.trim() === "") return null;
+    const amount = Number(value);
+    return Number.isFinite(amount) ? Math.round(amount * 100) : Number.NaN;
+  };
+
   return {
     displayName: formData.get("displayName"),
     username: formData.get("username"),
     workerKind: formData.get("workerKind"),
+    fixedWeeklyPayCents: centsFromFormValue(formData.get("fixedWeeklyPay")),
+    fixedDailyPayCents: centsFromFormValue(formData.get("fixedDailyPay")),
   };
 }
 
@@ -179,4 +189,3 @@ export async function deleteWorkerFromForm(workerId: string, formData: FormData)
   revalidatePath(returnPath);
   redirect(`${workersPath}?deleted=1`);
 }
-

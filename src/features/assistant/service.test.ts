@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { QuoteItemType } from "@prisma/client";
 import type { HistoricalMatchSource } from "@/features/historical/repository";
+import type { CompletedWorkMatchSource } from "@/features/completed-work-knowledge/repository";
 import { answerHistoricalQuestion, parseAssistantFilters, mapFiltersToAggregateInput } from "./service";
 
 const { createGeminiProvider, ProviderErrorStub } = vi.hoisted(() => ({
@@ -13,10 +14,13 @@ const { createGeminiProvider, ProviderErrorStub } = vi.hoisted(() => ({
   },
 }));
 
-const { aggregateHistoricalItems, matchHistoricalItems } = vi.hoisted(() => ({
+const { aggregateHistoricalItems, matchHistoricalItems, aggregateCompletedWork, matchCompletedWork } = vi.hoisted(() => ({
   aggregateHistoricalItems: vi.fn(),
   matchHistoricalItems: vi.fn(),
+  aggregateCompletedWork: vi.fn(),
+  matchCompletedWork: vi.fn(),
 }));
+vi.mock("@/features/completed-work-knowledge/repository", () => ({ aggregateCompletedWork, matchCompletedWork }));
 
 vi.mock("@/features/historical/provider", () => ({ createGeminiProvider, ProviderError: ProviderErrorStub }));
 vi.mock("@/features/historical/repository", () => ({
@@ -47,6 +51,13 @@ const sampleSource: HistoricalMatchSource = {
   similarity: 0.9,
 };
 
+const completedSource: CompletedWorkMatchSource = {
+  provenance: "completed-work", itemId: "completed-item", workOrderId: "completed-order", workOrderNumber: "OT-01",
+  completedAt: "2026-09-02", brand: "Nissan", model: "NP300", plate: "ABC123", responsibleWorker: "Ana",
+  type: QuoteItemType.LABOR, description: "Replace bushings", quantity: 1, itemTotalCents: 1000,
+  currentQuoteTotalCents: 3200, generatedCommissionCents: 500, similarity: 0.95,
+};
+
 const providerMock = {
   embedText: vi.fn(async () => new Array(1536).fill(0)),
   generateText: vi.fn(),
@@ -71,6 +82,8 @@ beforeEach(() => {
     },
   ]);
   matchHistoricalItems.mockResolvedValue([sampleSource]);
+  matchCompletedWork.mockResolvedValue([completedSource]);
+  aggregateCompletedWork.mockResolvedValue({ itemCount: 1, workCount: 1, totalGeneratedIncomeCents: 3200, totalGeneratedCommissionCents: 500 });
 });
 
 describe("assistant filters extraction", () => {
@@ -127,21 +140,34 @@ describe("assistant filters extraction", () => {
 });
 
 describe("assistant orchestration", () => {
-  it("runs exact aggregation when stats are requested and always semantic search", async () => {
+  it("generates one embedding, retrieves both sources in parallel, and applies one global limit", async () => {
     const result = await answerHistoricalQuestion("¿Cuánto cobramos por cambiar bujes?");
 
     expect(providerMock.embedText).toHaveBeenCalledWith("¿Cuánto cobramos por cambiar bujes?");
+    expect(providerMock.embedText).toHaveBeenCalledTimes(1);
     expect(aggregateHistoricalItems).toHaveBeenCalledTimes(1);
     expect(matchHistoricalItems).toHaveBeenCalledTimes(1);
+    expect(matchCompletedWork).toHaveBeenCalledTimes(1);
+    expect(aggregateCompletedWork).toHaveBeenCalledOnce();
+    expect(aggregateCompletedWork).toHaveBeenCalledWith({
+      filterType: null,
+      filterBrand: "Nissan",
+      filterModel: null,
+      filterDescription: "bujes",
+      filterMaster: "Luis",
+      dateFrom: null,
+      dateTo: null,
+    });
     const matchInput = matchHistoricalItems.mock.calls[0][0];
     expect(matchInput.count).toBe(5);
     expect(matchInput.threshold).toBe(0.4);
     expect(matchInput.embedding).toHaveLength(1536);
 
     expect(result.answer).toBe("Según la libreta, por cambiar bujes cobramos $1,200 [1].");
-    expect(result.sources).toHaveLength(1);
-    expect(result.sources[0].description).toBe("4 tornillos");
-    expect(result.aggregation?.[0].totalCustomerCents).toBe(150000);
+    expect(result.sources).toHaveLength(2);
+    expect(result.sources.map((source) => source.provenance)).toEqual(["completed-work", "historical"]);
+    expect(result.aggregation?.historical[0].totalCustomerCents).toBe(150000);
+    expect(result.aggregation?.completedWork.totalGeneratedIncomeCents).toBe(3200);
     expect(result.envError).toBeNull();
   });
 
@@ -153,6 +179,7 @@ describe("assistant orchestration", () => {
     await answerHistoricalQuestion("¿Dónde está el cliente de E-01?");
     expect(aggregateHistoricalItems).not.toHaveBeenCalled();
     expect(matchHistoricalItems).toHaveBeenCalledTimes(1);
+    expect(matchCompletedWork).toHaveBeenCalledTimes(1);
   });
 
   it("returns a config error instead of throwing when the API key is missing", async () => {
@@ -165,12 +192,27 @@ describe("assistant orchestration", () => {
     expect(matchHistoricalItems).not.toHaveBeenCalled();
   });
 
-  it("feeds sources with derived values into the answer prompt", async () => {
+  it("keeps imported provenance and exposes completed live context in the answer prompt", async () => {
     await answerHistoricalQuestion("¿Cuánto cuesta cada tornillo?");
     const userPrompt = providerMock.generateText.mock.calls[1][0].user as string;
     expect(userPrompt).toContain("4 tornillos");
     expect(userPrompt).toContain("Línea original: 4 ×");
     expect(userPrompt).toContain("Unitario derivado");
     expect(userPrompt).toContain("[capturado]");
+    expect(userPrompt).toContain("Trabajo completado OT-01");
+    expect(userPrompt).toContain("Ingreso generado por la orden");
+    expect(userPrompt).toContain("Agregación exacta de historial importado");
+    expect(userPrompt).toContain("Agregación exacta de trabajo completado");
+  });
+
+  it("orders mixed provenance by similarity and applies a global top-five limit", async () => {
+    matchHistoricalItems.mockResolvedValue([0.99, 0.85, 0.7].map((similarity, index) => ({ ...sampleSource, itemId: `history-${index}`, similarity })));
+    matchCompletedWork.mockResolvedValue([0.95, 0.8, 0.6].map((similarity, index) => ({ ...completedSource, itemId: `completed-${index}`, similarity })));
+
+    const result = await answerHistoricalQuestion("bujes");
+
+    expect(result.sources).toHaveLength(5);
+    expect(result.sources.map((source) => source.similarity)).toEqual([0.99, 0.95, 0.85, 0.8, 0.7]);
+    expect(result.sources.map((source) => source.provenance)).toEqual(["historical", "completed-work", "historical", "completed-work", "historical"]);
   });
 });

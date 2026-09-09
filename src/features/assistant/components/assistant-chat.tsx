@@ -2,22 +2,23 @@
 
 import * as React from "react";
 import { Send } from "lucide-react";
-import type { HistoricalMatchSource } from "@/features/historical/repository";
+import type { AssistantSource } from "@/features/assistant/service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { SourcePanel } from "./source-panel";
+import { AssistantMarkdown } from "./assistant-markdown";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
-  sources?: HistoricalMatchSource[];
+  sources?: AssistantSource[];
   error?: boolean;
 }
 
 interface ChatResponse {
   answer?: string;
-  sources?: HistoricalMatchSource[];
+  sources?: AssistantSource[];
   error?: string;
 }
 
@@ -93,14 +94,18 @@ export function AssistantChat() {
                     : "inline-block max-w-full rounded-2xl border border-[var(--color-border-light)] bg-[var(--color-surface)] px-4 py-3 text-left text-sm text-[var(--color-text-main)]"
                 }
               >
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                {message.role === "user" ? (
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                ) : (
+                  <AssistantMarkdown text={message.content} />
+                )}
                 {message.error ? null : message.sources && message.sources.length > 0 ? (
                   <div className="mt-3 space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                       Fuentes ({message.sources.length})
                     </p>
                     {message.sources.map((source) => (
-                      <SourcePanel key={source.itemId} source={source} />
+                      <SourcePanel key={`${source.provenance}-${source.itemId}`} source={source} />
                     ))}
                   </div>
                 ) : null}

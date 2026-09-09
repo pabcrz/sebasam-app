@@ -5,13 +5,19 @@ import { requireOperationalRole } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import * as payrollActions from "./actions";
 
-const { updatePayrollItemBase } = payrollActions;
+const { updateFixedPayHelperAdjustments, updatePayrollItemBase } = payrollActions;
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     quoteItem: {
       findUnique: vi.fn(),
       update: vi.fn(),
+    },
+    userProfile: {
+      findFirst: vi.fn(),
+    },
+    helperPayrollWeek: {
+      upsert: vi.fn(),
     },
   },
 }));
@@ -27,11 +33,13 @@ vi.mock("next/cache", () => ({
 describe("Payroll Actions - updatePayrollItemBase", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
   });
 
   it("exports only async functions from the use-server entry point", () => {
-    expect(Object.keys(payrollActions)).toEqual(["updatePayrollItemBase"]);
+    expect(Object.keys(payrollActions)).toEqual(["updateFixedPayHelperAdjustments", "updatePayrollItemBase"]);
     expect(updatePayrollItemBase.constructor.name).toBe("AsyncFunction");
+    expect(updateFixedPayHelperAdjustments.constructor.name).toBe("AsyncFunction");
   });
 
   it("successfully updates custom payroll base for a LABOR item", async () => {
@@ -284,5 +292,31 @@ describe("Payroll Actions - updatePayrollItemBase", () => {
       success: false,
       error: "Unauthorized",
     });
+  });
+
+  it("updates only adjustments on an existing fixed-pay helper week", async () => {
+    (prisma.userProfile.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "helper-1",
+      fixedWeeklyPayCents: 6_00000,
+      fixedDailyPayCents: 1_00000,
+    });
+
+    const result = await updateFixedPayHelperAdjustments({
+      workerId: "helper-1",
+      weekStart: "2026-08-17",
+      absenceDays: 2,
+      manualCommissionCents: 2_5000,
+    });
+
+    expect(prisma.helperPayrollWeek.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: { absenceDays: 2, manualCommissionCents: 2_5000 },
+        create: expect.objectContaining({
+          weeklyRateCents: 6_00000,
+          dailyRateCents: 1_00000,
+        }),
+      })
+    );
+    expect(result).toEqual({ success: true });
   });
 });

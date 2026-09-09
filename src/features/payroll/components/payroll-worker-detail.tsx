@@ -66,8 +66,8 @@ export function PayrollWorkerDetail({
       {/* Accordion List of Work Orders */}
       <Card className="overflow-hidden p-0">
         <CardContent className="p-0 divide-y-2 divide-[var(--color-border-light)]/80">
-          {activeWorker.workOrders.map((order, idx) => (
-            <PayrollOrderAccordionRow key={order.workOrderId} order={order} defaultOpen={idx === 0} />
+          {activeWorker.workOrders.map((order) => (
+            <PayrollOrderAccordionRow key={order.workOrderId} order={order} defaultOpen />
           ))}
         </CardContent>
       </Card>

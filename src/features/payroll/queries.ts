@@ -1,13 +1,97 @@
-import { AssignmentStatus, WorkOrderStatus } from "@prisma/client";
+import { AssignmentStatus, UserRole, WorkerKind, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import {
   buildWeeklyPayrollReport,
+  calculateFixedPayHelperPayroll,
+  type FixedPayHelperPayrollSummary,
   type PayrollItemInput,
   type RawWorkOrderForPayroll,
   type WeeklyPayrollReport,
 } from "./domain";
 import { parsePayrollParams } from "./period";
+
+function weekStartFromAnchor(anchor: string) {
+  return new Date(`${anchor}T00:00:00.000Z`);
+}
+
+async function getFixedPayHelpers(weekStart: Date): Promise<FixedPayHelperPayrollSummary[]> {
+  const [savedWeeks, activeHelpers] = await Promise.all([
+    prisma.helperPayrollWeek.findMany({
+      where: { weekStart },
+      include: {
+        worker: {
+          select: { id: true, displayName: true },
+        },
+      },
+    }),
+    prisma.userProfile.findMany({
+      where: {
+        role: UserRole.WORKER,
+        workerKind: WorkerKind.HELPER,
+        isActive: true,
+        fixedWeeklyPayCents: { not: null },
+        fixedDailyPayCents: { not: null },
+      },
+      select: {
+        id: true,
+        displayName: true,
+        fixedWeeklyPayCents: true,
+        fixedDailyPayCents: true,
+      },
+    }),
+  ]);
+
+  const savedWorkerIds = new Set(savedWeeks.map((week) => week.workerId));
+  const newWeeks = await Promise.all(
+    activeHelpers
+      .filter((helper) => !savedWorkerIds.has(helper.id))
+      .map((helper) =>
+        prisma.helperPayrollWeek.upsert({
+          where: {
+            workerId_weekStart: {
+              workerId: helper.id,
+              weekStart,
+            },
+          },
+          create: {
+            workerId: helper.id,
+            weekStart,
+            weeklyRateCents: helper.fixedWeeklyPayCents!,
+            dailyRateCents: helper.fixedDailyPayCents!,
+          },
+          update: {},
+        })
+      )
+  );
+
+  const helperNames = new Map(activeHelpers.map((helper) => [helper.id, helper.displayName]));
+  for (const week of savedWeeks) {
+    helperNames.set(week.workerId, week.worker.displayName);
+  }
+
+  return [...savedWeeks, ...newWeeks]
+    .map((week) => {
+      const { absenceDeductionCents, totalPayableCents } = calculateFixedPayHelperPayroll({
+        weeklyRateCents: week.weeklyRateCents,
+        dailyRateCents: week.dailyRateCents,
+        absenceDays: week.absenceDays,
+        manualCommissionCents: week.manualCommissionCents,
+      });
+
+      return {
+        workerId: week.workerId,
+        displayName: helperNames.get(week.workerId) ?? "Worker",
+        weeklyRateCents: week.weeklyRateCents,
+        dailyRateCents: week.dailyRateCents,
+        absenceDays: week.absenceDays,
+        absenceDeductionCents,
+        manualCommissionCents: week.manualCommissionCents,
+        totalPayableCents,
+      };
+    })
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
 
 export async function getWeeklyPayroll(
   searchParams: Record<string, string | string[] | undefined> = {}
@@ -105,11 +189,40 @@ export async function getWeeklyPayroll(
     };
   });
 
-  return buildWeeklyPayrollReport(serializedOrders, {
+  const commissionReport = buildWeeklyPayrollReport(serializedOrders, {
     mode: period.mode,
     startDate: period.start,
     endDate: period.end,
     rangeLabel: period.rangeLabel,
     isCurrentWeek: period.isCurrentWeek,
   });
+
+  if (period.mode !== "weekly") {
+    return commissionReport;
+  }
+
+  const fixedPayHelpers = await getFixedPayHelpers(weekStartFromAnchor(period.anchor));
+  const totalFixedWeeklyPayCents = fixedPayHelpers.reduce((total, helper) => total + helper.weeklyRateCents, 0);
+  const totalAbsenceDeductionsCents = fixedPayHelpers.reduce(
+    (total, helper) => total + helper.absenceDeductionCents,
+    0
+  );
+  const totalManualCommissionsCents = fixedPayHelpers.reduce(
+    (total, helper) => total + helper.manualCommissionCents,
+    0
+  );
+
+  return {
+    ...commissionReport,
+    totalWorkers: commissionReport.totalWorkers + fixedPayHelpers.length,
+    totalFixedWeeklyPayCents,
+    totalAbsenceDeductionsCents,
+    totalManualCommissionsCents,
+    totalPayableCents:
+      commissionReport.totalCommissionCents +
+      totalFixedWeeklyPayCents -
+      totalAbsenceDeductionsCents +
+      totalManualCommissionsCents,
+    fixedPayHelpers,
+  };
 }

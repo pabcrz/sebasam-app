@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
   applyCustomerCredit,
+  correctPayment,
   parseCashAmountCents,
   recordCashPayment,
   reversePaymentCapture,
@@ -92,6 +93,43 @@ export async function reversePaymentCaptureAction(
     reason,
     actorId,
     operationKey,
+  });
+
+  revalidatePath("/admin/quotes");
+  revalidatePath("/admin/work-orders");
+  revalidatePath("/admin/notas");
+  revalidatePath("/admin/customers");
+
+  return result;
+}
+
+export async function correctPaymentAction(
+  originalPaymentId: string,
+  amount: string,
+  method: string,
+  reason: string,
+  operationKey: string,
+) {
+  const session = await requireAdmin();
+  const actorId = session?.profile?.id;
+  if (!actorId) {
+    throw new Error("No se pudo identificar al administrador.");
+  }
+
+  const amountCents = parseCashAmountCents(amount);
+
+  const paymentMethod =
+    Object.values(PaymentMethod).includes(method as PaymentMethod)
+      ? (method as PaymentMethod)
+      : PaymentMethod.CASH;
+
+  const result = await correctPayment({
+    originalPaymentId,
+    amountCents,
+    method: paymentMethod,
+    reason,
+    operationKey,
+    actorId,
   });
 
   revalidatePath("/admin/quotes");

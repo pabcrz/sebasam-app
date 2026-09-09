@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { PaymentRequestStatus, PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
+import { PaymentRequestStatus, PaymentStatus, Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { measureServerTiming, recordServerTiming } from "@/lib/server-timing";
@@ -19,6 +19,7 @@ import { isQuoteEditable } from "./lib/editability";
 import { assertCommercialQuote, CommercialQuoteValidationError } from "./lib/commercial-validation";
 import { normalizeOperationalDate } from "./lib/operational-date";
 import { nextQuoteNumber, nextWorkOrderNumber, withQuoteNumberRetry } from "./lib/sequence";
+import { lockPaymentMutationScope } from "@/features/payments/domain";
 import {
   QuoteDecisionError,
   acceptSharedQuote,
@@ -336,6 +337,153 @@ export async function updateDraftQuoteFromWorkspace(
   }
 
   revalidatePath(quotesPath);
+  return { success: true };
+}
+
+const ACTIVE_PAYMENT_BLOCK_MESSAGE = "No se puede corregir una nota con un pago activo. Reversa el pago primero.";
+
+export async function correctCompletedWorkQuote(quoteId: string, input: unknown) {
+  await requireOperationalRole();
+
+  const data = quoteDraftInputSchema.parse(input);
+  const requestedOperationalDate = data.operationalDate === undefined
+    ? undefined
+    : normalizeOperationalDate(data.operationalDate);
+  const sectionData = data.sections.map((section, sIndex) => ({
+    name: section.name,
+    isAuthorized: section.isAuthorized ?? false,
+    sortOrder: sIndex,
+  }));
+  const totals = draftTotals(data);
+
+  return prisma.$transaction(async (tx) => {
+    await lockPaymentMutationScope(tx, { quoteIds: [quoteId] });
+
+    const quote = await tx.quote.findUnique({
+      where: { id: quoteId },
+      include: {
+        items: true,
+        sections: { include: { items: true } },
+        workOrder: true,
+      },
+    });
+
+    if (!quote) {
+      throw new Error("Quote not found.");
+    }
+
+    if (!quote.workOrder || quote.workOrder.status !== WorkOrderStatus.COMPLETED) {
+      throw new Error("Only completed work can be corrected.");
+    }
+
+    const activeApplications = await tx.paymentApplication.findMany({
+      where: {
+        workOrderId: quote.workOrder.id,
+        reversedAt: null,
+        payment: { reversedAt: null },
+      },
+    });
+
+    if (activeApplications.length > 0) {
+      throw new Error(ACTIVE_PAYMENT_BLOCK_MESSAGE);
+    }
+
+    if (
+      requestedOperationalDate &&
+      requestedOperationalDate.getTime() !== quote.operationalDate.getTime()
+    ) {
+      throw new Error("Only draft quotes can change their operational date.");
+    }
+
+    const hasVehicle = hasVehicleData(data.vehicle);
+    const shouldLinkVehicle = Boolean(data.customerId && hasVehicle);
+    const vehicle = shouldLinkVehicle
+      ? await findOrCreateVehicle(tx, buildVehicleInput(data.customerId, data.vehicle))
+      : null;
+    const vehicleSnapshot = hasVehicle
+      ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
+      : Prisma.JsonNull;
+
+    await tx.quoteSection.deleteMany({ where: { quoteId } });
+    await tx.quoteItem.deleteMany({ where: { quoteId } });
+
+    const updatedQuote = await tx.quote.update({
+      where: { id: quoteId },
+      data: {
+        customerId: data.customerId ?? null,
+        vehicleId: vehicle?.id ?? null,
+        vehicleSnapshot,
+        title: data.title,
+        description: nullableOptional(data.description),
+        administrative: data.administrative,
+        taxEnabled: data.taxEnabled,
+        status: quote.status,
+        approvedAt: quote.approvedAt,
+        operationalDate: quote.operationalDate,
+        subtotalCents: totals.subtotalCents,
+        discountCents: totals.discountCents ?? data.discountCents,
+        taxCents: totals.taxCents,
+        totalCents: totals.totalCents,
+        sections: { create: sectionData },
+      },
+      include: { sections: true },
+    });
+
+    const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
+    data.sections.forEach((sectionInput, sIndex) => {
+      const createdSection = updatedQuote.sections.find((s) => s.sortOrder === sIndex);
+      if (createdSection) {
+        sectionInput.items.forEach((item, iIndex) => {
+          itemsToCreate.push({
+            quoteId: quoteId,
+            sectionId: createdSection.id,
+            type: item.type,
+            description: item.description,
+            quantity: item.quantity,
+            unitPriceCents: item.unitPriceCents ?? null,
+            totalCents: item.unitPriceCents === undefined ? null : calculateItemTotalCents(item.quantity, item.unitPriceCents),
+            includeInPayroll: item.type === "OTHER" ? Boolean(item.includeInPayroll) : item.type === "LABOR",
+            customRatePercent: item.type === "OTHER" && item.includeInPayroll ? (item.customRatePercent ?? 40) : (item.customRatePercent ?? null),
+            sortOrder: iIndex,
+          });
+        });
+      }
+    });
+
+    if (itemsToCreate.length > 0) {
+      await tx.quoteItem.createMany({ data: itemsToCreate });
+    }
+
+    return updatedQuote;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+export async function correctCompletedWorkQuoteFromWorkspace(
+  quoteId: string,
+  _previousState: QuoteFormActionState,
+  formData: FormData,
+): Promise<QuoteFormActionState> {
+  const parsed = quoteDraftFormInputSchema.safeParse(quoteFormDataToInput(formData));
+  if (!parsed.success) return { error: quoteFormValidationError(parsed.error.issues) };
+
+  try {
+    await correctCompletedWorkQuote(quoteId, parsed.data);
+  } catch (error) {
+    if (error instanceof Error && error.message === ACTIVE_PAYMENT_BLOCK_MESSAGE) {
+      return { error: ACTIVE_PAYMENT_BLOCK_MESSAGE };
+    }
+    if (error instanceof Error && error.message === "Only completed work can be corrected.") {
+      return { error: "Solo se pueden corregir notas de trabajos completados." };
+    }
+    if (error instanceof Error && error.message.startsWith("Esta cotización ya tiene ")) {
+      return { error: error.message };
+    }
+    return { error: "No se pudo corregir la nota. Intenta de nuevo." };
+  }
+
+  revalidatePath(quotesPath);
+  revalidatePath("/admin/work-orders");
+  revalidatePath("/admin/notas");
   return { success: true };
 }
 

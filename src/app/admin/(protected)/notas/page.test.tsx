@@ -6,7 +6,7 @@ vi.mock("@/features/workers/queries", () => ({ listActiveMasters: vi.fn().mockRe
 vi.mock("@/lib/auth/session", () => ({ getCurrentProfile: vi.fn().mockResolvedValue(null), isAdminRole: vi.fn().mockReturnValue(false) }));
 vi.mock("@/features/work-orders/components/notas-filters", () => ({ NotasFilters: () => null }));
 vi.mock("@/features/work-orders/components/work-order-completed-list", () => ({ WorkOrderCompletedList: () => null }));
-vi.mock("@/features/payments/actions", () => ({ recordPaymentAction: vi.fn() }));
+vi.mock("@/features/payments/actions", () => ({ recordPaymentAction: vi.fn(), correctPaymentAction: vi.fn() }));
 vi.mock("@/features/work-orders/actions", () => ({ rollbackWorkOrderAction: vi.fn() }));
 import NotasPage from "./page";
 describe("NotasPage", () => {
