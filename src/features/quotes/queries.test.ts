@@ -249,6 +249,44 @@ where: { deletedAt: null, customerId: "cust-1", status: { notIn: ["ARCHIVED"] } 
     });
   });
 
+  it("filters by economicNumber on vehicle and snapshot", async () => {
+    await listQuotes({ economicNumber: "ECO-42" });
+
+    const call = getFindManyCall();
+    expect(call.where).toEqual({
+      OR: [
+        { vehicle: { economicNumber: { contains: "ECO-42", mode: "insensitive" } } },
+        { vehicleSnapshot: { path: ["economicNumber"], string_contains: "ECO-42" } },
+      ],
+      deletedAt: null,
+      status: { notIn: ["CANCELLED", "ARCHIVED"] },
+    });
+  });
+
+  it("filters by plate and economicNumber using AND", async () => {
+    await listQuotes({ plate: "ABC-123", economicNumber: "ECO-42" });
+
+    const call = getFindManyCall();
+    expect(call.where).toEqual({
+      AND: [
+        {
+          OR: [
+            { vehicle: { plate: { contains: "ABC-123", mode: "insensitive" } } },
+            { vehicleSnapshot: { path: ["plate"], string_contains: "ABC-123" } },
+          ],
+        },
+        {
+          OR: [
+            { vehicle: { economicNumber: { contains: "ECO-42", mode: "insensitive" } } },
+            { vehicleSnapshot: { path: ["economicNumber"], string_contains: "ECO-42" } },
+          ],
+        },
+      ],
+      deletedAt: null,
+      status: { notIn: ["CANCELLED", "ARCHIVED"] },
+    });
+  });
+
   it("filters by date range", async () => {
     await listQuotes({ dateFrom: "2026-07-01", dateTo: "2026-07-31" });
 

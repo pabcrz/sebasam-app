@@ -2,16 +2,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import {
+  createCustomerContactAction,
   createOrReuseCustomerForQuote,
   deleteCustomer,
   deleteCustomerAction,
+  deleteCustomerContactAction,
   deleteCustomerFromForm,
   deleteCustomersBatchAction,
   getCustomerDetail,
   searchCustomersForQuote,
+  toggleCustomerContactActiveAction,
   updateCustomerAction,
   updateCustomerBasics,
   updateCustomerBasicsFromForm,
+  updateCustomerContactAction,
 } from "./actions";
 import { getCustomerAccountStatement, getCustomerById } from "./queries";
 
@@ -43,6 +47,12 @@ vi.mock("@/lib/prisma", () => ({
     },
     customerFiscalProfile: {
       deleteMany: vi.fn(),
+    },
+    customerContact: {
+      deleteMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
     },
   },
 }));
@@ -179,6 +189,8 @@ describe("createOrReuseCustomerForQuote", () => {
     expect(prisma.customer.create).toHaveBeenCalledWith({
       data: {
         name: "Nuevo Cliente",
+        commercialName: null,
+        legalName: null,
         email: null,
         phone: null,
         address: null,
@@ -235,6 +247,8 @@ describe("updateCustomerBasics", () => {
       where: { id: "cust-1" },
       data: {
         name: "Updated Customer",
+        commercialName: null,
+        legalName: null,
         email: null,
         address: "Updated address",
         status: "ACTIVE",
@@ -308,16 +322,65 @@ describe("searchCustomersForQuote", () => {
       where: {
         OR: [
           { name: { contains: "ABC-123", mode: "insensitive" } },
+          { commercialName: { contains: "ABC-123", mode: "insensitive" } },
+          { legalName: { contains: "ABC-123", mode: "insensitive" } },
           { email: { contains: "ABC-123", mode: "insensitive" } },
           { phone: { contains: "ABC-123", mode: "insensitive" } },
           { address: { contains: "ABC-123", mode: "insensitive" } },
           { notes: { contains: "ABC-123", mode: "insensitive" } },
-          { vehicles: { some: { plate: { contains: "ABC-123", mode: "insensitive" } } } },
+          {
+            vehicles: {
+              some: {
+                OR: [
+                  { plate: { contains: "ABC-123", mode: "insensitive" } },
+                  { economicNumber: { contains: "ABC-123", mode: "insensitive" } },
+                ],
+              },
+            },
+          },
+          {
+            fiscalProfiles: {
+              some: {
+                OR: [
+                  { businessName: { contains: "ABC-123", mode: "insensitive" } },
+                  { taxId: { contains: "ABC-123", mode: "insensitive" } },
+                ],
+              },
+            },
+          },
+          {
+            contacts: {
+              some: {
+                OR: [
+                  { name: { contains: "ABC-123", mode: "insensitive" } },
+                  { phone: { contains: "ABC-123", mode: "insensitive" } },
+                ],
+              },
+            },
+          },
+          { phone: { contains: "123" } },
+          { contacts: { some: { phone: { contains: "123" } } } },
         ],
       },
       orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
       take: 20,
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        commercialName: true,
+        legalName: true,
+        phone: true,
+        email: true,
+        contacts: {
+          where: { isActive: true },
+          select: { id: true, name: true, phone: true, role: true, isActive: true },
+          orderBy: [{ role: "asc" }, { name: "asc" }],
+        },
+        fiscalProfiles: {
+          select: { id: true, businessName: true, taxId: true, isDefault: true },
+          orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+        },
+      },
     });
   });
 
@@ -362,6 +425,7 @@ describe("deleteCustomer", () => {
     ledgerEntry: { count: ReturnType<typeof vi.fn> };
     vehicle: { deleteMany: ReturnType<typeof vi.fn> };
     customerFiscalProfile: { deleteMany: ReturnType<typeof vi.fn> };
+    customerContact: { deleteMany: ReturnType<typeof vi.fn> };
   };
 
   function mockDeleteTx(): MockTx {
@@ -376,6 +440,7 @@ describe("deleteCustomer", () => {
       ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
       vehicle: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
       customerFiscalProfile: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      customerContact: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
     };
     (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
     return tx;
@@ -394,6 +459,7 @@ describe("deleteCustomer", () => {
     expect(requireOperationalRole).toHaveBeenCalledTimes(1);
     expect(tx.vehicle.deleteMany).toHaveBeenCalledWith({ where: { customerId: "cust-1" } });
     expect(tx.customerFiscalProfile.deleteMany).toHaveBeenCalledWith({ where: { customerId: "cust-1" } });
+    expect(tx.customerContact.deleteMany).toHaveBeenCalledWith({ where: { customerId: "cust-1" } });
     expect(tx.customer.delete).toHaveBeenCalledWith({ where: { id: "cust-1" } });
   });
 
@@ -456,6 +522,7 @@ describe("deleteCustomerFromForm", () => {
       ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
       vehicle: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
       customerFiscalProfile: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      customerContact: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     };
     (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
 
@@ -481,6 +548,7 @@ describe("deleteCustomerFromForm", () => {
       ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
       vehicle: { deleteMany: vi.fn() },
       customerFiscalProfile: { deleteMany: vi.fn() },
+      customerContact: { deleteMany: vi.fn() },
     };
     (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
 
@@ -511,6 +579,7 @@ describe("deleteCustomerAction", () => {
       ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
       vehicle: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
       customerFiscalProfile: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      customerContact: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     };
     (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
 
@@ -534,6 +603,7 @@ describe("deleteCustomerAction", () => {
       ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
       vehicle: { deleteMany: vi.fn() },
       customerFiscalProfile: { deleteMany: vi.fn() },
+      customerContact: { deleteMany: vi.fn() },
     };
     (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
 
@@ -566,6 +636,7 @@ describe("deleteCustomersBatchAction", () => {
       ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
       vehicle: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
       customerFiscalProfile: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      customerContact: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     };
     (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
 
@@ -589,6 +660,7 @@ describe("deleteCustomersBatchAction", () => {
       ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
       vehicle: { deleteMany: vi.fn() },
       customerFiscalProfile: { deleteMany: vi.fn() },
+      customerContact: { deleteMany: vi.fn() },
     };
     (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (t: typeof tx) => Promise<unknown>) => callback(tx));
 
@@ -657,4 +729,125 @@ describe("updateCustomerAction", () => {
     expect(prisma.customer.update).not.toHaveBeenCalled();
   });
 });
+
+describe("Customer Contact Actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({ profile: { id: "admin-1" } });
+  });
+
+  describe("createCustomerContactAction", () => {
+    it("creates a customer contact with normalized phone and revalidates paths", async () => {
+      const mockContact = {
+        id: "contact-1",
+        customerId: "cust-1",
+        name: "El Mariachi",
+        phone: "5512345678",
+        role: "DRIVER",
+        isActive: true,
+      };
+      (prisma.customerContact.create as ReturnType<typeof vi.fn>).mockResolvedValue(mockContact);
+
+      const result = await createCustomerContactAction("cust-1", {
+        name: "El Mariachi",
+        phone: "+52 55 1234 5678",
+        role: "DRIVER",
+        isActive: true,
+      });
+
+      expect(requireOperationalRole).toHaveBeenCalledOnce();
+      expect(prisma.customerContact.create).toHaveBeenCalledWith({
+        data: {
+          customerId: "cust-1",
+          name: "El Mariachi",
+          phone: "5512345678",
+          role: "DRIVER",
+          isActive: true,
+        },
+      });
+      expect(result).toEqual({ success: true, contact: mockContact });
+    });
+
+    it("returns an error if validation fails", async () => {
+      const result = await createCustomerContactAction("cust-1", {
+        name: "",
+        phone: "invalid",
+      });
+
+      expect(result.success).toBe(false);
+      expect(prisma.customerContact.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateCustomerContactAction", () => {
+    it("updates contact details and revalidates paths", async () => {
+      const updatedContact = {
+        id: "contact-1",
+        customerId: "cust-1",
+        name: "Juanito Actualizado",
+        phone: "5598765432",
+        role: "BILLING",
+        isActive: false,
+      };
+      (prisma.customerContact.update as ReturnType<typeof vi.fn>).mockResolvedValue(updatedContact);
+
+      const result = await updateCustomerContactAction("contact-1", {
+        name: "Juanito Actualizado",
+        phone: "55 9876 5432",
+        role: "BILLING",
+        isActive: false,
+      });
+
+      expect(requireOperationalRole).toHaveBeenCalledOnce();
+      expect(prisma.customerContact.update).toHaveBeenCalledWith({
+        where: { id: "contact-1" },
+        data: {
+          name: "Juanito Actualizado",
+          phone: "5598765432",
+          role: "BILLING",
+          isActive: false,
+        },
+      });
+      expect(result).toEqual({ success: true, contact: updatedContact });
+    });
+  });
+
+  describe("toggleCustomerContactActiveAction", () => {
+    it("updates the isActive boolean on the contact", async () => {
+      const updatedContact = {
+        id: "contact-1",
+        customerId: "cust-1",
+        isActive: false,
+      };
+      (prisma.customerContact.update as ReturnType<typeof vi.fn>).mockResolvedValue(updatedContact);
+
+      const result = await toggleCustomerContactActiveAction("contact-1", false);
+
+      expect(requireOperationalRole).toHaveBeenCalledOnce();
+      expect(prisma.customerContact.update).toHaveBeenCalledWith({
+        where: { id: "contact-1" },
+        data: { isActive: false },
+      });
+      expect(result).toEqual({ success: true, contact: updatedContact });
+    });
+  });
+
+  describe("deleteCustomerContactAction", () => {
+    it("deletes the contact record and revalidates paths", async () => {
+      (prisma.customerContact.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "contact-1",
+        customerId: "cust-1",
+      });
+
+      const result = await deleteCustomerContactAction("contact-1");
+
+      expect(requireOperationalRole).toHaveBeenCalledOnce();
+      expect(prisma.customerContact.delete).toHaveBeenCalledWith({
+        where: { id: "contact-1" },
+      });
+      expect(result).toEqual({ success: true });
+    });
+  });
+});
+
 

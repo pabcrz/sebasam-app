@@ -70,7 +70,15 @@ export function CustomerCreateForm({ action, triggerVariant, triggerClassName, t
         <form onSubmit={handleSubmit} className="grid gap-4" data-testid="customer-create-form">
           <div className="grid gap-2">
             <Label htmlFor="name">Nombre</Label>
-            <Input id="name" name="name" placeholder="Nombre del cliente" required disabled={isPending} />
+            <Input id="name" name="name" placeholder="Nombre completo o razón social principal" required disabled={isPending} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="commercialName">Nombre comercial (opcional)</Label>
+            <Input id="commercialName" name="commercialName" placeholder="Ej. The Bimb's / Grúas Mejía" disabled={isPending} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="legalName">Razón social formal (opcional)</Label>
+            <Input id="legalName" name="legalName" placeholder="Ej. Grúas Mejía Cuautla S.A. de C.V." disabled={isPending} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="email">Correo electrónico</Label>

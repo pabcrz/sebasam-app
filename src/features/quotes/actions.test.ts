@@ -72,6 +72,8 @@ type MockTx = {
   paymentRequest: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   workOrder: { count: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
+  customer?: { findUnique: ReturnType<typeof vi.fn> };
+  customerContact?: { findUnique: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
@@ -255,6 +257,61 @@ describe("createQuote", () => {
       vehicle: { plate: "", brand: "Toyota", model: "", color: "", year: "" },
     })).rejects.toThrow("Selecciona un cliente o identifica la unidad");
     expect(tx.quote.create).not.toHaveBeenCalled();
+  });
+
+  it("persists customerContactId, customerFiscalProfileId, and snapshots when provided", async () => {
+    const tx = mockTx();
+    tx.customer = {
+      findUnique: vi.fn().mockResolvedValue({
+        id: "cust-1",
+        name: "Juan Perez",
+        commercialName: "Taller Perez",
+        legalName: "Juan Perez SA de CV",
+        email: "juan@example.com",
+        phone: "5512345678",
+        address: "Av Central 1",
+        fiscalProfiles: [{ id: "fp-1", businessName: "Juan Perez SA de CV", taxId: "JUP900101XYZ" }],
+      }),
+    };
+    tx.customerContact = {
+      findUnique: vi.fn().mockResolvedValue({
+        id: "contact-1",
+        name: "El Mariachi",
+        phone: "5511223344",
+        role: "DRIVER",
+      }),
+    };
+
+    const input = {
+      ...validInput(),
+      customerContactId: "contact-1",
+      customerFiscalProfileId: "fp-1",
+      vehicle: {
+        ...validInput().vehicle,
+        economicNumber: "ECO-100",
+      },
+    };
+
+    await createQuote(input);
+
+    expect(tx.quote.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          customerContactId: "contact-1",
+          customerFiscalProfileId: "fp-1",
+          customerSnapshot: expect.objectContaining({
+            customerId: "cust-1",
+            commercialName: "Taller Perez",
+            legalName: "Juan Perez SA de CV",
+          }),
+          contactSnapshot: expect.objectContaining({
+            id: "contact-1",
+            name: "El Mariachi",
+            role: "DRIVER",
+          }),
+        }),
+      }),
+    );
   });
 });
 

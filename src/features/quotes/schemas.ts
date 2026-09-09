@@ -95,6 +95,7 @@ export const quoteSectionInputSchema = quoteSectionBaseSchema.extend({
 
 export const quoteVehicleInputSchema = z.object({
   plate: optionalTrimmedStringWithMax(10),
+  economicNumber: optionalTrimmedStringWithMax(40),
   brand: optionalTrimmedStringWithMax(80),
   model: optionalTrimmedStringWithMax(80),
   color: optionalTrimmedString,
@@ -111,6 +112,8 @@ export const quoteVehicleInputSchema = z.object({
 
 const quoteInputBaseSchema = z.object({
   customerId: z.string().min(1),
+  customerContactId: optionalTrimmedString,
+  customerFiscalProfileId: optionalTrimmedString,
   vehicle: quoteVehicleInputSchema,
   title: z.string().trim().min(1, "Quote title is required").max(160),
   description: optionalTrimmedString,
@@ -202,7 +205,7 @@ function validateDraftIdentity(
   ctx: z.RefinementCtx,
 ) {
   const hasIdentifiableUnit = Boolean(
-    quote.vehicle.plate || (quote.vehicle.brand && quote.vehicle.model),
+    quote.vehicle.plate || quote.vehicle.economicNumber || (quote.vehicle.brand && quote.vehicle.model),
   );
 
   if (!quote.customerId && !hasIdentifiableUnit) {
@@ -237,7 +240,8 @@ export const quoteFilterSchema = z.object({
   customerId: optionalFilterString(),
   number: optionalFilterString(),
   plate: optionalFilterString(),
-dateFrom: quoteFilterDateSchema,
+  economicNumber: optionalFilterString(),
+  dateFrom: quoteFilterDateSchema,
   dateTo: quoteFilterDateSchema,
   hasWorkOrder: z.string().optional().transform((val) => val === "true" ? true : val === "false" ? false : undefined),
   showCancelled: z.coerce.boolean().default(false),
@@ -247,6 +251,24 @@ dateFrom: quoteFilterDateSchema,
 export const quoteLifecycleReasonSchema = z.string().trim().min(3).max(500);
 
 export const quoteListPageSchema = z.coerce.number().int().min(1).default(1);
+
+export type QuoteCustomerSnapshot = {
+  customerId?: string | null;
+  name: string;
+  commercialName?: string | null;
+  legalName?: string | null;
+  taxId?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+};
+
+export type QuoteContactSnapshot = {
+  id?: string | null;
+  name: string;
+  phone: string;
+  role: string;
+};
 
 export type QuoteFilterInput = z.infer<typeof quoteFilterSchema>;
 export type QuoteInput = z.infer<typeof quoteInputSchema>;

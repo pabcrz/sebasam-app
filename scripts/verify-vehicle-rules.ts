@@ -6,6 +6,7 @@ type StoredVehicle = {
   id: string;
   customerId: string;
   plate: string | null;
+  economicNumber: string | null;
   brand: string | null;
   model: string | null;
   color: string | null;
@@ -70,6 +71,7 @@ assert.equal(parsedWithoutPlate.brand, undefined);
 assert.equal(parsedWithoutPlate.model, "Jetta");
 assert.deepEqual(createVehicleSnapshot(parsedWithoutPlate), {
   plate: null,
+  economicNumber: null,
   brand: null,
   model: "Jetta",
   color: null,

@@ -125,6 +125,22 @@ export function CustomerDetailDialog({
             <div className="grid gap-4">
               <dl className="grid gap-4 text-sm sm:grid-cols-2" data-testid="customer-detail-context">
                 <div>
+                  <dt className="text-[var(--color-text-muted)]">Nombre</dt>
+                  <dd className="mt-1 font-medium text-[var(--color-text-main)]">{detail.customer.name}</dd>
+                </div>
+                {detail.customer.commercialName ? (
+                  <div>
+                    <dt className="text-[var(--color-text-muted)]">Nombre comercial</dt>
+                    <dd className="mt-1 font-medium text-[var(--color-text-main)]">{detail.customer.commercialName}</dd>
+                  </div>
+                ) : null}
+                {detail.customer.legalName ? (
+                  <div>
+                    <dt className="text-[var(--color-text-muted)]">Razón social</dt>
+                    <dd className="mt-1 font-medium text-[var(--color-text-main)]">{detail.customer.legalName}</dd>
+                  </div>
+                ) : null}
+                <div>
                   <dt className="text-[var(--color-text-muted)]">Correo electrónico</dt>
                   <dd className="mt-1 font-medium text-[var(--color-text-main)]">{detail.customer.email ?? "Sin correo electrónico"}</dd>
                 </div>

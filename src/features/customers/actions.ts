@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { getCustomerAccountStatement, getCustomerById } from "./queries";
 import {
+  customerContactInputSchema,
   customerInputSchema,
   customerSearchSchema,
   customerUpdateSchema,
@@ -20,6 +21,8 @@ const quotesPath = "/admin/quotes";
 function customerFormDataToInput(formData: FormData) {
   return {
     name: formData.get("name"),
+    commercialName: formData.get("commercialName"),
+    legalName: formData.get("legalName"),
     email: formData.get("email"),
     phone: formData.get("phone"),
     address: formData.get("address"),
@@ -34,8 +37,10 @@ function customerFormDataToUpdateInput(formData: FormData) {
   };
 }
 
-function nullableOptional(value: string | undefined) {
-  return value ?? null;
+function nullableOptional(value: string | undefined | null) {
+  if (value === undefined || value === null) return null;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
 }
 
 function normalizeComparable(value: string | undefined | null) {
@@ -45,6 +50,8 @@ function normalizeComparable(value: string | undefined | null) {
 function toCustomerCreateData(data: CustomerInput) {
   return {
     name: data.name,
+    commercialName: nullableOptional(data.commercialName),
+    legalName: nullableOptional(data.legalName),
     email: nullableOptional(data.email),
     phone: nullableOptional(data.phone),
     address: nullableOptional(data.address),
@@ -74,6 +81,8 @@ function toCustomerUpdateData(
 ) {
   return {
     name: data.name,
+    commercialName: nullableOptional(data.commercialName),
+    legalName: nullableOptional(data.legalName),
     email: nullableOptional(data.email),
     ...(preserveLegacyPhone ? {} : { phone: nullableOptional(data.phone) }),
     address: nullableOptional(data.address),
@@ -165,24 +174,81 @@ export async function searchCustomersForQuote(input: unknown) {
   await requireOperationalRole();
 
   const { query } = customerSearchSchema.parse(input);
-  const search = query || undefined;
+  const search = query?.trim() || undefined;
+  const digitsOnly = query ? query.replace(/\D/g, "") : "";
+
+  const orConditions: Prisma.CustomerWhereInput[] = [];
+
+  if (search) {
+    orConditions.push(
+      { name: { contains: search, mode: "insensitive" } },
+      { commercialName: { contains: search, mode: "insensitive" } },
+      { legalName: { contains: search, mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+      { phone: { contains: search, mode: "insensitive" } },
+      { address: { contains: search, mode: "insensitive" } },
+      { notes: { contains: search, mode: "insensitive" } },
+      {
+        vehicles: {
+          some: {
+            OR: [
+              { plate: { contains: search, mode: "insensitive" } },
+              { economicNumber: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      },
+      {
+        fiscalProfiles: {
+          some: {
+            OR: [
+              { businessName: { contains: search, mode: "insensitive" } },
+              { taxId: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      },
+      {
+        contacts: {
+          some: {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { phone: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      },
+    );
+
+    if (digitsOnly.length >= 3) {
+      orConditions.push(
+        { phone: { contains: digitsOnly } },
+        { contacts: { some: { phone: { contains: digitsOnly } } } },
+      );
+    }
+  }
 
   return prisma.customer.findMany({
-    where: search
-      ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } },
-            { phone: { contains: search, mode: "insensitive" } },
-            { address: { contains: search, mode: "insensitive" } },
-            { notes: { contains: search, mode: "insensitive" } },
-            { vehicles: { some: { plate: { contains: search, mode: "insensitive" } } } },
-          ],
-        }
-      : undefined,
+    where: search ? { OR: orConditions } : undefined,
     orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
     take: 20,
-    select: { id: true, name: true },
+    select: {
+      id: true,
+      name: true,
+      commercialName: true,
+      legalName: true,
+      phone: true,
+      email: true,
+      contacts: {
+        where: { isActive: true },
+        select: { id: true, name: true, phone: true, role: true, isActive: true },
+        orderBy: [{ role: "asc" }, { name: "asc" }],
+      },
+      fiscalProfiles: {
+        select: { id: true, businessName: true, taxId: true, isDefault: true },
+        orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+      },
+    },
   });
 }
 
@@ -277,6 +343,7 @@ async function deleteCustomerAuthorized(customerId: string) {
 
     await tx.vehicle.deleteMany({ where: { customerId } });
     await tx.customerFiscalProfile.deleteMany({ where: { customerId } });
+    await tx.customerContact?.deleteMany({ where: { customerId } });
 
     await tx.customer.delete({
       where: { id: customerId },
@@ -357,6 +424,7 @@ export async function deleteCustomersBatchAction(customerIds: string[]) {
 
         await tx.vehicle.deleteMany({ where: { customerId } });
         await tx.customerFiscalProfile.deleteMany({ where: { customerId } });
+        await tx.customerContact?.deleteMany({ where: { customerId } });
         await tx.customer.delete({ where: { id: customerId } });
         count++;
       }
@@ -409,6 +477,99 @@ export async function updateCustomerAction(input: unknown) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Error al actualizar cliente",
+    } as const;
+  }
+}
+
+export async function createCustomerContactAction(customerId: string, input: unknown) {
+  try {
+    await requireOperationalRole();
+    const data = customerContactInputSchema.parse(input);
+
+    const contact = await prisma.customerContact.create({
+      data: {
+        customerId,
+        name: data.name,
+        phone: data.phone,
+        role: data.role,
+        isActive: data.isActive,
+      },
+    });
+
+    revalidatePath(`${customersPath}/${customerId}`);
+    revalidatePath(`${customersPath}/${customerId}/edit`);
+    revalidatePath(quotesPath);
+    return { success: true, contact } as const;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al crear el contacto",
+    } as const;
+  }
+}
+
+export async function updateCustomerContactAction(contactId: string, input: unknown) {
+  try {
+    await requireOperationalRole();
+    const data = customerContactInputSchema.parse(input);
+
+    const contact = await prisma.customerContact.update({
+      where: { id: contactId },
+      data: {
+        name: data.name,
+        phone: data.phone,
+        role: data.role,
+        isActive: data.isActive,
+      },
+    });
+
+    revalidatePath(`${customersPath}/${contact.customerId}`);
+    revalidatePath(`${customersPath}/${contact.customerId}/edit`);
+    revalidatePath(quotesPath);
+    return { success: true, contact } as const;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al actualizar el contacto",
+    } as const;
+  }
+}
+
+export async function toggleCustomerContactActiveAction(contactId: string, isActive: boolean) {
+  try {
+    await requireOperationalRole();
+    const contact = await prisma.customerContact.update({
+      where: { id: contactId },
+      data: { isActive },
+    });
+
+    revalidatePath(`${customersPath}/${contact.customerId}`);
+    revalidatePath(`${customersPath}/${contact.customerId}/edit`);
+    revalidatePath(quotesPath);
+    return { success: true, contact } as const;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al cambiar estado del contacto",
+    } as const;
+  }
+}
+
+export async function deleteCustomerContactAction(contactId: string) {
+  try {
+    await requireOperationalRole();
+    const contact = await prisma.customerContact.delete({
+      where: { id: contactId },
+    });
+
+    revalidatePath(`${customersPath}/${contact.customerId}`);
+    revalidatePath(`${customersPath}/${contact.customerId}/edit`);
+    revalidatePath(quotesPath);
+    return { success: true } as const;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al eliminar el contacto",
     } as const;
   }
 }

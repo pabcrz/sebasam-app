@@ -11,6 +11,19 @@ vi.mock("next/navigation", () => ({
 
 describe("QuoteAuthorizeForm", () => {
   beforeEach(() => {
+    if (!window.localStorage) {
+      const store = new Map<string, string>();
+      Object.defineProperty(window, "localStorage", {
+        value: {
+          getItem: (key: string) => store.get(key) ?? null,
+          setItem: (key: string, value: string) => store.set(key, String(value)),
+          removeItem: (key: string) => store.delete(key),
+          clear: () => store.clear(),
+        },
+        writable: true,
+        configurable: true,
+      });
+    }
     window.localStorage.clear();
     vi.clearAllMocks();
   });
@@ -37,7 +50,7 @@ describe("QuoteAuthorizeForm", () => {
     const sensitiveNote = "private customer authorization detail";
     const action = vi.fn().mockResolvedValue({ success: true });
     const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
-    window.localStorage.setItem("SEBASAM_PERF_TIMINGS", "1");
+    window.localStorage?.setItem?.("SEBASAM_PERF_TIMINGS", "1");
     render(<QuoteAuthorizeForm action={action} quoteNumber="C-001" />);
 
     await user.click(screen.getByRole("button", { name: "Autorizar cotización C-001" }));

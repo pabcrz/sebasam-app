@@ -12,11 +12,14 @@ type PersistedQuoteItem = {
 
 type PersistedQuoteForBuilder = {
   customerId: string | null;
+  customerContactId?: string | null;
+  customerFiscalProfileId?: string | null;
   vehicle?: {
     plate?: string | null;
     brand?: string | null;
     model?: string | null;
     year?: number | null;
+    economicNumber?: string | null;
   } | null;
   vehicleSnapshot?: unknown;
   title: string;
@@ -55,7 +58,7 @@ export function mapPersistedQuoteToBuilderInitialData(
   quote: PersistedQuoteForBuilder,
 ): QuoteBuilderInitialData {
   const snapshot = readSnapshot(quote.vehicleSnapshot);
-  const vehicleValue = (key: "plate" | "brand" | "model" | "year") =>
+  const vehicleValue = (key: "plate" | "brand" | "model" | "year" | "economicNumber") =>
     String(quote.vehicle?.[key] ?? snapshot?.[key] ?? "");
   const sections = quote.sections.length > 0
     ? quote.sections.map((section) => ({
@@ -67,11 +70,14 @@ export function mapPersistedQuoteToBuilderInitialData(
 
   return {
     customerId: quote.customerId,
+    customerContactId: quote.customerContactId ?? null,
+    customerFiscalProfileId: quote.customerFiscalProfileId ?? null,
     vehicle: {
       plate: vehicleValue("plate"),
       brand: vehicleValue("brand"),
       model: vehicleValue("model"),
       year: vehicleValue("year"),
+      economicNumber: vehicleValue("economicNumber"),
     },
     title: quote.title,
     description: quote.description ?? "",

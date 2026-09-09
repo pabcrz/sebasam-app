@@ -8,11 +8,10 @@ import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { measureServerTiming, recordServerTiming } from "@/lib/server-timing";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
-import { createVehicleSnapshot, type VehicleInput } from "@/features/vehicles/schemas";
-import { quoteDraftFormInputSchema, quoteDraftInputSchema, quoteLifecycleReasonSchema, type QuoteVehicleInput } from "./schemas";
+import { createVehicleSnapshot } from "@/features/vehicles/schemas";
+import { quoteDraftFormInputSchema, quoteDraftInputSchema, quoteLifecycleReasonSchema } from "./schemas";
 import {
   calculateItemTotalCents,
-  calculateQuoteTotals,
   createQuoteValidUntil,
 } from "./lib/calculate";
 import { isQuoteEditable } from "./lib/editability";
@@ -51,6 +50,59 @@ import {
   quoteFormDataToInput,
 } from "./quote-helpers";
 
+async function resolveQuoteSnapshots(
+  tx: Prisma.TransactionClient,
+  customerId?: string | null,
+  customerContactId?: string | null,
+  customerFiscalProfileId?: string | null,
+): Promise<{
+  customerSnapshot: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
+  contactSnapshot: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
+}> {
+  let customerSnapshot: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput = Prisma.JsonNull;
+  if (customerId && tx.customer?.findUnique) {
+    const customer = await tx.customer.findUnique({
+      where: { id: customerId },
+      include: {
+        fiscalProfiles: customerFiscalProfileId
+          ? { where: { id: customerFiscalProfileId } }
+          : { where: { isDefault: true } },
+      },
+    });
+
+    if (customer) {
+      const fiscalProfile = customer.fiscalProfiles[0] ?? null;
+      customerSnapshot = {
+        customerId: customer.id,
+        name: customer.name,
+        commercialName: customer.commercialName ?? customer.name,
+        legalName: fiscalProfile?.businessName ?? customer.legalName ?? null,
+        taxId: fiscalProfile?.taxId ?? null,
+        email: customer.email ?? null,
+        phone: customer.phone ?? null,
+        address: customer.address ?? null,
+      };
+    }
+  }
+
+  let contactSnapshot: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput = Prisma.JsonNull;
+  if (customerContactId && tx.customerContact?.findUnique) {
+    const contact = await tx.customerContact.findUnique({
+      where: { id: customerContactId },
+    });
+    if (contact) {
+      contactSnapshot = {
+        id: contact.id,
+        name: contact.name,
+        phone: contact.phone,
+        role: contact.role,
+      };
+    }
+  }
+
+  return { customerSnapshot, contactSnapshot };
+}
+
 async function createQuoteAuthorized(input: unknown) {
   const data = quoteDraftInputSchema.parse(input);
   const totals = draftTotals(data);
@@ -69,6 +121,13 @@ async function createQuoteAuthorized(input: unknown) {
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
 
+    const { customerSnapshot, contactSnapshot } = await resolveQuoteSnapshots(
+      tx,
+      data.customerId,
+      data.customerContactId,
+      data.customerFiscalProfileId,
+    );
+
     const sectionData = data.sections.map((section, sIndex) => ({
       name: section.name,
       isAuthorized: false,
@@ -80,7 +139,11 @@ async function createQuoteAuthorized(input: unknown) {
         id: quoteId,
         customerId: data.customerId ?? null,
         vehicleId: vehicle?.id ?? null,
+        customerContactId: data.customerContactId ?? null,
+        customerFiscalProfileId: data.customerFiscalProfileId ?? null,
         vehicleSnapshot,
+        customerSnapshot,
+        contactSnapshot,
         number: quoteNumber,
         status: QuoteStatus.DRAFT,
         approvedAt: null,
@@ -229,6 +292,12 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
     const vehicleSnapshot = hasVehicle
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
+    const { customerSnapshot, contactSnapshot } = await resolveQuoteSnapshots(
+      tx,
+      data.customerId,
+      data.customerContactId,
+      data.customerFiscalProfileId,
+    );
 
     await tx.quoteSection.deleteMany({ where: { quoteId } });
     await tx.quoteItem.deleteMany({ where: { quoteId } });
@@ -238,7 +307,11 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       data: {
         customerId: data.customerId ?? null,
         vehicleId: vehicle?.id ?? null,
+        customerContactId: data.customerContactId ?? null,
+        customerFiscalProfileId: data.customerFiscalProfileId ?? null,
         vehicleSnapshot,
+        customerSnapshot,
+        contactSnapshot,
         title: data.title,
         description: nullableOptional(data.description),
         administrative: data.administrative,
@@ -404,6 +477,13 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
 
+    const { customerSnapshot, contactSnapshot } = await resolveQuoteSnapshots(
+      tx,
+      data.customerId,
+      data.customerContactId,
+      data.customerFiscalProfileId,
+    );
+
     await tx.quoteSection.deleteMany({ where: { quoteId } });
     await tx.quoteItem.deleteMany({ where: { quoteId } });
 
@@ -412,7 +492,11 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
       data: {
         customerId: data.customerId ?? null,
         vehicleId: vehicle?.id ?? null,
+        customerContactId: data.customerContactId ?? null,
+        customerFiscalProfileId: data.customerFiscalProfileId ?? null,
         vehicleSnapshot,
+        customerSnapshot,
+        contactSnapshot,
         title: data.title,
         description: nullableOptional(data.description),
         administrative: data.administrative,
@@ -872,6 +956,10 @@ async function duplicateQuoteAuthorized(quoteId: string) {
       data: {
         id: duplicatedQuoteId,
         customerId: original.customerId,
+        customerContactId: original.customerContactId,
+        customerFiscalProfileId: original.customerFiscalProfileId,
+        customerSnapshot: original.customerSnapshot ?? Prisma.JsonNull,
+        contactSnapshot: original.contactSnapshot ?? Prisma.JsonNull,
         vehicleId: original.vehicleId,
         vehicleSnapshot: original.vehicleSnapshot ?? Prisma.JsonNull,
         number: quoteNumber,

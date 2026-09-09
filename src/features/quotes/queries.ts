@@ -11,6 +11,8 @@ export async function getQuoteById(quoteId: string) {
     where: { id: quoteId },
     include: {
       customer: true,
+      customerContact: true,
+      customerFiscalProfile: true,
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
       sections: { 
@@ -76,11 +78,34 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
     where.number = { contains: filters.number, mode: "insensitive" };
   }
 
+  const searchOrs: Prisma.QuoteWhereInput[] = [];
+
   if (filters.plate) {
     const plateSearch = filters.plate;
-    where.OR = [
-      { vehicle: { plate: { contains: plateSearch, mode: "insensitive" } } },
-      { vehicleSnapshot: { path: ["plate"], string_contains: plateSearch } },
+    searchOrs.push({
+      OR: [
+        { vehicle: { plate: { contains: plateSearch, mode: "insensitive" } } },
+        { vehicleSnapshot: { path: ["plate"], string_contains: plateSearch } },
+      ],
+    });
+  }
+
+  if (filters.economicNumber) {
+    const ecoSearch = filters.economicNumber;
+    searchOrs.push({
+      OR: [
+        { vehicle: { economicNumber: { contains: ecoSearch, mode: "insensitive" } } },
+        { vehicleSnapshot: { path: ["economicNumber"], string_contains: ecoSearch } },
+      ],
+    });
+  }
+
+  if (searchOrs.length === 1) {
+    where.OR = searchOrs[0].OR;
+  } else if (searchOrs.length > 1) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+      ...searchOrs,
     ];
   }
 
@@ -119,6 +144,8 @@ const quoteListInclude = {
       },
     },
   },
+  customerContact: true,
+  customerFiscalProfile: true,
   vehicle: true,
   items: { orderBy: { sortOrder: "asc" } },
   sections: {

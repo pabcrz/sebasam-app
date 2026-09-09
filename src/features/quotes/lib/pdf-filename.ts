@@ -49,6 +49,16 @@ function resolveVehicleSegment(vehicle?: VehicleInput): string {
   if (typeof vehicle === "object" && vehicle !== null) {
     const record = vehicle as Record<string, unknown>;
 
+    if (typeof record.economicNumber === "string") {
+      const trimmedEco = record.economicNumber.trim();
+      if (trimmedEco.length > 0) {
+        const sanitizedEco = sanitizeFilenameSegment(`ECO${trimmedEco}`);
+        if (sanitizedEco.length > 0) {
+          return sanitizedEco;
+        }
+      }
+    }
+
     if (typeof record.plate === "string") {
       const trimmedPlate = record.plate.trim();
       if (trimmedPlate.length > 0 && trimmedPlate.toLowerCase() !== "sin placas") {

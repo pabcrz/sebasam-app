@@ -60,6 +60,8 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     customer: {
       id: "cust-1",
       name: "Constructora del Norte",
+      commercialName: null,
+      legalName: null,
       email: "contacto@constructora.com",
       phone: "555-0192",
       address: null,
@@ -93,6 +95,12 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
 
     paidCents: 0,
     remainingCents: 11600,
+    customerContactId: null,
+    customerFiscalProfileId: null,
+    customerSnapshot: null,
+    contactSnapshot: null,
+    customerContact: null,
+    customerFiscalProfile: null,
 
 
 
