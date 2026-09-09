@@ -71,7 +71,7 @@ export default async function QuotePrintPage({ params }: PrintPageProps) {
   const { displayName: customerDisplayName, subtitle: customerSubtitle } = resolveCustomerDisplayIdentity(quote);
 
   return (
-    <div className="bg-[var(--background)] min-h-screen flex flex-col print:min-h-0">
+    <div className="bg-[var(--background)] min-h-screen flex flex-col print:min-h-0 print:block print:w-full">
       <Suspense fallback={null}><PrintControls backLabel="Volver a cotizaciones" /></Suspense>
       <PublicQuoteShell
          business={toPublicBusinessIdentity(paymentSettings)}
