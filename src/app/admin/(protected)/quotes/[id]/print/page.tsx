@@ -8,6 +8,7 @@ import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-qu
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
 import { PrintControls } from "@/features/quotes/components/print-controls";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { Suspense } from "react";
 
 interface PrintPageProps {
@@ -67,37 +68,7 @@ export default async function QuotePrintPage({ params }: PrintPageProps) {
     workOrder: quote.workOrder ? { status: quote.workOrder.status } : null,
   };
 
-  const customerSnapshot = quote.customerSnapshot as {
-    name?: string;
-    commercialName?: string | null;
-    legalName?: string | null;
-    fiscalBusinessName?: string | null;
-  } | null;
-  const contactSnapshot = quote.contactSnapshot as {
-    name?: string;
-    phone?: string;
-    role?: string;
-  } | null;
-
-  const customerDisplayName =
-    customerSnapshot?.commercialName ||
-    quote.customer?.commercialName ||
-    customerSnapshot?.name ||
-    quote.customer?.name ||
-    "Sin cliente";
-
-  const customerSubtitleParts = [
-    customerSnapshot?.fiscalBusinessName ||
-      customerSnapshot?.legalName ||
-      quote.customerFiscalProfile?.businessName ||
-      quote.customer?.legalName
-      ? `Razón social: ${customerSnapshot?.fiscalBusinessName || customerSnapshot?.legalName || quote.customerFiscalProfile?.businessName || quote.customer?.legalName}`
-      : null,
-    contactSnapshot?.name || quote.customerContact?.name
-      ? `${contactSnapshot?.role === "DRIVER" || quote.customerContact?.role === "DRIVER" ? "Chofer" : "Contacto"}: ${contactSnapshot?.name || quote.customerContact?.name}`
-      : null,
-  ].filter(Boolean);
-  const customerSubtitle = customerSubtitleParts.length > 0 ? customerSubtitleParts.join(" · ") : undefined;
+  const { displayName: customerDisplayName, subtitle: customerSubtitle } = resolveCustomerDisplayIdentity(quote);
 
   return (
     <div className="bg-[var(--background)] min-h-screen flex flex-col print:min-h-0">

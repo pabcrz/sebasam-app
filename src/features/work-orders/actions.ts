@@ -22,6 +22,7 @@ import { nextQuoteNumber, nextWorkOrderNumber, withQuoteNumberRetry } from "@/fe
 import { calculateItemTotalCents, createQuoteValidUntil } from "@/features/quotes/lib/calculate";
 import { normalizeOperationalDate, operationalDateToCompletedAt } from "@/features/quotes/lib/operational-date";
 import { ensureSharedQuoteInTransaction } from "@/features/quotes/domain";
+import { resolveQuoteSnapshots } from "@/features/quotes/lib/quote-snapshots";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 import {
   buildVehicleInput,
@@ -737,13 +738,23 @@ export async function createDirectWorkOrder(input: unknown) {
         }));
 
         const effectiveDate = completedAt ?? new Date();
+        const { customerSnapshot, contactSnapshot } = await resolveQuoteSnapshots(
+          tx,
+          data.customerId,
+          data.customerContactId,
+          data.customerFiscalProfileId,
+        );
 
         const createdQuote = await tx.quote.create({
           data: {
             id: quoteId,
             customerId: data.customerId ?? null,
             vehicleId: vehicle?.id ?? null,
+            customerContactId: data.customerContactId ?? null,
+            customerFiscalProfileId: data.customerFiscalProfileId ?? null,
             vehicleSnapshot,
+            customerSnapshot,
+            contactSnapshot,
             number: quoteNumber,
             status: QuoteStatus.APPROVED,
             approvedAt: effectiveDate,

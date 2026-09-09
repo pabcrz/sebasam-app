@@ -9,6 +9,7 @@ import { PublicQuoteShell } from "@/features/public-quotes/components/public-quo
 import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
@@ -68,13 +69,14 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
     const sharedQuote = await getSharedQuoteByToken(token);
     const quote = sharedQuote.quote;
     const documentType = quote.workOrder?.status === "COMPLETED" ? "Nota" : quote.workOrder ? "Trabajo" : "Cotización";
-    const customerName = quote.customer?.name ?? "Sin cliente";
+    const identity = resolveCustomerDisplayIdentity(quote);
+    const customerName = identity.displayName;
     const vehicleDescription = quote.vehicle
       ? formatVehicle(quote.vehicle)
       : formatSnapshotVehicle(quote.vehicleSnapshot);
 
     const title = formatDocumentPdfFilename({
-      customerName: quote.customer?.name,
+      customerName: identity.displayName,
       vehicle: quote.vehicle ?? quote.vehicleSnapshot,
       operationalDate: quote.operationalDate,
       fallbackType: documentType,
@@ -131,6 +133,7 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
 
   const isNote = result.quote.workOrder?.status === "COMPLETED";
   const documentType = isNote ? "Nota" : result.quote.workOrder ? "Trabajo" : "Cotización";
+  const identity = resolveCustomerDisplayIdentity(result.quote);
 
   return (
     <PublicQuoteShell
@@ -140,7 +143,8 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
       documentNumber={result.quote.number}
       date={result.quote.operationalDate}
       title={result.quote.title}
-       customerName={result.quote.customer?.name ?? "Sin cliente"}
+      customerName={identity.displayName}
+      customerSubtitle={identity.subtitle}
       vehicleDescription={
         result.quote.vehicle
           ? formatVehicle(result.quote.vehicle)

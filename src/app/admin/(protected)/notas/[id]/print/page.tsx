@@ -7,6 +7,7 @@ import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-qu
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
 import { PrintControls } from "@/features/quotes/components/print-controls";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { Suspense } from "react";
 import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
@@ -25,9 +26,10 @@ export async function generateMetadata({ params }: PrintPageProps): Promise<Meta
   }
 
   const { quote } = workOrder;
+  const identity = resolveCustomerDisplayIdentity(quote);
   const vehicle = workOrder.isSpecial ? "Taller" : quote.vehicle ?? quote.vehicleSnapshot;
   const title = formatDocumentPdfFilename({
-    customerName: quote.customer?.name,
+    customerName: identity.displayName,
     vehicle,
     operationalDate: quote.operationalDate ?? workOrder.completedAt,
     fallbackType: "Nota",
@@ -50,6 +52,7 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
   }
 
   const { quote } = workOrder;
+  const { displayName: customerDisplayName, subtitle: customerSubtitle } = resolveCustomerDisplayIdentity(quote);
 
   const documentType = "Nota";
 
@@ -79,7 +82,8 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
         documentNumber={quote.number}
         date={quote.operationalDate}
         title={quote.title}
-        customerName={quote.customer?.name ?? "Sin cliente"}
+        customerName={customerDisplayName}
+        customerSubtitle={customerSubtitle}
         vehicleDescription={
           workOrder.isSpecial
             ? "Taller"

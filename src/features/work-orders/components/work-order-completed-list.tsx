@@ -11,6 +11,7 @@ import { derivePaymentState } from "@/features/work-orders/payment-state";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import { PaymentCorrectionDialog } from "@/features/payments/components/payment-correction-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 
 type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>["workOrders"][number];
@@ -143,8 +144,13 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                       ) : null}
                     </div>
                     <p className="mt-1 font-semibold text-[var(--color-text-main)]">
-                      {wo.quote.customer?.commercialName || wo.quote.customer?.name || "Sin cliente"}
+                      {resolveCustomerDisplayIdentity(wo.quote).displayName}
                     </p>
+                    {resolveCustomerDisplayIdentity(wo.quote).operatorName ? (
+                      <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                        {resolveCustomerDisplayIdentity(wo.quote).operatorRole}: {resolveCustomerDisplayIdentity(wo.quote).operatorName}
+                      </p>
+                    ) : null}
                     <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
                   </div>
                   <div className="text-right">

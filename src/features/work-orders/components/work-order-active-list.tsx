@@ -12,6 +12,7 @@ import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-d
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
 import { QuoteDuplicateForm } from "@/features/quotes/components/quote-duplicate-form";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder";
@@ -121,7 +122,14 @@ export function WorkOrderActiveList({
                       <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
                       <Badge variant="info" className="w-fit">En proceso</Badge>
                     </div>
-                    <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer?.name ?? "Sin cliente"}</p>
+                    <p className="mt-1 font-semibold text-[var(--color-text-main)]">
+                      {resolveCustomerDisplayIdentity(wo.quote).displayName}
+                    </p>
+                    {resolveCustomerDisplayIdentity(wo.quote).operatorName ? (
+                      <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                        {resolveCustomerDisplayIdentity(wo.quote).operatorRole}: {resolveCustomerDisplayIdentity(wo.quote).operatorName}
+                      </p>
+                    ) : null}
                     <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
                   </div>
                   <div className="text-right">
