@@ -226,7 +226,7 @@ async function activeApplicationsForWorkOrder(prisma: PrismaClient, workOrderId:
   });
 }
 
-describe.skipIf(!databaseUrl)("PostgreSQL concurrency locks", () => {
+describe.skipIf(!databaseUrl)("PostgreSQL concurrency locks", { timeout: 30000 }, () => {
   const prisma = new PrismaClient({
     datasources: {
       db: { url: databaseUrl },

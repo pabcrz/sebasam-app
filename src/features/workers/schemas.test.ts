@@ -14,6 +14,8 @@ describe("worker schemas", () => {
       username: "ana.lopez",
       email: "ana.lopez@sebasam.local",
       workerKind: "MASTER",
+      fixedWeeklyPayCents: null,
+      fixedDailyPayCents: null,
     });
   });
 
