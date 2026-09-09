@@ -50,7 +50,7 @@ describe("CustomerDetailDialog", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Cargando cuenta del cliente...");
     resolveDetail(detail);
     expect(await screen.findByTestId("customer-detail-context")).toHaveTextContent("Av. Siempre Viva 123");
-    expect(screen.getByTestId("customer-account-statement")).toHaveTextContent("Total contratado$250.00");
+    expect(screen.getByTestId("customer-account-statement")).toHaveTextContent("Importe liquidable$250.00");
     expect(screen.getByText("Cotización COT-001")).toBeInTheDocument();
 
     await user.keyboard("{Escape}");

@@ -86,10 +86,6 @@ type TransactionClient = Prisma.TransactionClient;
 
 const defaultInclude = {
   customer: true,
-  payableSubtotalCents: true,
-  payableTaxCents: true,
-  payableTotalCents: true,
-  settlementAgreementId: true,
   quote: {
     select: {
       id: true,
