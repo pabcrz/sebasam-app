@@ -557,7 +557,7 @@ describe("deleteCustomerFromForm", () => {
 
     await deleteCustomerFromForm(formData);
 
-    expect(redirect).toHaveBeenCalledWith("/admin/customers/cust-1/edit?error=cannot-delete");
+    expect(redirect).toHaveBeenCalledWith("/admin/customers/cust-1?error=cannot-delete");
   });
 });
 

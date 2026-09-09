@@ -64,7 +64,7 @@ describe("CustomerDetailDialog", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("shows the empty account state and keeps Edit as an explicit secondary action", async () => {
+  it("shows the empty account state and allows opening the edit dialog", async () => {
     const user = userEvent.setup();
     render(
       <CustomerDetailDialog
@@ -84,7 +84,10 @@ describe("CustomerDetailDialog", () => {
     await user.click(screen.getByRole("button", { name: "Ver cuenta de Constructora del Norte" }));
 
     expect(await screen.findByText("Este cliente todavía no tiene movimientos financieros registrados.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Editar" })).toHaveAttribute("href", "/admin/customers/cust-1/edit");
+    const editButton = screen.getByRole("button", { name: "Editar datos" });
+    expect(editButton).toBeInTheDocument();
+    await user.click(editButton);
+    expect(await screen.findByRole("dialog", { name: "Editar cliente" })).toBeInTheDocument();
   });
 
   it("announces a loading failure and allows retrying", async () => {

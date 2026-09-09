@@ -17,6 +17,7 @@ vi.mock("next/link", () => ({
 
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 vi.mock("@/features/customers/queries", () => ({
@@ -61,7 +62,7 @@ describe("CustomerDetailPage", () => {
     expect(screen.getByRole("heading", { name: customer.name })).toBeInTheDocument();
     expect(screen.getByText("contacto@cdn.mx")).toBeInTheDocument();
     expect(screen.getByText("Facturar al cierre del mes.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Editar" })).toHaveAttribute("href", "/admin/customers/cust-1/edit");
+    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
     expect(screen.queryByTestId("customer-edit-form")).not.toBeInTheDocument();
     expect(getCustomerByIdMock).toHaveBeenCalledWith(customer.id);
     expect(getCustomerAccountStatementMock).toHaveBeenCalledWith(customer.id);

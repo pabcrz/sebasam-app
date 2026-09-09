@@ -104,7 +104,7 @@ export function createPaymentRequestDialogContext(
           taxId: fiscalProfile.taxId,
         }
       : null,
-    fiscalActionHref: requiresInvoice ? `/admin/customers/${quote.customer.id}/edit` : null,
+    fiscalActionHref: requiresInvoice ? `/admin/customers/${quote.customer.id}` : null,
     bankAccount,
   };
 }

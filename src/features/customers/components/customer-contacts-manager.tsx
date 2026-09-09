@@ -48,6 +48,7 @@ export type CustomerContactItem = {
 export interface CustomerContactsManagerProps {
   customerId: string;
   contacts?: CustomerContactItem[];
+  onContactChanged?: () => void;
 }
 
 const roleLabels: Record<CustomerContactRole, string> = {
@@ -70,7 +71,11 @@ function formatPhone(phone: string): string {
   return phone;
 }
 
-export function CustomerContactsManager({ customerId, contacts = [] }: CustomerContactsManagerProps) {
+export function CustomerContactsManager({
+  customerId,
+  contacts = [],
+  onContactChanged,
+}: CustomerContactsManagerProps) {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [editingContact, setEditingContact] = React.useState<CustomerContactItem | null>(null);
   const [isPending, startTransition] = React.useTransition();
@@ -119,6 +124,7 @@ export function CustomerContactsManager({ customerId, contacts = [] }: CustomerC
         toast.success("Contacto agregado exitosamente.");
         setIsAddOpen(false);
         resetAddForm();
+        onContactChanged?.();
       } else {
         toast.error(result.error ?? "Error al agregar contacto.");
       }
@@ -141,6 +147,7 @@ export function CustomerContactsManager({ customerId, contacts = [] }: CustomerC
       if (result.success) {
         toast.success("Contacto actualizado.");
         setEditingContact(null);
+        onContactChanged?.();
       } else {
         toast.error(result.error ?? "Error al actualizar contacto.");
       }
@@ -153,6 +160,7 @@ export function CustomerContactsManager({ customerId, contacts = [] }: CustomerC
       const result = await toggleCustomerContactActiveAction(contact.id, nextState);
       if (result.success) {
         toast.success(nextState ? "Contacto reactivado." : "Contacto desactivado.");
+        onContactChanged?.();
       } else {
         toast.error(result.error ?? "Error al cambiar estado del contacto.");
       }
@@ -166,6 +174,7 @@ export function CustomerContactsManager({ customerId, contacts = [] }: CustomerC
       const result = await deleteCustomerContactAction(contactId);
       if (result.success) {
         toast.success("Contacto eliminado.");
+        onContactChanged?.();
       } else {
         toast.error(result.error ?? "Error al eliminar contacto.");
       }

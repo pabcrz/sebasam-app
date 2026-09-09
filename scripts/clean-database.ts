@@ -2,17 +2,23 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const ALLOWED_USERNAMES = ["pablo", "fede", "andres", "alfa", "cuco", "roberto"];
+const ALLOWED_USERNAMES = ["pablo", "fede", "andres", "marco", "alfa", "cuco", "roberto"];
 
 async function main() {
   console.log("🧹 Iniciando limpieza completa de base de datos...");
 
-  // 1. Limpiar pagos y aplicaciones contables
+  // 1. Limpiar pagos y aplicaciones contables (respetando foreign keys)
   console.log("-> Limpiando pagos, transacciones y cuentas contables...");
+  try {
+    await prisma.$executeRawUnsafe('DELETE FROM "PaymentCorrectionApplication";');
+    await prisma.$executeRawUnsafe('DELETE FROM "PaymentCorrection";');
+  } catch {
+    // Ignorar si no existen en todos los entornos
+  }
+  await prisma.ledgerEntry.deleteMany({});
   await prisma.paymentApplication.deleteMany({});
   await prisma.payment.deleteMany({});
   await prisma.paymentRequest.deleteMany({});
-  await prisma.ledgerEntry.deleteMany({});
 
   // 2. Limpiar órdenes de trabajo, asignaciones y ejecuciones
   console.log("-> Limpiando órdenes de trabajo y asignaciones...");
