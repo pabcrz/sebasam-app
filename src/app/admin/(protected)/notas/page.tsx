@@ -12,8 +12,11 @@ import {
 } from "@/components/ui";
 import { WorkOrderCompletedList } from "@/features/work-orders/components/work-order-completed-list";
 import { correctPaymentAction, recordPaymentAction } from "@/features/payments/actions";
-import { rollbackWorkOrderAction } from "@/features/work-orders/actions";
+import { createDirectNoteFromWorkspace, rollbackWorkOrderAction } from "@/features/work-orders/actions";
 import { listActiveMasters } from "@/features/workers/queries";
+import { listCustomers } from "@/features/customers/queries";
+import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
+import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { getCurrentProfile, isAdminRole } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
@@ -22,7 +25,12 @@ export const metadata: Metadata = {
 
 export default async function NotasPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const filters = parseNotasParams(await searchParams);
-  const [result, masters, currentProfile] = await Promise.all([listCompletedWorkOrders(filters), listActiveMasters(), getCurrentProfile()]);
+  const [result, masters, customers, currentProfile] = await Promise.all([
+    listCompletedWorkOrders(filters),
+    listActiveMasters(),
+    listCustomers(),
+    getCurrentProfile(),
+  ]);
   const { workOrders } = result;
   const quoteMap = new Map(workOrders.map((wo) => [wo.quote.id, wo.quote]));
   const noteReturnTo = notasHref(filters);
@@ -33,6 +41,17 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
           Notas
         </h1>
+        <div className="hidden sm:block">
+          <QuoteBuilderDialog
+            customers={customers}
+            createAction={createDirectNoteFromWorkspace}
+            createCustomerAction={createOrReuseCustomerForQuote}
+            searchCustomersAction={searchCustomersForQuote}
+            mode="direct-note"
+            masters={masters}
+            triggerLabel="Nueva nota"
+          />
+        </div>
       </div>
       <NotasFilters mode={filters.mode} payment={filters.payment} assignee={filters.assignee} anchor={filters.anchor} rangeLabel={filters.rangeLabel} isCurrentWeek={filters.isCurrentWeek} masters={masters} />
 
@@ -71,6 +90,25 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
           </div>
         </CardContent>
       </Card>
+
+      {/* Mobile Floating Action Button */}
+      <div
+        className="fixed right-4 z-40 sm:hidden"
+        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <QuoteBuilderDialog
+          customers={customers}
+          createAction={createDirectNoteFromWorkspace}
+          createCustomerAction={createOrReuseCustomerForQuote}
+          searchCustomersAction={searchCustomersForQuote}
+          mode="direct-note"
+          masters={masters}
+          triggerLabel="Nueva nota"
+          triggerVariant="primary"
+          triggerSize="sm"
+          triggerClassName="h-11 px-4 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-1.5 border border-white/20"
+        />
+      </div>
     </section>
   );
 }

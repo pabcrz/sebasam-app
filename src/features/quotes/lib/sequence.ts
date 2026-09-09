@@ -33,8 +33,9 @@ function formatSequentialNumber(prefix: string, sequence: number, sequenceWidth:
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const year = String(now.getFullYear()).slice(-2);
+  const prefixSegment = prefix ? `${prefix}-` : "";
 
-  return `${prefix}-${month}${year}-${String(sequence).padStart(sequenceWidth, "0")}`;
+  return `${prefixSegment}${month}${year}-${String(sequence).padStart(sequenceWidth, "0")}`;
 }
 
 async function getNextNumber(
@@ -46,7 +47,8 @@ async function getNextNumber(
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const year = String(now.getFullYear()).slice(-2);
-  const prefixPattern = `${prefix}-${month}${year}-`;
+  const prefixPattern = prefix ? `${prefix}-${month}${year}-` : `${month}${year}-`;
+  const legacyPrefixPattern = `C-${month}${year}-`;
 
   const rows = table === "quote"
     ? await client.$queryRaw<HighestSequenceRow[]>`
@@ -57,6 +59,10 @@ async function getNextNumber(
             SELECT substring("number" FROM ${prefixPattern.length + 1}::integer) AS suffix
             FROM "Quote"
             WHERE "number" LIKE ${`${prefixPattern}%`} AND "deletedAt" IS NULL
+            UNION ALL
+            SELECT substring("number" FROM ${legacyPrefixPattern.length + 1}::integer) AS suffix
+            FROM "Quote"
+            WHERE "number" LIKE ${`${legacyPrefixPattern}%`} AND "deletedAt" IS NULL
           ) AS matching
           WHERE suffix !~ '-'
         ) AS parsed
@@ -81,7 +87,7 @@ async function getNextNumber(
 }
 
 export async function nextQuoteNumber(client?: SequenceClient): Promise<string> {
-  return getNextNumber("quote", "C", 3, client);
+  return getNextNumber("quote", "", 3, client);
 }
 
 export async function nextWorkOrderNumber(client?: SequenceClient): Promise<string> {

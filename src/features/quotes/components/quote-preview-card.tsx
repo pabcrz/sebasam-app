@@ -26,6 +26,7 @@ export interface QuotePreviewCardProps {
   paidCents?: number | null;
   remainingCents?: number | null;
   validUntil: Date | null;
+  paymentDueDate?: Date | null;
   isNote?: boolean;
   isPrint?: boolean;
   isApproved?: boolean;
@@ -56,6 +57,7 @@ export function QuotePreviewCard({
   paidCents,
   remainingCents,
   validUntil,
+  paymentDueDate,
   isNote,
   isPrint,
   isApproved,
@@ -360,14 +362,20 @@ export function QuotePreviewCard({
           </div>
           <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} />
 
-          {!isNote && (
+          {!isNote ? (
             <div className="print:break-inside-avoid">
               <p data-testid="quote-validity" className="text-[10px] text-[var(--color-text-muted)] print:text-gray-400">
                 Vigente hasta el {validUntil ? formatDate(validUntil) : "—"}. Los precios están sujetos a cambios imprevistos
                 en el costo de materiales.
               </p>
             </div>
-          )}
+          ) : paymentDueDate ? (
+            <div className="print:break-inside-avoid">
+              <p data-testid="note-due-date" className="text-[10px] font-medium text-[var(--color-text-muted)] print:text-gray-500">
+                Fecha de vencimiento de pago: {formatDate(paymentDueDate)}.
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

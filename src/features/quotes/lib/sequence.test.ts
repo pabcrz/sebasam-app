@@ -35,22 +35,22 @@ describe("sequential quote/work-order numbers", () => {
     vi.useRealTimers();
   });
 
-  it("starts quote numbers at C-MMYY-001 for an empty month", async () => {
+  it("starts quote numbers at MMYY-001 for an empty month", async () => {
     prismaMock.$queryRaw.mockResolvedValue([{ highestSequence: "0" }]);
 
-    await expect(nextQuoteNumber()).resolves.toBe("C-0626-001");
+    await expect(nextQuoteNumber()).resolves.toBe("0626-001");
     expect(prismaMock.$queryRaw).toHaveBeenCalledOnce();
   });
 
   it("increments quote numbers from the highest numeric suffix", async () => {
     prismaMock.$queryRaw.mockResolvedValue([{ highestSequence: "41" }]);
 
-    await expect(nextQuoteNumber()).resolves.toBe("C-0626-042");
+    await expect(nextQuoteNumber()).resolves.toBe("0626-042");
   });
 
   it.each([
-    ["100", "C-0626-101"],
-    ["1000", "C-0626-1001"],
+    ["100", "0626-101"],
+    ["1000", "0626-1001"],
   ])("orders quote suffix %s numerically beyond fixed width", async (highestSequence, expected) => {
     prismaMock.$queryRaw.mockResolvedValue([{ highestSequence }]);
 
@@ -74,7 +74,7 @@ describe("sequential quote/work-order numbers", () => {
 
     await nextQuoteNumber();
 
-    const [strings, suffixStart, prefixPattern] = prismaMock.$queryRaw.mock.calls[0];
+    const [strings, suffixStart, prefixPattern, legacySuffixStart, legacyPrefixPattern] = prismaMock.$queryRaw.mock.calls[0];
     const query = Array.from(strings as TemplateStringsArray).join("?");
 
     expect(query).toContain("MAX(parsed_suffix)");
@@ -84,9 +84,11 @@ describe("sequential quote/work-order numbers", () => {
     expect(query).toContain("WHERE suffix !~ '-'");
     expect(query).toContain("regexp_match(suffix, '^[[:space:]]*[+]?[0-9]+'");
     expect(query).toContain("parsed_suffix <= '1.7976931348623157e308'::numeric");
-    expect(suffixStart).toBe(8);
-    expect(prefixPattern).toBe("C-0626-%");
-    expect(query).not.toContain("C-0626-");
+    expect(suffixStart).toBe(6);
+    expect(prefixPattern).toBe("0626-%");
+    expect(legacySuffixStart).toBe(8);
+    expect(legacyPrefixPattern).toBe("C-0626-%");
+    expect(query).not.toContain("0626-");
   });
 
   it("queries the work order table with separately bound parameters", async () => {

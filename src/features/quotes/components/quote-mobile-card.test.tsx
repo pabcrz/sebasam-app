@@ -50,7 +50,11 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     totalCents: 11600,
     taxEnabled: true,
     validUntil: new Date("2026-12-31"),
-
+    paymentDueDate: null,
+    isLocked: false,
+    lockedAt: null,
+    lockedById: null,
+    lockedReason: null,
     approvedAt: null,
     administrative: false, deletedAt: null,
     operationalDate: new Date("2026-06-15T00:00:00.000Z"),

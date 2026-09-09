@@ -40,10 +40,11 @@ function initialSelectedSectionIds(quote: SharedQuoteViewQuote) {
   return quote.sections.map((section) => section.id);
 }
 
-export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, business }: SharedQuoteViewProps) {
+export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isPrintProp, business }: SharedQuoteViewProps) {
   const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
   const isPrint = isPrintProp ?? !token;
+  const isNote = isNoteProp ?? (quote.workOrder?.status === "COMPLETED");
 
   React.useEffect(() => {
     // Refresh the quote data every 5 seconds if no decision has been made
@@ -146,7 +147,7 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
       }));
   const sections = [...rootSection, ...sectionItems];
 
-  const showDecisionControls = !isPrint && Boolean(token) && quote.status === "SENT" && !hasDecided;
+  const showDecisionControls = !isPrint && Boolean(token) && quote.status === "SENT" && !hasDecided && !isNote && !quote.isLocked;
 
   const calculateSelectedTotals = () => {
     let subtotalCents = 0;
@@ -235,6 +236,7 @@ export function SharedQuoteView({ quote, token, isNote, isPrint: isPrintProp, bu
         selectableSectionIds={showDecisionControls && quote.sections.length > 1 ? selectedSectionIds : undefined}
         onSectionToggle={showDecisionControls && quote.sections.length > 1 ? handleSectionToggle : undefined}
         validUntil={quote.validUntil}
+        paymentDueDate={quote.paymentDueDate}
         isNote={isNote}
         isPrint={isPrint}
         isApproved={quote.status === "APPROVED" || decision === "accepted"}

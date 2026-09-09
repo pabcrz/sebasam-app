@@ -1,4 +1,4 @@
-import { AssignmentStatus, Prisma, QuoteDecisionOrigin, QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
+import { AssignmentStatus, Prisma, QuoteDecisionOrigin, QuoteLifecycleEventType, QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
@@ -6,11 +6,15 @@ import { revalidatePath } from "next/cache";
 import {
   assignWorker,
   assignWorkOrder,
+  convertQuoteToNoteAction,
   createAndAssignWorkOrder,
   completeWorkOrder,
+  createDirectNote,
+  createDirectNoteFromWorkspace,
   createDirectWorkOrder,
   createDirectWorkOrderFromWorkspace,
   recordExecution,
+  returnNoteToQuoteAction,
   rollbackWorkOrder,
   rollbackWorkOrderAction,
 } from "./actions";
@@ -73,7 +77,7 @@ function operationalQuote(overrides: Record<string, unknown> = {}) {
 }
 
 type MockTx = {
-  quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
+  quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   quoteItem: { createMany: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
@@ -83,7 +87,12 @@ type MockTx = {
   executionRecord: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
   payment: { count: ReturnType<typeof vi.fn> };
   ledgerEntry: { count: ReturnType<typeof vi.fn> };
-  sharedQuote: { create: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
+  sharedQuote: {
+    create: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
+    findFirst: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
+  };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
   completedWorkKnowledgeSource: { updateMany: ReturnType<typeof vi.fn> };
   vehicle: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
@@ -93,7 +102,8 @@ function createTx(): MockTx {
   const tx = {
     quote: {
       create: vi.fn().mockResolvedValue({ id: "quote-new", sections: [{ id: "sec-1", sortOrder: 0 }] }),
-      findUnique: vi.fn(),
+      findUnique: vi.fn().mockResolvedValue({ id: "quote-new", number: "0926-001" }),
+      update: vi.fn().mockResolvedValue({ id: "quote-new" }),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     quoteItem: { createMany: vi.fn() },
@@ -105,7 +115,12 @@ function createTx(): MockTx {
     executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
     payment: { count: vi.fn().mockResolvedValue(0) },
     ledgerEntry: { count: vi.fn().mockResolvedValue(0) },
-    sharedQuote: { create: vi.fn(), updateMany: vi.fn() },
+    sharedQuote: {
+      create: vi.fn().mockResolvedValue({ id: "sq-1", token: "tok-1" }),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      findFirst: vi.fn().mockResolvedValue(null),
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
     paymentRequest: { updateMany: vi.fn() },
     completedWorkKnowledgeSource: { updateMany: vi.fn() },
     vehicle: { findFirst: vi.fn().mockResolvedValue({ id: "veh-1" }), create: vi.fn(), update: vi.fn().mockResolvedValue({ id: "veh-1" }) },
@@ -403,7 +418,7 @@ describe("work order actions", () => {
 
       expect(tx.workOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: WorkOrderStatus.CANCELLED } }));
       expect(tx.workAssignment.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: "CANCELLED" } }));
-      expect(tx.sharedQuote.updateMany).toHaveBeenCalled();
+      expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
       expect(tx.paymentRequest.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: "CANCELLED" } }));
       expect(tx.quote.updateMany).toHaveBeenCalledWith({
         where: { id: "quote-1", status: quoteStatus },
@@ -697,6 +712,193 @@ describe("work order actions", () => {
       const result = await createDirectWorkOrderFromWorkspace({}, formData);
 
       expect(result.error).toMatch(/maestro responsable/i);
+    });
+  });
+
+  describe("document lifecycle: createDirectNote and convertQuoteToNote", () => {
+    it("creates a direct note with COMPLETED work order, paymentDueDate, and CONVERT_TO_NOTE event", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      const dueDate = new Date("2026-09-30T00:00:00.000Z");
+      await createDirectNote({
+        customerId: "customer-1",
+        vehicle: { plate: "ABC-123", brand: "Toyota", model: "Corolla", year: 2020 },
+        title: "Direct Note",
+        description: "Direct creation",
+        administrative: false,
+        taxEnabled: true,
+        discountCents: 0,
+        operationalDate: "2026-08-31",
+        masterId,
+        sections: [
+          {
+            name: "General",
+            items: [
+              {
+                type: "LABOR" as const,
+                description: "Brake repair",
+                quantity: 1,
+                unitPriceCents: 10000,
+              },
+            ],
+          },
+        ],
+        paymentDueDate: dueDate,
+      });
+
+      expect(tx.quote.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          status: QuoteStatus.APPROVED,
+          paymentDueDate: dueDate,
+        }),
+      }));
+      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: QuoteLifecycleEventType.CONVERT_TO_NOTE,
+          reason: "Nota creada directamente",
+        }),
+      }));
+      expect(tx.workOrder.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          status: WorkOrderStatus.COMPLETED,
+        }),
+      }));
+    });
+
+    it("creates a direct note from workspace FormData and revalidates paths", async () => {
+      createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      const formData = new FormData();
+      formData.set("customerId", "customer-1");
+      formData.set("masterId", masterId);
+      formData.set("title", "Direct Note");
+      formData.set("operationalDate", "2026-08-31");
+      formData.set("paymentDueDate", "2026-09-30");
+      formData.set("sections.0.name", "General");
+      formData.set("sections.0.items.0.type", "LABOR");
+      formData.set("sections.0.items.0.description", "Service");
+      formData.set("sections.0.items.0.quantity", "1");
+      formData.set("sections.0.items.0.unitPrice", "10000");
+
+      const result = await createDirectNoteFromWorkspace({}, formData);
+
+      expect(result).toEqual({ success: true });
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/work-orders");
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/notas");
+    });
+
+    it("converts a draft quote to a completed note with master and paymentDueDate", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      tx.quote.findUnique.mockResolvedValue(
+        operationalQuote({
+          id: "quote-1",
+          number: "0926-001",
+          status: QuoteStatus.DRAFT,
+          isLocked: false,
+          sections: [{ id: "sec-1", items: [{ type: "LABOR", description: "Service", quantity: 1, unitPriceCents: 10_000 }] }],
+        }),
+      );
+
+      const dueDate = new Date("2026-09-30T00:00:00.000Z");
+      await convertQuoteToNoteAction({
+        quoteId: "quote-1",
+        masterId,
+        paymentDueDate: dueDate,
+        reason: "Convertida a nota",
+      });
+
+      expect(tx.quote.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: "quote-1" },
+        data: expect.objectContaining({
+          status: QuoteStatus.APPROVED,
+          paymentDueDate: dueDate,
+        }),
+      }));
+      expect(tx.workOrder.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          status: WorkOrderStatus.COMPLETED,
+        }),
+      }));
+      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: QuoteLifecycleEventType.CONVERT_TO_NOTE,
+          reason: "Convertida a nota",
+        }),
+      }));
+    });
+
+    it("blocks converting a locked quote to note", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      tx.quote.findUnique.mockResolvedValue({
+        id: "quote-locked",
+        status: QuoteStatus.DRAFT,
+        isLocked: true,
+        customerId: "customer-1",
+        items: [],
+        sections: [{ id: "sec-1", items: [{ type: "LABOR", description: "S", quantity: 1, unitPriceCents: 10000 }] }],
+        workOrder: null,
+      });
+
+      await expect(convertQuoteToNoteAction({
+        quoteId: "quote-locked",
+        masterId,
+      })).rejects.toThrow(/bloqueado/i);
+    });
+
+    it("blocks rollback when the document is locked", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      tx.workOrder.findUnique.mockResolvedValue({
+        id: "wo-1",
+        quoteId: "quote-locked",
+        status: WorkOrderStatus.COMPLETED,
+        quote: { status: QuoteStatus.APPROVED, isLocked: true },
+      });
+
+      await expect(rollbackWorkOrder({
+        workOrderId: "wo-1",
+        targetQuoteStatus: "DRAFT",
+        reason: "Corrección",
+      })).rejects.toThrow(/bloqueado/i);
+    });
+
+    it("returns a note to quote via returnNoteToQuoteAction", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      tx.workOrder.findUnique.mockResolvedValue({
+        id: "wo-1",
+        quoteId: "quote-1",
+        status: WorkOrderStatus.COMPLETED,
+        quote: { status: QuoteStatus.APPROVED, isLocked: false },
+      });
+
+      const result = await returnNoteToQuoteAction({
+        workOrderId: "wo-1",
+        reason: "Corrección de precios",
+      });
+
+      expect(result).toEqual({ success: true });
+      expect(tx.quote.updateMany).toHaveBeenCalledWith({
+        where: { id: "quote-1", status: QuoteStatus.APPROVED },
+        data: { status: QuoteStatus.DRAFT },
+      });
+      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: "RETURN_TO_QUOTE",
+          previousState: QuoteStatus.APPROVED,
+          nextState: QuoteStatus.DRAFT,
+          reason: "Corrección de precios",
+        }),
+      }));
     });
   });
 });
