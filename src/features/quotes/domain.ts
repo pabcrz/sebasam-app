@@ -66,6 +66,8 @@ const sharedQuoteInclude = {
   quote: {
     include: {
       customer: true,
+      customerContact: true,
+      customerFiscalProfile: true,
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
       sections: { 

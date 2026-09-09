@@ -96,6 +96,8 @@ type MockTx = {
   paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
   completedWorkKnowledgeSource: { updateMany: ReturnType<typeof vi.fn> };
   vehicle: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  customer: { findUnique: ReturnType<typeof vi.fn> };
+  customerContact: { findUnique: ReturnType<typeof vi.fn> };
 };
 
 function createTx(): MockTx {
@@ -124,6 +126,8 @@ function createTx(): MockTx {
     paymentRequest: { updateMany: vi.fn() },
     completedWorkKnowledgeSource: { updateMany: vi.fn() },
     vehicle: { findFirst: vi.fn().mockResolvedValue({ id: "veh-1" }), create: vi.fn(), update: vi.fn().mockResolvedValue({ id: "veh-1" }) },
+    customer: { findUnique: vi.fn().mockResolvedValue(null) },
+    customerContact: { findUnique: vi.fn().mockResolvedValue(null) },
   };
   vi.mocked(prisma.$transaction).mockImplementation(
     // @ts-expect-error Mock
@@ -562,6 +566,63 @@ describe("work order actions", () => {
       }));
       expect(result).toHaveProperty("quote");
       expect(result).toHaveProperty("workOrder");
+    });
+
+    it("persists customerContactId, customerFiscalProfileId, and snapshots when provided", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      tx.customer.findUnique.mockResolvedValue({
+        id: "customer-1",
+        name: "Transportes Del Norte",
+        commercialName: "TDN",
+        legalName: "TDN SA de CV",
+        email: "tdn@example.com",
+        phone: "555-1234",
+        address: "Av Central 1",
+        fiscalProfiles: [
+          {
+            id: "fiscal-1",
+            businessName: "TDN SA de CV",
+            taxId: "TDN123456789",
+          },
+        ],
+      });
+
+      tx.customerContact.findUnique.mockResolvedValue({
+        id: "contact-1",
+        name: "Juan Perez",
+        phone: "555-9999",
+        role: "Chofer",
+      });
+
+      await createDirectWorkOrder({
+        ...validDirectInput,
+        customerContactId: "contact-1",
+        customerFiscalProfileId: "fiscal-1",
+      });
+
+      expect(tx.quote.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            customerContactId: "contact-1",
+            customerFiscalProfileId: "fiscal-1",
+            customerSnapshot: expect.objectContaining({
+              customerId: "customer-1",
+              name: "Transportes Del Norte",
+              commercialName: "TDN",
+              legalName: "TDN SA de CV",
+              taxId: "TDN123456789",
+            }),
+            contactSnapshot: {
+              id: "contact-1",
+              name: "Juan Perez",
+              phone: "555-9999",
+              role: "Chofer",
+            },
+          }),
+        }),
+      );
     });
 
     it("allows open direct work order creation with pending prices", async () => {

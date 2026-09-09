@@ -523,8 +523,8 @@ function checkCustomerPages() {
     "src/features/customers/components/customer-search.tsx",
     "utf8",
   );
-  const editPageSource = readFileSync(
-    "src/app/admin/(protected)/customers/[id]/edit/page.tsx",
+  const detailPageSource = readFileSync(
+    "src/app/admin/(protected)/customers/[id]/page.tsx",
     "utf8",
   );
   const createFormSource = readFileSync(
@@ -535,9 +535,15 @@ function checkCustomerPages() {
     "src/features/customers/components/customer-edit-form.tsx",
     "utf8",
   );
+  const editDialogSource = readFileSync(
+    "src/features/customers/components/customer-edit-dialog.tsx",
+    "utf8",
+  );
 
   assertNoRadix(createPageSource, "Customer create page");
-  assertNoRadix(editPageSource, "Customer edit page");
+  assertNoRadix(detailPageSource, "Customer detail page");
+  assertNoRadix(editFormSource, "Customer edit form");
+  assertNoRadix(editDialogSource, "Customer edit dialog");
 
   // Server-action wiring must remain intact.
   assertIncludes(
@@ -557,14 +563,14 @@ function checkCustomerPages() {
   );
 
   assertIncludes(
-    editPageSource,
-    "updateCustomerBasicsFromForm",
-    "Customer edit page must import updateCustomerBasicsFromForm server action",
+    detailPageSource,
+    "<CustomerEditButton",
+    "Customer detail page must render CustomerEditButton",
   );
   assertIncludes(
-    editPageSource,
-    "<CustomerEditForm",
-    "Customer edit page must render CustomerEditForm",
+    editDialogSource,
+    "updateCustomerAction",
+    "Customer edit dialog must import updateCustomerAction server action",
   );
 
   // Customer search must cover contact info and related vehicle plates.

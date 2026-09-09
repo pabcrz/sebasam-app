@@ -9,6 +9,8 @@ const workOrderInclude = {
   quote: {
     include: {
       customer: true,
+      customerContact: true,
+      customerFiscalProfile: true,
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" as const } },
       sections: { orderBy: { sortOrder: "asc" as const }, include: { items: { orderBy: { sortOrder: "asc" as const } } } },
