@@ -229,8 +229,8 @@ function checkQuotesPage() {
   const sequenceSource = readFileSync("src/features/quotes/lib/sequence.ts", "utf8");
   assertIncludes(
     sequenceSource,
-    'getNextNumber("quote", "C", 3',
-    "Quote numbering must use C- prefix for sequential numbers",
+    'getNextNumber("quote", "", 3',
+    "Quote numbering must use MMYY-### without prefix for sequential numbers",
   );
   assertIncludes(
     sequenceSource,

@@ -78,18 +78,28 @@ export function QuoteBuilderDialog({
     router.refresh();
   }, [router]);
 
-  const defaultButtonLabel = isEdit ? "Editar" : isDirectWorkOrder ? "Agregar trabajo" : "Nueva cotización";
+  const defaultButtonLabel = isEdit
+    ? "Editar"
+    : mode === "direct-note"
+      ? "Nueva nota"
+      : isDirectWorkOrder
+        ? "Agregar trabajo"
+        : "Nueva cotización";
   const effectiveButtonLabel = triggerLabel ?? defaultButtonLabel;
   const dialogTitle = isEdit
     ? `Editar cotización ${quoteNumber}`
-    : isDirectWorkOrder
-      ? "Agregar trabajo"
-      : "Crear cotización";
+    : mode === "direct-note"
+      ? "Nueva nota"
+      : isDirectWorkOrder
+        ? "Agregar trabajo"
+        : "Crear cotización";
   const discardTitle = isEdit
     ? "¿Descartar los cambios?"
-    : isDirectWorkOrder
-      ? "¿Descartar el trabajo?"
-      : "¿Descartar la cotización?";
+    : mode === "direct-note"
+      ? "¿Descartar la nota?"
+      : isDirectWorkOrder
+        ? "¿Descartar el trabajo?"
+        : "¿Descartar la cotización?";
 
   return (
     <QuoteBuilderChromeContext.Provider value={chromeHosts}>

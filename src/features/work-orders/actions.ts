@@ -6,6 +6,7 @@ import {
   PaymentRequestStatus,
   Prisma,
   QuoteDecisionOrigin,
+  QuoteLifecycleEventType,
   QuoteStatus,
   UserRole,
   WorkOrderStatus,
@@ -20,6 +21,7 @@ import { createVehicleSnapshot } from "@/features/vehicles/schemas";
 import { nextQuoteNumber, nextWorkOrderNumber, withQuoteNumberRetry } from "@/features/quotes/lib/sequence";
 import { calculateItemTotalCents, createQuoteValidUntil } from "@/features/quotes/lib/calculate";
 import { normalizeOperationalDate, operationalDateToCompletedAt } from "@/features/quotes/lib/operational-date";
+import { ensureSharedQuoteInTransaction } from "@/features/quotes/domain";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 import {
   buildVehicleInput,
@@ -31,9 +33,11 @@ import {
 import {
   assignWorkOrderInputSchema,
   completeWorkOrderInputSchema,
+  convertQuoteToNoteInputSchema,
   directWorkOrderFormInputSchema,
   directWorkOrderInputSchema,
   executionRecordInputSchema,
+  returnNoteToQuoteInputSchema,
   rollbackWorkOrderInputSchema,
   workAssignmentInputSchema,
   workOrderInputSchema,
@@ -424,6 +428,9 @@ export async function rollbackWorkOrder(input: unknown) {
     if (!workOrder) {
       throw new WorkOrderOperationError("Orden de trabajo no encontrada.");
     }
+    if (workOrder.quote.isLocked) {
+      throw new WorkOrderOperationError("El documento está bloqueado.");
+    }
     if (!rollbackableWorkOrderStatuses.includes(workOrder.status)) {
       throw new WorkOrderOperationError("La orden ya fue cancelada. Recarga la página para ver su estado actual.");
     }
@@ -461,12 +468,10 @@ export async function rollbackWorkOrder(input: unknown) {
       throw new WorkOrderOperationError("El estado de la orden cambió. Recarga e intenta de nuevo.");
     }
 
-    const now = new Date();
     await tx.workAssignment.updateMany({
       where: { workOrderId: workOrder.id, status: { notIn: [AssignmentStatus.DONE, AssignmentStatus.CANCELLED] } },
       data: { status: AssignmentStatus.CANCELLED },
     });
-    await tx.sharedQuote.updateMany({ where: { quoteId: workOrder.quoteId, revokedAt: null }, data: { revokedAt: now } });
     await tx.paymentRequest.updateMany({
       where: {
         OR: [{ quoteId: workOrder.quoteId }, { workOrderId: workOrder.id }],
@@ -484,6 +489,7 @@ export async function rollbackWorkOrder(input: unknown) {
     await tx.quoteLifecycleEvent.create({
       data: {
         quoteId: workOrder.quoteId,
+        eventType: workOrder.status === WorkOrderStatus.COMPLETED ? "RETURN_TO_QUOTE" : "STATUS_CHANGE",
         previousState: workOrder.quote.status,
         nextState: data.targetQuoteStatus,
         actorId: profile.id,
@@ -741,10 +747,13 @@ export async function createDirectWorkOrder(input: unknown) {
             totalCents: totals.totalCents,
             operationalDate,
             validUntil,
+            paymentDueDate: data.paymentDueDate ?? null,
             sections: { create: sectionData },
           },
           include: { sections: true },
         });
+
+        await ensureSharedQuoteInTransaction(tx, createdQuote.id);
 
         const itemsToCreate: Prisma.QuoteItemCreateManyInput[] = [];
         data.sections.forEach((sectionInput, sIndex) => {
@@ -794,8 +803,9 @@ export async function createDirectWorkOrder(input: unknown) {
             quoteId: createdQuote.id,
             previousState: QuoteStatus.DRAFT,
             nextState: QuoteStatus.APPROVED,
+            eventType: data.isCompleted ? QuoteLifecycleEventType.CONVERT_TO_NOTE : QuoteLifecycleEventType.STATUS_CHANGE,
             actorId: profile.id,
-            reason: "Trabajo creado directamente",
+            reason: data.isCompleted ? "Nota creada directamente" : "Trabajo creado directamente",
             createdAt: effectiveDate,
           },
         });
@@ -856,4 +866,197 @@ export async function createDirectWorkOrderFromWorkspace(
   revalidatePath(workOrdersPath);
   revalidatePath(notasPath);
   return { success: true };
+}
+
+export async function createDirectNote(input: unknown) {
+  const parsed = directWorkOrderInputSchema.parse(input);
+  return createDirectWorkOrder({
+    ...parsed,
+    isCompleted: true,
+  });
+}
+
+export async function createDirectNoteFromWorkspace(
+  _previousState: QuoteFormActionState,
+  formData: FormData,
+): Promise<QuoteFormActionState> {
+  const input = directWorkOrderFormDataToInput(formData);
+  const parsed = directWorkOrderFormInputSchema.safeParse({
+    ...input,
+    isCompleted: "true",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Revisa los datos e intenta de nuevo." };
+  }
+
+  try {
+    await createDirectWorkOrder(parsed.data);
+  } catch (error) {
+    if (error instanceof WorkOrderOperationError) {
+      return { error: error.message };
+    }
+    if (error instanceof Error && error.message) {
+      return { error: error.message };
+    }
+    return { error: "No se pudo crear la nota. Intenta de nuevo." };
+  }
+
+  revalidatePath(quotesPath);
+  revalidatePath(workOrdersPath);
+  revalidatePath(notasPath);
+  return { success: true };
+}
+
+export async function convertQuoteToNoteAction(input: unknown) {
+  const { profile } = await requireOperationalRole();
+  const data = convertQuoteToNoteInputSchema.parse(input);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({
+      where: { id: data.quoteId },
+      include: {
+        items: true,
+        sections: { include: { items: true } },
+        workOrder: { include: { assignments: true } },
+        vehicle: true,
+      },
+    });
+
+    if (!quote) {
+      throw new WorkOrderOperationError("Cotización no encontrada.");
+    }
+    if (quote.isLocked) {
+      throw new WorkOrderOperationError("El documento está bloqueado.");
+    }
+
+    assertOperationalClosureQuote(quote);
+
+    const effectiveDate = new Date();
+    let workOrder = quote.workOrder;
+
+    if (!workOrder) {
+      const masterId = data.masterId;
+      if (!masterId) {
+        throw new WorkOrderOperationError("Se requiere un maestro responsable para convertir la cotización a nota.");
+      }
+
+      const master = await tx.userProfile.findFirst({
+        where: { id: masterId, role: UserRole.WORKER, workerKind: WorkerKind.MASTER, isActive: true },
+      });
+      if (!master) {
+        throw new WorkOrderOperationError("El maestro responsable seleccionado no es válido o no está activo.");
+      }
+
+      if (quote.status !== QuoteStatus.APPROVED) {
+        await tx.quote.update({
+          where: { id: quote.id },
+          data: {
+            status: QuoteStatus.APPROVED,
+            approvedAt: effectiveDate,
+            paymentDueDate: data.paymentDueDate ?? quote.paymentDueDate,
+          },
+        });
+        await tx.quoteDecision.create({
+          data: {
+            quoteId: quote.id,
+            status: QuoteStatus.APPROVED,
+            origin: QuoteDecisionOrigin.ADMIN,
+            actorId: profile.id,
+            note: "Cotización aprobada al convertir a nota",
+            authorizedSectionIds: quote.sections.map((s) => s.id),
+            createdAt: effectiveDate,
+          },
+        });
+      } else if (data.paymentDueDate) {
+        await tx.quote.update({
+          where: { id: quote.id },
+          data: { paymentDueDate: data.paymentDueDate },
+        });
+      }
+
+      const workOrderNumber = await nextWorkOrderNumber(tx);
+      const createdWorkOrder = await tx.workOrder.create({
+        data: {
+          quoteId: quote.id,
+          number: workOrderNumber,
+          status: WorkOrderStatus.COMPLETED,
+          completedAt: effectiveDate,
+        },
+        include: { assignments: true },
+      });
+      workOrder = createdWorkOrder;
+
+      await tx.workAssignment.create({
+        data: {
+          workOrderId: createdWorkOrder.id,
+          workerId: masterId,
+          status: AssignmentStatus.DONE,
+          assignedAt: effectiveDate,
+        },
+      });
+    } else {
+      if (workOrder.status === WorkOrderStatus.CANCELLED) {
+        throw new WorkOrderOperationError("La orden de trabajo fue cancelada.");
+      }
+
+      if (data.paymentDueDate) {
+        await tx.quote.update({
+          where: { id: quote.id },
+          data: { paymentDueDate: data.paymentDueDate },
+        });
+      }
+
+      if (workOrder.status !== WorkOrderStatus.COMPLETED) {
+        await tx.workOrder.update({
+          where: { id: workOrder.id },
+          data: {
+            status: WorkOrderStatus.COMPLETED,
+            completedAt: effectiveDate,
+          },
+        });
+
+        await tx.workAssignment.updateMany({
+          where: {
+            workOrderId: workOrder.id,
+            status: { notIn: [AssignmentStatus.DONE, AssignmentStatus.CANCELLED] },
+          },
+          data: { status: AssignmentStatus.DONE },
+        });
+      }
+    }
+
+    await ensureSharedQuoteInTransaction(tx, quote.id);
+
+    await tx.quoteLifecycleEvent.create({
+      data: {
+        quoteId: quote.id,
+        previousState: quote.status,
+        nextState: QuoteStatus.APPROVED,
+        eventType: QuoteLifecycleEventType.CONVERT_TO_NOTE,
+        actorId: profile.id,
+        reason: data.reason?.trim() || "Cotización convertida a nota",
+        createdAt: effectiveDate,
+      },
+    });
+
+    return { quote, workOrder };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  if (result.workOrder) {
+    await scheduleCompletedWorkKnowledge(result.workOrder.id);
+  }
+
+  revalidatePath(quotesPath);
+  revalidatePath(workOrdersPath);
+  revalidatePath(notasPath);
+  return result;
+}
+
+export async function returnNoteToQuoteAction(input: unknown) {
+  const data = returnNoteToQuoteInputSchema.parse(input);
+  return rollbackWorkOrderAction({
+    workOrderId: data.workOrderId,
+    targetQuoteStatus: "DRAFT",
+    reason: data.reason,
+  });
 }

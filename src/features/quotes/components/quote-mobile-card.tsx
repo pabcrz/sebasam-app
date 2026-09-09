@@ -204,6 +204,9 @@ export function QuoteListCard({
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
                 <span>Folio {quote.number}</span>
                 <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
+                {quote.isLocked ? (
+                  <Badge variant="warning">Bloqueado</Badge>
+                ) : null}
                 {quote.status === "DRAFT" && quote.submissionKey ? (
                   <Badge variant="warning">Editada</Badge>
                 ) : null}
@@ -253,6 +256,12 @@ export function QuoteListCard({
               <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}</span>
             </p>
+            {quote.paymentDueDate ? (
+              <p className="flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Vencimiento pago: {formatDate(quote.paymentDueDate)}</span>
+              </p>
+            ) : null}
           </div>
         </>
       }

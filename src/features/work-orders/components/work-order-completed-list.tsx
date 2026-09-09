@@ -136,6 +136,9 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                       <Badge variant={paymentState.variant} className="w-fit">
                         {paymentState.label}{paymentState.label === "Pago parcial" || paymentState.label === "Cobro urgente" ? ` · Saldo ${formatCents(paymentState.balanceCents!)}` : ""}
                       </Badge>
+                      {wo.quote.isLocked ? (
+                        <Badge variant="warning">Bloqueado</Badge>
+                      ) : null}
                     </div>
                     <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer?.name ?? "Sin cliente"}</p>
                     <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
@@ -147,6 +150,11 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     <p className="text-xs text-[var(--color-text-muted)]">
                       Finalizada {formatDate(wo.completedAt)}
                     </p>
+                    {wo.quote.paymentDueDate ? (
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        Vence {formatDate(wo.quote.paymentDueDate)}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 

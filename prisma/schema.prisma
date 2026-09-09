@@ -117,6 +117,14 @@ enum PersonType {
   BUSINESS
 }
 
+enum QuoteLifecycleEventType {
+  STATUS_CHANGE
+  LOCK
+  UNLOCK
+  CONVERT_TO_NOTE
+  RETURN_TO_QUOTE
+}
+
 model UserProfile {
   id          String      @id @db.Uuid
   username    String      @unique
@@ -140,6 +148,7 @@ model UserProfile {
   ledgerEntries        LedgerEntry[]        @relation("LedgerEntryActor")
   helperPayrollWeeks   HelperPayrollWeek[]
   paymentCorrections   PaymentCorrection[]
+  lockedQuotes         Quote[]              @relation("QuoteLockedBy")
 }
 
 model HelperPayrollWeek {
@@ -248,6 +257,11 @@ model Quote {
   approvedAt              DateTime?
   administrative          Boolean     @default(false)
   operationalDate         DateTime    @db.Date
+  isLocked                Boolean     @default(false)
+  lockedAt                DateTime?
+  lockedById              String?     @db.Uuid
+  lockedReason            String?
+  paymentDueDate          DateTime?
   createdAt               DateTime    @default(now())
   updatedAt               DateTime    @updatedAt
   deletedAt               DateTime?
@@ -256,6 +270,7 @@ model Quote {
   vehicle               Vehicle?               @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   customerContact       CustomerContact?       @relation(fields: [customerContactId], references: [id], onDelete: SetNull)
   customerFiscalProfile CustomerFiscalProfile? @relation(fields: [customerFiscalProfileId], references: [id], onDelete: SetNull)
+  lockedBy              UserProfile?           @relation("QuoteLockedBy", fields: [lockedById], references: [id], onDelete: SetNull)
   sections              QuoteSection[]
   items                 QuoteItem[]
   workOrder             WorkOrder?
@@ -268,6 +283,7 @@ model Quote {
   @@index([operationalDate])
   @@index([customerContactId])
   @@index([customerFiscalProfileId])
+  @@index([lockedById])
 }
 
 model SharedQuote {
@@ -300,18 +316,20 @@ model QuoteDecision {
 }
 
 model QuoteLifecycleEvent {
-  id            String      @id @default(cuid())
+  id            String                  @id @default(cuid())
   quoteId       String
+  eventType     QuoteLifecycleEventType @default(STATUS_CHANGE)
   previousState QuoteStatus
   nextState     QuoteStatus
-  actorId       String      @db.Uuid
+  actorId       String                  @db.Uuid
   reason        String
-  createdAt     DateTime    @default(now())
+  createdAt     DateTime                @default(now())
 
   quote Quote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   actor UserProfile @relation(fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([quoteId, createdAt])
+  @@index([quoteId, eventType])
   @@index([actorId])
 }
 

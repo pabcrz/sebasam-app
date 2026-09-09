@@ -147,20 +147,23 @@ function mockSlugSuffixes(...suffixes: string[]) {
   return randomInt;
 }
 
-beforeEach(async () => {
-  await cleanup();
-  await createTestCustomer();
-});
+const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
 
-afterEach(async () => {
-  vi.restoreAllMocks();
-  await cleanup();
-});
+describeDb("payment-requests domain integration", () => {
+  beforeEach(async () => {
+    await cleanup();
+    await createTestCustomer();
+  });
 
-afterAll(async () => {
-  await cleanup();
-  await prisma.$disconnect();
-});
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await cleanup();
+  });
+
+  afterAll(async () => {
+    await cleanup();
+    await prisma.$disconnect();
+  });
 
 describe("createPaymentRequestForQuote", () => {
   it("creates a payment request linked to a quote and customer", async () => {
@@ -534,3 +537,5 @@ describe("public lookup by stored slug", () => {
     expect(request.status).toBe(PaymentRequestStatus.VIEWED);
   });
 });
+});
+

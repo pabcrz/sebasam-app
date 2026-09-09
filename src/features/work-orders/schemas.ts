@@ -67,6 +67,7 @@ export type WorkAssignmentInput = z.infer<typeof workAssignmentInputSchema>;
 export const directWorkOrderInputSchema = quoteDraftInputSchema.extend({
   masterId: z.string("El maestro responsable es obligatorio.").uuid("El maestro responsable es obligatorio."),
   isCompleted: z.boolean().default(false),
+  paymentDueDate: z.preprocess((val) => (val ? new Date(String(val)) : undefined), z.date().optional()),
 });
 
 export const directWorkOrderFormInputSchema = quoteDraftFormInputSchema.extend({
@@ -75,7 +76,22 @@ export const directWorkOrderFormInputSchema = quoteDraftFormInputSchema.extend({
     z.string("El maestro responsable es obligatorio.").uuid("El maestro responsable es obligatorio."),
   ),
   isCompleted: z.preprocess((val) => val === "on" || val === "true" || val === true, z.boolean().default(false)),
+  paymentDueDate: z.preprocess((val) => (typeof val === "string" && val.trim() !== "" ? new Date(val) : undefined), z.date().optional()),
 });
 
 export type DirectWorkOrderInput = z.infer<typeof directWorkOrderInputSchema>;
 export type DirectWorkOrderFormInput = z.infer<typeof directWorkOrderFormInputSchema>;
+
+export const convertQuoteToNoteInputSchema = z.object({
+  quoteId: z.string().min(1),
+  masterId: z.string().uuid("El maestro responsable es obligatorio.").optional(),
+  paymentDueDate: z.preprocess((val) => (val ? new Date(String(val)) : undefined), z.date().optional()),
+  reason: z.string().trim().optional(),
+});
+export type ConvertQuoteToNoteInput = z.infer<typeof convertQuoteToNoteInputSchema>;
+
+export const returnNoteToQuoteInputSchema = z.object({
+  workOrderId: z.string().min(1),
+  reason: z.string().trim().min(1, "Indica el motivo de la corrección."),
+});
+export type ReturnNoteToQuoteInput = z.infer<typeof returnNoteToQuoteInputSchema>;

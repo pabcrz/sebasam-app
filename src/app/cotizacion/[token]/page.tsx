@@ -67,7 +67,7 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
   try {
     const sharedQuote = await getSharedQuoteByToken(token);
     const quote = sharedQuote.quote;
-    const documentType = quote.workOrder !== null ? "Nota" : "Cotización";
+    const documentType = quote.workOrder?.status === "COMPLETED" ? "Nota" : quote.workOrder ? "Trabajo" : "Cotización";
     const customerName = quote.customer?.name ?? "Sin cliente";
     const vehicleDescription = quote.vehicle
       ? formatVehicle(quote.vehicle)
@@ -129,13 +129,14 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
     );
   }
 
-  const isNote = result.quote.workOrder !== null;
+  const isNote = result.quote.workOrder?.status === "COMPLETED";
+  const documentType = isNote ? "Nota" : result.quote.workOrder ? "Trabajo" : "Cotización";
 
   return (
     <PublicQuoteShell
       business={toPublicBusinessIdentity(paymentSettings)}
       location={{ address: paymentSettings.address, mapsUrl: paymentSettings.mapsUrl }}
-      documentType={isNote ? "Nota" : "Cotización"}
+      documentType={documentType}
       documentNumber={result.quote.number}
       date={result.quote.operationalDate}
       title={result.quote.title}
