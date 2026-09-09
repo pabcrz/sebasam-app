@@ -27,10 +27,10 @@ export function PublicQuoteShell({ children, business, location, logoSrc, docume
   const mapsUrl = getPublicMapsUrl(location?.mapsUrl);
 
   return (
-    <div className="flex flex-1 min-h-screen flex-col bg-[var(--background)] print:min-h-[235mm] print:bg-white">
-      <header className="relative isolate overflow-hidden bg-[image:var(--gradient-primary)] px-6 pb-6 pt-8 text-white md:rounded-b-[22px] md:px-8 md:pb-8 md:pt-10 print:rounded-none print:bg-none print:px-0 print:pt-2 print:pb-3 print:text-black">
+    <div className="flex flex-1 min-h-screen flex-col bg-[var(--background)] print:min-h-[235mm] print:bg-white print:block print:w-full">
+      <header className="relative isolate overflow-hidden bg-[image:var(--gradient-primary)] px-6 pb-6 pt-8 text-white md:rounded-b-[22px] md:px-8 md:pb-8 md:pt-10 print:rounded-none print:bg-none print:px-0 print:pt-2 print:pb-3 print:text-black print:w-full">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[size:32px_32px] opacity-60 print:hidden" />
-        <div className="relative mx-auto max-w-4xl flex flex-col sm:flex-row print:flex-row gap-6 print:gap-4 items-start">
+        <div className="relative mx-auto max-w-4xl flex flex-col sm:flex-row print:flex-row gap-6 print:gap-4 items-start w-full">
           
           <div className="flex flex-col w-full sm:w-3/5 print:w-3/5">
             <PublicBrandHeader identity={resolvedBusiness} logoSrc={resolvedLogoSrc} quoteLayout />
@@ -79,7 +79,7 @@ export function PublicQuoteShell({ children, business, location, logoSrc, docume
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col bg-[var(--color-bg-soft)] px-4 py-6 md:px-8 md:py-8 print:bg-white print:px-0 print:py-0 print:pt-1">
+      <main className="flex-1 flex flex-col bg-[var(--color-bg-soft)] px-4 py-6 md:px-8 md:py-8 print:bg-white print:px-0 print:py-0 print:pt-1 print:block print:w-full">
         <div className="mx-auto max-w-4xl flex-1 flex flex-col w-full">{children}</div>
       </main>
     </div>

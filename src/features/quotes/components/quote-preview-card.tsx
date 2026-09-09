@@ -151,7 +151,7 @@ export function QuotePreviewCard({
   });
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm print:border-none print:shadow-none print:bg-white print:rounded-none flex-1 flex flex-col">
+    <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm print:border-none print:shadow-none print:bg-white print:rounded-none flex-1 flex flex-col print:w-full">
       <div className="flex-1 flex flex-col gap-6 p-4 md:p-6 print:gap-3 print:p-0 print:pt-2">
         {!compactHeader && (
           <div className="flex flex-col rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 print:border-gray-200 print:bg-gray-50">
