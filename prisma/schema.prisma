@@ -125,6 +125,11 @@ enum QuoteLifecycleEventType {
   RETURN_TO_QUOTE
 }
 
+enum SettlementAgreementStatus {
+  ACTIVE
+  CANCELLED
+}
+
 model UserProfile {
   id          String      @id @db.Uuid
   username    String      @unique
@@ -149,6 +154,9 @@ model UserProfile {
   helperPayrollWeeks   HelperPayrollWeek[]
   paymentCorrections   PaymentCorrection[]
   lockedQuotes         Quote[]              @relation("QuoteLockedBy")
+  settlementAgreements SettlementAgreement[] @relation("SettlementAgreementActor")
+  settlementAgreementRevisions SettlementAgreementRevision[] @relation("SettlementAgreementRevisionActor")
+  cancelledSettlementAgreements SettlementAgreement[] @relation("SettlementAgreementCanceller")
 }
 
 model HelperPayrollWeek {
@@ -279,6 +287,7 @@ model Quote {
   sharedQuotes          SharedQuote[]
   decisions             QuoteDecision[]
   lifecycleEvents       QuoteLifecycleEvent[]
+  settlementAgreement   SettlementAgreement?
 
   @@index([operationalDate])
   @@index([customerContactId])
@@ -485,6 +494,10 @@ model PaymentRequest {
   fiscalSnapshot          Json?
   expiresAt               DateTime
   viewedAt                DateTime?
+  payableSubtotalCents    Int?
+  payableTaxCents         Int?
+  payableTotalCents       Int?
+  settlementAgreementId   String?
   createdAt               DateTime             @default(now())
   updatedAt               DateTime             @updatedAt
 
@@ -498,6 +511,54 @@ model PaymentRequest {
   @@index([quoteId])
   @@index([workOrderId])
   @@index([token])
+}
+
+model SettlementAgreement {
+  id                   String                  @id @default(cuid())
+  quoteId              String                  @unique
+  status               SettlementAgreementStatus @default(ACTIVE)
+  nominalSubtotalCents Int
+  nominalTaxCents      Int
+  nominalTotalCents    Int
+  settlementBaseCents  Int
+  settlementTaxCents   Int
+  settlementTotalCents Int
+  reason               String
+  actorId              String                  @db.Uuid
+  cancelledAt          DateTime?
+  cancelledById        String?                 @db.Uuid
+  cancellationReason   String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  quote       Quote                       @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  actor       UserProfile                 @relation("SettlementAgreementActor", fields: [actorId], references: [id], onDelete: Restrict)
+  cancelledBy UserProfile?                @relation("SettlementAgreementCanceller", fields: [cancelledById], references: [id], onDelete: Restrict)
+  revisions   SettlementAgreementRevision[]
+
+  @@index([status])
+  @@index([actorId])
+}
+
+model SettlementAgreementRevision {
+  id                  String   @id @default(cuid())
+  settlementAgreementId String
+  revisionNumber      Int
+  nominalSubtotalCents Int
+  nominalTaxCents     Int
+  nominalTotalCents   Int
+  settlementBaseCents Int
+  settlementTaxCents  Int
+  settlementTotalCents Int
+  reason              String
+  actorId             String   @db.Uuid
+  createdAt           DateTime @default(now())
+
+  settlementAgreement SettlementAgreement @relation(fields: [settlementAgreementId], references: [id], onDelete: Restrict)
+  actor               UserProfile         @relation("SettlementAgreementRevisionActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@unique([settlementAgreementId, revisionNumber])
+  @@index([settlementAgreementId, createdAt])
 }
 
 model Payment {

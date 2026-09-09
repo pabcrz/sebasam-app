@@ -7,6 +7,7 @@ import {
   type CustomerCreditSummary,
   type NoteFinancialSummary,
 } from "./domain";
+import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
 
 export async function getQuotePaidTotals(quoteIds: string[]): Promise<Map<string, number>> {
   await requireOperationalRole();
@@ -61,7 +62,7 @@ export async function getEligibleNotesForCreditApplication(customerId: string): 
       quote: { customerId },
     },
     include: {
-      quote: { select: { totalCents: true } },
+      quote: { select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true } },
       paymentApplications: {
         where: { reversedAt: null },
         select: { amountCents: true },
@@ -72,7 +73,7 @@ export async function getEligibleNotesForCreditApplication(customerId: string): 
 
   return completedOrders
     .map((wo) => {
-      const quoteTotalCents = wo.quote.totalCents ?? 0;
+      const quoteTotalCents = getEffectiveSettlementTotals(wo.quote, wo.quote.settlementAgreement).totalCents;
       const appliedCents = wo.paymentApplications.reduce((sum, app) => sum + app.amountCents, 0);
       const pendingBalanceCents = Math.max(0, quoteTotalCents - appliedCents);
 

@@ -516,6 +516,33 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
     expect(credit.availableCreditCents).toBe(2000);
   });
 
+  it("uses a 300 settlement cap for partial payments, credit, and reversal while preserving a 500 nominal quote", async () => {
+    const quotes = new Map([
+      ["quote-agreed", {
+        id: "quote-agreed", number: "COT-AGREED", customerId: "cust-1", status: QuoteStatus.APPROVED,
+        totalCents: 50_000, subtotalCents: 50_000, taxCents: 0, discountCents: 0, taxEnabled: false,
+        settlementAgreement: { id: "agreement-1", status: "ACTIVE", settlementBaseCents: 30_000, settlementTaxCents: 0, settlementTotalCents: 30_000 },
+        items: [{ id: "item-1", description: "Repair", quantity: 1, unitPriceCents: 50_000 }],
+      }],
+    ]);
+    const workOrders = new Map([["wo-agreed", { id: "wo-agreed", quoteId: "quote-agreed", status: WorkOrderStatus.COMPLETED }]]);
+    const { transaction } = createMockDb({ quotes, workOrders });
+
+    const first = await recordPayment({ workOrderId: "wo-agreed", amountCents: 15_000, operationKey: "agreed-partial" });
+    expect(first.appliedToNoteCents).toBe(15_000);
+    expect(first.notePendingBalanceCents).toBe(15_000);
+
+    const second = await recordPayment({ workOrderId: "wo-agreed", amountCents: 20_000, operationKey: "agreed-overpayment" });
+    expect(second.appliedToNoteCents).toBe(15_000);
+    expect(second.customerCreditRemainingCents).toBe(5_000);
+    expect((await getNoteFinancialSummary(transaction, "wo-agreed")).pendingBalanceCents).toBe(0);
+
+    await reversePaymentCapture({ paymentId: second.payment.id, reason: "Payment reversed", actorId: "admin-1" });
+    expect((await getNoteFinancialSummary(transaction, "wo-agreed")).pendingBalanceCents).toBe(15_000);
+    expect((await getCustomerCreditSummary(transaction, "cust-1")).availableCreditCents).toBe(0);
+    expect(quotes.get("quote-agreed")?.totalCents).toBe(50_000);
+  });
+
   it("does_not_auto_apply_customer_credit_to_a_future_completed_note", async () => {
     const quotes = new Map([
       [
