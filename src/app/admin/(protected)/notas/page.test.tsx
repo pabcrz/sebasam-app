@@ -1,6 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-const listCompletedWorkOrders = vi.hoisted(() => vi.fn().mockResolvedValue({ workOrders: [], page: 1, hasNextPage: false }));
+const listCompletedWorkOrders = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    workOrders: [],
+    page: 1,
+    hasNextPage: false,
+    totals: { totalPendingCents: 250_000, totalOverdueCents: 50_000, totalPaidCents: 150_000 },
+  }),
+);
 vi.mock("@/features/work-orders/queries", () => ({ listCompletedWorkOrders }));
 vi.mock("@/features/customers/queries", () => ({ listCustomers: vi.fn().mockResolvedValue([]) }));
 vi.mock("@/features/workers/queries", () => ({ listActiveMasters: vi.fn().mockResolvedValue([]) }));
@@ -26,5 +33,21 @@ describe("NotasPage", () => {
     expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Trabajos completados" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /nueva nota/i }).length).toBeGreaterThan(0);
+  });
+
+  it("renders financial totals cards for pending, overdue, and paid amounts", async () => {
+    render(await NotasPage({ searchParams: Promise.resolve({}) }));
+    expect(screen.getByText("Pendiente de cobro")).toBeInTheDocument();
+    expect(screen.getByText("Saldo vencido")).toBeInTheDocument();
+    expect(screen.getByText("Cobrado en periodo")).toBeInTheDocument();
+    expect(screen.getByText("$2,500.00")).toBeInTheDocument();
+    expect(screen.getByText("$500.00")).toBeInTheDocument();
+    expect(screen.getByText("$1,500.00")).toBeInTheDocument();
+  });
+
+  it("renders actionable empty state with Limpiar filtros button when no work orders exist", async () => {
+    render(await NotasPage({ searchParams: Promise.resolve({}) }));
+    expect(screen.getByText("Limpiar filtros")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Limpiar filtros" })).toHaveAttribute("href", "/admin/notas");
   });
 });

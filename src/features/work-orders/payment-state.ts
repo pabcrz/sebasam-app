@@ -1,35 +1,67 @@
 import type { BadgeVariant } from "@/components/ui";
-
-const TIME_ZONE = "America/Mexico_City";
+import {
+  isNoteOverdue,
+  type ReceivableException,
+} from "./receivables-policy";
 
 type PaymentStateInput = {
-  completedAt: Date | null;
+  completedAt?: Date | null;
+  paymentDueDate?: Date | null;
   paidCents: number;
   remainingCents: number;
+  exception?: ReceivableException | null;
 };
 
+export type PaymentStateLabel =
+  | "Pagada"
+  | "Pago parcial"
+  | "Sin pago"
+  | "Vencida"
+  | "Sin fecha de vencimiento"
+  | "Plazo pactado"
+  | "Pend. autorización";
+
 export type PaymentState = {
-  label: "Pagada" | "Pago parcial" | "Sin pago" | "Cobro urgente";
+  label: PaymentStateLabel;
   balanceCents: number | null;
   variant: BadgeVariant;
 };
 
-function calendarDay(date: Date) {
-  const values = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const parts = Object.fromEntries(values.map(({ type, value }) => [type, value]));
-  return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
-}
+export function derivePaymentState(
+  { paymentDueDate, paidCents, remainingCents, exception }: PaymentStateInput,
+  now = new Date(),
+): PaymentState {
+  if (remainingCents <= 0) {
+    return { label: "Pagada", balanceCents: null, variant: "success" };
+  }
 
-export function derivePaymentState({ completedAt, paidCents, remainingCents }: PaymentStateInput, now = new Date()): PaymentState {
-  if (remainingCents <= 0) return { label: "Pagada", balanceCents: null, variant: "success" };
+  if (exception?.type === "PENDING_AUTHORIZATION") {
+    return { label: "Pend. autorización", balanceCents: remainingCents, variant: "info" };
+  }
 
-  const daysSinceCompletion = completedAt ? (calendarDay(now) - calendarDay(completedAt)) / 86_400_000 : 0;
-  if (daysSinceCompletion > 15) return { label: "Cobro urgente", balanceCents: remainingCents, variant: "danger" };
-  if (paidCents > 0) return { label: "Pago parcial", balanceCents: remainingCents, variant: "warning" };
+  const overdue = isNoteOverdue({
+    paymentDueDate,
+    pendingBalanceCents: remainingCents,
+    now,
+    exception,
+  });
+
+  if (overdue) {
+    return { label: "Vencida", balanceCents: remainingCents, variant: "danger" };
+  }
+
+  if (exception?.type === "NEGOTIATED_TERM") {
+    return { label: "Plazo pactado", balanceCents: remainingCents, variant: "info" };
+  }
+
+  if (!paymentDueDate) {
+    return { label: "Sin fecha de vencimiento", balanceCents: remainingCents, variant: "default" };
+  }
+
+  if (paidCents > 0) {
+    return { label: "Pago parcial", balanceCents: remainingCents, variant: "warning" };
+  }
+
   return { label: "Sin pago", balanceCents: remainingCents, variant: "warning" };
 }
+

@@ -3,12 +3,28 @@ const TIME_ZONE = "America/Mexico_City";
 export type NotasMode = "week" | "month";
 export type NotasPayment = "all" | "pending" | "paid";
 export type NotasAssignee = "all" | "workshop" | string;
+export type NotasOverdue = "all" | "overdue" | "current";
 
 function normalizeAssignee(value: string | string[] | undefined): NotasAssignee {
   if (value === "all" || value === "workshop") return value;
   if (typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
     return value.toLowerCase();
   }
+  return "all";
+}
+
+function normalizeCustomerId(value: string | string[] | undefined): string | undefined {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed !== "" && trimmed !== "all") {
+      return trimmed;
+    }
+  }
+  return undefined;
+}
+
+function normalizeOverdue(value: string | string[] | undefined): NotasOverdue {
+  if (value === "overdue" || value === "current") return value;
   return "all";
 }
 
@@ -68,6 +84,8 @@ export function parseNotasParams(input: Record<string, string | string[] | undef
   const mode: NotasMode = input.mode === "month" ? "month" : "week";
   const payment: NotasPayment = ["all", "pending", "paid"].includes(String(input.payment)) ? input.payment as NotasPayment : "all";
   const assignee = normalizeAssignee(input.assignee);
+  const customerId = normalizeCustomerId(input.customerId);
+  const overdue = normalizeOverdue(input.overdue);
   const page = /^\d+$/.test(String(input.page)) ? Math.max(1, Number(input.page)) : 1;
   const anchor = calendarDate(typeof input.anchor === "string" ? `${input.anchor}${mode === "month" && /^\d{4}-\d{2}$/.test(input.anchor) ? "-01" : ""}` : undefined, now);
   const weekday = new Date(Date.UTC(anchor.year, anchor.month - 1, anchor.day)).getUTCDay();
@@ -77,11 +95,44 @@ export function parseNotasParams(input: Record<string, string | string[] | undef
   const currentWeekday = new Date(Date.UTC(currentDate.year, currentDate.month - 1, currentDate.day)).getUTCDay();
   const currentWeekStart = addDays(currentDate, -((currentWeekday + 6) % 7));
   const isCurrentWeek = mode === "week" && value(startDate) === value(currentWeekStart);
-  return { mode, payment, assignee, page, anchor: value(anchor), rangeLabel: rangeLabel(mode, startDate, endDate), isCurrentWeek, start: localMidnightUtc(startDate), end: localMidnightUtc(endDate) };
+  return {
+    mode,
+    payment,
+    assignee,
+    customerId,
+    overdue,
+    page,
+    anchor: value(anchor),
+    rangeLabel: rangeLabel(mode, startDate, endDate),
+    isCurrentWeek,
+    start: localMidnightUtc(startDate),
+    end: localMidnightUtc(endDate),
+  };
 }
 
-export function notasHref(state: { mode: NotasMode; payment: NotasPayment; assignee: NotasAssignee; anchor: string; page?: number }) {
-  const params = new URLSearchParams({ mode: state.mode, anchor: state.mode === "month" ? state.anchor.slice(0, 7) : state.anchor, payment: state.payment, assignee: normalizeAssignee(state.assignee) });
-  if (state.page && state.page > 1) params.set("page", String(state.page));
+export function notasHref(state: {
+  mode: NotasMode;
+  payment: NotasPayment;
+  assignee: NotasAssignee;
+  anchor: string;
+  customerId?: string;
+  overdue?: NotasOverdue;
+  page?: number;
+}) {
+  const params = new URLSearchParams({
+    mode: state.mode,
+    anchor: state.mode === "month" ? state.anchor.slice(0, 7) : state.anchor,
+    payment: state.payment,
+    assignee: normalizeAssignee(state.assignee),
+  });
+  if (state.customerId && state.customerId !== "all") {
+    params.set("customerId", state.customerId);
+  }
+  if (state.overdue && state.overdue !== "all") {
+    params.set("overdue", state.overdue);
+  }
+  if (state.page && state.page > 1) {
+    params.set("page", String(state.page));
+  }
   return `/admin/notas?${params}`;
 }

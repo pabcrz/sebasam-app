@@ -155,4 +155,85 @@ describe("work order operational queues", () => {
 
     await expect(getCompletedWorkOrderById("wo-1")).resolves.toBeNull();
   });
+
+  it("filters by customerId when specified", async () => {
+    const input = {
+      start: new Date("2026-08-03T06:00:00Z"),
+      end: new Date("2026-08-10T06:00:00Z"),
+      payment: "all" as const,
+      assignee: "all" as const,
+      customerId: "cust-12345",
+      page: 1,
+    };
+
+    await listCompletedWorkOrders(input);
+    const query = (prisma.$queryRaw as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const sql = query.strings.join("?");
+    expect(sql).toContain('q."customerId" = ?');
+    expect(query.values).toContain("cust-12345");
+  });
+
+  it("applies overdue and current morosidad filters", async () => {
+    const input = {
+      start: new Date("2026-08-03T06:00:00Z"),
+      end: new Date("2026-08-10T06:00:00Z"),
+      payment: "all" as const,
+      assignee: "all" as const,
+      page: 1,
+    };
+
+    await listCompletedWorkOrders({ ...input, overdue: "overdue" });
+    const overdueQuery = (prisma.$queryRaw as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const overdueSql = overdueQuery.strings.join("?");
+    expect(overdueSql).toContain('wo."paymentDueDate" IS NOT NULL AND wo."paymentDueDate" < ?');
+
+    await listCompletedWorkOrders({ ...input, overdue: "current" });
+    const currentQuery = (prisma.$queryRaw as ReturnType<typeof vi.fn>).mock.calls[1][0];
+    const currentSql = currentQuery.strings.join("?");
+    expect(currentSql).toContain('wo."paymentDueDate" IS NULL OR wo."paymentDueDate" >= ?');
+  });
+
+  it("returns calculated totals for period and active filters", async () => {
+    const input = {
+      start: new Date("2026-08-03T06:00:00Z"),
+      end: new Date("2026-08-10T06:00:00Z"),
+      payment: "all" as const,
+      assignee: "all" as const,
+      page: 1,
+    };
+
+    (prisma.$queryRaw as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "wo-1",
+        paidCents: BigInt(5_000),
+        activePaymentId: "pay-1",
+        activePaymentMethod: "TRANSFER",
+        activePaymentAmountCents: BigInt(5_000),
+        totalPaidCents: BigInt(15_000),
+        totalPendingCents: BigInt(25_000),
+        totalOverdueCents: BigInt(10_000),
+      },
+    ]);
+
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "wo-1",
+        status: "COMPLETED",
+        completedAt: new Date("2026-08-05T10:00:00Z"),
+        isSpecial: false,
+        paymentDueDate: new Date("2026-08-12T10:00:00Z"),
+        quote: { id: "q-1", number: "COT-01", totalCents: 10_000, items: [], sections: [] },
+        assignments: [],
+      },
+    ]);
+
+    const result = await listCompletedWorkOrders(input);
+
+    expect(result.totals).toEqual({
+      totalPaidCents: 15_000,
+      totalPendingCents: 25_000,
+      totalOverdueCents: 10_000,
+    });
+  });
 });
+

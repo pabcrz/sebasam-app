@@ -296,8 +296,9 @@ describe("work order actions", () => {
         where: { id: "wo-1", status: WorkOrderStatus.ASSIGNED },
         data: expect.objectContaining({ status: WorkOrderStatus.COMPLETED }),
       }));
-      // should set completedAt
+      // should set completedAt and paymentDueDate
       expect(tx.workOrder.updateMany.mock.calls[0][0].data.completedAt).toBeInstanceOf(Date);
+      expect(tx.workOrder.updateMany.mock.calls[0][0].data.paymentDueDate).toBeInstanceOf(Date);
       expect(tx.workAssignment.updateMany).toHaveBeenCalledWith({
         where: {
           workOrderId: "wo-1",

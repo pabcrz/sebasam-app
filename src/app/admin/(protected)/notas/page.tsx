@@ -9,6 +9,8 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  MetricCardGroup,
+  StatCard,
 } from "@/components/ui";
 import { WorkOrderCompletedList } from "@/features/work-orders/components/work-order-completed-list";
 import { correctPaymentAction, recordPaymentAction } from "@/features/payments/actions";
@@ -18,6 +20,7 @@ import { listCustomers } from "@/features/customers/queries";
 import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { getCurrentProfile, isAdminRole } from "@/lib/auth/session";
+import { formatCents } from "@/features/quotes/lib/format";
 
 export const metadata: Metadata = {
   title: "Notas",
@@ -31,9 +34,12 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
     listCustomers(),
     getCurrentProfile(),
   ]);
-  const { workOrders } = result;
+  const { workOrders, totals } = result;
   const quoteMap = new Map(workOrders.map((wo) => [wo.quote.id, wo.quote]));
   const noteReturnTo = notasHref(filters);
+  const selectedCustomer = filters.customerId
+    ? customers.find((c) => c.id === filters.customerId) ?? null
+    : null;
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
@@ -53,7 +59,41 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
           />
         </div>
       </div>
-      <NotasFilters mode={filters.mode} payment={filters.payment} assignee={filters.assignee} anchor={filters.anchor} rangeLabel={filters.rangeLabel} isCurrentWeek={filters.isCurrentWeek} masters={masters} />
+
+      <MetricCardGroup columns={3}>
+        <StatCard
+          label="Pendiente de cobro"
+          value={formatCents(totals.totalPendingCents)}
+          numericRole="currency"
+          iconVariant="warning"
+        />
+        <StatCard
+          label="Saldo vencido"
+          value={formatCents(totals.totalOverdueCents)}
+          numericRole="currency"
+          iconVariant="danger"
+        />
+        <StatCard
+          label="Cobrado en periodo"
+          value={formatCents(totals.totalPaidCents)}
+          numericRole="currency"
+          iconVariant="success"
+        />
+      </MetricCardGroup>
+
+      <NotasFilters
+        mode={filters.mode}
+        payment={filters.payment}
+        assignee={filters.assignee}
+        customerId={filters.customerId}
+        overdue={filters.overdue}
+        anchor={filters.anchor}
+        rangeLabel={filters.rangeLabel}
+        isCurrentWeek={filters.isCurrentWeek}
+        masters={masters}
+        selectedCustomer={selectedCustomer}
+        searchCustomersAction={searchCustomersForQuote}
+      />
 
       <Card className="min-w-0">
         <CardHeader>
@@ -61,10 +101,13 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         </CardHeader>
         <CardContent className="min-w-0">
           {workOrders.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-sm text-[var(--color-text-muted)]">
-                No hay trabajos que coincidan con este periodo y estado de pago.
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+              <p className="max-w-md text-sm text-[var(--color-text-muted)]">
+                No hay trabajos que coincidan con este periodo y filtros seleccionados.
               </p>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/admin/notas">Limpiar filtros</Link>
+              </Button>
             </div>
           ) : (
             <WorkOrderCompletedList

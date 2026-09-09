@@ -11,6 +11,7 @@ const workOrder = {
   id: "work-order-1",
   number: "OT-001",
   status: "COMPLETED",
+  paymentDueDate: new Date("2026-08-21T18:00:00Z"),
   quote: { id: "quote-1", number: "COT-001", customer: { name: "Cliente de prueba" }, vehicle: null, totalCents: 12500, paidCents: 0, remainingCents: 12500 },
   assignments: [],
   completedAt: new Date("2026-08-14"),
@@ -21,16 +22,27 @@ const partialWorkOrder = {
   ...workOrder,
   id: "work-order-2",
   number: "OT-002",
+  paymentDueDate: new Date("2026-08-17T18:00:00Z"),
   quote: { ...workOrder.quote, id: "quote-2", number: "COT-002", paidCents: 5_000, remainingCents: 7_500 },
   completedAt: new Date("2026-08-10T18:00:00Z"),
 } as CompletedListProps["workOrders"][number];
 
-const urgentWorkOrder = {
+const overdueWorkOrder = {
   ...partialWorkOrder,
   id: "work-order-3",
   number: "OT-003",
+  paymentDueDate: new Date("2026-08-06T18:00:00Z"),
   quote: { ...partialWorkOrder.quote, id: "quote-3", number: "COT-003" },
   completedAt: new Date("2026-07-30T18:00:00Z"),
+} as CompletedListProps["workOrders"][number];
+
+const noDueDateWorkOrder = {
+  ...workOrder,
+  id: "work-order-4",
+  number: "OT-004",
+  paymentDueDate: null,
+  quote: { ...workOrder.quote, id: "quote-4", number: "COT-004", paidCents: 0, remainingCents: 12500 },
+  completedAt: new Date("2026-08-14"),
 } as CompletedListProps["workOrders"][number];
 
 describe("WorkOrderCompletedList", () => {
@@ -42,7 +54,12 @@ describe("WorkOrderCompletedList", () => {
   afterEach(() => vi.useRealTimers());
 
   it("uses accessible responsive note actions and renders payment balances only when needed", () => {
-    render(<WorkOrderCompletedList workOrders={[workOrder, partialWorkOrder, urgentWorkOrder]} recordPaymentActions={[{ workOrderId: workOrder.id, action: vi.fn() }]} />);
+    render(
+      <WorkOrderCompletedList
+        workOrders={[workOrder, partialWorkOrder, overdueWorkOrder, noDueDateWorkOrder]}
+        recordPaymentActions={[{ workOrderId: workOrder.id, action: vi.fn() }]}
+      />,
+    );
 
     const print = screen.getByRole("link", { name: "Imprimir nota de remisión OT-001" });
     const payment = screen.getByRole("button", { name: "Registrar pago para COT-001" });
@@ -56,7 +73,8 @@ describe("WorkOrderCompletedList", () => {
     expect(screen.getByText("Sin pago", { exact: true })).toBeVisible();
     expect(screen.queryByText(/Sin pago · Saldo/)).not.toBeInTheDocument();
     expect(screen.getByText(/Pago parcial · Saldo.*75/)).toBeVisible();
-    expect(screen.getByText(/Cobro urgente · Saldo.*75/)).toBeVisible();
+    expect(screen.getByText(/Vencida · Saldo.*75/)).toBeVisible();
+    expect(screen.getByText("Sin fecha de vencimiento", { exact: true })).toBeVisible();
     expect(screen.queryByText("Completada")).not.toBeInTheDocument();
   });
 
