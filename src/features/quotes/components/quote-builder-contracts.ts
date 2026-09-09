@@ -6,7 +6,7 @@ import type { ItemFormValue } from "./quote-builder-shared";
 export type CustomerContactOption = {
   id: string;
   name: string;
-  phone: string;
+  phone?: string | null;
   role: "DRIVER" | "CONTACT" | "BILLING";
   notes?: string | null;
   isActive: boolean;

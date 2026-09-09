@@ -768,6 +768,35 @@ describe("Customer Contact Actions", () => {
       expect(result).toEqual({ success: true, contact: mockContact });
     });
 
+    it("creates a customer contact without phone (optional phone)", async () => {
+      const mockContact = {
+        id: "contact-2",
+        customerId: "cust-1",
+        name: "Don Beto",
+        phone: null,
+        role: "DRIVER",
+        isActive: true,
+      };
+      (prisma.customerContact.create as ReturnType<typeof vi.fn>).mockResolvedValue(mockContact);
+
+      const result = await createCustomerContactAction("cust-1", {
+        name: "Don Beto",
+        role: "DRIVER",
+        isActive: true,
+      });
+
+      expect(prisma.customerContact.create).toHaveBeenCalledWith({
+        data: {
+          customerId: "cust-1",
+          name: "Don Beto",
+          phone: null,
+          role: "DRIVER",
+          isActive: true,
+        },
+      });
+      expect(result).toEqual({ success: true, contact: mockContact });
+    });
+
     it("returns an error if validation fails", async () => {
       const result = await createCustomerContactAction("cust-1", {
         name: "",
@@ -806,6 +835,36 @@ describe("Customer Contact Actions", () => {
           phone: "5598765432",
           role: "BILLING",
           isActive: false,
+        },
+      });
+      expect(result).toEqual({ success: true, contact: updatedContact });
+    });
+
+    it("clears phone when blank is submitted", async () => {
+      const updatedContact = {
+        id: "contact-1",
+        customerId: "cust-1",
+        name: "Juanito Sin Teléfono",
+        phone: null,
+        role: "DRIVER",
+        isActive: true,
+      };
+      (prisma.customerContact.update as ReturnType<typeof vi.fn>).mockResolvedValue(updatedContact);
+
+      const result = await updateCustomerContactAction("contact-1", {
+        name: "Juanito Sin Teléfono",
+        phone: "",
+        role: "DRIVER",
+        isActive: true,
+      });
+
+      expect(prisma.customerContact.update).toHaveBeenCalledWith({
+        where: { id: "contact-1" },
+        data: {
+          name: "Juanito Sin Teléfono",
+          phone: null,
+          role: "DRIVER",
+          isActive: true,
         },
       });
       expect(result).toEqual({ success: true, contact: updatedContact });

@@ -95,4 +95,26 @@ describe("resolveQuoteSnapshots", () => {
       role: "DRIVER",
     });
   });
+
+  it("handles contact with null phone", async () => {
+    const tx = {
+      customerContact: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "contact-2",
+          name: "Chofer Sin Teléfono",
+          phone: null,
+          role: "DRIVER",
+        }),
+      },
+    };
+
+    const result = await resolveQuoteSnapshots(tx as never, null, "contact-2");
+
+    expect(result.contactSnapshot).toEqual({
+      id: "contact-2",
+      name: "Chofer Sin Teléfono",
+      phone: null,
+      role: "DRIVER",
+    });
+  });
 });

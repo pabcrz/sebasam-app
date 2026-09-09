@@ -92,7 +92,7 @@ export function CustomerCreateForm({ action, triggerVariant, triggerClassName, t
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="initialContactPhone">Teléfono del operador</Label>
+                <Label htmlFor="initialContactPhone">Teléfono del operador (opcional)</Label>
                 <Input
                   id="initialContactPhone"
                   name="initialContactPhone"
