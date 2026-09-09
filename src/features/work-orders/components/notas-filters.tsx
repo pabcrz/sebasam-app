@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, Filter, Search, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, FileText, Filter, Search, X } from "lucide-react";
 import {
   Badge,
   Button,
@@ -445,26 +445,36 @@ export function NotasFilters({
 
       {/* Chips de filtros activos si existen */}
       {activeFilterCount > 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <span className="text-xs text-[var(--color-text-muted)]">Filtros aplicados:</span>
-          {draftSelectedCustomer ? (
-            <Badge variant="default" className="flex items-center gap-1 text-xs">
-              <span>Cliente: {draftSelectedCustomer.commercialName || draftSelectedCustomer.name}</span>
-            </Badge>
-          ) : null}
-          {assigneeName ? (
-            <Badge variant="default" className="flex items-center gap-1 text-xs">
-              <span>Responsable: {assigneeName}</span>
-            </Badge>
-          ) : null}
-          {overdue === "overdue" ? (
-            <Badge variant="danger" className="text-xs">
-              Sólo vencidas
-            </Badge>
-          ) : overdue === "current" ? (
-            <Badge variant="info" className="text-xs">
-              Al corriente
-            </Badge>
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-[var(--color-text-muted)]">Filtros aplicados:</span>
+            {draftSelectedCustomer ? (
+              <Badge variant="default" className="flex items-center gap-1 text-xs">
+                <span>Cliente: {draftSelectedCustomer.commercialName || draftSelectedCustomer.name}</span>
+              </Badge>
+            ) : null}
+            {assigneeName ? (
+              <Badge variant="default" className="flex items-center gap-1 text-xs">
+                <span>Responsable: {assigneeName}</span>
+              </Badge>
+            ) : null}
+            {overdue === "overdue" ? (
+              <Badge variant="danger" className="text-xs">
+                Sólo vencidas
+              </Badge>
+            ) : overdue === "current" ? (
+              <Badge variant="info" className="text-xs">
+                Al corriente
+              </Badge>
+            ) : null}
+          </div>
+          {customerId ? (
+            <Button asChild variant="outline" size="sm" className="h-7 text-xs font-medium">
+              <Link href={`/admin/customers/${customerId}/estado-de-cuenta`}>
+                <FileText className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                Estado de cuenta
+              </Link>
+            </Button>
           ) : null}
         </div>
       ) : null}

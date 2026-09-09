@@ -63,6 +63,9 @@ describe("CustomerDetailPage", () => {
     expect(screen.getByText("contacto@cdn.mx")).toBeInTheDocument();
     expect(screen.getByText("Facturar al cierre del mes.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
+    const statementLink = screen.getByRole("link", { name: /estado de cuenta/i });
+    expect(statementLink).toBeInTheDocument();
+    expect(statementLink).toHaveAttribute("href", `/admin/customers/${customer.id}/estado-de-cuenta`);
     expect(screen.queryByTestId("customer-edit-form")).not.toBeInTheDocument();
     expect(getCustomerByIdMock).toHaveBeenCalledWith(customer.id);
     expect(getCustomerAccountStatementMock).toHaveBeenCalledWith(customer.id);
