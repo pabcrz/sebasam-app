@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { listPaginatedQuotes, listQuotes } from "./queries";
+import { listPaginatedQuotes, listQuotes, listQuotesByIds } from "./queries";
 import { getQuotePaidTotals } from "@/features/payments/queries";
 
 vi.mock("@/lib/prisma", () => ({
@@ -211,6 +211,40 @@ where: { deletedAt: null, customerId: "cust-1", status: { notIn: ["ARCHIVED"] } 
       }],
       activeSharedQuote: relationPayload.sharedQuotes[0],
     });
+  });
+
+  it("lists only the requested ids", async () => {
+    await listQuotesByIds(["quote-1", "quote-2"]);
+
+    const call = getFindManyCall();
+    expect(call.where).toEqual({
+      id: { in: ["quote-1", "quote-2"] },
+      deletedAt: null,
+    });
+  });
+
+  it("does not turn invalid ids into an unfiltered quote query", async () => {
+    await expect(listQuotesByIds([])).resolves.toEqual([]);
+
+    expect(prisma.quote.findMany).not.toHaveBeenCalled();
+    expect(getQuotePaidTotals).not.toHaveBeenCalled();
+  });
+
+  it("does not serialize an unrelated historical overpayment", async () => {
+    (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{
+      id: "active-quote",
+      number: "C-ACTIVE",
+      totalCents: 10000,
+      subtotalCents: 10000,
+      taxCents: 0,
+      sections: [],
+      items: [],
+      sharedQuotes: [],
+    }]);
+    (getQuotePaidTotals as ReturnType<typeof vi.fn>).mockResolvedValue(new Map([["active-quote", 10000]]));
+
+    await expect(listQuotesByIds(["active-quote"])).resolves.toHaveLength(1);
+    expect(getQuotePaidTotals).toHaveBeenCalledWith(["active-quote"]);
   });
 
   it("filters by customerId", async () => {

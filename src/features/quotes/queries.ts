@@ -1,4 +1,5 @@
 import { Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { quoteFilterSchema, quoteListPageSchema, type QuoteFilterInput } from "./schemas";
@@ -53,7 +54,6 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
   }
 
   where.deletedAt = null;
-
 
   if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
     where.status = filters.status as QuoteStatus;
@@ -225,6 +225,19 @@ async function serializeQuotes(quotes: Awaited<ReturnType<typeof findQuotes>>) {
 export async function listQuotes(input: unknown = {}, options: QuoteListOptions = {}) {
   await requireOperationalRole();
   return serializeQuotes(await findQuotes(buildQuoteWhere(input, options)));
+}
+
+const quoteIdsSchema = z.array(z.string().trim().min(1)).min(1);
+
+/** Internal lookup for callers that already own the quote IDs to render. */
+export async function listQuotesByIds(ids: readonly string[]) {
+  await requireOperationalRole();
+
+  const parsedIds = quoteIdsSchema.safeParse(ids);
+  if (!parsedIds.success) return [];
+
+  const uniqueIds = [...new Set(parsedIds.data)];
+  return serializeQuotes(await findQuotes({ id: { in: uniqueIds }, deletedAt: null }));
 }
 
 export async function listPaginatedQuotes(input: unknown = {}, options: QuoteListOptions = {}) {
