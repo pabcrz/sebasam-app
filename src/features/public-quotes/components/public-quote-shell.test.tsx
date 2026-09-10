@@ -7,7 +7,9 @@ describe("PublicQuoteShell", () => {
     const { container } = render(<PublicQuoteShell>content</PublicQuoteShell>);
 
     expect(container.firstElementChild).toHaveClass("min-h-screen");
-    expect(container.firstElementChild).toHaveClass("print:min-h-[235mm]");
+    expect(container.firstElementChild).toHaveClass("print:min-h-[255mm]");
+    expect(container.firstElementChild).toHaveClass("print:px-[14mm]");
+    expect(container.firstElementChild).toHaveClass("print:py-[12mm]");
   });
 
   it("renders the approved quote brand treatment and subtitle", () => {

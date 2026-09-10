@@ -95,7 +95,7 @@ export function QuoteDocumentView({
       : formatSnapshotVehicle(quote.vehicleSnapshot));
 
   return (
-    <div className="relative min-h-screen bg-[var(--background)] flex flex-col print:min-h-0 print:block print:w-full">
+    <div className="relative min-h-screen bg-[var(--background)] flex flex-col print:min-h-0 print:w-full print:flex print:flex-col print:flex-1 print:overflow-visible">
       {controls}
       <PublicQuoteShell
         business={toPublicBusinessIdentity(paymentSettings)}
