@@ -1,0 +1,45 @@
+name: Reporte de defecto
+description: Informe un comportamiento incorrecto con el contexto necesario para investigarlo.
+title: "bug: "
+labels:
+  - "type:bug"
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: Describa qué ocurrió y a quién o qué proceso afecta.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Pasos para reproducir
+      description: Indique los pasos mínimos para observar el problema.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Comportamiento esperado
+      description: Explique qué debería ocurrir en su lugar.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence-context
+    attributes:
+      label: Evidencia y contexto
+      description: Incluya capturas, mensajes de error, entorno o información adicional relevante.
+    validations:
+      required: true
+  - type: checkboxes
+    id: prior-search
+    attributes:
+      label: Búsqueda previa
+      options:
+        - label: He buscado reportes existentes antes de crear este formulario.
+          required: true
