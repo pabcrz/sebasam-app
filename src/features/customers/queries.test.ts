@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { getCustomerAccountStatement, getCustomerDeletionBlocker, listCustomers } from "./queries";
@@ -199,11 +200,15 @@ describe("getCustomerAccountStatement", () => {
     ]);
   });
 
-  it("uses approved quotes and confirmed payments for the accumulated balance", async () => {
+  it("uses approved quotes with completed work orders and confirmed payments for the accumulated balance", async () => {
     const statement = await getCustomerAccountStatement("customer-1");
 
     expect(prisma.quote.findMany).toHaveBeenCalledWith({
-      where: { customerId: "customer-1", status: "APPROVED" },
+      where: {
+        customerId: "customer-1",
+        status: "APPROVED",
+        workOrder: { status: WorkOrderStatus.COMPLETED },
+      },
       select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true },
     });
     expect(prisma.payment.aggregate).toHaveBeenCalledWith({
