@@ -4,7 +4,7 @@ import { DashboardView } from "./dashboard-view";
 import { KpiPeriodMetrics } from "./kpi-period-metrics";
 import { PayrollEstimateCard } from "./payroll-estimate-card";
 import { QueueSnapshotCards } from "./queue-snapshot-cards";
-import { PendingAttentionSection } from "./pending-attention-section";
+import { ReceivablesSection } from "./receivables-section";
 
 describe("KpiPeriodMetrics", () => {
   const sampleKpis = {
@@ -108,9 +108,9 @@ describe("PayrollEstimateCard", () => {
 
 describe("QueueSnapshotCards", () => {
   it("uses the shared count role instead of a larger queue-specific scale", () => {
-    render(<QueueSnapshotCards queues={{ commercialQueueCount: 12, activeExecutionCount: 8 }} />);
+    render(<QueueSnapshotCards queues={{ draftQuotesCount: 12, sentQuotesCount: 7, approvedQuotesCount: 4, activeExecutionCount: 8 }} />);
 
-    for (const value of ["12", "8"]) {
+    for (const value of ["12", "7", "4", "8"]) {
       expect(screen.getByText(value)).toHaveAttribute("data-numeric-role", "count");
       expect(screen.getByText(value)).toHaveClass("text-2xl", "font-mono", "tabular-nums");
       expect(screen.getByText(value)).not.toHaveClass("text-3xl");
@@ -118,76 +118,32 @@ describe("QueueSnapshotCards", () => {
   });
 
   it("renders each queue as a single link to its management screen", () => {
-    render(<QueueSnapshotCards queues={{ commercialQueueCount: 12, activeExecutionCount: 8 }} />);
+    render(<QueueSnapshotCards queues={{ draftQuotesCount: 12, sentQuotesCount: 7, approvedQuotesCount: 4, activeExecutionCount: 8 }} />);
 
-    const quoteLink = screen.getByRole("link", { name: /cotizaciones · 12/i });
-    expect(quoteLink).toHaveAttribute("href", "/admin/quotes");
-    expect(quoteLink).toHaveAttribute("title", "Cotizaciones · 12");
+    expect(screen.getByRole("link", { name: /enviar cotizaciones borrador · 12/i })).toHaveAttribute("href", "/admin/quotes?status=DRAFT");
+    expect(screen.getByRole("link", { name: /dar seguimiento a cotizaciones enviadas · 7/i })).toHaveAttribute("href", "/admin/quotes?status=SENT");
+    expect(screen.getByRole("link", { name: /asignar o iniciar trabajos aprobados · 4/i })).toHaveAttribute("href", "/admin/quotes?status=APPROVED");
 
-    const workOrderLink = screen.getByRole("link", { name: /trabajos · 8/i });
+    const workOrderLink = screen.getByRole("link", { name: /completar trabajos activos · 8/i });
     expect(workOrderLink).toHaveAttribute("href", "/admin/work-orders");
-    expect(workOrderLink).toHaveAttribute("title", "Trabajos · 8");
   });
 });
 
-describe("PendingAttentionSection", () => {
-  it("renders empty state when there are no pending attention items", () => {
-    render(<PendingAttentionSection items={[]} />);
-
-    expect(screen.getByText("Por atender")).toBeInTheDocument();
-    expect(screen.getByText("Nada pendiente por ahora")).toBeInTheDocument();
-    expect(screen.getByText("Todas las cotizaciones y trabajos activos están al día.")).toBeInTheDocument();
-  });
-
-  it("renders pending attention items with customer, vehicle, status, and next step", () => {
-    render(
-      <PendingAttentionSection
-        items={[
-          {
-            id: "q-1",
-            type: "quote",
-            href: "/admin/quotes/q-1",
-            customerName: "Juan Pérez",
-            vehicleDescription: "Nissan Versa 2021",
-            statusLabel: "Borrador",
-            statusVariant: "warning",
-            nextStep: "Enviar cotización",
-            updatedAt: new Date("2026-08-20T10:00:00.000Z"),
-          },
-          {
-            id: "wo-1",
-            type: "work_order",
-            href: "/admin/work-orders/wo-1",
-            customerName: "María López",
-            vehicleDescription: "Ford Ranger 2019",
-            statusLabel: "En progreso",
-            statusVariant: "info",
-            nextStep: "Finalizar trabajo",
-            updatedAt: new Date("2026-08-20T11:00:00.000Z"),
-          },
-        ]}
-      />
-    );
-
-    expect(screen.getByText("Juan Pérez")).toBeInTheDocument();
-    expect(screen.getByText("Nissan Versa 2021")).toBeInTheDocument();
-    expect(screen.getByText("Borrador")).toBeInTheDocument();
-    expect(screen.getByText("Enviar cotización")).toBeInTheDocument();
-
-    expect(screen.getByText("María López")).toBeInTheDocument();
-    expect(screen.getByText("Ford Ranger 2019")).toBeInTheDocument();
-    expect(screen.getByText("En progreso")).toBeInTheDocument();
-    expect(screen.getByText("Finalizar trabajo")).toBeInTheDocument();
-
-    expect(screen.getByRole("link", { name: /juan pérez/i })).toHaveAttribute("href", "/admin/quotes/q-1");
-    expect(screen.getByRole("link", { name: /maría lópez/i })).toHaveAttribute("href", "/admin/work-orders/wo-1");
+describe("ReceivablesSection", () => {
+  it("links each customer balance to its account statement and identifies overdue debt", () => {
+    render(<ReceivablesSection customers={[{ customerId: "customer-1", customerName: "Transportes Norte", pendingBalanceCents: 12_500, oldestUnpaidDate: new Date("2026-08-10"), isOverdue: true }]} />);
+    expect(screen.getByText("Finanzas")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Cuentas por cobrar" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /transportes norte/i })).toHaveAttribute("href", "/admin/customers/customer-1/estado-de-cuenta");
+    expect(screen.getByText("Saldo vencido")).toBeInTheDocument();
+    expect(screen.getByText("$125.00")).toBeInTheDocument();
   });
 });
 
 describe("DashboardView", () => {
   const sampleSnapshot = {
-    queues: { commercialQueueCount: 12, activeExecutionCount: 8 },
-    pendingAttention: [],
+    queues: { draftQuotesCount: 12, sentQuotesCount: 7, approvedQuotesCount: 4, activeExecutionCount: 8 },
+    receivables: [],
     kpis: {
       week: {
         period: "week" as const,
@@ -247,7 +203,7 @@ describe("DashboardView", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Inicio" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /nuevo cliente/i })).not.toBeInTheDocument();
-    expect(screen.getByText("Por atender")).toBeInTheDocument();
+    expect(screen.getByText("Cuentas por cobrar")).toBeInTheDocument();
     expect(screen.getByText("Resumen del período")).toBeInTheDocument();
     expect(screen.getByText("Módulos del Sistema")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Clientes" })).toBeInTheDocument();

@@ -1,37 +1,105 @@
-import { AssignmentStatus, PaymentStatus, QuoteItemType, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { AssignmentStatus, PaymentStatus, QuoteItemType, QuoteStatus, SettlementAgreementStatus, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { buildWeeklyPayrollReport, type PayrollItemInput, type RawWorkOrderForPayroll } from "@/features/payroll/domain";
 import { getDashboardPeriodRanges } from "./period";
+import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
+import { calculateDefaultPaymentDueDate, isNoteOverdue } from "@/features/work-orders/receivables-policy";
 import type {
   DashboardPeriodKey,
   OperationalDashboardSnapshot,
-  PendingAttentionItem,
   PeriodMetrics,
   QueueMetrics,
+  ReceivableCustomer,
   WeeklyPayrollEstimate,
 } from "./types";
+
+type ReceivableWorkOrder = {
+  completedAt: Date | null;
+  paymentDueDate: Date | null;
+  quote: {
+    customer: { id: string; name: string } | null;
+    paymentDueDate: Date | null;
+    subtotalCents: number | null;
+    taxCents: number | null;
+    totalCents: number | null;
+    settlementAgreement: {
+      id: string;
+      status: SettlementAgreementStatus;
+      settlementBaseCents: number;
+      settlementTaxCents: number;
+      settlementTotalCents: number;
+    } | null;
+  };
+  paymentApplications: Array<{ amountCents: number }>;
+};
+
+export function aggregateReceivablesByCustomer(
+  workOrders: ReceivableWorkOrder[],
+  now = new Date(),
+): ReceivableCustomer[] {
+  const customers = new Map<string, ReceivableCustomer>();
+
+  for (const workOrder of workOrders) {
+    const customer = workOrder.quote.customer;
+    if (!customer) continue;
+
+    const totalCents = getEffectiveSettlementTotals(
+      workOrder.quote,
+      workOrder.quote.settlementAgreement,
+    ).totalCents;
+    const appliedCents = workOrder.paymentApplications.reduce((sum, application) => sum + application.amountCents, 0);
+    const pendingBalanceCents = Math.max(0, totalCents - appliedCents);
+    if (pendingBalanceCents === 0) continue;
+
+    const dueDate = workOrder.paymentDueDate
+      ?? workOrder.quote.paymentDueDate
+      ?? (workOrder.completedAt ? calculateDefaultPaymentDueDate(workOrder.completedAt) : null);
+    const oldestUnpaidDate = dueDate ?? workOrder.completedAt;
+    const existing = customers.get(customer.id);
+    const isOverdue = isNoteOverdue({ paymentDueDate: dueDate, pendingBalanceCents, now });
+
+    customers.set(customer.id, {
+      customerId: customer.id,
+      customerName: customer.name,
+      pendingBalanceCents: (existing?.pendingBalanceCents ?? 0) + pendingBalanceCents,
+      oldestUnpaidDate: !existing?.oldestUnpaidDate || (oldestUnpaidDate && oldestUnpaidDate < existing.oldestUnpaidDate)
+        ? oldestUnpaidDate
+        : existing.oldestUnpaidDate,
+      isOverdue: Boolean(existing?.isOverdue || isOverdue),
+    });
+  }
+
+  return [...customers.values()].sort((left, right) => {
+    if (left.isOverdue !== right.isOverdue) return left.isOverdue ? -1 : 1;
+    const leftTime = left.oldestUnpaidDate?.getTime() ?? Number.POSITIVE_INFINITY;
+    const rightTime = right.oldestUnpaidDate?.getTime() ?? Number.POSITIVE_INFINITY;
+    if (leftTime !== rightTime) return leftTime - rightTime;
+    if (left.pendingBalanceCents !== right.pendingBalanceCents) return right.pendingBalanceCents - left.pendingBalanceCents;
+    return left.customerName.localeCompare(right.customerName, "es-MX");
+  });
+}
 
 export async function getOperationalDashboardSnapshot(now = new Date()): Promise<OperationalDashboardSnapshot> {
   await requireOperationalRole();
 
   const ranges = getDashboardPeriodRanges(now);
 
-  // 1. Live Queues & Items Pending Attention
-  const [commercialQueueCount, activeExecutionCount, pendingQuotes, pendingWorkOrders] = await Promise.all([
+  const [draftQuotesCount, sentQuotesCount, approvedQuotesCount, activeExecutionCount, receivableWorkOrders] = await Promise.all([
     prisma.quote.count({
       where: {
         deletedAt: null,
-        status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.APPROVED] },
+        status: QuoteStatus.DRAFT,
+      },
+    }),
+    prisma.quote.count({ where: { deletedAt: null, status: QuoteStatus.SENT } }),
+    prisma.quote.count({
+      where: {
+        deletedAt: null,
+        status: QuoteStatus.APPROVED,
         OR: [
           { workOrder: null },
-          {
-            workOrder: {
-              status: {
-                notIn: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED],
-              },
-            },
-          },
+          { workOrder: { status: { notIn: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED] } } },
         ],
       },
     }),
@@ -40,108 +108,36 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
         status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
       },
     }),
-    prisma.quote.findMany({
-      where: {
-        deletedAt: null,
-        status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.APPROVED] },
-        OR: [
-          { workOrder: null },
-          {
-            workOrder: {
-              status: {
-                notIn: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED],
-              },
-            },
-          },
-        ],
-      },
-      include: {
-        customer: { select: { name: true } },
-        vehicle: { select: { brand: true, model: true, year: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 6,
-    }),
     prisma.workOrder.findMany({
       where: {
-        status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
+        status: WorkOrderStatus.COMPLETED,
+        quote: { customerId: { not: null } },
       },
       include: {
         quote: {
           include: {
-            customer: { select: { name: true } },
-            vehicle: { select: { brand: true, model: true, year: true } },
+            customer: { select: { id: true, name: true } },
+            settlementAgreement: true,
           },
         },
+        paymentApplications: {
+          where: {
+            reversedAt: null,
+            payment: { status: PaymentStatus.PAID, reversedAt: null },
+          },
+          select: { amountCents: true },
+        },
       },
-      orderBy: { updatedAt: "desc" },
-      take: 6,
     }),
   ]);
 
   const queues: QueueMetrics = {
-    commercialQueueCount,
+    draftQuotesCount,
+    sentQuotesCount,
+    approvedQuotesCount,
     activeExecutionCount,
   };
-
-  const pendingAttention: PendingAttentionItem[] = [
-    ...pendingQuotes.map((q) => {
-      let statusLabel = "Borrador";
-      let statusVariant: PendingAttentionItem["statusVariant"] = "warning";
-      let nextStep = "Enviar cotización";
-      if (q.status === QuoteStatus.SENT) {
-        statusLabel = "Enviada";
-        statusVariant = "info";
-        nextStep = "Esperando respuesta / Aprobar";
-      } else if (q.status === QuoteStatus.APPROVED) {
-        statusLabel = "Aprobada";
-        statusVariant = "success";
-        nextStep = "Iniciar trabajo";
-      }
-
-      const vehicleParts = q.vehicle
-        ? [q.vehicle.brand, q.vehicle.model, q.vehicle.year ? String(q.vehicle.year) : ""].filter(Boolean)
-        : [];
-      const vehicleDescription = vehicleParts.length > 0 ? vehicleParts.join(" ") : "Sin vehículo";
-
-      return {
-        id: q.id,
-        type: "quote" as const,
-        href: `/admin/quotes/${q.id}`,
-        customerName: q.customer?.name || "Sin cliente",
-        vehicleDescription,
-        statusLabel,
-        statusVariant,
-        nextStep,
-        updatedAt: q.updatedAt,
-      };
-    }),
-    ...pendingWorkOrders.map((wo) => {
-      const isAssigned = wo.status === WorkOrderStatus.ASSIGNED;
-      const statusLabel = isAssigned ? "Asignado" : "En progreso";
-      const nextStep = isAssigned ? "Comenzar trabajo" : "Finalizar trabajo";
-
-      const vehicle = wo.quote?.vehicle;
-      const vehicleParts = vehicle
-        ? [vehicle.brand, vehicle.model, vehicle.year ? String(vehicle.year) : ""].filter(Boolean)
-        : [];
-      const vehicleDescription = vehicleParts.length > 0 ? vehicleParts.join(" ") : "Sin vehículo";
-
-      return {
-        id: wo.id,
-        type: "work_order" as const,
-        href: `/admin/work-orders/${wo.id}`,
-        customerName: wo.quote?.customer?.name || "Sin cliente",
-        vehicleDescription,
-        statusLabel,
-        statusVariant: "info" as const,
-        nextStep,
-        updatedAt: wo.updatedAt,
-      };
-    }),
-  ]
-    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-    .slice(0, 6);
+  const receivables = aggregateReceivablesByCustomer(receivableWorkOrders, now);
 
   // 2. Payments Collected per Period (grouped by createdAt for status=PAID)
   const [weekPayments, monthPayments, yearPayments] = await Promise.all([
@@ -434,7 +430,7 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
   return {
     generatedAt: now,
     queues,
-    pendingAttention,
+    receivables,
     kpis,
     weeklyPayroll,
   };

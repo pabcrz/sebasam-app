@@ -1,0 +1,57 @@
+import Link from "next/link";
+import { ArrowRight, CircleDollarSign, CheckCircle2 } from "lucide-react";
+import { Card, SectionLabel } from "@/components/ui";
+import { formatCents } from "@/features/quotes/lib/format";
+import type { ReceivableCustomer } from "../types";
+
+interface ReceivablesSectionProps {
+  customers: ReceivableCustomer[];
+}
+
+export function ReceivablesSection({ customers }: ReceivablesSectionProps) {
+  return (
+    <section aria-labelledby="receivables-heading">
+      <div className="mb-3 flex items-center gap-2">
+        <CircleDollarSign className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
+        <div>
+          <SectionLabel>Finanzas</SectionLabel>
+          <h2 id="receivables-heading" className="text-base font-semibold text-[var(--color-text-main)]">
+            Cuentas por cobrar
+          </h2>
+        </div>
+      </div>
+
+      {customers.length === 0 ? (
+        <Card className="flex flex-col items-center justify-center border-dashed p-6 text-center">
+          <CheckCircle2 className="mb-2 h-8 w-8 text-[var(--color-status-success)]" aria-hidden="true" />
+          <p className="text-sm font-semibold text-[var(--color-text-main)]">No hay saldos pendientes por cobrar</p>
+        </Card>
+      ) : (
+        <div className="divide-y divide-[var(--color-border-light)] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-xs">
+          {customers.map((customer) => (
+            <Link
+              key={customer.customerId}
+              href={`/admin/customers/${customer.customerId}/estado-de-cuenta`}
+              className="group flex items-center justify-between gap-3 p-3.5 transition-colors hover:bg-[var(--color-bg-soft)] active-press-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[var(--color-text-main)] group-hover:text-[var(--color-primary)]">
+                  {customer.customerName}
+                </p>
+                <p className={customer.isOverdue ? "text-xs font-semibold text-[var(--color-status-danger)]" : "text-xs text-[var(--color-text-muted)]"}>
+                  {customer.isOverdue ? "Saldo vencido" : "Saldo pendiente"}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-sm font-bold tabular-nums text-[var(--color-total-emphasis)]">
+                  {formatCents(customer.pendingBalanceCents)}
+                </span>
+                <ArrowRight className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]" aria-hidden="true" />
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
