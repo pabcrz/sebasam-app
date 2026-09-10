@@ -123,11 +123,7 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
   ]);
 
   if (result.kind === "error") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4">
-        <SharedQuoteErrorState type={result.errorType} />
-      </div>
-    );
+    return <SharedQuoteErrorState type={result.errorType} />;
   }
 
   return (
