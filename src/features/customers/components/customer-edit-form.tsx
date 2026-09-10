@@ -16,6 +16,8 @@ import {
 export interface CustomerEditFormCustomer {
   id: string;
   name: string;
+  commercialName?: string | null;
+  legalName?: string | null;
   email: string | null;
   phone: string | null;
   address: string | null;
@@ -42,6 +44,24 @@ export function CustomerEditForm({ action, customer }: CustomerEditFormProps) {
         <div className="grid gap-2">
           <Label htmlFor="name">Nombre</Label>
           <Input id="name" name="name" defaultValue={customer.name} required />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="commercialName">Nombre comercial (opcional)</Label>
+          <Input
+            id="commercialName"
+            name="commercialName"
+            defaultValue={customer.commercialName ?? ""}
+            placeholder="Ej. The Bimb's / Grúas Mejía"
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="legalName">Razón social formal (opcional)</Label>
+          <Input
+            id="legalName"
+            name="legalName"
+            defaultValue={customer.legalName ?? ""}
+            placeholder="Ej. Grúas Mejía Cuautla S.A. de C.V."
+          />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="status">Estado</Label>

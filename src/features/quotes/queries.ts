@@ -1,4 +1,5 @@
 import { Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { quoteFilterSchema, quoteListPageSchema, type QuoteFilterInput } from "./schemas";
@@ -11,6 +12,8 @@ export async function getQuoteById(quoteId: string) {
     where: { id: quoteId },
     include: {
       customer: true,
+      customerContact: true,
+      customerFiscalProfile: true,
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
       sections: { 
@@ -52,7 +55,6 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
 
   where.deletedAt = null;
 
-
   if (filters.status && Object.values(QuoteStatus).includes(filters.status as QuoteStatus)) {
     where.status = filters.status as QuoteStatus;
   } else if (options.operationalQueue === "quotes") {
@@ -76,11 +78,34 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
     where.number = { contains: filters.number, mode: "insensitive" };
   }
 
+  const searchOrs: Prisma.QuoteWhereInput[] = [];
+
   if (filters.plate) {
     const plateSearch = filters.plate;
-    where.OR = [
-      { vehicle: { plate: { contains: plateSearch, mode: "insensitive" } } },
-      { vehicleSnapshot: { path: ["plate"], string_contains: plateSearch } },
+    searchOrs.push({
+      OR: [
+        { vehicle: { plate: { contains: plateSearch, mode: "insensitive" } } },
+        { vehicleSnapshot: { path: ["plate"], string_contains: plateSearch } },
+      ],
+    });
+  }
+
+  if (filters.economicNumber) {
+    const ecoSearch = filters.economicNumber;
+    searchOrs.push({
+      OR: [
+        { vehicle: { economicNumber: { contains: ecoSearch, mode: "insensitive" } } },
+        { vehicleSnapshot: { path: ["economicNumber"], string_contains: ecoSearch } },
+      ],
+    });
+  }
+
+  if (searchOrs.length === 1) {
+    where.OR = searchOrs[0].OR;
+  } else if (searchOrs.length > 1) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+      ...searchOrs,
     ];
   }
 
@@ -119,6 +144,8 @@ const quoteListInclude = {
       },
     },
   },
+  customerContact: true,
+  customerFiscalProfile: true,
   vehicle: true,
   items: { orderBy: { sortOrder: "asc" } },
   sections: {
@@ -198,6 +225,19 @@ async function serializeQuotes(quotes: Awaited<ReturnType<typeof findQuotes>>) {
 export async function listQuotes(input: unknown = {}, options: QuoteListOptions = {}) {
   await requireOperationalRole();
   return serializeQuotes(await findQuotes(buildQuoteWhere(input, options)));
+}
+
+const quoteIdsSchema = z.array(z.string().trim().min(1)).min(1);
+
+/** Internal lookup for callers that already own the quote IDs to render. */
+export async function listQuotesByIds(ids: readonly string[]) {
+  await requireOperationalRole();
+
+  const parsedIds = quoteIdsSchema.safeParse(ids);
+  if (!parsedIds.success) return [];
+
+  const uniqueIds = [...new Set(parsedIds.data)];
+  return serializeQuotes(await findQuotes({ id: { in: uniqueIds }, deletedAt: null }));
 }
 
 export async function listPaginatedQuotes(input: unknown = {}, options: QuoteListOptions = {}) {

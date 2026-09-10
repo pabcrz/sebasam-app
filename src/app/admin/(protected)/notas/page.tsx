@@ -9,12 +9,18 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  MetricCardGroup,
+  StatCard,
 } from "@/components/ui";
 import { WorkOrderCompletedList } from "@/features/work-orders/components/work-order-completed-list";
 import { correctPaymentAction, recordPaymentAction } from "@/features/payments/actions";
-import { rollbackWorkOrderAction } from "@/features/work-orders/actions";
+import { createDirectNoteFromWorkspace, rollbackWorkOrderAction } from "@/features/work-orders/actions";
 import { listActiveMasters } from "@/features/workers/queries";
+import { listCustomers } from "@/features/customers/queries";
+import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
+import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { getCurrentProfile, isAdminRole } from "@/lib/auth/session";
+import { formatCents } from "@/features/quotes/lib/format";
 
 export const metadata: Metadata = {
   title: "Notas",
@@ -22,10 +28,18 @@ export const metadata: Metadata = {
 
 export default async function NotasPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const filters = parseNotasParams(await searchParams);
-  const [result, masters, currentProfile] = await Promise.all([listCompletedWorkOrders(filters), listActiveMasters(), getCurrentProfile()]);
-  const { workOrders } = result;
+  const [result, masters, customers, currentProfile] = await Promise.all([
+    listCompletedWorkOrders(filters),
+    listActiveMasters(),
+    listCustomers(),
+    getCurrentProfile(),
+  ]);
+  const { workOrders, totals } = result;
   const quoteMap = new Map(workOrders.map((wo) => [wo.quote.id, wo.quote]));
   const noteReturnTo = notasHref(filters);
+  const selectedCustomer = filters.customerId
+    ? customers.find((c) => c.id === filters.customerId) ?? null
+    : null;
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
@@ -33,8 +47,53 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
           Notas
         </h1>
+        <div className="hidden sm:block">
+          <QuoteBuilderDialog
+            customers={customers}
+            createAction={createDirectNoteFromWorkspace}
+            createCustomerAction={createOrReuseCustomerForQuote}
+            searchCustomersAction={searchCustomersForQuote}
+            mode="direct-note"
+            masters={masters}
+            triggerLabel="Nueva nota"
+          />
+        </div>
       </div>
-      <NotasFilters mode={filters.mode} payment={filters.payment} assignee={filters.assignee} anchor={filters.anchor} rangeLabel={filters.rangeLabel} isCurrentWeek={filters.isCurrentWeek} masters={masters} />
+
+      <MetricCardGroup columns={3}>
+        <StatCard
+          label="Pendiente de cobro"
+          value={formatCents(totals.totalPendingCents)}
+          numericRole="currency"
+          iconVariant="warning"
+        />
+        <StatCard
+          label="Saldo vencido"
+          value={formatCents(totals.totalOverdueCents)}
+          numericRole="currency"
+          iconVariant="danger"
+        />
+        <StatCard
+          label="Cobrado en periodo"
+          value={formatCents(totals.totalPaidCents)}
+          numericRole="currency"
+          iconVariant="success"
+        />
+      </MetricCardGroup>
+
+      <NotasFilters
+        mode={filters.mode}
+        payment={filters.payment}
+        assignee={filters.assignee}
+        customerId={filters.customerId}
+        overdue={filters.overdue}
+        anchor={filters.anchor}
+        rangeLabel={filters.rangeLabel}
+        isCurrentWeek={filters.isCurrentWeek}
+        masters={masters}
+        selectedCustomer={selectedCustomer}
+        searchCustomersAction={searchCustomersForQuote}
+      />
 
       <Card className="min-w-0">
         <CardHeader>
@@ -42,10 +101,13 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         </CardHeader>
         <CardContent className="min-w-0">
           {workOrders.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-sm text-[var(--color-text-muted)]">
-                No hay trabajos que coincidan con este periodo y estado de pago.
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+              <p className="max-w-md text-sm text-[var(--color-text-muted)]">
+                No hay trabajos que coincidan con este periodo y filtros seleccionados.
               </p>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/admin/notas">Limpiar filtros</Link>
+              </Button>
             </div>
           ) : (
             <WorkOrderCompletedList
@@ -71,6 +133,25 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
           </div>
         </CardContent>
       </Card>
+
+      {/* Mobile Floating Action Button */}
+      <div
+        className="fixed right-4 z-40 sm:hidden"
+        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <QuoteBuilderDialog
+          customers={customers}
+          createAction={createDirectNoteFromWorkspace}
+          createCustomerAction={createOrReuseCustomerForQuote}
+          searchCustomersAction={searchCustomersForQuote}
+          mode="direct-note"
+          masters={masters}
+          triggerLabel="Nueva nota"
+          triggerVariant="primary"
+          triggerSize="sm"
+          triggerClassName="h-11 px-4 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-1.5 border border-white/20"
+        />
+      </div>
     </section>
   );
 }

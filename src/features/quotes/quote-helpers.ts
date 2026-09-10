@@ -58,8 +58,11 @@ export function quoteFormDataToInput(formData: FormData) {
 
   return {
     customerId: formData.get("customerId"),
+    customerContactId: formData.get("customerContactId"),
+    customerFiscalProfileId: formData.get("customerFiscalProfileId"),
     vehicle: {
       plate: formData.get("plate"),
+      economicNumber: formData.get("economicNumber"),
       brand: formData.get("brand"),
       model: formData.get("model"),
       color: undefined,
@@ -82,6 +85,7 @@ export function nullableOptional(value: string | undefined) {
 export function hasVehicleData(vehicle: QuoteVehicleInput): boolean {
   return (
     vehicle.plate !== undefined ||
+    vehicle.economicNumber !== undefined ||
     vehicle.brand !== undefined ||
     vehicle.model !== undefined ||
     vehicle.color !== undefined ||
@@ -93,6 +97,7 @@ export function buildVehicleInput(customerId: string | undefined, vehicle: Quote
   return {
     customerId: customerId ?? "",
     plate: vehicle.plate,
+    economicNumber: vehicle.economicNumber,
     brand: vehicle.brand,
     model: vehicle.model,
     color: vehicle.color,

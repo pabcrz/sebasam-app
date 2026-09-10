@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import {
   applyCustomerCredit,
   correctPayment,
+  getCustomerBalanceSummary,
   getCustomerCreditSummary,
   getNoteFinancialSummary,
   lockPaymentMutationScope,
@@ -157,10 +158,18 @@ function createMockDb(initialState?: Partial<Store>) {
         return store.quotes.get(where.id) ?? null;
       }),
       findMany: vi.fn().mockImplementation(async ({ where }) => {
-        if (where?.id?.in) {
-          return Array.from(store.quotes.values()).filter((q) => where.id.in.includes(q.id));
+        let quotes = Array.from(store.quotes.values());
+        if (where?.id?.in) quotes = quotes.filter((q) => where.id.in.includes(q.id));
+        if (where?.customerId) quotes = quotes.filter((q) => q.customerId === where.customerId);
+        if (where?.status) quotes = quotes.filter((q) => q.status === where.status);
+        if (where?.workOrder?.status) {
+          quotes = quotes.filter((q) =>
+            Array.from(store.workOrders.values()).some(
+              (workOrder) => workOrder.quoteId === q.id && workOrder.status === where.workOrder.status,
+            ),
+          );
         }
-        return Array.from(store.quotes.values());
+        return quotes;
       }),
       aggregate: vi.fn().mockImplementation(async ({ where }) => {
         let total = 0;
@@ -439,6 +448,23 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
     vi.clearAllMocks();
   });
 
+  it("includes only approved quotes with completed work orders in the customer balance", async () => {
+    const quotes = new Map<string, QuoteDouble>([
+      ["quote-incomplete", { id: "quote-incomplete", customerId: "cust-1", status: QuoteStatus.APPROVED, totalCents: 10_000 }],
+      ["quote-completed", { id: "quote-completed", customerId: "cust-1", status: QuoteStatus.APPROVED, totalCents: 15_000 }],
+    ]);
+    const workOrders = new Map<string, WorkOrderDouble>([
+      ["wo-incomplete", { id: "wo-incomplete", quoteId: "quote-incomplete", status: WorkOrderStatus.IN_PROGRESS }],
+      ["wo-completed", { id: "wo-completed", quoteId: "quote-completed", status: WorkOrderStatus.COMPLETED }],
+    ]);
+    const { transaction } = createMockDb({ quotes, workOrders });
+
+    const summary = await getCustomerBalanceSummary(transaction, "cust-1");
+
+    expect(summary.totalContractedCents).toBe(15_000);
+    expect(summary.pendingBalanceCents).toBe(15_000);
+  });
+
   it("records_10000_capture_applies_8000_and_leaves_2000_customer_credit", async () => {
     const quotes = new Map([
       [
@@ -514,6 +540,33 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
     // Customer credit query
     const credit = await getCustomerCreditSummary(transaction, "cust-1");
     expect(credit.availableCreditCents).toBe(2000);
+  });
+
+  it("uses a 300 settlement cap for partial payments, credit, and reversal while preserving a 500 nominal quote", async () => {
+    const quotes = new Map([
+      ["quote-agreed", {
+        id: "quote-agreed", number: "COT-AGREED", customerId: "cust-1", status: QuoteStatus.APPROVED,
+        totalCents: 50_000, subtotalCents: 50_000, taxCents: 0, discountCents: 0, taxEnabled: false,
+        settlementAgreement: { id: "agreement-1", status: "ACTIVE", settlementBaseCents: 30_000, settlementTaxCents: 0, settlementTotalCents: 30_000 },
+        items: [{ id: "item-1", description: "Repair", quantity: 1, unitPriceCents: 50_000 }],
+      }],
+    ]);
+    const workOrders = new Map([["wo-agreed", { id: "wo-agreed", quoteId: "quote-agreed", status: WorkOrderStatus.COMPLETED }]]);
+    const { transaction } = createMockDb({ quotes, workOrders });
+
+    const first = await recordPayment({ workOrderId: "wo-agreed", amountCents: 15_000, operationKey: "agreed-partial" });
+    expect(first.appliedToNoteCents).toBe(15_000);
+    expect(first.notePendingBalanceCents).toBe(15_000);
+
+    const second = await recordPayment({ workOrderId: "wo-agreed", amountCents: 20_000, operationKey: "agreed-overpayment" });
+    expect(second.appliedToNoteCents).toBe(15_000);
+    expect(second.customerCreditRemainingCents).toBe(5_000);
+    expect((await getNoteFinancialSummary(transaction, "wo-agreed")).pendingBalanceCents).toBe(0);
+
+    await reversePaymentCapture({ paymentId: second.payment.id, reason: "Payment reversed", actorId: "admin-1" });
+    expect((await getNoteFinancialSummary(transaction, "wo-agreed")).pendingBalanceCents).toBe(15_000);
+    expect((await getCustomerCreditSummary(transaction, "cust-1")).availableCreditCents).toBe(0);
+    expect(quotes.get("quote-agreed")?.totalCents).toBe(50_000);
   });
 
   it("does_not_auto_apply_customer_credit_to_a_future_completed_note", async () => {

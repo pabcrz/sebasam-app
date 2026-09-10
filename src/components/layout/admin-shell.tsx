@@ -163,7 +163,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
   );
 
   return (
-    <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 print:min-h-0 print:bg-transparent print:pb-0">
+    <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 print:min-h-0 print:bg-transparent print:pb-0 print:block print:w-full">
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 text-[var(--color-text-main)] md:flex overflow-y-auto print:hidden">
         <div className="border-b border-[var(--color-border-light)] px-3 pb-5">
           <Link
@@ -186,7 +186,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col print:min-h-0 print:flex-none">
+      <div className="flex min-w-0 flex-1 flex-col print:min-h-0 print:block print:w-full">
         <header className="sticky top-0 z-40 border-b border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] print:hidden">
           {isGlobalPending ? (
             <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--color-primary)] animate-pulse" />
@@ -256,7 +256,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
           </div>
         </header>
 
-        <main className="flex-1 print:min-h-0 print:flex-none">{children}</main>
+        <main className="flex-1 print:min-h-0 print:block print:w-full">{children}</main>
       </div>
 
       {/* Mobile "Más" drawer backdrop & sheet */}

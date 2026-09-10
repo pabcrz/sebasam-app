@@ -14,8 +14,10 @@ import {
   deleteQuoteFromForm,
   duplicateQuote,
   duplicateQuoteFromForm,
+  lockQuoteAction,
   publishSharedQuote,
   restoreArchivedQuote,
+  unlockQuoteAction,
   updateDraftQuote,
   updateDraftQuoteFromForm,
   updateDraftQuoteFromWorkspace,
@@ -24,11 +26,11 @@ import { prisma } from "@/lib/prisma";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireOperationalRole } from "@/lib/auth/session";
+import { requireAdmin, requireOperationalRole } from "@/lib/auth/session";
 import { nextQuoteNumber } from "./lib/sequence";
 
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), quote: { findUnique: vi.fn(), updateMany: vi.fn() } } }));
-vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn(), requireAdmin: vi.fn() }));
 vi.mock("@/features/vehicles/actions", () => ({ findOrCreateVehicle: vi.fn() }));
 vi.mock("@/features/vehicles/schemas", async () => ({
   ...(await vi.importActual<typeof import("@/features/vehicles/schemas")>("@/features/vehicles/schemas")),
@@ -48,6 +50,7 @@ vi.mock("./domain", () => ({
   createSharedQuoteExpirationDate: vi.fn(() => new Date("2026-08-31T00:00:00.000Z")),
   createSharedQuoteToken: vi.fn(() => "stable-token"),
   getOrCreateSharedQuoteForQuote: vi.fn(),
+  ensureSharedQuoteInTransaction: vi.fn().mockResolvedValue({ id: "sq-1", token: "tok-1" }),
   SharedQuoteOperationError: class SharedQuoteOperationError extends Error {
     constructor(message: string) {
       super(message);
@@ -72,6 +75,8 @@ type MockTx = {
   paymentRequest: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   workOrder: { count: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
+  customer?: { findUnique: ReturnType<typeof vi.fn> };
+  customerContact?: { findUnique: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
@@ -255,6 +260,61 @@ describe("createQuote", () => {
       vehicle: { plate: "", brand: "Toyota", model: "", color: "", year: "" },
     })).rejects.toThrow("Selecciona un cliente o identifica la unidad");
     expect(tx.quote.create).not.toHaveBeenCalled();
+  });
+
+  it("persists customerContactId, customerFiscalProfileId, and snapshots when provided", async () => {
+    const tx = mockTx();
+    tx.customer = {
+      findUnique: vi.fn().mockResolvedValue({
+        id: "cust-1",
+        name: "Juan Perez",
+        commercialName: "Taller Perez",
+        legalName: "Juan Perez SA de CV",
+        email: "juan@example.com",
+        phone: "5512345678",
+        address: "Av Central 1",
+        fiscalProfiles: [{ id: "fp-1", businessName: "Juan Perez SA de CV", taxId: "JUP900101XYZ" }],
+      }),
+    };
+    tx.customerContact = {
+      findUnique: vi.fn().mockResolvedValue({
+        id: "contact-1",
+        name: "El Mariachi",
+        phone: "5511223344",
+        role: "DRIVER",
+      }),
+    };
+
+    const input = {
+      ...validInput(),
+      customerContactId: "contact-1",
+      customerFiscalProfileId: "fp-1",
+      vehicle: {
+        ...validInput().vehicle,
+        economicNumber: "ECO-100",
+      },
+    };
+
+    await createQuote(input);
+
+    expect(tx.quote.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          customerContactId: "contact-1",
+          customerFiscalProfileId: "fp-1",
+          customerSnapshot: expect.objectContaining({
+            customerId: "cust-1",
+            commercialName: "Taller Perez",
+            legalName: "Juan Perez SA de CV",
+          }),
+          contactSnapshot: expect.objectContaining({
+            id: "contact-1",
+            name: "El Mariachi",
+            role: "DRIVER",
+          }),
+        }),
+      }),
+    );
   });
 });
 
@@ -1216,5 +1276,96 @@ describe("publishSharedQuote", () => {
 
     expect(getOrCreateSharedQuoteForQuote).toHaveBeenCalledWith("quote-1");
     expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
+  });
+
+  describe("lockQuoteAction and unlockQuoteAction", () => {
+    it("locks an unlocked quote and records QuoteLifecycleEvent with LOCK eventType", async () => {
+      const tx = mockTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: "user-op-1" } } as never);
+      tx.quote.findUnique.mockResolvedValue({
+        id: "quote-1",
+        isLocked: false,
+        status: QuoteStatus.DRAFT,
+      });
+
+      const result = await lockQuoteAction("quote-1", "Aprobado por cliente");
+
+      expect(result).toEqual({ success: true });
+      expect(tx.quote.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: "quote-1" },
+        data: expect.objectContaining({
+          isLocked: true,
+          lockedById: "user-op-1",
+          lockedReason: "Aprobado por cliente",
+        }),
+      }));
+      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          quoteId: "quote-1",
+          eventType: "LOCK",
+          actorId: "user-op-1",
+          reason: "Aprobado por cliente",
+        }),
+      }));
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/notas");
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/work-orders");
+    });
+
+    it("rejects locking if already locked", async () => {
+      const tx = mockTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: "user-op-1" } } as never);
+      tx.quote.findUnique.mockResolvedValue({
+        id: "quote-1",
+        isLocked: true,
+        status: QuoteStatus.DRAFT,
+      });
+
+      await expect(lockQuoteAction("quote-1", "Reason")).rejects.toThrow("El documento ya está bloqueado.");
+    });
+
+    it("unlocks a locked quote and records QuoteLifecycleEvent with UNLOCK eventType", async () => {
+      const tx = mockTx();
+      vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: "admin-1" } } as never);
+      tx.quote.findUnique.mockResolvedValue({
+        id: "quote-1",
+        isLocked: true,
+        status: QuoteStatus.DRAFT,
+      });
+
+      const result = await unlockQuoteAction("quote-1", "Corrección requerida por admin");
+
+      expect(result).toEqual({ success: true });
+      expect(tx.quote.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: "quote-1" },
+        data: expect.objectContaining({
+          isLocked: false,
+          lockedAt: null,
+          lockedById: null,
+          lockedReason: null,
+        }),
+      }));
+      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          quoteId: "quote-1",
+          eventType: "UNLOCK",
+          actorId: "admin-1",
+          reason: "Corrección requerida por admin",
+        }),
+      }));
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
+    });
+
+    it("rejects unlocking if not locked", async () => {
+      const tx = mockTx();
+      vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: "admin-1" } } as never);
+      tx.quote.findUnique.mockResolvedValue({
+        id: "quote-1",
+        isLocked: false,
+        status: QuoteStatus.DRAFT,
+      });
+
+      await expect(unlockQuoteAction("quote-1", "Reason")).rejects.toThrow("El documento no está bloqueado.");
+    });
   });
 });

@@ -50,7 +50,11 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     totalCents: 11600,
     taxEnabled: true,
     validUntil: new Date("2026-12-31"),
-
+    paymentDueDate: null,
+    isLocked: false,
+    lockedAt: null,
+    lockedById: null,
+    lockedReason: null,
     approvedAt: null,
     administrative: false, deletedAt: null,
     operationalDate: new Date("2026-06-15T00:00:00.000Z"),
@@ -60,6 +64,8 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     customer: {
       id: "cust-1",
       name: "Constructora del Norte",
+      commercialName: null,
+      legalName: null,
       email: "contacto@constructora.com",
       phone: "555-0192",
       address: null,
@@ -93,6 +99,12 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
 
     paidCents: 0,
     remainingCents: 11600,
+    customerContactId: null,
+    customerFiscalProfileId: null,
+    customerSnapshot: null,
+    contactSnapshot: null,
+    customerContact: null,
+    customerFiscalProfile: null,
 
 
 
@@ -184,15 +196,15 @@ describe("QuoteListCard", () => {
     expect(primary).toHaveClass("bg-[image:var(--gradient-primary)]");
     expect(screen.getByTestId("quote-primary-action")).toHaveClass("w-full");
     expect(screen.getByRole("button", { name: "Editar cotización C-001" })).toBeInTheDocument();
-    const print = screen.getByRole("link", { name: "Imprimir cotización C-001" });
+    const print = screen.getByRole("button", { name: "Imprimir cotización C-001" });
     expect(print).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Imprimir cotización C-001" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Imprimir cotización C-001" })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Duplicar cotización" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));
 
     const overflow = screen.getByRole("dialog", { name: "Acciones de cotización" });
-    expect(within(overflow).queryByRole("link", { name: "Imprimir cotización C-001" })).not.toBeInTheDocument();
+    expect(within(overflow).queryByRole("button", { name: "Imprimir cotización C-001" })).not.toBeInTheDocument();
     expect(within(overflow).getByRole("button", { name: "Duplicar cotización" })).toBeInTheDocument();
     expect(within(overflow).getByRole("button", { name: "Gestionar trabajo de cotización C-001" })).toBeInTheDocument();
     expect(within(overflow).getByRole("button", { name: "Cancelar cotización C-001" })).toBeInTheDocument();
@@ -206,7 +218,7 @@ describe("QuoteListCard", () => {
 
     const secondaryActions = screen.getByTestId("quote-secondary-actions");
     const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
-    const print = screen.getByRole("link", { name: "Imprimir cotización C-001" });
+    const print = screen.getByRole("button", { name: "Imprimir cotización C-001" });
     const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
     const more = screen.getByRole("button", { name: "Más acciones de cotización C-001" });
     expect(secondaryActions).toHaveClass(
@@ -339,13 +351,13 @@ describe("QuoteListCard", () => {
       workOrder: { id: "wo-mobile-active-1", number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
     }));
 
-    const print = screen.getByRole("link", { name: /imprimir cotización/i });
+    const print = screen.getByRole("button", { name: /imprimir cotización/i });
     expect(print).toHaveAttribute(
-      "href",
+      "data-print-url",
       "/admin/quotes/quote-mobile-1/print?returnTo=/admin/quotes",
     );
-    expect(print.getAttribute("href")).not.toContain("/admin/notas/");
-    expect(screen.getAllByRole("link", { name: /imprimir cotización/i })).toHaveLength(1);
+    expect(print.getAttribute("data-print-url")).not.toContain("/admin/notas/");
+    expect(screen.getAllByRole("button", { name: /imprimir cotización/i })).toHaveLength(1);
   });
 
   it("routes completed document printing inline to the work-order note", () => {
@@ -355,10 +367,10 @@ describe("QuoteListCard", () => {
       workOrder: { id: "wo-mobile-completed-1", number: "OT-002", status: "COMPLETED" } as QuoteListItem["workOrder"],
     }));
 
-    const print = screen.getByRole("link", { name: /imprimir cotización/i });
-    expect(print).toHaveAttribute("href", "/admin/notas/wo-mobile-completed-1/print?returnTo=/admin/notas");
-    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
-    expect(screen.getAllByRole("link", { name: /imprimir cotización/i })).toHaveLength(1);
+    const print = screen.getByRole("button", { name: /imprimir cotización/i });
+    expect(print).toHaveAttribute("data-print-url", "/admin/notas/wo-mobile-completed-1/print?returnTo=/admin/notas");
+    expect(print.getAttribute("data-print-url")).not.toContain("/admin/quotes/");
+    expect(screen.getAllByRole("button", { name: /imprimir cotización/i })).toHaveLength(1);
   });
 
 });

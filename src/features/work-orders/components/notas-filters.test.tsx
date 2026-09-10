@@ -30,11 +30,109 @@ describe("NotasFilters", () => {
     expect(screen.getByLabelText("Semana")).toHaveAttribute("type", "date");
     fireEvent.change(screen.getByLabelText("Semana"), { target: { value: "2026-08-19" } });
     expect(push).toHaveBeenCalledWith("/admin/notas?mode=week&anchor=2026-08-19&payment=paid&assignee=workshop");
+  });
+
+  it("shows active filter badge count and opens modal with customer, assignee, and overdue filters", async () => {
+    const searchCustomersAction = vi.fn().mockResolvedValue([
+      { id: "cust-1", name: "Empresa Uno", commercialName: "Comercial Uno", phone: "5512345678" },
+    ]);
+
+    render(
+      <NotasFilters
+        mode="week"
+        payment="all"
+        assignee="workshop"
+        customerId="cust-1"
+        overdue="overdue"
+        anchor="2026-08-05"
+        rangeLabel="3–8 de agosto de 2026"
+        isCurrentWeek={false}
+        masters={masters}
+        selectedCustomer={{ id: "cust-1", name: "Empresa Uno", commercialName: "Comercial Uno" }}
+        searchCustomersAction={searchCustomersAction}
+      />,
+    );
+
+    // Active badge count should be 3 (assignee=workshop, customerId=cust-1, overdue=overdue)
+    expect(screen.getByText("3")).toBeInTheDocument();
+
+    const statementLink = screen.getByRole("link", { name: /estado de cuenta/i });
+    expect(statementLink).toBeInTheDocument();
+    expect(statementLink).toHaveAttribute("href", "/admin/customers/cust-1/estado-de-cuenta");
+
+    // Open filters dialog
+    const filterBtn = screen.getByRole("button", { name: /abrir filtros de cartera/i });
+    fireEvent.click(filterBtn);
+
+    expect(screen.getByRole("heading", { name: "Filtros de cartera" })).toBeInTheDocument();
     expect(screen.getByLabelText("Responsable")).toHaveValue("workshop");
-    expect(screen.getByRole("option", { name: "Ana Maestra" })).toHaveValue(masters[0].id);
+    expect(screen.getByLabelText("Morosidad")).toHaveValue("overdue");
+    expect(screen.getByText("Comercial Uno")).toBeInTheDocument();
+
+    // Change assignee and morosidad inside dialog
     fireEvent.change(screen.getByLabelText("Responsable"), { target: { value: masters[0].id } });
-    expect(push).toHaveBeenLastCalledWith(`/admin/notas?mode=week&anchor=2026-08-05&payment=paid&assignee=${masters[0].id}`);
-    expect(screen.queryByRole("button", { name: "Ir" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Morosidad"), { target: { value: "all" } });
+
+    // Apply
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+    expect(push).toHaveBeenCalledWith(
+      expect.stringContaining(`assignee=${masters[0].id}`),
+    );
+  });
+
+  it("clears filters when clicking Limpiar filtros", () => {
+    render(
+      <NotasFilters
+        mode="week"
+        payment="all"
+        assignee="workshop"
+        customerId="cust-1"
+        anchor="2026-08-05"
+        rangeLabel="3–8 de agosto de 2026"
+        isCurrentWeek={false}
+        masters={masters}
+      />,
+    );
+
+    const clearBtn = screen.getByRole("button", { name: "Limpiar" });
+    fireEvent.click(clearBtn);
+
+    expect(push).toHaveBeenCalledWith("/admin/notas?mode=week&anchor=2026-08-05&payment=all&assignee=all");
+  });
+
+  it("debounces remote customer search and allows selecting a customer", async () => {
+    vi.useFakeTimers();
+    const searchCustomersAction = vi.fn().mockResolvedValue([
+      { id: "cust-2", name: "Logística MX", commercialName: "Logística Express", phone: "5599887766" },
+    ]);
+
+    render(
+      <NotasFilters
+        mode="week"
+        payment="all"
+        assignee="all"
+        anchor="2026-08-05"
+        rangeLabel="3–8 de agosto de 2026"
+        isCurrentWeek={false}
+        masters={masters}
+        searchCustomersAction={searchCustomersAction}
+      />,
+    );
+
+    // Open dialog
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+
+    const searchInput = screen.getByLabelText("Buscar cliente");
+    fireEvent.change(searchInput, { target: { value: "Log" } });
+
+    // Not called immediately
+    expect(searchCustomersAction).not.toHaveBeenCalled();
+
+    // Fast-forward 500ms debounce
+    await vi.advanceTimersByTimeAsync(500);
+
+    expect(searchCustomersAction).toHaveBeenCalledWith({ query: "Log" });
+    vi.useRealTimers();
   });
 
   it("shows the active month", () => {

@@ -5,6 +5,7 @@ import { CustomerAccountStatement } from "./customer-account-statement";
 import type { CustomerAccountStatement as CustomerAccountStatementType } from "../queries";
 
 const statement: CustomerAccountStatementType = {
+  nominalContractedCents: 25000,
   totalContractedCents: 25000,
   totalPaidCents: 17500,
   pendingBalanceCents: 7500,
@@ -38,8 +39,9 @@ describe("CustomerAccountStatement", () => {
     const reversePaymentAction = vi.fn().mockResolvedValue({});
     render(<CustomerAccountStatement statement={statement} reversePaymentAction={reversePaymentAction} />);
 
-    expect(screen.getByTestId("customer-account-statement")).toHaveTextContent("Total contratado$250.00");
-    expect(screen.getByTestId("customer-account-statement")).toHaveTextContent("Total pagado$175.00");
+    expect(screen.getByTestId("customer-account-statement")).toHaveTextContent("Importe nominal$250.00");
+    expect(screen.getByTestId("customer-account-statement")).toHaveTextContent("Importe liquidable$250.00");
+    expect(screen.getByTestId("customer-account-statement")).toHaveTextContent("Cobrado$175.00");
     expect(screen.getByTestId("customer-account-statement")).toHaveTextContent("Saldo a favor$25.00");
     expect(screen.getByTestId("customer-account-statement")).toHaveTextContent("Saldo pendiente$75.00Pendiente");
     expect(screen.getByText("Cotización COT-001")).toBeInTheDocument();
@@ -101,6 +103,7 @@ describe("CustomerAccountStatement", () => {
     render(
       <CustomerAccountStatement
         statement={{
+          nominalContractedCents: 0,
           totalContractedCents: 0,
           totalPaidCents: 0,
           pendingBalanceCents: 0,

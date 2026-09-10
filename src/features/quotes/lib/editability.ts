@@ -2,6 +2,7 @@ import type { QuoteStatus, WorkOrderStatus } from "@prisma/client";
 
 type QuoteForEditability = {
   status: QuoteStatus;
+  isLocked?: boolean | null;
   validUntil?: Date | null;
   workOrder?: { status: WorkOrderStatus } | null;
 };
@@ -9,10 +10,13 @@ type QuoteForEditability = {
 /**
  * Determines if a quote can be edited.
  *
- * Editable unless the quote is cancelled or its work order is completed.
+ * Editable unless the quote is cancelled, its work order is completed, or it is locked.
  *
  */
 export function isQuoteEditable(quote: QuoteForEditability): boolean {
+  if (quote.isLocked) {
+    return false;
+  }
   return quote.status !== "CANCELLED" && quote.workOrder?.status !== "COMPLETED";
 }
 

@@ -5,12 +5,12 @@ import {
   SharedQuoteRevokedError,
 } from "@/features/quotes/domain";
 import { SharedQuoteErrorState } from "@/features/public-quotes/components/shared-quote-error-state";
-import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
-import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
+import { QuoteDocumentView } from "@/features/public-quotes/components/quote-document-view";
+import type { SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
-import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
@@ -67,14 +67,15 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
   try {
     const sharedQuote = await getSharedQuoteByToken(token);
     const quote = sharedQuote.quote;
-    const documentType = quote.workOrder !== null ? "Nota" : "Cotización";
-    const customerName = quote.customer?.name ?? "Sin cliente";
+    const documentType = quote.workOrder?.status === "COMPLETED" ? "Nota" : quote.workOrder ? "Trabajo" : "Cotización";
+    const identity = resolveCustomerDisplayIdentity(quote);
+    const customerName = identity.displayName;
     const vehicleDescription = quote.vehicle
       ? formatVehicle(quote.vehicle)
       : formatSnapshotVehicle(quote.vehicleSnapshot);
 
     const title = formatDocumentPdfFilename({
-      customerName: quote.customer?.name,
+      customerName: identity.displayName,
       vehicle: quote.vehicle ?? quote.vehicleSnapshot,
       operationalDate: quote.operationalDate,
       fallbackType: documentType,
@@ -122,31 +123,14 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
   ]);
 
   if (result.kind === "error") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4">
-        <SharedQuoteErrorState type={result.errorType} />
-      </div>
-    );
+    return <SharedQuoteErrorState type={result.errorType} />;
   }
 
-  const isNote = result.quote.workOrder !== null;
-
   return (
-    <PublicQuoteShell
-      business={toPublicBusinessIdentity(paymentSettings)}
-      location={{ address: paymentSettings.address, mapsUrl: paymentSettings.mapsUrl }}
-      documentType={isNote ? "Nota" : "Cotización"}
-      documentNumber={result.quote.number}
-      date={result.quote.operationalDate}
-      title={result.quote.title}
-       customerName={result.quote.customer?.name ?? "Sin cliente"}
-      vehicleDescription={
-        result.quote.vehicle
-          ? formatVehicle(result.quote.vehicle)
-          : formatSnapshotVehicle(result.quote.vehicleSnapshot)
-      }
-    >
-      <SharedQuoteView quote={result.quote} token={token} isNote={isNote} business={paymentSettings} />
-    </PublicQuoteShell>
+    <QuoteDocumentView
+      quote={result.quote}
+      paymentSettings={paymentSettings}
+      token={token}
+    />
   );
 }

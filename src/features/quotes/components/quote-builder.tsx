@@ -31,6 +31,7 @@ import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderStepper } from "./quote-builder-stepper";
 import { QuotePreviewCard } from "./quote-preview-card";
 import type { QuoteFormActionState } from "../actions";
+import { createCustomerContactAction } from "@/features/customers/actions";
 import {
   initializeQuoteBuilderState,
   quoteBuilderReducer,
@@ -103,8 +104,10 @@ export function QuoteBuilder({
   const [isSearchingCustomers, setIsSearchingCustomers] = React.useState(false);
   const [isCustomerListOpen, setIsCustomerListOpen] = React.useState(false);
   const [activeCustomerIndex, setActiveCustomerIndex] = React.useState(-1);
+  const isDirect = mode === "direct-work-order" || mode === "direct-note";
   const [masterId, setMasterId] = React.useState("");
-  const [isCompleted, setIsCompleted] = React.useState(false);
+  const [isCompleted, setIsCompleted] = React.useState(mode === "direct-note");
+  const [paymentDueDate, setPaymentDueDate] = React.useState("");
   const customerSearchRequest = React.useRef(0);
   const selectedCustomerRef = React.useRef<CustomerOption | undefined>(initialSelectedCustomer);
   const customerInputRef = React.useRef<HTMLInputElement>(null);
@@ -121,6 +124,9 @@ export function QuoteBuilder({
   const [stepError, setStepError] = React.useState<string | null>(null);
   const [showCreateCustomer, setShowCreateCustomer] = React.useState(false);
   const [newCustomerName, setNewCustomerName] = React.useState("");
+  const [newCustomerLegalName, setNewCustomerLegalName] = React.useState("");
+  const [newCustomerContactName, setNewCustomerContactName] = React.useState("");
+  const [newCustomerContactPhone, setNewCustomerContactPhone] = React.useState("");
   const [newCustomerEmail, setNewCustomerEmail] = React.useState("");
   const [newCustomerPhone, setNewCustomerPhone] = React.useState("");
   const [createCustomerMessage, setCreateCustomerMessage] = React.useState<string | null>(null);
@@ -133,6 +139,8 @@ export function QuoteBuilder({
   );
   const {
     customerId,
+    customerContactId,
+    customerFiscalProfileId,
     vehicle,
     title,
     description,
@@ -168,9 +176,9 @@ export function QuoteBuilder({
 
   React.useEffect(() => {
     const current = serializeQuoteBuilderSnapshot(builderState, customerSearch, [newCustomerName, newCustomerEmail, newCustomerPhone]);
-    const isDirectDirty = mode === "direct-work-order" ? Boolean(masterId || isCompleted) : false;
+    const isDirectDirty = isDirect ? Boolean(masterId || paymentDueDate) : false;
     onDirtyChange?.(current !== initialFormState || isDirectDirty);
-  }, [builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, mode, masterId, isCompleted]);
+  }, [builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, isDirect, masterId, paymentDueDate]);
 
   React.useEffect(() => {
     if (!hasChangedStep.current) {
@@ -293,6 +301,10 @@ export function QuoteBuilder({
       current.some((option) => option.id === customer.id) ? current : [customer, ...current],
     );
     dispatch({ type: "setCustomerId", customerId: customer.id });
+    const defaultFp = customer.fiscalProfiles?.find((fp) => fp.isDefault);
+    if (defaultFp) {
+      dispatch({ type: "setCustomerFiscalProfileId", customerFiscalProfileId: defaultFp.id });
+    }
     setCustomerSearch(customer.name);
     setCustomerSearchError(null);
     setIsSearchingCustomers(false);
@@ -342,6 +354,7 @@ export function QuoteBuilder({
     try {
       result = await createCustomerAction({
         name: newCustomerName,
+        ...(newCustomerLegalName.trim() ? { legalName: newCustomerLegalName.trim() } : {}),
         email: newCustomerEmail,
         phone: newCustomerPhone,
         address: "",
@@ -362,9 +375,32 @@ export function QuoteBuilder({
 
     const createdCustomer = result.customer;
 
+    if (newCustomerContactName.trim() && createdCustomer.id) {
+      try {
+        const contactRes = await createCustomerContactAction(createdCustomer.id, {
+          name: newCustomerContactName.trim(),
+          phone: newCustomerContactPhone.trim() || undefined,
+          role: "DRIVER",
+          isActive: true,
+        });
+        if (contactRes.success && contactRes.contact) {
+          createdCustomer.contacts = [contactRes.contact];
+          dispatch({
+            type: "setCustomerContactId",
+            customerContactId: contactRes.contact.id,
+          });
+        }
+      } catch {
+        // Non-blocking fallback
+      }
+    }
+
     customerQueryCache.current.clear();
     selectCustomer(createdCustomer);
     setNewCustomerName("");
+    setNewCustomerLegalName("");
+    setNewCustomerContactName("");
+    setNewCustomerContactPhone("");
     setNewCustomerEmail("");
     setNewCustomerPhone("");
     setShowCreateCustomer(false);
@@ -419,7 +455,7 @@ export function QuoteBuilder({
         return;
       }
 
-      if (mode === "direct-work-order" && isCompleted) {
+      if (isDirect && isCompleted) {
         const hasMissingPrice = normalizedSecs.some((s) =>
           s.items.some((item) => !item.unitPrice || Number(item.unitPrice) < 0)
         );
@@ -439,7 +475,7 @@ export function QuoteBuilder({
         return;
       }
 
-      if (step === "client" && mode === "direct-work-order" && !masterId) {
+      if (step === "client" && isDirect && !masterId) {
         setStepError("El maestro responsable es obligatorio.");
         return;
       }
@@ -496,7 +532,7 @@ export function QuoteBuilder({
       return false;
     }
 
-    if (mode === "direct-work-order") {
+    if (isDirect) {
       if (!masterId) {
         setStep("client");
         setStepError("El maestro responsable es obligatorio.");
@@ -583,9 +619,11 @@ export function QuoteBuilder({
             ? (isEdit ? "Guardando..." : "Creando...")
             : isEdit
               ? "Guardar cambios"
-              : mode === "direct-work-order"
-                ? "Crear trabajo"
-                : "Crear cotización"}
+              : mode === "direct-note"
+                ? "Crear nota"
+                : mode === "direct-work-order"
+                  ? "Crear trabajo"
+                  : "Crear cotización"}
         </Button>
       ) : (
         <Button
@@ -644,10 +682,11 @@ export function QuoteBuilder({
             } : undefined}
           >
             <div className="grid content-start gap-6">
-          {mode === "direct-work-order" ? (
+          {isDirect ? (
             <>
               <input type="hidden" name="masterId" value={masterId} />
               <input type="hidden" name="isCompleted" value={isCompleted ? "true" : "false"} />
+              {paymentDueDate ? <input type="hidden" name="paymentDueDate" value={paymentDueDate} /> : null}
             </>
           ) : null}
 
@@ -673,6 +712,8 @@ export function QuoteBuilder({
             <div className="grid gap-2">
               <Label htmlFor="customerId">Cliente</Label>
               <input type="hidden" name="customerId" value={customerId} />
+              <input type="hidden" name="customerContactId" value={customerContactId} />
+              <input type="hidden" name="customerFiscalProfileId" value={customerFiscalProfileId} />
               <Input
                 ref={customerInputRef}
                 id="customerId"
@@ -728,7 +769,92 @@ export function QuoteBuilder({
                 </div>,
                 document.body,
               ) : null}
-              {selectedCustomer ? <p className="text-sm text-[var(--color-text-muted)]">Cliente seleccionado: <strong className="text-[var(--color-text-main)]">{selectedCustomer.name}</strong></p> : null}
+              {selectedCustomer ? (
+                <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+                  <div>
+                    <p className="text-sm text-[var(--color-text-muted)]">
+                      Cliente seleccionado: <strong className="text-[var(--color-text-main)]">{selectedCustomer.name}</strong>
+                    </p>
+                    {selectedCustomer.legalName ? (
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        Razón social: {selectedCustomer.legalName}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {selectedCustomer.contacts && selectedCustomer.contacts.length > 0 ? (
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="quoteCustomerContact" className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                        Contacto operativo / Chofer (opcional)
+                      </Label>
+                      <Select
+                        value={customerContactId || "none"}
+                        onValueChange={(value) =>
+                          dispatch({
+                            type: "setCustomerContactId",
+                            customerContactId: value === "none" ? "" : value,
+                          })
+                        }
+                      >
+                        <SelectTrigger id="quoteCustomerContact" className="bg-[var(--color-surface)]">
+                          <SelectValue placeholder="Sin contacto específico asignado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sin contacto asignado</SelectItem>
+                          {selectedCustomer.contacts
+                            .filter((c) => c.isActive || c.id === customerContactId)
+                            .map((c) => {
+                              const roleBadge =
+                                c.role === "DRIVER"
+                                  ? "Chofer"
+                                  : c.role === "BILLING"
+                                    ? "Facturación"
+                                    : "Contacto";
+                              return (
+                                <SelectItem key={c.id} value={c.id}>
+                                  {c.name} ({roleBadge}{c.phone ? ` · ${c.phone}` : ""})
+                                </SelectItem>
+                              );
+                            })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-light)] p-2.5 text-xs text-[var(--color-text-muted)]">
+                      <span>Sin choferes o contactos registrados aún para este cliente.</span>
+                    </div>
+                  )}
+
+                  {selectedCustomer.fiscalProfiles && selectedCustomer.fiscalProfiles.length > 0 ? (
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="quoteCustomerFiscalProfile" className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                        Razón social / Perfil fiscal (opcional)
+                      </Label>
+                      <Select
+                        value={customerFiscalProfileId || "none"}
+                        onValueChange={(value) =>
+                          dispatch({
+                            type: "setCustomerFiscalProfileId",
+                            customerFiscalProfileId: value === "none" ? "" : value,
+                          })
+                        }
+                      >
+                        <SelectTrigger id="quoteCustomerFiscalProfile" className="bg-[var(--color-surface)]">
+                          <SelectValue placeholder="Sin perfil fiscal específico" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sin perfil fiscal específico</SelectItem>
+                          {selectedCustomer.fiscalProfiles.map((fp) => (
+                            <SelectItem key={fp.id} value={fp.id}>
+                              {fp.businessName} ({fp.taxId}){fp.isDefault ? " · Predeterminado" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               {createCustomerAction ? (
                 <div className="grid gap-3 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -755,9 +881,45 @@ export function QuoteBuilder({
                           id="quoteCustomerName"
                           value={newCustomerName}
                           onChange={(event) => setNewCustomerName(event.target.value)}
-                          placeholder="Nombre del cliente"
+                          placeholder="Ej. Juan Pérez o Grúas Mejía"
                           required
                         />
+                      </div>
+                      <div className="grid gap-2 sm:col-span-2">
+                        <Label htmlFor="quoteCustomerLegalName">Razón social formal (opcional)</Label>
+                        <Input
+                          id="quoteCustomerLegalName"
+                          value={newCustomerLegalName}
+                          onChange={(event) => setNewCustomerLegalName(event.target.value)}
+                          placeholder="Ej. Grúas Mejía Cuautla S.A. de C.V."
+                        />
+                      </div>
+                      <div className="grid gap-3 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-light)] bg-[var(--color-surface)] p-2.5 sm:col-span-2 sm:grid-cols-2">
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="quoteCustomerContactName" className="text-xs">
+                            Chofer u operador inicial (opcional)
+                          </Label>
+                          <Input
+                            id="quoteCustomerContactName"
+                            value={newCustomerContactName}
+                            onChange={(event) => setNewCustomerContactName(event.target.value)}
+                            placeholder="Ej. El Mariachi / Juanito"
+                          />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="quoteCustomerContactPhone" className="text-xs">
+                            Teléfono del chofer (opcional)
+                          </Label>
+                          <Input
+                            id="quoteCustomerContactPhone"
+                            type="tel"
+                            inputMode="tel"
+                            maxLength={20}
+                            value={newCustomerContactPhone}
+                            onChange={(event) => setNewCustomerContactPhone(event.target.value)}
+                            placeholder="55 1234 5678"
+                          />
+                        </div>
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="quoteCustomerEmail">Correo electrónico</Label>
@@ -807,7 +969,7 @@ export function QuoteBuilder({
               ) : null}
             </div>
 
-            {mode === "direct-work-order" ? (
+            {isDirect ? (
               <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
                 <div className="grid gap-2">
                   <Label htmlFor="masterId">Maestro responsable *</Label>
@@ -855,6 +1017,17 @@ export function QuoteBuilder({
                     maxLength={10}
                     value={vehicle.plate}
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "plate", value: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="economicNumber">Número económico / ECO (opcional)</Label>
+                  <Input
+                    id="economicNumber"
+                    name="economicNumber"
+                    maxLength={30}
+                    value={vehicle.economicNumber}
+                    onChange={(event) => dispatch({ type: "setVehicleField", field: "economicNumber", value: event.target.value })}
+                    placeholder="Ej. ECO-104"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -942,7 +1115,7 @@ export function QuoteBuilder({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="operationalDate">
-                {mode === "direct-work-order" ? "Fecha del trabajo" : "Fecha de cotización"}
+                {mode === "direct-note" ? "Fecha de la nota" : mode === "direct-work-order" ? "Fecha del trabajo" : "Fecha de cotización"}
               </Label>
               <Input
                 id="operationalDate"
@@ -960,6 +1133,17 @@ export function QuoteBuilder({
                 </p>
               )}
             </div>
+            {mode === "direct-note" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="paymentDueDate">Fecha de vencimiento de pago (opcional)</Label>
+                <Input
+                  id="paymentDueDate"
+                  type="date"
+                  value={paymentDueDate}
+                  onChange={(event) => setPaymentDueDate(event.target.value)}
+                />
+              </div>
+            ) : null}
             <div className="grid gap-2">
               <Label htmlFor="description">Descripción</Label>
               <Textarea
@@ -968,7 +1152,7 @@ export function QuoteBuilder({
                 rows={4}
                 value={description}
                 onChange={(event) => dispatch({ type: "setDescription", description: event.target.value })}
-                placeholder={mode === "direct-work-order" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
+                placeholder={mode === "direct-note" ? "Detalles adicionales de la nota..." : mode === "direct-work-order" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
               />
             </div>
             <Checkbox
@@ -982,22 +1166,43 @@ export function QuoteBuilder({
           {/* Step 4: Review and submit */}
           <section hidden={step !== "preview"} className="grid gap-4">
             <h2 className="sr-only" tabIndex={-1} data-step-heading="preview">
-              {mode === "direct-work-order" ? "Revisar y confirmar trabajo" : "Revisar y enviar cotización"}
+              {mode === "direct-note" ? "Revisar y confirmar nota" : mode === "direct-work-order" ? "Revisar y confirmar trabajo" : "Revisar y enviar cotización"}
             </h2>
-            <QuotePreviewCard
-              customerName={selectedCustomer?.name ?? ""}
-              vehicle={vehicle}
-              title={title}
-              description={description}
-              administrative={administrative}
-              sections={sections}
-              subtotalCents={subtotalCents}
-              discountCents={discountCents}
-              taxCents={taxCents}
-              totalCents={totalCents}
-              validUntil={validUntil}
-              compactItems
-            />
+            {(() => {
+              const selectedContact = selectedCustomer?.contacts?.find((c) => c.id === customerContactId);
+              const selectedFiscal = selectedCustomer?.fiscalProfiles?.find((fp) => fp.id === customerFiscalProfileId);
+              const customerDisplayName = selectedCustomer?.commercialName || selectedCustomer?.name || "";
+              const legalDisplayName =
+                selectedFiscal?.businessName ||
+                selectedCustomer?.legalName ||
+                (selectedCustomer?.commercialName ? selectedCustomer?.name : null);
+              const contactRoleBadge =
+                selectedContact?.role === "DRIVER"
+                  ? "Chofer"
+                  : selectedContact?.role === "BILLING"
+                    ? "Facturación"
+                    : "Contacto";
+
+              return (
+                <QuotePreviewCard
+                  customerName={customerDisplayName}
+                  legalName={legalDisplayName}
+                  contactName={selectedContact?.name}
+                  contactRole={contactRoleBadge}
+                  vehicle={vehicle}
+                  title={title}
+                  description={description}
+                  administrative={administrative}
+                  sections={sections}
+                  subtotalCents={subtotalCents}
+                  discountCents={discountCents}
+                  taxCents={taxCents}
+                  totalCents={totalCents}
+                  validUntil={validUntil}
+                  compactItems
+                />
+              );
+            })()}
           </section>
             </div>
           </div>

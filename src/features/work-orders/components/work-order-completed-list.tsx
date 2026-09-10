@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Printer } from "lucide-react";
-import Link from "next/link";
+import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
 import { Badge, Button, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
@@ -11,6 +11,7 @@ import { derivePaymentState } from "@/features/work-orders/payment-state";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import { PaymentCorrectionDialog } from "@/features/payments/components/payment-correction-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 
 type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>["workOrders"][number];
@@ -74,8 +75,10 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
         const paymentAction = paymentActionMap.get(wo.id);
         const correctionAction = correctionActionMap.get(wo.id);
         const totalCents = Number(wo.quote.totalCents);
+        const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
         const paymentState = derivePaymentState({
           completedAt: wo.completedAt,
+          paymentDueDate: dueDate,
           paidCents: wo.quote.paidCents ?? 0,
           remainingCents: wo.quote.remainingCents ?? totalCents,
         });
@@ -97,9 +100,8 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                   />
                 ) : null}
                 <OperationalActionRow>
-                  <Button
-                    asChild
-                    type="button"
+                  <PrintActionButton
+                    url={`/admin/notas/${wo.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}
                     variant="outline"
                     size="sm"
                     data-mobile-target="44"
@@ -107,11 +109,9 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     title={`Imprimir nota de remisión ${wo.number}`}
                     aria-label={`Imprimir nota de remisión ${wo.number}`}
                   >
-                    <Link href={`/admin/notas/${wo.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}>
-                      <Printer className="h-5 w-5" aria-hidden="true" />
-                      <span className="sr-only sm:not-sr-only">Imprimir nota</span>
-                    </Link>
-                  </Button>
+                    <Printer className="h-5 w-5" aria-hidden="true" />
+                    <span className="sr-only sm:not-sr-only">Imprimir nota</span>
+                  </PrintActionButton>
                   <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile noteReturnTo={noteReturnTo} />
                   {correctionAction && wo.quote.activePaymentId && wo.quote.activePaymentAmountCents != null ? (
                     <PaymentCorrectionDialog
@@ -134,10 +134,20 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
                       <Badge variant={paymentState.variant} className="w-fit">
-                        {paymentState.label}{paymentState.label === "Pago parcial" || paymentState.label === "Cobro urgente" ? ` · Saldo ${formatCents(paymentState.balanceCents!)}` : ""}
+                        {paymentState.label}{paymentState.label === "Pago parcial" || paymentState.label === "Vencida" ? ` · Saldo ${formatCents(paymentState.balanceCents!)}` : ""}
                       </Badge>
+                      {wo.quote.isLocked ? (
+                        <Badge variant="warning">Bloqueado</Badge>
+                      ) : null}
                     </div>
-                    <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer?.name ?? "Sin cliente"}</p>
+                    <p className="mt-1 font-semibold text-[var(--color-text-main)]">
+                      {resolveCustomerDisplayIdentity(wo.quote).displayName}
+                    </p>
+                    {resolveCustomerDisplayIdentity(wo.quote).operatorName ? (
+                      <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                        {resolveCustomerDisplayIdentity(wo.quote).operatorRole}: {resolveCustomerDisplayIdentity(wo.quote).operatorName}
+                      </p>
+                    ) : null}
                     <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
                   </div>
                   <div className="text-right">
@@ -147,6 +157,11 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     <p className="text-xs text-[var(--color-text-muted)]">
                       Finalizada {formatDate(wo.completedAt)}
                     </p>
+                    {dueDate ? (
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        Vence {formatDate(dueDate)}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 

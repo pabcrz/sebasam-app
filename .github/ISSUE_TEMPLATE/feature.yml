@@ -1,0 +1,53 @@
+name: Solicitud de funcionalidad
+description: Proponga una mejora de producto con el contexto necesario para su evaluación.
+title: "feat: "
+labels:
+  - "type:feature"
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: Describa la necesidad, el contexto y a quién afecta.
+      placeholder: ¿Qué problema debe resolverse?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Solución propuesta
+      description: Explique el resultado esperado y el enfoque propuesto.
+      placeholder: ¿Qué debería cambiar y cómo ayudaría?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Alcance
+      description: Indique las capacidades, usuarios y áreas del producto incluidas.
+      placeholder: Enumere lo que debe incluirse.
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Fuera de alcance
+      description: Indique explícitamente lo que esta funcionalidad no debe incluir.
+      placeholder: Enumere lo que queda excluido.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Criterios de aceptación
+      description: Defina condiciones verificables para considerar completa la funcionalidad.
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verificación
+      description: Indique cómo se puede comprobar la funcionalidad o qué evidencia sería útil.
+      placeholder: Pruebas, escenarios o evidencia esperada.

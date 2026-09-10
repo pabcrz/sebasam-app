@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 const optionalTrimmedString = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  (value) => (value === null || value === undefined || (typeof value === "string" && value.trim() === "") ? undefined : value),
   z.string().trim().optional(),
 );
 
 const optionalEmail = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  (value) => (value === null || value === undefined || (typeof value === "string" && value.trim() === "") ? undefined : value),
   z.string().trim().email("Enter a valid customer email").optional(),
 );
 
@@ -22,7 +22,7 @@ export function normalizeMexicanPhone(value: string) {
 }
 
 const optionalMexicanPhone = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  (value) => (value === null || value === undefined || (typeof value === "string" && value.trim() === "") ? undefined : value),
   z
     .string()
     .transform((value, context) => {
@@ -36,8 +36,23 @@ const optionalMexicanPhone = z.preprocess(
     .optional(),
 );
 
+export const customerContactRoleSchema = z.enum(["DRIVER", "CONTACT", "BILLING"]);
+
+export const customerContactInputSchema = z.object({
+  name: z.string().trim().min(1, "El nombre del contacto es obligatorio").max(160),
+  phone: optionalMexicanPhone,
+  role: customerContactRoleSchema.default("CONTACT"),
+  isActive: z.boolean().default(true),
+});
+
+export const customerContactUpdateSchema = customerContactInputSchema.extend({
+  id: z.string().optional(),
+});
+
 export const customerInputSchema = z.object({
   name: z.string().trim().min(1, "Customer name is required").max(160),
+  commercialName: optionalTrimmedString,
+  legalName: optionalTrimmedString,
   email: optionalEmail,
   phone: optionalMexicanPhone,
   address: optionalTrimmedString,
@@ -56,3 +71,7 @@ export const customerSearchSchema = z.object({
 
 export type CustomerInput = z.infer<typeof customerInputSchema>;
 export type CustomerUpdateInput = z.infer<typeof customerUpdateSchema>;
+export type CustomerContactRole = z.infer<typeof customerContactRoleSchema>;
+export type CustomerContactInput = z.infer<typeof customerContactInputSchema>;
+export type CustomerContactUpdateInput = z.infer<typeof customerContactUpdateSchema>;
+

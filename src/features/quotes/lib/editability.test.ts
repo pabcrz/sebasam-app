@@ -67,5 +67,16 @@ describe("isQuoteEditable", () => {
         isQuoteEditable({ status: "SENT", workOrder: { status: "PLANNED" } }),
       ).toBe(true);
     });
+
+    it("returns false when document is locked regardless of status or workOrder", () => {
+      expect(isQuoteEditable({ status: "DRAFT", isLocked: true })).toBe(false);
+      expect(isQuoteEditable({ status: "SENT", isLocked: true })).toBe(false);
+      expect(isQuoteEditable({ status: "APPROVED", isLocked: true, workOrder: { status: "PLANNED" } })).toBe(false);
+    });
+
+    it("returns true when document is not locked and meets regular editable conditions", () => {
+      expect(isQuoteEditable({ status: "DRAFT", isLocked: false })).toBe(true);
+      expect(isQuoteEditable({ status: "APPROVED", isLocked: false, workOrder: { status: "ASSIGNED" } })).toBe(true);
+    });
   });
 });

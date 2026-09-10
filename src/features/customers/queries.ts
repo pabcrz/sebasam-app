@@ -1,10 +1,11 @@
-import { LedgerEntryType, LedgerMovementType, PaymentMethod } from "@prisma/client";
+import { LedgerEntryType, LedgerMovementType, PaymentMethod, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { getCustomerBalanceSummary } from "@/features/payments/domain";
 import { customerSearchSchema } from "./schemas";
 
 export type CustomerAccountStatement = {
+  nominalContractedCents: number;
   totalContractedCents: number;
   totalPaidCents: number;
   pendingBalanceCents: number;
@@ -54,22 +55,69 @@ export async function listCustomers(input: unknown = {}) {
   await requireOperationalRole();
 
   const { query } = customerSearchSchema.parse(input);
-  const search = query || undefined;
+  const search = query?.trim() || undefined;
+  const digitsOnly = query ? query.replace(/\D/g, "") : "";
+
+  const orConditions: Prisma.CustomerWhereInput[] = [];
+
+  if (search) {
+    orConditions.push(
+      { name: { contains: search, mode: "insensitive" } },
+      { commercialName: { contains: search, mode: "insensitive" } },
+      { legalName: { contains: search, mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+      { phone: { contains: search, mode: "insensitive" } },
+      { address: { contains: search, mode: "insensitive" } },
+      { notes: { contains: search, mode: "insensitive" } },
+      {
+        vehicles: {
+          some: {
+            OR: [
+              { plate: { contains: search, mode: "insensitive" } },
+              { economicNumber: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      },
+      {
+        fiscalProfiles: {
+          some: {
+            OR: [
+              { businessName: { contains: search, mode: "insensitive" } },
+              { taxId: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      },
+      {
+        contacts: {
+          some: {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { phone: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      },
+    );
+
+    if (digitsOnly.length >= 3) {
+      orConditions.push(
+        { phone: { contains: digitsOnly } },
+        { contacts: { some: { phone: { contains: digitsOnly } } } },
+      );
+    }
+  }
 
   return prisma.customer.findMany({
-    where: search
-      ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } },
-            { phone: { contains: search, mode: "insensitive" } },
-            { address: { contains: search, mode: "insensitive" } },
-            { notes: { contains: search, mode: "insensitive" } },
-            { vehicles: { some: { plate: { contains: search, mode: "insensitive" } } } },
-          ],
-        }
-      : undefined,
+    where: search ? { OR: orConditions } : undefined,
     include: {
+      contacts: {
+        orderBy: [{ isActive: "desc" }, { role: "asc" }, { name: "asc" }],
+      },
+      fiscalProfiles: {
+        orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+      },
       _count: {
         select: {
           quotes: true,
@@ -89,6 +137,17 @@ export async function getCustomerById(customerId: string) {
 
   return prisma.customer.findUnique({
     where: { id: customerId },
+    include: {
+      contacts: {
+        orderBy: [{ isActive: "desc" }, { role: "asc" }, { name: "asc" }],
+      },
+      fiscalProfiles: {
+        orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+      },
+      vehicles: {
+        orderBy: [{ createdAt: "desc" }],
+      },
+    },
   });
 }
 

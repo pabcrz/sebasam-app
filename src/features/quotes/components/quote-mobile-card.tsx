@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
-import Link from "next/link";
+import { PrintActionButton } from "./print-action-button";
 import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, Button, OperationalCard } from "@/components/ui";
@@ -107,20 +107,17 @@ export function QuoteListCard({
     switch (action) {
       case "print":
         return (
-          <Button
-            asChild
-            type="button"
+          <PrintActionButton
+            url={printHref}
             variant={variant}
             size="sm"
             className={presentation === "tile" ? tileClassName : "min-h-11 min-w-11 px-3 sm:px-0"}
             aria-label={`Imprimir cotización ${quote.number}`}
             title={`Imprimir cotización ${quote.number}`}
           >
-            <Link href={printHref}>
-              <Printer className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only">Imprimir</span>
-            </Link>
-          </Button>
+            <Printer className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Imprimir</span>
+          </PrintActionButton>
         );
       case "edit":
         return (
@@ -204,6 +201,9 @@ export function QuoteListCard({
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
                 <span>Folio {quote.number}</span>
                 <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
+                {quote.isLocked ? (
+                  <Badge variant="warning">Bloqueado</Badge>
+                ) : null}
                 {quote.status === "DRAFT" && quote.submissionKey ? (
                   <Badge variant="warning">Editada</Badge>
                 ) : null}
@@ -253,6 +253,12 @@ export function QuoteListCard({
               <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}</span>
             </p>
+            {quote.paymentDueDate ? (
+              <p className="flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Vencimiento pago: {formatDate(quote.paymentDueDate)}</span>
+              </p>
+            ) : null}
           </div>
         </>
       }

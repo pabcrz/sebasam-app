@@ -25,6 +25,7 @@
 *.pem
 .atl/
 .windsurf/
+.codegraph/
 
 # debug
 npm-debug.log*

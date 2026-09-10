@@ -91,7 +91,7 @@ describe("WorkOrderOperationsDialog", () => {
     expect(viewOrder).toHaveTextContent("Ver orden");
 
     await user.click(viewOrder);
-    const printNote = screen.getByRole("link", { name: "Imprimir nota de remisión T-001" });
+    const printNote = screen.getByRole("button", { name: "Imprimir nota de remisión T-001" });
     expect(printNote).toHaveAttribute("title", "Imprimir nota de remisión T-001");
     expect(printNote).toHaveClass("min-h-11", "min-w-11");
     expect(printNote).toHaveClass("w-9", "sm:w-auto");
@@ -245,7 +245,7 @@ describe("WorkOrderOperationsDialog", () => {
 
     expect(screen.getByText("Completada")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /asignar e iniciar trabajo/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /imprimir nota de remisión/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /imprimir nota de remisión/i })).toBeInTheDocument();
   });
 
   it("preserves the current Notes state when printing from completed operations", async () => {
@@ -254,9 +254,9 @@ describe("WorkOrderOperationsDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo t-001/i }));
 
-    const print = screen.getByRole("link", { name: "Imprimir nota de remisión T-001" });
-    expect(print).toHaveAttribute("href", "/admin/notas/wo-note-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dweek%26anchor%3D2026-08-12%26payment%3Dpending%26assignee%3Dall");
-    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+    const print = screen.getByRole("button", { name: "Imprimir nota de remisión T-001" });
+    expect(print).toHaveAttribute("data-print-url", "/admin/notas/wo-note-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dweek%26anchor%3D2026-08-12%26payment%3Dpending%26assignee%3Dall");
+    expect(print.getAttribute("data-print-url")).not.toContain("/admin/quotes/");
     expect(print).not.toHaveAttribute("target");
     expect(print).not.toHaveAttribute("rel");
   });

@@ -3,9 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getCustomerByIdMock = vi.hoisted(() => vi.fn());
-const getCustomerAccountStatementMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() => vi.fn());
-const customerAccountStatementMock = vi.hoisted(() => vi.fn(() => <div data-testid="customer-account-statement" />));
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
@@ -17,17 +15,12 @@ vi.mock("next/link", () => ({
 
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 vi.mock("@/features/customers/queries", () => ({
   getCustomerById: getCustomerByIdMock,
-  getCustomerAccountStatement: getCustomerAccountStatementMock,
 }));
-
-vi.mock("@/features/customers/components/customer-account-statement", () => ({
-  CustomerAccountStatement: customerAccountStatementMock,
-}));
-vi.mock("@/features/payments/actions", () => ({ correctPaymentAction: vi.fn() }));
 
 import CustomerDetailPage from "./page";
 
@@ -41,34 +34,25 @@ describe("CustomerDetailPage", () => {
     notes: "Facturar al cierre del mes.",
     status: "ACTIVE",
   };
-  const statement = {
-    totalContractedCents: 25000,
-    totalPaidCents: 17500,
-    pendingBalanceCents: 7500,
-    movements: [],
-  };
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("shows read-only customer context and its account statement with an explicit edit action", async () => {
+  it("shows read-only customer context and link to full account statement with an explicit edit action", async () => {
     getCustomerByIdMock.mockResolvedValue(customer);
-    getCustomerAccountStatementMock.mockResolvedValue(statement);
 
     render(await CustomerDetailPage({ params: Promise.resolve({ id: customer.id }) }));
 
     expect(screen.getByRole("heading", { name: customer.name })).toBeInTheDocument();
     expect(screen.getByText("contacto@cdn.mx")).toBeInTheDocument();
     expect(screen.getByText("Facturar al cierre del mes.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Editar" })).toHaveAttribute("href", "/admin/customers/cust-1/edit");
+    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
+    const statementLink = screen.getByRole("link", { name: /estado de cuenta/i });
+    expect(statementLink).toBeInTheDocument();
+    expect(statementLink).toHaveAttribute("href", `/admin/customers/${customer.id}/estado-de-cuenta`);
     expect(screen.queryByTestId("customer-edit-form")).not.toBeInTheDocument();
     expect(getCustomerByIdMock).toHaveBeenCalledWith(customer.id);
-    expect(getCustomerAccountStatementMock).toHaveBeenCalledWith(customer.id);
-    expect(customerAccountStatementMock).toHaveBeenCalledWith(
-      { statement, correctPaymentAction: expect.any(Function) },
-      undefined,
-    );
   });
 
   it("uses the existing not-found boundary for an unknown customer", async () => {
@@ -78,6 +62,5 @@ describe("CustomerDetailPage", () => {
     });
 
     await expect(CustomerDetailPage({ params: Promise.resolve({ id: "missing" }) })).rejects.toThrow("NEXT_NOT_FOUND");
-    expect(getCustomerAccountStatementMock).not.toHaveBeenCalled();
   });
 });

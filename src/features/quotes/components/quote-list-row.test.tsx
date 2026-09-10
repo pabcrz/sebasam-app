@@ -49,7 +49,11 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     totalCents: 11600,
     taxEnabled: true,
     validUntil: new Date("2026-12-31"),
-
+    paymentDueDate: null,
+    isLocked: false,
+    lockedAt: null,
+    lockedById: null,
+    lockedReason: null,
     approvedAt: null,
     administrative: false, deletedAt: null,
     operationalDate: new Date("2026-06-15T00:00:00.000Z"),
@@ -59,6 +63,8 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     customer: {
       id: "cust-1",
       name: "Constructora del Norte",
+      commercialName: null,
+      legalName: null,
       email: "contacto@constructora.com",
       phone: "555-0192",
       address: null,
@@ -71,6 +77,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     vehicle: {
       id: "veh-1",
       customerId: "cust-1",
+      economicNumber: null,
       brand: "Ford",
       model: "F-150",
       year: 2020,
@@ -103,6 +110,12 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
 
     paidCents: 0,
     remainingCents: 11600,
+    customerContactId: null,
+    customerFiscalProfileId: null,
+    customerSnapshot: null,
+    contactSnapshot: null,
+    customerContact: null,
+    customerFiscalProfile: null,
 
 
 
@@ -233,12 +246,12 @@ describe("QuoteListRow", () => {
       workOrder: { id: "wo-row-active-1", number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
     }));
 
-    const print = screen.getByRole("link", { name: /imprimir cotización/i });
+    const print = screen.getByRole("button", { name: /imprimir cotización/i });
     expect(print).toHaveAttribute(
-      "href",
+      "data-print-url",
       "/admin/quotes/quote-row-1/print?returnTo=/admin/quotes",
     );
-    expect(print.getAttribute("href")).not.toContain("/admin/notas/");
+    expect(print.getAttribute("data-print-url")).not.toContain("/admin/notas/");
     expect(print).toHaveClass("min-h-11", "min-w-11");
   });
 
@@ -249,8 +262,8 @@ describe("QuoteListRow", () => {
       workOrder: { id: "wo-row-completed-1", number: "OT-002", status: "COMPLETED" } as QuoteListItem["workOrder"],
     }));
 
-    const print = screen.getByRole("link", { name: /imprimir cotización/i });
-    expect(print).toHaveAttribute("href", "/admin/notas/wo-row-completed-1/print?returnTo=/admin/notas");
-    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+    const print = screen.getByRole("button", { name: /imprimir cotización/i });
+    expect(print).toHaveAttribute("data-print-url", "/admin/notas/wo-row-completed-1/print?returnTo=/admin/notas");
+    expect(print.getAttribute("data-print-url")).not.toContain("/admin/quotes/");
   });
 });

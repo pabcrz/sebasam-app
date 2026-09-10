@@ -9,6 +9,8 @@ const workOrderInclude = {
   quote: {
     include: {
       customer: true,
+      customerContact: true,
+      customerFiscalProfile: true,
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" as const } },
       sections: { orderBy: { sortOrder: "asc" as const }, include: { items: { orderBy: { sortOrder: "asc" as const } } } },
@@ -86,59 +88,162 @@ export async function listActiveWorkOrders() {
   return workOrders.map(serializeWorkOrder);
 }
 
+import { localDateToMexicoCityInstant } from "@/features/quotes/lib/operational-date";
+import { mexicoCityDateParts } from "./receivables-policy";
+
+export type ListCompletedWorkOrdersInput = {
+  start: Date;
+  end: Date;
+  payment: "all" | "pending" | "paid";
+  assignee: "all" | "workshop" | string;
+  customerId?: string;
+  overdue?: "all" | "overdue" | "current";
+  page: number;
+};
+
+export type CompletedWorkOrderTotals = {
+  totalPendingCents: number;
+  totalOverdueCents: number;
+  totalPaidCents: number;
+};
+
 /** Returns completed work orders (COMPLETED) — shown in the Notas section. */
-export async function listCompletedWorkOrders(input: { start: Date; end: Date; payment: "all" | "pending" | "paid"; assignee: "all" | "workshop" | string; page: number }) {
+export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInput) {
   await requireOperationalRole();
   const pageSize = 20;
-  const activePaymentCondition = Prisma.sql`p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL`;
-  const balance = Prisma.sql`q."totalCents" - COALESCE(SUM(p."amountCents") FILTER (WHERE ${activePaymentCondition}), 0)`;
-  const paymentFilter = input.payment === "pending" ? Prisma.sql`HAVING ${balance} > 0` : input.payment === "paid" ? Prisma.sql`HAVING ${balance} = 0` : Prisma.empty;
-  const assigneeFilter = input.assignee === "all"
-    ? Prisma.empty
-    : input.assignee === "workshop"
-      ? Prisma.sql`AND wo."isSpecial" = true`
-      : Prisma.sql`AND EXISTS (
-        SELECT 1 FROM "WorkAssignment" wa
-        JOIN "UserProfile" worker ON worker.id = wa."workerId"
-        WHERE wa."workOrderId" = wo.id
-          AND wa.status::text <> ${AssignmentStatus.CANCELLED}
-          AND worker."workerKind"::text = ${WorkerKind.MASTER}
-          AND worker.id = ${input.assignee}
-      )`;
-  const eligible = await prisma.$queryRaw<Array<{ id: string; paidCents: bigint; activePaymentId: string | null; activePaymentMethod: string | null; activePaymentAmountCents: bigint | null }>>(Prisma.sql`
+
+  // Active payment application condition:
+  // PaymentApplication not reversed, and associated Payment not reversed with status PAID
+  const activeAppCondition = Prisma.sql`pa."reversedAt" IS NULL AND p.id IS NOT NULL AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL`;
+  const paidCentsExpr = Prisma.sql`COALESCE(SUM(pa."amountCents") FILTER (WHERE ${activeAppCondition}), 0)`;
+  const balanceExpr = Prisma.sql`q."totalCents" - ${paidCentsExpr}`;
+
+  const now = new Date();
+  const todayParts = mexicoCityDateParts(now);
+  const todayCdmxMidnight = localDateToMexicoCityInstant(
+    Number(todayParts.year),
+    Number(todayParts.month),
+    Number(todayParts.day),
+    0,
+    0,
+    0,
+  );
+
+  const havingConditions: Prisma.Sql[] = [];
+
+  if (input.payment === "pending") {
+    havingConditions.push(Prisma.sql`${balanceExpr} > 0`);
+  } else if (input.payment === "paid") {
+    havingConditions.push(Prisma.sql`${balanceExpr} = 0`);
+  }
+
+  if (input.overdue === "overdue") {
+    havingConditions.push(Prisma.sql`${balanceExpr} > 0 AND wo."paymentDueDate" IS NOT NULL AND wo."paymentDueDate" < ${todayCdmxMidnight}`);
+  } else if (input.overdue === "current") {
+    havingConditions.push(Prisma.sql`(${balanceExpr} <= 0 OR wo."paymentDueDate" IS NULL OR wo."paymentDueDate" >= ${todayCdmxMidnight})`);
+  }
+
+  const havingClause =
+    havingConditions.length > 0
+      ? Prisma.sql`HAVING ${Prisma.join(havingConditions, " AND ")}`
+      : Prisma.empty;
+
+  const assigneeFilter =
+    input.assignee === "all"
+      ? Prisma.empty
+      : input.assignee === "workshop"
+        ? Prisma.sql`AND wo."isSpecial" = true`
+        : Prisma.sql`AND EXISTS (
+            SELECT 1 FROM "WorkAssignment" wa
+            JOIN "UserProfile" worker ON worker.id = wa."workerId"
+            WHERE wa."workOrderId" = wo.id
+              AND wa.status::text <> ${AssignmentStatus.CANCELLED}
+              AND worker."workerKind"::text = ${WorkerKind.MASTER}
+              AND worker.id = ${input.assignee}
+          )`;
+
+  const customerFilter =
+    input.customerId && input.customerId.trim() !== "" && input.customerId !== "all"
+      ? Prisma.sql`AND q."customerId" = ${input.customerId}`
+      : Prisma.empty;
+
+  const baseWhere = Prisma.sql`
+    WHERE wo.status::text = ${WorkOrderStatus.COMPLETED}
+      AND wo."completedAt" >= ${input.start}
+      AND wo."completedAt" < ${input.end}
+      ${assigneeFilter}
+      ${customerFilter}
+  `;
+
+  const eligible = await prisma.$queryRaw<Array<{
+    id: string;
+    paidCents: bigint;
+    activePaymentId: string | null;
+    activePaymentMethod: string | null;
+    activePaymentAmountCents: bigint | null;
+    totalPaidCents?: bigint;
+    totalPendingCents?: bigint;
+    totalOverdueCents?: bigint;
+  }>>(Prisma.sql`
     SELECT
       wo.id,
-      COALESCE(SUM(p."amountCents") FILTER (WHERE ${activePaymentCondition}), 0) AS "paidCents",
-      (array_agg(p.id ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE ${activePaymentCondition}))[1] AS "activePaymentId",
-      (array_agg(p.method::text ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE ${activePaymentCondition}))[1] AS "activePaymentMethod",
-      (array_agg(p."amountCents" ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE ${activePaymentCondition}))[1] AS "activePaymentAmountCents"
-    FROM "WorkOrder" wo JOIN "Quote" q ON q.id = wo."quoteId" LEFT JOIN "Payment" p ON p."quoteId" = q.id
-    WHERE wo.status::text = ${WorkOrderStatus.COMPLETED} AND wo."completedAt" >= ${input.start} AND wo."completedAt" < ${input.end} ${assigneeFilter}
-    GROUP BY wo.id, wo."completedAt", q."totalCents" ${paymentFilter}
-    ORDER BY wo."completedAt" DESC, wo.id DESC LIMIT ${pageSize + 1} OFFSET ${(input.page - 1) * pageSize}`);
+      ${paidCentsExpr} AS "paidCents",
+      (array_agg(p.id ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE ${activeAppCondition}))[1] AS "activePaymentId",
+      (array_agg(p.method::text ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE ${activeAppCondition}))[1] AS "activePaymentMethod",
+      (array_agg(pa."amountCents" ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE ${activeAppCondition}))[1] AS "activePaymentAmountCents",
+      COALESCE(SUM(${paidCentsExpr}) OVER(), 0) AS "totalPaidCents",
+      COALESCE(SUM(CASE WHEN ${balanceExpr} > 0 THEN ${balanceExpr} ELSE 0 END) OVER(), 0) AS "totalPendingCents",
+      COALESCE(SUM(CASE WHEN ${balanceExpr} > 0 AND wo."paymentDueDate" IS NOT NULL AND wo."paymentDueDate" < ${todayCdmxMidnight} THEN ${balanceExpr} ELSE 0 END) OVER(), 0) AS "totalOverdueCents"
+    FROM "WorkOrder" wo
+    JOIN "Quote" q ON q.id = wo."quoteId"
+    LEFT JOIN "PaymentApplication" pa ON pa."workOrderId" = wo.id AND pa."reversedAt" IS NULL
+    LEFT JOIN "Payment" p ON p.id = pa."paymentId" AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL
+    ${baseWhere}
+    GROUP BY wo.id, wo."completedAt", wo."paymentDueDate", q."totalCents"
+    ${havingClause}
+    ORDER BY wo."completedAt" DESC, wo.id DESC LIMIT ${pageSize + 1} OFFSET ${(input.page - 1) * pageSize}
+  `);
+
+  const totals: CompletedWorkOrderTotals = {
+    totalPaidCents: eligible.length > 0 ? Number(eligible[0]?.totalPaidCents ?? 0) : 0,
+    totalPendingCents: eligible.length > 0 ? Number(eligible[0]?.totalPendingCents ?? 0) : 0,
+    totalOverdueCents: eligible.length > 0 ? Number(eligible[0]?.totalOverdueCents ?? 0) : 0,
+  };
+
   const pageRows = eligible.slice(0, pageSize);
-  if (pageRows.length === 0) return { page: input.page, hasNextPage: false, workOrders: [] };
+  if (pageRows.length === 0) {
+    return { page: input.page, hasNextPage: false, totals, workOrders: [] };
+  }
+
   const workOrders = await prisma.workOrder.findMany({
     where: { id: { in: pageRows.map(({ id }) => id) } },
     include: workOrderInclude,
   });
+
   const byId = new Map(workOrders.map((wo) => [wo.id, wo]));
-  return { page: input.page, hasNextPage: eligible.length > pageSize, workOrders: pageRows.flatMap(({ id, paidCents, activePaymentId, activePaymentMethod, activePaymentAmountCents }) => {
-    const wo = byId.get(id); if (!wo) return [];
-    const serialized = serializeWorkOrder(wo);
-    const totalCents = Number(wo.quote.totalCents);
-    return [{
-      ...serialized,
-      quote: {
-        ...serialized.quote,
-        paidCents: Number(paidCents),
-        remainingCents: totalCents - Number(paidCents),
-        activePaymentId: activePaymentId ?? null,
-        activePaymentMethod: activePaymentMethod ?? null,
-        activePaymentAmountCents: activePaymentAmountCents == null ? null : Number(activePaymentAmountCents),
-      },
-    }];
-  }) };
+
+  return {
+    page: input.page,
+    hasNextPage: eligible.length > pageSize,
+    totals,
+    workOrders: pageRows.flatMap(({ id, paidCents, activePaymentId, activePaymentMethod, activePaymentAmountCents }) => {
+      const wo = byId.get(id);
+      if (!wo) return [];
+      const serialized = serializeWorkOrder(wo);
+      const totalCents = Number(wo.quote.totalCents);
+      return [{
+        ...serialized,
+        quote: {
+          ...serialized.quote,
+          paidCents: Number(paidCents),
+          remainingCents: totalCents - Number(paidCents),
+          activePaymentId: activePaymentId ?? null,
+          activePaymentMethod: activePaymentMethod ?? null,
+          activePaymentAmountCents: activePaymentAmountCents == null ? null : Number(activePaymentAmountCents),
+        },
+      }];
+    }),
+  };
 }
 
 /** Returns a single work order with all related data for the detail/manage view. */

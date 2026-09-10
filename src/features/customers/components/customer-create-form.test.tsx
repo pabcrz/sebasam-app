@@ -36,6 +36,9 @@ describe("CustomerCreateForm", () => {
     await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
 
     expect(screen.getByLabelText("Nombre")).toHaveAttribute("name", "name");
+    expect(screen.getByLabelText("Razón social formal (opcional)")).toHaveAttribute("name", "legalName");
+    expect(screen.getByLabelText("Nombre o apodo del operador")).toHaveAttribute("name", "initialContactName");
+    expect(screen.getByLabelText("Teléfono del operador (opcional)")).toHaveAttribute("name", "initialContactPhone");
     expect(screen.getByLabelText("Correo electrónico")).toHaveAttribute("name", "email");
     expect(screen.getByLabelText("Teléfono")).toHaveAttribute("name", "phone");
     expect(screen.getByLabelText("Teléfono")).toHaveAttribute("type", "tel");
@@ -66,6 +69,10 @@ describe("CustomerCreateForm", () => {
     const formData = action.mock.calls[0][0] as FormData;
     expect(Object.fromEntries(formData.entries())).toEqual({
       name: "Constructora del Norte",
+      commercialName: "",
+      legalName: "",
+      initialContactName: "",
+      initialContactPhone: "",
       email: "contacto@cdn.mx",
       phone: "55 1234 5678",
       address: "Av. Siempre Viva 123",

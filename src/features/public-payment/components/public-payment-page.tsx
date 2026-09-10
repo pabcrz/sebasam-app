@@ -49,7 +49,9 @@ export function PublicPaymentPage({
   location,
 }: PublicPaymentPageProps) {
   const reference = request.quote?.number ?? request.workOrder?.number ?? request.id.slice(0, 8);
-  const amount = request.quote?.totalCents ?? 0;
+  const amount = request.payableTotalCents ?? request.quote?.totalCents ?? 0;
+  const payableSubtotalCents = request.payableSubtotalCents ?? request.quote?.subtotalCents ?? null;
+  const payableTaxCents = request.payableTaxCents ?? request.quote?.taxCents ?? null;
 
   return (
     <PublicPaymentShell badge="payment" business={business} location={location}>
@@ -58,10 +60,10 @@ export function PublicPaymentPage({
         <p className="text-lg font-bold text-[var(--color-text-main)]">{reference}</p>
         {request.quote ? (
           <div className="mt-3 grid gap-1 text-sm text-[var(--color-text-muted)]">
-            <p>Subtotal: {formatCurrency(request.quote.subtotalCents)}</p>
-            {request.quote.taxEnabled ? <p>IVA: {formatCurrency(request.quote.taxCents)}</p> : null}
+            <p>Subtotal: {formatCurrency(payableSubtotalCents)}</p>
+            {payableTaxCents && payableTaxCents > 0 ? <p>IVA: {formatCurrency(payableTaxCents)}</p> : null}
             <p className="font-mono text-xl font-bold tabular-nums text-[var(--color-primary)]" data-numeric-role="currency">
-              Total: {formatCurrency(request.quote.totalCents)}
+              Total: {formatCurrency(amount)}
             </p>
             {request.quote.validUntil ? (
               <p className="text-xs">

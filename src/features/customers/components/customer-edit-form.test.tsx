@@ -77,6 +77,8 @@ describe("CustomerEditForm", () => {
     expect(Object.fromEntries(formData.entries())).toEqual({
       customerId: "cust-1",
       name: "Constructora del Sur",
+      commercialName: "",
+      legalName: "",
       email: "contacto@cdn.mx",
       phone: "55 1234 5678",
       status: "INACTIVE",

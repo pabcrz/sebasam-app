@@ -21,6 +21,12 @@ enum WorkerKind {
   HELPER
 }
 
+enum CustomerContactRole {
+  DRIVER
+  CONTACT
+  BILLING
+}
+
 enum CustomerStatus {
   ACTIVE
   INACTIVE
@@ -111,6 +117,19 @@ enum PersonType {
   BUSINESS
 }
 
+enum QuoteLifecycleEventType {
+  STATUS_CHANGE
+  LOCK
+  UNLOCK
+  CONVERT_TO_NOTE
+  RETURN_TO_QUOTE
+}
+
+enum SettlementAgreementStatus {
+  ACTIVE
+  CANCELLED
+}
+
 model UserProfile {
   id          String      @id @db.Uuid
   username    String      @unique
@@ -134,6 +153,10 @@ model UserProfile {
   ledgerEntries        LedgerEntry[]        @relation("LedgerEntryActor")
   helperPayrollWeeks   HelperPayrollWeek[]
   paymentCorrections   PaymentCorrection[]
+  lockedQuotes         Quote[]              @relation("QuoteLockedBy")
+  settlementAgreements SettlementAgreement[] @relation("SettlementAgreementActor")
+  settlementAgreementRevisions SettlementAgreementRevision[] @relation("SettlementAgreementRevisionActor")
+  cancelledSettlementAgreements SettlementAgreement[] @relation("SettlementAgreementCanceller")
 }
 
 model HelperPayrollWeek {
@@ -154,78 +177,122 @@ model HelperPayrollWeek {
 }
 
 model Customer {
-  id        String         @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  address   String?
-  status    CustomerStatus @default(ACTIVE)
-  notes     String?
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id             String         @id @default(cuid())
+  name           String
+  commercialName String?
+  legalName      String?
+  email          String?
+  phone          String?
+  address        String?
+  status         CustomerStatus @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   quotes          Quote[]
   vehicles        Vehicle[]
+  contacts        CustomerContact[]
   fiscalProfiles  CustomerFiscalProfile[]
   paymentRequests PaymentRequest[]
   payments        Payment[]
   ledgerEntries   LedgerEntry[]
+
+  @@index([name])
+  @@index([commercialName])
+  @@index([phone])
+}
+
+model CustomerContact {
+  id         String              @id @default(cuid())
+  customerId String
+  name       String
+  phone      String?
+  role       CustomerContactRole @default(CONTACT)
+  isActive   Boolean             @default(true)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  quotes   Quote[]
+
+  @@index([customerId])
+  @@index([phone])
+  @@index([name])
+  @@index([role])
 }
 
 model Vehicle {
-  id         String   @id @default(cuid())
-  customerId String
-  brand      String?
-  model      String?
-  year       Int?
-  color      String?
-  plate      String?
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String   @id @default(cuid())
+  customerId     String
+  economicNumber String?
+  brand          String?
+  model          String?
+  year           Int?
+  color          String?
+  plate          String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   quotes   Quote[]
 
   @@unique([customerId, plate])
+  @@index([economicNumber])
 }
 
 model Quote {
-  id              String      @id @default(cuid())
-  submissionKey   String?     @unique
-  submissionHash  String?
-  customerId      String?
-  vehicleId       String?
-  number          String      @unique
-  status          QuoteStatus @default(DRAFT)
-  title           String
-  description     String?
-  vehicleSnapshot Json?
-  subtotalCents   Int?
-  discountCents   Int         @default(0)
-  taxCents        Int?
-  totalCents      Int?
-  taxEnabled      Boolean     @default(true)
-  validUntil      DateTime    @default(dbgenerated("CURRENT_TIMESTAMP + INTERVAL '7 days'"))
-  approvedAt      DateTime?
-  administrative  Boolean     @default(false)
-  operationalDate DateTime    @db.Date
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  deletedAt       DateTime?
+  id                      String      @id @default(cuid())
+  submissionKey           String?     @unique
+  submissionHash          String?
+  customerId              String?
+  vehicleId               String?
+  customerContactId       String?
+  customerFiscalProfileId String?
+  number                  String      @unique
+  status                  QuoteStatus @default(DRAFT)
+  title                   String
+  description             String?
+  vehicleSnapshot         Json?
+  customerSnapshot        Json?
+  contactSnapshot         Json?
+  subtotalCents           Int?
+  discountCents           Int         @default(0)
+  taxCents                Int?
+  totalCents              Int?
+  taxEnabled              Boolean     @default(true)
+  validUntil              DateTime    @default(dbgenerated("CURRENT_TIMESTAMP + INTERVAL '7 days'"))
+  approvedAt              DateTime?
+  administrative          Boolean     @default(false)
+  operationalDate         DateTime    @db.Date
+  isLocked                Boolean     @default(false)
+  lockedAt                DateTime?
+  lockedById              String?     @db.Uuid
+  lockedReason            String?
+  paymentDueDate          DateTime?
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+  deletedAt               DateTime?
 
-  customer        Customer?        @relation(fields: [customerId], references: [id])
-  vehicle         Vehicle?         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  sections        QuoteSection[]
-  items           QuoteItem[]
-  workOrder       WorkOrder?
-  paymentRequests PaymentRequest[]
-  payments        Payment[]
-  sharedQuotes    SharedQuote[]
-  decisions       QuoteDecision[]
-  lifecycleEvents QuoteLifecycleEvent[]
+  customer              Customer?              @relation(fields: [customerId], references: [id])
+  vehicle               Vehicle?               @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  customerContact       CustomerContact?       @relation(fields: [customerContactId], references: [id], onDelete: SetNull)
+  customerFiscalProfile CustomerFiscalProfile? @relation(fields: [customerFiscalProfileId], references: [id], onDelete: SetNull)
+  lockedBy              UserProfile?           @relation("QuoteLockedBy", fields: [lockedById], references: [id], onDelete: SetNull)
+  sections              QuoteSection[]
+  items                 QuoteItem[]
+  workOrder             WorkOrder?
+  paymentRequests       PaymentRequest[]
+  payments              Payment[]
+  sharedQuotes          SharedQuote[]
+  decisions             QuoteDecision[]
+  lifecycleEvents       QuoteLifecycleEvent[]
+  settlementAgreement   SettlementAgreement?
 
   @@index([operationalDate])
+  @@index([customerContactId])
+  @@index([customerFiscalProfileId])
+  @@index([lockedById])
 }
 
 model SharedQuote {
@@ -258,18 +325,20 @@ model QuoteDecision {
 }
 
 model QuoteLifecycleEvent {
-  id            String      @id @default(cuid())
+  id            String                  @id @default(cuid())
   quoteId       String
+  eventType     QuoteLifecycleEventType @default(STATUS_CHANGE)
   previousState QuoteStatus
   nextState     QuoteStatus
-  actorId       String      @db.Uuid
+  actorId       String                  @db.Uuid
   reason        String
-  createdAt     DateTime    @default(now())
+  createdAt     DateTime                @default(now())
 
   quote Quote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   actor UserProfile @relation(fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([quoteId, createdAt])
+  @@index([quoteId, eventType])
   @@index([actorId])
 }
 
@@ -316,6 +385,7 @@ model WorkOrder {
   siteAddress                   String?
   notes                         String?
   completedAt                   DateTime?
+  paymentDueDate                DateTime?
   isSpecial                     Boolean         @default(false)
   specialAssigneeName           String?
   createdAt                     DateTime        @default(now())
@@ -331,6 +401,7 @@ model WorkOrder {
   paymentCorrectionApplications PaymentCorrectionApplication[]
 
   @@index([status, completedAt])
+  @@index([status, paymentDueDate])
 }
 
 model CompletedWorkKnowledgeSource {
@@ -404,9 +475,11 @@ model CustomerFiscalProfile {
 
   customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
   paymentRequests PaymentRequest[]
+  quotes          Quote[]
 
   @@unique([customerId, taxId])
   @@index([customerId])
+  @@index([businessName])
 }
 
 model PaymentRequest {
@@ -421,6 +494,10 @@ model PaymentRequest {
   fiscalSnapshot          Json?
   expiresAt               DateTime
   viewedAt                DateTime?
+  payableSubtotalCents    Int?
+  payableTaxCents         Int?
+  payableTotalCents       Int?
+  settlementAgreementId   String?
   createdAt               DateTime             @default(now())
   updatedAt               DateTime             @updatedAt
 
@@ -434,6 +511,54 @@ model PaymentRequest {
   @@index([quoteId])
   @@index([workOrderId])
   @@index([token])
+}
+
+model SettlementAgreement {
+  id                   String                  @id @default(cuid())
+  quoteId              String                  @unique
+  status               SettlementAgreementStatus @default(ACTIVE)
+  nominalSubtotalCents Int
+  nominalTaxCents      Int
+  nominalTotalCents    Int
+  settlementBaseCents  Int
+  settlementTaxCents   Int
+  settlementTotalCents Int
+  reason               String
+  actorId              String                  @db.Uuid
+  cancelledAt          DateTime?
+  cancelledById        String?                 @db.Uuid
+  cancellationReason   String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  quote       Quote                       @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  actor       UserProfile                 @relation("SettlementAgreementActor", fields: [actorId], references: [id], onDelete: Restrict)
+  cancelledBy UserProfile?                @relation("SettlementAgreementCanceller", fields: [cancelledById], references: [id], onDelete: Restrict)
+  revisions   SettlementAgreementRevision[]
+
+  @@index([status])
+  @@index([actorId])
+}
+
+model SettlementAgreementRevision {
+  id                  String   @id @default(cuid())
+  settlementAgreementId String
+  revisionNumber      Int
+  nominalSubtotalCents Int
+  nominalTaxCents     Int
+  nominalTotalCents   Int
+  settlementBaseCents Int
+  settlementTaxCents  Int
+  settlementTotalCents Int
+  reason              String
+  actorId             String   @db.Uuid
+  createdAt           DateTime @default(now())
+
+  settlementAgreement SettlementAgreement @relation(fields: [settlementAgreementId], references: [id], onDelete: Restrict)
+  actor               UserProfile         @relation("SettlementAgreementRevisionActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@unique([settlementAgreementId, revisionNumber])
+  @@index([settlementAgreementId, createdAt])
 }
 
 model Payment {

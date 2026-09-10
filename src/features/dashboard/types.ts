@@ -1,7 +1,9 @@
 export type DashboardPeriodKey = "week" | "month" | "year";
 
 export interface QueueMetrics {
-  commercialQueueCount: number;
+  draftQuotesCount: number;
+  sentQuotesCount: number;
+  approvedQuotesCount: number;
   activeExecutionCount: number;
 }
 
@@ -27,24 +29,18 @@ export interface WeeklyPayrollEstimate {
   estimatedCommissionsCents: number;
 }
 
-export type PendingAttentionType = "quote" | "work_order";
-
-export interface PendingAttentionItem {
-  id: string;
-  type: PendingAttentionType;
-  href: string;
+export interface ReceivableCustomer {
+  customerId: string;
   customerName: string;
-  vehicleDescription: string;
-  statusLabel: string;
-  statusVariant: "default" | "success" | "warning" | "danger" | "info";
-  nextStep: string;
-  updatedAt: Date;
+  pendingBalanceCents: number;
+  oldestUnpaidDate: Date | null;
+  isOverdue: boolean;
 }
 
 export interface OperationalDashboardSnapshot {
   generatedAt: Date;
   queues: QueueMetrics;
-  pendingAttention: PendingAttentionItem[];
+  receivables: ReceivableCustomer[];
   kpis: {
     week: PeriodMetrics;
     month: PeriodMetrics;

@@ -3,14 +3,38 @@ import type { QuoteListSummary } from "../queries";
 import type { ButtonVariant } from "@/components/ui";
 import type { ItemFormValue } from "./quote-builder-shared";
 
+export type CustomerContactOption = {
+  id: string;
+  name: string;
+  phone?: string | null;
+  role: "DRIVER" | "CONTACT" | "BILLING";
+  notes?: string | null;
+  isActive: boolean;
+};
+
+export type CustomerFiscalProfileOption = {
+  id: string;
+  businessName: string;
+  taxId: string;
+  isDefault: boolean;
+};
+
 export type CustomerOption = {
   id: string;
   name: string;
+  commercialName?: string | null;
+  legalName?: string | null;
+  rawName?: string;
+  phone?: string | null;
+  contacts?: CustomerContactOption[];
+  fiscalProfiles?: CustomerFiscalProfileOption[];
 };
 
 export type QuoteBuilderInitialData = {
   customerId: string | null;
-  vehicle: { plate: string; brand: string; model: string; year: string };
+  customerContactId?: string | null;
+  customerFiscalProfileId?: string | null;
+  vehicle: { plate: string; brand: string; model: string; year: string; economicNumber?: string };
   title: string;
   description: string;
   administrative: boolean;
@@ -44,7 +68,7 @@ export type QuoteBuilderProps = {
   onDirtyChange?: (dirty: boolean) => void;
   onSuccess?: () => void;
   layout?: "page" | "dialog";
-  mode?: "quote" | "direct-work-order";
+  mode?: "quote" | "direct-work-order" | "direct-note";
   masters?: MasterOption[];
 };
 
@@ -69,7 +93,7 @@ export type QuoteBuilderDialogProps = {
   triggerLabel?: string;
   createCustomerAction?: QuoteBuilderProps["createCustomerAction"];
   searchCustomersAction?: QuoteBuilderProps["searchCustomersAction"];
-  mode?: "quote" | "direct-work-order";
+  mode?: "quote" | "direct-work-order" | "direct-note";
   masters?: MasterOption[];
 };
 

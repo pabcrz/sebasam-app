@@ -36,7 +36,16 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
     taxEnabled: true,
     approvedAt: null,
     validUntil: new Date("2026-07-15T12:00:00.000Z"),
+    paymentDueDate: null,
+    isLocked: false,
+    lockedAt: null,
+    lockedById: null,
+    lockedReason: null,
     customerId: "customer-1",
+    customerContactId: null,
+    customerFiscalProfileId: null,
+    customerSnapshot: null,
+    contactSnapshot: null,
     vehicleId: null,
     vehicleSnapshot: null,
     operationalDate: new Date("2026-07-01T00:00:00.000Z"),
@@ -45,6 +54,8 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
     customer: {
       id: "customer-1",
       name: "Cliente Demo",
+      commercialName: null,
+      legalName: null,
       email: null,
       phone: null,
       address: null,
@@ -477,6 +488,36 @@ describe("SharedQuoteView", () => {
       expect(screen.getByText("Aceite y filtros").closest("tr")).toHaveClass("print:break-after-avoid");
       expect(screen.getByText("Cambio de aceite").closest("tr")).toHaveClass("print:break-before-avoid", "print:break-inside-avoid");
       expect(screen.getByTestId("quote-totals-block")).toHaveClass("print:break-inside-avoid");
+    });
+
+    it("hides decision controls when isNote is true", () => {
+      render(<SharedQuoteView quote={makeQuote(QuoteStatus.SENT)} token="token-123" isNote={true} />);
+
+      expect(screen.queryByRole("button", { name: /Aceptar/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Declinar/i })).not.toBeInTheDocument();
+    });
+
+    it("hides decision controls when quote is locked", () => {
+      const quote = {
+        ...makeQuote(QuoteStatus.SENT),
+        isLocked: true,
+      };
+      render(<SharedQuoteView quote={quote} token="token-123" />);
+
+      expect(screen.queryByRole("button", { name: /Aceptar/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Declinar/i })).not.toBeInTheDocument();
+    });
+
+    it("renders paymentDueDate when in note mode", () => {
+      const quote = {
+        ...makeQuote(QuoteStatus.APPROVED, WorkOrderStatus.COMPLETED),
+        paymentDueDate: new Date("2026-09-30T00:00:00.000Z"),
+      };
+      render(<SharedQuoteView quote={quote} token="token-123" isNote={true} />);
+
+      expect(screen.getByTestId("note-due-date")).toBeInTheDocument();
+      expect(screen.getByText(/Fecha de vencimiento de pago/i)).toBeInTheDocument();
+      expect(screen.queryByTestId("quote-validity")).not.toBeInTheDocument();
     });
   });
 });

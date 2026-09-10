@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { getCustomerAccountStatement, getCustomerDeletionBlocker, listCustomers } from "./queries";
@@ -6,7 +7,7 @@ import { getCustomerAccountStatement, getCustomerDeletionBlocker, listCustomers 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     customer: { findMany: vi.fn(), findUnique: vi.fn() },
-    quote: { aggregate: vi.fn() },
+    quote: { aggregate: vi.fn(), findMany: vi.fn() },
     payment: { aggregate: vi.fn() },
     paymentApplication: { aggregate: vi.fn() },
     ledgerEntry: { findMany: vi.fn() },
@@ -34,18 +35,51 @@ describe("listCustomers search", () => {
     expect(call.where).toBeUndefined();
   });
 
-  it("searches name, email, phone, address, notes and related vehicle plates", async () => {
+  it("searches all customer, contact, fiscal and vehicle fields", async () => {
     await listCustomers({ query: "ABC-123" });
 
     const call = getFindManyCall();
     expect(call.where).toEqual({
       OR: [
         { name: { contains: "ABC-123", mode: "insensitive" } },
+        { commercialName: { contains: "ABC-123", mode: "insensitive" } },
+        { legalName: { contains: "ABC-123", mode: "insensitive" } },
         { email: { contains: "ABC-123", mode: "insensitive" } },
         { phone: { contains: "ABC-123", mode: "insensitive" } },
         { address: { contains: "ABC-123", mode: "insensitive" } },
         { notes: { contains: "ABC-123", mode: "insensitive" } },
-        { vehicles: { some: { plate: { contains: "ABC-123", mode: "insensitive" } } } },
+        {
+          vehicles: {
+            some: {
+              OR: [
+                { plate: { contains: "ABC-123", mode: "insensitive" } },
+                { economicNumber: { contains: "ABC-123", mode: "insensitive" } },
+              ],
+            },
+          },
+        },
+        {
+          fiscalProfiles: {
+            some: {
+              OR: [
+                { businessName: { contains: "ABC-123", mode: "insensitive" } },
+                { taxId: { contains: "ABC-123", mode: "insensitive" } },
+              ],
+            },
+          },
+        },
+        {
+          contacts: {
+            some: {
+              OR: [
+                { name: { contains: "ABC-123", mode: "insensitive" } },
+                { phone: { contains: "ABC-123", mode: "insensitive" } },
+              ],
+            },
+          },
+        },
+        { phone: { contains: "123" } },
+        { contacts: { some: { phone: { contains: "123" } } } },
       ],
     });
   });
@@ -63,6 +97,19 @@ describe("listCustomers search", () => {
           paymentRequests: true,
           ledgerEntries: true,
         },
+      },
+      contacts: {
+        orderBy: [
+          { isActive: "desc" },
+          { role: "asc" },
+          { name: "asc" },
+        ],
+      },
+      fiscalProfiles: {
+        orderBy: [
+          { isDefault: "desc" },
+          { createdAt: "asc" },
+        ],
       },
     });
   });
@@ -118,7 +165,9 @@ describe("getCustomerDeletionBlocker", () => {
 describe("getCustomerAccountStatement", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    (prisma.quote.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { totalCents: 25000 } });
+    (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { totalCents: 25000, settlementAgreement: null },
+    ]);
     (prisma.payment.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { amountCents: 17500 } });
     (prisma.paymentApplication.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { amountCents: 17500 } });
     (prisma.ledgerEntry.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
@@ -151,12 +200,16 @@ describe("getCustomerAccountStatement", () => {
     ]);
   });
 
-  it("uses approved quotes and confirmed payments for the accumulated balance", async () => {
+  it("uses approved quotes with completed work orders and confirmed payments for the accumulated balance", async () => {
     const statement = await getCustomerAccountStatement("customer-1");
 
-    expect(prisma.quote.aggregate).toHaveBeenCalledWith({
-      where: { customerId: "customer-1", status: "APPROVED" },
-      _sum: { totalCents: true },
+    expect(prisma.quote.findMany).toHaveBeenCalledWith({
+      where: {
+        customerId: "customer-1",
+        status: "APPROVED",
+        workOrder: { status: WorkOrderStatus.COMPLETED },
+      },
+      select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true },
     });
     expect(prisma.payment.aggregate).toHaveBeenCalledWith({
       where: {
@@ -167,6 +220,7 @@ describe("getCustomerAccountStatement", () => {
       _sum: { amountCents: true },
     });
     expect(statement).toMatchObject({
+      nominalContractedCents: 25000,
       totalContractedCents: 25000,
       totalPaidCents: 17500,
       pendingBalanceCents: 7500,
@@ -179,7 +233,7 @@ describe("getCustomerAccountStatement", () => {
 
     await expect(getCustomerAccountStatement("customer-1")).rejects.toThrow("Unauthorized");
 
-    expect(prisma.quote.aggregate).not.toHaveBeenCalled();
+    expect(prisma.quote.findMany).not.toHaveBeenCalled();
     expect(prisma.payment.aggregate).not.toHaveBeenCalled();
     expect(prisma.ledgerEntry.findMany).not.toHaveBeenCalled();
   });
@@ -219,7 +273,9 @@ describe("getCustomerAccountStatement", () => {
   });
 
   it("keeps statement totals active-only and surfaces correction history movements", async () => {
-    (prisma.quote.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { totalCents: 10000 } });
+    (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { totalCents: 10000, settlementAgreement: null },
+    ]);
     // Only the replacement capture counts as paid; original reversed capture is excluded.
     (prisma.payment.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { amountCents: 9000 } });
     (prisma.paymentApplication.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { amountCents: 9000 } });
@@ -292,12 +348,13 @@ describe("getCustomerAccountStatement", () => {
   });
 
   it("allows an account with no approved quotes or movements", async () => {
-    (prisma.quote.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { totalCents: null } });
+    (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     (prisma.payment.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { amountCents: null } });
     (prisma.paymentApplication.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({ _sum: { amountCents: null } });
     (prisma.ledgerEntry.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
     await expect(getCustomerAccountStatement("customer-1")).resolves.toEqual({
+      nominalContractedCents: 0,
       totalContractedCents: 0,
       totalPaidCents: 0,
       pendingBalanceCents: 0,

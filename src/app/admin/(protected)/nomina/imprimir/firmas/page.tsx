@@ -17,7 +17,7 @@ export default async function SigningSheetPrintPage(props?: {
   const report = await getWeeklyPayroll(resolvedParams);
 
   return (
-    <div className="bg-white min-h-screen flex flex-col print:min-h-0">
+    <div data-document-ready="true" className="bg-white min-h-screen flex flex-col print:min-h-0">
       <Suspense fallback={null}>
         <PrintControls backLabel="Volver a nómina" />
       </Suspense>

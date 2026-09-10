@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { getQuoteById } from "@/features/quotes/queries";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
-import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
-import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
-import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
-import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
+import { QuoteDocumentView } from "@/features/public-quotes/components/quote-document-view";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
 import { PrintControls } from "@/features/quotes/components/print-controls";
-import { Suspense } from "react";
 
 interface PrintPageProps {
   params: Promise<{ id: string }>;
@@ -48,44 +45,12 @@ export default async function QuotePrintPage({ params }: PrintPageProps) {
     notFound();
   }
 
-  // Determine if it should be called "Nota" or "Cotización"
-  const documentType = quote.workOrder?.status === "COMPLETED" ? "Nota" : "Cotización";
-
-  const viewQuote: SharedQuoteViewQuote = {
-    ...quote,
-    items: quote.items.map((item) => ({
-      ...item,
-      quantity: item.quantity.toString(),
-    })),
-    sections: quote.sections ? quote.sections.map((section) => ({
-      ...section,
-      items: section.items.map((item) => ({
-        ...item,
-        quantity: item.quantity.toString(),
-      })),
-    })) : [],
-    workOrder: quote.workOrder ? { status: quote.workOrder.status } : null,
-  };
-
   return (
-    <div className="bg-[var(--background)] min-h-screen flex flex-col print:min-h-0">
-      <Suspense fallback={null}><PrintControls backLabel="Volver a cotizaciones" /></Suspense>
-      <PublicQuoteShell
-         business={toPublicBusinessIdentity(paymentSettings)}
-         location={{ address: paymentSettings.address, mapsUrl: paymentSettings.mapsUrl }}
-        documentType={documentType}
-        documentNumber={quote.number}
-        date={quote.operationalDate}
-        title={quote.title}
-        customerName={quote.customer?.name ?? "Sin cliente"}
-        vehicleDescription={
-          quote.vehicle
-            ? formatVehicle(quote.vehicle)
-            : formatSnapshotVehicle(quote.vehicleSnapshot)
-        }
-      >
-        <SharedQuoteView quote={viewQuote} token="" isNote={documentType === "Nota"} isPrint={true} />
-      </PublicQuoteShell>
-    </div>
+    <QuoteDocumentView
+      quote={quote}
+      paymentSettings={paymentSettings}
+      isPrint={true}
+      controls={<Suspense fallback={null}><PrintControls backLabel="Volver a cotizaciones" /></Suspense>}
+    />
   );
 }

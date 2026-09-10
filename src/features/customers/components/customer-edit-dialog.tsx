@@ -25,6 +25,8 @@ import { updateCustomerAction } from "../actions";
 export type CustomerEditData = {
   id: string;
   name: string;
+  commercialName?: string | null;
+  legalName?: string | null;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
@@ -82,6 +84,7 @@ function CustomerEditDialogForm({
   onSave?: (data: CustomerEditData) => Promise<{ success: boolean; error?: string }>;
 }) {
   const [name, setName] = React.useState(customer.name ?? "");
+  const [legalName, setLegalName] = React.useState(customer.legalName ?? "");
   const [status, setStatus] = React.useState(customer.status ?? "ACTIVE");
   const [email, setEmail] = React.useState(customer.email ?? "");
   const [phone, setPhone] = React.useState(customer.phone ?? "");
@@ -97,6 +100,7 @@ function CustomerEditDialogForm({
     const payload: CustomerEditData = {
       id: customer.id,
       name: name.trim(),
+      legalName: legalName.trim() || undefined,
       status,
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
@@ -130,12 +134,22 @@ function CustomerEditDialogForm({
       <fieldset className="grid gap-3">
         <SectionLabel as="legend">Información del cliente</SectionLabel>
         <div className="grid gap-1.5">
-          <Label htmlFor="edit-customer-name">Nombre</Label>
+          <Label htmlFor="edit-customer-name">Nombre (cliente o empresa)</Label>
           <Input
             id="edit-customer-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            placeholder="Ej. Juan Pérez o Grúas Mejía"
             required
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="edit-customer-legal-name">Razón social para facturación (opcional)</Label>
+          <Input
+            id="edit-customer-legal-name"
+            value={legalName}
+            onChange={(e) => setLegalName(e.target.value)}
+            placeholder="Ej. Grúas Mejía Cuautla S.A. de C.V."
           />
         </div>
         <div className="grid gap-1.5">

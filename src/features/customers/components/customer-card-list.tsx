@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Badge, BadgeVariant, Button, Checkbox, ConfirmDialog, ListItemCard } from "@/components/ui";
 import { CustomerDetailDialog, type CustomerDetailLoader } from "./customer-detail-dialog";
 import { CustomerActionsMenu } from "./customer-actions-menu";
@@ -11,6 +12,8 @@ import { deleteCustomerAction, deleteCustomersBatchAction, updateCustomerAction 
 export type CustomerCardListItem = {
   id: string;
   name: string;
+  commercialName?: string | null;
+  legalName?: string | null;
   email: string | null;
   phone: string | null;
   address?: string | null;
@@ -49,6 +52,7 @@ export function CustomerCardList({
   onDeleteBatch,
   onUpdateCustomer,
 }: CustomerCardListProps) {
+  const router = useRouter();
   const [isSelectionMode, setIsSelectionMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [editingCustomer, setEditingCustomer] = React.useState<CustomerCardListItem | null>(null);
@@ -197,12 +201,20 @@ export function CustomerCardList({
                       getCustomerDetail={getCustomerDetail}
                       open={activeDetailId === customer.id}
                       onOpenChange={(open) => setActiveDetailId(open ? customer.id : null)}
+                      onUpdateCustomer={onUpdateCustomer}
                     />
                   )}
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-[var(--color-text-main)]">
-                      {customer.name}
+                      {customer.commercialName ? (
+                        <>
+                          <span>{customer.commercialName}</span>
+                          <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)]">({customer.name})</span>
+                        </>
+                      ) : (
+                        customer.name
+                      )}
                     </p>
                     <div className="mt-0.5 grid gap-0.5 text-sm text-[var(--color-text-muted)]">
                       {customer.email ? <p className="truncate">{customer.email}</p> : null}
@@ -228,7 +240,7 @@ export function CustomerCardList({
                     customer={customer}
                     blocker={blocker}
                     onEdit={() => setEditingCustomer(customer)}
-                    onViewStatement={() => setActiveDetailId(customer.id)}
+                    onViewStatement={() => router.push(`/admin/customers/${customer.id}/estado-de-cuenta`)}
                     onDelete={() => setCustomerToDelete(customer)}
                   />
                 ) : null

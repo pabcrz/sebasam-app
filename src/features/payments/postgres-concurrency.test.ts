@@ -59,6 +59,9 @@ vi.mock("@/lib/auth/session", () => ({
 
 import { requireOperationalRole, requireAdmin } from "@/lib/auth/session";
 
+const trackedCustomerIds: string[] = [];
+const trackedActorIds: string[] = [];
+
 type CreatedActor = {
   id: string;
   profile: { id: string; role: string; displayName: string };
@@ -66,6 +69,7 @@ type CreatedActor = {
 
 async function createActor(prisma: PrismaClient): Promise<CreatedActor> {
   const id = randomUUID();
+  trackedActorIds.push(id);
   await prisma.userProfile.create({
     data: {
       id,
@@ -82,12 +86,14 @@ async function createActor(prisma: PrismaClient): Promise<CreatedActor> {
 }
 
 async function createCustomer(prisma: PrismaClient) {
-  return prisma.customer.create({
+  const customer = await prisma.customer.create({
     data: {
       name: "Test Customer",
       email: `cust-${randomUUID().slice(0, 8)}@test.local`,
     },
   });
+  trackedCustomerIds.push(customer.id);
+  return customer;
 }
 
 async function createCompletedWork(prisma: PrismaClient, customerId: string) {
@@ -227,11 +233,13 @@ async function activeApplicationsForWorkOrder(prisma: PrismaClient, workOrderId:
 }
 
 describe.skipIf(!databaseUrl)("PostgreSQL concurrency locks", { timeout: 30000 }, () => {
-  const prisma = new PrismaClient({
-    datasources: {
-      db: { url: databaseUrl },
-    },
-  });
+  const prisma = databaseUrl
+    ? new PrismaClient({
+        datasources: {
+          db: { url: databaseUrl },
+        },
+      })
+    : (null as unknown as PrismaClient);
   let actor: CreatedActor;
 
   beforeAll(async () => {
@@ -245,7 +253,53 @@ describe.skipIf(!databaseUrl)("PostgreSQL concurrency locks", { timeout: 30000 }
   });
 
   afterAll(async () => {
-    await prisma.$disconnect();
+    if (prisma) {
+      try {
+        if (trackedCustomerIds.length > 0) {
+          await prisma.ledgerEntry.deleteMany({ where: { customerId: { in: trackedCustomerIds } } });
+          await prisma.paymentCorrection.deleteMany({
+            where: {
+              OR: [
+                { originalPayment: { customerId: { in: trackedCustomerIds } } },
+                { replacementPayment: { customerId: { in: trackedCustomerIds } } },
+              ],
+            },
+          });
+          await prisma.paymentApplication.deleteMany({
+            where: { payment: { customerId: { in: trackedCustomerIds } } },
+          });
+          await prisma.payment.deleteMany({ where: { customerId: { in: trackedCustomerIds } } });
+          await prisma.workAssignment.deleteMany({
+            where: { workOrder: { quote: { customerId: { in: trackedCustomerIds } } } },
+          });
+          await prisma.executionRecord.deleteMany({
+            where: { workOrder: { quote: { customerId: { in: trackedCustomerIds } } } },
+          });
+          await prisma.workOrder.deleteMany({
+            where: { quote: { customerId: { in: trackedCustomerIds } } },
+          });
+          await prisma.quoteItem.deleteMany({
+            where: { quote: { customerId: { in: trackedCustomerIds } } },
+          });
+          await prisma.quoteSection.deleteMany({
+            where: { quote: { customerId: { in: trackedCustomerIds } } },
+          });
+          await prisma.quote.deleteMany({
+            where: { customerId: { in: trackedCustomerIds } },
+          });
+          await prisma.customer.deleteMany({
+            where: { id: { in: trackedCustomerIds } },
+          });
+        }
+        if (trackedActorIds.length > 0) {
+          await prisma.userProfile.deleteMany({
+            where: { id: { in: trackedActorIds } },
+          });
+        }
+      } finally {
+        await prisma.$disconnect();
+      }
+    }
   });
 
   it("serializes completed quote edit vs payment capture so both never commit", async () => {

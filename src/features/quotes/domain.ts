@@ -66,6 +66,8 @@ const sharedQuoteInclude = {
   quote: {
     include: {
       customer: true,
+      customerContact: true,
+      customerFiscalProfile: true,
       vehicle: true,
       items: { orderBy: { sortOrder: "asc" } },
       sections: { 
@@ -152,27 +154,49 @@ async function createSharedQuoteInTransaction(tx: TransactionClient, quoteId: st
   });
 }
 
+export async function ensureSharedQuoteInTransaction(tx: TransactionClient, quoteId: string) {
+  const existingActive = await tx.sharedQuote.findFirst({
+    where: {
+      quoteId,
+      revokedAt: null,
+      expiresAt: { gte: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (existingActive) {
+    return existingActive;
+  }
+
+  const quote = await tx.quote.findUnique({
+    where: { id: quoteId },
+    select: { id: true, number: true },
+  });
+
+  if (!quote) {
+    throw new SharedQuoteOperationError("Quote not found.");
+  }
+
+  const token = await generateUniqueSlug(quote.number, async (slug) => {
+    const existing = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
+    return existing !== null;
+  });
+
+  return tx.sharedQuote.create({
+    data: {
+      token,
+      quoteId: quote.id,
+      expiresAt: createSharedQuoteExpirationDate(),
+    },
+  });
+}
+
 export async function createSharedQuoteForQuote(quoteId: string) {
   return prisma.$transaction(async (tx) => createSharedQuoteInTransaction(tx, quoteId));
 }
 
 export async function getOrCreateSharedQuoteForQuote(quoteId: string) {
-  return prisma.$transaction(async (tx) => {
-    const existingActive = await tx.sharedQuote.findFirst({
-      where: {
-        quoteId,
-        revokedAt: null,
-        expiresAt: { gte: new Date() },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (existingActive) {
-      return existingActive;
-    }
-
-    return createSharedQuoteInTransaction(tx, quoteId);
-  });
+  return prisma.$transaction(async (tx) => ensureSharedQuoteInTransaction(tx, quoteId));
 }
 
 // --- Quote decision (accept / decline / authorize) ---
@@ -181,7 +205,15 @@ export async function acceptSharedQuote(token: string, authorizedSectionIds?: st
   return prisma.$transaction(async (tx) => {
     const sharedQuote = await tx.sharedQuote.findFirst({
       where: { token, revokedAt: null, expiresAt: { gte: new Date() } },
-      include: { quote: { include: { items: true, sections: { include: { items: true } } } } },
+      include: {
+        quote: {
+          include: {
+            items: true,
+            sections: { include: { items: true } },
+            workOrder: true,
+          },
+        },
+      },
     });
 
     if (!sharedQuote) {
@@ -189,6 +221,14 @@ export async function acceptSharedQuote(token: string, authorizedSectionIds?: st
       if (!existing) throw new SharedQuoteNotFoundError();
       if (existing.revokedAt) throw new SharedQuoteRevokedError();
       throw new SharedQuoteExpiredError();
+    }
+
+    if (sharedQuote.quote.isLocked) {
+      throw new QuoteDecisionError("Este documento está bloqueado.");
+    }
+
+    if (sharedQuote.quote.workOrder?.status === "COMPLETED") {
+      throw new QuoteDecisionError("Este documento es una nota y no puede ser aceptado como cotización.");
     }
 
     try {
@@ -231,7 +271,15 @@ export async function declineSharedQuote(token: string) {
   return prisma.$transaction(async (tx) => {
     const sharedQuote = await tx.sharedQuote.findFirst({
       where: { token, revokedAt: null, expiresAt: { gte: new Date() } },
-      include: { quote: { include: { items: true, sections: { include: { items: true } } } } },
+      include: {
+        quote: {
+          include: {
+            items: true,
+            sections: { include: { items: true } },
+            workOrder: true,
+          },
+        },
+      },
     });
 
     if (!sharedQuote) {
@@ -239,6 +287,14 @@ export async function declineSharedQuote(token: string) {
       if (!existing) throw new SharedQuoteNotFoundError();
       if (existing.revokedAt) throw new SharedQuoteRevokedError();
       throw new SharedQuoteExpiredError();
+    }
+
+    if (sharedQuote.quote.isLocked) {
+      throw new QuoteDecisionError("Este documento está bloqueado.");
+    }
+
+    if (sharedQuote.quote.workOrder?.status === "COMPLETED") {
+      throw new QuoteDecisionError("Este documento es una nota y no puede ser declinado como cotización.");
     }
 
     if (sharedQuote.quote.status !== QuoteStatus.SENT) {
@@ -276,6 +332,10 @@ export async function authorizeQuote(quoteId: string, note: string, actorId?: st
 
     if (!quote) {
       throw new QuoteDecisionError("Cotización no encontrada.");
+    }
+
+    if (quote.isLocked) {
+      throw new QuoteDecisionError("Este documento está bloqueado.");
     }
 
     try {
@@ -324,6 +384,10 @@ export async function correctQuoteDecision(quoteId: string, nextStatus: "APPROVE
     });
 
     if (!quote) throw new QuoteDecisionError("Cotización no encontrada.");
+
+    if (quote.isLocked) {
+      throw new QuoteDecisionError("Este documento está bloqueado.");
+    }
     
     if (quote.status !== QuoteStatus.APPROVED && quote.status !== QuoteStatus.REJECTED) {
       throw new QuoteDecisionError("Solo se pueden corregir cotizaciones aprobadas o rechazadas.");

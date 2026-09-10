@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { Printer } from "lucide-react";
+import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { listActiveWorkOrders } from "@/features/work-orders/queries";
 
 import type { listQuotes } from "@/features/quotes/queries";
@@ -12,6 +12,7 @@ import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-d
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
 import { QuoteDuplicateForm } from "@/features/quotes/components/quote-duplicate-form";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder";
@@ -75,9 +76,18 @@ export function WorkOrderActiveList({
             openLabel={`Ver detalle de cotización ${wo.quote.number}`}
             actions={
               <OperationalActionRow>
-                <Button asChild type="button" variant="outline" size="sm" data-mobile-target="44" className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" title={`Imprimir orden ${wo.number}`} aria-label={`Imprimir orden ${wo.number}`}>
-                  <Link href={`/admin/quotes/${wo.quote.id}/print?returnTo=/admin/work-orders`}><Printer className="h-4 w-4" aria-hidden="true" /><span className="sr-only sm:not-sr-only">Imprimir orden</span></Link>
-                </Button>
+                <PrintActionButton
+                  url={`/admin/quotes/${wo.quote.id}/print?returnTo=/admin/work-orders`}
+                  variant="outline"
+                  size="sm"
+                  data-mobile-target="44"
+                  className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
+                  title={`Imprimir orden ${wo.number}`}
+                  aria-label={`Imprimir orden ${wo.number}`}
+                >
+                  <Printer className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only">Imprimir orden</span>
+                </PrintActionButton>
                 <WorkOrderOperationsDialog
                   quoteNumber={wo.quote.number}
                   quoteStatus={wo.quote.status}
@@ -121,7 +131,14 @@ export function WorkOrderActiveList({
                       <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
                       <Badge variant="info" className="w-fit">En proceso</Badge>
                     </div>
-                    <p className="mt-1 font-semibold text-[var(--color-text-main)]">{wo.quote.customer?.name ?? "Sin cliente"}</p>
+                    <p className="mt-1 font-semibold text-[var(--color-text-main)]">
+                      {resolveCustomerDisplayIdentity(wo.quote).displayName}
+                    </p>
+                    {resolveCustomerDisplayIdentity(wo.quote).operatorName ? (
+                      <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                        {resolveCustomerDisplayIdentity(wo.quote).operatorRole}: {resolveCustomerDisplayIdentity(wo.quote).operatorName}
+                      </p>
+                    ) : null}
                     <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
                   </div>
                   <div className="text-right">

@@ -39,7 +39,7 @@ export default async function WorkerEnvelopePrintPage(props?: WorkerEnvelopePrin
   }
 
   return (
-    <div className="bg-white min-h-screen flex flex-col justify-start print:min-h-0">
+    <div data-document-ready="true" className="bg-white min-h-screen flex flex-col justify-start print:min-h-0">
       <Suspense fallback={null}>
         <PrintControls backLabel="Volver a nómina" />
       </Suspense>

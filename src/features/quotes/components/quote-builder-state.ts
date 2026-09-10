@@ -12,7 +12,9 @@ import {
 
 export type QuoteBuilderState = {
   customerId: string;
-  vehicle: { plate: string; brand: string; model: string; year: string };
+  customerContactId: string;
+  customerFiscalProfileId: string;
+  vehicle: { plate: string; brand: string; model: string; year: string; economicNumber: string };
   title: string;
   description: string;
   administrative: boolean;
@@ -25,6 +27,8 @@ export type QuoteBuilderState = {
 
 export type QuoteBuilderAction =
   | { type: "setCustomerId"; customerId: string }
+  | { type: "setCustomerContactId"; customerContactId: string }
+  | { type: "setCustomerFiscalProfileId"; customerFiscalProfileId: string }
   | { type: "setVehicleField"; field: keyof QuoteBuilderState["vehicle"]; value: string }
   | { type: "setTitle"; title: string }
   | { type: "setDescription"; description: string }
@@ -65,7 +69,15 @@ export function initializeQuoteBuilderState(
 
   return {
     customerId: initialData?.customerId ?? "",
-    vehicle: initialData?.vehicle ?? { plate: "", brand: "", model: "", year: "" },
+    customerContactId: initialData?.customerContactId ?? "",
+    customerFiscalProfileId: initialData?.customerFiscalProfileId ?? "",
+    vehicle: {
+      plate: initialData?.vehicle?.plate ?? "",
+      brand: initialData?.vehicle?.brand ?? "",
+      model: initialData?.vehicle?.model ?? "",
+      year: initialData?.vehicle?.year ?? "",
+      economicNumber: initialData?.vehicle?.economicNumber ?? "",
+    },
     title: initialData?.title ?? "",
     description: initialData?.description ?? "",
     administrative: initialData?.administrative ?? false,
@@ -95,7 +107,16 @@ export function quoteBuilderReducer(
 ): QuoteBuilderState {
   switch (action.type) {
     case "setCustomerId":
-      return { ...state, customerId: action.customerId };
+      return {
+        ...state,
+        customerId: action.customerId,
+        customerContactId: state.customerId === action.customerId ? state.customerContactId : "",
+        customerFiscalProfileId: state.customerId === action.customerId ? state.customerFiscalProfileId : "",
+      };
+    case "setCustomerContactId":
+      return { ...state, customerContactId: action.customerContactId };
+    case "setCustomerFiscalProfileId":
+      return { ...state, customerFiscalProfileId: action.customerFiscalProfileId };
     case "setVehicleField":
       return { ...state, vehicle: { ...state.vehicle, [action.field]: action.value } };
     case "setTitle":

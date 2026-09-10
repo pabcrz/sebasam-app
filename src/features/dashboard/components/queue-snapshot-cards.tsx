@@ -1,4 +1,4 @@
-import { ClipboardList, FileText } from "lucide-react";
+import { CheckCircle2, ClipboardList, FilePenLine, Send } from "lucide-react";
 import type { QueueMetrics } from "../types";
 import { QueueMetricCard } from "./queue-metric-card";
 
@@ -12,19 +12,30 @@ export function QueueSnapshotCards({ queues }: QueueSnapshotCardsProps) {
       <h2 id="queues-heading" className="sr-only">
         Colas operativas en tiempo real
       </h2>
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        {/* Commercial Queue Card */}
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         <QueueMetricCard
-          label="Cotizaciones"
-          value={queues.commercialQueueCount}
-          href="/admin/quotes"
-          icon={FileText}
+          label="Enviar cotizaciones borrador"
+          value={queues.draftQuotesCount}
+          href="/admin/quotes?status=DRAFT"
+          icon={FilePenLine}
           accent="warning"
         />
-
-        {/* Active Execution Queue Card */}
         <QueueMetricCard
-          label="Trabajos"
+          label="Dar seguimiento a cotizaciones enviadas"
+          value={queues.sentQuotesCount}
+          href="/admin/quotes?status=SENT"
+          icon={Send}
+          accent="info"
+        />
+        <QueueMetricCard
+          label="Asignar o iniciar trabajos aprobados"
+          value={queues.approvedQuotesCount}
+          href="/admin/quotes?status=APPROVED"
+          icon={CheckCircle2}
+          accent="success"
+        />
+        <QueueMetricCard
+          label="Completar trabajos activos"
           value={queues.activeExecutionCount}
           href="/admin/work-orders"
           icon={ClipboardList}

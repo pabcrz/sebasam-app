@@ -15,6 +15,7 @@ function optionalTrimmedStringWithMax(max: number) {
 export const vehicleInputSchema = z.object({
   customerId: z.string().min(1),
   plate: optionalTrimmedStringWithMax(40),
+  economicNumber: optionalTrimmedStringWithMax(40),
   brand: optionalTrimmedStringWithMax(80),
   model: optionalTrimmedStringWithMax(80),
   color: optionalTrimmedString,
@@ -34,6 +35,7 @@ export type VehicleInput = z.infer<typeof vehicleInputSchema>;
 
 export type VehicleSnapshot = {
   plate: string | null;
+  economicNumber: string | null;
   brand: string | null;
   model: string | null;
   color: string | null;
@@ -49,6 +51,7 @@ export function normalizeVehiclePlate(plate: string | null | undefined) {
 export function createVehicleSnapshot(input: VehicleInput): VehicleSnapshot {
   return {
     plate: normalizeVehiclePlate(input.plate),
+    economicNumber: input.economicNumber?.trim() ?? null,
     brand: input.brand?.trim() ?? null,
     model: input.model?.trim() ?? null,
     color: input.color ?? null,

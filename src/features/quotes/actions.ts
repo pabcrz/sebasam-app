@@ -5,14 +5,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PaymentRequestStatus, PaymentStatus, Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireOperationalRole } from "@/lib/auth/session";
+import { requireOperationalRole, requireAdmin } from "@/lib/auth/session";
 import { measureServerTiming, recordServerTiming } from "@/lib/server-timing";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
-import { createVehicleSnapshot, type VehicleInput } from "@/features/vehicles/schemas";
-import { quoteDraftFormInputSchema, quoteDraftInputSchema, quoteLifecycleReasonSchema, type QuoteVehicleInput } from "./schemas";
+import { createVehicleSnapshot } from "@/features/vehicles/schemas";
+import { quoteDraftFormInputSchema, quoteDraftInputSchema, quoteLifecycleReasonSchema } from "./schemas";
 import {
   calculateItemTotalCents,
-  calculateQuoteTotals,
   createQuoteValidUntil,
 } from "./lib/calculate";
 import { isQuoteEditable } from "./lib/editability";
@@ -30,6 +29,7 @@ import {
   SharedQuoteNotFoundError,
   correctQuoteDecision,
   getOrCreateSharedQuoteForQuote,
+  ensureSharedQuoteInTransaction,
 } from "./domain";
 
 const quotesPath = "/admin/quotes";
@@ -50,6 +50,7 @@ import {
   nullableOptional,
   quoteFormDataToInput,
 } from "./quote-helpers";
+import { resolveQuoteSnapshots } from "./lib/quote-snapshots";
 
 async function createQuoteAuthorized(input: unknown) {
   const data = quoteDraftInputSchema.parse(input);
@@ -69,6 +70,13 @@ async function createQuoteAuthorized(input: unknown) {
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
 
+    const { customerSnapshot, contactSnapshot } = await resolveQuoteSnapshots(
+      tx,
+      data.customerId,
+      data.customerContactId,
+      data.customerFiscalProfileId,
+    );
+
     const sectionData = data.sections.map((section, sIndex) => ({
       name: section.name,
       isAuthorized: false,
@@ -80,7 +88,11 @@ async function createQuoteAuthorized(input: unknown) {
         id: quoteId,
         customerId: data.customerId ?? null,
         vehicleId: vehicle?.id ?? null,
+        customerContactId: data.customerContactId ?? null,
+        customerFiscalProfileId: data.customerFiscalProfileId ?? null,
         vehicleSnapshot,
+        customerSnapshot,
+        contactSnapshot,
         number: quoteNumber,
         status: QuoteStatus.DRAFT,
         approvedAt: null,
@@ -123,6 +135,8 @@ async function createQuoteAuthorized(input: unknown) {
     if (itemsToCreate.length > 0) {
       await tx.quoteItem.createMany({ data: itemsToCreate });
     }
+
+    await ensureSharedQuoteInTransaction(tx, createdQuote.id);
 
     return createdQuote;
   }));
@@ -229,6 +243,12 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
     const vehicleSnapshot = hasVehicle
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
+    const { customerSnapshot, contactSnapshot } = await resolveQuoteSnapshots(
+      tx,
+      data.customerId,
+      data.customerContactId,
+      data.customerFiscalProfileId,
+    );
 
     await tx.quoteSection.deleteMany({ where: { quoteId } });
     await tx.quoteItem.deleteMany({ where: { quoteId } });
@@ -238,7 +258,11 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
       data: {
         customerId: data.customerId ?? null,
         vehicleId: vehicle?.id ?? null,
+        customerContactId: data.customerContactId ?? null,
+        customerFiscalProfileId: data.customerFiscalProfileId ?? null,
         vehicleSnapshot,
+        customerSnapshot,
+        contactSnapshot,
         title: data.title,
         description: nullableOptional(data.description),
         administrative: data.administrative,
@@ -404,6 +428,13 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
       ? createVehicleSnapshot(buildVehicleInput(data.customerId, data.vehicle))
       : Prisma.JsonNull;
 
+    const { customerSnapshot, contactSnapshot } = await resolveQuoteSnapshots(
+      tx,
+      data.customerId,
+      data.customerContactId,
+      data.customerFiscalProfileId,
+    );
+
     await tx.quoteSection.deleteMany({ where: { quoteId } });
     await tx.quoteItem.deleteMany({ where: { quoteId } });
 
@@ -412,7 +443,11 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
       data: {
         customerId: data.customerId ?? null,
         vehicleId: vehicle?.id ?? null,
+        customerContactId: data.customerContactId ?? null,
+        customerFiscalProfileId: data.customerFiscalProfileId ?? null,
         vehicleSnapshot,
+        customerSnapshot,
+        contactSnapshot,
         title: data.title,
         description: nullableOptional(data.description),
         administrative: data.administrative,
@@ -497,6 +532,10 @@ export async function cancelQuote(quoteId: string) {
       throw new Error("Quote not found.");
     }
 
+    if (quote.isLocked) {
+      throw new Error("Este documento está bloqueado.");
+    }
+
     if (quote.status !== QuoteStatus.DRAFT && quote.status !== QuoteStatus.SENT) {
       throw new Error("Only draft or sent quotes can be cancelled.");
     }
@@ -548,6 +587,7 @@ export async function archiveQuote(quoteId: string, reason: string) {
   await prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true } });
     if (!quote) throw new Error("Quote not found.");
+    if (quote.isLocked) throw new Error("Este documento está bloqueado.");
     if (!archivableQuoteStatuses.includes(quote.status) || quote.workOrder) {
       throw new Error("This quote has active operational work and cannot be archived.");
     }
@@ -600,6 +640,10 @@ async function deleteQuoteAuthorized(quoteId: string) {
       throw new Error("Quote not found.");
     }
 
+    if (quote.isLocked) {
+      throw new Error("Este documento está bloqueado.");
+    }
+
     const deletableStatuses: QuoteStatus[] = [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.CANCELLED, QuoteStatus.REJECTED, QuoteStatus.ARCHIVED];
     if (!deletableStatuses.includes(quote.status)) {
       throw new Error("This quote cannot be deleted in its current state.");
@@ -625,6 +669,112 @@ async function deleteQuoteAuthorized(quoteId: string) {
     });
     return quote;
   });
+}
+
+export async function lockQuoteAction(quoteId: string, reason: string) {
+  const { profile } = await requireOperationalRole();
+  const parsedReason = quoteLifecycleReasonSchema.safeParse(reason);
+  if (!parsedReason.success) {
+    throw new Error("El motivo de bloqueo es obligatorio.");
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({
+      where: { id: quoteId },
+      select: { id: true, isLocked: true, status: true },
+    });
+
+    if (!quote) {
+      throw new Error("Documento no encontrado.");
+    }
+
+    if (quote.isLocked) {
+      throw new Error("El documento ya está bloqueado.");
+    }
+
+    const now = new Date();
+    await tx.quote.update({
+      where: { id: quoteId },
+      data: {
+        isLocked: true,
+        lockedAt: now,
+        lockedById: profile.id,
+        lockedReason: parsedReason.data,
+      },
+    });
+
+    await tx.quoteLifecycleEvent.create({
+      data: {
+        quoteId,
+        eventType: "LOCK",
+        previousState: quote.status,
+        nextState: quote.status,
+        actorId: profile.id,
+        reason: parsedReason.data,
+        createdAt: now,
+      },
+    });
+
+    return { success: true };
+  });
+
+  revalidatePath(quotesPath);
+  revalidatePath("/admin/notas");
+  revalidatePath("/admin/work-orders");
+  return result;
+}
+
+export async function unlockQuoteAction(quoteId: string, reason: string) {
+  const { profile } = await requireAdmin();
+  const parsedReason = quoteLifecycleReasonSchema.safeParse(reason);
+  if (!parsedReason.success) {
+    throw new Error("El motivo de desbloqueo es obligatorio.");
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({
+      where: { id: quoteId },
+      select: { id: true, isLocked: true, status: true },
+    });
+
+    if (!quote) {
+      throw new Error("Documento no encontrado.");
+    }
+
+    if (!quote.isLocked) {
+      throw new Error("El documento no está bloqueado.");
+    }
+
+    const now = new Date();
+    await tx.quote.update({
+      where: { id: quoteId },
+      data: {
+        isLocked: false,
+        lockedAt: null,
+        lockedById: null,
+        lockedReason: null,
+      },
+    });
+
+    await tx.quoteLifecycleEvent.create({
+      data: {
+        quoteId,
+        eventType: "UNLOCK",
+        previousState: quote.status,
+        nextState: quote.status,
+        actorId: profile.id,
+        reason: parsedReason.data,
+        createdAt: now,
+      },
+    });
+
+    return { success: true };
+  });
+
+  revalidatePath(quotesPath);
+  revalidatePath("/admin/notas");
+  revalidatePath("/admin/work-orders");
+  return result;
 }
 
 export async function deleteQuote(quoteId: string) {
@@ -666,6 +816,10 @@ export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
 
     if (!quote) {
       throw new Error("Quote not found.");
+    }
+
+    if (quote.isLocked) {
+      throw new Error("Este documento está bloqueado.");
     }
 
     if (quote.status !== QuoteStatus.DRAFT) {
@@ -872,6 +1026,10 @@ async function duplicateQuoteAuthorized(quoteId: string) {
       data: {
         id: duplicatedQuoteId,
         customerId: original.customerId,
+        customerContactId: original.customerContactId,
+        customerFiscalProfileId: original.customerFiscalProfileId,
+        customerSnapshot: original.customerSnapshot ?? Prisma.JsonNull,
+        contactSnapshot: original.contactSnapshot ?? Prisma.JsonNull,
         vehicleId: original.vehicleId,
         vehicleSnapshot: original.vehicleSnapshot ?? Prisma.JsonNull,
         number: quoteNumber,
@@ -925,6 +1083,8 @@ async function duplicateQuoteAuthorized(quoteId: string) {
     if (itemsToCreate.length > 0) {
       await tx.quoteItem.createMany({ data: itemsToCreate });
     }
+
+    await ensureSharedQuoteInTransaction(tx, duplicatedQuote.id);
 
     return duplicatedQuote;
   }));

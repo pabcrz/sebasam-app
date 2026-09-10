@@ -68,9 +68,42 @@ export function CustomerCreateForm({ action, triggerVariant, triggerClassName, t
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4" data-testid="customer-create-form">
+          <input type="hidden" name="commercialName" value="" />
           <div className="grid gap-2">
             <Label htmlFor="name">Nombre</Label>
-            <Input id="name" name="name" placeholder="Nombre del cliente" required disabled={isPending} />
+            <Input id="name" name="name" placeholder="Ej. Juan Pérez o Grúas Mejía" required disabled={isPending} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="legalName">Razón social formal (opcional)</Label>
+            <Input id="legalName" name="legalName" placeholder="Ej. Grúas Mejía Cuautla S.A. de C.V." disabled={isPending} />
+          </div>
+          <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+              Operador o Chofer inicial (opcional)
+            </p>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="initialContactName">Nombre o apodo del operador</Label>
+                <Input
+                  id="initialContactName"
+                  name="initialContactName"
+                  placeholder="Ej. El Mariachi / Juanito"
+                  disabled={isPending}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="initialContactPhone">Teléfono del operador (opcional)</Label>
+                <Input
+                  id="initialContactPhone"
+                  name="initialContactPhone"
+                  type="tel"
+                  inputMode="tel"
+                  maxLength={20}
+                  placeholder="55 1234 5678"
+                  disabled={isPending}
+                />
+              </div>
+            </div>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="email">Correo electrónico</Label>
