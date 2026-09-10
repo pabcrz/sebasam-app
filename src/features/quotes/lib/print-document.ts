@@ -10,44 +10,69 @@ export interface PrintDocumentOptions {
   timeoutMs?: number;
 }
 
+export function buildPrintUrl(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl, "https://sebasam.invalid");
+    parsed.searchParams.set("_t", Date.now().toString());
+    return parsed.pathname + parsed.search + parsed.hash;
+  } catch {
+    const separator = rawUrl.includes("?") ? "&" : "?";
+    return `${rawUrl}${separator}_t=${Date.now()}`;
+  }
+}
+
+function isDocumentReady(doc: Document): boolean {
+  // 1. If admin loading skeleton is present, it's NOT ready
+  if (doc.querySelector("[aria-label='Cargando contenido...']")) {
+    return false;
+  }
+
+  // 2. Check for explicit ready marker and ensure it has content
+  const readyEl = doc.querySelector("[data-document-ready='true']");
+  if (readyEl) {
+    return readyEl.children.length > 0;
+  }
+
+  // 3. Check for specific printable containers that only exist in fully rendered documents
+  const printableQuote = doc.querySelector("#printable-quote");
+  if (printableQuote && printableQuote.children.length > 0) {
+    return true;
+  }
+
+  // 4. Fallback for tabular document content
+  const table = doc.querySelector("table");
+  if (table && table.rows.length > 0) {
+    return true;
+  }
+
+  return false;
+}
+
 async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<void> {
   const doc = cw.document;
   if (!doc || typeof doc.querySelector !== "function") return;
 
-  const isReady = () => {
-    // Check if the generic admin loading skeleton is still displayed
-    const hasSkeleton = Boolean(doc.querySelector("[aria-label='Cargando contenido...']"));
-    if (hasSkeleton) return false;
-
-    // Check if explicit print document ready marker is present
-    const hasReadyMarker = Boolean(doc.querySelector("[data-document-ready='true']"));
-    if (hasReadyMarker) return true;
-
-    // Fallback: check for standard document content elements
-    const hasContent = Boolean(doc.querySelector("main, article, #printable-quote, table"));
-    return hasContent;
-  };
-
-  if (isReady()) {
+  if (isDocumentReady(doc)) {
     return;
   }
 
   await new Promise<void>((resolve) => {
     let resolved = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let interval: ReturnType<typeof setInterval> | null = null;
+    let timer: ReturnType<typeof setTimeout> | number | null = null;
+    let interval: ReturnType<typeof setInterval> | number | null = null;
     let observer: MutationObserver | null = null;
 
     const finish = () => {
       if (resolved) return;
       resolved = true;
-      if (timer) clearTimeout(timer);
-      if (interval) clearInterval(interval);
+      if (timer) window.clearTimeout(timer);
+      if (interval) window.clearInterval(interval);
       if (observer) observer.disconnect();
       resolve();
     };
 
-    timer = setTimeout(finish, timeoutMs);
+    // Use parent window's setTimeout so it is not throttled in background/invisible frames
+    timer = window.setTimeout(finish, timeoutMs);
 
     try {
       const MutationObserverClass =
@@ -55,7 +80,7 @@ async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<void
       const target = doc.body || doc.documentElement;
       if (MutationObserverClass && target) {
         const obs = new MutationObserverClass(() => {
-          if (isReady()) {
+          if (isDocumentReady(doc)) {
             finish();
           }
         });
@@ -70,8 +95,9 @@ async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<void
       // Fallback to polling
     }
 
-    interval = setInterval(() => {
-      if (isReady()) {
+    // Polling interval on parent window
+    interval = window.setInterval(() => {
+      if (isDocumentReady(doc)) {
         finish();
       }
     }, 50);
@@ -101,15 +127,17 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
     const iframe = document.createElement("iframe");
     activePrintIframe = iframe;
 
-    // Position offscreen with standard document dimensions
+    // Position within viewport coordinate space with zero visibility and non-interactive z-index
+    // to prevent browser compositor out-of-bounds culling while keeping it completely invisible.
     iframe.style.position = "fixed";
-    iframe.style.top = "-10000px";
-    iframe.style.left = "-10000px";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
     iframe.style.width = "1024px";
     iframe.style.height = "768px";
     iframe.style.border = "0";
     iframe.style.opacity = "0";
     iframe.style.pointerEvents = "none";
+    iframe.style.zIndex = "-9999";
     iframe.setAttribute("aria-hidden", "true");
     iframe.setAttribute("tabindex", "-1");
 
@@ -149,27 +177,33 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
         // Wait until streamed RSC replaces any loading fallback and marks document as ready
         await waitForDocumentReady(cw, 10000);
 
-        // Allow browser layout engine to calculate styles and paint the updated nodes
-        await new Promise<void>((resolveFrames) => {
-          if (typeof cw.requestAnimationFrame === "function") {
-            cw.requestAnimationFrame(() => {
-              cw.requestAnimationFrame(() => resolveFrames());
-            });
-          } else {
-            setTimeout(resolveFrames, 50);
-          }
+        const doc = cw.document;
+
+        // Force synchronous style and layout recalculation on the document
+        if (doc?.body) {
+          void doc.body.offsetHeight;
+        }
+
+        // Brief delay on the active window to allow the layout engine to paint
+        await new Promise<void>((resolveLayout) => {
+          window.setTimeout(resolveLayout, 150);
         });
 
         // Wait for document fonts to finish loading if FontFaceSet API is supported
-        if (cw.document?.fonts?.ready) {
+        if (doc?.fonts?.ready) {
           try {
             await Promise.race([
-              cw.document.fonts.ready,
-              new Promise((res) => setTimeout(res, 800)),
+              doc.fonts.ready,
+              new Promise((res) => window.setTimeout(res, 600)),
             ]);
           } catch {
             // Ignore font loading errors; proceed to print
           }
+        }
+
+        // Force another reflow check after fonts settle
+        if (doc?.body) {
+          void doc.body.offsetHeight;
         }
 
         // Listen for afterprint
@@ -195,7 +229,7 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
       reject(err);
     };
 
-    iframe.src = url;
+    iframe.src = buildPrintUrl(url);
     document.body.appendChild(iframe);
   });
 }
