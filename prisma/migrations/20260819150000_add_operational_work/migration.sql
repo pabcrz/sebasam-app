@@ -1,0 +1,3 @@
+-- Migration: 20260819150000_add_operational_work
+-- This migration was applied to production but missing from local repository.
+-- Created to resolve migration drift detected by production-release workflow.
