@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { WorkOrderStatus } from "@prisma/client";
+import type { QuoteItem, QuoteSection, WorkOrderStatus } from "@prisma/client";
 import type { PaymentSettingsData } from "@/features/payment-settings/domain";
 import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
@@ -11,7 +11,7 @@ import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/form
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 
 export interface QuoteDocumentViewProps {
-  quote: any;
+  quote: QuoteDocumentQuote;
   paymentSettings: PaymentSettingsData;
   documentType?: "Cotización" | "Nota" | "Trabajo";
   vehicleDescriptionOverride?: string;
@@ -21,7 +21,29 @@ export interface QuoteDocumentViewProps {
   controls?: React.ReactNode;
 }
 
-function normalizeItem(item: any) {
+type QuoteDocumentItem = Omit<QuoteItem, "quantity" | "unitPriceCents"> & {
+  quantity: QuoteItem["quantity"] | string | number | null;
+  unitPriceCents: QuoteItem["unitPriceCents"] | bigint;
+};
+
+type QuoteDocumentSection = Omit<QuoteSection, "items"> & {
+  items: QuoteDocumentItem[];
+};
+
+type QuoteDocumentQuote = Omit<
+  SharedQuoteViewQuote,
+  "discountCents" | "items" | "sections" | "subtotalCents" | "taxCents" | "totalCents" | "workOrder"
+> & {
+  discountCents: number | bigint | null;
+  subtotalCents: number | bigint | null;
+  taxCents: number | bigint | null;
+  totalCents: number | bigint | null;
+  items: QuoteDocumentItem[];
+  sections: QuoteDocumentSection[];
+  workOrder?: { status: WorkOrderStatus } | null;
+};
+
+function normalizeItem(item: QuoteDocumentItem) {
   return {
     ...item,
     quantity: item.quantity != null ? item.quantity.toString() : "1",
@@ -30,7 +52,7 @@ function normalizeItem(item: any) {
 }
 
 export function serializeQuoteForDocument(
-  quote: any,
+  quote: QuoteDocumentQuote,
   workOrderOverride?: { status: WorkOrderStatus } | null,
 ): SharedQuoteViewQuote {
   return {
@@ -43,7 +65,7 @@ export function serializeQuoteForDocument(
       ? quote.items.map(normalizeItem)
       : [],
     sections: Array.isArray(quote.sections)
-      ? quote.sections.map((section: any) => ({
+      ? quote.sections.map((section) => ({
           ...section,
           items: Array.isArray(section.items)
             ? section.items.map(normalizeItem)
