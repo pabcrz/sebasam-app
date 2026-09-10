@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import {
   applyCustomerCredit,
   correctPayment,
+  getCustomerBalanceSummary,
   getCustomerCreditSummary,
   getNoteFinancialSummary,
   lockPaymentMutationScope,
@@ -157,10 +158,18 @@ function createMockDb(initialState?: Partial<Store>) {
         return store.quotes.get(where.id) ?? null;
       }),
       findMany: vi.fn().mockImplementation(async ({ where }) => {
-        if (where?.id?.in) {
-          return Array.from(store.quotes.values()).filter((q) => where.id.in.includes(q.id));
+        let quotes = Array.from(store.quotes.values());
+        if (where?.id?.in) quotes = quotes.filter((q) => where.id.in.includes(q.id));
+        if (where?.customerId) quotes = quotes.filter((q) => q.customerId === where.customerId);
+        if (where?.status) quotes = quotes.filter((q) => q.status === where.status);
+        if (where?.workOrder?.status) {
+          quotes = quotes.filter((q) =>
+            Array.from(store.workOrders.values()).some(
+              (workOrder) => workOrder.quoteId === q.id && workOrder.status === where.workOrder.status,
+            ),
+          );
         }
-        return Array.from(store.quotes.values());
+        return quotes;
       }),
       aggregate: vi.fn().mockImplementation(async ({ where }) => {
         let total = 0;
@@ -437,6 +446,23 @@ function createMockDb(initialState?: Partial<Store>) {
 describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("includes only approved quotes with completed work orders in the customer balance", async () => {
+    const quotes = new Map<string, QuoteDouble>([
+      ["quote-incomplete", { id: "quote-incomplete", customerId: "cust-1", status: QuoteStatus.APPROVED, totalCents: 10_000 }],
+      ["quote-completed", { id: "quote-completed", customerId: "cust-1", status: QuoteStatus.APPROVED, totalCents: 15_000 }],
+    ]);
+    const workOrders = new Map<string, WorkOrderDouble>([
+      ["wo-incomplete", { id: "wo-incomplete", quoteId: "quote-incomplete", status: WorkOrderStatus.IN_PROGRESS }],
+      ["wo-completed", { id: "wo-completed", quoteId: "quote-completed", status: WorkOrderStatus.COMPLETED }],
+    ]);
+    const { transaction } = createMockDb({ quotes, workOrders });
+
+    const summary = await getCustomerBalanceSummary(transaction, "cust-1");
+
+    expect(summary.totalContractedCents).toBe(15_000);
+    expect(summary.pendingBalanceCents).toBe(15_000);
   });
 
   it("records_10000_capture_applies_8000_and_leaves_2000_customer_credit", async () => {
