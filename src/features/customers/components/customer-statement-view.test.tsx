@@ -144,4 +144,48 @@ describe("CustomerStatementView", () => {
     // Dialog preview header should appear
     expect(screen.getByRole("heading", { name: /cotización cot-001/i })).toBeInTheDocument();
   });
+
+  it("does not render WhatsApp copy button and keeps Imprimir / PDF button accessible", () => {
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    expect(screen.queryByRole("button", { name: /whatsapp/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /copiar/i })).not.toBeInTheDocument();
+
+    const printButton = screen.getByRole("button", { name: /imprimir estado de cuenta/i });
+    expect(printButton).toBeInTheDocument();
+    expect(printButton).toHaveClass("min-h-[44px]");
+  });
+
+  it("renders table with colgroup summing to 100%, repeating header group, and mobile scroll with print-overflow-visible", () => {
+    const { container } = render(<CustomerStatementView statement={baseStatement} />);
+
+    // Table container maintains overflow-x-auto and adds print:overflow-visible
+    const tableScrollWrapper = container.querySelector(".overflow-x-auto");
+    expect(tableScrollWrapper).toBeInTheDocument();
+    expect(tableScrollWrapper).toHaveClass("print:overflow-visible");
+
+    // Table has fixed layout on print
+    const table = container.querySelector("table");
+    expect(table).toHaveClass("print:table-fixed");
+
+    // Thead has print:table-header-group
+    const thead = container.querySelector("thead");
+    expect(thead).toHaveClass("print:table-header-group");
+
+    // Colgroup has 9 columns summing to exactly 100%
+    const cols = container.querySelectorAll("colgroup col");
+    expect(cols).toHaveLength(9);
+    const widths = Array.from(cols).map((col) => col.className);
+    expect(widths).toEqual([
+      "w-[8%]",
+      "w-[9%]",
+      "w-[9%]",
+      "w-[22%]",
+      "w-[15%]",
+      "w-[9%]",
+      "w-[9%]",
+      "w-[9%]",
+      "w-[10%]",
+    ]);
+  });
 });
