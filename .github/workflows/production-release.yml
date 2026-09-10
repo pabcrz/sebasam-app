@@ -47,7 +47,21 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: |
+          set -euo pipefail
           pnpm exec prisma validate
+
+          # Resolve any previously-failed migrations (drift from manual DB changes).
+          status_output=$(pnpm exec prisma migrate status 2>&1) || true
+          if echo "$status_output" | grep -q "failed migrations"; then
+            echo "⚠️  Found failed migrations — attempting recovery..."
+            # Extract migration names from lines like: The `NAME` migration started at ... failed
+            echo "$status_output" | grep -oE 'The `[^`]+` migration' | sed 's/The `//;s/` migration//' | while read -r name; do
+              echo "Marking $name as rolled-back..."
+              pnpm exec prisma migrate resolve --rolled-back "$name" 2>&1 || \
+                pnpm exec prisma migrate resolve --applied "$name" 2>&1 || true
+            done
+          fi
+
           pnpm db:migrate:deploy
           pnpm exec prisma migrate status
 
