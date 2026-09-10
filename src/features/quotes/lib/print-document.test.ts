@@ -132,4 +132,72 @@ describe("printDocumentUrl", () => {
     expect(printSpy).toHaveBeenCalled();
     await printPromise;
   });
+
+  it("rejects and does not print when document readiness times out", async () => {
+    const printPromise = printDocumentUrl("/admin/quotes/quote-stream/print");
+    const iframe = document.querySelector("iframe");
+    const focusSpy = vi.fn();
+    const printSpy = vi.fn();
+    Object.defineProperty(iframe, "contentWindow", {
+      value: {
+        focus: focusSpy,
+        print: printSpy,
+        addEventListener: vi.fn(),
+        document: {
+          querySelector: vi.fn(() => null),
+          body: { offsetHeight: 100 },
+        },
+      },
+      writable: true,
+    });
+
+    iframe?.onload?.(new Event("load"));
+    const rejection = expect(printPromise).rejects.toThrow("Tiempo de espera agotado");
+    await vi.advanceTimersByTimeAsync(10000);
+
+    await rejection;
+    expect(focusSpy).not.toHaveBeenCalled();
+    expect(printSpy).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(iframe).not.toBeInTheDocument();
+  });
+
+  it("waits for two child-window paint frames before printing", async () => {
+    const printPromise = printDocumentUrl("/admin/quotes/quote-1/print");
+    const iframe = document.querySelector("iframe");
+    const printSpy = vi.fn();
+    const paintFrames: FrameRequestCallback[] = [];
+    Object.defineProperty(iframe, "contentWindow", {
+      value: {
+        focus: vi.fn(),
+        print: printSpy,
+        addEventListener: vi.fn(),
+        requestAnimationFrame: vi.fn((callback: FrameRequestCallback) => {
+          paintFrames.push(callback);
+          return paintFrames.length;
+        }),
+        document: {
+          querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+          fonts: { ready: Promise.resolve() },
+          body: { offsetHeight: 100 },
+        },
+      },
+      writable: true,
+    });
+
+    iframe?.onload?.(new Event("load"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(paintFrames).toHaveLength(1);
+    expect(printSpy).not.toHaveBeenCalled();
+
+    paintFrames[0](0);
+    expect(paintFrames).toHaveLength(2);
+    expect(printSpy).not.toHaveBeenCalled();
+
+    paintFrames[1](16);
+    await vi.advanceTimersByTimeAsync(200);
+
+    expect(printSpy).toHaveBeenCalledOnce();
+    await printPromise;
+  });
 });

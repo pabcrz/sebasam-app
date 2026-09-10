@@ -48,31 +48,31 @@ function isDocumentReady(doc: Document): boolean {
   return false;
 }
 
-async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<void> {
+async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<boolean> {
   const doc = cw.document;
-  if (!doc || typeof doc.querySelector !== "function") return;
+  if (!doc || typeof doc.querySelector !== "function") return false;
 
   if (isDocumentReady(doc)) {
-    return;
+    return true;
   }
 
-  await new Promise<void>((resolve) => {
+  return new Promise<boolean>((resolve) => {
     let resolved = false;
     let timer: ReturnType<typeof setTimeout> | number | null = null;
     let interval: ReturnType<typeof setInterval> | number | null = null;
     let observer: MutationObserver | null = null;
 
-    const finish = () => {
+    const finish = (isReady: boolean) => {
       if (resolved) return;
       resolved = true;
       if (timer) window.clearTimeout(timer);
       if (interval) window.clearInterval(interval);
       if (observer) observer.disconnect();
-      resolve();
+      resolve(isReady);
     };
 
     // Use parent window's setTimeout so it is not throttled in background/invisible frames
-    timer = window.setTimeout(finish, timeoutMs);
+    timer = window.setTimeout(() => finish(false), timeoutMs);
 
     try {
       const MutationObserverClass =
@@ -81,7 +81,7 @@ async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<void
       if (MutationObserverClass && target) {
         const obs = new MutationObserverClass(() => {
           if (isDocumentReady(doc)) {
-            finish();
+            finish(true);
           }
         });
         obs.observe(target, {
@@ -98,9 +98,42 @@ async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<void
     // Polling interval on parent window
     interval = window.setInterval(() => {
       if (isDocumentReady(doc)) {
-        finish();
+        finish(true);
       }
     }, 50);
+  });
+}
+
+async function waitForPaintFrames(cw: Window, frameCount = 2): Promise<void> {
+  const requestAnimationFrame = cw.requestAnimationFrame;
+  if (typeof requestAnimationFrame !== "function") return;
+
+  await new Promise<void>((resolve) => {
+    let finished = false;
+    let framesRemaining = frameCount;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      window.clearTimeout(fallbackTimer);
+      resolve();
+    };
+    const fallbackTimer = window.setTimeout(finish, 250);
+    const requestNextFrame = () => {
+      try {
+        requestAnimationFrame.call(cw, () => {
+          framesRemaining -= 1;
+          if (framesRemaining <= 0) {
+            finish();
+            return;
+          }
+          requestNextFrame();
+        });
+      } catch {
+        finish();
+      }
+    };
+
+    requestNextFrame();
   });
 }
 
@@ -175,7 +208,12 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
         }
 
         // Wait until streamed RSC replaces any loading fallback and marks document as ready
-        await waitForDocumentReady(cw, 10000);
+        const isReady = await waitForDocumentReady(cw, 10000);
+        if (!isReady) {
+          throw new Error("Tiempo de espera agotado al cargar el documento para imprimir.");
+        }
+
+        await waitForPaintFrames(cw);
 
         const doc = cw.document;
 
