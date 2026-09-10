@@ -1,5 +1,3 @@
-import { formatCents, formatDate } from "@/features/quotes/lib/format";
-
 const TIME_ZONE = "America/Mexico_City";
 
 export type StatementView = "pending" | "history";
@@ -211,75 +209,4 @@ export function customerStatementHref(
 
   const queryString = params.toString();
   return `/admin/customers/${customerId}/estado-de-cuenta${queryString ? `?${queryString}` : ""}`;
-}
-
-export type WhatsAppStatementInput = {
-  customerName: string;
-  emissionDate: Date;
-  rangeLabel: string;
-  view: StatementView;
-  initialBalanceCents: number;
-  periodChargesCents: number;
-  periodPaymentsCents: number;
-  finalBalanceCents: number;
-  overdueBalanceCents: number;
-  notes: Array<{
-    number: string;
-    completedAt: Date | null;
-    concepts: string;
-    totalCents: number;
-    paidCents: number;
-    remainingCents: number;
-    statusLabel: string;
-  }>;
-  bankAccounts?: Array<{
-    bankName: string;
-    accountHolder: string;
-    clabe: string;
-  }>;
-};
-
-export function buildWhatsAppStatementMessage(input: WhatsAppStatementInput): string {
-  const lines: string[] = [
-    `*ESTADO DE CUENTA - SEBASAM*`,
-    `Cliente: ${input.customerName}`,
-    `Fecha de emisión: ${formatDate(input.emissionDate)}`,
-    `Período: ${input.rangeLabel}`,
-    "",
-    "*RESUMEN FINANCIERO:*",
-  ];
-
-  if (input.view === "history") {
-    lines.push(`• Saldo inicial: ${formatCents(input.initialBalanceCents)}`);
-    lines.push(`• Cargos del período: ${formatCents(input.periodChargesCents)}`);
-    lines.push(`• Abonos del período: ${formatCents(input.periodPaymentsCents)}`);
-    lines.push(`• Saldo final: ${formatCents(input.finalBalanceCents)}`);
-  } else {
-    lines.push(`• Saldo pendiente: ${formatCents(input.finalBalanceCents)}`);
-  }
-
-  if (input.overdueBalanceCents > 0) {
-    lines.push(`• Saldo vencido: ${formatCents(input.overdueBalanceCents)}`);
-  }
-
-  if (input.notes.length > 0) {
-    lines.push("");
-    lines.push(input.view === "pending" ? "*NOTAS CON SALDO PENDIENTE:*" : "*DETALLE DE NOTAS:*");
-    input.notes.forEach((note) => {
-      const dateStr = note.completedAt ? formatDate(note.completedAt) : "—";
-      lines.push(
-        `- ${note.number} (${dateStr}): ${note.concepts || "Trabajo"} · Saldo: ${formatCents(note.remainingCents)} (${note.statusLabel})`,
-      );
-    });
-  }
-
-  if (input.bankAccounts && input.bankAccounts.length > 0) {
-    lines.push("");
-    lines.push("*DATOS PARA TRANSFERENCIA:*");
-    input.bankAccounts.forEach((acc) => {
-      lines.push(`${acc.bankName} · CLABE: ${acc.clabe} (${acc.accountHolder})`);
-    });
-  }
-
-  return lines.join("\n");
 }
