@@ -246,12 +246,12 @@ describe("QuoteListRow", () => {
       workOrder: { id: "wo-row-active-1", number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
     }));
 
-    const print = screen.getByRole("link", { name: /imprimir cotización/i });
+    const print = screen.getByRole("button", { name: /imprimir cotización/i });
     expect(print).toHaveAttribute(
-      "href",
+      "data-print-url",
       "/admin/quotes/quote-row-1/print?returnTo=/admin/quotes",
     );
-    expect(print.getAttribute("href")).not.toContain("/admin/notas/");
+    expect(print.getAttribute("data-print-url")).not.toContain("/admin/notas/");
     expect(print).toHaveClass("min-h-11", "min-w-11");
   });
 
@@ -262,8 +262,8 @@ describe("QuoteListRow", () => {
       workOrder: { id: "wo-row-completed-1", number: "OT-002", status: "COMPLETED" } as QuoteListItem["workOrder"],
     }));
 
-    const print = screen.getByRole("link", { name: /imprimir cotización/i });
-    expect(print).toHaveAttribute("href", "/admin/notas/wo-row-completed-1/print?returnTo=/admin/notas");
-    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+    const print = screen.getByRole("button", { name: /imprimir cotización/i });
+    expect(print).toHaveAttribute("data-print-url", "/admin/notas/wo-row-completed-1/print?returnTo=/admin/notas");
+    expect(print.getAttribute("data-print-url")).not.toContain("/admin/quotes/");
   });
 });

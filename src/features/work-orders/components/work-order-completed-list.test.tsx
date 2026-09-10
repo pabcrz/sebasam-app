@@ -61,7 +61,7 @@ describe("WorkOrderCompletedList", () => {
       />,
     );
 
-    const print = screen.getByRole("link", { name: "Imprimir nota de remisión OT-001" });
+    const print = screen.getByRole("button", { name: "Imprimir nota de remisión OT-001" });
     const payment = screen.getByRole("button", { name: "Registrar pago para COT-001" });
     expect(print).toHaveAttribute("title", "Imprimir nota de remisión OT-001");
     expect(print).toHaveClass("min-h-11", "min-w-11");
@@ -81,9 +81,9 @@ describe("WorkOrderCompletedList", () => {
   it("preserves the current Notes state when printing from the completed list", () => {
     render(<WorkOrderCompletedList workOrders={[workOrder]} noteReturnTo="/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=workshop&page=2" />);
 
-    const print = screen.getByRole("link", { name: "Imprimir nota de remisión OT-001" });
-    expect(print).toHaveAttribute("href", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dmonth%26anchor%3D2026-08%26payment%3Dpaid%26assignee%3Dworkshop%26page%3D2");
-    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+    const print = screen.getByRole("button", { name: "Imprimir nota de remisión OT-001" });
+    expect(print).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dmonth%26anchor%3D2026-08%26payment%3Dpaid%26assignee%3Dworkshop%26page%3D2");
+    expect(print.getAttribute("data-print-url")).not.toContain("/admin/quotes/");
     expect(print).not.toHaveAttribute("target");
     expect(print).not.toHaveAttribute("rel");
   });

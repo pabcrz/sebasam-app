@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import type { PaymentRequest, QuoteStatus } from "@prisma/client";
-import Link from "next/link";
 import { Printer } from "lucide-react";
+import { PrintActionButton } from "./print-action-button";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, Button, TableCell, TableRow } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
@@ -130,9 +130,17 @@ export function QuoteListRow({
       <TableCell className="min-w-[230px]" onClick={(event) => event.stopPropagation()}>
           <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          <Button asChild type="button" variant="outline" size="sm" className="min-h-11 min-w-11" title={`Imprimir cotización ${quote.number}`} aria-label={`Imprimir cotización ${quote.number}`}>
-            <Link href={printHref}><Printer className="h-4 w-4" aria-hidden="true" /><span className="sr-only">Imprimir cotización</span></Link>
-          </Button>
+          <PrintActionButton
+            url={printHref}
+            variant="outline"
+            size="sm"
+            className="min-h-11 min-w-11"
+            title={`Imprimir cotización ${quote.number}`}
+            aria-label={`Imprimir cotización ${quote.number}`}
+          >
+            <Printer className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Imprimir cotización</span>
+          </PrintActionButton>
           {editable ? (
             <QuoteBuilderDialog
               customers={customers}

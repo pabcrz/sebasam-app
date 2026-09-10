@@ -63,12 +63,12 @@ describe("WorkOrderDetailPage", () => {
 
     render(await WorkOrderDetailPage({ params: Promise.resolve({ id: "wo-detail-1" }) }));
 
-    const print = screen.getByRole("link", { name: /imprimir orden/i });
+    const print = screen.getByRole("button", { name: /imprimir orden/i });
     expect(print).toHaveAttribute(
-      "href",
+      "data-print-url",
       "/admin/quotes/quote-detail-1/print?returnTo=/admin/work-orders",
     );
-    expect(print.getAttribute("href")).not.toContain("/admin/notas/");
+    expect(print.getAttribute("data-print-url")).not.toContain("/admin/notas/");
     expect(print).toHaveClass("min-h-11", "min-w-11", "!h-11", "!w-11", "sm:!h-9", "sm:!w-auto");
     expect(screen.getByText("Imprimir orden")).toHaveClass("sr-only", "sm:not-sr-only");
   });
@@ -95,9 +95,9 @@ describe("WorkOrderDetailPage", () => {
 
     render(await WorkOrderDetailPage({ params: Promise.resolve({ id: "wo-detail-completed-1" }) }));
 
-    const print = screen.getByRole("link", { name: /imprimir orden/i });
-    expect(print).toHaveAttribute("href", "/admin/notas/wo-detail-completed-1/print?returnTo=/admin/notas");
-    expect(print.getAttribute("href")).not.toContain("/admin/quotes/");
+    const print = screen.getByRole("button", { name: /imprimir orden/i });
+    expect(print).toHaveAttribute("data-print-url", "/admin/notas/wo-detail-completed-1/print?returnTo=/admin/notas");
+    expect(print.getAttribute("data-print-url")).not.toContain("/admin/quotes/");
     expect(screen.getByRole("button", { name: "Corregir trabajo" })).toBeInTheDocument();
   });
 
