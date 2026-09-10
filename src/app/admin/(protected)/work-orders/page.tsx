@@ -10,7 +10,7 @@ import {
 } from "@/components/ui";
 import { WorkOrderActiveList } from "@/features/work-orders/components/work-order-active-list";
 import { listCustomers } from "@/features/customers/queries";
-import { listQuotes } from "@/features/quotes/queries";
+import { listQuotesByIds } from "@/features/quotes/queries";
 import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
 import { duplicateQuoteFromForm, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
 import {
@@ -35,12 +35,11 @@ export default async function WorkOrdersPage() {
   const masters = workers.filter((w) => w.role === "WORKER" && w.workerKind === WorkerKind.MASTER);
 
   // Load full quote data (with paidCents, activeSharedQuote, etc.) for the
-  // work-order builder dialogs. We filter by the quote IDs that have active work orders.
-  const activeQuoteIds = new Set(workOrders.map((wo) => wo.quote.id));
-  const allQuotes = activeQuoteIds.size > 0
-    ? await listQuotes()
+  // work-order builder dialogs. We query only the quote IDs that have active work orders.
+  const activeQuoteIds = Array.from(new Set(workOrders.map((wo) => wo.quote.id)));
+  const activeQuotes = activeQuoteIds.length > 0
+    ? await listQuotesByIds(activeQuoteIds)
     : [];
-  const activeQuotes = allQuotes.filter((q) => activeQuoteIds.has(q.id));
   const quoteMap = new Map(activeQuotes.map((q) => [q.id, q]));
 
   return (
