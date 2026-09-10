@@ -10,6 +10,74 @@ export interface PrintDocumentOptions {
   timeoutMs?: number;
 }
 
+async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<void> {
+  const doc = cw.document;
+  if (!doc || typeof doc.querySelector !== "function") return;
+
+  const isReady = () => {
+    // Check if the generic admin loading skeleton is still displayed
+    const hasSkeleton = Boolean(doc.querySelector("[aria-label='Cargando contenido...']"));
+    if (hasSkeleton) return false;
+
+    // Check if explicit print document ready marker is present
+    const hasReadyMarker = Boolean(doc.querySelector("[data-document-ready='true']"));
+    if (hasReadyMarker) return true;
+
+    // Fallback: check for standard document content elements
+    const hasContent = Boolean(doc.querySelector("main, article, #printable-quote, table"));
+    return hasContent;
+  };
+
+  if (isReady()) {
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    let resolved = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    let observer: MutationObserver | null = null;
+
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      if (timer) clearTimeout(timer);
+      if (interval) clearInterval(interval);
+      if (observer) observer.disconnect();
+      resolve();
+    };
+
+    timer = setTimeout(finish, timeoutMs);
+
+    try {
+      const MutationObserverClass =
+        (cw as unknown as { MutationObserver?: typeof MutationObserver }).MutationObserver || window.MutationObserver;
+      const target = doc.body || doc.documentElement;
+      if (MutationObserverClass && target) {
+        const obs = new MutationObserverClass(() => {
+          if (isReady()) {
+            finish();
+          }
+        });
+        obs.observe(target, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+        });
+        observer = obs;
+      }
+    } catch {
+      // Fallback to polling
+    }
+
+    interval = setInterval(() => {
+      if (isReady()) {
+        finish();
+      }
+    }, 50);
+  });
+}
+
 export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}): Promise<void> {
   const { timeoutMs = 15000 } = options;
 
@@ -77,6 +145,20 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
           resolve();
           return;
         }
+
+        // Wait until streamed RSC replaces any loading fallback and marks document as ready
+        await waitForDocumentReady(cw, 10000);
+
+        // Allow browser layout engine to calculate styles and paint the updated nodes
+        await new Promise<void>((resolveFrames) => {
+          if (typeof cw.requestAnimationFrame === "function") {
+            cw.requestAnimationFrame(() => {
+              cw.requestAnimationFrame(() => resolveFrames());
+            });
+          } else {
+            setTimeout(resolveFrames, 50);
+          }
+        });
 
         // Wait for document fonts to finish loading if FontFaceSet API is supported
         if (cw.document?.fonts?.ready) {

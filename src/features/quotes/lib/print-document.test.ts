@@ -35,14 +35,17 @@ describe("printDocumentUrl", () => {
         print: printSpy,
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-        document: { fonts: { ready: Promise.resolve() } },
+        document: {
+          querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? {} : null)),
+          fonts: { ready: Promise.resolve() },
+        },
       },
       writable: true,
     });
 
     // Trigger iframe onload
     iframe?.onload?.(new Event("load"));
-    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(100);
 
     expect(focusSpy).toHaveBeenCalled();
     expect(printSpy).toHaveBeenCalled();
@@ -78,4 +81,46 @@ describe("printDocumentUrl", () => {
 
     await expect(printPromise).rejects.toThrow("Tiempo de espera agotado");
   });
+
+  it("waits for loading skeleton to disappear and data-document-ready to appear before printing", async () => {
+    const printPromise = printDocumentUrl("/admin/quotes/quote-stream/print");
+    const iframe = document.querySelector("iframe");
+
+    let isReady = false;
+    const focusSpy = vi.fn();
+    const printSpy = vi.fn();
+    Object.defineProperty(iframe, "contentWindow", {
+      value: {
+        focus: focusSpy,
+        print: printSpy,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        document: {
+          querySelector: vi.fn((sel: string) => {
+            if (sel.includes("Cargando contenido")) return !isReady ? {} : null;
+            if (sel.includes("data-document-ready")) return isReady ? {} : null;
+            return null;
+          }),
+          fonts: { ready: Promise.resolve() },
+        },
+      },
+      writable: true,
+    });
+
+    // Trigger iframe onload while still displaying the loading skeleton
+    iframe?.onload?.(new Event("load"));
+    await vi.advanceTimersByTimeAsync(30);
+
+    // Print must NOT have been called yet
+    expect(printSpy).not.toHaveBeenCalled();
+
+    // Now transition to ready
+    isReady = true;
+    await vi.advanceTimersByTimeAsync(100);
+
+    // Print MUST have been called now
+    expect(printSpy).toHaveBeenCalled();
+    await printPromise;
+  });
 });
+
