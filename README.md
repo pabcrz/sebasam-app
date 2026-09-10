@@ -120,6 +120,7 @@ Este es el modelo de dominio que soporta el flujo. Las primeras entidades existe
 - [`docs/GITFLOW.md`](./docs/GITFLOW.md) — flujo de ramas y PRs.
 - [`docs/AI_WORKFLOW.md`](./docs/AI_WORKFLOW.md) — protocolo de trabajo con asistentes de IA.
 - [`docs/DATABASE_SAFETY.md`](./docs/DATABASE_SAFETY.md) — flujo seguro de migraciones y respaldos de `public`.
+- [`docs/PRODUCTION_RELEASE.md`](./docs/PRODUCTION_RELEASE.md) — protected production release configuration and incident runbook.
 - [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) — borrador de backlog del MVP (solo lectura; no mover ni renombrar).
 - [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md) — estado actual del MVP y brechas pendientes.
 - [`DESIGN.md`](./DESIGN.md) — sistema de diseño, tokens y componentes basado en Figma.
@@ -244,12 +245,17 @@ or `ADMIN_ASSISTANT`.
 Future admin password management can become an app screen, but it must use Radix primitives and
 Tailwind wrappers derived from the Figma design system instead of invented visual styling.
 
-## Deploy pipeline
+## Production release
 
-1. Set `DATABASE_URL`, `DIRECT_URL`, and Supabase public env vars in the deploy environment.
-2. Run `pnpm db:migrate:deploy` as an explicit release step.
-3. Run `pnpm build` to generate Prisma Client and build Next.js.
-4. Start with `pnpm start` or the hosting platform equivalent.
+Production releases are orchestrated by the versioned GitHub Actions workflow in
+`.github/workflows/production-release.yml`. Configure the protected `production`
+GitHub Environment and Vercel as documented in
+[`docs/PRODUCTION_RELEASE.md`](./docs/PRODUCTION_RELEASE.md). Do not let Vercel
+ auto-deploy production from `main`; the workflow invokes Vercel only after it
+verifies and applies all pending committed Prisma migrations. A maintainer must
+manually dispatch the workflow from `main`; that dispatch is the explicit human
+approval to promote the selected revision. Pushes to `main` never release
+production automatically.
 
 ## What not to do
 
