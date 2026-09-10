@@ -226,7 +226,11 @@ export async function getCustomerBalanceSummary(
 ): Promise<CustomerBalanceSummary> {
   const [charges, captures, applications] = await Promise.all([
     client.quote.findMany({
-      where: { customerId, status: QuoteStatus.APPROVED },
+      where: {
+        customerId,
+        status: QuoteStatus.APPROVED,
+        workOrder: { status: WorkOrderStatus.COMPLETED },
+      },
       select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true },
     }),
     client.payment.aggregate({
