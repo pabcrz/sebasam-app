@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { X, Printer, FileText } from "lucide-react";
 import { Button } from "@/components/ui";
 import { AdminPageHeader } from "@/components/admin-page-header";
-import Link from "next/link";
+import { PrintActionButton } from "./print-action-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuoteBuilder } from "./quote-builder";
 import type { CustomerOption, QuoteBuilderInitialData } from "./quote-builder";
@@ -34,12 +34,14 @@ export function EditDraftQuoteForm({
   return (
     <section className="mx-auto flex min-h-[calc(100dvh-5rem)] w-full max-w-6xl flex-col gap-4 px-4 py-6 md:px-6 md:py-10">
       <AdminPageHeader icon={FileText} title={`Editar cotización ${quoteNumber}`} variant="expanded" actions={<>
-          <Button asChild type="button" variant="outline" size="sm">
-            <Link href={`/admin/quotes/${quoteId}/print?returnTo=/admin/quotes`}>
-              <Printer className="mr-2 h-4 w-4" aria-hidden="true" />
-              Imprimir PDF
-            </Link>
-          </Button>
+          <PrintActionButton
+            url={`/admin/quotes/${quoteId}/print?returnTo=/admin/quotes`}
+            variant="outline"
+            size="sm"
+          >
+            <Printer className="mr-2 h-4 w-4" aria-hidden="true" />
+            Imprimir PDF
+          </PrintActionButton>
           <Button
             type="button"
             variant="ghost"

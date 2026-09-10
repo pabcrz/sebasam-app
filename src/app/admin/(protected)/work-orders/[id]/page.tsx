@@ -17,6 +17,7 @@ import {
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import { createAndAssignWorkOrderAction, completeWorkOrderAction, rollbackWorkOrderAction } from "@/features/work-orders/actions";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
+import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import { formatCents, formatVehicle } from "@/features/quotes/lib/format";
 import { isCompletedWorkCorrectable, isQuoteEditable } from "@/features/quotes/lib/editability";
 
@@ -135,9 +136,17 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
               )}
             </div>
             <div className="w-full sm:w-auto">
-              <Button asChild type="button" variant="outline" size="sm" className="mb-2 !h-11 !w-11 min-h-11 min-w-11 px-0 sm:mb-0 sm:mr-2 sm:!h-9 sm:!w-auto sm:px-3" title={`Imprimir orden ${workOrder.number}`} aria-label={`Imprimir orden ${workOrder.number}`}>
-                <Link href={printHref}><Printer className="h-4 w-4" aria-hidden="true" /><span className="sr-only sm:not-sr-only">Imprimir orden</span></Link>
-              </Button>
+              <PrintActionButton
+                url={printHref}
+                variant="outline"
+                size="sm"
+                className="mb-2 !h-11 !w-11 min-h-11 min-w-11 px-0 sm:mb-0 sm:mr-2 sm:!h-9 sm:!w-auto sm:px-3"
+                title={`Imprimir orden ${workOrder.number}`}
+                aria-label={`Imprimir orden ${workOrder.number}`}
+              >
+                <Printer className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only sm:not-sr-only">Imprimir orden</span>
+              </PrintActionButton>
               <WorkOrderOperationsDialog
                 quoteNumber={quote.number}
                 quoteStatus={quote.status}

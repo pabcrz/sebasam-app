@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CheckCircle2, ClipboardList, Printer, RotateCcw, UserCheck, X } from "lucide-react";
-import Link from "next/link";
+import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { QuoteStatus, UserRole, WorkOrderStatus } from "@prisma/client";
 import {
   Badge,
@@ -430,20 +430,17 @@ export function WorkOrderOperationsDialog({
                 <p className="text-sm text-[var(--color-text-muted)]">
                   Trabajo completado. Podes generar la Nota de Remisión desde el panel de Notas o imprimir la orden.
                 </p>
-                <Button
-                  asChild
-                  type="button"
+                <PrintActionButton
+                  url={`/admin/notas/${workOrder.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}
                   variant="outline"
                   size="sm"
                   className="min-h-11 min-w-11 w-9 px-0 sm:w-auto sm:px-3"
                   title={`Imprimir nota de remisión ${workOrder.number}`}
                   aria-label={`Imprimir nota de remisión ${workOrder.number}`}
                 >
-                  <Link href={`/admin/notas/${workOrder.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}>
-                    <Printer className="h-4 w-4" aria-hidden="true" />
-                    <span className="sr-only sm:not-sr-only">Imprimir Nota de Remisión</span>
-                  </Link>
-                </Button>
+                  <Printer className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only">Imprimir Nota de Remisión</span>
+                </PrintActionButton>
               </section>
             ) : null}
 

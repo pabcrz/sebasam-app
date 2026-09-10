@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
-import Link from "next/link";
+import { PrintActionButton } from "./print-action-button";
 import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, Button, OperationalCard } from "@/components/ui";
@@ -107,20 +107,17 @@ export function QuoteListCard({
     switch (action) {
       case "print":
         return (
-          <Button
-            asChild
-            type="button"
+          <PrintActionButton
+            url={printHref}
             variant={variant}
             size="sm"
             className={presentation === "tile" ? tileClassName : "min-h-11 min-w-11 px-3 sm:px-0"}
             aria-label={`Imprimir cotización ${quote.number}`}
             title={`Imprimir cotización ${quote.number}`}
           >
-            <Link href={printHref}>
-              <Printer className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only">Imprimir</span>
-            </Link>
-          </Button>
+            <Printer className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Imprimir</span>
+          </PrintActionButton>
         );
       case "edit":
         return (
