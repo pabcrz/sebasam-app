@@ -17,7 +17,12 @@ import {
   updateCustomerBasicsFromForm,
   updateCustomerContactAction,
 } from "./actions";
-import { getCustomerAccountStatement, getCustomerById } from "./queries";
+import { getCustomerBalanceSummary } from "@/features/payments/domain";
+import { getCustomerById } from "./queries";
+
+vi.mock("@/features/payments/domain", () => ({
+  getCustomerBalanceSummary: vi.fn(),
+}));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -397,22 +402,34 @@ describe("getCustomerDetail", () => {
     vi.clearAllMocks();
   });
 
-  it("composes the canonical customer and account statement queries", async () => {
+  it("composes the canonical customer and balance summary queries", async () => {
     const customer = { id: "cust-1", name: "Constructora del Norte" };
-    const statement = { totalContractedCents: 25000, totalPaidCents: 17500, pendingBalanceCents: 7500, movements: [] };
+    const balanceSummary = {
+      nominalContractedCents: 25000,
+      totalContractedCents: 25000,
+      totalPaidCents: 17500,
+      pendingBalanceCents: 7500,
+      availableCreditCents: 5000,
+    };
     (getCustomerById as ReturnType<typeof vi.fn>).mockResolvedValue(customer);
-    (getCustomerAccountStatement as ReturnType<typeof vi.fn>).mockResolvedValue(statement);
+    (getCustomerBalanceSummary as ReturnType<typeof vi.fn>).mockResolvedValue(balanceSummary);
 
-    await expect(getCustomerDetail("cust-1")).resolves.toEqual({ customer, statement });
+    await expect(getCustomerDetail("cust-1")).resolves.toEqual({
+      customer,
+      balance: {
+        pendingBalanceCents: 7500,
+        availableCreditCents: 5000,
+      },
+    });
     expect(getCustomerById).toHaveBeenCalledWith("cust-1");
-    expect(getCustomerAccountStatement).toHaveBeenCalledWith("cust-1");
+    expect(getCustomerBalanceSummary).toHaveBeenCalledWith(prisma, "cust-1");
   });
 
-  it("does not calculate an account statement when the customer no longer exists", async () => {
+  it("does not calculate balance summary when the customer no longer exists", async () => {
     (getCustomerById as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     await expect(getCustomerDetail("missing")).resolves.toBeNull();
-    expect(getCustomerAccountStatement).not.toHaveBeenCalled();
+    expect(getCustomerBalanceSummary).not.toHaveBeenCalled();
   });
 });
 

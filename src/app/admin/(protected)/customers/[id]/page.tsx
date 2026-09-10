@@ -4,11 +4,9 @@ import { ArrowLeft, FileText, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
-import { CustomerAccountStatement } from "@/features/customers/components/customer-account-statement";
 import { CustomerContactsManager } from "@/features/customers/components/customer-contacts-manager";
 import { CustomerEditButton } from "@/features/customers/components/customer-edit-button";
-import { getCustomerAccountStatement, getCustomerById } from "@/features/customers/queries";
-import { correctPaymentAction } from "@/features/payments/actions";
+import { getCustomerById } from "@/features/customers/queries";
 
 export const metadata: Metadata = {
   title: "Detalle de cliente",
@@ -26,7 +24,6 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
     notFound();
   }
 
-  const statement = await getCustomerAccountStatement(customer.id);
   const displayName = customer.commercialName || customer.name;
   const subtitle = customer.commercialName ? `Razón social: ${customer.legalName || customer.name}` : customer.legalName ? `Razón social: ${customer.legalName}` : undefined;
 
@@ -146,8 +143,6 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
           </CardContent>
         </Card>
       ) : null}
-
-      <CustomerAccountStatement statement={statement} correctPaymentAction={correctPaymentAction} />
     </section>
   );
 }

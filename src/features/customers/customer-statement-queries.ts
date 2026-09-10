@@ -2,6 +2,8 @@ import { PaymentStatus, WorkOrderStatus } from "@prisma/client";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
+import { getCustomerCreditSummary } from "@/features/payments/domain";
+import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
 import { derivePaymentState, type PaymentState } from "@/features/work-orders/payment-state";
 import type { QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
 import type { StatementPeriodParams, StatementPeriodUnit, StatementView } from "./customer-statement";
@@ -46,6 +48,7 @@ export type CustomerDetailedStatement = {
   period: StatementPeriodUnit;
   anchor: string;
   rangeLabel: string;
+  availableCreditCents: number;
   summary: CustomerStatementSummary;
   notes: StatementNoteItem[];
   bankAccounts: Array<{
@@ -132,12 +135,13 @@ export async function getCustomerDetailedStatement(
     return null;
   }
 
-  // Fetch all completed work orders for this customer with their active payment applications
-  const allCompletedOrders = await prisma.workOrder.findMany({
-    where: {
-      status: WorkOrderStatus.COMPLETED,
-      quote: { customerId },
-    },
+  // Fetch all completed work orders for this customer and customer credit summary in parallel
+  const [allCompletedOrders, creditSummary] = await Promise.all([
+    prisma.workOrder.findMany({
+      where: {
+        status: WorkOrderStatus.COMPLETED,
+        quote: { customerId },
+      },
     include: {
       quote: {
         include: {
@@ -148,6 +152,7 @@ export async function getCustomerDetailedStatement(
             include: { items: { orderBy: { sortOrder: "asc" } } },
             orderBy: { sortOrder: "asc" },
           },
+          settlementAgreement: true,
         },
       },
       paymentApplications: {
@@ -164,7 +169,9 @@ export async function getCustomerDetailedStatement(
       },
     },
     orderBy: [{ completedAt: "asc" }, { id: "asc" }],
-  });
+  }),
+  getCustomerCreditSummary(prisma, customerId),
+]);
 
   const { view, period, anchor, rangeLabel, start, end } = periodParams;
 
@@ -176,7 +183,7 @@ export async function getCustomerDetailedStatement(
 
     allCompletedOrders.forEach((wo) => {
       if (wo.completedAt && wo.completedAt < start) {
-        previousCharges += wo.quote.totalCents ? Number(wo.quote.totalCents) : 0;
+        previousCharges += getEffectiveSettlementTotals(wo.quote, wo.quote.settlementAgreement).totalCents;
       }
       wo.paymentApplications.forEach((pa) => {
         if (pa.createdAt < start) {
@@ -195,7 +202,7 @@ export async function getCustomerDetailedStatement(
     allCompletedOrders.forEach((wo) => {
       const inPeriod = start === null || end === null || (wo.completedAt && wo.completedAt >= start && wo.completedAt < end);
       if (inPeriod) {
-        periodChargesCents += wo.quote.totalCents ? Number(wo.quote.totalCents) : 0;
+        periodChargesCents += getEffectiveSettlementTotals(wo.quote, wo.quote.settlementAgreement).totalCents;
       }
       wo.paymentApplications.forEach((pa) => {
         const paInPeriod = start === null || end === null || (pa.createdAt >= start && pa.createdAt < end);
@@ -210,7 +217,7 @@ export async function getCustomerDetailedStatement(
   const statementNotes: StatementNoteItem[] = [];
 
   allCompletedOrders.forEach((wo) => {
-    const totalCents = wo.quote.totalCents ? Number(wo.quote.totalCents) : 0;
+    const totalCents = getEffectiveSettlementTotals(wo.quote, wo.quote.settlementAgreement).totalCents;
     const paidCents = wo.paymentApplications.reduce((sum, pa) => sum + pa.amountCents, 0);
     const remainingCents = Math.max(0, totalCents - paidCents);
     const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
@@ -349,6 +356,7 @@ export async function getCustomerDetailedStatement(
     period,
     anchor,
     rangeLabel,
+    availableCreditCents: creditSummary.availableCreditCents,
     summary: {
       initialBalanceCents,
       periodChargesCents,

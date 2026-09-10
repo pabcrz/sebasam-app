@@ -3,9 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getCustomerByIdMock = vi.hoisted(() => vi.fn());
-const getCustomerAccountStatementMock = vi.hoisted(() => vi.fn());
 const notFoundMock = vi.hoisted(() => vi.fn());
-const customerAccountStatementMock = vi.hoisted(() => vi.fn(() => <div data-testid="customer-account-statement" />));
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
@@ -22,13 +20,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/features/customers/queries", () => ({
   getCustomerById: getCustomerByIdMock,
-  getCustomerAccountStatement: getCustomerAccountStatementMock,
 }));
-
-vi.mock("@/features/customers/components/customer-account-statement", () => ({
-  CustomerAccountStatement: customerAccountStatementMock,
-}));
-vi.mock("@/features/payments/actions", () => ({ correctPaymentAction: vi.fn() }));
 
 import CustomerDetailPage from "./page";
 
@@ -42,20 +34,13 @@ describe("CustomerDetailPage", () => {
     notes: "Facturar al cierre del mes.",
     status: "ACTIVE",
   };
-  const statement = {
-    totalContractedCents: 25000,
-    totalPaidCents: 17500,
-    pendingBalanceCents: 7500,
-    movements: [],
-  };
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("shows read-only customer context and its account statement with an explicit edit action", async () => {
+  it("shows read-only customer context and link to full account statement with an explicit edit action", async () => {
     getCustomerByIdMock.mockResolvedValue(customer);
-    getCustomerAccountStatementMock.mockResolvedValue(statement);
 
     render(await CustomerDetailPage({ params: Promise.resolve({ id: customer.id }) }));
 
@@ -68,11 +53,6 @@ describe("CustomerDetailPage", () => {
     expect(statementLink).toHaveAttribute("href", `/admin/customers/${customer.id}/estado-de-cuenta`);
     expect(screen.queryByTestId("customer-edit-form")).not.toBeInTheDocument();
     expect(getCustomerByIdMock).toHaveBeenCalledWith(customer.id);
-    expect(getCustomerAccountStatementMock).toHaveBeenCalledWith(customer.id);
-    expect(customerAccountStatementMock).toHaveBeenCalledWith(
-      { statement, correctPaymentAction: expect.any(Function) },
-      undefined,
-    );
   });
 
   it("uses the existing not-found boundary for an unknown customer", async () => {
@@ -82,6 +62,5 @@ describe("CustomerDetailPage", () => {
     });
 
     await expect(CustomerDetailPage({ params: Promise.resolve({ id: "missing" }) })).rejects.toThrow("NEXT_NOT_FOUND");
-    expect(getCustomerAccountStatementMock).not.toHaveBeenCalled();
   });
 });

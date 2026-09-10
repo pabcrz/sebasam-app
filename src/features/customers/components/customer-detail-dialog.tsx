@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Button,
   Dialog,
@@ -13,9 +14,8 @@ import {
   DialogTrigger,
   Skeleton,
 } from "@/components/ui";
-import type { CustomerAccountStatement } from "../queries";
+import { formatCents } from "@/features/quotes/lib/format";
 import type { CustomerCardListItem } from "./customer-card-list";
-import { CustomerAccountStatement as CustomerAccountStatementView } from "./customer-account-statement";
 import { CustomerContactsManager, type CustomerContactItem } from "./customer-contacts-manager";
 import { CustomerEditDialog, type CustomerEditData } from "./customer-edit-dialog";
 import { updateCustomerAction } from "../actions";
@@ -31,6 +31,11 @@ export type CustomerVehicleItem = {
   notes: string | null;
 };
 
+export type CustomerBalance = {
+  pendingBalanceCents: number;
+  availableCreditCents: number;
+};
+
 type CustomerDetail = {
   customer: CustomerCardListItem & {
     address: string | null;
@@ -38,7 +43,7 @@ type CustomerDetail = {
     contacts?: CustomerContactItem[];
     vehicles?: CustomerVehicleItem[];
   };
-  statement: CustomerAccountStatement;
+  balance: CustomerBalance;
 };
 
 export type CustomerDetailLoader = (customerId: string) => Promise<CustomerDetail | null>;
@@ -235,8 +240,28 @@ export function CustomerDetailDialog({
                   </div>
                 ) : null}
 
-                <div className="border-t border-[var(--color-border-light)] pt-4">
-                  <CustomerAccountStatementView statement={detail.statement} />
+                <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-4 text-sm">
+                      <div>
+                        <span className="text-xs text-[var(--color-text-muted)]">Saldo pendiente: </span>
+                        <span className="font-semibold tabular-nums text-[var(--color-text-main)]">
+                          {formatCents(detail.balance.pendingBalanceCents)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-[var(--color-text-muted)]">Saldo a favor: </span>
+                        <span className="font-semibold tabular-nums text-[var(--color-status-success-fg)]">
+                          {formatCents(detail.balance.availableCreditCents)}
+                        </span>
+                      </div>
+                    </div>
+                    <Button asChild variant="outline" size="sm" className="text-xs">
+                      <Link href={`/admin/customers/${detail.customer.id}/estado-de-cuenta`}>
+                        Ver estado de cuenta completo →
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : null}

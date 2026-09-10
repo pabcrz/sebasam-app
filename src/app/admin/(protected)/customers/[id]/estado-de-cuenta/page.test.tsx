@@ -32,6 +32,7 @@ describe("CustomerStatementView", () => {
     period: "month",
     anchor: "2026-08-15",
     rangeLabel: "Cartera pendiente",
+    availableCreditCents: 0,
     summary: {
       initialBalanceCents: 0,
       periodChargesCents: 150000,
