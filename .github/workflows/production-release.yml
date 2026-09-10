@@ -48,7 +48,6 @@ jobs:
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: |
           pnpm exec prisma validate
-          pnpm exec prisma migrate status
           pnpm db:migrate:deploy
           pnpm exec prisma migrate status
 
