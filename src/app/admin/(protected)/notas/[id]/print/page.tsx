@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { getCompletedWorkOrderById } from "@/features/work-orders/queries";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
-import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
-import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
-import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
+import { QuoteDocumentView } from "@/features/public-quotes/components/quote-document-view";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
 import { PrintControls } from "@/features/quotes/components/print-controls";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
-import { Suspense } from "react";
-import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
 interface PrintPageProps {
   params: Promise<{ id: string }>;
@@ -51,49 +48,15 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
     notFound();
   }
 
-  const { quote } = workOrder;
-  const { displayName: customerDisplayName, subtitle: customerSubtitle } = resolveCustomerDisplayIdentity(quote);
-
-  const documentType = "Nota";
-
-  const viewQuote: SharedQuoteViewQuote = {
-    ...quote,
-    items: quote.items.map((item) => ({
-      ...item,
-      quantity: item.quantity.toString(),
-    })),
-    sections: quote.sections ? quote.sections.map((section) => ({
-      ...section,
-      items: section.items.map((item) => ({
-        ...item,
-        quantity: item.quantity.toString(),
-      })),
-    })) : [],
-    workOrder: { status: workOrder.status },
-  };
-
   return (
-    <div className="min-h-screen bg-[var(--background)] flex flex-col print:min-h-0 print:block print:w-full">
-      <Suspense fallback={null}><PrintControls backLabel="Volver a notas" /></Suspense>
-      <PublicQuoteShell
-        business={toPublicBusinessIdentity(paymentSettings)}
-        location={{ address: paymentSettings.address, mapsUrl: paymentSettings.mapsUrl }}
-        documentType={documentType}
-        documentNumber={quote.number}
-        date={quote.operationalDate}
-        title={quote.title}
-        customerName={customerDisplayName}
-        customerSubtitle={customerSubtitle}
-        vehicleDescription={
-          workOrder.isSpecial
-            ? "Taller"
-            : quote.vehicle
-              ? formatVehicle(quote.vehicle)
-              : formatSnapshotVehicle(quote.vehicleSnapshot)
-        }
-      >
-        <SharedQuoteView quote={viewQuote} token="" isNote isPrint />
-      </PublicQuoteShell>
-    </div>
+    <QuoteDocumentView
+      quote={workOrder.quote}
+      workOrderStatus={workOrder.status}
+      paymentSettings={paymentSettings}
+      documentType="Nota"
+      vehicleDescriptionOverride={workOrder.isSpecial ? "Taller" : undefined}
+      isPrint={true}
+      controls={<Suspense fallback={null}><PrintControls backLabel="Volver a notas" /></Suspense>}
+    />
   );
 }
