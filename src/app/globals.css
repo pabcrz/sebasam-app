@@ -200,7 +200,7 @@ body {
 
 @media print {
   @page {
-    margin: 1cm;
+    margin: 0;
     size: letter portrait;
   }
   html,
@@ -212,6 +212,8 @@ body {
     color: #000000 !important;
     padding: 0 !important;
     margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* When printing from inside a dialog modal */
