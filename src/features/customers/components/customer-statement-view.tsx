@@ -2,15 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Eye, Printer, Share2 } from "lucide-react";
-import toast from "react-hot-toast";
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, Printer } from "lucide-react";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog, type QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
 import { ApplyCreditDialog } from "@/features/payments/components/apply-credit-dialog";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
 import {
-  buildWhatsAppStatementMessage,
   customerStatementHref,
   shiftStatementAnchor,
   type StatementPeriodUnit,
@@ -22,7 +20,6 @@ type CustomerStatementViewProps = {
 
 export function CustomerStatementView({ statement }: CustomerStatementViewProps) {
   const [selectedQuote, setSelectedQuote] = React.useState<QuotePreviewSummary | null>(null);
-  const [copied, setCopied] = React.useState(false);
 
   const {
     customer,
@@ -47,48 +44,11 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
     window.print();
   };
 
-  const handleCopyWhatsApp = async () => {
-    const text = buildWhatsAppStatementMessage({
-      customerName: displayName,
-      emissionDate,
-      rangeLabel,
-      view,
-      initialBalanceCents: summary.initialBalanceCents,
-      periodChargesCents: summary.periodChargesCents,
-      periodPaymentsCents: summary.periodPaymentsCents,
-      finalBalanceCents: summary.finalBalanceCents,
-      overdueBalanceCents: summary.overdueBalanceCents,
-      notes: notes.map((n) => ({
-        number: n.number,
-        completedAt: n.completedAt,
-        concepts: n.concepts,
-        totalCents: n.totalCents,
-        paidCents: n.paidCents,
-        remainingCents: n.remainingCents,
-        statusLabel: n.paymentState.label,
-      })),
-      bankAccounts: bankAccounts.map((acc) => ({
-        bankName: acc.bankName,
-        accountHolder: acc.accountHolder,
-        clabe: acc.clabe,
-      })),
-    });
-
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      toast.success("Resumen copiado para WhatsApp");
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      toast.error("No se pudo copiar al portapapeles");
-    }
-  };
-
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-6 md:px-6 md:py-8 print:p-0 print:m-0 print:max-w-none">
+    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-6 md:px-6 md:py-8 print:p-0 print:m-0 print:max-w-none print:w-full print:px-[15mm] print:py-[12mm] print:gap-4">
       {/* Screen navigation & header */}
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Button asChild variant="ghost" size="sm" className="w-fit">
+        <Button asChild variant="ghost" size="sm" className="w-fit min-h-[44px] px-3.5">
           <Link href={`/admin/customers/${customer.id}`}>
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Regresar al cliente
@@ -100,21 +60,9 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleCopyWhatsApp}
-            aria-label="Copiar resumen para WhatsApp"
-            className="flex items-center gap-1.5"
-          >
-            {copied ? <Copy className="h-4 w-4 text-[var(--color-success)]" /> : <Share2 className="h-4 w-4" />}
-            <span>{copied ? "Copiado" : "Copiar para WhatsApp"}</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
             onClick={handlePrint}
             aria-label="Imprimir estado de cuenta"
-            className="flex items-center gap-1.5"
+            className="flex min-h-[44px] items-center gap-1.5 px-3.5"
           >
             <Printer className="h-4 w-4" aria-hidden="true" />
             <span>Imprimir / PDF</span>
@@ -123,7 +71,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
       </div>
 
       {/* Printable / Document Header */}
-      <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-6 shadow-sm print:border-none print:shadow-none print:p-0">
+      <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-6 shadow-sm print:border-none print:shadow-none print:p-0 print:break-inside-avoid">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-border-light)] pb-4 print:pb-3">
           <div>
             <div className="flex items-center gap-2">
@@ -170,12 +118,12 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
       <div className="grid gap-3 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-light)] pb-3">
           {/* Main View Mode */}
-          <div className="flex items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-bg-soft)] p-1">
+          <div className="flex flex-wrap items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-bg-soft)] p-1">
             <Button
               asChild
               variant={view === "pending" ? "primary" : "ghost"}
               size="sm"
-              className="h-8 text-xs font-medium"
+              className="min-h-[44px] px-3 text-xs font-medium shrink"
             >
               <Link href={customerStatementHref(customer.id, { view: "pending" })}>Notas con saldo pendiente</Link>
             </Button>
@@ -183,7 +131,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
               asChild
               variant={view === "history" ? "primary" : "ghost"}
               size="sm"
-              className="h-8 text-xs font-medium"
+              className="min-h-[44px] px-3 text-xs font-medium shrink"
             >
               <Link href={customerStatementHref(customer.id, { view: "history", period: "month", anchor })}>
                 Historial por período
@@ -192,82 +140,84 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
           </div>
 
           {/* Granularity Selector when in History Mode */}
-          {view === "history" ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-bg-soft)] p-1">
-                {(["week", "month", "year", "all"] as const).map((p) => {
-                  const labels: Record<StatementPeriodUnit, string> = {
-                    week: "Semana",
-                    month: "Mes",
-                    year: "Año",
-                    all: "Todo",
-                  };
-                  return (
+          <div className="min-h-[44px] flex items-center">
+            {view === "history" ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-bg-soft)] p-1">
+                  {(["week", "month", "year", "all"] as const).map((p) => {
+                    const labels: Record<StatementPeriodUnit, string> = {
+                      week: "Semana",
+                      month: "Mes",
+                      year: "Año",
+                      all: "Todo",
+                    };
+                    return (
+                      <Button
+                        key={p}
+                        asChild
+                        variant={period === p ? "primary" : "ghost"}
+                        size="sm"
+                        className="min-h-[44px] px-3 text-xs font-medium"
+                      >
+                        <Link href={customerStatementHref(customer.id, { view: "history", period: p, anchor })}>
+                          {labels[p]}
+                        </Link>
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                {period !== "all" ? (
+                  <div className="flex items-center gap-1">
                     <Button
-                      key={p}
                       asChild
-                      variant={period === p ? "primary" : "ghost"}
+                      variant="outline"
                       size="sm"
-                      className="h-7 px-2.5 text-xs font-medium"
+                      className="min-h-[44px] min-w-[44px] p-0 flex items-center justify-center"
+                      aria-label="Período anterior"
+                      title="Período anterior"
                     >
-                      <Link href={customerStatementHref(customer.id, { view: "history", period: p, anchor })}>
-                        {labels[p]}
+                      <Link
+                        href={customerStatementHref(customer.id, {
+                          view: "history",
+                          period,
+                          anchor: shiftStatementAnchor(period, anchor, -1),
+                        })}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
                       </Link>
                     </Button>
-                  );
-                })}
+                    <span className="px-2 text-xs font-medium text-[var(--color-text-main)] min-w-28 text-center">
+                      {rangeLabel}
+                    </span>
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="min-h-[44px] min-w-[44px] p-0 flex items-center justify-center"
+                      aria-label="Período siguiente"
+                      title="Período siguiente"
+                    >
+                      <Link
+                        href={customerStatementHref(customer.id, {
+                          view: "history",
+                          period,
+                          anchor: shiftStatementAnchor(period, anchor, 1),
+                        })}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                ) : null}
               </div>
-
-              {period !== "all" ? (
-                <div className="flex items-center gap-1">
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    aria-label="Período anterior"
-                    title="Período anterior"
-                  >
-                    <Link
-                      href={customerStatementHref(customer.id, {
-                        view: "history",
-                        period,
-                        anchor: shiftStatementAnchor(period, anchor, -1),
-                      })}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <span className="px-2 text-xs font-medium text-[var(--color-text-main)] min-w-28 text-center">
-                    {rangeLabel}
-                  </span>
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    aria-label="Período siguiente"
-                    title="Período siguiente"
-                  >
-                    <Link
-                      href={customerStatementHref(customer.id, {
-                        view: "history",
-                        period,
-                        anchor: shiftStatementAnchor(period, anchor, 1),
-                      })}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </div>
 
       {/* Financial Summary Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4 print:break-inside-avoid">
         {view === "history" ? (
           <>
             <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
@@ -358,7 +308,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
       ) : null}
 
       {/* Notes Table */}
-      <Card className="overflow-hidden print:border-none print:shadow-none">
+      <Card className="overflow-hidden print:overflow-visible print:border-none print:shadow-none">
         <CardHeader className="flex flex-row items-center justify-between border-b border-[var(--color-border-light)] py-3 print:py-2">
           <CardTitle as="h2" className="text-base font-semibold">
             {view === "pending" ? "Notas con saldo pendiente de pago" : `Detalle de notas (${rangeLabel})`}
@@ -375,19 +325,31 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                 : "No se encontraron notas completadas en el período seleccionado."}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold">
+            <div className="overflow-x-auto print:overflow-visible">
+              <table className="w-full text-left text-xs print:table-fixed print:w-full print:text-[10px]">
+                {/* Fixed printable columns summing to exactly 100%: 8+9+9+22+15+9+9+9+10 = 100% */}
+                <colgroup className="hidden print:table-column-group">
+                  <col className="w-[8%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[22%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[10%]" />
+                </colgroup>
+                <thead className="border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold print:table-header-group">
                   <tr>
-                    <th className="py-2.5 px-3">Folio</th>
-                    <th className="py-2.5 px-3">Fecha</th>
-                    <th className="py-2.5 px-3">Vencimiento</th>
-                    <th className="py-2.5 px-3">Trabajos / Conceptos</th>
-                    <th className="py-2.5 px-3">Vehículo</th>
-                    <th className="py-2.5 px-3 text-right">Importe</th>
-                    <th className="py-2.5 px-3 text-right">Abonado</th>
-                    <th className="py-2.5 px-3 text-right">Saldo</th>
-                    <th className="py-2.5 px-3 text-center">Estado</th>
+                    <th className="py-2.5 px-3 print:py-1.5 print:px-2">Folio</th>
+                    <th className="py-2.5 px-3 print:py-1.5 print:px-2">Fecha</th>
+                    <th className="py-2.5 px-3 print:py-1.5 print:px-2">Vencimiento</th>
+                    <th className="py-2.5 px-3 print:py-1.5 print:px-2">Trabajos / Conceptos</th>
+                    <th className="py-2.5 px-3 print:py-1.5 print:px-2">Vehículo</th>
+                    <th className="py-2.5 px-3 text-right print:py-1.5 print:px-2">Importe</th>
+                    <th className="py-2.5 px-3 text-right print:py-1.5 print:px-2">Abonado</th>
+                    <th className="py-2.5 px-3 text-right print:py-1.5 print:px-2">Saldo</th>
+                    <th className="py-2.5 px-3 text-center print:py-1.5 print:px-2">Estado</th>
                     <th className="py-2.5 px-3 text-right print:hidden">Acciones</th>
                   </tr>
                 </thead>
@@ -396,35 +358,35 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                     <tr
                       key={note.id}
                       onClick={() => setSelectedQuote(note.previewQuote)}
-                      className="cursor-pointer transition-colors hover:bg-[var(--color-bg-soft)] print:cursor-default"
+                      className="cursor-pointer transition-colors hover:bg-[var(--color-bg-soft)] print:cursor-default print:break-inside-avoid"
                       data-testid={`statement-note-${note.number}`}
                     >
-                      <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-text-main)]">
+                      <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-text-main)] print:py-1.5 print:px-2 print:break-all print:text-[9px]">
                         {note.number}
                       </td>
-                      <td className="py-2.5 px-3 whitespace-nowrap text-[var(--color-text-muted)]">
+                      <td className="py-2.5 px-3 whitespace-nowrap text-[var(--color-text-muted)] print:py-1.5 print:px-2 print:whitespace-normal">
                         {note.completedAt ? formatDate(note.completedAt) : "—"}
                       </td>
-                      <td className="py-2.5 px-3 whitespace-nowrap text-[var(--color-text-muted)]">
+                      <td className="py-2.5 px-3 whitespace-nowrap text-[var(--color-text-muted)] print:py-1.5 print:px-2 print:whitespace-normal">
                         {note.paymentDueDate ? formatDate(note.paymentDueDate) : "—"}
                       </td>
-                      <td className="py-2.5 px-3 font-medium text-[var(--color-text-main)] max-w-xs truncate">
+                      <td className="py-2.5 px-3 font-medium text-[var(--color-text-main)] max-w-xs truncate print:py-1.5 print:px-2 print:max-w-none print:whitespace-normal print:break-words">
                         {note.concepts}
                       </td>
-                      <td className="py-2.5 px-3 text-[var(--color-text-muted)] whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-[var(--color-text-muted)] whitespace-nowrap print:py-1.5 print:px-2 print:whitespace-normal print:break-words">
                         {note.vehicleLabel}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[var(--color-text-main)]">
+                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[var(--color-text-main)] print:py-1.5 print:px-2">
                         {formatCents(note.totalCents)}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[var(--color-status-success-fg)]">
+                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[var(--color-status-success-fg)] print:py-1.5 print:px-2">
                         {formatCents(note.paidCents)}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold tabular-nums text-[var(--color-total-emphasis)]">
+                      <td className="py-2.5 px-3 text-right font-mono font-bold tabular-nums text-[var(--color-total-emphasis)] print:py-1.5 print:px-2">
                         {formatCents(note.remainingCents)}
                       </td>
-                      <td className="py-2.5 px-3 text-center">
-                        <Badge variant={note.paymentState.variant} className="text-[10px] py-0 px-2">
+                      <td className="py-2.5 px-3 text-center print:py-1.5 print:px-2">
+                        <Badge variant={note.paymentState.variant} className="text-[10px] py-0 px-2 print:text-[9px] print:border print:px-1.5">
                           {note.paymentState.label}
                         </Badge>
                       </td>
@@ -443,7 +405,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-7 w-7 p-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                            className="min-h-[44px] min-w-[44px] p-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] flex items-center justify-center"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedQuote(note.previewQuote);
@@ -466,7 +428,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
 
       {/* Bank transfer info (Printed and screen reference) */}
       {bankAccounts.length > 0 ? (
-        <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4 text-xs">
+        <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4 text-xs print:break-inside-avoid">
           <p className="font-bold uppercase tracking-wider text-[var(--color-text-main)] mb-2">
             Cuentas bancarias autorizadas para transferencias o depósitos:
           </p>

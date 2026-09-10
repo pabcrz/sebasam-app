@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildWhatsAppStatementMessage,
   customerStatementHref,
   parseCustomerStatementParams,
 } from "./customer-statement";
@@ -70,45 +69,5 @@ describe("Customer statement period parsing", () => {
     expect(
       customerStatementHref("cust-1", { view: "history", period: "week", anchor: "2026-08-12" }),
     ).toBe("/admin/customers/cust-1/estado-de-cuenta?view=history&period=week&anchor=2026-08-12");
-  });
-
-  it("formats WhatsApp message correctly", () => {
-    const message = buildWhatsAppStatementMessage({
-      customerName: "Transportes del Norte",
-      emissionDate: new Date("2026-08-15T18:00:00Z"),
-      rangeLabel: "Cartera pendiente",
-      view: "pending",
-      initialBalanceCents: 0,
-      periodChargesCents: 0,
-      periodPaymentsCents: 0,
-      finalBalanceCents: 125000,
-      overdueBalanceCents: 50000,
-      notes: [
-        {
-          number: "OT-001",
-          completedAt: new Date("2026-08-01T18:00:00Z"),
-          concepts: "Cambiar muelles",
-          totalCents: 100000,
-          paidCents: 50000,
-          remainingCents: 50000,
-          statusLabel: "Vencida",
-        },
-      ],
-      bankAccounts: [
-        {
-          bankName: "BBVA",
-          accountHolder: "SEBASAM",
-          clabe: "012180000000000000",
-        },
-      ],
-    });
-
-    expect(message).toContain("*ESTADO DE CUENTA - SEBASAM*");
-    expect(message).toContain("Cliente: Transportes del Norte");
-    expect(message).toContain("Saldo pendiente: $1,250.00");
-    expect(message).toContain("Saldo vencido: $500.00");
-    expect(message).toContain("OT-001");
-    expect(message).toContain("Cambiar muelles");
-    expect(message).toContain("BBVA · CLABE: 012180000000000000");
   });
 });

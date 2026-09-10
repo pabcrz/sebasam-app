@@ -145,24 +145,9 @@ describe("CustomerStatementView", () => {
     printSpy.mockRestore();
   });
 
-  it("copies WhatsApp summary to clipboard", async () => {
-    const writeTextSpy = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, {
-      clipboard: { writeText: writeTextSpy },
-    });
-
+  it("does not render WhatsApp copy button", () => {
     render(<CustomerStatementView statement={mockStatement} />);
-
-    const copyButton = screen.getByRole("button", { name: "Copiar resumen para WhatsApp" });
-    await act(async () => {
-      fireEvent.click(copyButton);
-    });
-
-    expect(writeTextSpy).toHaveBeenCalledTimes(1);
-    const copiedText = writeTextSpy.mock.calls[0][0];
-    expect(copiedText).toContain("*ESTADO DE CUENTA - SEBASAM*");
-    expect(copiedText).toContain("OT-001");
-    expect(copiedText).toContain("Cambiar muelles · Alinear eje");
+    expect(screen.queryByRole("button", { name: "Copiar resumen para WhatsApp" })).not.toBeInTheDocument();
   });
 
   it("renders period accounting movements in history view", () => {
