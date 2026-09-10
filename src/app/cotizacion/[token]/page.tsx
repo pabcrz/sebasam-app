@@ -5,13 +5,12 @@ import {
   SharedQuoteRevokedError,
 } from "@/features/quotes/domain";
 import { SharedQuoteErrorState } from "@/features/public-quotes/components/shared-quote-error-state";
-import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
-import { SharedQuoteView, type SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
+import { QuoteDocumentView } from "@/features/public-quotes/components/quote-document-view";
+import type { SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
-import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
@@ -131,27 +130,11 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
     );
   }
 
-  const isNote = result.quote.workOrder?.status === "COMPLETED";
-  const documentType = isNote ? "Nota" : result.quote.workOrder ? "Trabajo" : "Cotización";
-  const identity = resolveCustomerDisplayIdentity(result.quote);
-
   return (
-    <PublicQuoteShell
-      business={toPublicBusinessIdentity(paymentSettings)}
-      location={{ address: paymentSettings.address, mapsUrl: paymentSettings.mapsUrl }}
-      documentType={documentType}
-      documentNumber={result.quote.number}
-      date={result.quote.operationalDate}
-      title={result.quote.title}
-      customerName={identity.displayName}
-      customerSubtitle={identity.subtitle}
-      vehicleDescription={
-        result.quote.vehicle
-          ? formatVehicle(result.quote.vehicle)
-          : formatSnapshotVehicle(result.quote.vehicleSnapshot)
-      }
-    >
-      <SharedQuoteView quote={result.quote} token={token} isNote={isNote} business={paymentSettings} />
-    </PublicQuoteShell>
+    <QuoteDocumentView
+      quote={result.quote}
+      paymentSettings={paymentSettings}
+      token={token}
+    />
   );
 }
