@@ -4,6 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CustomerCardList, CustomerCardListItem } from "./customer-card-list";
 
+const pushMock = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
+}));
+
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
     <a href={href} {...props}>
@@ -42,6 +47,19 @@ describe("CustomerCardList contact display", () => {
 
     expect(getCustomerDetail).toHaveBeenCalledWith("cust-1");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("navigates to canonical statement page when selecting Ver estado de cuenta from menu", async () => {
+    const user = userEvent.setup();
+    render(<CustomerCardList customers={[buildCustomer()]} getCustomerDetail={getCustomerDetail} />);
+
+    const menuTrigger = screen.getByRole("button", { name: /más acciones de constructora del norte/i });
+    await user.click(menuTrigger);
+
+    const statementAction = screen.getByRole("button", { name: /ver estado de cuenta/i });
+    await user.click(statementAction);
+
+    expect(pushMock).toHaveBeenCalledWith("/admin/customers/cust-1/estado-de-cuenta");
   });
 
   it("renders email and phone when both exist", () => {

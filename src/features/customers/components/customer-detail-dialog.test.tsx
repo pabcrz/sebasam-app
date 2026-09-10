@@ -17,20 +17,9 @@ const detail = {
     address: "Av. Siempre Viva 123",
     notes: "Cliente frecuente",
   },
-  statement: {
-    totalContractedCents: 25000,
-    totalPaidCents: 17500,
+  balance: {
     pendingBalanceCents: 7500,
-    movements: [
-      {
-        id: "ledger-1",
-        createdAt: new Date("2026-08-01T10:00:00.000Z"),
-        type: "CREDIT",
-        amountCents: 5000,
-        resultingBalanceCents: 20000,
-        payment: { method: "CASH", quote: { id: "quote-1", number: "COT-001" } },
-      },
-    ],
+    availableCreditCents: 5000,
   },
 };
 
@@ -50,8 +39,13 @@ describe("CustomerDetailDialog", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Cargando cuenta del cliente...");
     resolveDetail(detail);
     expect(await screen.findByTestId("customer-detail-context")).toHaveTextContent("Av. Siempre Viva 123");
-    expect(screen.getByTestId("customer-account-statement")).toHaveTextContent("Importe liquidable$250.00");
-    expect(screen.getByText("Cotización COT-001")).toBeInTheDocument();
+    expect(screen.getByText(/saldo pendiente:/i)).toBeInTheDocument();
+    expect(screen.getByText("$75.00")).toBeInTheDocument();
+    expect(screen.getByText(/saldo a favor:/i)).toBeInTheDocument();
+    expect(screen.getByText("$50.00")).toBeInTheDocument();
+    const statementLink = screen.getByRole("link", { name: /ver estado de cuenta completo/i });
+    expect(statementLink).toBeInTheDocument();
+    expect(statementLink).toHaveAttribute("href", "/admin/customers/cust-1/estado-de-cuenta");
 
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -64,18 +58,16 @@ describe("CustomerDetailDialog", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("shows the empty account state and allows opening the edit dialog", async () => {
+  it("shows the balance summary and allows opening the edit dialog", async () => {
     const user = userEvent.setup();
     render(
       <CustomerDetailDialog
         customer={customer}
         getCustomerDetail={vi.fn().mockResolvedValue({
           ...detail,
-          statement: {
-            totalContractedCents: 0,
-            totalPaidCents: 0,
+          balance: {
             pendingBalanceCents: 0,
-            movements: [],
+            availableCreditCents: 0,
           },
         })}
       />,
@@ -83,7 +75,9 @@ describe("CustomerDetailDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Ver cuenta de Constructora del Norte" }));
 
-    expect(await screen.findByText("Este cliente todavía no tiene movimientos financieros registrados.")).toBeInTheDocument();
+    expect(await screen.findByText(/saldo pendiente:/i)).toBeInTheDocument();
+    const amounts = screen.getAllByText("$0.00");
+    expect(amounts.length).toBeGreaterThanOrEqual(1);
     const editButton = screen.getByRole("button", { name: "Editar datos" });
     expect(editButton).toBeInTheDocument();
     await user.click(editButton);

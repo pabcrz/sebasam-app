@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { getCustomerAccountStatement, getCustomerById } from "./queries";
+import { getCustomerBalanceSummary } from "@/features/payments/domain";
+import { getCustomerById } from "./queries";
 import {
   customerContactInputSchema,
   customerInputSchema,
@@ -257,9 +258,15 @@ export async function getCustomerDetail(customerId: string) {
 
   if (!customer) return null;
 
-  const statement = await getCustomerAccountStatement(customer.id);
+  const balanceSummary = await getCustomerBalanceSummary(prisma, customer.id);
 
-  return { customer, statement };
+  return {
+    customer,
+    balance: {
+      pendingBalanceCents: balanceSummary.pendingBalanceCents,
+      availableCreditCents: balanceSummary.availableCreditCents,
+    },
+  };
 }
 
 export async function createCustomerFromForm(formData: FormData) {

@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog, type QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
+import { ApplyCreditDialog } from "@/features/payments/components/apply-credit-dialog";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
 import {
   buildWhatsAppStatementMessage,
@@ -23,8 +24,19 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
   const [selectedQuote, setSelectedQuote] = React.useState<QuotePreviewSummary | null>(null);
   const [copied, setCopied] = React.useState(false);
 
-  const { customer, emissionDate, view, period, anchor, rangeLabel, summary, notes, bankAccounts, business } =
-    statement;
+  const {
+    customer,
+    emissionDate,
+    view,
+    period,
+    anchor,
+    rangeLabel,
+    availableCreditCents,
+    summary,
+    notes,
+    bankAccounts,
+    business,
+  } = statement;
 
   const displayName = customer.commercialName || customer.name;
   const legalSubtitle = customer.commercialName
@@ -327,6 +339,24 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
         )}
       </div>
 
+      {/* Available Credit Banner */}
+      {availableCreditCents > 0 ? (
+        <div
+          data-testid="customer-available-credit-banner"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] p-3 text-xs text-[var(--color-status-success-fg)] shadow-sm print:hidden"
+        >
+          <div className="flex items-center gap-2">
+            <span className="font-bold uppercase tracking-wider">Saldo a favor disponible:</span>
+            <span className="text-base font-bold tabular-nums">
+              {formatCents(availableCreditCents)}
+            </span>
+          </div>
+          <span className="text-[11px] opacity-90">
+            Puedes aplicar este saldo directamente a las notas con saldo pendiente.
+          </span>
+        </div>
+      ) : null}
+
       {/* Notes Table */}
       <Card className="overflow-hidden print:border-none print:shadow-none">
         <CardHeader className="flex flex-row items-center justify-between border-b border-[var(--color-border-light)] py-3 print:py-2">
@@ -358,7 +388,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                     <th className="py-2.5 px-3 text-right">Abonado</th>
                     <th className="py-2.5 px-3 text-right">Saldo</th>
                     <th className="py-2.5 px-3 text-center">Estado</th>
-                    <th className="py-2.5 px-3 text-right print:hidden">Detalle</th>
+                    <th className="py-2.5 px-3 text-right print:hidden">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border-light)]">
@@ -399,20 +429,31 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                         </Badge>
                       </td>
                       <td className="py-2.5 px-3 text-right print:hidden">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedQuote(note.previewQuote);
-                          }}
-                          aria-label={`Ver detalle de ${note.number}`}
-                          title={`Ver detalle de ${note.number}`}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {view === "pending" && note.remainingCents > 0 && availableCreditCents > 0 ? (
+                            <ApplyCreditDialog
+                              customerId={customer.id}
+                              workOrderId={note.workOrderId}
+                              noteNumber={note.number}
+                              remainingCents={note.remainingCents}
+                              availableCreditCents={availableCreditCents}
+                            />
+                          ) : null}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedQuote(note.previewQuote);
+                            }}
+                            aria-label={`Ver detalle de ${note.number}`}
+                            title={`Ver detalle de ${note.number}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
+import { getCustomerCreditSummary } from "@/features/payments/domain";
 import { parseCustomerStatementParams } from "./customer-statement";
 import { getCustomerDetailedStatement } from "./customer-statement-queries";
 
@@ -18,6 +19,10 @@ vi.mock("@/lib/auth/session", () => ({
 
 vi.mock("@/features/payment-settings/domain", () => ({
   getPaymentSettings: vi.fn(),
+}));
+
+vi.mock("@/features/payments/domain", () => ({
+  getCustomerCreditSummary: vi.fn(),
 }));
 
 describe("getCustomerDetailedStatement", () => {
@@ -55,6 +60,12 @@ describe("getCustomerDetailedStatement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (getPaymentSettings as ReturnType<typeof vi.fn>).mockResolvedValue(mockPaymentSettings);
+    (getCustomerCreditSummary as ReturnType<typeof vi.fn>).mockResolvedValue({
+      customerId: "cust-1",
+      totalCapturedCents: 30000,
+      totalAppliedCents: 15000,
+      availableCreditCents: 15000,
+    });
   });
 
   it("returns null if customer does not exist", async () => {
@@ -222,5 +233,59 @@ describe("getCustomerDetailedStatement", () => {
 
     // Notes displayed: both noteAugust (completed in period) and notePrior (paid in period)
     expect(result?.notes).toHaveLength(2);
+    expect(result?.availableCreditCents).toBe(15000);
+  });
+
+  it("calculates total and remaining cents using active settlement agreements", async () => {
+    (prisma.customer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(mockCustomer);
+
+    const noteWithSettlement = {
+      id: "wo-settled",
+      number: "OT-SETTLED",
+      status: "COMPLETED",
+      completedAt: new Date("2026-08-01T18:00:00Z"),
+      paymentDueDate: new Date("2026-08-08T18:00:00Z"),
+      quote: {
+        id: "q-settled",
+        number: "COT-SETTLED",
+        title: "Reparación con convenio",
+        totalCents: 20000, // nominal total is $200
+        subtotalCents: 20000,
+        discountCents: null,
+        taxCents: null,
+        vehicle: null,
+        items: [],
+        sections: [],
+        settlementAgreement: {
+          id: "sa-1",
+          status: "ACTIVE",
+          settlementBaseCents: 15000,
+          settlementTaxCents: 0,
+          settlementTotalCents: 15000, // settled total is $150
+        },
+      },
+      paymentApplications: [
+        {
+          id: "pa-1",
+          amountCents: 5000,
+          createdAt: new Date("2026-08-05T18:00:00Z"),
+          payment: { status: "PAID", reversedAt: null },
+        },
+      ],
+    };
+
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([noteWithSettlement]);
+
+    const params = parseCustomerStatementParams({}, fakeNow);
+    const result = await getCustomerDetailedStatement("cust-1", params, fakeNow);
+
+    expect(result).not.toBeNull();
+    expect(result?.notes).toHaveLength(1);
+    // Effective total should be 15,000 (not nominal 20,000)
+    expect(result?.notes[0].totalCents).toBe(15000);
+    expect(result?.notes[0].paidCents).toBe(5000);
+    // Remaining should be 15,000 - 5,000 = 10,000 (not 20,000 - 5,000 = 15,000)
+    expect(result?.notes[0].remainingCents).toBe(10000);
+    expect(result?.summary.finalBalanceCents).toBe(10000);
   });
 });

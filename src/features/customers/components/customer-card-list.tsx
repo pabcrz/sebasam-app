@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Badge, BadgeVariant, Button, Checkbox, ConfirmDialog, ListItemCard } from "@/components/ui";
 import { CustomerDetailDialog, type CustomerDetailLoader } from "./customer-detail-dialog";
 import { CustomerActionsMenu } from "./customer-actions-menu";
@@ -51,6 +52,7 @@ export function CustomerCardList({
   onDeleteBatch,
   onUpdateCustomer,
 }: CustomerCardListProps) {
+  const router = useRouter();
   const [isSelectionMode, setIsSelectionMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [editingCustomer, setEditingCustomer] = React.useState<CustomerCardListItem | null>(null);
@@ -238,7 +240,7 @@ export function CustomerCardList({
                     customer={customer}
                     blocker={blocker}
                     onEdit={() => setEditingCustomer(customer)}
-                    onViewStatement={() => setActiveDetailId(customer.id)}
+                    onViewStatement={() => router.push(`/admin/customers/${customer.id}/estado-de-cuenta`)}
                     onDelete={() => setCustomerToDelete(customer)}
                   />
                 ) : null

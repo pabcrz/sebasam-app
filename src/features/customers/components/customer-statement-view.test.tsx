@@ -1,0 +1,147 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { CustomerDetailedStatement } from "../customer-statement-queries";
+import { CustomerStatementView } from "./customer-statement-view";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
+
+vi.mock("@/features/payments/actions", () => ({
+  applyCustomerCreditAction: vi.fn(),
+}));
+
+describe("CustomerStatementView", () => {
+  const baseStatement: CustomerDetailedStatement = {
+    customer: {
+      id: "cust-1",
+      name: "Transportes del Norte",
+      commercialName: "Transportes del Norte S.A.",
+      legalName: "Transportes del Norte S.A. de C.V.",
+      email: "contacto@tdn.com",
+      phone: "5551234567",
+      address: "Av. Central 123",
+      rfc: "TDN010101ABC",
+    },
+    emissionDate: new Date("2026-08-15T18:00:00Z"),
+    view: "pending",
+    period: "month",
+    anchor: "2026-08",
+    rangeLabel: "Cartera pendiente",
+    availableCreditCents: 15000, // $150.00
+    summary: {
+      initialBalanceCents: 0,
+      periodChargesCents: 20000,
+      periodPaymentsCents: 0,
+      finalBalanceCents: 20000,
+      overdueBalanceCents: 0,
+    },
+    notes: [
+      {
+        id: "wo-1",
+        number: "OT-001",
+        workOrderId: "wo-1",
+        quoteId: "q-1",
+        completedAt: new Date("2026-08-01T18:00:00Z"),
+        paymentDueDate: new Date("2026-08-20T18:00:00Z"),
+        concepts: "Servicio mayor de frenos",
+        vehicleLabel: "Kenworth T680",
+        totalCents: 20000,
+        paidCents: 0,
+        remainingCents: 20000,
+        paymentState: {
+          label: "Vencida",
+          balanceCents: 20000,
+          variant: "danger",
+        },
+        previewQuote: {
+          id: "q-1",
+          number: "COT-001",
+          title: "Servicio mayor de frenos",
+          description: null,
+          administrative: false,
+          vehicleSnapshot: null,
+          subtotalCents: 20000,
+          discountCents: 0,
+          taxCents: 0,
+          totalCents: 20000,
+          paidCents: 0,
+          remainingCents: 20000,
+          validUntil: new Date("2026-08-30T18:00:00Z"),
+          customer: { name: "Transportes del Norte S.A." },
+          vehicle: null,
+          workOrder: { id: "wo-1", status: "COMPLETED" },
+          items: [],
+          sections: [],
+        },
+      },
+    ],
+    bankAccounts: [
+      {
+        id: 1,
+        bankName: "BBVA",
+        accountHolder: "SEBASAM",
+        accountNumber: "1234567890",
+        clabe: "012180000000000000",
+      },
+    ],
+    business: {
+      name: "SEBASAM",
+      fullName: "Servicio Básico a Suspensiones y Aire y Muelles",
+      address: "Calle Taller 100",
+      contactPhone: "5550001122",
+      contactWhatsapp: "5550001133",
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders customer details, financial cards, and table of notes", () => {
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    expect(screen.getByRole("heading", { name: "Transportes del Norte S.A." })).toBeInTheDocument();
+    expect(screen.getByText(/RFC: TDN010101ABC/i)).toBeInTheDocument();
+    expect(screen.getByText("OT-001")).toBeInTheDocument();
+    expect(screen.getByText("Servicio mayor de frenos")).toBeInTheDocument();
+    expect(screen.getByText("Kenworth T680")).toBeInTheDocument();
+  });
+
+  it("renders available credit banner and apply credit button when credit is available", () => {
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    // Credit banner is present
+    const banner = screen.getByTestId("customer-available-credit-banner");
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent("$150.00");
+
+    // "Aplicar saldo" button is rendered for the pending note
+    const applyButton = screen.getByRole("button", { name: /aplicar saldo a favor a nota ot-001/i });
+    expect(applyButton).toBeInTheDocument();
+  });
+
+  it("does not render credit banner or apply credit button when availableCreditCents is 0", () => {
+    const noCreditStatement = {
+      ...baseStatement,
+      availableCreditCents: 0,
+    };
+
+    render(<CustomerStatementView statement={noCreditStatement} />);
+
+    expect(screen.queryByTestId("customer-available-credit-banner")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /aplicar saldo a favor a nota ot-001/i })).not.toBeInTheDocument();
+  });
+
+  it("opens note preview dialog when clicking the eye button", async () => {
+    const user = userEvent.setup();
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    const eyeButton = screen.getByRole("button", { name: /ver detalle de ot-001/i });
+    await user.click(eyeButton);
+
+    // Dialog preview header should appear
+    expect(screen.getByRole("heading", { name: /cotización cot-001/i })).toBeInTheDocument();
+  });
+});
