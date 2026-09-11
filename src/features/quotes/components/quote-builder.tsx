@@ -20,6 +20,7 @@ import {
   isSundayOperationalDate,
   mexicoCityCalendarDate,
 } from "@/features/quotes/lib/operational-date";
+import { formatQuoteContactRole } from "@/features/quotes/lib/quote-snapshots";
 import {
   getStepError,
   normalizeSections,
@@ -1176,12 +1177,9 @@ export function QuoteBuilder({
                 selectedFiscal?.businessName ||
                 selectedCustomer?.legalName ||
                 (selectedCustomer?.commercialName ? selectedCustomer?.name : null);
-              const contactRoleBadge =
-                selectedContact?.role === "DRIVER"
-                  ? "Chofer"
-                  : selectedContact?.role === "BILLING"
-                    ? "Facturación"
-                    : "Contacto";
+              const contactRoleBadge = selectedContact
+                ? formatQuoteContactRole(selectedContact.role)
+                : null;
 
               return (
                 <QuotePreviewCard

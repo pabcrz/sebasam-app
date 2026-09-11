@@ -252,23 +252,26 @@ export const quoteLifecycleReasonSchema = z.string().trim().min(3).max(500);
 
 export const quoteListPageSchema = z.coerce.number().int().min(1).default(1);
 
-export type QuoteCustomerSnapshot = {
-  customerId?: string | null;
-  name: string;
-  commercialName?: string | null;
-  legalName?: string | null;
-  taxId?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  address?: string | null;
-};
+export const quoteCustomerSnapshotSchema = z.object({
+  customerId: z.string().nullish(),
+  name: z.string().trim().nullish(),
+  commercialName: z.string().nullish(),
+  legalName: z.string().nullish(),
+  fiscalBusinessName: z.string().nullish(),
+  taxId: z.string().nullish(),
+  email: z.string().nullish(),
+  phone: z.string().nullish(),
+  address: z.string().nullish(),
+});
+export type QuoteCustomerSnapshot = z.infer<typeof quoteCustomerSnapshotSchema>;
 
-export type QuoteContactSnapshot = {
-  id?: string | null;
-  name: string;
-  phone: string;
-  role: string;
-};
+export const quoteContactSnapshotSchema = z.object({
+  id: z.string().nullish(),
+  name: z.string().trim().min(1),
+  phone: z.string().nullish(),
+  role: z.string().trim().nullish(),
+});
+export type QuoteContactSnapshot = z.infer<typeof quoteContactSnapshotSchema>;
 
 export type QuoteFilterInput = z.infer<typeof quoteFilterSchema>;
 export type QuoteInput = z.infer<typeof quoteInputSchema>;

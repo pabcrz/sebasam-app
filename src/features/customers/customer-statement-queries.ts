@@ -240,6 +240,8 @@ export async function getCustomerDetailedStatement(
       description: wo.quote.description,
       administrative: wo.quote.administrative,
       vehicleSnapshot: wo.quote.vehicleSnapshot,
+      customerSnapshot: wo.quote.customerSnapshot,
+      contactSnapshot: wo.quote.contactSnapshot,
       subtotalCents: wo.quote.subtotalCents ? Number(wo.quote.subtotalCents) : null,
       discountCents: Number(wo.quote.discountCents ?? 0),
       taxCents: wo.quote.taxCents ? Number(wo.quote.taxCents) : null,

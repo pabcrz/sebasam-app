@@ -152,12 +152,12 @@ export function QuotePreviewCard({
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm print:border-none print:shadow-none print:bg-white print:rounded-none flex-1 flex flex-col print:w-full print:overflow-visible">
-      <div className="flex-1 flex flex-col gap-6 p-4 md:p-6 print:gap-3 print:p-0 print:pt-2 print:overflow-visible">
+      <div className="flex-1 flex flex-col gap-3.5 sm:gap-5 md:gap-6 p-3 sm:p-5 md:p-6 print:gap-3 print:p-0 print:pt-2 print:overflow-visible">
         {!compactHeader && (
-          <div className="flex flex-col rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 print:border-gray-200 print:bg-gray-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
+          <div className="flex flex-col rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-2.5 sm:p-3 print:border-gray-200 print:bg-gray-50">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-4 print:grid-cols-2">
               <div>
-                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-0.5 sm:mb-1">
                   <UserRound data-testid="preview-customer-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Cliente
                 </p>
                 <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
@@ -169,13 +169,13 @@ export function QuotePreviewCard({
                   </p>
                 ) : null}
                 {contactName ? (
-                  <p className="text-xs text-[var(--color-text-muted)] print:text-gray-600">
+                  <p className="text-xs text-[var(--color-text-muted)] print:text-gray-600" data-testid="preview-contact-info">
                     {contactRole ? `${contactRole}: ` : "Contacto: "}{contactName}
                   </p>
                 ) : null}
               </div>
               <div>
-                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-1">
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-0.5 sm:mb-1">
                   <Truck data-testid="preview-vehicle-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Unidad
                 </p>
                 <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
@@ -200,13 +200,13 @@ export function QuotePreviewCard({
           ) : (
             <>
               {compactItems ? (
-                <div data-testid="quote-compact-items" className="grid gap-3 md:hidden print:hidden">
+                <div data-testid="quote-compact-items" className="grid gap-2.5 sm:gap-3 md:hidden print:hidden">
                   {visibleSections.map(({ section, sectionIndex, displayItems, isSelectable, isSelected, showsBadge, shouldShowSectionHeader }) => (
                     <section key={section.id ?? sectionIndex} className={`rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] ${isSelected ? "" : "opacity-40"}`}>
                       {shouldShowSectionHeader ? (
-                        <div className="flex items-center gap-2 border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)] px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)]">
+                        <div className="flex items-center gap-2 border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)] px-3 py-1.5 sm:py-2 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)]">
                           {isSelectable ? (
-                            <label className="flex flex-1 items-center gap-2 cursor-pointer select-none">
+                            <label className="flex flex-1 items-center gap-2 cursor-pointer select-none min-h-[40px] py-1">
                               <input
                                 type="checkbox"
                                 checked={isSelected}
@@ -233,7 +233,7 @@ export function QuotePreviewCard({
                           const showUnitDetail = quantityNum > 1 && unitPriceCents != null;
 
                           return (
-                            <li key={itemIndex} className="flex items-start justify-between gap-3 px-3.5 py-3">
+                            <li key={itemIndex} className="flex items-start justify-between gap-2.5 px-3 py-2 sm:px-3.5 sm:py-3">
                               <div className="min-w-0 flex-1">
                                 <p className="break-words font-medium text-sm text-[var(--color-text-main)] leading-snug">
                                   {item.description}
@@ -340,10 +340,10 @@ export function QuotePreviewCard({
           )}
         </div>
 
-        <div className="mt-auto flex flex-col gap-4 print:mt-auto print:gap-2 print:break-inside-avoid print:overflow-visible">
+        <div className="mt-auto flex flex-col gap-2.5 sm:gap-4 print:mt-auto print:gap-2 print:break-inside-avoid print:overflow-visible">
           {description ? (
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 print:border-gray-200 print:bg-gray-50 text-sm text-[var(--color-text-muted)] print:text-gray-600 print:break-inside-avoid">
-              <p className="font-semibold text-[10px] uppercase tracking-wider mb-1">Notas / Observaciones</p>
+            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-2.5 sm:p-3 print:border-gray-200 print:bg-gray-50 text-xs sm:text-sm text-[var(--color-text-muted)] print:text-gray-600 print:break-inside-avoid">
+              <p className="font-semibold text-[10px] uppercase tracking-wider mb-0.5 sm:mb-1">Notas / Observaciones</p>
               <p className="whitespace-pre-wrap" data-testid="preview-notes-text">{description}</p>
             </div>
           ) : null}
