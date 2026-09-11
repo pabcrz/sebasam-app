@@ -200,4 +200,182 @@ describe("printDocumentUrl", () => {
     expect(printSpy).toHaveBeenCalledOnce();
     await printPromise;
   });
+
+  it("handles consecutive navigation flow A -> B -> A without orphan timers killing the active iframe", async () => {
+    // 1. Start Print A
+    const printPromiseA = printDocumentUrl("/admin/quotes/quote-A/print");
+    const iframeA = document.querySelector("iframe");
+    expect(iframeA).toBeInTheDocument();
+    expect(iframeA?.src).toContain("quote-A");
+
+    const printSpyA = vi.fn();
+    Object.defineProperty(iframeA, "contentWindow", {
+      value: {
+        focus: vi.fn(),
+        print: printSpyA,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        document: {
+          querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+          fonts: { ready: Promise.resolve() },
+          body: { offsetHeight: 100 },
+        },
+      },
+      writable: true,
+    });
+
+    iframeA?.onload?.(new Event("load"));
+    await vi.advanceTimersByTimeAsync(200);
+    expect(printSpyA).toHaveBeenCalled();
+    await printPromiseA;
+
+    // Notice that after print A, activeRemovalTimer (1500ms) would normally be scheduled
+    // 2. User navigates and starts Print B before 1500ms elapses
+    await vi.advanceTimersByTimeAsync(300); // 300ms < 1500ms
+
+    const printPromiseB = printDocumentUrl("/admin/work-orders/order-B/print");
+    const iframeB = document.querySelector("iframe");
+    expect(iframeB).toBeInTheDocument();
+    expect(iframeB?.src).toContain("order-B");
+    expect(iframeA?.parentNode).toBeNull(); // Old iframe A was removed immediately
+
+    const printSpyB = vi.fn();
+    Object.defineProperty(iframeB, "contentWindow", {
+      value: {
+        focus: vi.fn(),
+        print: printSpyB,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        document: {
+          querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+          fonts: { ready: Promise.resolve() },
+          body: { offsetHeight: 100 },
+        },
+      },
+      writable: true,
+    });
+
+    // Advance 1300ms (crossing the initial 1500ms mark of A)
+    await vi.advanceTimersByTimeAsync(1300);
+
+    // Iframe B MUST still be in the document and not killed by A's old removal timer
+    expect(iframeB).toBeInTheDocument();
+
+    iframeB?.onload?.(new Event("load"));
+    await vi.advanceTimersByTimeAsync(200);
+    expect(printSpyB).toHaveBeenCalled();
+    await printPromiseB;
+
+    // 3. User navigates back and starts Print A again
+    await vi.advanceTimersByTimeAsync(200);
+    const printPromiseA2 = printDocumentUrl("/admin/quotes/quote-A/print");
+    const iframeA2 = document.querySelector("iframe");
+    expect(iframeA2).toBeInTheDocument();
+    expect(iframeA2?.src).toContain("quote-A");
+    expect(iframeB?.parentNode).toBeNull(); // Old iframe B was cleanly purged
+
+    const printSpyA2 = vi.fn();
+    Object.defineProperty(iframeA2, "contentWindow", {
+      value: {
+        focus: vi.fn(),
+        print: printSpyA2,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        document: {
+          querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+          fonts: { ready: Promise.resolve() },
+          body: { offsetHeight: 100 },
+        },
+      },
+      writable: true,
+    });
+
+    iframeA2?.onload?.(new Event("load"));
+    await vi.advanceTimersByTimeAsync(200);
+    expect(printSpyA2).toHaveBeenCalled();
+    await printPromiseA2;
+  });
+
+  it("prevents late onload or paint callbacks of superseded jobs from invoking print()", async () => {
+    // Start job A (slow load)
+    void printDocumentUrl("/admin/quotes/quote-A/print");
+    const iframeA = document.querySelector("iframe");
+    const printSpyA = vi.fn();
+    Object.defineProperty(iframeA, "contentWindow", {
+      value: {
+        focus: vi.fn(),
+        print: printSpyA,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        document: {
+          querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+          fonts: { ready: Promise.resolve() },
+          body: { offsetHeight: 100 },
+        },
+      },
+      writable: true,
+    });
+
+    // Start job B before job A completes load
+    const printPromiseB = printDocumentUrl("/admin/notas/nota-B/print");
+    const iframeB = document.querySelector("iframe");
+    const printSpyB = vi.fn();
+    Object.defineProperty(iframeB, "contentWindow", {
+      value: {
+        focus: vi.fn(),
+        print: printSpyB,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        document: {
+          querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+          fonts: { ready: Promise.resolve() },
+          body: { offsetHeight: 100 },
+        },
+      },
+      writable: true,
+    });
+
+    // Now trigger late onload on superseded iframe A
+    iframeA?.onload?.(new Event("load"));
+    await vi.advanceTimersByTimeAsync(300);
+
+    // printSpyA must NEVER be called because session A was invalidated
+    expect(printSpyA).not.toHaveBeenCalled();
+
+    // Now trigger onload on active iframe B
+    iframeB?.onload?.(new Event("load"));
+    await vi.advanceTimersByTimeAsync(300);
+    expect(printSpyB).toHaveBeenCalled();
+    await printPromiseB;
+  });
+
+  it("unregisters window afterprint event listener on cancel or new job", async () => {
+    const removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
+
+    const printPromise = printDocumentUrl("/admin/quotes/quote-1/print");
+    const iframe = document.querySelector("iframe");
+    Object.defineProperty(iframe, "contentWindow", {
+      value: {
+        focus: vi.fn(),
+        print: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        document: {
+          querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+          fonts: { ready: Promise.resolve() },
+          body: { offsetHeight: 100 },
+        },
+      },
+      writable: true,
+    });
+
+    iframe?.onload?.(new Event("load"));
+    await vi.advanceTimersByTimeAsync(200);
+    await printPromise;
+
+    // Starting a new print job should invoke window.removeEventListener for afterprint
+    printDocumentUrl("/admin/quotes/quote-2/print");
+
+    expect(removeEventListenerSpy).toHaveBeenCalledWith("afterprint", expect.any(Function));
+  });
 });
