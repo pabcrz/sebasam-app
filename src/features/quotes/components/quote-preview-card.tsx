@@ -257,23 +257,23 @@ export function QuotePreviewCard({
                   ))}
                 </div>
               ) : null}
-              <div data-testid="quote-items-table" className={`${compactItems ? "sr-only md:not-sr-only print:not-sr-only" : ""} overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--color-border-light)] print:border-gray-200 print:rounded-[var(--radius-sm)] print:overflow-visible`}>
+              <div data-testid="quote-items-table" className={`${compactItems ? "sr-only md:not-sr-only print:not-sr-only" : ""} overflow-x-auto print:overflow-visible`}>
                 <table className="w-full border-collapse text-left text-sm">
                 <thead className="print:table-header-group">
-                  <tr className="border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)]/40 text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider print:border-gray-200 print:bg-transparent print:text-gray-500">
-                    <th className="w-16 px-3 py-2 print:py-1.5 font-bold whitespace-nowrap text-center">Cant.</th>
-                    <th className="px-3 py-2 print:py-1.5 font-bold w-full">Concepto / Servicio Realizado</th>
-                    <th className="w-28 px-3 py-2 print:py-1.5 font-bold text-right whitespace-nowrap tabular-nums">P. Unitario</th>
-                    <th className="w-28 px-3 py-2 print:py-1.5 font-bold text-right whitespace-nowrap tabular-nums">Importe</th>
+                  <tr className="bg-[var(--color-bg-soft)]/40 text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider print:bg-transparent print:text-gray-500">
+                    <th className="w-16 px-3 py-1.5 print:py-1 font-bold whitespace-nowrap text-center">Cant.</th>
+                    <th className="px-3 py-1.5 print:py-1 font-bold w-full">Concepto / Servicio Realizado</th>
+                    <th className="w-28 px-3 py-1.5 print:py-1 font-bold text-right whitespace-nowrap tabular-nums">P. Unitario</th>
+                    <th className="w-28 px-3 py-1.5 print:py-1 font-bold text-right whitespace-nowrap tabular-nums">Importe</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--color-primary)]/10 print:table-row-group print:divide-blue-100">
+                <tbody className="divide-y-0 print:table-row-group">
                   {visibleSections.map(({ section, sectionIndex, displayItems, isSelectable, isSelected, sectionSubtotalCents, showsBadge, shouldShowSectionHeader }) => {
                     return (
                       <React.Fragment key={section.id ?? sectionIndex}>
                         {shouldShowSectionHeader && (
-                          <tr className={`break-after-avoid bg-[var(--color-bg-soft)]/60 border-b border-[var(--color-border-light)]/50 print:break-after-avoid print:border-gray-100 print:bg-gray-50/80 ${isSelected ? "" : "opacity-40 print:opacity-40"}`}>
-                            <td colSpan={4} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)] print:text-gray-800">
+                          <tr className={`break-after-avoid bg-[var(--color-bg-soft)]/60 print:break-after-avoid print:bg-gray-50/80 ${isSelected ? "" : "opacity-40 print:opacity-40"}`}>
+                            <td colSpan={4} className="px-3 py-1.5 print:py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)] print:text-gray-800">
                               {isSelectable ? (
                                 <label className="flex items-center gap-2 cursor-pointer select-none">
                                   <input
@@ -309,23 +309,23 @@ export function QuotePreviewCard({
 
                           return (
                             <tr key={itemIndex} className={`break-inside-avoid ${itemIndex === 0 ? "print:break-before-avoid " : ""}print:break-inside-avoid print:text-black hover:bg-[var(--color-bg-soft)] print:hover:bg-transparent ${isSelected ? "" : "opacity-40 print:opacity-40 text-[var(--color-text-muted)] print:text-gray-400"}`}>
-                              <td className="w-16 px-3 py-2 print:py-1.5 align-top text-[var(--color-text-muted)] print:text-gray-700 whitespace-nowrap text-center font-medium tabular-nums">
+                              <td className="w-16 px-3 py-1.5 print:py-1 align-top text-[var(--color-text-muted)] print:text-gray-700 whitespace-nowrap text-center font-medium tabular-nums">
                                 {quantityDisplay}
                               </td>
-                              <td className="px-3 py-2 print:py-1.5 align-top">
+                              <td className="px-3 py-1.5 print:py-1 align-top">
                                 <div className="font-medium text-[var(--color-text-main)] print:text-black">{item.description}</div>
                               </td>
-                              <td className="w-28 px-3 py-2 print:py-1.5 align-top text-right text-[var(--color-text-muted)] print:text-gray-700 whitespace-nowrap tabular-nums">{item.unitPrice.trim() ? formatCents(Number(item.unitPrice) * 100) : "Pendiente"}</td>
-                              <td className="w-28 px-3 py-2 print:py-1.5 align-top text-right font-bold text-[var(--color-text-main)] print:text-black whitespace-nowrap tabular-nums">{formatCents(lineTotalCents)}</td>
+                              <td className="w-28 px-3 py-1.5 print:py-1 align-top text-right text-[var(--color-text-muted)] print:text-gray-700 whitespace-nowrap tabular-nums">{item.unitPrice.trim() ? formatCents(Number(item.unitPrice) * 100) : "Pendiente"}</td>
+                              <td className="w-28 px-3 py-1.5 print:py-1 align-top text-right font-bold text-[var(--color-text-main)] print:text-black whitespace-nowrap tabular-nums">{formatCents(lineTotalCents)}</td>
                             </tr>
                           );
                         })}
                         {hasMultipleSections && (
                           <tr className={`break-inside-avoid bg-[var(--color-bg-soft)]/50 print:break-inside-avoid print:bg-gray-50/50 ${isSelected ? "" : "opacity-40 print:opacity-40"}`}>
-                            <td colSpan={3} className="px-3 py-1.5 text-right text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-600">
+                            <td colSpan={3} className="px-3 py-1.5 print:py-1 text-right text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-600">
                               Subtotal
                             </td>
-                            <td className="px-3 py-1.5 text-right text-xs font-bold text-[var(--color-text-main)] print:text-black tabular-nums">
+                            <td className="px-3 py-1.5 print:py-1 text-right text-xs font-bold text-[var(--color-text-main)] print:text-black tabular-nums">
                               {formatCents(sectionSubtotalCents)}
                             </td>
                           </tr>
