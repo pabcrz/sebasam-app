@@ -5,10 +5,10 @@ import { Pencil, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   Button,
-  MultiStepDialog,
 } from "@/components/ui";
 import { QuoteBuilder, QuoteBuilderChromeContext } from "./quote-builder";
 import type { QuoteBuilderChromeHosts, QuoteBuilderDialogProps } from "./quote-builder-contracts";
+import { QuoteBuilderDialogShell } from "./quote-builder-dialog-shell";
 import { mapPersistedQuoteToBuilderInitialData } from "./quote-builder-mapper";
 
 export type { QuoteBuilderDialogProps } from "./quote-builder-contracts";
@@ -37,7 +37,7 @@ export function QuoteBuilderDialog({
   const [dirty, setDirty] = React.useState(false);
   const [builderKey, setBuilderKey] = React.useState(0);
   // The builder renders its stepper and footer into these hosts (rendered in
-  // MultiStepDialog's fixed slots) through QuoteBuilderChromeContext. The host
+  // QuoteBuilderDialogShell's fixed slots) through QuoteBuilderChromeContext. The host
   // ref callbacks flip this state when the slots attach/detach, making the
   // context reactive: the builder portals its chrome once both hosts exist,
   // regardless of sibling commit ordering.
@@ -103,7 +103,7 @@ export function QuoteBuilderDialog({
 
   return (
     <QuoteBuilderChromeContext.Provider value={chromeHosts}>
-      <MultiStepDialog
+      <QuoteBuilderDialogShell
         open={open}
         onOpenChange={handleOpenChange}
         title={dialogTitle}
