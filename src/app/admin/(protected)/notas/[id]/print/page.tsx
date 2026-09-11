@@ -5,6 +5,7 @@ import { getCompletedWorkOrderById } from "@/features/work-orders/queries";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { QuoteDocumentView } from "@/features/public-quotes/components/quote-document-view";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
+import { resolveDocumentFolio } from "@/features/quotes/lib/document-resolver";
 import { PrintControls } from "@/features/quotes/components/print-controls";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 
@@ -25,11 +26,14 @@ export async function generateMetadata({ params }: PrintPageProps): Promise<Meta
   const { quote } = workOrder;
   const identity = resolveCustomerDisplayIdentity(quote);
   const vehicle = workOrder.isSpecial ? "Taller" : quote.vehicle ?? quote.vehicleSnapshot;
+  const folio = resolveDocumentFolio(workOrder);
   const title = formatDocumentPdfFilename({
     customerName: identity.displayName,
     vehicle,
     operationalDate: quote.operationalDate ?? workOrder.completedAt,
     fallbackType: "Nota",
+    folio,
+    documentType: "Nota",
   });
 
   return {
@@ -50,7 +54,13 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
 
   return (
     <QuoteDocumentView
-      quote={workOrder.quote}
+      quote={{
+        ...workOrder.quote,
+        workOrder: {
+          status: workOrder.status,
+          folio: workOrder.folio,
+        },
+      }}
       workOrderStatus={workOrder.status}
       paymentSettings={paymentSettings}
       documentType="Nota"

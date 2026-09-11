@@ -5,7 +5,7 @@ import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
 import { PrintActionButton } from "./print-action-button";
 import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, Button, OperationalCard } from "@/components/ui";
+import { Badge, OperationalCard } from "@/components/ui";
 import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
@@ -185,11 +185,13 @@ export function QuoteListCard({
     }
   };
 
+  const displayFolio = quote.folio ?? quote.number;
+
   return (
     <OperationalCard
       className="w-full min-w-0"
       onOpen={openPreview}
-      openLabel={`Abrir vista previa de ${quote.number}`}
+      openLabel={`Abrir vista previa de ${displayFolio}`}
       actionsClassName="grid gap-3"
       body={
         <>
@@ -199,7 +201,7 @@ export function QuoteListCard({
                 {quote.title || "Sin título"}
               </h3>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                <span>Folio {quote.number}</span>
+                <span>Folio {displayFolio}</span>
                 <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
                 {quote.isLocked ? (
                   <Badge variant="warning">Bloqueado</Badge>

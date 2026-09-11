@@ -9,6 +9,7 @@ import {
 } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import { resolveDocumentFolio } from "@/features/quotes/lib/document-resolver";
 
 export interface QuoteDocumentViewProps {
   quote: QuoteDocumentQuote;
@@ -40,7 +41,8 @@ type QuoteDocumentQuote = Omit<
   totalCents: number | bigint | null;
   items: QuoteDocumentItem[];
   sections: QuoteDocumentSection[];
-  workOrder?: { status: WorkOrderStatus } | null;
+  workOrder?: { status: WorkOrderStatus; folio?: string | null } | null;
+  folio?: string | null;
 };
 
 function normalizeItem(item: QuoteDocumentItem) {
@@ -53,7 +55,7 @@ function normalizeItem(item: QuoteDocumentItem) {
 
 export function serializeQuoteForDocument(
   quote: QuoteDocumentQuote,
-  workOrderOverride?: { status: WorkOrderStatus } | null,
+  workOrderOverride?: { status: WorkOrderStatus; folio?: string | null } | null,
 ): SharedQuoteViewQuote {
   return {
     ...quote,
@@ -76,7 +78,7 @@ export function serializeQuoteForDocument(
       workOrderOverride !== undefined
         ? workOrderOverride
         : quote.workOrder
-          ? { status: quote.workOrder.status }
+          ? { status: quote.workOrder.status, folio: quote.workOrder.folio }
           : null,
   };
 }
@@ -94,10 +96,10 @@ export function QuoteDocumentView({
   const resolvedWorkOrder =
     workOrderStatus !== undefined
       ? workOrderStatus
-        ? { status: workOrderStatus }
+        ? { status: workOrderStatus, folio: quote.workOrder?.folio }
         : null
       : quote.workOrder
-        ? { status: quote.workOrder.status }
+        ? { status: quote.workOrder.status, folio: quote.workOrder.folio }
         : null;
 
   const viewQuote = serializeQuoteForDocument(quote, resolvedWorkOrder);
@@ -106,6 +108,15 @@ export function QuoteDocumentView({
   const resolvedDocumentType =
     documentType ??
     (isNote ? "Nota" : resolvedWorkOrder ? "Trabajo" : "Cotización");
+
+  const resolvedDocumentNumber =
+    resolvedDocumentType === "Cotización"
+      ? (quote.folio ?? quote.number)
+      : resolveDocumentFolio({
+          number: quote.number,
+          folio: quote.folio,
+          workOrder: resolvedWorkOrder,
+        });
 
   const { displayName: customerDisplayName, subtitle: customerSubtitle } =
     resolveCustomerDisplayIdentity(quote);
@@ -126,7 +137,7 @@ export function QuoteDocumentView({
         business={toPublicBusinessIdentity(paymentSettings)}
         location={{ address: paymentSettings.address, mapsUrl: paymentSettings.mapsUrl }}
         documentType={resolvedDocumentType}
-        documentNumber={quote.number}
+        documentNumber={resolvedDocumentNumber}
         date={quote.operationalDate}
         title={quote.title}
         customerName={customerDisplayName}

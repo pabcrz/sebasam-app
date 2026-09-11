@@ -74,7 +74,7 @@ const sharedQuoteInclude = {
         include: { items: { orderBy: { sortOrder: "asc" } } },
         orderBy: { sortOrder: "asc" } 
       },
-      workOrder: { select: { status: true } },
+      workOrder: { select: { status: true, folio: true } },
     },
   },
 } as const;

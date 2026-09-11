@@ -11,9 +11,11 @@ export type VehicleInput =
 
 export interface FormatDocumentPdfFilenameParams {
   customerName?: string | null;
+  documentType?: string | null;
+  folio?: string | null;
+  fallbackType?: string | null;
   vehicle?: VehicleInput;
   operationalDate?: Date | string | null;
-  fallbackType?: string;
 }
 
 /**
@@ -26,65 +28,6 @@ export function sanitizeFilenameSegment(segment: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[/\\:*?"<>|]/g, "")
     .replace(/\s+/g, "");
-}
-
-function resolveCustomerSegment(customerName?: string | null): string {
-  if (!customerName || typeof customerName !== "string") {
-    return "SinCliente";
-  }
-  const sanitized = sanitizeFilenameSegment(customerName);
-  return sanitized.length > 0 ? sanitized : "SinCliente";
-}
-
-function resolveVehicleSegment(vehicle?: VehicleInput): string {
-  if (!vehicle) {
-    return "SinUnidad";
-  }
-
-  if (typeof vehicle === "string") {
-    const sanitized = sanitizeFilenameSegment(vehicle);
-    return sanitized.length > 0 ? sanitized : "SinUnidad";
-  }
-
-  if (typeof vehicle === "object" && vehicle !== null) {
-    const record = vehicle as Record<string, unknown>;
-
-    if (typeof record.economicNumber === "string") {
-      const trimmedEco = record.economicNumber.trim();
-      if (trimmedEco.length > 0) {
-        const sanitizedEco = sanitizeFilenameSegment(`ECO${trimmedEco}`);
-        if (sanitizedEco.length > 0) {
-          return sanitizedEco;
-        }
-      }
-    }
-
-    if (typeof record.plate === "string") {
-      const trimmedPlate = record.plate.trim();
-      if (trimmedPlate.length > 0 && trimmedPlate.toLowerCase() !== "sin placas") {
-        const sanitizedPlate = sanitizeFilenameSegment(trimmedPlate);
-        if (sanitizedPlate.length > 0) {
-          return sanitizedPlate;
-        }
-      }
-    }
-
-    const brand = typeof record.brand === "string" ? record.brand.trim() : "";
-    const model = typeof record.model === "string" ? record.model.trim() : "";
-    const brandModel = [brand, model].filter(Boolean).join(" ");
-    if (
-      brandModel.length > 0 &&
-      brandModel.toLowerCase() !== "sin vehiculo" &&
-      brandModel.toLowerCase() !== "sin vehículo"
-    ) {
-      const sanitizedBrandModel = sanitizeFilenameSegment(brandModel);
-      if (sanitizedBrandModel.length > 0) {
-        return sanitizedBrandModel;
-      }
-    }
-  }
-
-  return "SinUnidad";
 }
 
 export function formatUtcDateDDMMAAAA(dateInput?: Date | string | null): string {
@@ -102,17 +45,25 @@ export function formatUtcDateDDMMAAAA(dateInput?: Date | string | null): string 
 }
 
 /**
- * Generates a dynamic PDF/print filename without extension (.pdf).
- * Nomenclature format: [Cliente]-[UnidadOPlaca]-[DDMMAAAA]
+ * Generates a dynamic PDF/print filename and title without extension (.pdf).
+ * Format: {Customer}-{Type}-{Folio}
+ * Omits empty optional segments. Does not use placeholders (no SinCliente, SinUnidad, SEBASAM).
  */
 export function formatDocumentPdfFilename({
   customerName,
-  vehicle,
-  operationalDate,
+  documentType,
+  folio,
+  fallbackType,
 }: FormatDocumentPdfFilenameParams): string {
-  const customerSegment = resolveCustomerSegment(customerName);
-  const vehicleSegment = resolveVehicleSegment(vehicle);
-  const dateSegment = formatUtcDateDDMMAAAA(operationalDate);
+  const customer = customerName && typeof customerName === "string"
+    ? sanitizeFilenameSegment(customerName)
+    : "";
 
-  return `${customerSegment}-${vehicleSegment}-${dateSegment}`;
+  const rawType = documentType ?? fallbackType ?? "Cotización";
+  const type = sanitizeFilenameSegment(rawType);
+
+  const resolvedFolio = folio ? sanitizeFilenameSegment(folio) : "";
+
+  return [customer, type, resolvedFolio].filter(Boolean).join("-");
 }
+

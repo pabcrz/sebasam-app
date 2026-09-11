@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { getSharedQuoteByToken } from "@/features/quotes/domain";
 import { formatVehicle, formatSnapshotVehicle, formatOperationalDate } from "@/features/quotes/lib/format";
+import { resolveDocumentFolio } from "@/features/quotes/lib/document-resolver";
 
 export const size = {
   width: 1200,
@@ -21,6 +22,7 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
     const quote = sharedQuote.quote;
     const isNote = quote.workOrder !== null;
     const documentType = isNote ? "NOTA DE SERVICIO" : "COTIZACIÓN";
+    const displayFolio = resolveDocumentFolio(quote) || quote.number;
     const customerName = quote.customer?.name ?? "Sin cliente";
     const vehicleDescription = quote.vehicle
       ? formatVehicle(quote.vehicle)
@@ -129,7 +131,7 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
                     letterSpacing: "-0.5px",
                   }}
                 >
-                  {quote.number}
+                  {displayFolio}
                 </span>
               </div>
               {quote.title ? (

@@ -32,6 +32,7 @@ const quoteStatusBadgeVariant = {
 };
 
 function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem {
+  const { folio, issuedAt, ...rest } = overrides;
   return {
     id: "quote-1",
     submissionKey: "key-1",
@@ -39,6 +40,8 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     customerId: "cust-1",
     vehicleId: "veh-1",
     number: "C-001",
+    folio: folio ?? null,
+    issuedAt: issuedAt ?? null,
     status: "DRAFT",
     title: "Mantenimiento preventivo",
     description: null,
@@ -119,7 +122,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
 
 
 
-    ...overrides,
+    ...rest,
   };
 }
 

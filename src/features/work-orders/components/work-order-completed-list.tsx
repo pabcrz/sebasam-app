@@ -12,6 +12,7 @@ import { CashPaymentDialog } from "@/features/payments/components/cash-payment-d
 import { PaymentCorrectionDialog } from "@/features/payments/components/payment-correction-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import { resolveDocumentFolio, resolveAntecedentQuoteFolio } from "@/features/quotes/lib/document-resolver";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
@@ -99,6 +100,8 @@ export function WorkOrderCompletedList({
         const correctWorkOrderAction = correctWorkOrderActionMap.get(wo.id);
         const totalCents = Number(wo.quote.totalCents);
         const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
+        const noteFolio = resolveDocumentFolio(wo);
+        const antecedentQuoteFolio = resolveAntecedentQuoteFolio(wo.quote);
         const paymentState = derivePaymentState({
           completedAt: wo.completedAt,
           paymentDueDate: dueDate,
@@ -130,8 +133,8 @@ export function WorkOrderCompletedList({
                     size="sm"
                     data-mobile-target="44"
                     className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
-                    title={`Imprimir nota de remisión ${wo.number}`}
-                    aria-label={`Imprimir nota de remisión ${wo.number}`}
+                    title={`Imprimir nota de remisión ${noteFolio}`}
+                    aria-label={`Imprimir nota de remisión ${noteFolio}`}
                   >
                     <Printer className="h-5 w-5" aria-hidden="true" />
                     <span className="sr-only sm:not-sr-only">Imprimir nota</span>
@@ -170,7 +173,8 @@ export function WorkOrderCompletedList({
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
+                      <span className="text-xs font-bold text-[var(--color-text-main)]">{noteFolio}</span>
+                      <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">({wo.number})</span>
                       <Badge variant={paymentState.variant} className="w-fit">
                         {paymentState.label}{paymentState.label === "Pago parcial" || paymentState.label === "Vencida" ? ` · Saldo ${formatCents(paymentState.balanceCents!)}` : ""}
                       </Badge>
@@ -204,7 +208,7 @@ export function WorkOrderCompletedList({
                 </div>
 
                 <div className="mb-3 text-sm text-[var(--color-text-muted)]">
-                  <span className="font-medium">Cot. {wo.quote.number}</span>
+                  <span className="font-medium">Cot. {antecedentQuoteFolio}</span>
                   {" · "}
                   {wo.isSpecial
                     ? "Taller"

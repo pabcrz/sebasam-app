@@ -81,6 +81,8 @@ const baseQuote = {
   ],
   sections: [],
   workOrder: null,
+  folio: null,
+  issuedAt: null,
   administrative: false,
   description: null,
   discountCents: BigInt(0),
@@ -148,4 +150,34 @@ describe("QuoteDocumentView", () => {
     expect(screen.getAllByText("Nota").length).toBeGreaterThan(0);
     expect(screen.getByText("Taller")).toBeInTheDocument();
   });
+
+  it("renders C folio when quote has a daily folio", () => {
+    render(
+      <QuoteDocumentView
+        quote={{ ...baseQuote, folio: "C-090926-01" }}
+        paymentSettings={mockPaymentSettings}
+        token="token-abc"
+      />
+    );
+
+    expect(screen.getByText("C-090926-01")).toBeInTheDocument();
+  });
+
+  it("renders N folio when completed note has an N folio", () => {
+    render(
+      <QuoteDocumentView
+        quote={{
+          ...baseQuote,
+          folio: "C-090926-01",
+          workOrder: { status: "COMPLETED", folio: "N-090926-05" },
+        }}
+        paymentSettings={mockPaymentSettings}
+        documentType="Nota"
+        workOrderStatus="COMPLETED"
+      />
+    );
+
+    expect(screen.getByText("N-090926-05")).toBeInTheDocument();
+  });
 });
+

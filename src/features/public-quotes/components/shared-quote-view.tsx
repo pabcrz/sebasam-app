@@ -19,7 +19,7 @@ export type SharedQuoteViewQuote = Quote & {
   vehicle: Vehicle | null;
   items: SerializableQuoteItem[];
   sections: (QuoteSection & { items: SerializableQuoteItem[] })[];
-  workOrder: { status: WorkOrderStatus } | null;
+  workOrder: { status: WorkOrderStatus; folio?: string | null } | null;
 };
 
 export interface SharedQuoteViewProps {

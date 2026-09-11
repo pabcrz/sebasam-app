@@ -65,13 +65,16 @@ describe("WorkOrderPrintPage", () => {
   });
 
   describe("generateMetadata", () => {
-    it("generates dynamic filename with Taller for special work orders", async () => {
+    it("generates dynamic filename with customer, type and folio for special work orders", async () => {
       getCompletedWorkOrderById.mockResolvedValue({
         number: "T-001",
+        folio: "N-140826-01",
+        status: "COMPLETED",
         isSpecial: true,
         completedAt: new Date("2026-08-14T12:00:00Z"),
         quote: {
           number: "C-001",
+          folio: null,
           customer: { name: "Transportes Del Norte" },
           vehicle: null,
           vehicleSnapshot: null,
@@ -81,13 +84,15 @@ describe("WorkOrderPrintPage", () => {
 
       const result = await generateMetadata({ params: Promise.resolve({ id: "wo-1" }) });
       expect(result).toEqual({
-        title: "TransportesDelNorte-Taller-14082026",
+        title: "TransportesDelNorte-Nota-N-140826-01",
       });
     });
 
-    it("generates dynamic filename with vehicle plates when available", async () => {
+    it("generates dynamic filename falling back to quote number for historical records", async () => {
       getCompletedWorkOrderById.mockResolvedValue({
         number: "OT-002",
+        folio: null,
+        status: "COMPLETED",
         isSpecial: false,
         completedAt: new Date("2026-08-14T12:00:00Z"),
         quote: {
@@ -101,13 +106,15 @@ describe("WorkOrderPrintPage", () => {
 
       const result = await generateMetadata({ params: Promise.resolve({ id: "wo-2" }) });
       expect(result).toEqual({
-        title: "JosePerez-ABC1234-18062026",
+        title: "JosePerez-Nota-C-002",
       });
     });
 
-    it("falls back to completedAt if operationalDate is missing on the quote", async () => {
+    it("generates dynamic filename with customer and folio when operationalDate is missing on the quote", async () => {
       getCompletedWorkOrderById.mockResolvedValue({
         number: "OT-003",
+        folio: "N-140826-03",
+        status: "COMPLETED",
         isSpecial: false,
         completedAt: new Date("2026-08-14T00:00:00.000Z"),
         quote: {
@@ -121,7 +128,7 @@ describe("WorkOrderPrintPage", () => {
 
       const result = await generateMetadata({ params: Promise.resolve({ id: "wo-3" }) });
       expect(result).toEqual({
-        title: "Cliente-VolvoVNL-14082026",
+        title: "Cliente-Nota-N-140826-03",
       });
     });
 
