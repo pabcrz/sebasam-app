@@ -258,7 +258,7 @@ export function QuotePreviewCard({
                 </div>
               ) : null}
               <div data-testid="quote-items-table" className={`${compactItems ? "sr-only md:not-sr-only print:not-sr-only" : ""} overflow-x-auto print:overflow-visible`}>
-                <table className="w-full border-collapse text-left text-sm">
+                <table className="w-full border-collapse text-left text-sm print:text-[11px] print:leading-tight">
                 <thead className="print:table-header-group">
                   <tr className="bg-[var(--color-bg-soft)]/40 text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider print:bg-transparent print:text-gray-500">
                     <th className="w-16 px-3 py-1.5 print:py-1 font-bold whitespace-nowrap text-center">Cant.</th>
