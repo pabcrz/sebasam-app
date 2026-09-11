@@ -118,7 +118,7 @@ export function resolveCustomerDisplayIdentity(source: CustomerDisplayIdentitySo
   const rawRole = contactSnapshot?.role || source.customerContact?.role;
   const operatorRole =
     rawRole === "DRIVER"
-      ? "Chofer"
+      ? "Operador"
       : rawRole === "BILLING"
         ? "Facturación"
         : rawRole === "CONTACT"
@@ -148,8 +148,12 @@ export function formatQuoteContactRole(role?: string | null): string | null {
   const trimmed = role.trim();
   if (!trimmed) return null;
   const normalized = trimmed.toUpperCase();
-  if (normalized === "DRIVER" || normalized === "CHOFER") {
-    return "Chofer";
+  if (
+    normalized === "DRIVER" ||
+    normalized === "CHOFER" ||
+    normalized === "OPERADOR"
+  ) {
+    return "Operador";
   }
   if (
     normalized === "BILLING" ||

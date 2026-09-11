@@ -109,12 +109,12 @@ describe("QuotePreviewCard", () => {
       <QuotePreviewCard
         {...defaultProps}
         contactName="Juan Chofer"
-        contactRole="Chofer"
+        contactRole="Operador"
       />,
     );
 
     const contactInfo = screen.getByTestId("preview-contact-info");
-    expect(contactInfo).toHaveTextContent("Chofer: Juan Chofer");
+    expect(contactInfo).toHaveTextContent("Operador: Juan Chofer");
 
     rerender(
       <QuotePreviewCard

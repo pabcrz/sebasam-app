@@ -23,9 +23,9 @@ describe("resolveCustomerDisplayIdentity", () => {
     });
 
     expect(identity.displayName).toBe("ConstruNorte");
-    expect(identity.subtitle).toBe("Razón social: ConstruNorte S.A. de C.V. · Chofer: Juan Chofer");
+    expect(identity.subtitle).toBe("Razón social: ConstruNorte S.A. de C.V. · Operador: Juan Chofer");
     expect(identity.operatorName).toBe("Juan Chofer");
-    expect(identity.operatorRole).toBe("Chofer");
+    expect(identity.operatorRole).toBe("Operador");
   });
 
   it("prioritizes snapshots over live records", () => {
@@ -126,10 +126,11 @@ describe("resolveQuoteSnapshots", () => {
 });
 
 describe("formatQuoteContactRole", () => {
-  it("formats DRIVER as Chofer", () => {
-    expect(formatQuoteContactRole("DRIVER")).toBe("Chofer");
-    expect(formatQuoteContactRole("driver")).toBe("Chofer");
-    expect(formatQuoteContactRole(" CHOFER ")).toBe("Chofer");
+  it("formats DRIVER as Operador", () => {
+    expect(formatQuoteContactRole("DRIVER")).toBe("Operador");
+    expect(formatQuoteContactRole("driver")).toBe("Operador");
+    expect(formatQuoteContactRole(" CHOFER ")).toBe("Operador");
+    expect(formatQuoteContactRole("OPERADOR")).toBe("Operador");
   });
 
   it("formats CONTACT as Contacto responsable", () => {
@@ -172,7 +173,7 @@ describe("resolveQuotePreviewContact", () => {
 
     expect(result).toEqual({
       contactName: "Carlos Snapshot",
-      contactRole: "Chofer",
+      contactRole: "Operador",
     });
   });
 
@@ -207,7 +208,7 @@ describe("resolveQuotePreviewContact", () => {
 
     expect(result).toEqual({
       contactName: "Juan Vivo",
-      contactRole: "Chofer",
+      contactRole: "Operador",
     });
   });
 
@@ -219,7 +220,7 @@ describe("resolveQuotePreviewContact", () => {
       }),
     ).toEqual({
       contactName: "Fallback Chofer",
-      contactRole: "Chofer",
+      contactRole: "Operador",
     });
 
     expect(

@@ -805,12 +805,7 @@ export function QuoteBuilder({
                           {selectedCustomer.contacts
                             .filter((c) => c.isActive || c.id === customerContactId)
                             .map((c) => {
-                              const roleBadge =
-                                c.role === "DRIVER"
-                                  ? "Chofer"
-                                  : c.role === "BILLING"
-                                    ? "Facturación"
-                                    : "Contacto";
+                              const roleBadge = formatQuoteContactRole(c.role) || "Contacto";
                               return (
                                 <SelectItem key={c.id} value={c.id}>
                                   {c.name} ({roleBadge}{c.phone ? ` · ${c.phone}` : ""})
