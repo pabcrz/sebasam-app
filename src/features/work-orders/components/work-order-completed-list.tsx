@@ -4,7 +4,7 @@ import * as React from "react";
 import { Printer } from "lucide-react";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
-import { Badge, Button, OperationalActionRow, OperationalCard } from "@/components/ui";
+import { Badge, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import type { CorrectPaymentResult } from "@/features/payments/domain";
 import { derivePaymentState } from "@/features/work-orders/payment-state";
@@ -13,6 +13,9 @@ import { PaymentCorrectionDialog } from "@/features/payments/components/payment-
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
+import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
+import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
+import type { QuoteFormActionState } from "@/features/quotes/actions";
 
 type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>["workOrders"][number];
 
@@ -38,11 +41,19 @@ type WorkOrderCorrectionAction = {
   ) => Promise<CorrectPaymentResult>;
 };
 
+type WorkOrderCommercialCorrectionAction = {
+  workOrderId: string;
+  action: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
+};
+
 interface WorkOrderCompletedListProps {
   workOrders: WorkOrderItem[];
   quoteMap?: Map<string, WorkOrderItem["quote"]>;
+  customers?: CustomerOption[];
+  searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
   recordPaymentActions?: WorkOrderPaymentAction[];
   correctionActions?: WorkOrderCorrectionAction[];
+  correctWorkOrderActions?: WorkOrderCommercialCorrectionAction[];
   rollbackAction?: WorkOrderActions["rollback"];
   noteReturnTo?: string;
 }
@@ -58,9 +69,20 @@ function formatVehicle(wo: WorkOrderItem) {
   return [v.brand, v.model, v.year, v.plate ? `· ${v.plate}` : null].filter(Boolean).join(" ");
 }
 
-export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActions = [], correctionActions = [], rollbackAction, noteReturnTo = "/admin/notas" }: WorkOrderCompletedListProps) {
+export function WorkOrderCompletedList({
+  workOrders,
+  quoteMap,
+  customers = [],
+  searchCustomersAction,
+  recordPaymentActions = [],
+  correctionActions = [],
+  correctWorkOrderActions = [],
+  rollbackAction,
+  noteReturnTo = "/admin/notas",
+}: WorkOrderCompletedListProps) {
   const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
   const correctionActionMap = new Map(correctionActions.map((p) => [p.workOrderId, p.action]));
+  const correctWorkOrderActionMap = new Map(correctWorkOrderActions.map((c) => [c.workOrderId, c.action]));
   const [selectedQuoteId, setSelectedQuoteId] = React.useState<string | null>(null);
 
   const selectedQuote = React.useMemo(() => {
@@ -74,6 +96,7 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
       {workOrders.map((wo) => {
         const paymentAction = paymentActionMap.get(wo.id);
         const correctionAction = correctionActionMap.get(wo.id);
+        const correctWorkOrderAction = correctWorkOrderActionMap.get(wo.id);
         const totalCents = Number(wo.quote.totalCents);
         const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
         const paymentState = derivePaymentState({
@@ -82,6 +105,7 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
           paidCents: wo.quote.paidCents ?? 0,
           remainingCents: wo.quote.remainingCents ?? totalCents,
         });
+        const quoteDetail = quoteMap?.get(wo.quote.id) ?? wo.quote;
         return (
           <OperationalCard
             key={wo.id}
@@ -113,6 +137,20 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     <span className="sr-only sm:not-sr-only">Imprimir nota</span>
                   </PrintActionButton>
                   <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile noteReturnTo={noteReturnTo} />
+                  {correctWorkOrderAction ? (
+                    <QuoteBuilderDialog
+                      customers={customers}
+                      quote={quoteDetail as never}
+                      quoteNumber={wo.quote.number}
+                      saveAction={correctWorkOrderAction}
+                      searchCustomersAction={searchCustomersAction}
+                      triggerLabel="Corregir nota"
+                      triggerAriaLabel="Corregir nota"
+                      triggerVariant="outline"
+                      triggerSize="sm"
+                      triggerIconOnlyMobile
+                    />
+                  ) : null}
                   {correctionAction && wo.quote.activePaymentId && wo.quote.activePaymentAmountCents != null ? (
                     <PaymentCorrectionDialog
                       paymentId={wo.quote.activePaymentId}
