@@ -12,7 +12,7 @@ vi.mock("next/navigation", () => ({ notFound: vi.fn() }));
 import { generateMetadata } from "./page";
 
 describe("QuotePrintPage generateMetadata", () => {
-  it("generates dynamic title based on customer, vehicle, and operational date", async () => {
+  it("uses the quote folio and Cotización title for a quote without work", async () => {
     getQuoteByIdMock.mockResolvedValue({
       id: "quote-1",
       number: "C-001",
@@ -26,11 +26,11 @@ describe("QuotePrintPage generateMetadata", () => {
     const metadata = await generateMetadata({ params: Promise.resolve({ id: "quote-1" }) });
 
     expect(metadata).toEqual({
-      title: "CristianDelToro-freightliner-18062026",
+      title: "CristianDelToro-Cotizacion-C-001",
     });
   });
 
-  it("prioritizes vehicle plate when available and handles completed work order", async () => {
+  it("uses the quote folio and Nota title for completed work", async () => {
     getQuoteByIdMock.mockResolvedValue({
       id: "quote-2",
       number: "C-002",
@@ -44,7 +44,26 @@ describe("QuotePrintPage generateMetadata", () => {
     const metadata = await generateMetadata({ params: Promise.resolve({ id: "quote-2" }) });
 
     expect(metadata).toEqual({
-      title: "JosePerez-ABC1234-14082026",
+      title: "JosePerez-Nota-C-002",
+    });
+  });
+
+  it("uses Nota in metadata for assigned work without changing the print route", async () => {
+    getQuoteByIdMock.mockResolvedValue({
+      id: "quote-3",
+      number: "C-003",
+      folio: "C-140826-01",
+      customer: { name: "José Pérez" },
+      vehicle: null,
+      vehicleSnapshot: null,
+      operationalDate: new Date("2026-08-14T00:00:00.000Z"),
+      workOrder: { status: "ASSIGNED", folio: null },
+    });
+
+    const metadata = await generateMetadata({ params: Promise.resolve({ id: "quote-3" }) });
+
+    expect(metadata).toEqual({
+      title: "JosePerez-Nota-C-140826-01",
     });
   });
 

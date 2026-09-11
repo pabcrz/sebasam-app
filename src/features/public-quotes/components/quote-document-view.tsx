@@ -9,7 +9,10 @@ import {
 } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
-import { resolveDocumentFolio } from "@/features/quotes/lib/document-resolver";
+import {
+  resolveDocumentFolio,
+  resolveDocumentPresentation,
+} from "@/features/quotes/lib/document-resolver";
 
 export interface QuoteDocumentViewProps {
   quote: QuoteDocumentQuote;
@@ -104,10 +107,13 @@ export function QuoteDocumentView({
 
   const viewQuote = serializeQuoteForDocument(quote, resolvedWorkOrder);
 
-  const isNote = resolvedWorkOrder?.status === "COMPLETED";
   const resolvedDocumentType =
     documentType ??
-    (isNote ? "Nota" : resolvedWorkOrder ? "Trabajo" : "Cotización");
+    resolveDocumentPresentation({
+      number: quote.number,
+      folio: quote.folio,
+      workOrder: resolvedWorkOrder,
+    }).documentType;
 
   const resolvedDocumentNumber =
     resolvedDocumentType === "Cotización"
