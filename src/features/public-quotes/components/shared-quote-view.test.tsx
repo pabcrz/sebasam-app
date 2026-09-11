@@ -291,7 +291,14 @@ describe("SharedQuoteView", () => {
     expect(within(compactItems).getByText("Cambio de aceite").closest("li")).toHaveTextContent("$40.00");
 
     expect(screen.getByTestId("quote-items-table")).toHaveClass("sr-only", "md:not-sr-only", "print:not-sr-only");
-    expect(screen.getByRole("table")).toBeInTheDocument();
+    const table = screen.getByRole("table");
+    expect(table).toBeInTheDocument();
+    expect(screen.getByTestId("quote-items-table")).not.toHaveClass("border", "rounded-[var(--radius-sm)]");
+    expect(table.querySelector("tbody")).toHaveClass("divide-y-0");
+    expect(within(table).getByRole("columnheader", { name: "Cant." }).closest("tr")).not.toHaveClass("border-b");
+    expect(within(table).getByText("Aceite y filtros").closest("tr")).not.toHaveClass("border-b");
+    expect(within(table).getByRole("columnheader", { name: "Cant." })).toHaveClass("py-1.5", "print:py-1");
+    expect(within(table).getByText("Cambio de aceite").closest("td")).toHaveClass("py-1.5", "print:py-1");
   });
 
   it("renders root and section concepts exactly once in the print document", () => {
@@ -326,6 +333,11 @@ describe("SharedQuoteView", () => {
 
     const table = screen.getByTestId("quote-items-table");
     expect(within(table).getAllByText("Mano de obra")).toHaveLength(1);
+    expect(table).toHaveClass("overflow-x-auto", "print:overflow-visible");
+    expect(table).not.toHaveClass("border", "rounded-[var(--radius-sm)]");
+    expect(table.querySelector("tbody")).toHaveClass("divide-y-0", "print:table-row-group");
+    expect(table.querySelector("tbody")).not.toHaveClass("divide-y");
+    expect(within(table).getByRole("columnheader", { name: "Cant." })).toHaveClass("print:py-1");
     expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
   });
 
