@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Eye, Printer } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Printer } from "lucide-react";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog, type QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
+import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import { ApplyCreditDialog } from "@/features/payments/components/apply-credit-dialog";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
 import {
@@ -39,6 +40,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
   const legalSubtitle = customer.commercialName
     ? customer.legalName || customer.name
     : customer.legalName || undefined;
+  const statementHref = customerStatementHref(customer.id, { view, period, anchor });
 
   const handlePrint = () => {
     window.print();
@@ -401,20 +403,17 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                               availableCreditCents={availableCreditCents}
                             />
                           ) : null}
-                          <Button
-                            type="button"
+                          <PrintActionButton
+                            url={`/admin/notas/${note.workOrderId}/print?returnTo=${encodeURIComponent(statementHref)}`}
                             variant="ghost"
                             size="sm"
                             className="min-h-[44px] min-w-[44px] p-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] flex items-center justify-center"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedQuote(note.previewQuote);
-                            }}
-                            aria-label={`Ver detalle de ${note.number}`}
-                            title={`Ver detalle de ${note.number}`}
+                            aria-label={`Imprimir nota ${note.number}`}
+                            title={`Imprimir nota ${note.number}`}
                           >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                            <Printer className="h-4 w-4" aria-hidden="true" />
+                            <span className="sr-only">Imprimir nota</span>
+                          </PrintActionButton>
                         </div>
                       </td>
                     </tr>
