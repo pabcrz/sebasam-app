@@ -134,12 +134,11 @@ describe("CustomerStatementView", () => {
     expect(screen.queryByRole("button", { name: /aplicar saldo a favor a nota ot-001/i })).not.toBeInTheDocument();
   });
 
-  it("opens note preview dialog when clicking the eye button", async () => {
+  it("opens note preview dialog when clicking a note row", async () => {
     const user = userEvent.setup();
     render(<CustomerStatementView statement={baseStatement} />);
 
-    const eyeButton = screen.getByRole("button", { name: /ver detalle de ot-001/i });
-    await user.click(eyeButton);
+    await user.click(screen.getByTestId("statement-note-OT-001"));
 
     // Dialog preview header should appear
     expect(screen.getByRole("heading", { name: /cotización cot-001/i })).toBeInTheDocument();
