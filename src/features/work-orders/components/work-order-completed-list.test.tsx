@@ -12,7 +12,24 @@ const workOrder = {
   number: "OT-001",
   status: "COMPLETED",
   paymentDueDate: new Date("2026-08-21T18:00:00Z"),
-  quote: { id: "quote-1", number: "COT-001", customer: { name: "Cliente de prueba" }, vehicle: null, totalCents: 12500, paidCents: 0, remainingCents: 12500 },
+  quote: {
+    id: "quote-1",
+    number: "COT-001",
+    status: "APPROVED",
+    title: "Servicio",
+    description: null,
+    administrative: false,
+    taxEnabled: true,
+    discountCents: 0,
+    operationalDate: new Date("2026-08-14"),
+    customer: { name: "Cliente de prueba" },
+    vehicle: null,
+    totalCents: 12500,
+    paidCents: 0,
+    remainingCents: 12500,
+    items: [],
+    sections: [],
+  },
   assignments: [],
   completedAt: new Date("2026-08-14"),
   isSpecial: false,
@@ -102,5 +119,16 @@ describe("WorkOrderCompletedList", () => {
     );
 
     expect(screen.getByRole("button", { name: /corregir pago de \$125\.00/i })).toBeInTheDocument();
+  });
+
+  it("renders Corregir nota trigger when admin action is provided", () => {
+    render(
+      <WorkOrderCompletedList
+        workOrders={[workOrder]}
+        correctWorkOrderActions={[{ workOrderId: workOrder.id, action: vi.fn() }]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Corregir nota" })).toBeInTheDocument();
   });
 });

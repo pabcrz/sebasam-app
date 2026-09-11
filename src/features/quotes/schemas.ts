@@ -250,6 +250,11 @@ export const quoteFilterSchema = z.object({
 
 export const quoteLifecycleReasonSchema = z.string().trim().min(3).max(500);
 
+export const quoteCommercialCorrectionSchema = quoteDraftInputSchema.extend({
+  operationKey: z.string().trim().min(1, "La clave de operación es obligatoria."),
+  reason: quoteLifecycleReasonSchema,
+});
+
 export const quoteListPageSchema = z.coerce.number().int().min(1).default(1);
 
 export type QuoteCustomerSnapshot = {

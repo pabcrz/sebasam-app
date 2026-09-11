@@ -70,7 +70,12 @@ type MockTx = {
   quoteSection: { deleteMany: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   payment: { count: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
-  paymentApplication: { findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  paymentApplication: { findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  ledgerEntry: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  quoteCommercialCorrection: { findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  quoteCommercialCorrectionApplication: { createMany: ReturnType<typeof vi.fn> };
+  settlementAgreement: { update: ReturnType<typeof vi.fn> };
+  settlementAgreementRevision: { count: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
   sharedQuote: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
@@ -95,7 +100,12 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
     quoteSection: { deleteMany: vi.fn() },
     quoteDecision: { create: vi.fn(), deleteMany: vi.fn() },
     payment: { count: vi.fn().mockResolvedValue(0), aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: null } }), findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
-    paymentApplication: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    paymentApplication: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue(null), create: vi.fn().mockImplementation((args) => Promise.resolve({ id: "replacement-app-1", ...args.data })), update: vi.fn().mockResolvedValue({ id: "app-1" }) },
+    ledgerEntry: { findFirst: vi.fn().mockResolvedValue({ id: "orig-ledger-1" }), create: vi.fn().mockImplementation((args) => Promise.resolve({ id: "ledger-entry-1", ...args.data })) },
+    quoteCommercialCorrection: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({ id: "correction-1" }) },
+    quoteCommercialCorrectionApplication: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    settlementAgreement: { update: vi.fn().mockResolvedValue({ id: "settlement-1" }) },
+    settlementAgreementRevision: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockResolvedValue({ id: "rev-1" }) },
     sharedQuote: { updateMany: vi.fn(), deleteMany: vi.fn() },
     paymentRequest: { updateMany: vi.fn(), deleteMany: vi.fn() },
     quoteLifecycleEvent: { create: vi.fn(), deleteMany: vi.fn() },
@@ -103,6 +113,7 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
   (findOrCreateVehicle as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "vehicle-1" });
+  (requireAdmin as ReturnType<typeof vi.fn>).mockResolvedValue({ user: { id: "admin-1" }, profile: { id: "admin-1", role: "ADMIN" } });
   return tx;
 }
 
@@ -1129,7 +1140,11 @@ function completedWorkQuoteSetup(tx: MockTx, overrides: { status?: QuoteStatus; 
     sections: [{ id: "sec-1", sortOrder: 0, items: [{ description: "Service", quantity: 1, unitPriceCents: 10000 }] }],
     workOrder: overrides.workOrder ?? { id: "wo-1", status: "COMPLETED", completedAt: new Date("2026-07-15T00:00:00.000Z"), assignments: [{ id: "assign-1" }], executionRecords: [{ id: "exec-1" }] },
   });
-    tx.paymentApplication.findMany.mockResolvedValue(overrides.applications?.filter((a) => a.reversedAt === null) ?? []);
+    const appsWithPayment = (overrides.applications?.filter((a) => a.reversedAt === null) ?? []).map((app) => ({
+      ...app,
+      payment: { customerId: "cust-1", id: app.paymentId, status: "PAID", reversedAt: null },
+    }));
+    tx.paymentApplication.findMany.mockResolvedValue(appsWithPayment);
     tx.quote.update.mockResolvedValue({ id: "quote-1", totalCents: 197200, status: overrides.status ?? QuoteStatus.APPROVED, sections: [{ id: "sec-1", sortOrder: 0 }] });
 }
 
@@ -1162,13 +1177,80 @@ describe("correctCompletedWorkQuote", () => {
     expect(tx.quote.update).toHaveBeenCalled();
   });
 
-  it("rejects correction while an active unreversed payment exists", async () => {
+  it("allows correction when active payments exist and reconciles balance", async () => {
     const tx = mockTx();
     completedWorkQuoteSetup(tx, {
       applications: [{ id: "app-1", paymentId: "pay-1", amountCents: 5000, reversedAt: null }],
     });
 
-    await expect(correctCompletedWorkQuote("quote-1", validInput())).rejects.toThrow("pago activo");
+    const result = await correctCompletedWorkQuote("quote-1", validInput());
+    expect(result).toBeDefined();
+    expect(tx.quote.update).toHaveBeenCalled();
+    expect(tx.quoteCommercialCorrection.create).toHaveBeenCalled();
+  });
+
+  it("reverses excess payment applications and creates replacement when newTotal < applied", async () => {
+    const tx = mockTx();
+    completedWorkQuoteSetup(tx, {
+      applications: [
+        { id: "app-1", paymentId: "pay-1", amountCents: 100000, reversedAt: null },
+        { id: "app-2", paymentId: "pay-2", amountCents: 150000, reversedAt: null },
+      ],
+    });
+
+    // validInput total is 170000 + 16% tax = 197200 cents
+    // Total applied is 250000 cents.
+    // LIFO reduction needed = 250000 - 197200 = 52800 cents.
+    // app-2 has 150000 cents > 52800, so it gets reversed and a replacement of 97200 cents is created.
+    const result = await correctCompletedWorkQuote("quote-1", validInput());
+    expect(result).toBeDefined();
+
+    expect(tx.paymentApplication.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "app-2" },
+      data: expect.objectContaining({
+        reversedAt: expect.any(Date),
+        reversedById: "admin-1",
+      }),
+    }));
+
+    expect(tx.ledgerEntry.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        movementType: "APPLICATION_REVERSAL",
+        amountCents: 150000,
+        reversedMovementId: "orig-ledger-1",
+      }),
+    }));
+
+    expect(tx.paymentApplication.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        paymentId: "pay-2",
+        amountCents: 97200,
+      }),
+    }));
+
+    expect(tx.quoteCommercialCorrection.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        previousAppliedCents: 250000,
+        newAppliedCents: 197200,
+        excessCreditCents: 52800,
+      }),
+    }));
+  });
+
+  it("rejects changing customer when the note has applied payments", async () => {
+    const tx = mockTx();
+    completedWorkQuoteSetup(tx, {
+      applications: [{ id: "app-1", paymentId: "pay-1", amountCents: 5000, reversedAt: null }],
+    });
+
+    const changedCustomerInput = {
+      ...validInput(),
+      customerId: "different-customer-id",
+    };
+
+    await expect(correctCompletedWorkQuote("quote-1", changedCustomerInput)).rejects.toThrow(
+      "No se puede cambiar el cliente de una nota con pagos aplicados.",
+    );
     expect(tx.quote.update).not.toHaveBeenCalled();
   });
 
@@ -1188,12 +1270,20 @@ describe("correctCompletedWorkQuote", () => {
     expect(updateData.status).toBe(QuoteStatus.APPROVED);
   });
 
-  it("detects a payment that became active after locking and aborts", async () => {
+  it("returns idempotent result when operationKey was already applied", async () => {
     const tx = mockTx();
     completedWorkQuoteSetup(tx);
-    tx.paymentApplication.findMany.mockResolvedValue([{ id: "app-race", paymentId: "pay-race", amountCents: 5000, reversedAt: null }]);
+    tx.quoteCommercialCorrection.findUnique.mockResolvedValue({
+      id: "existing-correction",
+      quote: { id: "quote-1", sections: [] },
+    });
 
-    await expect(correctCompletedWorkQuote("quote-1", validInput())).rejects.toThrow("pago activo");
+    const result = await correctCompletedWorkQuote("quote-1", {
+      ...validInput(),
+      operationKey: "already-applied-op-key",
+    });
+
+    expect(result.id).toBe("quote-1");
     expect(tx.quote.update).not.toHaveBeenCalled();
   });
 });
@@ -1208,13 +1298,24 @@ describe("correctCompletedWorkQuoteFromWorkspace", () => {
     await expect(correctCompletedWorkQuoteFromWorkspace("quote-1", {}, buildFormData({ "sections.0.items.0.unitPrice": "850" }) as unknown as FormData)).resolves.toEqual({ success: true });
   });
 
-  it("returns an actionable error when an pago activo blocks correction", async () => {
+  it("returns success and reconciles when payments exist", async () => {
     const tx = mockTx();
     completedWorkQuoteSetup(tx, {
       applications: [{ id: "app-1", paymentId: "pay-1", amountCents: 5000, reversedAt: null }],
     });
 
-    await expect(correctCompletedWorkQuoteFromWorkspace("quote-1", {}, buildFormData() as unknown as FormData)).resolves.toEqual({ error: expect.stringContaining("pago activo") });
+    await expect(correctCompletedWorkQuoteFromWorkspace("quote-1", {}, buildFormData() as unknown as FormData)).resolves.toEqual({ success: true });
+  });
+
+  it("returns error message when customer mismatch is attempted", async () => {
+    const tx = mockTx();
+    completedWorkQuoteSetup(tx, {
+      applications: [{ id: "app-1", paymentId: "pay-1", amountCents: 5000, reversedAt: null }],
+    });
+
+    await expect(correctCompletedWorkQuoteFromWorkspace("quote-1", {}, buildFormData({ customerId: "other-cust" }) as unknown as FormData)).resolves.toEqual({
+      error: "No se puede cambiar el cliente de una nota con pagos aplicados.",
+    });
   });
 });
 
