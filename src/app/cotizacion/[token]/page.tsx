@@ -9,6 +9,7 @@ import { QuoteDocumentView } from "@/features/public-quotes/components/quote-doc
 import type { SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
+import { resolveDocumentFolio } from "@/features/quotes/lib/document-resolver";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 
@@ -74,13 +75,16 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
       ? formatVehicle(quote.vehicle)
       : formatSnapshotVehicle(quote.vehicleSnapshot);
 
+    const folio = resolveDocumentFolio(quote);
     const title = formatDocumentPdfFilename({
       customerName: identity.displayName,
       vehicle: quote.vehicle ?? quote.vehicleSnapshot,
       operationalDate: quote.operationalDate,
       fallbackType: documentType,
+      folio,
+      documentType,
     });
-    const displayTitle = `${documentType} ${quote.number} | SEBASAM`;
+    const displayTitle = `${documentType} ${folio || quote.number} | SEBASAM`;
     const description = `${documentType} para ${customerName} - ${vehicleDescription}`;
 
     return {

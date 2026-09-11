@@ -75,6 +75,18 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   expect(scrollArea.scrollHeight > scrollArea.clientHeight).toBe(overflowing);
 }
 
+function expectFullHeightQuoteBuilderDialog(dialog: HTMLElement) {
+  expect(dialog).toHaveClass(
+    "!h-dvh",
+    "!max-h-none",
+    "p-3",
+    "sm:!h-dvh",
+    "sm:!max-h-none",
+    "sm:!p-3",
+  );
+  expect(dialog).not.toHaveClass("sm:!h-[calc(100dvh_-_1rem)]", "sm:!h-[min(90dvh,52rem)]");
+}
+
 async function enterRepresentativeQuoteState(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("combobox", { name: "Cliente" }));
   await user.click(await screen.findByRole("option", { name: "Acme" }));
@@ -150,6 +162,12 @@ describe("QuoteBuilderDialog", () => {
     await user.click(screen.getByRole("button", { name: "Editar" }));
 
     const dialog = screen.getByRole("dialog", { name: "Editar cotización C-001" });
+    expectFullHeightQuoteBuilderDialog(dialog);
+    expect(dialog).toHaveClass(
+      "sm:!w-[min(92vw,64rem)]",
+      "sm:!max-w-5xl",
+      "p-3",
+    );
     expectStableDialogLayout(dialog, itemCount > 1);
     expect(screen.getAllByLabelText("Descripción", { selector: "input" })).toHaveLength(itemCount);
     expect(screen.getByTestId("concept-list-0")).toHaveClass("grid", "gap-3");
@@ -194,21 +212,25 @@ describe("QuoteBuilderDialog", () => {
     const dialog = screen.getByRole("dialog");
     expect(dialog).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Crear cotización" })).toBeInTheDocument();
+    expectFullHeightQuoteBuilderDialog(dialog);
     expect(dialog).toHaveClass(
       "!inset-0",
-      "!h-dvh",
-      "!max-h-none",
       "!w-screen",
       "!max-w-none",
       "!translate-x-0",
       "!translate-y-0",
       "!rounded-none",
-      "sm:!h-[min(90dvh,52rem)]",
-      "sm:!max-h-[min(90dvh,52rem)]",
+      "!gap-0",
+      "p-3",
+      "sm:!left-1/2",
+      "sm:!top-1/2",
       "sm:!w-[min(92vw,64rem)]",
       "sm:!max-w-5xl",
+      "sm:!translate-x-[-50%]",
+      "sm:!translate-y-[-50%]",
       "sm:!rounded-[var(--radius-lg)]",
     );
+    expect(dialog).not.toHaveClass("sm:!w-screen", "sm:!max-w-none");
     expectStableDialogLayout(dialog, false);
     expect(screen.queryByText(/crear cotización en borrador/i)).not.toBeInTheDocument();
 
@@ -432,8 +454,21 @@ describe("QuoteBuilderDialog", () => {
     expect(trigger).toBeInTheDocument();
     await user.click(trigger);
 
-    expect(screen.getByRole("dialog", { name: "Agregar trabajo" })).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", { name: "Agregar trabajo" });
+    expect(dialog).toBeInTheDocument();
+    expectFullHeightQuoteBuilderDialog(dialog);
     expect(screen.getByLabelText("Maestro responsable *")).toBeInTheDocument();
     expect(screen.getByLabelText("Trabajo finalizado")).toBeInTheDocument();
+  });
+
+  it("uses the shared full-height desktop geometry for direct-note creation", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} mode="direct-note" />);
+
+    await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Nueva nota" });
+    expectFullHeightQuoteBuilderDialog(dialog);
+    expect(dialog).toHaveClass("!gap-0");
   });
 });

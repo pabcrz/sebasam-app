@@ -116,7 +116,7 @@ describe("CotizacionPage", () => {
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
 
       expect(metadata).toEqual({
-        title: "CristianDelToro-freightliner-18062026",
+        title: "CristianDelToro-Cotizacion-COT-001",
         description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
         openGraph: {
           title: "Cotización COT-001 | SEBASAM",
@@ -126,6 +126,38 @@ describe("CotizacionPage", () => {
         twitter: {
           card: "summary_large_image",
           title: "Cotización COT-001 | SEBASAM",
+          description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
+        },
+      });
+    });
+
+    it("generates dynamic filename title using C folio when available", async () => {
+      getSharedQuoteByTokenMock.mockResolvedValue({
+        quote: {
+          id: "quote-1",
+          number: "COT-001",
+          folio: "C-180626-01",
+          customer: { name: "Cristian Del Toro" },
+          vehicle: { brand: "freightliner", model: null, plate: null },
+          vehicleSnapshot: null,
+          operationalDate: new Date("2026-06-18T00:00:00.000Z"),
+          workOrder: null,
+        },
+      });
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
+
+      expect(metadata).toEqual({
+        title: "CristianDelToro-Cotizacion-C-180626-01",
+        description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
+        openGraph: {
+          title: "Cotización C-180626-01 | SEBASAM",
+          description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Cotización C-180626-01 | SEBASAM",
           description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
         },
       });

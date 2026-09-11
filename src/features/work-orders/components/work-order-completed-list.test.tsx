@@ -78,9 +78,9 @@ describe("WorkOrderCompletedList", () => {
       />,
     );
 
-    const print = screen.getByRole("button", { name: "Imprimir nota de remisión OT-001" });
+    const print = screen.getByRole("button", { name: "Imprimir nota de remisión COT-001" });
     const payment = screen.getByRole("button", { name: "Registrar pago para COT-001" });
-    expect(print).toHaveAttribute("title", "Imprimir nota de remisión OT-001");
+    expect(print).toHaveAttribute("title", "Imprimir nota de remisión COT-001");
     expect(print).toHaveClass("min-h-11", "min-w-11");
     expect(print).toHaveClass("w-10", "sm:w-auto");
     expect(print.parentElement).toHaveClass("grid", "w-11", "sm:block", "sm:w-auto");
@@ -98,7 +98,7 @@ describe("WorkOrderCompletedList", () => {
   it("preserves the current Notes state when printing from the completed list", () => {
     render(<WorkOrderCompletedList workOrders={[workOrder]} noteReturnTo="/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=workshop&page=2" />);
 
-    const print = screen.getByRole("button", { name: "Imprimir nota de remisión OT-001" });
+    const print = screen.getByRole("button", { name: "Imprimir nota de remisión COT-001" });
     expect(print).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dmonth%26anchor%3D2026-08%26payment%3Dpaid%26assignee%3Dworkshop%26page%3D2");
     expect(print.getAttribute("data-print-url")).not.toContain("/admin/quotes/");
     expect(print).not.toHaveAttribute("target");
@@ -130,5 +130,26 @@ describe("WorkOrderCompletedList", () => {
     );
 
     expect(screen.getByRole("button", { name: "Corregir nota" })).toBeInTheDocument();
+  });
+
+  it("renders N folio as primary document identifier, OT as secondary, and antecedent quote C folio", () => {
+    const dailyWorkOrder = {
+      ...workOrder,
+      id: "wo-daily",
+      number: "T-0926-01",
+      folio: "N-140826-01",
+      quote: {
+        ...workOrder.quote,
+        number: "0926-001",
+        folio: "C-140826-01",
+      },
+    } as unknown as CompletedListProps["workOrders"][number];
+
+    render(<WorkOrderCompletedList workOrders={[dailyWorkOrder]} />);
+
+    expect(screen.getByText("N-140826-01")).toBeInTheDocument();
+    expect(screen.getByText("(T-0926-01)")).toBeInTheDocument();
+    expect(screen.getByText(/Cot\.\s*C-140826-01/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Imprimir nota de remisión N-140826-01" })).toBeInTheDocument();
   });
 });

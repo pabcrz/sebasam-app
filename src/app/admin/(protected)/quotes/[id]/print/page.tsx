@@ -5,6 +5,7 @@ import { getQuoteById } from "@/features/quotes/queries";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { QuoteDocumentView } from "@/features/public-quotes/components/quote-document-view";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
+import { resolveDocumentFolio } from "@/features/quotes/lib/document-resolver";
 import { PrintControls } from "@/features/quotes/components/print-controls";
 
 interface PrintPageProps {
@@ -22,11 +23,14 @@ export async function generateMetadata({ params }: PrintPageProps): Promise<Meta
   }
 
   const documentType = quote.workOrder?.status === "COMPLETED" ? "Nota" : "Cotización";
+  const folio = resolveDocumentFolio(quote);
   const title = formatDocumentPdfFilename({
     customerName: quote.customer?.name,
     vehicle: quote.vehicle ?? quote.vehicleSnapshot,
     operationalDate: quote.operationalDate,
     fallbackType: documentType,
+    folio,
+    documentType,
   });
 
   return {

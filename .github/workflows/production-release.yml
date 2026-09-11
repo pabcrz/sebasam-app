@@ -31,6 +31,8 @@ jobs:
 
       - name: Check out release revision
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -42,13 +44,13 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
 
-      - name: Validate and apply committed migrations
+      - name: Validate, apply, and verify committed migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: |
+          set -euo pipefail
           pnpm exec prisma validate
-          pnpm exec prisma migrate status
           pnpm db:migrate:deploy
           pnpm exec prisma migrate status
 
@@ -58,73 +60,24 @@ jobs:
     runs-on: ubuntu-24.04
     environment: production
     steps:
-      - name: Create and verify the Vercel production deployment
+      - name: Check out release revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20.19.0
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Deploy the checked-out release revision to Vercel production
         env:
-          RELEASE_SHA: ${{ github.sha }}
-          GITHUB_REPOSITORY_ID: ${{ github.event.repository.id }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_TEAM_ID }}
         run: |
           set -euo pipefail
-
-          api_url="https://api.vercel.com/v13/deployments?teamId=${VERCEL_TEAM_ID}"
-          create_response="$(mktemp)"
-          deployment_response="$(mktemp)"
-          trap 'rm -f "$create_response" "$deployment_response"' EXIT
-
-          payload="$(jq --compact-output --null-input \
-            --arg project "$VERCEL_PROJECT_ID" \
-            --arg repository_id "$GITHUB_REPOSITORY_ID" \
-            --arg sha "$RELEASE_SHA" \
-            '{
-              project: $project,
-              target: "production",
-              gitSource: {
-                type: "github",
-                repoId: $repository_id,
-                ref: "main",
-                sha: $sha
-              }
-            }')"
-
-          curl --fail-with-body --silent --show-error \
-            --request POST \
-            --header "Authorization: Bearer $VERCEL_TOKEN" \
-            --header "Content-Type: application/json" \
-            --data "$payload" \
-            "$api_url" > "$create_response"
-
-          deployment_id="$(jq --exit-status --raw-output '.id' "$create_response")"
-          ready_state="$(jq --exit-status --raw-output '.readyState' "$create_response")"
-          cp "$create_response" "$deployment_response"
-          printf 'Vercel deployment ID: %s\n' "$deployment_id" >> "$GITHUB_STEP_SUMMARY"
-
-          for attempt in $(seq 1 30); do
-            case "$ready_state" in
-              READY)
-                printf 'Vercel deployment %s reached READY for %s.\n' "$deployment_id" "$RELEASE_SHA"
-                exit 0
-                ;;
-              ERROR|CANCELED|BLOCKED)
-                jq --compact-output \
-                  '{id, readyState, readyStateReason, errorCode, errorMessage, url}' \
-                  "$deployment_response" 2>/dev/null || true
-                printf 'Vercel deployment %s ended in %s.\n' "$deployment_id" "$ready_state" >&2
-                exit 1
-                ;;
-            esac
-
-            if [ "$attempt" -eq 30 ]; then
-              printf 'Timed out waiting for Vercel deployment %s; last state: %s.\n' \
-                "$deployment_id" "$ready_state" >&2
-              exit 1
-            fi
-
-            sleep 10
-            curl --fail-with-body --silent --show-error \
-              --header "Authorization: Bearer $VERCEL_TOKEN" \
-              "https://api.vercel.com/v13/deployments/${deployment_id}?teamId=${VERCEL_TEAM_ID}" \
-              > "$deployment_response"
-            ready_state="$(jq --exit-status --raw-output '.readyState' "$deployment_response")"
-          done
+          pnpm dlx vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"

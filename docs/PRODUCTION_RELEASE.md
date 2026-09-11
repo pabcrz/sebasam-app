@@ -42,18 +42,17 @@ its required database migration completes.
    `workflow_dispatch`. Starting it is the explicit human approval for that
    production release; pushes to `main` never start it.
 2. The workflow rejects any dispatch that is not from `main`, then always runs
-   `prisma validate`, `prisma migrate status`,
-   `pnpm db:migrate:deploy`, and a final `prisma migrate status` for the release
-   revision. This applies any pending committed migration even when the selected
-   `main` revision did not modify `prisma/migrations/`.
+   `prisma validate`, `pnpm db:migrate:deploy`, and a final `prisma migrate
+   status` for the release revision. This applies any pending committed migration
+   even when the selected `main` revision did not modify `prisma/migrations/`.
 3. `pnpm db:migrate:deploy` applies only committed SQL files under
    `prisma/migrations/`; it does not apply `schema.prisma` by itself.
-4. Only after that job succeeds, the workflow calls Vercel API v13 to create a
-   production deployment with the
-   GitHub repository ID and the exact `${{ github.sha }}` release revision.
-5. The workflow records the returned Vercel deployment ID and polls its
-   `readyState`. It succeeds only when Vercel reports `READY`; `ERROR`,
-   `CANCELED`, `BLOCKED`, an API failure, or a five-minute timeout fails the
+4. Only after that job succeeds, the deploy job checks out the exact
+   `${{ github.sha }}` release revision and runs the official Vercel CLI in
+   noninteractive production mode: `vercel deploy --prod --yes`.
+5. The CLI receives `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, and `VERCEL_ORG_ID`.
+   The workflow maps the existing `VERCEL_TEAM_ID` GitHub Environment secret to
+   `VERCEL_ORG_ID`; no additional secret is required. A CLI failure fails the
    release.
 
 Concurrent releases are serialized. An in-progress release is never cancelled.
@@ -76,13 +75,12 @@ and its coverage boundary.
 
 ## Incident runbook
 
-If validation, migration status, migration deployment, Vercel deployment
-creation, or Vercel readiness polling fails:
+If validation, migration deployment, final migration status, or Vercel CLI
+deployment fails:
 
 1. Stop promotion: do not re-run the workflow and do not trigger Vercel manually.
 2. Preserve the GitHub Actions logs and identify the release commit, migration
-   name, database state, Vercel deployment ID, and final or last observed
-   `readyState`.
+   name, database state, and the Vercel CLI failure output.
 3. Diagnose manually with the approved database-access procedure and the verified
    backup evidence. Escalate before any database-changing action.
 4. Resume only through an explicitly reviewed and approved release decision.

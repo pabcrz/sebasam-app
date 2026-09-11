@@ -129,7 +129,7 @@ export function QuoteBuilderItemsStep({
   }
 
   return (
-    <section className="grid gap-3 sm:gap-6">
+    <section className="grid gap-3 px-1.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="min-w-0 font-semibold text-[var(--color-text-main)]">Conceptos</h3>
         {completeItemsCount > 0 ? (
@@ -277,7 +277,7 @@ export function QuoteBuilderItemsStep({
                           <Trash2 className="size-4 icon-trash-hover" aria-hidden="true" />
                         </button>
                       </div>
-                      <div id={`concept-editor-${rowId}`} hidden={!isExpanded} className="grid gap-2.5 border-t border-[var(--color-border-light)] px-1 pt-2.5 sm:gap-4 sm:pt-4">
+                      <div id={`concept-editor-${rowId}`} hidden={!isExpanded} className="grid gap-2.5 border-t border-[var(--color-border-light)] px-1 pt-2.5">
                     <input type="hidden" name={`sections.${sectionIndex}.items.${itemIndex}.type`} value={item.type} />
 <div className="grid gap-2">
                     <Label htmlFor={`${fieldId}-type`}>Tipo</Label>

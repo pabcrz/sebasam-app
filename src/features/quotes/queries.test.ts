@@ -263,9 +263,12 @@ where: { deletedAt: null, customerId: "cust-1", status: { notIn: ["ARCHIVED"] } 
 
     const call = getFindManyCall();
     expect(call.where).toEqual({
-      number: { contains: "C-001", mode: "insensitive" },
       deletedAt: null,
       status: { notIn: ["CANCELLED", "ARCHIVED"] },
+      OR: [
+        { number: { contains: "C-001", mode: "insensitive" } },
+        { folio: { contains: "C-001", mode: "insensitive" } },
+      ],
     });
   });
 
@@ -348,7 +351,10 @@ where: { deletedAt: null, customerId: "cust-1", status: { notIn: ["ARCHIVED"] } 
       deletedAt: null,
       status: "DRAFT",
       customerId: "cust-1",
-      number: { contains: "C-001", mode: "insensitive" },
+      OR: [
+        { number: { contains: "C-001", mode: "insensitive" } },
+        { folio: { contains: "C-001", mode: "insensitive" } },
+      ],
     });
   });
 

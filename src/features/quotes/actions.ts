@@ -31,6 +31,7 @@ import { isQuoteEditable } from "./lib/editability";
 import { assertCommercialQuote, CommercialQuoteValidationError } from "./lib/commercial-validation";
 import { normalizeOperationalDate } from "./lib/operational-date";
 import { nextQuoteNumber, nextWorkOrderNumber, withQuoteNumberRetry } from "./lib/sequence";
+import { allocateDailyDocumentFolio } from "./lib/daily-document-sequence";
 import { lockPaymentMutationScope } from "@/features/payments/domain";
 import {
   QuoteDecisionError,
@@ -74,6 +75,7 @@ async function createQuoteAuthorized(input: unknown) {
   return withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
     const quoteId = randomUUID();
     const quoteNumber = await nextQuoteNumber(tx);
+    const { folio: quoteFolio, issuedAt: quoteIssuedAt } = await allocateDailyDocumentFolio(tx, "C");
     const hasVehicle = hasVehicleData(data.vehicle);
     const shouldLinkVehicle = Boolean(data.customerId && hasVehicle);
     const vehicle = shouldLinkVehicle
@@ -107,6 +109,8 @@ async function createQuoteAuthorized(input: unknown) {
         customerSnapshot,
         contactSnapshot,
         number: quoteNumber,
+        folio: quoteFolio,
+        issuedAt: quoteIssuedAt,
         status: QuoteStatus.DRAFT,
         approvedAt: null,
         title: data.title,
@@ -1302,6 +1306,7 @@ async function duplicateQuoteAuthorized(quoteId: string) {
   return withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
     const duplicatedQuoteId = randomUUID();
     const quoteNumber = await nextQuoteNumber(tx);
+    const { folio: duplicatedFolio, issuedAt: duplicatedIssuedAt } = await allocateDailyDocumentFolio(tx, "C");
     const sectionData = original.sections.map((section, sIndex) => ({
       name: section.name,
       sortOrder: sIndex,
@@ -1318,6 +1323,8 @@ async function duplicateQuoteAuthorized(quoteId: string) {
         vehicleId: original.vehicleId,
         vehicleSnapshot: original.vehicleSnapshot ?? Prisma.JsonNull,
         number: quoteNumber,
+        folio: duplicatedFolio,
+        issuedAt: duplicatedIssuedAt,
         status: "DRAFT",
         title: original.title,
         description: original.description,

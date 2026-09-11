@@ -251,6 +251,8 @@ model Quote {
   customerContactId       String?
   customerFiscalProfileId String?
   number                  String      @unique
+  folio                   String?     @unique
+  issuedAt                DateTime?
   status                  QuoteStatus @default(DRAFT)
   title                   String
   description             String?
@@ -382,6 +384,8 @@ model WorkOrder {
   id                            String          @id @default(cuid())
   quoteId                       String          @unique
   number                        String          @unique
+  folio                         String?         @unique
+  issuedAt                      DateTime?
   status                        WorkOrderStatus @default(PLANNED)
   scheduledFor                  DateTime?
   siteAddress                   String?
@@ -828,4 +832,15 @@ model HistoricalWorkItem {
   @@index([workId])
   @@index([type, description])
   @@map("historical_work_items")
+}
+
+model DailyDocumentSequence {
+  id           String   @id @default(cuid())
+  documentType String
+  businessDate String   @db.VarChar(10) // YYYY-MM-DD
+  lastSequence Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([documentType, businessDate])
 }

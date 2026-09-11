@@ -25,6 +25,8 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
     submissionKey: null,
     submissionHash: null,
     number: "COT-001",
+    folio: null,
+    issuedAt: null,
     status,
     title: "Servicio general",
     description: "Servicio completo",

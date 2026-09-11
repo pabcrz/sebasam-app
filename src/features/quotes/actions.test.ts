@@ -64,6 +64,7 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 import { authorizeQuote, getOrCreateSharedQuoteForQuote } from "./domain";
 
 type MockTx = {
+  $queryRaw: ReturnType<typeof vi.fn>;
   $queryRawUnsafe: ReturnType<typeof vi.fn>;
   quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn>; findUniqueOrThrow: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> };
   quoteItem: { deleteMany: ReturnType<typeof vi.fn>; createMany: ReturnType<typeof vi.fn> };
@@ -86,6 +87,7 @@ type MockTx = {
 
 function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
   const tx: MockTx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ lastSequence: 1 }]),
     $queryRawUnsafe: vi.fn().mockResolvedValue([]),
     quote: {
       create: vi.fn().mockResolvedValue({ id: "quote-1", totalCents: 197200, sections: [{ id: "sec-1", isAuthorized: false, sortOrder: 0 }] }),

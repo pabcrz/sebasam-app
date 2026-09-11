@@ -19,6 +19,7 @@ import { requireOperationalRole } from "@/lib/auth/session";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { createVehicleSnapshot } from "@/features/vehicles/schemas";
 import { nextQuoteNumber, nextWorkOrderNumber, withQuoteNumberRetry } from "@/features/quotes/lib/sequence";
+import { allocateDailyDocumentFolio } from "@/features/quotes/lib/daily-document-sequence";
 import { calculateItemTotalCents, createQuoteValidUntil } from "@/features/quotes/lib/calculate";
 import { normalizeOperationalDate, operationalDateToCompletedAt } from "@/features/quotes/lib/operational-date";
 import { ensureSharedQuoteInTransaction } from "@/features/quotes/domain";
@@ -408,6 +409,17 @@ export async function completeWorkOrder(input: unknown) {
 
     if (updated.count !== 1) {
       throw new WorkOrderOperationError("El estado de la orden cambió. Recarga e intenta de nuevo.");
+    }
+
+    if (!workOrder.folio) {
+      const { folio: nFolio, issuedAt: nIssuedAt } = await allocateDailyDocumentFolio(tx, "N", completedAt);
+      await tx.workOrder.update({
+        where: { id: data.workOrderId },
+        data: {
+          folio: nFolio,
+          issuedAt: nIssuedAt,
+        },
+      });
     }
 
     await tx.workAssignment.updateMany({
@@ -835,10 +847,16 @@ export async function createDirectWorkOrder(input: unknown) {
           ? (data.paymentDueDate ?? calculateDefaultPaymentDueDate(completedAt ?? effectiveDate))
           : (data.paymentDueDate ?? null);
 
+        const noteAllocation = data.isCompleted
+          ? await allocateDailyDocumentFolio(tx, "N", effectiveDate)
+          : null;
+
         const workOrder = await tx.workOrder.create({
           data: {
             quoteId: createdQuote.id,
             number: workOrderNumber,
+            folio: noteAllocation?.folio ?? null,
+            issuedAt: noteAllocation?.issuedAt ?? null,
             status: data.isCompleted ? WorkOrderStatus.COMPLETED : WorkOrderStatus.ASSIGNED,
             completedAt,
             paymentDueDate: calculatedDueDate,
@@ -1007,10 +1025,13 @@ export async function convertQuoteToNoteAction(input: unknown) {
         calculateDefaultPaymentDueDate(effectiveDate);
 
       const workOrderNumber = await nextWorkOrderNumber(tx);
+      const { folio: nFolio, issuedAt: nIssuedAt } = await allocateDailyDocumentFolio(tx, "N", effectiveDate);
       const createdWorkOrder = await tx.workOrder.create({
         data: {
           quoteId: quote.id,
           number: workOrderNumber,
+          folio: nFolio,
+          issuedAt: nIssuedAt,
           status: WorkOrderStatus.COMPLETED,
           completedAt: effectiveDate,
           paymentDueDate: notePaymentDueDate,
@@ -1046,12 +1067,22 @@ export async function convertQuoteToNoteAction(input: unknown) {
         calculateDefaultPaymentDueDate(effectiveDate);
 
       if (workOrder.status !== WorkOrderStatus.COMPLETED) {
+        let nFolio = workOrder.folio;
+        let nIssuedAt = workOrder.issuedAt;
+        if (!nFolio) {
+          const allocation = await allocateDailyDocumentFolio(tx, "N", effectiveDate);
+          nFolio = allocation.folio;
+          nIssuedAt = allocation.issuedAt;
+        }
+
         await tx.workOrder.update({
           where: { id: workOrder.id },
           data: {
             status: WorkOrderStatus.COMPLETED,
             completedAt: effectiveDate,
             paymentDueDate: notePaymentDueDate,
+            folio: nFolio,
+            issuedAt: nIssuedAt,
           },
         });
 
