@@ -24,6 +24,19 @@ vi.mock("next/og", () => {
 
 import OpengraphImage, { size, contentType } from "./opengraph-image";
 
+function collectText(node: unknown): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+  if (Array.isArray(node)) {
+    return node.map(collectText).join("");
+  }
+  if (node && typeof node === "object" && "props" in node) {
+    return collectText((node as { props: { children?: unknown } }).props.children);
+  }
+  return "";
+}
+
 describe("OpengraphImage for /cotizacion/[token]", () => {
   it("exports correct size and contentType", () => {
     expect(size).toEqual({ width: 1200, height: 630 });
@@ -51,6 +64,27 @@ describe("OpengraphImage for /cotizacion/[token]", () => {
     expect(response.type).toBe("image-response");
     expect(getSharedQuoteByTokenMock).toHaveBeenCalledWith("valid-token");
     expect(response.options).toEqual({ width: 1200, height: 630 });
+  });
+
+  it("renders assigned work as a service note", async () => {
+    getSharedQuoteByTokenMock.mockResolvedValue({
+      quote: {
+        id: "quote-1",
+        number: "C-0826-007",
+        title: "Cambio de muelles",
+        customer: { name: "Transportes San Juan" },
+        vehicle: { brand: "Kenworth", model: "T680", plate: "99-AA-11" },
+        vehicleSnapshot: null,
+        operationalDate: new Date("2026-08-26T00:00:00.000Z"),
+        workOrder: { status: "ASSIGNED", folio: null },
+      },
+    });
+
+    const response = (await OpengraphImage({
+      params: Promise.resolve({ token: "valid-token" }),
+    })) as unknown as { element: unknown };
+
+    expect(collectText(response.element)).toContain("NOTA DE SERVICIO");
   });
 
   it("renders fallback image when quote is not found or fails", async () => {

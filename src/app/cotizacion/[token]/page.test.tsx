@@ -163,6 +163,38 @@ describe("CotizacionPage", () => {
       });
     });
 
+    it("presents assigned work as a Nota while retaining the quote folio", async () => {
+      getSharedQuoteByTokenMock.mockResolvedValue({
+        quote: {
+          id: "quote-1",
+          number: "COT-001",
+          folio: "C-180626-01",
+          customer: { name: "Cristian Del Toro" },
+          vehicle: { brand: "freightliner", model: null, plate: null },
+          vehicleSnapshot: null,
+          operationalDate: new Date("2026-06-18T00:00:00.000Z"),
+          workOrder: { status: "ASSIGNED", folio: null },
+        },
+      });
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
+
+      expect(metadata).toEqual({
+        title: "CristianDelToro-Nota-C-180626-01",
+        description: "Nota para Cristian Del Toro - freightliner - Sin placas",
+        openGraph: {
+          title: "Nota C-180626-01 | SEBASAM",
+          description: "Nota para Cristian Del Toro - freightliner - Sin placas",
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Nota C-180626-01 | SEBASAM",
+          description: "Nota para Cristian Del Toro - freightliner - Sin placas",
+        },
+      });
+    });
+
     it("returns safe fallback metadata when token is expired", async () => {
       getSharedQuoteByTokenMock.mockRejectedValue(new SharedQuoteExpiredError());
 

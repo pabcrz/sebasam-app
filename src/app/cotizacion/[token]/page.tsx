@@ -9,7 +9,10 @@ import { QuoteDocumentView } from "@/features/public-quotes/components/quote-doc
 import type { SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
-import { resolveDocumentFolio } from "@/features/quotes/lib/document-resolver";
+import {
+  resolveDocumentFolio,
+  resolveDocumentPresentation,
+} from "@/features/quotes/lib/document-resolver";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 
@@ -68,7 +71,7 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
   try {
     const sharedQuote = await getSharedQuoteByToken(token);
     const quote = sharedQuote.quote;
-    const documentType = quote.workOrder?.status === "COMPLETED" ? "Nota" : quote.workOrder ? "Trabajo" : "Cotización";
+    const { documentType } = resolveDocumentPresentation(quote);
     const identity = resolveCustomerDisplayIdentity(quote);
     const customerName = identity.displayName;
     const vehicleDescription = quote.vehicle

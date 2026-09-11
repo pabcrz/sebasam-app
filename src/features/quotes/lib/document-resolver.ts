@@ -20,6 +20,34 @@ export type ResolvableWorkOrder = {
 
 export type ResolvableDocument = ResolvableQuote | ResolvableWorkOrder;
 
+export type DocumentPresentation = {
+  documentType: "Cotización" | "Nota";
+  documentTitle: "COTIZACIÓN" | "NOTA DE SERVICIO";
+};
+
+/**
+ * Resolves the customer-facing document presentation without changing its
+ * route or folio. Authorized, executing, and completed work are service notes;
+ * quotes without work and non-active work remain quotations.
+ */
+export function resolveDocumentPresentation(
+  doc: ResolvableDocument | null | undefined,
+): DocumentPresentation {
+  const status = doc
+    ? "number" in doc
+      ? doc.workOrder?.status
+      : doc.status
+    : null;
+  const isNote =
+    status === WorkOrderStatus.ASSIGNED ||
+    status === WorkOrderStatus.IN_PROGRESS ||
+    status === WorkOrderStatus.COMPLETED;
+
+  return isNote
+    ? { documentType: "Nota", documentTitle: "NOTA DE SERVICIO" }
+    : { documentType: "Cotización", documentTitle: "COTIZACIÓN" };
+}
+
 /**
  * Resolves the customer-visible document identifier:
  * 1. Completed work order with N folio -> N folio (e.g. N-090926-01)

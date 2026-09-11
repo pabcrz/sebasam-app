@@ -179,5 +179,20 @@ describe("QuoteDocumentView", () => {
 
     expect(screen.getByText("N-090926-05")).toBeInTheDocument();
   });
-});
 
+  it("renders assigned work as a Nota while preserving the quote folio", () => {
+    render(
+      <QuoteDocumentView
+        quote={{
+          ...baseQuote,
+          folio: "C-090926-01",
+          workOrder: { status: "ASSIGNED", folio: null },
+        }}
+        paymentSettings={mockPaymentSettings}
+      />
+    );
+
+    expect(screen.getAllByText("Nota").length).toBeGreaterThan(0);
+    expect(screen.getByText("C-090926-01")).toBeInTheDocument();
+  });
+});

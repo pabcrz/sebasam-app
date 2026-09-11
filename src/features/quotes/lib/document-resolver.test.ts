@@ -3,6 +3,7 @@ import { WorkOrderStatus } from "@prisma/client";
 import {
   resolveDocumentFolio,
   resolveAntecedentQuoteFolio,
+  resolveDocumentPresentation,
 } from "./document-resolver";
 
 describe("document-resolver", () => {
@@ -123,6 +124,20 @@ describe("document-resolver", () => {
       };
 
       expect(resolveAntecedentQuoteFolio(note)).toBe("0626-001");
+    });
+  });
+
+  describe("resolveDocumentPresentation", () => {
+    it.each([
+      [null, "Cotización", "COTIZACIÓN"],
+      [{ number: "0626-001", workOrder: null }, "Cotización", "COTIZACIÓN"],
+      [{ number: "0626-001", workOrder: { status: WorkOrderStatus.PLANNED } }, "Cotización", "COTIZACIÓN"],
+      [{ number: "0626-001", workOrder: { status: WorkOrderStatus.CANCELLED } }, "Cotización", "COTIZACIÓN"],
+      [{ number: "0626-001", workOrder: { status: WorkOrderStatus.ASSIGNED } }, "Nota", "NOTA DE SERVICIO"],
+      [{ number: "0626-001", workOrder: { status: WorkOrderStatus.IN_PROGRESS } }, "Nota", "NOTA DE SERVICIO"],
+      [{ number: "0626-001", workOrder: { status: WorkOrderStatus.COMPLETED } }, "Nota", "NOTA DE SERVICIO"],
+    ] as const)("maps %o to %s", (quote, documentType, documentTitle) => {
+      expect(resolveDocumentPresentation(quote)).toEqual({ documentType, documentTitle });
     });
   });
 });
