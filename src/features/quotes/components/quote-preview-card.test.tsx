@@ -103,4 +103,74 @@ describe("QuotePreviewCard", () => {
     expect(container.textContent).not.toMatch(/Santander/i);
     expect(container.textContent).not.toMatch(/Mercado\s*Pago/i);
   });
+
+  it("renders contact info with formatted role or omits it when absent", () => {
+    const { rerender } = render(
+      <QuotePreviewCard
+        {...defaultProps}
+        contactName="Juan Chofer"
+        contactRole="Operador"
+      />,
+    );
+
+    const contactInfo = screen.getByTestId("preview-contact-info");
+    expect(contactInfo).toHaveTextContent("Operador: Juan Chofer");
+
+    rerender(
+      <QuotePreviewCard
+        {...defaultProps}
+        contactName="Ana Responsable"
+        contactRole="Contacto responsable"
+      />,
+    );
+    expect(screen.getByTestId("preview-contact-info")).toHaveTextContent("Contacto responsable: Ana Responsable");
+
+    rerender(
+      <QuotePreviewCard
+        {...defaultProps}
+        contactName="Carlos Facturacion"
+        contactRole="Contacto de facturación"
+      />,
+    );
+    expect(screen.getByTestId("preview-contact-info")).toHaveTextContent("Contacto de facturación: Carlos Facturacion");
+
+    rerender(
+      <QuotePreviewCard
+        {...defaultProps}
+        contactName={null}
+        contactRole={null}
+      />,
+    );
+    expect(screen.queryByTestId("preview-contact-info")).not.toBeInTheDocument();
+  });
+
+  it("maintains accessible touch target on selectable sections in mobile compact view", () => {
+    render(
+      <QuotePreviewCard
+        {...defaultProps}
+        compactItems
+        selectableSectionIds={["sec-1"]}
+        sections={[
+          {
+            id: "sec-1",
+            name: "Frenos",
+            items: [{ type: "LABOR", description: "Cambio de pastillas", quantity: "1", unitPrice: "500" }],
+            rowIds: [],
+          },
+          {
+            id: "sec-2",
+            name: "Suspensión",
+            items: [{ type: "LABOR", description: "Revisión muelles", quantity: "1", unitPrice: "800" }],
+            rowIds: [],
+          },
+        ]}
+      />,
+    );
+
+    const compactContainer = screen.getByTestId("quote-compact-items");
+    expect(compactContainer).toHaveClass("grid", "gap-2.5", "sm:gap-3");
+
+    const label = compactContainer.querySelector("label");
+    expect(label).toHaveClass("min-h-[40px]");
+  });
 });

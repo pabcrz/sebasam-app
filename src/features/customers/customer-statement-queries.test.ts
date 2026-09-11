@@ -288,4 +288,57 @@ describe("getCustomerDetailedStatement", () => {
     expect(result?.notes[0].remainingCents).toBe(10000);
     expect(result?.summary.finalBalanceCents).toBe(10000);
   });
+
+  it("propagates contact and customer snapshots to previewQuote without altering statement financial totals", async () => {
+    (prisma.customer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(mockCustomer);
+
+    const noteWithSnapshot = {
+      id: "wo-snap",
+      number: "OT-SNAP",
+      status: "COMPLETED",
+      completedAt: new Date("2026-08-01T18:00:00Z"),
+      paymentDueDate: new Date("2026-08-08T18:00:00Z"),
+      quote: {
+        id: "q-snap",
+        number: "COT-SNAP",
+        title: "Servicio con snapshot",
+        totalCents: 50000,
+        subtotalCents: 50000,
+        discountCents: null,
+        taxCents: null,
+        vehicle: null,
+        items: [],
+        sections: [],
+        customerSnapshot: { commercialName: "Cliente Snapshot", legalName: "Fiscal Snapshot S.A." },
+        contactSnapshot: { id: "cont-1", name: "Chofer Snapshot", role: "DRIVER" },
+      },
+      paymentApplications: [],
+    };
+
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([noteWithSnapshot]);
+
+    const params = parseCustomerStatementParams({}, fakeNow);
+    const result = await getCustomerDetailedStatement("cust-1", params, fakeNow);
+
+    expect(result).not.toBeNull();
+    expect(result?.notes).toHaveLength(1);
+    const note = result!.notes[0];
+
+    // Financial values remain untouched
+    expect(note.totalCents).toBe(50000);
+    expect(note.paidCents).toBe(0);
+    expect(note.remainingCents).toBe(50000);
+    expect(result?.summary.finalBalanceCents).toBe(50000);
+
+    // previewQuote contains snapshots
+    expect(note.previewQuote.customerSnapshot).toEqual({
+      commercialName: "Cliente Snapshot",
+      legalName: "Fiscal Snapshot S.A.",
+    });
+    expect(note.previewQuote.contactSnapshot).toEqual({
+      id: "cont-1",
+      name: "Chofer Snapshot",
+      role: "DRIVER",
+    });
+  });
 });
