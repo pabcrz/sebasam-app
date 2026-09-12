@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
-import { PaymentStatus, Prisma, QuoteStatus } from "@prisma/client";
+import { PaymentStatus, Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import {
   cancelQuote,
   archiveQuote,
+  archiveCompletedNote,
   cancelQuoteFromForm,
   authorizeQuoteAction,
   createQuote,
@@ -17,6 +18,7 @@ import {
   getOrCreateSharedQuoteAction,
   lockQuoteAction,
   publishSharedQuote,
+  revokeNoteCanonicalLinkAction,
   restoreArchivedQuote,
   unlockQuoteAction,
   updateDraftQuote,
@@ -52,6 +54,7 @@ vi.mock("./domain", () => ({
   createSharedQuoteToken: vi.fn(() => "stable-token"),
   getOrCreateSharedQuoteForQuote: vi.fn(),
   ensureSharedQuoteInTransaction: vi.fn().mockResolvedValue({ id: "sq-1", token: "tok-1" }),
+  revokeCanonicalNoteSharedQuote: vi.fn(),
   SharedQuoteOperationError: class SharedQuoteOperationError extends Error {
     constructor(message: string) {
       super(message);
@@ -62,7 +65,7 @@ vi.mock("./domain", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
-import { authorizeQuote, getOrCreateSharedQuoteForQuote } from "./domain";
+import { authorizeQuote, getOrCreateSharedQuoteForQuote, revokeCanonicalNoteSharedQuote } from "./domain";
 
 type MockTx = {
   $queryRaw: ReturnType<typeof vi.fn>;
@@ -1508,5 +1511,38 @@ describe("getOrCreateSharedQuoteAction", () => {
       success: false,
       error: "Solo las Notas archivadas pueden compartirse.",
     });
+  });
+});
+
+describe("completed Note archive and revocation", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("archives a completed Note without revoking its canonical link or payment requests", async () => {
+    const tx = mockTx();
+    vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: "admin-1" } } as never);
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      isLocked: false,
+      status: QuoteStatus.APPROVED,
+      workOrder: { id: "work-order-1", status: WorkOrderStatus.COMPLETED },
+    } as never);
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+
+    await archiveCompletedNote("quote-1", "Archivo administrativo");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "quote-1", status: QuoteStatus.APPROVED },
+      data: { status: QuoteStatus.ARCHIVED },
+    });
+    expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
+    expect(tx.paymentRequest.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("passes the admin and reason to the canonical link revocation audit", async () => {
+    vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: "admin-1" } } as never);
+    vi.mocked(revokeCanonicalNoteSharedQuote).mockResolvedValue({} as never);
+
+    await expect(revokeNoteCanonicalLinkAction("quote-1", "Solicitud del cliente")).resolves.toEqual({ success: true });
+    expect(revokeCanonicalNoteSharedQuote).toHaveBeenCalledWith("quote-1", "admin-1", "Solicitud del cliente");
   });
 });

@@ -14,6 +14,7 @@ import {
   createSharedQuoteSlug,
   getOrCreateSharedQuoteForQuote,
   createSharedQuoteForQuote,
+  revokeCanonicalNoteSharedQuote,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   createSharedQuoteToken,
 } from "./domain";
@@ -27,7 +28,7 @@ type MockTransaction = {
   quoteSection: { updateMany: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
-  sharedQuote: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  sharedQuote: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
   workOrder: { findFirst: ReturnType<typeof vi.fn> };
 };
 
@@ -57,6 +58,7 @@ function mockTx(): MockTransaction {
       create: vi.fn().mockImplementation((args: { data: Record<string, unknown> }) =>
         Promise.resolve({ id: "sq-new", ...args.data, createdAt: new Date() }),
       ),
+      update: vi.fn(),
     },
     workOrder: { findFirst: vi.fn().mockResolvedValue(null) },
   };
@@ -96,6 +98,27 @@ describe("getOrCreateSharedQuoteForQuote canonical Note lifecycle", () => {
     expect(prisma.sharedQuote.findFirst).toHaveBeenCalledWith({
       where: { quoteId: "q-1", isCanonical: true, revokedAt: null },
       orderBy: { createdAt: "asc" },
+    });
+  });
+});
+
+describe("revokeCanonicalNoteSharedQuote", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("records the revocation timestamp, actor, and reason on the canonical link", async () => {
+    const tx = mockTx();
+    tx.workOrder.findFirst.mockResolvedValue({ status: WorkOrderStatus.COMPLETED });
+    tx.sharedQuote.findFirst.mockResolvedValue({ id: "canonical-link" });
+
+    await revokeCanonicalNoteSharedQuote("quote-1", "admin-1", "Customer request");
+
+    expect(tx.sharedQuote.update).toHaveBeenCalledWith({
+      where: { id: "canonical-link" },
+      data: {
+        revokedAt: expect.any(Date),
+        revokedByUserId: "admin-1",
+        revocationReason: "Customer request",
+      },
     });
   });
 });
@@ -753,6 +776,7 @@ describe("correctQuoteDecision", () => {
         ),
         findUnique: vi.fn(),
         create: vi.fn(),
+        update: vi.fn(),
       },
       workOrder: { findFirst: vi.fn().mockResolvedValue(null) },
     };

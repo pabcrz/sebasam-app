@@ -282,6 +282,44 @@ export async function getOrCreateSharedQuoteForQuote(quoteId: string) {
   }
 }
 
+/** Revokes the durable public link of a completed Note with an audit trail. */
+export async function revokeCanonicalNoteSharedQuote(
+  quoteId: string,
+  actorId: string,
+  reason: string,
+) {
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) {
+    throw new SharedQuoteOperationError("Revocation reason is required.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const workOrder = await tx.workOrder.findFirst({
+      where: { quoteId },
+      select: { status: true },
+    });
+    if (workOrder?.status !== WorkOrderStatus.COMPLETED) {
+      throw new SharedQuoteOperationError("Only completed Notes have canonical links.");
+    }
+
+    const canonical = await tx.sharedQuote.findFirst({
+      where: { quoteId, isCanonical: true, revokedAt: null },
+    });
+    if (!canonical) {
+      throw new SharedQuoteOperationError("No hay enlace canónico activo para esta Nota.");
+    }
+
+    return tx.sharedQuote.update({
+      where: { id: canonical.id },
+      data: {
+        revokedAt: new Date(),
+        revokedByUserId: actorId,
+        revocationReason: trimmedReason,
+      },
+    });
+  });
+}
+
 // --- Quote decision (accept / decline / authorize) ---
 
 export async function acceptSharedQuote(token: string, authorizedSectionIds?: string[]) {
