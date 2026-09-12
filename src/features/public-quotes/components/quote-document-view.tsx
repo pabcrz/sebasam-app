@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { QuoteItem, QuoteSection, WorkOrderStatus } from "@prisma/client";
+import type { Prisma, WorkOrderStatus } from "@prisma/client";
 import type { PaymentSettingsData } from "@/features/payment-settings/domain";
 import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
@@ -23,14 +23,15 @@ export interface QuoteDocumentViewProps {
   token?: string;
   isPrint?: boolean;
   controls?: React.ReactNode;
+  paymentStatus?: { paidCents: number; remainingCents: number; isSettled: boolean } | null;
 }
 
-type QuoteDocumentItem = Omit<QuoteItem, "quantity" | "unitPriceCents"> & {
-  quantity: QuoteItem["quantity"] | string | number | null;
-  unitPriceCents: QuoteItem["unitPriceCents"] | bigint;
+type QuoteDocumentItem = Omit<SharedQuoteViewQuote["items"][number], "quantity" | "unitPriceCents"> & {
+  quantity: Prisma.Decimal | string | number | null;
+  unitPriceCents: number | bigint | null;
 };
 
-type QuoteDocumentSection = Omit<QuoteSection, "items"> & {
+type QuoteDocumentSection = Omit<SharedQuoteViewQuote["sections"][number], "items"> & {
   items: QuoteDocumentItem[];
 };
 
@@ -83,7 +84,7 @@ export function serializeQuoteForDocument(
         : quote.workOrder
           ? { status: quote.workOrder.status, folio: quote.workOrder.folio }
           : null,
-  };
+  } as SharedQuoteViewQuote;
 }
 
 export function QuoteDocumentView({
@@ -95,6 +96,7 @@ export function QuoteDocumentView({
   token,
   isPrint = false,
   controls,
+  paymentStatus,
 }: QuoteDocumentViewProps) {
   const resolvedWorkOrder =
     workOrderStatus !== undefined
@@ -156,6 +158,7 @@ export function QuoteDocumentView({
           isNote={resolvedDocumentType === "Nota"}
           isPrint={isPrint}
           business={paymentSettings}
+          paymentStatus={paymentStatus}
         />
       </PublicQuoteShell>
     </div>

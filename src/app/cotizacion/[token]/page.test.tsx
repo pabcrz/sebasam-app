@@ -3,10 +3,12 @@ import { render, screen } from "@testing-library/react";
 import { CustomerStatus, Prisma, QuoteItemType, QuoteStatus } from "@prisma/client";
 
 const getSharedQuoteByTokenMock = vi.hoisted(() => vi.fn());
+const getSharedQuotePaymentStatusMock = vi.hoisted(() => vi.fn());
 const sharedQuoteViewMock = vi.hoisted(() => vi.fn(() => <div data-testid="shared-quote-view" />));
 
 vi.mock("@/features/quotes/domain", () => ({
   getSharedQuoteByToken: getSharedQuoteByTokenMock,
+  getSharedQuotePaymentStatus: getSharedQuotePaymentStatusMock,
   SharedQuoteExpiredError: class SharedQuoteExpiredError extends Error {},
   SharedQuoteRevokedError: class SharedQuoteRevokedError extends Error {},
 }));
@@ -97,6 +99,31 @@ describe("CotizacionPage", () => {
     expect(screen.getByText("Servicio y Refacciones para Suspensiones de Aire y Muelles")).toHaveClass("font-mono", "print:text-[10px]");
     expect(screen.getByText("Batalla de Casa Blanca")).not.toHaveAttribute("href");
     expect(screen.queryByRole("link", { name: /Batalla de Casa Blanca/i })).not.toBeInTheDocument();
+  });
+
+  it("keeps private customer fields out of the public client DTO and loads completed Note payment status", async () => {
+    getSharedQuoteByTokenMock.mockResolvedValue({
+      quote: {
+        id: "quote-private", number: "N-001", folio: "N-001", status: QuoteStatus.ARCHIVED,
+        title: "Public service", description: null, vehicleSnapshot: null, subtotalCents: 100,
+        discountCents: 0, taxCents: 0, totalCents: 100, taxEnabled: false,
+        validUntil: new Date("2026-07-15T12:00:00.000Z"), administrative: false,
+        operationalDate: new Date("2026-06-15T00:00:00.000Z"), isLocked: true, paymentDueDate: null,
+        customer: { name: "Public customer", email: "private@example.com", address: "Private address" },
+        customerContact: { name: "Private contact", phone: "5551111111" },
+        customerFiscalProfile: { taxId: "PRIVATE-TAX-ID" }, vehicle: null, items: [], sections: [],
+        workOrder: { id: "wo-1", status: "COMPLETED", folio: "N-001" },
+      },
+    });
+    getSharedQuotePaymentStatusMock.mockResolvedValue({ paidCents: 0, remainingCents: 100, isSettled: false });
+
+    render(await CotizacionPage({ params: Promise.resolve({ token: "private-token" }) }));
+
+    const clientQuote = (sharedQuoteViewMock.mock.calls.at(-1) as unknown as [{ quote: Record<string, unknown> }])[0].quote;
+    expect(clientQuote.customer).toEqual({ name: "Public customer" });
+    expect(JSON.stringify(clientQuote)).not.toContain("private@example.com");
+    expect(JSON.stringify(clientQuote)).not.toContain("PRIVATE-TAX-ID");
+    expect(getSharedQuotePaymentStatusMock).toHaveBeenCalledWith("wo-1");
   });
 
   describe("generateMetadata", () => {

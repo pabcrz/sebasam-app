@@ -20,7 +20,7 @@ const acceptSharedQuoteActionMock = vi.mocked(acceptSharedQuoteAction);
 const declineSharedQuoteActionMock = vi.mocked(declineSharedQuoteAction);
 
 function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: WorkOrderStatus): SharedQuoteViewProps["quote"] {
-  const quote: SharedQuoteViewProps["quote"] = {
+  const quote = {
     id: "quote-1",
     submissionKey: null,
     submissionHash: null,
@@ -87,7 +87,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
     workOrder: workOrderStatus ? { status: workOrderStatus } : null,
   };
 
-  return quote;
+  return quote as SharedQuoteViewProps["quote"];
 }
 
 function makeMultiSectionQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps["quote"] {
