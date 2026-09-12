@@ -1543,6 +1543,41 @@ describe("QuoteBuilder", () => {
     expect(document.getElementById("sections-0-items-0-description-error")).toBeEmptyDOMElement();
     expect(description).not.toHaveAttribute("aria-invalid");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    fireEvent.change(unitPrice, { target: { value: "-5" } });
+    expect(document.getElementById("sections-0-items-0-unitPrice-error")).toHaveTextContent(
+      "El precio unitario del concepto 1 no puede ser negativo.",
+    );
+    expect(unitPrice).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByTestId("concept-total-0")).toHaveTextContent("Pendiente");
+
+    await user.clear(unitPrice);
+    await user.type(unitPrice, "5");
+    expect(document.getElementById("sections-0-items-0-unitPrice-error")).toBeEmptyDOMElement();
+    expect(unitPrice).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("rejects placeholder item descriptions and titles until they are corrected", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const description = screen.getByLabelText("Descripción", { selector: "input" });
+    await user.type(description, "...");
+    expect(screen.getByRole("alert")).toHaveTextContent("La descripción del concepto 1 debe incluir texto significativo.");
+    await user.clear(description);
+    await user.type(description, "Cambio de aceite");
+    expect(document.getElementById("sections-0-items-0-description-error")).toBeEmptyDOMElement();
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    const title = screen.getByLabelText("Título");
+    await user.type(title, "xyz");
+    expect(screen.getByRole("alert")).toHaveTextContent("El título debe incluir texto significativo.");
+    await user.clear(title);
+    await user.type(title, "Servicio general");
+    expect(document.getElementById("quote-title-error")).toBeEmptyDOMElement();
   });
 
   it("revalidates items in the final action before calling the server action", async () => {

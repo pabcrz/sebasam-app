@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   Button,
   Input,
@@ -12,6 +13,7 @@ import {
   SectionLabel,
   Textarea,
 } from "@/components/ui";
+import { getMeaningfulTextError } from "@/lib/meaningful-text";
 
 export interface CustomerEditFormCustomer {
   id: string;
@@ -36,14 +38,24 @@ const statusLabels: Record<string, string> = {
 };
 
 export function CustomerEditForm({ action, customer }: CustomerEditFormProps) {
+  const [name, setName] = React.useState(customer.name);
+  const nameError = getMeaningfulTextError(name, "nombre");
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (nameError) event.preventDefault();
+  }
+
   return (
-    <form action={action} className="grid gap-4" data-testid="customer-edit-form">
+    <form action={action} onSubmit={handleSubmit} className="grid gap-4" data-testid="customer-edit-form">
       <input type="hidden" name="customerId" defaultValue={customer.id} />
       <fieldset className="grid gap-4">
         <SectionLabel as="legend">Información del cliente</SectionLabel>
         <div className="grid gap-2">
           <Label htmlFor="name">Nombre</Label>
-          <Input id="name" name="name" defaultValue={customer.name} required />
+          <Input id="name" name="name" value={name} onChange={(event) => setName(event.target.value)} required aria-describedby={nameError ? "customer-name-error" : undefined} aria-invalid={nameError ? true : undefined} />
+          <span id="customer-name-error" role={nameError ? "alert" : undefined} className="min-h-4 text-xs text-[var(--color-status-danger-fg)]">
+            {nameError}
+          </span>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="commercialName">Nombre comercial (opcional)</Label>

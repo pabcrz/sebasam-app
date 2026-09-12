@@ -1,4 +1,5 @@
 import { QuoteItemType } from "@prisma/client";
+import { getMeaningfulTextError, isMeaningfulText } from "@/lib/meaningful-text";
 
 export type Step = "client" | "items" | "notes" | "preview";
 
@@ -145,6 +146,8 @@ export function validateItemFields(
     ? `El concepto ${index + 1} necesita una descripción.`
     : description.length > 240
       ? `La descripción del concepto ${index + 1} es muy larga.`
+      : !isMeaningfulText(description)
+        ? `La descripción del concepto ${index + 1} debe incluir texto significativo.`
       : null;
 
   const quantityNum = Number(quantity);
@@ -159,17 +162,17 @@ export function validateItemFields(
           : null;
 
   const unitPriceNum = Number(unitPrice);
-  const unitPriceError = !requirePrice
-    ? null
-    : unitPrice === ""
+  const unitPriceError = unitPrice === ""
+    ? requirePrice
       ? `El concepto ${index + 1} necesita un precio unitario.`
-      : !Number.isFinite(unitPriceNum) || unitPriceNum < 0
-        ? `El precio unitario del concepto ${index + 1} no puede ser negativo.`
-        : unitPriceNum > maxUnitPrice
-          ? `El precio unitario del concepto ${index + 1} es demasiado alto.`
-          : !quantityError && Math.round(quantityNum * unitPriceNum * 100) > 2_147_483_647
-            ? `El total del concepto ${index + 1} es demasiado alto.`
-            : null;
+      : null
+    : !Number.isFinite(unitPriceNum) || unitPriceNum < 0
+      ? `El precio unitario del concepto ${index + 1} no puede ser negativo.`
+      : unitPriceNum > maxUnitPrice
+        ? `El precio unitario del concepto ${index + 1} es demasiado alto.`
+        : !quantityError && Math.round(quantityNum * unitPriceNum * 100) > 2_147_483_647
+          ? `El total del concepto ${index + 1} es demasiado alto.`
+          : null;
 
   const customRatePercentStr = item.customRatePercent?.trim() ?? "";
   let customRateError: string | null = null;
@@ -199,7 +202,7 @@ function isItemDraftComplete(item: ItemFormValue): boolean {
   const quantityNum = Number(quantity);
 
   return (
-    description.length > 0 &&
+    isMeaningfulText(description) &&
     quantity !== "" &&
     Number.isFinite(quantityNum) &&
     quantityNum > 0 &&
@@ -215,7 +218,7 @@ export function isItemComplete(item: ItemFormValue): boolean {
   const unitPriceNum = Number(unitPrice);
 
   return (
-    description.length > 0 &&
+    isMeaningfulText(description) &&
     Number.isFinite(quantityNum) &&
     quantityNum > 0 &&
     unitPrice !== "" &&
@@ -256,7 +259,7 @@ export function getStepError(
   }
 
   if (step === "notes") {
-    return state.title.trim() ? null : "Ingresa el título de la cotización.";
+    return state.title.trim() ? getMeaningfulTextError(state.title, "título") : "Ingresa el título de la cotización.";
   }
 
   return null;
