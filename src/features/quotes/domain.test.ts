@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { QuoteDecisionOrigin, QuoteItemType, QuoteStatus } from "@prisma/client";
+import { Prisma, QuoteDecisionOrigin, QuoteItemType, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   acceptSharedQuote,
@@ -20,7 +20,7 @@ import {
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), sharedQuote: { findUnique: vi.fn() } } }));
+vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), sharedQuote: { findFirst: vi.fn(), findUnique: vi.fn() } } }));
 
 type MockTransaction = {
   quote: { findUnique: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
@@ -28,6 +28,7 @@ type MockTransaction = {
   quoteDecision: { create: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn> };
   sharedQuote: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  workOrder: { findFirst: ReturnType<typeof vi.fn> };
 };
 
 function mockTx(): MockTransaction {
@@ -57,12 +58,47 @@ function mockTx(): MockTransaction {
         Promise.resolve({ id: "sq-new", ...args.data, createdAt: new Date() }),
       ),
     },
+    workOrder: { findFirst: vi.fn().mockResolvedValue(null) },
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
     (callback: (tx: MockTransaction) => Promise<unknown>) => callback(tx),
   );
   return tx;
 }
+
+describe("getOrCreateSharedQuoteForQuote canonical Note lifecycle", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("creates a durable canonical link for a completed Note", async () => {
+    const tx = mockTx();
+    tx.workOrder.findFirst.mockResolvedValue({ status: WorkOrderStatus.COMPLETED });
+    tx.quote.findUnique.mockResolvedValue({ id: "q-1", number: "N-001" });
+
+    const result = await getOrCreateSharedQuoteForQuote("q-1");
+
+    expect(result.isCanonical).toBe(true);
+    expect(tx.sharedQuote.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ isCanonical: true, expiresAt: expect.any(Date) }),
+    }));
+  });
+
+  it("returns the concurrent canonical-link winner after a P2002 rollback", async () => {
+    const tx = mockTx();
+    tx.workOrder.findFirst.mockResolvedValue({ status: WorkOrderStatus.COMPLETED });
+    tx.quote.findUnique.mockResolvedValue({ id: "q-1", number: "N-001" });
+    tx.sharedQuote.create.mockRejectedValue(new Prisma.PrismaClientKnownRequestError(
+      "Unique constraint failed", { code: "P2002", clientVersion: "test" },
+    ));
+    const winner = { id: "shared-winner", token: "n-001", isCanonical: true };
+    (prisma.sharedQuote.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(winner);
+
+    await expect(getOrCreateSharedQuoteForQuote("q-1")).resolves.toBe(winner);
+    expect(prisma.sharedQuote.findFirst).toHaveBeenCalledWith({
+      where: { quoteId: "q-1", isCanonical: true, revokedAt: null },
+      orderBy: { createdAt: "asc" },
+    });
+  });
+});
 
 function mockSharedQuote(overrides: Record<string, unknown> = {}) {
   const quoteOverrides = (overrides.quote ?? {}) as Record<string, unknown>;
@@ -718,6 +754,7 @@ describe("correctQuoteDecision", () => {
         findUnique: vi.fn(),
         create: vi.fn(),
       },
+      workOrder: { findFirst: vi.fn().mockResolvedValue(null) },
     };
 
     (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
