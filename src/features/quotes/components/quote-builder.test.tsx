@@ -999,6 +999,22 @@ describe("QuoteBuilder", () => {
     expect(quantityInput).toHaveValue("5");
   });
 
+  it("blurs the unit price during wheel capture without preventing page scrolling", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const unitPriceInput = screen.getByLabelText("Precio unitario");
+    await user.type(unitPriceInput, "850");
+    unitPriceInput.focus();
+
+    expect(fireEvent.wheel(unitPriceInput)).toBe(true);
+    expect(unitPriceInput).not.toHaveFocus();
+    expect(unitPriceInput).toHaveValue(850);
+  });
+
   it("allows draft navigation when a price exceeds the commercial limit", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
@@ -1661,4 +1677,3 @@ describe("QuoteBuilder", () => {
     expect(document.getElementById(quantityErrorId!)).toHaveTextContent("El concepto 1 necesita una cantidad.");
   });
 });
-
