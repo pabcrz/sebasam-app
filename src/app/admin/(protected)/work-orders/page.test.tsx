@@ -7,7 +7,11 @@ vi.mock("@/features/customers/actions", () => ({
   searchCustomersForQuote: vi.fn(),
   createOrReuseCustomerForQuote: vi.fn(),
 }));
-vi.mock("@/features/quotes/actions", () => ({ duplicateQuoteFromForm: vi.fn(), updateDraftQuoteFromWorkspace: vi.fn() }));
+vi.mock("@/features/quotes/actions", () => ({
+  duplicateQuoteFromForm: vi.fn(),
+  getOrCreateSharedQuoteAction: vi.fn(),
+  updateDraftQuoteFromWorkspace: vi.fn(),
+}));
 vi.mock("@/features/work-orders/actions", () => ({
   assignWorkOrderAction: vi.fn(),
   completeWorkOrderAction: vi.fn(),
