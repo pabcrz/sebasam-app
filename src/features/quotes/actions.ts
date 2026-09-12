@@ -49,6 +49,14 @@ import {
 const quotesPath = "/admin/quotes";
 const genericQuoteFormValidationError = "Revisa los datos e intenta de nuevo.";
 
+const shareableQuoteStatuses = new Set<QuoteStatus>([
+  QuoteStatus.DRAFT,
+  QuoteStatus.SENT,
+  QuoteStatus.APPROVED,
+  QuoteStatus.REJECTED,
+  QuoteStatus.ARCHIVED,
+]);
+
 function quoteFormValidationError(issues: Array<{ message: string }>) {
   const actionableIssue = issues.find(({ message }) =>
     message.startsWith("Selecciona ") || message.startsWith("El año "),
@@ -1187,6 +1195,37 @@ export async function publishSharedQuote(quoteId: string): Promise<{ success: bo
   const shared = await getOrCreateSharedQuoteForQuote(quoteId);
   revalidatePath(quotesPath);
   return { success: true, token: shared.token };
+}
+
+export async function getOrCreateSharedQuoteAction(
+  quoteId: string,
+): Promise<{ success: boolean; token?: string; error?: string }> {
+  await requireOperationalRole();
+
+  try {
+    const quote = await prisma.quote.findUnique({
+      where: { id: quoteId },
+      select: { status: true, workOrder: { select: { status: true } } },
+    });
+
+    if (!quote || quote.status === QuoteStatus.CANCELLED) {
+      return { success: false, error: "No se puede compartir una cotización cancelada." };
+    }
+    if (!shareableQuoteStatuses.has(quote.status)) {
+      return { success: false, error: "No se puede compartir este documento en su estado actual." };
+    }
+    if (quote.status === QuoteStatus.ARCHIVED && quote.workOrder?.status !== WorkOrderStatus.COMPLETED) {
+      return { success: false, error: "Solo las Notas archivadas pueden compartirse." };
+    }
+
+    const shared = await getOrCreateSharedQuoteForQuote(quoteId);
+    revalidatePath(quotesPath);
+    revalidatePath("/admin/work-orders");
+    revalidatePath("/admin/notas");
+    return { success: true, token: shared.token };
+  } catch {
+    return { success: false, error: "No se pudo preparar el enlace para compartir. Intenta de nuevo." };
+  }
 }
 
 // --- Public accept / decline (no auth required; token is the authorization) ---

@@ -14,6 +14,7 @@ import {
   deleteQuoteFromForm,
   duplicateQuote,
   duplicateQuoteFromForm,
+  getOrCreateSharedQuoteAction,
   lockQuoteAction,
   publishSharedQuote,
   restoreArchivedQuote,
@@ -1469,6 +1470,43 @@ describe("publishSharedQuote", () => {
       });
 
       await expect(unlockQuoteAction("quote-1", "Reason")).rejects.toThrow("El documento no está bloqueado.");
+    });
+  });
+});
+
+describe("getOrCreateSharedQuoteAction", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("creates or reuses a canonical link for a completed or archived Note", async () => {
+    vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: "operator-1" } } as never);
+    vi.mocked(prisma.quote.findUnique).mockResolvedValue({
+      status: QuoteStatus.ARCHIVED,
+      workOrder: { status: "COMPLETED" },
+    } as never);
+    vi.mocked(getOrCreateSharedQuoteForQuote).mockResolvedValue({ token: "canonical-note" } as never);
+
+    await expect(getOrCreateSharedQuoteAction("quote-1")).resolves.toEqual({ success: true, token: "canonical-note" });
+    expect(getOrCreateSharedQuoteForQuote).toHaveBeenCalledWith("quote-1");
+  });
+
+  it("preserves the cancelled-status block", async () => {
+    vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: "operator-1" } } as never);
+    vi.mocked(prisma.quote.findUnique).mockResolvedValue({ status: QuoteStatus.CANCELLED, workOrder: null } as never);
+
+    await expect(getOrCreateSharedQuoteAction("quote-1")).resolves.toEqual({
+      success: false,
+      error: "No se puede compartir una cotización cancelada.",
+    });
+    expect(getOrCreateSharedQuoteForQuote).not.toHaveBeenCalled();
+  });
+
+  it("rejects archived documents that are not Notes", async () => {
+    vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: "operator-1" } } as never);
+    vi.mocked(prisma.quote.findUnique).mockResolvedValue({ status: QuoteStatus.ARCHIVED, workOrder: null } as never);
+
+    await expect(getOrCreateSharedQuoteAction("quote-1")).resolves.toEqual({
+      success: false,
+      error: "Solo las Notas archivadas pueden compartirse.",
     });
   });
 });

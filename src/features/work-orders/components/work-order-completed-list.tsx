@@ -15,6 +15,7 @@ import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snap
 import { resolveDocumentFolio, resolveAntecedentQuoteFolio } from "@/features/quotes/lib/document-resolver";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
+import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 
@@ -55,6 +56,7 @@ interface WorkOrderCompletedListProps {
   recordPaymentActions?: WorkOrderPaymentAction[];
   correctionActions?: WorkOrderCorrectionAction[];
   correctWorkOrderActions?: WorkOrderCommercialCorrectionAction[];
+  shareAction: (quoteId: string) => Promise<{ success: boolean; token?: string; error?: string }>;
   rollbackAction?: WorkOrderActions["rollback"];
   noteReturnTo?: string;
 }
@@ -78,6 +80,7 @@ export function WorkOrderCompletedList({
   recordPaymentActions = [],
   correctionActions = [],
   correctWorkOrderActions = [],
+  shareAction,
   rollbackAction,
   noteReturnTo = "/admin/notas",
 }: WorkOrderCompletedListProps) {
@@ -139,6 +142,7 @@ export function WorkOrderCompletedList({
                     <Printer className="h-5 w-5" aria-hidden="true" />
                     <span className="sr-only sm:not-sr-only">Imprimir nota</span>
                   </PrintActionButton>
+                  <ShareQuoteButton action={shareAction.bind(null, wo.quote.id)} quoteNumber={wo.quote.number} actionLabelClassName="sr-only sm:not-sr-only" />
                   <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile noteReturnTo={noteReturnTo} />
                   {correctWorkOrderAction ? (
                     <QuoteBuilderDialog

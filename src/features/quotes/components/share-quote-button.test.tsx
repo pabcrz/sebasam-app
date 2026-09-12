@@ -15,13 +15,13 @@ describe("ShareQuoteButton", () => {
     vi.clearAllMocks();
   });
 
-  it("publishes a tokenless draft, copies the generated link, confirms success, and refreshes the row", async () => {
+  it("creates or reuses a shared link, copies it, confirms success, and refreshes the row", async () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText");
     const toastSuccess = vi.spyOn(toast, "success");
     const action = vi.fn().mockResolvedValue({ success: true, token: "new-token" });
     writeText.mockResolvedValue(undefined);
-    render(<ShareQuoteButton action={action} status="DRAFT" quoteNumber="C-001" />);
+    render(<ShareQuoteButton action={action} quoteNumber="C-001" />);
 
     const button = screen.getByRole("button", { name: /compartir cotización c-001/i });
     expect(button).toBeInTheDocument();
@@ -34,14 +34,14 @@ describe("ShareQuoteButton", () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the server validation error and does not refresh an incomplete draft", async () => {
+  it("shows the server error and does not refresh", async () => {
     const user = userEvent.setup();
     const toastError = vi.spyOn(toast, "error");
     const action = vi.fn().mockResolvedValue({
       success: false,
       error: "Completa la descripción, cantidad y precio de todos los conceptos antes de compartir.",
     });
-    render(<ShareQuoteButton action={action} status="DRAFT" quoteNumber="C-001" />);
+    render(<ShareQuoteButton action={action} quoteNumber="C-001" />);
 
     await user.click(screen.getByRole("button", { name: /compartir/i }));
 
@@ -52,13 +52,13 @@ describe("ShareQuoteButton", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
-  it("copies a sent quote locally without invoking the action", async () => {
+  it("uses the action for a quote that already has a shared link", async () => {
     const user = userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText");
     const toastSuccess = vi.spyOn(toast, "success");
-    const action = vi.fn();
+    const action = vi.fn().mockResolvedValue({ success: true, token: "stable" });
     writeText.mockResolvedValue(undefined);
-    render(<ShareQuoteButton action={action} sharedQuote={{ token: "stable" }} status="SENT" quoteNumber="C-001" />);
+    render(<ShareQuoteButton action={action} quoteNumber="C-001" />);
     const button = screen.getByRole("button", { name: /compartir cotización c-001/i });
 
     expect(button).toHaveTextContent("Compartir");
@@ -66,7 +66,7 @@ describe("ShareQuoteButton", () => {
 
     await user.click(button);
 
-    expect(action).not.toHaveBeenCalled();
+    expect(action).toHaveBeenCalledTimes(1);
     expect(writeText).toHaveBeenCalledTimes(1);
     expect(toastSuccess).toHaveBeenCalledWith("Enlace copiado al portapapeles.", { id: "quote-share-copied" });
     expect(button).toHaveTextContent("Compartir");
@@ -78,7 +78,7 @@ describe("ShareQuoteButton", () => {
     const toastError = vi.spyOn(toast, "error");
     const writeText = vi.spyOn(navigator.clipboard, "writeText");
     writeText.mockRejectedValue(new Error("denied"));
-    render(<ShareQuoteButton sharedQuote={{ token: "stable" }} status="SENT" quoteNumber="C-001" />);
+    render(<ShareQuoteButton action={vi.fn().mockResolvedValue({ success: true, token: "stable" })} quoteNumber="C-001" />);
     await user.click(screen.getByRole("button"));
     expect(toastError).toHaveBeenCalledWith(
       expect.stringContaining("/cotizacion/stable"),
@@ -90,7 +90,7 @@ describe("ShareQuoteButton", () => {
     const user = userEvent.setup();
     const toastError = vi.spyOn(toast, "error");
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
-    render(<ShareQuoteButton sharedQuote={{ token: "stable" }} status="SENT" quoteNumber="C-001" />);
+    render(<ShareQuoteButton action={vi.fn().mockResolvedValue({ success: true, token: "stable" })} quoteNumber="C-001" />);
     await user.click(screen.getByRole("button"));
     expect(toastError).toHaveBeenCalledWith(
       expect.stringContaining("/cotizacion/stable"),

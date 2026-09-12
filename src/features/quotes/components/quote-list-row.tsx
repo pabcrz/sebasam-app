@@ -33,7 +33,7 @@ interface QuoteListRowProps {
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
-  shareAction: () => Promise<{ success: boolean; error?: string }>;
+  shareAction: () => Promise<{ success: boolean; token?: string; error?: string }>;
   authorizeAction: (note: string, authorizedSectionIds?: string[]) => Promise<{ success: boolean; error?: string }>;
   correctDecisionAction: (quoteId: string, nextStatus: "APPROVED" | "REJECTED" | "DRAFT") => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
@@ -161,11 +161,9 @@ export function QuoteListRow({
             <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
           ) : null}
 
-          {quote.status === "DRAFT" || (quote.activeSharedQuote && (quote.status === "SENT" || quote.status === "APPROVED")) ? (
+          {quote.status !== "CANCELLED" ? (
             <ShareQuoteButton
               action={shareAction}
-              sharedQuote={quote.activeSharedQuote ?? undefined}
-              status={quote.status}
               quoteNumber={quote.number}
               variant={quote.status === "DRAFT" ? (isQuoteCommercialReady(quote) ? "primary" : "secondary") : "outline"}
             />

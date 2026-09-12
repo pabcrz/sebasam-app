@@ -14,7 +14,7 @@ vi.mock("@/features/quotes/components/quote-builder-dialog", () => ({
 }));
 
 vi.mock("@/features/quotes/components/share-quote-button", () => ({
-  ShareQuoteButton: () => <button type="button">Compartir cotización</button>,
+  ShareQuoteButton: ({ action }: { action: () => Promise<unknown> }) => <button type="button" onClick={() => void action()}>Compartir cotización</button>,
 }));
 
 type ActiveListProps = ComponentProps<typeof WorkOrderActiveList>;
@@ -44,7 +44,7 @@ function createQuote() {
 
 function renderActiveList(
   workOrder: ActiveListProps["workOrders"][number],
-  input: { duplicateQuoteAction?: ActiveListProps["duplicateQuoteAction"]; withQuote?: boolean } = {},
+  input: { duplicateQuoteAction?: ActiveListProps["duplicateQuoteAction"]; shareAction?: ActiveListProps["shareAction"]; withQuote?: boolean } = {},
 ) {
   const quoteMap = input.withQuote ? new Map([[workOrder.quote.id, createQuote()]]) : new Map();
 
@@ -57,6 +57,7 @@ function renderActiveList(
       saveQuoteActions={input.withQuote ? [async () => ({ success: true })] : []}
       searchCustomersAction={async () => []}
       duplicateQuoteAction={input.duplicateQuoteAction ?? vi.fn()}
+      shareAction={input.shareAction ?? vi.fn().mockResolvedValue({ success: true, token: "share-token" })}
       workOrderActions={{}}
     />,
   );
