@@ -25,6 +25,7 @@ export interface QuotePreviewCardProps {
   totalCents: number | null;
   paidCents?: number | null;
   remainingCents?: number | null;
+  showPaymentStatus?: boolean;
   validUntil: Date | null;
   paymentDueDate?: Date | null;
   isNote?: boolean;
@@ -56,6 +57,7 @@ export function QuotePreviewCard({
   totalCents,
   paidCents,
   remainingCents,
+  showPaymentStatus,
   validUntil,
   paymentDueDate,
   isNote,
@@ -360,7 +362,7 @@ export function QuotePreviewCard({
               partialNotice={partialNotice}
             />
           </div>
-          <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} />
+          <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} showOutstanding={showPaymentStatus} />
 
           {!isNote ? (
             <div className="print:break-inside-avoid">

@@ -3,6 +3,7 @@ import { Prisma, QuoteDecisionOrigin, QuoteStatus, WorkOrderStatus } from "@pris
 import { prisma } from "@/lib/prisma";
 import { generateSlug, generateUniqueSlug } from "@/lib/slug";
 import { assertCommercialQuote, CommercialQuoteValidationError } from "./lib/commercial-validation";
+import { getNoteFinancialSummary } from "@/features/payments/domain";
 
 const SHARED_QUOTE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const CANONICAL_LINK_EXPIRES_AT = new Date("2099-12-31T23:59:59Z");
@@ -75,7 +76,7 @@ const sharedQuoteInclude = {
         include: { items: { orderBy: { sortOrder: "asc" } } },
         orderBy: { sortOrder: "asc" } 
       },
-      workOrder: { select: { status: true, folio: true } },
+      workOrder: { select: { id: true, status: true, folio: true } },
     },
   },
 } as const;
@@ -110,6 +111,25 @@ export async function getActiveSharedQuoteForQuote(quoteId: string) {
     },
     orderBy: { createdAt: "desc" },
   });
+}
+
+export type NotePublicPaymentStatus = {
+  paidCents: number;
+  remainingCents: number;
+  isSettled: boolean;
+};
+
+export async function getSharedQuotePaymentStatus(workOrderId: string): Promise<NotePublicPaymentStatus | null> {
+  try {
+    const summary = await getNoteFinancialSummary(prisma, workOrderId);
+    return {
+      paidCents: summary.appliedCents,
+      remainingCents: summary.pendingBalanceCents,
+      isSettled: summary.isSettled,
+    };
+  } catch {
+    return null;
+  }
 }
 
 type TransactionClient = Prisma.TransactionClient;

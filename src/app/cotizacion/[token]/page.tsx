@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import {
   getSharedQuoteByToken,
+  getSharedQuotePaymentStatus,
   SharedQuoteExpiredError,
   SharedQuoteRevokedError,
 } from "@/features/quotes/domain";
@@ -19,14 +20,32 @@ import { getPaymentSettings } from "@/features/payment-settings/domain";
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
 type SharedQuotePageResult =
-  | { kind: "success"; quote: SharedQuoteViewQuote }
+  | { kind: "success"; quote: SharedQuoteViewQuote; paymentStatus: Awaited<ReturnType<typeof getSharedQuotePaymentStatus>> }
   | { kind: "error"; errorType: SharedQuoteErrorType };
 
 type SharedQuoteDomainResult = Awaited<ReturnType<typeof getSharedQuoteByToken>>["quote"];
 
 function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQuoteViewQuote {
   return {
-    ...quote,
+    id: quote.id,
+    number: quote.number,
+    folio: quote.folio,
+    status: quote.status,
+    title: quote.title,
+    description: quote.description,
+    vehicleSnapshot: quote.vehicleSnapshot,
+    subtotalCents: quote.subtotalCents,
+    discountCents: quote.discountCents,
+    taxCents: quote.taxCents,
+    totalCents: quote.totalCents,
+    taxEnabled: quote.taxEnabled,
+    validUntil: quote.validUntil,
+    administrative: quote.administrative,
+    operationalDate: quote.operationalDate,
+    isLocked: quote.isLocked,
+    paymentDueDate: quote.paymentDueDate,
+    customer: quote.customer ? { name: quote.customer.name } : null,
+    vehicle: quote.vehicle,
     items: quote.items.map((item) => ({
       ...item,
       quantity: item.quantity.toString(),
@@ -38,6 +57,7 @@ function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQu
         quantity: item.quantity.toString(),
       })),
     })) : [],
+    workOrder: quote.workOrder,
   };
 }
 
@@ -56,7 +76,11 @@ function mapErrorToType(error: unknown): SharedQuoteErrorType {
 async function loadSharedQuotePageResult(token: string): Promise<SharedQuotePageResult> {
   try {
     const sharedQuote = await getSharedQuoteByToken(token);
-    return { kind: "success", quote: serializeSharedQuoteForClient(sharedQuote.quote) };
+    const workOrderId = sharedQuote.quote.workOrder?.status === "COMPLETED"
+      ? sharedQuote.quote.workOrder.id
+      : undefined;
+    const paymentStatus = workOrderId ? await getSharedQuotePaymentStatus(workOrderId) : null;
+    return { kind: "success", quote: serializeSharedQuoteForClient(sharedQuote.quote), paymentStatus };
   } catch (error) {
     return { kind: "error", errorType: mapErrorToType(error) };
   }
@@ -138,6 +162,7 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
       quote={result.quote}
       paymentSettings={paymentSettings}
       token={token}
+      paymentStatus={result.paymentStatus}
     />
   );
 }

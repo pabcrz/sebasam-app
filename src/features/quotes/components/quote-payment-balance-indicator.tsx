@@ -4,11 +4,12 @@ import { formatCents } from "@/features/quotes/lib/format";
 export interface QuotePaymentBalanceIndicatorProps {
   paidCents?: number | null;
   remainingCents?: number | null;
+  showOutstanding?: boolean;
 }
 
-export function QuotePaymentBalanceIndicator({ paidCents, remainingCents }: QuotePaymentBalanceIndicatorProps) {
+export function QuotePaymentBalanceIndicator({ paidCents, remainingCents, showOutstanding = false }: QuotePaymentBalanceIndicatorProps) {
   // A quote with no payment has no financial state to display yet.
-  if (paidCents == null || remainingCents == null || paidCents <= 0) {
+  if (paidCents == null || remainingCents == null || (paidCents <= 0 && !showOutstanding)) {
     return null;
   }
 
