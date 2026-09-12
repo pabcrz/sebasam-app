@@ -31,6 +31,7 @@ interface WorkOrderActiveListProps {
   saveQuoteActions: Array<(state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>>;
   searchCustomersAction: (input: unknown) => Promise<CustomerOption[]>;
   duplicateQuoteAction: (formData: FormData) => void | Promise<void>;
+  shareAction: (quoteId: string) => Promise<{ success: boolean; token?: string; error?: string }>;
   workOrderActions: WorkOrderActions;
 }
 
@@ -59,6 +60,7 @@ export function WorkOrderActiveList({
   saveQuoteActions,
   searchCustomersAction,
   duplicateQuoteAction,
+  shareAction,
   workOrderActions,
 }: WorkOrderActiveListProps) {
   const [previewOpenId, setPreviewOpenId] = React.useState<string | null>(null);
@@ -117,9 +119,7 @@ export function WorkOrderActiveList({
 
                 <QuoteDuplicateForm action={duplicateQuoteAction} quoteId={wo.quote.id} actionLabelClassName="sr-only sm:not-sr-only" />
 
-                {fullQuote?.activeSharedQuote ? (
-                  <ShareQuoteButton sharedQuote={fullQuote.activeSharedQuote} status={fullQuote.status} quoteNumber={wo.quote.number} actionLabelClassName="sr-only sm:not-sr-only" />
-                ) : null}
+                <ShareQuoteButton action={shareAction.bind(null, wo.quote.id)} quoteNumber={wo.quote.number} actionLabelClassName="sr-only sm:not-sr-only" />
               </OperationalActionRow>
             }
             body={

@@ -4,6 +4,9 @@ import { render, screen } from "@testing-library/react";
 import { WorkOrderCompletedList } from "./work-order-completed-list";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/features/quotes/components/share-quote-button", () => ({
+  ShareQuoteButton: () => <button type="button">Compartir cotización</button>,
+}));
 
 type CompletedListProps = ComponentProps<typeof WorkOrderCompletedList>;
 
@@ -74,6 +77,7 @@ describe("WorkOrderCompletedList", () => {
     render(
       <WorkOrderCompletedList
         workOrders={[workOrder, partialWorkOrder, overdueWorkOrder, noDueDateWorkOrder]}
+        shareAction={vi.fn()}
         recordPaymentActions={[{ workOrderId: workOrder.id, action: vi.fn() }]}
       />,
     );
@@ -96,7 +100,7 @@ describe("WorkOrderCompletedList", () => {
   });
 
   it("preserves the current Notes state when printing from the completed list", () => {
-    render(<WorkOrderCompletedList workOrders={[workOrder]} noteReturnTo="/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=workshop&page=2" />);
+    render(<WorkOrderCompletedList workOrders={[workOrder]} shareAction={vi.fn()} noteReturnTo="/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=workshop&page=2" />);
 
     const print = screen.getByRole("button", { name: "Imprimir nota de remisión COT-001" });
     expect(print).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dmonth%26anchor%3D2026-08%26payment%3Dpaid%26assignee%3Dworkshop%26page%3D2");
@@ -114,6 +118,7 @@ describe("WorkOrderCompletedList", () => {
     render(
       <WorkOrderCompletedList
         workOrders={[correctableWorkOrder]}
+        shareAction={vi.fn()}
         correctionActions={[{ workOrderId: correctableWorkOrder.id, action: vi.fn() }]}
       />,
     );
@@ -125,6 +130,7 @@ describe("WorkOrderCompletedList", () => {
     render(
       <WorkOrderCompletedList
         workOrders={[workOrder]}
+        shareAction={vi.fn()}
         correctWorkOrderActions={[{ workOrderId: workOrder.id, action: vi.fn() }]}
       />,
     );
@@ -145,11 +151,17 @@ describe("WorkOrderCompletedList", () => {
       },
     } as unknown as CompletedListProps["workOrders"][number];
 
-    render(<WorkOrderCompletedList workOrders={[dailyWorkOrder]} />);
+    render(<WorkOrderCompletedList workOrders={[dailyWorkOrder]} shareAction={vi.fn()} />);
 
     expect(screen.getByText("N-140826-01")).toBeInTheDocument();
     expect(screen.getByText("(T-0926-01)")).toBeInTheDocument();
     expect(screen.getByText(/Cot\.\s*C-140826-01/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Imprimir nota de remisión N-140826-01" })).toBeInTheDocument();
+  });
+
+  it("renders sharing for completed Notes", () => {
+    render(<WorkOrderCompletedList workOrders={[workOrder]} shareAction={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Compartir cotización" })).toBeInTheDocument();
   });
 });

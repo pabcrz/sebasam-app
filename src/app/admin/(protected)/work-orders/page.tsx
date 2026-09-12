@@ -12,7 +12,7 @@ import { WorkOrderActiveList } from "@/features/work-orders/components/work-orde
 import { listCustomers } from "@/features/customers/queries";
 import { listQuotesByIds } from "@/features/quotes/queries";
 import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
-import { duplicateQuoteFromForm, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
+import { duplicateQuoteFromForm, getOrCreateSharedQuoteAction, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
 import {
   assignWorkOrderAction,
   completeWorkOrderAction,
@@ -86,6 +86,7 @@ export default async function WorkOrdersPage() {
               saveQuoteActions={workOrders.map((wo) => updateDraftQuoteFromWorkspace.bind(null, wo.quote.id))}
               searchCustomersAction={searchCustomersForQuote}
               duplicateQuoteAction={duplicateQuoteFromForm}
+              shareAction={getOrCreateSharedQuoteAction}
               workOrderActions={{
                 assign: assignWorkOrderAction,
                 complete: completeWorkOrderAction,
