@@ -1,5 +1,6 @@
 import { QuoteItemType } from "@prisma/client";
 import { z } from "zod";
+import { isMeaningfulText } from "@/lib/meaningful-text";
 import { normalizeOperationalDate } from "./lib/operational-date";
 import { optionalTrimmedString as optionalFilterString } from "@/lib/filters";
 
@@ -57,7 +58,7 @@ const quantitySchema = z.coerce
 
 const quoteItemBaseSchema = z.object({
   type: z.nativeEnum(QuoteItemType),
-  description: z.string().trim().min(1, "Item description is required").max(240),
+  description: z.string().trim().min(1, "Item description is required").max(240).refine(isMeaningfulText, "La descripción debe incluir texto significativo."),
   quantity: quantitySchema,
   unitPriceCents: z.coerce.number().int().nonnegative("Unit price must be zero or greater").max(MAX_UNIT_PRICE_CENTS, "Unit price is too large"),
   includeInPayroll: z.coerce.boolean().default(false),
@@ -115,7 +116,7 @@ const quoteInputBaseSchema = z.object({
   customerContactId: optionalTrimmedString,
   customerFiscalProfileId: optionalTrimmedString,
   vehicle: quoteVehicleInputSchema,
-  title: z.string().trim().min(1, "Quote title is required").max(160),
+  title: z.string().trim().min(1, "Quote title is required").max(160).refine(isMeaningfulText, "El título debe incluir texto significativo."),
   description: optionalTrimmedString,
   administrative: z.boolean().default(false),
   taxEnabled: z.boolean().default(true),

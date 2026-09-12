@@ -34,3 +34,10 @@ describe("customer phone schemas", () => {
     expect(result.phone).toBe("5512345678");
   });
 });
+
+describe("customer meaningful name validation", () => {
+  it.each(["xyz", "..."])("rejects placeholder name %s on create and update", (name) => {
+    expect(customerInputSchema.safeParse({ name }).success).toBe(false);
+    expect(customerUpdateSchema.safeParse({ name, status: "ACTIVE" }).success).toBe(false);
+  });
+});
