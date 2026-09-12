@@ -36,7 +36,7 @@ interface QuoteListCardProps {
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
-  shareAction: () => Promise<{ success: boolean; error?: string }>;
+  shareAction: () => Promise<{ success: boolean; token?: string; error?: string }>;
   authorizeAction: (note: string, authorizedSectionIds?: string[]) => Promise<{ success: boolean; error?: string }>;
   correctDecisionAction: (quoteId: string, nextStatus: "APPROVED" | "REJECTED" | "DRAFT") => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
@@ -90,7 +90,6 @@ export function QuoteListCard({
   const actionPresentation = resolveQuoteActionPresentation({
     status: quote.status,
     editable,
-    hasActiveSharedQuote: Boolean(quote.activeSharedQuote),
     hasWorkOrder: Boolean(quote.workOrder),
     paymentAvailable: paymentRequestContext !== null,
   });
@@ -138,8 +137,6 @@ export function QuoteListCard({
         return (
           <ShareQuoteButton
             action={shareAction}
-            sharedQuote={quote.activeSharedQuote ?? undefined}
-            status={quote.status}
             quoteNumber={quote.number}
             variant={variant}
             className={tileClassName}

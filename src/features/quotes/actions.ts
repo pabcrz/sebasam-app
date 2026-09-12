@@ -44,10 +44,20 @@ import {
   correctQuoteDecision,
   getOrCreateSharedQuoteForQuote,
   ensureSharedQuoteInTransaction,
+  revokeCanonicalNoteSharedQuote,
+  SharedQuoteOperationError,
 } from "./domain";
 
 const quotesPath = "/admin/quotes";
 const genericQuoteFormValidationError = "Revisa los datos e intenta de nuevo.";
+
+const shareableQuoteStatuses = new Set<QuoteStatus>([
+  QuoteStatus.DRAFT,
+  QuoteStatus.SENT,
+  QuoteStatus.APPROVED,
+  QuoteStatus.REJECTED,
+  QuoteStatus.ARCHIVED,
+]);
 
 function quoteFormValidationError(issues: Array<{ message: string }>) {
   const actionableIssue = issues.find(({ message }) =>
@@ -903,6 +913,65 @@ export async function archiveQuote(quoteId: string, reason: string) {
   revalidatePath(quotesPath);
 }
 
+/** Archives a completed Note without revoking its canonical link or payments. */
+export async function archiveCompletedNote(quoteId: string, reason: string) {
+  const { profile } = await requireAdmin();
+  const parsedReason = quoteLifecycleReasonSchema.safeParse(reason);
+  if (!parsedReason.success) throw new Error("Archive reason is required.");
+
+  await prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true } });
+    if (!quote) throw new Error("Quote not found.");
+    if (quote.isLocked) throw new Error("Este documento está bloqueado.");
+    if (!quote.workOrder || quote.workOrder.status !== WorkOrderStatus.COMPLETED) {
+      throw new Error("Only completed Notes can be archived via this action.");
+    }
+    if (quote.status !== QuoteStatus.APPROVED && quote.status !== QuoteStatus.SENT) {
+      throw new Error("A completed Note must be in APPROVED or SENT status to be archived.");
+    }
+
+    const archived = await tx.quote.updateMany({
+      where: { id: quoteId, status: quote.status },
+      data: { status: QuoteStatus.ARCHIVED },
+    });
+    if (archived.count !== 1) throw new Error("Note archive state changed. Reload and try again.");
+    await tx.quoteLifecycleEvent.create({
+      data: {
+        quoteId,
+        previousState: quote.status,
+        nextState: QuoteStatus.ARCHIVED,
+        actorId: profile.id,
+        reason: parsedReason.data,
+      },
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  revalidatePath(quotesPath);
+  revalidatePath("/admin/notas");
+  revalidatePath("/admin/work-orders");
+}
+
+export async function revokeNoteCanonicalLinkAction(
+  quoteId: string,
+  reason: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const { profile } = await requireAdmin();
+
+  try {
+    await revokeCanonicalNoteSharedQuote(quoteId, profile.id, reason);
+  } catch (error) {
+    if (error instanceof SharedQuoteOperationError) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "No se pudo revocar el enlace. Intenta de nuevo." };
+  }
+
+  revalidatePath("/cotizacion", "layout");
+  revalidatePath(quotesPath);
+  revalidatePath("/admin/notas");
+  return { success: true };
+}
+
 export async function restoreArchivedQuote(quoteId: string, reason: string) {
   const { profile } = await requireOperationalRole();
   const parsedReason = quoteLifecycleReasonSchema.safeParse(reason);
@@ -1187,6 +1256,37 @@ export async function publishSharedQuote(quoteId: string): Promise<{ success: bo
   const shared = await getOrCreateSharedQuoteForQuote(quoteId);
   revalidatePath(quotesPath);
   return { success: true, token: shared.token };
+}
+
+export async function getOrCreateSharedQuoteAction(
+  quoteId: string,
+): Promise<{ success: boolean; token?: string; error?: string }> {
+  await requireOperationalRole();
+
+  try {
+    const quote = await prisma.quote.findUnique({
+      where: { id: quoteId },
+      select: { status: true, workOrder: { select: { status: true } } },
+    });
+
+    if (!quote || quote.status === QuoteStatus.CANCELLED) {
+      return { success: false, error: "No se puede compartir una cotización cancelada." };
+    }
+    if (!shareableQuoteStatuses.has(quote.status)) {
+      return { success: false, error: "No se puede compartir este documento en su estado actual." };
+    }
+    if (quote.status === QuoteStatus.ARCHIVED && quote.workOrder?.status !== WorkOrderStatus.COMPLETED) {
+      return { success: false, error: "Solo las Notas archivadas pueden compartirse." };
+    }
+
+    const shared = await getOrCreateSharedQuoteForQuote(quoteId);
+    revalidatePath(quotesPath);
+    revalidatePath("/admin/work-orders");
+    revalidatePath("/admin/notas");
+    return { success: true, token: shared.token };
+  } catch {
+    return { success: false, error: "No se pudo preparar el enlace para compartir. Intenta de nuevo." };
+  }
 }
 
 // --- Public accept / decline (no auth required; token is the authorization) ---

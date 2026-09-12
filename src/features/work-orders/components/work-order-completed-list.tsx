@@ -15,6 +15,8 @@ import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snap
 import { resolveDocumentFolio, resolveAntecedentQuoteFolio } from "@/features/quotes/lib/document-resolver";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
+import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
+import { NoteArchiveRevocationActions } from "@/features/quotes/components/note-archive-revocation-actions";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 
@@ -47,6 +49,12 @@ type WorkOrderCommercialCorrectionAction = {
   action: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
 };
 
+type NoteArchiveRevocationAction = {
+  quoteId: string;
+  archive: (reason: string) => Promise<void>;
+  revoke: (reason: string) => Promise<{ success: true } | { success: false; error: string }>;
+};
+
 interface WorkOrderCompletedListProps {
   workOrders: WorkOrderItem[];
   quoteMap?: Map<string, WorkOrderItem["quote"]>;
@@ -55,6 +63,8 @@ interface WorkOrderCompletedListProps {
   recordPaymentActions?: WorkOrderPaymentAction[];
   correctionActions?: WorkOrderCorrectionAction[];
   correctWorkOrderActions?: WorkOrderCommercialCorrectionAction[];
+  shareAction: (quoteId: string) => Promise<{ success: boolean; token?: string; error?: string }>;
+  archiveRevocationActions?: NoteArchiveRevocationAction[];
   rollbackAction?: WorkOrderActions["rollback"];
   noteReturnTo?: string;
 }
@@ -78,12 +88,15 @@ export function WorkOrderCompletedList({
   recordPaymentActions = [],
   correctionActions = [],
   correctWorkOrderActions = [],
+  shareAction,
+  archiveRevocationActions = [],
   rollbackAction,
   noteReturnTo = "/admin/notas",
 }: WorkOrderCompletedListProps) {
   const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
   const correctionActionMap = new Map(correctionActions.map((p) => [p.workOrderId, p.action]));
   const correctWorkOrderActionMap = new Map(correctWorkOrderActions.map((c) => [c.workOrderId, c.action]));
+  const archiveRevocationActionMap = new Map(archiveRevocationActions.map((action) => [action.quoteId, action]));
   const [selectedQuoteId, setSelectedQuoteId] = React.useState<string | null>(null);
 
   const selectedQuote = React.useMemo(() => {
@@ -98,6 +111,7 @@ export function WorkOrderCompletedList({
         const paymentAction = paymentActionMap.get(wo.id);
         const correctionAction = correctionActionMap.get(wo.id);
         const correctWorkOrderAction = correctWorkOrderActionMap.get(wo.id);
+        const archiveRevocationAction = archiveRevocationActionMap.get(wo.quote.id);
         const totalCents = Number(wo.quote.totalCents);
         const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
         const noteFolio = resolveDocumentFolio(wo);
@@ -139,6 +153,15 @@ export function WorkOrderCompletedList({
                     <Printer className="h-5 w-5" aria-hidden="true" />
                     <span className="sr-only sm:not-sr-only">Imprimir nota</span>
                   </PrintActionButton>
+                  <ShareQuoteButton action={shareAction.bind(null, wo.quote.id)} quoteNumber={wo.quote.number} actionLabelClassName="sr-only sm:not-sr-only" />
+                  {archiveRevocationAction ? (
+                    <NoteArchiveRevocationActions
+                      quoteNumber={wo.quote.number}
+                      archived={wo.quote.status === "ARCHIVED"}
+                      archiveAction={archiveRevocationAction.archive}
+                      revokeAction={archiveRevocationAction.revoke}
+                    />
+                  ) : null}
                   <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile noteReturnTo={noteReturnTo} />
                   {correctWorkOrderAction ? (
                     <QuoteBuilderDialog

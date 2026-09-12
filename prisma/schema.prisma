@@ -158,6 +158,7 @@ model UserProfile {
   settlementAgreements SettlementAgreement[] @relation("SettlementAgreementActor")
   settlementAgreementRevisions SettlementAgreementRevision[] @relation("SettlementAgreementRevisionActor")
   cancelledSettlementAgreements SettlementAgreement[] @relation("SettlementAgreementCanceller")
+  revokedSharedQuotes  SharedQuote[]        @relation("SharedQuoteRevoker")
 }
 
 model HelperPayrollWeek {
@@ -300,17 +301,23 @@ model Quote {
 }
 
 model SharedQuote {
-  id        String    @id @default(cuid())
-  token     String    @unique
-  quoteId   String
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
+  id               String       @id @default(cuid())
+  token            String       @unique
+  quoteId          String
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  isCanonical      Boolean      @default(false)
+  revokedByUserId  String?      @db.Uuid
+  revocationReason String?
+  createdAt        DateTime     @default(now())
 
-  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quote         Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  revokedByUser UserProfile? @relation("SharedQuoteRevoker", fields: [revokedByUserId], references: [id], onDelete: SetNull)
 
   @@index([quoteId])
+  @@index([quoteId, isCanonical])
   @@index([token])
+  @@index([revokedByUserId])
 }
 
 model QuoteDecision {

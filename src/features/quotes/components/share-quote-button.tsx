@@ -2,16 +2,13 @@
 
 import * as React from "react";
 import { Share2 } from "lucide-react";
-import type { QuoteStatus, SharedQuote } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui";
 import type { ButtonVariant } from "@/components/ui";
 
 export interface ShareQuoteButtonProps {
-  action?: () => Promise<{ success: boolean; token?: string; error?: string }>;
-  sharedQuote?: Pick<SharedQuote, "token">;
-  status: QuoteStatus;
+  action: () => Promise<{ success: boolean; token?: string; error?: string }>;
   quoteNumber: string;
   className?: string;
   variant?: ButtonVariant;
@@ -21,8 +18,6 @@ export interface ShareQuoteButtonProps {
 
 export function ShareQuoteButton({
   action,
-  sharedQuote,
-  status,
   quoteNumber,
   className,
   variant = "outline",
@@ -31,44 +26,14 @@ export function ShareQuoteButton({
 }: ShareQuoteButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
-  const isDraft = status === "DRAFT";
   const label = "Compartir";
-  const shareUrl = sharedQuote
-    ? typeof window === "undefined"
-      ? `/cotizacion/${sharedQuote.token}`
-      : `${window.location.origin}/cotizacion/${sharedQuote.token}`
-    : null;
-
-  async function copyUrl() {
-    if (!shareUrl) return;
-    if (!navigator.clipboard?.writeText) {
-      toast.error(`No se pudo copiar automáticamente: ${shareUrl}`, {
-        id: "quote-share-error",
-        duration: 6000,
-      });
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success("Enlace copiado al portapapeles.", { id: "quote-share-copied" });
-    } catch {
-      toast.error(`No se pudo copiar automáticamente: ${shareUrl}`, {
-        id: "quote-share-error",
-        duration: 6000,
-      });
-    }
-  }
 
   function handleShare(event: React.MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-    if (!isDraft) {
-      void copyUrl();
-      return;
-    }
     startTransition(async () => {
       try {
-        const result = await action?.();
+        const result = await action();
         if (!result?.success) {
           toast.error(
             result?.error ?? "No se pudo preparar la cotización. Intenta de nuevo.",
