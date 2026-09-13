@@ -102,7 +102,10 @@ BEGIN
     LEFT JOIN pg_attribute attribute ON attribute.attrelid = correction_oid AND attribute.attname = expected.name AND attribute.attnum > 0 AND NOT attribute.attisdropped
     LEFT JOIN pg_attrdef default_value ON default_value.adrelid = correction_oid AND default_value.adnum = attribute.attnum
     WHERE attribute.attname IS NULL
-       OR attribute.atttypid::regtype::text <> expected.data_type
+       -- regtype omits typmods (for example, it renders TIMESTAMP(3) as
+       -- "timestamp without time zone"). format_type is PostgreSQL's
+       -- canonical catalog rendering for the type declared by this DDL.
+       OR pg_catalog.format_type(attribute.atttypid, attribute.atttypmod) <> expected.data_type
        OR attribute.attnotnull <> expected.not_null
        OR COALESCE(pg_get_expr(default_value.adbin, default_value.adrelid), '') <> COALESCE(expected.default_expression, '')
   ) THEN
@@ -129,7 +132,7 @@ BEGIN
     LEFT JOIN pg_attribute attribute ON attribute.attrelid = application_oid AND attribute.attname = expected.name AND attribute.attnum > 0 AND NOT attribute.attisdropped
     LEFT JOIN pg_attrdef default_value ON default_value.adrelid = application_oid AND default_value.adnum = attribute.attnum
     WHERE attribute.attname IS NULL
-       OR attribute.atttypid::regtype::text <> expected.data_type
+       OR pg_catalog.format_type(attribute.atttypid, attribute.atttypmod) <> expected.data_type
        OR attribute.attnotnull <> expected.not_null
        OR COALESCE(pg_get_expr(default_value.adbin, default_value.adrelid), '') <> COALESCE(expected.default_expression, '')
   ) THEN
