@@ -17,6 +17,26 @@ case "$postgres_host" in
     ;;
 esac
 
+ensure_supabase_migration_roles() {
+  psql "$admin_url" -v ON_ERROR_STOP=1 <<'SQL' >/dev/null
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN
+    CREATE ROLE anon NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+  END IF;
+
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+  END IF;
+
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN
+    CREATE ROLE service_role NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+  END IF;
+END
+$$;
+SQL
+}
+
 database_url() {
   local database_name="$1"
   printf 'postgresql://%s@%s:%s/%s' "$postgres_user" "$postgres_host" "$postgres_port" "$database_name"
@@ -75,6 +95,7 @@ cleanup() {
 trap cleanup EXIT
 
 test -f "$migration_file"
+ensure_supabase_migration_roles
 
 printf 'Verifying clean database migration...\n'
 create_database quote_commercial_corrections_clean
