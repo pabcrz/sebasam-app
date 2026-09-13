@@ -208,7 +208,11 @@ if apply_pending_migrations quote_commercial_corrections_drifted prisma/schema.p
   exit 1
 fi
 
-grep -Fq 'Quote commercial correction table columns do not match the Prisma schema' "${temporary_root}/drifted.log"
+if ! grep -Fq 'Quote commercial correction table columns do not match the Prisma schema' "${temporary_root}/drifted.log"; then
+  printf 'Drift rejection did not report the expected structural validation failure.\n' >&2
+  cat "${temporary_root}/drifted.log" >&2
+  exit 1
+fi
 assert_migration_row quote_commercial_corrections_drifted 0
 
 printf 'Quote commercial correction migration evidence passed.\n'
