@@ -85,7 +85,10 @@ assert_monitored_tables_unchanged() {
   local after_snapshot
 
   after_snapshot="$(snapshot_monitored_tables "$database_name")"
-  test "$after_snapshot" = "$before_snapshot"
+  if [[ "$after_snapshot" != "$before_snapshot" ]]; then
+    printf 'Monitored legacy rows changed while applying %s.\nBefore: %s\nAfter: %s\n' "$migration_name" "$before_snapshot" "$after_snapshot" >&2
+    return 1
+  fi
 }
 
 assert_correction_tables_empty() {
