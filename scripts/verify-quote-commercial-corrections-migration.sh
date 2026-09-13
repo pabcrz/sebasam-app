@@ -142,7 +142,7 @@ VALUES
 INSERT INTO "WorkOrder" ("id", "quoteId", "number", "folio", "issuedAt", "status", "completedAt", "createdAt", "updatedAt")
 VALUES
   ('fixture-work-order-with-folio', 'fixture-note-with-folio', 'WO-FIXTURE-001', 'N-20260912-001', '2026-09-12T00:00:00Z', 'COMPLETED', '2026-09-12T01:00:00Z', '2026-09-12T00:00:00Z', '2026-09-12T01:00:00Z'),
-  ('fixture-work-order-without-folio', 'fixture-note-without-folio', 'WO-FIXTURE-002', NULL, 'COMPLETED', '2026-09-12T01:00:00Z', '2026-09-12T00:00:00Z', '2026-09-12T01:00:00Z');
+  ('fixture-work-order-without-folio', 'fixture-note-without-folio', 'WO-FIXTURE-002', NULL, NULL, 'COMPLETED', '2026-09-12T01:00:00Z', '2026-09-12T00:00:00Z', '2026-09-12T01:00:00Z');
 
 INSERT INTO "PaymentRequest" ("id", "token", "status", "customerId", "quoteId", "workOrderId", "expiresAt", "createdAt", "updatedAt")
 VALUES ('fixture-payment-request', 'fixture-payment-request-token', 'READY_TO_PAY', 'fixture-customer', 'fixture-note-with-folio', 'fixture-work-order-with-folio', '2026-10-12T00:00:00Z', '2026-09-12T00:00:00Z', '2026-09-12T00:00:00Z');
