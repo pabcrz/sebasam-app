@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     services:
       postgres:
-        image: postgres:16@sha256:f1c3376c26f2609ab9f29f71f824103fe2fcd8ee0346485cb6122a4f93df6f94
+        image: pgvector/pgvector:0.8.0-pg16-bookworm@sha256:a132765ec351c65111b5b675928a3a0515a466a40f97277329db8b8209ad8bc9
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
@@ -49,6 +49,11 @@ jobs:
           DATABASE_URL: postgresql://postgres@127.0.0.1:5432/postgres
           DIRECT_URL: postgresql://postgres@127.0.0.1:5432/postgres
         run: pnpm exec prisma validate
+
+      - name: Verify pgvector is available
+        run: |
+          psql postgresql://postgres@127.0.0.1:5432/postgres -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector'
+          psql postgresql://postgres@127.0.0.1:5432/postgres -v ON_ERROR_STOP=1 -c "SELECT extname FROM pg_extension WHERE extname = 'vector'"
 
       - name: Verify isolated PostgreSQL migration scenarios
         run: bash scripts/verify-quote-commercial-corrections-migration.sh
