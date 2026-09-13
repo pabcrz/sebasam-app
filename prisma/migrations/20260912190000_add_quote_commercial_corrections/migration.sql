@@ -137,15 +137,15 @@ BEGIN
   END IF;
 
   IF (SELECT array_agg(attribute.attname ORDER BY key.ordinality)
-      FROM pg_constraint constraint
-      JOIN unnest(constraint.conkey) WITH ORDINALITY AS key(attnum, ordinality) ON true
-      JOIN pg_attribute attribute ON attribute.attrelid = constraint.conrelid AND attribute.attnum = key.attnum
-      WHERE constraint.conrelid = correction_oid AND constraint.contype = 'p') <> ARRAY['id']
+      FROM pg_constraint pg_constraint_row
+      JOIN unnest(pg_constraint_row.conkey) WITH ORDINALITY AS key(attnum, ordinality) ON true
+      JOIN pg_attribute attribute ON attribute.attrelid = pg_constraint_row.conrelid AND attribute.attnum = key.attnum
+      WHERE pg_constraint_row.conrelid = correction_oid AND pg_constraint_row.contype = 'p') <> ARRAY['id']
      OR (SELECT array_agg(attribute.attname ORDER BY key.ordinality)
-         FROM pg_constraint constraint
-         JOIN unnest(constraint.conkey) WITH ORDINALITY AS key(attnum, ordinality) ON true
-         JOIN pg_attribute attribute ON attribute.attrelid = constraint.conrelid AND attribute.attnum = key.attnum
-         WHERE constraint.conrelid = application_oid AND constraint.contype = 'p') <> ARRAY['id'] THEN
+          FROM pg_constraint pg_constraint_row
+          JOIN unnest(pg_constraint_row.conkey) WITH ORDINALITY AS key(attnum, ordinality) ON true
+          JOIN pg_attribute attribute ON attribute.attrelid = pg_constraint_row.conrelid AND attribute.attnum = key.attnum
+          WHERE pg_constraint_row.conrelid = application_oid AND pg_constraint_row.contype = 'p') <> ARRAY['id'] THEN
     RAISE EXCEPTION 'Quote commercial correction primary keys do not match the Prisma schema';
   END IF;
 
