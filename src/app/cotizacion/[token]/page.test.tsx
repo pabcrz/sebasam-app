@@ -143,7 +143,7 @@ describe("CotizacionPage", () => {
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
 
       expect(metadata).toEqual({
-        title: "CristianDelToro-Cotizacion-COT-001",
+        title: { absolute: "CristianDelToro-freightliner-COT-001" },
         description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
         openGraph: {
           title: "Cotización COT-001 | SEBASAM",
@@ -175,7 +175,7 @@ describe("CotizacionPage", () => {
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
 
       expect(metadata).toEqual({
-        title: "CristianDelToro-Cotizacion-C-180626-01",
+        title: { absolute: "CristianDelToro-freightliner-C-180626-01" },
         description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
         openGraph: {
           title: "Cotización C-180626-01 | SEBASAM",
@@ -190,7 +190,7 @@ describe("CotizacionPage", () => {
       });
     });
 
-    it("presents assigned work as a Nota while retaining the quote folio", async () => {
+    it("presents assigned work as a Nota while retaining the quote folio without emitting Nota in filename", async () => {
       getSharedQuoteByTokenMock.mockResolvedValue({
         quote: {
           id: "quote-1",
@@ -207,7 +207,7 @@ describe("CotizacionPage", () => {
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
 
       expect(metadata).toEqual({
-        title: "CristianDelToro-Nota-C-180626-01",
+        title: { absolute: "CristianDelToro-freightliner-C-180626-01" },
         description: "Nota para Cristian Del Toro - freightliner - Sin placas",
         openGraph: {
           title: "Nota C-180626-01 | SEBASAM",
@@ -222,13 +222,35 @@ describe("CotizacionPage", () => {
       });
     });
 
+    it("formats filename without customer and without SinCliente when customer is absent", async () => {
+      getSharedQuoteByTokenMock.mockResolvedValue({
+        quote: {
+          id: "quote-anon",
+          number: "COT-002",
+          folio: "C-180626-02",
+          customer: null,
+          customerSnapshot: null,
+          vehicle: { economicNumber: "Eco 8" },
+          vehicleSnapshot: null,
+          operationalDate: new Date("2026-06-18T00:00:00.000Z"),
+          workOrder: null,
+        },
+      });
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ token: "anon-token" }) });
+
+      expect(metadata.title).toEqual({ absolute: "Eco8-C-180626-02" });
+      expect((metadata.title as { absolute: string }).absolute).not.toContain("SinCliente");
+      expect((metadata.title as { absolute: string }).absolute).not.toContain("Sincliente");
+    });
+
     it("returns safe fallback metadata when token is expired", async () => {
       getSharedQuoteByTokenMock.mockRejectedValue(new SharedQuoteExpiredError());
 
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "expired-token" }) });
 
       expect(metadata).toEqual({
-        title: "Cotización",
+        title: { absolute: "Cotización" },
         description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
         openGraph: {
           title: "Cotización | SEBASAM",
@@ -249,7 +271,7 @@ describe("CotizacionPage", () => {
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "revoked-token" }) });
 
       expect(metadata).toEqual({
-        title: "Cotización",
+        title: { absolute: "Cotización" },
         description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
         openGraph: {
           title: "Cotización | SEBASAM",
@@ -270,7 +292,7 @@ describe("CotizacionPage", () => {
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "invalid-token" }) });
 
       expect(metadata).toEqual({
-        title: "Cotización",
+        title: { absolute: "Cotización" },
         description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
         openGraph: {
           title: "Cotización | SEBASAM",

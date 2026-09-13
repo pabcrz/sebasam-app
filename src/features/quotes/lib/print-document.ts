@@ -8,6 +8,8 @@ let activeCleanupTimer: ReturnType<typeof setTimeout> | null = null;
 let activeRemovalTimer: ReturnType<typeof setTimeout> | null = null;
 let activeWindowCleanup: (() => void) | null = null;
 let activeSessionId = 0;
+let activeOriginalTitle: string | null = null;
+let activeReject: ((reason?: unknown) => void) | null = null;
 
 export interface PrintDocumentOptions {
   timeoutMs?: number;
@@ -161,7 +163,7 @@ async function waitForPaintFrames(cw: Window, frameCount = 2, isCancelled?: () =
   });
 }
 
-export function cancelActivePrintJob(): void {
+export function cancelActivePrintJob(newJobStarting = false): void {
   // Invalidate any ongoing asynchronous operations
   activeSessionId += 1;
 
@@ -183,6 +185,22 @@ export function cancelActivePrintJob(): void {
     }
     activePrintIframe = null;
   }
+
+  // Reject previous pending job explicitly
+  if (activeReject) {
+    activeReject(new Error("La impresión fue cancelada por una nueva solicitud."));
+    activeReject = null;
+  }
+
+  // If NO new job is starting, restore document.title now.
+  // If a new job IS starting, preserve activeOriginalTitle so the new job inherits
+  // the pre-print title and restores it when the final job finishes.
+  if (!newJobStarting && activeOriginalTitle !== null) {
+    if (typeof document !== "undefined") {
+      document.title = activeOriginalTitle;
+    }
+    activeOriginalTitle = null;
+  }
 }
 
 export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}): Promise<void> {
@@ -192,13 +210,16 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
     return Promise.resolve();
   }
 
-  // Cancel any ongoing job, clean listeners, and purge previous iframe immediately
-  cancelActivePrintJob();
+  // Cancel any ongoing job, clean listeners, reject previous pending job explicitly,
+  // and preserve original pre-print document.title for the incoming job.
+  cancelActivePrintJob(true);
 
   const currentSession = activeSessionId;
   const isCancelled = () => currentSession !== activeSessionId;
 
   return new Promise<void>((resolve, reject) => {
+    activeReject = reject;
+
     const iframe = document.createElement("iframe");
     activePrintIframe = iframe;
 
@@ -257,6 +278,19 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
           activePrintIframe = null;
         }
       }, 1500);
+
+      // Restore document.title ONLY IF this session is still the active session!
+      // If this job was cancelled by a newer job, it must NOT touch document.title
+      // nor clear activeOriginalTitle so the newer job retains control.
+      if (!isCancelled()) {
+        if (activeOriginalTitle !== null) {
+          document.title = activeOriginalTitle;
+          activeOriginalTitle = null;
+        }
+        if (activeReject === reject) {
+          activeReject = null;
+        }
+      }
     };
 
     const removeWindowListener = () => {
@@ -325,6 +359,13 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
         // Force another reflow check after fonts settle
         if (doc?.body) {
           void doc.body.offsetHeight;
+        }
+
+        // Synchronize document.title with the iframe document title so browser "Save as PDF"
+        // uses the dynamic document title rather than the admin parent window's generic title.
+        if (doc?.title) {
+          activeOriginalTitle ??= document.title;
+          document.title = doc.title;
         }
 
         // Listen for afterprint with symmetrical cleanup handlers

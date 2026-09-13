@@ -143,6 +143,20 @@ export function resolveCustomerDisplayIdentity(source: CustomerDisplayIdentitySo
   };
 }
 
+export function resolveOptionalCustomerName(source: CustomerDisplayIdentitySource): string | null {
+  const customerSnapshot = (source.customerSnapshot && typeof source.customerSnapshot === "object"
+    ? source.customerSnapshot
+    : null) as CustomerSnapshotData | null;
+
+  return (
+    customerSnapshot?.commercialName?.trim() ||
+    source.customer?.commercialName?.trim() ||
+    customerSnapshot?.name?.trim() ||
+    source.customer?.name?.trim() ||
+    null
+  );
+}
+
 export function formatQuoteContactRole(role?: string | null): string | null {
   if (!role) return null;
   const trimmed = role.trim();

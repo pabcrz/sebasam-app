@@ -7,7 +7,10 @@ import { QuoteDocumentView } from "@/features/public-quotes/components/quote-doc
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
 import { resolveDocumentFolio } from "@/features/quotes/lib/document-resolver";
 import { PrintControls } from "@/features/quotes/components/print-controls";
-import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import {
+  resolveCustomerDisplayIdentity,
+  resolveOptionalCustomerName,
+} from "@/features/quotes/lib/quote-snapshots";
 
 interface PrintPageProps {
   params: Promise<{ id: string }>;
@@ -19,25 +22,25 @@ export async function generateMetadata({ params }: PrintPageProps): Promise<Meta
 
   if (!workOrder) {
     return {
-      title: "Nota",
+      title: { absolute: "Nota" },
     };
   }
 
   const { quote } = workOrder;
   const identity = resolveCustomerDisplayIdentity(quote);
+  const customerName = resolveOptionalCustomerName(quote);
   const vehicle = workOrder.isSpecial ? "Taller" : quote.vehicle ?? quote.vehicleSnapshot;
   const folio = resolveDocumentFolio(workOrder);
   const title = formatDocumentPdfFilename({
-    customerName: identity.displayName,
+    customerName,
+    driverName: identity.operatorName,
     vehicle,
     operationalDate: quote.operationalDate ?? workOrder.completedAt,
-    fallbackType: "Nota",
     folio,
-    documentType: "Nota",
   });
 
   return {
-    title,
+    title: { absolute: title },
   };
 }
 

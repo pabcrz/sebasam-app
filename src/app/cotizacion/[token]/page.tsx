@@ -14,7 +14,10 @@ import {
   resolveDocumentFolio,
   resolveDocumentPresentation,
 } from "@/features/quotes/lib/document-resolver";
-import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import {
+  resolveCustomerDisplayIdentity,
+  resolveOptionalCustomerName,
+} from "@/features/quotes/lib/quote-snapshots";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
@@ -97,25 +100,25 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
     const quote = sharedQuote.quote;
     const { documentType } = resolveDocumentPresentation(quote);
     const identity = resolveCustomerDisplayIdentity(quote);
-    const customerName = identity.displayName;
+    const customerDisplayName = identity.displayName;
+    const realCustomerName = resolveOptionalCustomerName(quote);
     const vehicleDescription = quote.vehicle
       ? formatVehicle(quote.vehicle)
       : formatSnapshotVehicle(quote.vehicleSnapshot);
 
     const folio = resolveDocumentFolio(quote);
     const title = formatDocumentPdfFilename({
-      customerName: identity.displayName,
+      customerName: realCustomerName,
+      driverName: identity.operatorName,
       vehicle: quote.vehicle ?? quote.vehicleSnapshot,
       operationalDate: quote.operationalDate,
-      fallbackType: documentType,
       folio,
-      documentType,
     });
     const displayTitle = `${documentType} ${folio || quote.number} | SEBASAM`;
-    const description = `${documentType} para ${customerName} - ${vehicleDescription}`;
+    const description = `${documentType} para ${customerDisplayName} - ${vehicleDescription}`;
 
     return {
-      title,
+      title: { absolute: title },
       description,
       openGraph: {
         title: displayTitle,
@@ -130,7 +133,7 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
     };
   } catch {
     return {
-      title: "Cotización",
+      title: { absolute: "Cotización" },
       description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
       openGraph: {
         title: "Cotización | SEBASAM",
