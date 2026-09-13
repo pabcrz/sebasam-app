@@ -210,12 +210,12 @@ prepare_pre_migration_schema quote_commercial_corrections_drifted
 apply_migration_sql_without_history quote_commercial_corrections_drifted
 psql "$(database_url quote_commercial_corrections_drifted)" -v ON_ERROR_STOP=1 -c 'ALTER TABLE "QuoteCommercialCorrection" ADD COLUMN "unexpectedDrift" TEXT' >/dev/null
 assert_migration_row quote_commercial_corrections_drifted 0
-assert_failed_migration_row quote_commercial_corrections_drifted
 
 if apply_pending_migrations quote_commercial_corrections_drifted prisma/schema.prisma >"${temporary_root}/drifted.log" 2>&1; then
   printf 'Expected the drifted legacy schema to fail migration validation.\n' >&2
   exit 1
 fi
+assert_failed_migration_row quote_commercial_corrections_drifted
 
 if ! grep -Fq 'Quote commercial correction table columns do not match the Prisma schema' "${temporary_root}/drifted.log"; then
   printf 'Drift rejection did not report the expected structural validation failure.\n' >&2
