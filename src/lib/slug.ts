@@ -1,22 +1,30 @@
 import crypto from "node:crypto";
 
 const SLUG_SUFFIX_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-const SLUG_SUFFIX_LENGTH = 8;
+export const DEFAULT_SLUG_SUFFIX_LENGTH = 8;
+export const DOCUMENT_SLUG_SUFFIX_LENGTH = 6;
 
 /**
- * Generate a short random base62 suffix (8 chars, ~47 bits).
+ * Generate a short random base62 suffix.
  */
-function randomSuffix(): string {
-  return Array.from({ length: SLUG_SUFFIX_LENGTH }, () =>
+export function randomSuffix(length = DEFAULT_SLUG_SUFFIX_LENGTH): string {
+  return Array.from({ length }, () =>
     SLUG_SUFFIX_ALPHABET[crypto.randomInt(SLUG_SUFFIX_ALPHABET.length)],
   ).join("");
 }
 
 /**
- * Build a short human-readable slug: `{prefix}-{8_random_base62}`.
+ * Build a short human-readable slug: `{prefix}-{random_base62}`.
  */
-export function generateSlug(prefix: string): string {
-  return `${prefix}-${randomSuffix()}`;
+export function generateSlug(prefix: string, suffixLength = DEFAULT_SLUG_SUFFIX_LENGTH): string {
+  return `${prefix}-${randomSuffix(suffixLength)}`;
+}
+
+/**
+ * Build a document slug with 6 random base62 characters.
+ */
+export function generateDocumentSlug(prefix: string): string {
+  return generateSlug(prefix, DOCUMENT_SLUG_SUFFIX_LENGTH);
 }
 
 /**
@@ -64,9 +72,10 @@ export async function generateUniqueSlug(
   prefix: string,
   exists: (slug: string) => Promise<boolean>,
   maxRetries = MAX_SLUG_RETRIES,
+  suffixLength = DEFAULT_SLUG_SUFFIX_LENGTH,
 ): Promise<string> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const slug = generateSlug(prefix);
+    const slug = generateSlug(prefix, suffixLength);
 
     if (!(await exists(slug))) {
       return slug;

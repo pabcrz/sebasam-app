@@ -527,15 +527,38 @@ describe("getOrCreateSharedQuoteForQuote", () => {
 
     const result = await getOrCreateSharedQuoteForQuote("q-1");
 
-    expect(result.token).toMatch(/^C-0726-03-[0-9A-Za-z]{8}$/);
+    expect(result.token).toMatch(/^C-0726-03-[0-9A-Za-z]{6}$/);
     expect(tx.sharedQuote.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          token: expect.stringMatching(/^C-0726-03-[0-9A-Za-z]{8}$/),
+          token: expect.stringMatching(/^C-0726-03-[0-9A-Za-z]{6}$/),
           quoteId: "q-1",
         }),
       }),
     );
+  });
+
+  it("uses folio instead of number when folio is available", async () => {
+    const tx = mockTx();
+    tx.sharedQuote.findFirst.mockResolvedValue(null);
+    tx.quote.findUnique.mockResolvedValue({
+      id: "q-1",
+      number: "0626-001",
+      folio: "C-090926-01",
+      status: QuoteStatus.SENT,
+      customerId: "customer-1",
+      subtotalCents: 1000,
+      discountCents: 0,
+      taxCents: 160,
+      totalCents: 1160,
+      taxEnabled: true,
+      items: [{ description: "Repair", quantity: { toString: () => "1" }, unitPriceCents: 1000 }],
+    });
+    tx.sharedQuote.findUnique.mockResolvedValue(null);
+
+    const result = await getOrCreateSharedQuoteForQuote("q-1");
+
+    expect(result.token).toMatch(/^C-090926-01-[0-9A-Za-z]{6}$/);
   });
 
   it("retries slug generation on collision", async () => {
@@ -562,9 +585,66 @@ describe("getOrCreateSharedQuoteForQuote", () => {
 
     const result = await getOrCreateSharedQuoteForQuote("q-1");
 
-    expect(result.token).toMatch(/^C-0726-03-[0-9A-Za-z]{8}$/);
+    expect(result.token).toMatch(/^C-0726-03-[0-9A-Za-z]{6}$/);
     // findUnique called twice: one for collision, one for free slug
     expect(tx.sharedQuote.findUnique).toHaveBeenCalledTimes(2);
+  });
+
+  it("aborts current transaction on P2002 and retries the entire operation in a fresh transaction", async () => {
+    let txAttempts = 0;
+    const p2002Error = new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+      code: "P2002",
+      clientVersion: "test",
+      meta: { target: ["token"] },
+    });
+
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
+      async (callback: (tx: MockTransaction) => Promise<unknown>) => {
+        txAttempts += 1;
+        const currentTx = {
+          quote: {
+            findUnique: vi.fn().mockResolvedValue({
+              id: "q-1",
+              number: "C-0726-03",
+              folio: "C-090926-01",
+              status: QuoteStatus.SENT,
+              customerId: "customer-1",
+              subtotalCents: 1000,
+              discountCents: 0,
+              taxCents: 160,
+              totalCents: 1160,
+              taxEnabled: true,
+              items: [{ description: "Repair", quantity: { toString: () => "1" }, unitPriceCents: 1000 }],
+            }),
+            updateMany: vi.fn(),
+            update: vi.fn(),
+          },
+          quoteSection: { updateMany: vi.fn() },
+          quoteDecision: { create: vi.fn() },
+          quoteLifecycleEvent: { create: vi.fn() },
+          sharedQuote: {
+            findFirst: vi.fn().mockResolvedValue(null),
+            findUnique: vi.fn().mockResolvedValue(null),
+            create: vi.fn().mockImplementation(() => {
+              if (txAttempts === 1) {
+                // First concurrent attempt throws P2002 on create
+                return Promise.reject(p2002Error);
+              }
+              return Promise.resolve({ id: "sq-retry-success", token: "C-090926-01-xyz123" });
+            }),
+            update: vi.fn(),
+          },
+          workOrder: { findFirst: vi.fn().mockResolvedValue(null) },
+        };
+        return callback(currentTx as unknown as MockTransaction);
+      },
+    );
+
+    const result = await getOrCreateSharedQuoteForQuote("q-1");
+
+    expect(result.id).toBe("sq-retry-success");
+    expect(txAttempts).toBe(2);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -573,7 +653,7 @@ describe("createSharedQuoteForQuote", () => {
     vi.clearAllMocks();
   });
 
-  it("creates a shared quote with slug format", async () => {
+  it("creates a shared quote with 6-char slug format", async () => {
     const tx = mockTx();
     tx.quote.findUnique.mockResolvedValue({
       id: "q-1",
@@ -591,7 +671,61 @@ describe("createSharedQuoteForQuote", () => {
 
     const result = await createSharedQuoteForQuote("q-1");
 
-    expect(result.token).toMatch(/^C-0726-03-[0-9A-Za-z]{8}$/);
+    expect(result.token).toMatch(/^C-0726-03-[0-9A-Za-z]{6}$/);
+  });
+
+  it("aborts transaction and retries up to MAX_SHARED_QUOTE_TRANSACTION_RETRIES when P2002 collides", async () => {
+    let txAttempts = 0;
+    const p2002Error = new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+      code: "P2002",
+      clientVersion: "test",
+      meta: { target: ["token"] },
+    });
+
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
+      async (callback: (tx: MockTransaction) => Promise<unknown>) => {
+        txAttempts += 1;
+        const currentTx = {
+          quote: {
+            findUnique: vi.fn().mockResolvedValue({
+              id: "q-1",
+              number: "C-0726-03",
+              status: QuoteStatus.SENT,
+              customerId: "customer-1",
+              subtotalCents: 1000,
+              discountCents: 0,
+              taxCents: 160,
+              totalCents: 1160,
+              taxEnabled: true,
+              items: [{ description: "Repair", quantity: { toString: () => "1" }, unitPriceCents: 1000 }],
+            }),
+            updateMany: vi.fn(),
+            update: vi.fn(),
+          },
+          quoteSection: { updateMany: vi.fn() },
+          quoteDecision: { create: vi.fn() },
+          quoteLifecycleEvent: { create: vi.fn() },
+          sharedQuote: {
+            findFirst: vi.fn().mockResolvedValue(null),
+            findUnique: vi.fn().mockResolvedValue(null),
+            create: vi.fn().mockImplementation(() => {
+              if (txAttempts === 1) {
+                return Promise.reject(p2002Error);
+              }
+              return Promise.resolve({ id: "sq-create-success", token: "C-0726-03-retry1" });
+            }),
+            update: vi.fn(),
+          },
+          workOrder: { findFirst: vi.fn().mockResolvedValue(null) },
+        };
+        return callback(currentTx as unknown as MockTransaction);
+      },
+    );
+
+    const result = await createSharedQuoteForQuote("q-1");
+
+    expect(result.id).toBe("sq-create-success");
+    expect(txAttempts).toBe(2);
   });
 });
 

@@ -1,7 +1,11 @@
 import crypto from "node:crypto";
 import { Prisma, QuoteDecisionOrigin, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { generateSlug, generateUniqueSlug } from "@/lib/slug";
+import {
+  DOCUMENT_SLUG_SUFFIX_LENGTH,
+  generateSlug,
+  generateUniqueSlug,
+} from "@/lib/slug";
 import { assertCommercialQuote, CommercialQuoteValidationError } from "./lib/commercial-validation";
 import { getNoteFinancialSummary } from "@/features/payments/domain";
 
@@ -168,10 +172,16 @@ async function createSharedQuoteInTransaction(tx: TransactionClient, quoteId: st
 
   assertQuoteCanBeShared(quote);
 
-  const token = await generateUniqueSlug(quote.number, async (slug) => {
-    const existing = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
-    return existing !== null;
-  });
+  const prefix = quote.folio ?? quote.number;
+  const token = await generateUniqueSlug(
+    prefix,
+    async (slug) => {
+      const existing = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
+      return existing !== null;
+    },
+    5,
+    DOCUMENT_SLUG_SUFFIX_LENGTH,
+  );
 
   return tx.sharedQuote.create({
     data: {
@@ -191,14 +201,20 @@ async function ensureCanonicalNoteSharedQuote(tx: TransactionClient, quoteId: st
 
   const quote = await tx.quote.findUnique({
     where: { id: quoteId },
-    select: { id: true, number: true },
+    select: { id: true, number: true, folio: true },
   });
   if (!quote) throw new SharedQuoteOperationError("Quote not found.");
 
-  const token = await generateUniqueSlug(quote.number, async (slug) => {
-    const taken = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
-    return taken !== null;
-  });
+  const prefix = quote.folio ?? quote.number;
+  const token = await generateUniqueSlug(
+    prefix,
+    async (slug) => {
+      const taken = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
+      return taken !== null;
+    },
+    5,
+    DOCUMENT_SLUG_SUFFIX_LENGTH,
+  );
 
   try {
     return await tx.sharedQuote.create({
@@ -241,17 +257,23 @@ export async function ensureSharedQuoteInTransaction(tx: TransactionClient, quot
 
   const quote = await tx.quote.findUnique({
     where: { id: quoteId },
-    select: { id: true, number: true },
+    select: { id: true, number: true, folio: true },
   });
 
   if (!quote) {
     throw new SharedQuoteOperationError("Quote not found.");
   }
 
-  const token = await generateUniqueSlug(quote.number, async (slug) => {
-    const existing = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
-    return existing !== null;
-  });
+  const prefix = quote.folio ?? quote.number;
+  const token = await generateUniqueSlug(
+    prefix,
+    async (slug) => {
+      const existing = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
+      return existing !== null;
+    },
+    5,
+    DOCUMENT_SLUG_SUFFIX_LENGTH,
+  );
 
   return tx.sharedQuote.create({
     data: {
@@ -262,24 +284,56 @@ export async function ensureSharedQuoteInTransaction(tx: TransactionClient, quot
   });
 }
 
+export const MAX_SHARED_QUOTE_TRANSACTION_RETRIES = 3;
+
+function isTokenP2002Error(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    const target = (error.meta as { target?: string[] | string })?.target;
+    if (Array.isArray(target)) {
+      return target.includes("token");
+    }
+    if (typeof target === "string") {
+      return target.includes("token");
+    }
+    return true;
+  }
+  return false;
+}
+
 export async function createSharedQuoteForQuote(quoteId: string) {
-  return prisma.$transaction(async (tx) => createSharedQuoteInTransaction(tx, quoteId));
+  for (let attempt = 0; attempt < MAX_SHARED_QUOTE_TRANSACTION_RETRIES; attempt++) {
+    try {
+      return await prisma.$transaction(async (tx) => createSharedQuoteInTransaction(tx, quoteId));
+    } catch (error) {
+      if (isTokenP2002Error(error) && attempt < MAX_SHARED_QUOTE_TRANSACTION_RETRIES - 1) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new SharedQuoteOperationError("Failed to generate unique shared quote after retries.");
 }
 
 export async function getOrCreateSharedQuoteForQuote(quoteId: string) {
-  try {
-    return await prisma.$transaction(async (tx) => ensureSharedQuoteInTransaction(tx, quoteId));
-  } catch (error) {
-    if (!(error instanceof CanonicalNoteSharedQuoteRaceError)) throw error;
+  for (let attempt = 0; attempt < MAX_SHARED_QUOTE_TRANSACTION_RETRIES; attempt++) {
+    try {
+      return await prisma.$transaction(async (tx) => ensureSharedQuoteInTransaction(tx, quoteId));
+    } catch (error) {
+      if (error instanceof CanonicalNoteSharedQuoteRaceError) {
+        const winner = await prisma.sharedQuote.findFirst({
+          where: { quoteId, isCanonical: true, revokedAt: null },
+          orderBy: { createdAt: "asc" },
+        });
+        if (winner) return winner;
+      }
 
-    const winner = await prisma.sharedQuote.findFirst({
-      where: { quoteId, isCanonical: true, revokedAt: null },
-      orderBy: { createdAt: "asc" },
-    });
-    if (winner) return winner;
-
-    return prisma.$transaction(async (tx) => ensureSharedQuoteInTransaction(tx, quoteId));
+      if (isTokenP2002Error(error) && attempt < MAX_SHARED_QUOTE_TRANSACTION_RETRIES - 1) {
+        continue;
+      }
+      throw error;
+    }
   }
+  throw new SharedQuoteOperationError("Failed to generate unique shared quote after retries.");
 }
 
 /** Revokes the durable public link of a completed Note with an audit trail. */

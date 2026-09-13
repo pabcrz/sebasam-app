@@ -63,11 +63,13 @@ describe("printDocumentUrl", () => {
   });
 
   it("removes older iframe if a new print job is initiated", () => {
-    printDocumentUrl("/admin/quotes/quote-1/print");
+    const job1 = printDocumentUrl("/admin/quotes/quote-1/print");
+    job1.catch(() => {});
     const firstIframe = document.querySelector("iframe");
     expect(firstIframe).toBeInTheDocument();
 
-    printDocumentUrl("/admin/quotes/quote-2/print");
+    const job2 = printDocumentUrl("/admin/quotes/quote-2/print");
+    job2.catch(() => {});
     expect(firstIframe?.parentNode).toBeNull();
     const secondIframe = document.querySelector("iframe");
     expect(secondIframe).toBeInTheDocument();
@@ -298,7 +300,8 @@ describe("printDocumentUrl", () => {
 
   it("prevents late onload or paint callbacks of superseded jobs from invoking print()", async () => {
     // Start job A (slow load)
-    void printDocumentUrl("/admin/quotes/quote-A/print");
+    const jobA = printDocumentUrl("/admin/quotes/quote-A/print");
+    jobA.catch(() => {});
     const iframeA = document.querySelector("iframe");
     const printSpyA = vi.fn();
     Object.defineProperty(iframeA, "contentWindow", {
@@ -374,8 +377,117 @@ describe("printDocumentUrl", () => {
     await printPromise;
 
     // Starting a new print job should invoke window.removeEventListener for afterprint
-    printDocumentUrl("/admin/quotes/quote-2/print");
+    const job2 = printDocumentUrl("/admin/quotes/quote-2/print");
+    job2.catch(() => {});
 
     expect(removeEventListenerSpy).toHaveBeenCalledWith("afterprint", expect.any(Function));
+  });
+
+  it("synchronizes document.title with iframe title and restores it on afterprint", async () => {
+    document.title = "Cotizaciones | SEBASAM";
+
+    const printPromise = printDocumentUrl("/admin/quotes/quote-1/print");
+    const iframe = document.querySelector("iframe");
+
+    const afterPrintCalls: Array<() => void> = [];
+
+    Object.defineProperty(iframe, "contentWindow", {
+      value: {
+        focus: vi.fn(),
+        print: vi.fn(() => {
+          // Verify title is synchronized at the moment print() is invoked
+          expect(document.title).toBe("TransportesHernandez-Eco14-C-090926-01");
+        }),
+        addEventListener: vi.fn((event: string, cb: () => void) => {
+          if (event === "afterprint") afterPrintCalls.push(cb);
+        }),
+        removeEventListener: vi.fn(),
+        document: {
+          title: "TransportesHernandez-Eco14-C-090926-01",
+          querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+          fonts: { ready: Promise.resolve() },
+          body: { offsetHeight: 100 },
+        },
+      },
+      writable: true,
+    });
+
+    iframe?.onload?.(new Event("load"));
+    await vi.advanceTimersByTimeAsync(200);
+    await printPromise;
+
+    // Trigger afterprint to simulate print dialog close
+    afterPrintCalls.forEach((cb) => cb());
+    expect(document.title).toBe("Cotizaciones | SEBASAM");
+  });
+
+  it("isolates cancellation: job A rejects and does not overwrite or restore job B title", async () => {
+    document.title = "Cotizaciones | SEBASAM";
+
+    const printPromiseA = printDocumentUrl("/admin/quotes/quote-A/print");
+    const iframeA = document.querySelector("iframe");
+
+    const afterPrintCallsA: Array<() => void> = [];
+    Object.defineProperty(iframeA, "contentWindow", {
+      value: {
+        focus: vi.fn(),
+        print: vi.fn(),
+        addEventListener: vi.fn((event: string, cb: () => void) => {
+          if (event === "afterprint") afterPrintCallsA.push(cb);
+        }),
+        removeEventListener: vi.fn(),
+        document: {
+          title: "ClienteA-C-001",
+          querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+          fonts: { ready: Promise.resolve() },
+          body: { offsetHeight: 100 },
+        },
+      },
+      writable: true,
+    });
+
+    // Before job A finishes loading or printing, job B starts
+    const printPromiseB = printDocumentUrl("/admin/notas/nota-B/print");
+
+    // Job A must reject explicitly
+    await expect(printPromiseA).rejects.toThrow("La impresión fue cancelada por una nueva solicitud.");
+
+    const iframeB = document.querySelector("iframe");
+    const afterPrintCallsB: Array<() => void> = [];
+
+    Object.defineProperty(iframeB, "contentWindow", {
+      value: {
+        focus: vi.fn(),
+        print: vi.fn(() => {
+          expect(document.title).toBe("ClienteB-N-002");
+        }),
+        addEventListener: vi.fn((event: string, cb: () => void) => {
+          if (event === "afterprint") afterPrintCallsB.push(cb);
+        }),
+        removeEventListener: vi.fn(),
+        document: {
+          title: "ClienteB-N-002",
+          querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+          fonts: { ready: Promise.resolve() },
+          body: { offsetHeight: 100 },
+        },
+      },
+      writable: true,
+    });
+
+    // Simulate job B loading and printing
+    iframeB?.onload?.(new Event("load"));
+    await vi.advanceTimersByTimeAsync(200);
+    await printPromiseB;
+
+    expect(document.title).toBe("ClienteB-N-002");
+
+    // If job A's callbacks trigger belatedly, they MUST NOT overwrite job B's title
+    afterPrintCallsA.forEach((cb) => cb());
+    expect(document.title).toBe("ClienteB-N-002");
+
+    // Only job B's completion restores to original
+    afterPrintCallsB.forEach((cb) => cb());
+    expect(document.title).toBe("Cotizaciones | SEBASAM");
   });
 });
