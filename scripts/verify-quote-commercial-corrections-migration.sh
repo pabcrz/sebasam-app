@@ -58,8 +58,16 @@ assert_migration_row() {
   local expected_count="$2"
   local actual_count
 
-  actual_count="$(psql "$(database_url "$database_name")" -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM \"_prisma_migrations\" WHERE migration_name = '${migration_name}'")"
+  actual_count="$(psql "$(database_url "$database_name")" -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM \"_prisma_migrations\" WHERE migration_name = '${migration_name}' AND finished_at IS NOT NULL")"
   test "$actual_count" = "$expected_count"
+}
+
+assert_failed_migration_row() {
+  local database_name="$1"
+  local actual_count
+
+  actual_count="$(psql "$(database_url "$database_name")" -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM \"_prisma_migrations\" WHERE migration_name = '${migration_name}' AND finished_at IS NULL AND rolled_back_at IS NULL")"
+  test "$actual_count" = "1"
 }
 
 snapshot_monitored_tables() {
@@ -202,6 +210,7 @@ prepare_pre_migration_schema quote_commercial_corrections_drifted
 apply_migration_sql_without_history quote_commercial_corrections_drifted
 psql "$(database_url quote_commercial_corrections_drifted)" -v ON_ERROR_STOP=1 -c 'ALTER TABLE "QuoteCommercialCorrection" ADD COLUMN "unexpectedDrift" TEXT' >/dev/null
 assert_migration_row quote_commercial_corrections_drifted 0
+assert_failed_migration_row quote_commercial_corrections_drifted
 
 if apply_pending_migrations quote_commercial_corrections_drifted prisma/schema.prisma >"${temporary_root}/drifted.log" 2>&1; then
   printf 'Expected the drifted legacy schema to fail migration validation.\n' >&2
