@@ -131,8 +131,8 @@ create_historical_completed_note_fixture() {
 INSERT INTO "Customer" ("id", "name", "updatedAt")
 VALUES ('fixture-customer', 'Historical note customer', '2026-09-12T00:00:00Z');
 
-INSERT INTO "UserProfile" ("id", "email", "displayName", "updatedAt")
-VALUES ('11111111-1111-1111-1111-111111111111', 'fixture-note@example.test', 'Historical note actor', '2026-09-12T00:00:00Z');
+INSERT INTO "UserProfile" ("id", "email", "displayName", "username", "updatedAt")
+VALUES ('11111111-1111-1111-1111-111111111111', 'fixture-note@example.test', 'Historical note actor', 'fixture-note-actor', '2026-09-12T00:00:00Z');
 
 INSERT INTO "Quote" ("id", "customerId", "number", "folio", "issuedAt", "status", "title", "subtotalCents", "taxCents", "totalCents", "taxEnabled", "operationalDate", "createdAt", "updatedAt")
 VALUES
