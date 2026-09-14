@@ -26,8 +26,8 @@ describe.skipIf(!databaseUrl)("PostgreSQL daily document sequence concurrency", 
     try {
       const check = await prisma.$queryRaw<Array<{ exists: boolean }>>`
         SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' 
+          SELECT FROM information_schema.tables
+          WHERE table_schema = 'public'
           AND table_name = 'DailyDocumentSequence'
         ) as "exists"
       `;

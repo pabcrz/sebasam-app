@@ -109,4 +109,3 @@ export function formatDocumentPdfFilename({
 
   return [customer, driver, unit, resolvedFolio].filter(Boolean).join("-");
 }
-
