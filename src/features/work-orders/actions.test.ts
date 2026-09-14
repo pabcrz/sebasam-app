@@ -7,6 +7,7 @@ import {
   assignWorker,
   assignWorkOrder,
   convertQuoteToNoteAction,
+  createWorkOrder,
   createAndAssignWorkOrder,
   completeWorkOrder,
   createDirectNote,
@@ -60,6 +61,7 @@ function worker(id: string, workerKind: WorkerKind) {
 
 function operationalQuote(overrides: Record<string, unknown> = {}) {
   return {
+    id: "quote-1",
     status: QuoteStatus.APPROVED,
     customerId: "customer-1",
     vehicle: null,
@@ -141,7 +143,7 @@ function createTx(): MockTx {
 describe("work order worker guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(requireOperationalRole).mockResolvedValue({} as never);
+    vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
     vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId } as never);
     vi.mocked(after).mockImplementation(() => undefined);
     vi.mocked(prisma.workAssignment.create).mockResolvedValue({ id: "assignment-1" } as never);
@@ -179,7 +181,7 @@ describe("work order worker guards", () => {
 describe("work order actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(requireOperationalRole).mockResolvedValue({} as never);
+    vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
     vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId } as never);
   });
 
@@ -210,14 +212,16 @@ describe("work order actions", () => {
         skipDuplicates: true,
       });
       expect(tx.quote.updateMany).not.toHaveBeenCalled();
-      expect(tx.sharedQuote.create).not.toHaveBeenCalled();
+      expect(tx.sharedQuote.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ quoteId: "quote-1" }),
+      }));
       expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
     });
 
-    it("creates and assigns a draft with an identifiable unit and pending prices", async () => {
+    it.each([QuoteStatus.DRAFT, QuoteStatus.SENT])("promotes a %s quote and creates its public link", async (quoteStatus) => {
       const tx = createTx();
       tx.quote.findUnique.mockResolvedValue(operationalQuote({
-        status: QuoteStatus.DRAFT,
+        status: quoteStatus,
         customerId: null,
         vehicleSnapshot: { plate: "ABC-123" },
         subtotalCents: null,
@@ -232,8 +236,16 @@ describe("work order actions", () => {
       expect(tx.workOrder.update).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({ status: WorkOrderStatus.ASSIGNED }),
       }));
-      expect(tx.quote.updateMany).not.toHaveBeenCalled();
-      expect(tx.sharedQuote.create).not.toHaveBeenCalled();
+      expect(tx.quote.updateMany).toHaveBeenCalledWith({
+        where: { id: "quote-1", status: quoteStatus },
+        data: { status: QuoteStatus.APPROVED, approvedAt: expect.any(Date) },
+      });
+      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ previousState: quoteStatus, nextState: QuoteStatus.APPROVED }),
+      }));
+      expect(tx.sharedQuote.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ quoteId: "quote-1" }),
+      }));
       expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
     });
 
@@ -272,6 +284,23 @@ describe("work order actions", () => {
       await expect(createAndAssignWorkOrder("quote-1", {
         isSpecial: true,
       })).rejects.toThrow(/borrador, enviada o aceptada/i);
+    });
+  });
+
+  describe("createWorkOrder", () => {
+    it("promotes a draft quote and creates its public link in the planning transaction", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({ status: QuoteStatus.DRAFT }));
+
+      await createWorkOrder({ quoteId: "quote-1" });
+
+      expect(tx.quote.updateMany).toHaveBeenCalledWith({
+        where: { id: "quote-1", status: QuoteStatus.DRAFT },
+        data: { status: QuoteStatus.APPROVED, approvedAt: expect.any(Date) },
+      });
+      expect(tx.sharedQuote.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ quoteId: "quote-1" }),
+      }));
     });
   });
 
@@ -440,6 +469,28 @@ describe("work order actions", () => {
       });
     });
 
+    it("returns a work order to draft and revokes its active public link", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      tx.workOrder.findUnique.mockResolvedValue({
+        id: "wo-1",
+        quoteId: "quote-1",
+        status: WorkOrderStatus.ASSIGNED,
+        quote: { status: QuoteStatus.APPROVED },
+      });
+
+      await rollbackWorkOrder({ workOrderId: "wo-1", targetQuoteStatus: QuoteStatus.DRAFT, reason: "Regresar a cotización" });
+
+      expect(tx.quote.updateMany).toHaveBeenCalledWith({
+        where: { id: "quote-1", status: QuoteStatus.APPROVED },
+        data: { status: QuoteStatus.DRAFT },
+      });
+      expect(tx.sharedQuote.updateMany).toHaveBeenCalledWith({
+        where: { quoteId: "quote-1", revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+    });
+
     it("blocks the rollback when the quote has payments", async () => {
       const tx = createTx();
       vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
@@ -565,6 +616,9 @@ describe("work order actions", () => {
           workerId: masterId,
           status: AssignmentStatus.ASSIGNED,
         }),
+      }));
+      expect(tx.sharedQuote.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ quoteId: "quote-new" }),
       }));
       expect(result).toHaveProperty("quote");
       expect(result).toHaveProperty("workOrder");

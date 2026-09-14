@@ -142,7 +142,7 @@ async function ensureWorkOrderPlanned(
   quoteId: string,
   input: Pick<WorkOrderInput, "scheduledFor" | "siteAddress" | "notes"> = {},
 ) {
-  await requireOperationalRole();
+  const { profile } = await requireOperationalRole();
 
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { vehicle: true, workOrder: true, items: true, sections: { include: { items: true } } } });
@@ -154,13 +154,16 @@ async function ensureWorkOrderPlanned(
     assertOperationalQuote(quote.status);
     assertOperationalStartQuote(quote);
 
+    await promoteQuoteForWorkOrder(tx, quote, profile.id);
+
     if (quote.workOrder) {
       assertWorkOrderCanBeChanged(quote.workOrder.status);
+      await ensureSharedQuoteInTransaction(tx, quoteId);
       return quote.workOrder;
     }
 
     const number = await nextWorkOrderNumber(tx);
-    return tx.workOrder.create({
+    const workOrder = await tx.workOrder.create({
       data: {
         quoteId,
         number,
@@ -169,7 +172,36 @@ async function ensureWorkOrderPlanned(
         notes: input.notes,
       },
     });
+    await ensureSharedQuoteInTransaction(tx, quoteId);
+    return workOrder;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+async function promoteQuoteForWorkOrder(
+  tx: Prisma.TransactionClient,
+  quote: { id: string; status: QuoteStatus },
+  actorId: string,
+) {
+  if (quote.status === QuoteStatus.APPROVED) return;
+
+  const promoted = await tx.quote.updateMany({
+    where: { id: quote.id, status: quote.status },
+    data: { status: QuoteStatus.APPROVED, approvedAt: new Date() },
+  });
+  if (promoted.count !== 1) {
+    throw new WorkOrderOperationError("El estado de la cotización cambió. Recarga e intenta de nuevo.");
+  }
+
+  await tx.quoteLifecycleEvent.create({
+    data: {
+      quoteId: quote.id,
+      previousState: quote.status,
+      nextState: QuoteStatus.APPROVED,
+      eventType: QuoteLifecycleEventType.STATUS_CHANGE,
+      actorId,
+      reason: "Orden de trabajo creada",
+    },
+  });
 }
 
 /**
@@ -277,7 +309,7 @@ export async function assignWorkOrder(input: unknown) {
  * This is the single entry point from the UI: validate quote, assign master, and start work.
  */
 export async function createAndAssignWorkOrder(quoteId: string, assignInput: unknown) {
-  await requireOperationalRole();
+  const { profile } = await requireOperationalRole();
 
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { vehicle: true, workOrder: true, items: true, sections: { include: { items: true } } } });
@@ -288,6 +320,7 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
 
     assertOperationalQuote(quote.status);
     assertOperationalStartQuote(quote);
+    await promoteQuoteForWorkOrder(tx, quote, profile.id);
 
     let workOrderId: string;
 
@@ -301,6 +334,8 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
       });
       workOrderId = created.id;
     }
+
+    await ensureSharedQuoteInTransaction(tx, quoteId);
 
     // Now assign using the parsed input
     const assignObj = typeof assignInput === "object" && assignInput !== null ? { ...assignInput } : {};
@@ -508,6 +543,12 @@ export async function rollbackWorkOrder(input: unknown) {
     });
     if (restored.count !== 1) {
       throw new WorkOrderOperationError("El estado de la cotización cambió. Recarga e intenta de nuevo.");
+    }
+    if (data.targetQuoteStatus === QuoteStatus.DRAFT) {
+      await tx.sharedQuote.updateMany({
+        where: { quoteId: workOrder.quoteId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
     }
     await tx.quoteLifecycleEvent.create({
       data: {
