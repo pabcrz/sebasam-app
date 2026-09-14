@@ -10,6 +10,8 @@ export * from "./label";
 export * from "./list-item-card";
 export * from "./metric-card-group";
 export * from "./multi-step-dialog";
+export * from "./operational-actions-menu";
+export * from "./operational-card-layout";
 export * from "./operational-card";
 export * from "./password-input";
 export * from "./select";

@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { WorkOrderCompletedList } from "./work-order-completed-list";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
@@ -87,7 +87,7 @@ describe("WorkOrderCompletedList", () => {
     expect(print).toHaveAttribute("title", "Imprimir nota de remisión OT-001");
     expect(print).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas");
     expect(payment).toHaveAttribute("title", "Registrar pago para COT-001");
-    expect(payment).toHaveClass("w-10", "sm:w-auto");
+    expect(payment).toHaveClass("w-full");
     expect(screen.getByText("Sin pago", { exact: true })).toBeVisible();
     expect(screen.queryByText(/Sin pago · Saldo/)).not.toBeInTheDocument();
     expect(screen.getByText(/Pago parcial · Saldo.*75/)).toBeVisible();
@@ -110,6 +110,7 @@ describe("WorkOrderCompletedList", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Más acciones de nota COT-001" }));
     expect(screen.getByRole("button", { name: /corregir pago de \$125\.00/i })).toBeInTheDocument();
   });
 
@@ -184,13 +185,10 @@ describe("WorkOrderCompletedList", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Compartir cotización" })).toBeInTheDocument();
-    const archive = screen.getByRole("button", { name: "Archivar Nota COT-001" });
-    const revoke = screen.getByRole("button", { name: "Revocar enlace de Nota COT-001" });
-    expect(archive.parentElement).not.toBe(revoke.parentElement);
-    expect(archive.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
-    expect(revoke.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
     expect(screen.getAllByRole("button", { name: "Compartir cotización" })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Más acciones de nota COT-001" }));
+    expect(screen.getByRole("button", { name: "Archivar Nota COT-001" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revocar enlace de Nota COT-001" })).toBeInTheDocument();
   });
 
   it("hides revocation when the Note has no revocable public link", () => {
@@ -207,7 +205,33 @@ describe("WorkOrderCompletedList", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Más acciones de nota COT-001" }));
     expect(screen.getByRole("button", { name: "Archivar Nota COT-001" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Revocar enlace de Nota COT-001" })).not.toBeInTheDocument();
+  });
+
+  it("renders Compartir as single primary CTA when note is fully paid", () => {
+    const paidWorkOrder = {
+      ...workOrder,
+      id: "wo-paid",
+      quote: {
+        ...workOrder.quote,
+        id: "quote-paid",
+        paidCents: 12500,
+        remainingCents: 0,
+      },
+    } as unknown as CompletedListProps["workOrders"][number];
+
+    render(
+      <WorkOrderCompletedList
+        workOrders={[paidWorkOrder]}
+        shareAction={vi.fn()}
+        recordPaymentActions={[{ workOrderId: paidWorkOrder.id, action: vi.fn() }]}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /registrar pago/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Compartir cotización" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Compartir cotización" })).toHaveLength(1);
   });
 });

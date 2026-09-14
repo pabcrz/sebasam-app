@@ -19,6 +19,22 @@ function renderDialog(action = vi.fn()) {
 }
 
 describe("CashPaymentDialog", () => {
+  it("renders triggerOnly without wrapper section and allows PaymentBalanceSummary independently", () => {
+    const { container } = render(
+      <CashPaymentDialog
+        action={vi.fn()}
+        quoteNumber="C-001"
+        totalCents={10000}
+        paidCents={2500}
+        remainingCents={7500}
+        triggerOnly
+      />,
+    );
+
+    expect(container.querySelector("section")).toBeNull();
+    expect(screen.getByRole("button", { name: /registrar pago para c-001/i })).toBeInTheDocument();
+  });
+
   it("refreshes membership once after success but not after failure", async () => {
     const user = userEvent.setup();
     const action = vi.fn().mockRejectedValueOnce(new Error("Falló")).mockResolvedValueOnce({ payment: { amountCents: 7500 }, paidCents: 10000, remainingCents: 0 });
