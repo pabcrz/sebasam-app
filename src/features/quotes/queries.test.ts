@@ -62,10 +62,11 @@ describe("listQuotes filters", () => {
     expect(getFindManyCall().where).toEqual({ deletedAt: null, status: { notIn: ["CANCELLED"] } });
   });
 
-  it("keeps PLANNED work in Cotizaciones and excludes later operational queues", async () => {
+  it("keeps drafts without an excluded work order in Cotizaciones and excludes later operational queues", async () => {
     await listPaginatedQuotes({}, { operationalQueue: "quotes" });
 
-    expect(getFindManyCall().where).toMatchObject({
+    expect(getFindManyCall().where).toEqual({
+      deletedAt: null,
       status: { in: ["DRAFT", "SENT", "APPROVED"] },
       NOT: {
         workOrder: {

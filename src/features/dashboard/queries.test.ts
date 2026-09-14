@@ -98,7 +98,17 @@ describe("getOperationalDashboardSnapshot", () => {
 
     expect(snapshot.queues).toEqual({ draftQuotesCount: 0, sentQuotesCount: 0, approvedQuotesCount: 0, activeExecutionCount: 0 });
     expect(snapshot.receivables).toEqual([]);
-    expect(prisma.quote.count).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: "DRAFT" }) }));
+    expect(prisma.quote.count).toHaveBeenNthCalledWith(1, {
+      where: {
+        deletedAt: null,
+        status: "DRAFT",
+        NOT: {
+          workOrder: {
+            status: { in: ["ASSIGNED", "IN_PROGRESS", "COMPLETED"] },
+          },
+        },
+      },
+    });
     expect(prisma.quote.count).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: "SENT" }) }));
     expect(prisma.quote.count).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: "APPROVED" }) }));
     expect(prisma.workOrder.findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({

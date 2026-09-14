@@ -90,6 +90,13 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
       where: {
         deletedAt: null,
         status: QuoteStatus.DRAFT,
+        NOT: {
+          workOrder: {
+            status: {
+              in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED],
+            },
+          },
+        },
       },
     }),
     prisma.quote.count({ where: { deletedAt: null, status: QuoteStatus.SENT } }),
