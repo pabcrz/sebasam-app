@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { WorkOrderCompletedList } from "./work-order-completed-list";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
@@ -73,7 +73,7 @@ describe("WorkOrderCompletedList", () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it("does not render a redundant note print action and renders payment balances only when needed", () => {
+  it("renders note printing on each completed card and payment balances only when needed", () => {
     render(
       <WorkOrderCompletedList
         workOrders={[workOrder, partialWorkOrder, overdueWorkOrder, noDueDateWorkOrder]}
@@ -83,9 +83,11 @@ describe("WorkOrderCompletedList", () => {
     );
 
     const payment = screen.getByRole("button", { name: "Registrar pago para COT-001" });
-    expect(screen.queryByRole("button", { name: /imprimir nota de remisión/i })).not.toBeInTheDocument();
+    const print = screen.getByRole("button", { name: "Imprimir nota de remisión OT-001" });
+    expect(print).toHaveAttribute("title", "Imprimir nota de remisión OT-001");
+    expect(print).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas");
     expect(payment).toHaveAttribute("title", "Registrar pago para COT-001");
-    expect(payment).toHaveClass("w-10", "sm:w-auto");
+    expect(payment).toHaveClass("w-full");
     expect(screen.getByText("Sin pago", { exact: true })).toBeVisible();
     expect(screen.queryByText(/Sin pago · Saldo/)).not.toBeInTheDocument();
     expect(screen.getByText(/Pago parcial · Saldo.*75/)).toBeVisible();
@@ -108,6 +110,7 @@ describe("WorkOrderCompletedList", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Más acciones de nota COT-001" }));
     expect(screen.getByRole("button", { name: /corregir pago de \$125\.00/i })).toBeInTheDocument();
   });
 
@@ -141,13 +144,31 @@ describe("WorkOrderCompletedList", () => {
     expect(screen.getByText("N-140826-01")).toBeInTheDocument();
     expect(screen.getByText("(T-0926-01)")).toBeInTheDocument();
     expect(screen.getByText(/Cot\.\s*C-140826-01/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /imprimir nota de remisión/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Imprimir nota de remisión T-0926-01" })).toHaveAttribute(
+      "data-print-url",
+      "/admin/notas/wo-daily/print?returnTo=%2Fadmin%2Fnotas",
+    );
   });
 
   it("renders sharing for completed Notes", () => {
     render(<WorkOrderCompletedList workOrders={[workOrder]} shareAction={vi.fn()} />);
 
     expect(screen.getByRole("button", { name: "Compartir cotización" })).toBeInTheDocument();
+  });
+
+  it("preserves the current Notes state in the card print URL", () => {
+    render(
+      <WorkOrderCompletedList
+        workOrders={[workOrder]}
+        shareAction={vi.fn()}
+        noteReturnTo="/admin/notas?mode=week&anchor=2026-08-12&payment=pending&assignee=all"
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Imprimir nota de remisión OT-001" })).toHaveAttribute(
+      "data-print-url",
+      "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dweek%26anchor%3D2026-08-12%26payment%3Dpending%26assignee%3Dall",
+    );
   });
 
   it("renders admin archive and audited revocation controls without another share button", () => {
@@ -164,13 +185,10 @@ describe("WorkOrderCompletedList", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Compartir cotización" })).toBeInTheDocument();
-    const archive = screen.getByRole("button", { name: "Archivar Nota COT-001" });
-    const revoke = screen.getByRole("button", { name: "Revocar enlace de Nota COT-001" });
-    expect(archive.parentElement).not.toBe(revoke.parentElement);
-    expect(archive.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
-    expect(revoke.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
     expect(screen.getAllByRole("button", { name: "Compartir cotización" })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Más acciones de nota COT-001" }));
+    expect(screen.getByRole("button", { name: "Archivar Nota COT-001" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revocar enlace de Nota COT-001" })).toBeInTheDocument();
   });
 
   it("hides revocation when the Note has no revocable public link", () => {
@@ -187,7 +205,33 @@ describe("WorkOrderCompletedList", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Más acciones de nota COT-001" }));
     expect(screen.getByRole("button", { name: "Archivar Nota COT-001" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Revocar enlace de Nota COT-001" })).not.toBeInTheDocument();
+  });
+
+  it("renders Compartir as single primary CTA when note is fully paid", () => {
+    const paidWorkOrder = {
+      ...workOrder,
+      id: "wo-paid",
+      quote: {
+        ...workOrder.quote,
+        id: "quote-paid",
+        paidCents: 12500,
+        remainingCents: 0,
+      },
+    } as unknown as CompletedListProps["workOrders"][number];
+
+    render(
+      <WorkOrderCompletedList
+        workOrders={[paidWorkOrder]}
+        shareAction={vi.fn()}
+        recordPaymentActions={[{ workOrderId: paidWorkOrder.id, action: vi.fn() }]}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /registrar pago/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Compartir cotización" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Compartir cotización" })).toHaveLength(1);
   });
 });

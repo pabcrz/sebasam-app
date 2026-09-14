@@ -123,6 +123,7 @@ describe("WorkOrderActiveList", () => {
     const duplicateQuoteAction = vi.fn().mockRejectedValue(new Error("offline"));
     renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { duplicateQuoteAction });
 
+    await user.click(screen.getByRole("button", { name: /más acciones/i }));
     await user.click(screen.getByRole("button", { name: "Duplicar cotización" }));
 
     expect(toastError).toHaveBeenCalledWith(
@@ -131,13 +132,19 @@ describe("WorkOrderActiveList", () => {
     );
   });
 
-  it("uses accessible responsive action controls", () => {
+  it("uses accessible responsive action controls with primary CTA and secondary action row", async () => {
+    const user = userEvent.setup();
     renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }));
 
+    expect(screen.getByTestId("operational-card-primary-action")).toHaveClass("w-full");
+    expect(screen.getByRole("button", { name: "Gestionar orden" })).toBeInTheDocument();
+
+    const secondaryActions = screen.getByTestId("operational-card-secondary-actions");
+    expect(secondaryActions).toHaveClass("flex", "w-full", "items-center", "gap-2");
+
+    await user.click(screen.getByRole("button", { name: /más acciones/i }));
     const duplicate = screen.getByRole("button", { name: "Duplicar cotización" });
     expect(duplicate).toHaveAttribute("title", "Duplicar cotización");
-    expect(duplicate.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
-    expect(duplicate.parentElement?.parentElement).toHaveClass("flex", "w-full", "flex-wrap", "items-center", "gap-3", "[&_button]:h-10", "[&_button]:w-10", "sm:gap-2", "sm:[&_button]:h-9", "sm:[&_button]:w-auto");
   });
 
   it("keeps the preview closed after its close button is clicked", async () => {
@@ -190,10 +197,11 @@ describe("WorkOrderActiveList", () => {
 
     await user.click(screen.getByRole("button", { name: "Gestionar orden" }));
     await user.click(screen.getByRole("button", { name: "Editar cotización" }));
-    await user.click(screen.getByRole("button", { name: "Duplicar cotización" }));
     await user.click(screen.getByRole("button", { name: "Compartir cotización" }));
+    await user.click(screen.getByRole("button", { name: /más acciones/i }));
+    await user.click(screen.getByRole("button", { name: "Duplicar cotización" }));
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Cotización COT-001" })).not.toBeInTheDocument();
   });
 
   it("routes the active work-order print affordance back to work orders", () => {
@@ -205,6 +213,5 @@ describe("WorkOrderActiveList", () => {
       "/admin/quotes/quote-1/print?returnTo=/admin/work-orders",
     );
     expect(print).toHaveClass("min-h-11", "min-w-11");
-    expect(print.parentElement).toHaveClass("grid", "w-11", "sm:block", "sm:w-auto");
   });
 });
