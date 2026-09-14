@@ -8,10 +8,17 @@ const base = {
 };
 
 describe("resolveQuoteActionPresentation", () => {
-  it("keeps Edit, Print, and Share as frequent actions in a draft without a primary action", () => {
-    expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT" })).toEqual({
-      primary: null,
-      frequent: ["edit", "print", "share"],
+  it("determines primary action for draft: share when commercially ready, edit when not", () => {
+    expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT", isCommercialReady: true })).toEqual({
+      primary: "share",
+      frequent: ["edit", "print"],
+      overflow: ["workOrder", "duplicate", "cancel", "archive"],
+      destructive: "delete",
+    });
+
+    expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT", isCommercialReady: false })).toEqual({
+      primary: "edit",
+      frequent: ["print", "share"],
       overflow: ["workOrder", "duplicate", "cancel", "archive"],
       destructive: "delete",
     });

@@ -6,7 +6,7 @@ import { PrintActionButton } from "@/features/quotes/components/print-action-but
 import type { listActiveWorkOrders } from "@/features/work-orders/queries";
 
 import type { listQuotes } from "@/features/quotes/queries";
-import { Badge, Button, OperationalActionRow, OperationalCard } from "@/components/ui";
+import { Badge, OperationalActionsMenu, OperationalCard, OperationalCardActions, OperationalCardLayout } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
@@ -76,100 +76,127 @@ export function WorkOrderActiveList({
             key={wo.id}
             onOpen={() => setPreviewOpenId(wo.quote.id)}
             openLabel={`Ver detalle de cotización ${wo.quote.number}`}
+            actionsClassName="grid gap-3"
             actions={
-              <OperationalActionRow>
-                <PrintActionButton
-                  url={`/admin/quotes/${wo.quote.id}/print?returnTo=/admin/work-orders`}
-                  variant="outline"
-                  size="sm"
-                  data-mobile-target="44"
-                  className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
-                  title={`Imprimir orden ${wo.number}`}
-                  aria-label={`Imprimir orden ${wo.number}`}
-                >
-                  <Printer className="h-4 w-4" aria-hidden="true" />
-                  <span className="sr-only sm:not-sr-only">Imprimir orden</span>
-                </PrintActionButton>
-                <WorkOrderOperationsDialog
-                  quoteNumber={wo.quote.number}
-                  quoteStatus={wo.quote.status}
-                  workOrder={wo}
-                  workers={workers}
-                  triggerIconOnlyMobile
-                  actions={{
-                    ...workOrderActions,
-                    assign: workOrderActions.assign
-                      ? (input) => workOrderActions.assign!({ ...(input as Record<string, unknown>), workOrderId: wo.id })
-                      : undefined,
-                  }}
-                />
-
-                {fullQuote && saveAction ? (
-                  <QuoteBuilderDialog
-                    customers={customers}
-                    saveAction={saveAction}
-                    searchCustomersAction={searchCustomersAction}
+              <>
+                {fullQuote ? (
+                  <QuotePreviewDialog
                     quote={fullQuote}
-                    quoteNumber={wo.quote.number}
-                    triggerSize="sm"
-                    triggerVariant="outline"
-                    triggerIconOnlyMobile
+                    open={previewOpenId === wo.quote.id}
+                    onOpenChange={(open) => setPreviewOpenId(open ? wo.quote.id : null)}
+                    showTrigger={false}
                   />
                 ) : null}
+                <OperationalCardActions
+                  primary={
+                    <WorkOrderOperationsDialog
+                      quoteNumber={wo.quote.number}
+                      quoteStatus={wo.quote.status}
+                      workOrder={wo}
+                      workers={workers}
+                      triggerVariant="primary"
+                      triggerClassName="w-full"
+                      triggerIconOnlyMobile={false}
+                      actions={{
+                        ...workOrderActions,
+                        assign: workOrderActions.assign
+                          ? (input) => workOrderActions.assign!({ ...(input as Record<string, unknown>), workOrderId: wo.id })
+                          : undefined,
+                      }}
+                    />
+                  }
+                  frequent={
+                    <>
+                      <PrintActionButton
+                        url={`/admin/quotes/${wo.quote.id}/print?returnTo=/admin/work-orders`}
+                        variant="outline"
+                        size="sm"
+                        className="h-11 min-h-11 min-w-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
+                        title={`Imprimir orden ${wo.number}`}
+                        aria-label={`Imprimir orden ${wo.number}`}
+                      >
+                        <Printer className="h-4 w-4" aria-hidden="true" />
+                        <span className="sr-only">Imprimir orden</span>
+                      </PrintActionButton>
 
-                <QuoteDuplicateForm action={duplicateQuoteAction} quoteId={wo.quote.id} actionLabelClassName="sr-only sm:not-sr-only" />
+                      {fullQuote && saveAction ? (
+                        <QuoteBuilderDialog
+                          customers={customers}
+                          saveAction={saveAction}
+                          searchCustomersAction={searchCustomersAction}
+                          quote={fullQuote}
+                          quoteNumber={wo.quote.number}
+                          triggerAriaLabel={`Editar cotización ${wo.quote.number}`}
+                          triggerSize="sm"
+                          triggerVariant="outline"
+                          triggerClassName="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
+                          triggerIconOnly
+                        />
+                      ) : null}
 
-                <ShareQuoteButton action={shareAction.bind(null, wo.quote.id)} quoteNumber={wo.quote.number} actionLabelClassName="sr-only sm:not-sr-only" />
-              </OperationalActionRow>
+                      <ShareQuoteButton
+                        action={shareAction.bind(null, wo.quote.id)}
+                        quoteNumber={wo.quote.number}
+                        className="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
+                        actionLabelClassName="sr-only"
+                      />
+                    </>
+                  }
+                  overflow={
+                    <OperationalActionsMenu
+                      title="Acciones de trabajo"
+                      description={`Opciones para la orden ${wo.number}.`}
+                      triggerAriaLabel={`Más acciones de orden ${wo.number}`}
+                      triggerTitle={`Más acciones de orden ${wo.number}`}
+                      triggerClassName="h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
+                      triggerIconOnly
+                    >
+                      <QuoteDuplicateForm action={duplicateQuoteAction} quoteId={wo.quote.id} />
+                    </OperationalActionsMenu>
+                  }
+                />
+              </>
             }
             body={
-              <>
-                {/* Header */}
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
-                      <Badge variant="info" className="w-fit">En proceso</Badge>
-                    </div>
-                    <p className="mt-1 font-semibold text-[var(--color-text-main)]">
-                      {resolveCustomerDisplayIdentity(wo.quote).displayName}
-                    </p>
-                    {resolveCustomerDisplayIdentity(wo.quote).operatorName ? (
-                      <p className="text-xs font-medium text-[var(--color-text-muted)]">
-                        {resolveCustomerDisplayIdentity(wo.quote).operatorRole}: {resolveCustomerDisplayIdentity(wo.quote).operatorName}
+              <OperationalCardLayout
+                header={
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
+                        <Badge variant="info" className="w-fit">En proceso</Badge>
+                      </div>
+                      <p className="mt-1 font-semibold text-[var(--color-text-main)]">
+                        {resolveCustomerDisplayIdentity(wo.quote).displayName}
                       </p>
+                      {resolveCustomerDisplayIdentity(wo.quote).operatorName ? (
+                        <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                          {resolveCustomerDisplayIdentity(wo.quote).operatorRole}: {resolveCustomerDisplayIdentity(wo.quote).operatorName}
+                        </p>
+                      ) : null}
+                      <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-mono text-2xl font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
+                        {formatCents(wo.quote.totalCents)}
+                      </p>
+                      <p className="text-xs text-[var(--color-text-muted)]">{wo.quote.title}</p>
+                    </div>
+                  </div>
+                }
+                identity={null}
+                context={
+                  <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-sm">
+                    <span className="text-xs font-medium text-[var(--color-text-muted)]">Asignación:</span>
+                    <AssigneeText wo={wo} />
+                    {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length > 0 ? (
+                      <span className="text-xs text-[var(--color-text-muted)]">
+                        + {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length} ayudante(s)
+                      </span>
                     ) : null}
-                    <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-mono text-lg font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
-                      {formatCents(wo.quote.totalCents)}
-                    </p>
-                    <p className="text-xs text-[var(--color-text-muted)]">{wo.quote.title}</p>
-                  </div>
-                </div>
-
-                {/* Assignee */}
-                <div className="flex items-center gap-2 text-sm">
-                  <AssigneeText wo={wo} />
-                  {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length > 0 ? (
-                    <span className="text-xs text-[var(--color-text-muted)]">
-                      + {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length} ayudante(s)
-                    </span>
-                  ) : null}
-                </div>
-                {/* The portaled preview must not bubble its dismissal events back to the clickable card. */}
-                {fullQuote ? (
-                  <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-                    <QuotePreviewDialog
-                      quote={fullQuote}
-                      open={previewOpenId === wo.quote.id}
-                      onOpenChange={(open) => setPreviewOpenId(open ? wo.quote.id : null)}
-                      showTrigger={false}
-                    />
-                  </div>
-                ) : null}
-              </>
+                }
+              />
             }
           />
         );

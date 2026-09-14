@@ -5,7 +5,7 @@ import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
 import { PrintActionButton } from "./print-action-button";
 import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, OperationalCard } from "@/components/ui";
+import { Badge, OperationalActionsMenu, OperationalCard, OperationalCardLayout } from "@/components/ui";
 import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
@@ -25,7 +25,6 @@ import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
-import { QuoteActionsMenu } from "./quote-actions-menu";
 import { resolveQuoteActionPresentation, type QuoteActionId } from "./quote-action-presentation";
 
 type QuoteListItem = QuoteListSummary;
@@ -56,7 +55,6 @@ export function QuoteListCard({
   quote,
   quoteStatusLabels,
   quoteStatusBadgeVariant,
-  approveAction: _approveAction,
   cancelAction,
   shareAction,
   authorizeAction,
@@ -92,6 +90,7 @@ export function QuoteListCard({
     editable,
     hasWorkOrder: Boolean(quote.workOrder),
     paymentAvailable: paymentRequestContext !== null,
+    isCommercialReady: isQuoteCommercialReady(quote),
   });
 
   const renderAction = (
@@ -191,75 +190,82 @@ export function QuoteListCard({
       openLabel={`Abrir vista previa de ${displayFolio}`}
       actionsClassName="grid gap-3"
       body={
-        <>
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <h3 className="text-lg font-semibold leading-6 text-[var(--color-text-main)]">
-                {quote.title || "Sin título"}
-              </h3>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                <span>Folio {displayFolio}</span>
-                <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
-                {quote.isLocked ? (
-                  <Badge variant="warning">Bloqueado</Badge>
-                ) : null}
-                {quote.status === "DRAFT" && quote.submissionKey ? (
-                  <Badge variant="warning">Editada</Badge>
-                ) : null}
+        <OperationalCardLayout
+          header={
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg font-semibold leading-6 text-[var(--color-text-main)]">
+                  {quote.title || "Sin título"}
+                </h3>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                  <span>Folio {displayFolio}</span>
+                  <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
+                  {quote.isLocked ? (
+                    <Badge variant="warning">Bloqueado</Badge>
+                  ) : null}
+                  {quote.status === "DRAFT" && quote.submissionKey ? (
+                    <Badge variant="warning">Editada</Badge>
+                  ) : null}
+                </div>
               </div>
+              <p className="shrink-0 text-2xl font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
+                {formatCents(quote.totalCents)}
+              </p>
             </div>
-            <p className="shrink-0 text-2xl font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
-              {formatCents(quote.totalCents)}
-            </p>
-          </div>
-
-          <p className="mt-3 text-sm font-medium text-[var(--color-text-main)]">
-            {quote.customer?.name ?? "Sin cliente"}
-          </p>
-          <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-            <Car className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>{vehicleDescription || "Sin vehículo"}</span>
-          </p>
-
-          <div className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
-            {quote.workOrder ? (
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex min-w-0 items-center gap-2">
-                  <ClipboardList className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
-                  <span className="min-w-0">
-                    <span className="block text-xs font-medium text-[var(--color-text-muted)]">Orden de trabajo</span>
-                    <span className="block truncate text-sm font-medium text-[var(--color-text-main)]">
-                      {quote.workOrder.number}
+          }
+          identity={
+            <>
+              <p className="text-sm font-medium text-[var(--color-text-main)]">
+                {quote.customer?.name ?? "Sin cliente"}
+              </p>
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+                <Car className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>{vehicleDescription || "Sin vehículo"}</span>
+              </p>
+            </>
+          }
+          context={
+            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+              {quote.workOrder ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <ClipboardList className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
+                    <span className="min-w-0">
+                      <span className="block text-xs font-medium text-[var(--color-text-muted)]">Orden de trabajo</span>
+                      <span className="block truncate text-sm font-medium text-[var(--color-text-main)]">
+                        {quote.workOrder.number}
+                      </span>
                     </span>
                   </span>
+                  <span className="text-sm font-medium text-[var(--color-text-main)]">{quote.workOrder.number}</span>
+                </div>
+              ) : (
+                <span className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                  <ClipboardList className="h-4 w-4" aria-hidden="true" />
+                  Sin orden de trabajo
                 </span>
-                <span className="text-sm font-medium text-[var(--color-text-main)]">{quote.workOrder.number}</span>
-              </div>
-            ) : (
-              <span className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                <ClipboardList className="h-4 w-4" aria-hidden="true" />
-                Sin orden de trabajo
-              </span>
-            )}
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--color-border-light)] pt-3 text-xs text-[var(--color-text-muted)]">
-            <p className="flex items-center gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Fecha de cotización: {formatOperationalDate(quote.operationalDate)}</span>
-            </p>
-            <p className="flex items-center gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}</span>
-            </p>
-            {quote.paymentDueDate ? (
+              )}
+            </div>
+          }
+          dates={
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
               <p className="flex items-center gap-1.5">
                 <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Vencimiento pago: {formatDate(quote.paymentDueDate)}</span>
+                <span>Fecha de cotización: {formatOperationalDate(quote.operationalDate)}</span>
               </p>
-            ) : null}
-          </div>
-        </>
+              <p className="flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}</span>
+              </p>
+              {quote.paymentDueDate ? (
+                <p className="flex items-center gap-1.5">
+                  <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Vencimiento pago: {formatDate(quote.paymentDueDate)}</span>
+                </p>
+              ) : null}
+            </div>
+          }
+        />
       }
       actions={
         <>
@@ -274,24 +280,24 @@ export function QuoteListCard({
             className="grid grid-cols-[repeat(3,minmax(0,1fr))_auto] items-center gap-2"
           >
             {actionPresentation.frequent.map((action) => {
-              const variant = action === "share" && quote.status === "DRAFT"
-                ? (isQuoteCommercialReady(quote) ? "primary" : "secondary")
-                : "outline";
               return (
                 <div key={action} className="min-w-0">
-                  {renderAction(action, variant, "tile")}
+                  {renderAction(action, "outline", "tile")}
                 </div>
               );
             })}
             <div data-testid="quote-overflow-action" className="col-start-4 min-w-0">
-              <QuoteActionsMenu
-                quoteNumber={quote.number}
+              <OperationalActionsMenu
+                title="Acciones de cotización"
+                description={`Acciones disponibles para ${quote.number}.`}
+                triggerAriaLabel={`Más acciones de cotización ${quote.number}`}
+                triggerTitle={`Más acciones de cotización ${quote.number}`}
                 destructive={actionPresentation.destructive ? renderAction(actionPresentation.destructive) : null}
                 triggerClassName="h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
                 triggerIconOnly
               >
                 {actionPresentation.overflow.map((action) => <React.Fragment key={action}>{renderAction(action)}</React.Fragment>)}
-              </QuoteActionsMenu>
+              </OperationalActionsMenu>
             </div>
           </div>
         </>

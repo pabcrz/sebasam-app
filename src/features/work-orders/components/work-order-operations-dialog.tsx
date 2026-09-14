@@ -68,6 +68,7 @@ type WorkOrderOperationsDialogProps = {
   actions?: WorkOrderActions;
   triggerIconOnlyMobile?: boolean;
   triggerVariant?: ButtonVariant;
+  triggerClassName?: string;
 };
 
 const noopActions: WorkOrderActions = {
@@ -83,6 +84,7 @@ export function WorkOrderOperationsDialog({
   actions = noopActions,
   triggerIconOnlyMobile = false,
   triggerVariant = "outline",
+  triggerClassName,
 }: WorkOrderOperationsDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -212,7 +214,7 @@ export function WorkOrderOperationsDialog({
         variant={triggerVariant}
         size="sm"
         ref={triggerRef}
-        className={triggerIconOnlyMobile ? "h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" : "w-full"}
+        className={triggerClassName ?? (triggerIconOnlyMobile ? "h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" : "w-full")}
         onClick={(event) => {
           event.stopPropagation();
           setError(null);

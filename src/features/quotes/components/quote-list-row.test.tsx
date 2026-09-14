@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QuoteListRow } from "./quote-list-row";
 import type { listQuotes } from "@/features/quotes/queries";
 
@@ -170,14 +171,17 @@ describe("QuoteListRow", () => {
     expect(screen.getByText("Mantenimiento preventivo")).toBeInTheDocument();
   });
 
-  it("renders cancellation but not commercial authorization for draft quotes", () => {
+  it("renders cancellation in overflow but not commercial authorization for draft quotes", async () => {
+    const user = userEvent.setup();
     renderRow(createMockQuote());
 
     expect(screen.queryByRole("button", { name: /autorizar cotización c-001/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /más acciones/i }));
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
-  it("renders a pending-price draft without payment actions", () => {
+  it("renders a pending-price draft without payment actions", async () => {
+    const user = userEvent.setup();
     const quote = createMockQuote();
 
     renderRow(createMockQuote({
@@ -190,7 +194,8 @@ describe("QuoteListRow", () => {
     expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /compartir cotización c-001/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /más acciones/i }));
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
   it("renders status badge", () => {
@@ -199,19 +204,27 @@ describe("QuoteListRow", () => {
     expect(screen.getByText("Aprobada")).toBeInTheDocument();
   });
 
-  it.each(["DRAFT", "SENT", "APPROVED"] as const)("renders work order operations trigger for %s quotes", (status) => {
+  it.each(["DRAFT", "SENT", "APPROVED"] as const)("renders work order operations trigger for %s quotes", async (status) => {
+    const user = userEvent.setup();
     renderRow(createMockQuote({ status }));
 
-    expect(screen.getByRole("button", { name: /gestionar trabajo/i })).toBeInTheDocument();
+    if (status === "APPROVED") {
+      expect(screen.getByRole("button", { name: /gestionar trabajo/i })).toBeInTheDocument();
+    } else {
+      await user.click(screen.getByRole("button", { name: /más acciones/i }));
+      expect(within(screen.getByRole("dialog")).getByRole("button", { name: /gestionar trabajo/i })).toBeInTheDocument();
+    }
   });
 
-  it("preserves payment actions for approved quotes with work in progress", () => {
+  it("preserves payment actions in overflow for approved quotes with work in progress", async () => {
+    const user = userEvent.setup();
     renderRow(createMockQuote({
       status: "APPROVED",
       workOrder: { number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
     }));
 
-    expect(screen.getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /más acciones/i }));
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: /link de pago/i })).toBeInTheDocument();
   });
 
   it("hides payment actions when an approved in-progress quote has incomplete totals", () => {
@@ -234,12 +247,14 @@ describe("QuoteListRow", () => {
     expect(screen.queryByRole("button", { name: /autorizar cotización/i })).not.toBeInTheDocument();
   });
 
-  it("renders direct action buttons (Editar, Duplicar, Compartir)", () => {
+  it("renders direct action buttons (Editar, Compartir) and duplicate in overflow", async () => {
+    const user = userEvent.setup();
     renderRow(createMockQuote());
 
     expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /compartir cotización c-001/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /más acciones/i }));
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: /duplicar/i })).toBeInTheDocument();
   });
 
   it("keeps non-completed quote-row printing on the quote route", () => {
