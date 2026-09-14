@@ -95,4 +95,77 @@ describe("PrintActionButton", () => {
     });
     expect(button).not.toBeDisabled();
   });
+
+  it("handles consecutive print actions across cotización, trabajo and nota (flow A -> B -> A)", async () => {
+    const user = userEvent.setup();
+    const calls: string[] = [];
+    vi.spyOn(printDocModule, "printDocumentUrl").mockImplementation(async (url: string) => {
+      calls.push(url);
+    });
+
+    const { rerender } = render(
+      <PrintActionButton
+        url="/admin/quotes/quote-100/print"
+        aria-label="Imprimir cotización"
+      >
+        <span>Imprimir Cotización</span>
+      </PrintActionButton>,
+    );
+
+    // 1. Click Print Cotización (Doc A)
+    const cotizacionBtn = screen.getByRole("button", { name: "Imprimir cotización" });
+    await user.click(cotizacionBtn);
+    expect(calls).toEqual(["/admin/quotes/quote-100/print"]);
+
+    // 2. Navigate / render Trabajo (Doc B)
+    rerender(
+      <PrintActionButton
+        url="/admin/work-orders/wo-200/print"
+        aria-label="Imprimir trabajo"
+      >
+        <span>Imprimir Trabajo</span>
+      </PrintActionButton>,
+    );
+    const trabajoBtn = screen.getByRole("button", { name: "Imprimir trabajo" });
+    await user.click(trabajoBtn);
+    expect(calls).toEqual([
+      "/admin/quotes/quote-100/print",
+      "/admin/work-orders/wo-200/print",
+    ]);
+
+    // 3. Navigate / render Nota
+    rerender(
+      <PrintActionButton
+        url="/admin/notas/nota-300/print"
+        aria-label="Imprimir nota"
+      >
+        <span>Imprimir Nota</span>
+      </PrintActionButton>,
+    );
+    const notaBtn = screen.getByRole("button", { name: "Imprimir nota" });
+    await user.click(notaBtn);
+    expect(calls).toEqual([
+      "/admin/quotes/quote-100/print",
+      "/admin/work-orders/wo-200/print",
+      "/admin/notas/nota-300/print",
+    ]);
+
+    // 4. Return to Cotización (Doc A again)
+    rerender(
+      <PrintActionButton
+        url="/admin/quotes/quote-100/print"
+        aria-label="Imprimir cotización"
+      >
+        <span>Imprimir Cotización</span>
+      </PrintActionButton>,
+    );
+    const cotizacionBtnAgain = screen.getByRole("button", { name: "Imprimir cotización" });
+    await user.click(cotizacionBtnAgain);
+    expect(calls).toEqual([
+      "/admin/quotes/quote-100/print",
+      "/admin/work-orders/wo-200/print",
+      "/admin/notas/nota-300/print",
+      "/admin/quotes/quote-100/print",
+    ]);
+  });
 });

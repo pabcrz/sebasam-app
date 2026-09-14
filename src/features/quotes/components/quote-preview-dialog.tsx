@@ -12,9 +12,26 @@ import {
   DialogTrigger,
 } from "@/components/ui";
 import { QuotePreviewCard, type QuotePreviewCardProps } from "./quote-preview-card";
+import {
+  resolveQuotePreviewContact,
+  resolveQuotePreviewCustomer,
+} from "@/features/quotes/lib/quote-snapshots";
 
 export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & {
-  customer: Pick<NonNullable<QuoteListSummary["customer"]>, "name"> | null;
+  customer: (Pick<NonNullable<QuoteListSummary["customer"]>, "name"> & {
+    commercialName?: string | null;
+    legalName?: string | null;
+  }) | null;
+  customerSnapshot?: unknown;
+  contactSnapshot?: unknown;
+  customerContact?: {
+    name?: string | null;
+    role?: string | null;
+    phone?: string | null;
+  } | null;
+  customerFiscalProfile?: {
+    businessName?: string | null;
+  } | null;
   vehicle: Pick<NonNullable<QuoteListSummary["vehicle"]>, "plate" | "brand" | "model" | "year"> | null;
   workOrder?: Pick<NonNullable<QuoteListSummary["workOrder"]>, "id" | "status"> | null;
   items: Array<{ sectionId: string | null; type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }>;
@@ -62,8 +79,21 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
       }));
   const sections = [...rootSection, ...sectionItems];
 
+  const contact = resolveQuotePreviewContact({
+    contactSnapshot: quote.contactSnapshot,
+    customerContact: quote.customerContact,
+  });
+  const customer = resolveQuotePreviewCustomer({
+    customerSnapshot: quote.customerSnapshot,
+    customer: quote.customer,
+    customerFiscalProfile: quote.customerFiscalProfile,
+  });
+
   return {
-    customerName: quote.customer?.name ?? "",
+    customerName: customer.customerName,
+    legalName: customer.legalName,
+    contactName: contact.contactName,
+    contactRole: contact.contactRole,
     vehicle: {
       plate: quote.vehicle?.plate ?? snapshotValue("plate"),
       brand: quote.vehicle?.brand ?? snapshotValue("brand"),
@@ -86,7 +116,7 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
 }
 
 
-export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true, noteReturnTo = "/admin/notas" }: QuotePreviewDialogProps) {
+export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true }: QuotePreviewDialogProps) {
   const [openInternal, setOpenInternal] = React.useState(false);
   const open = openProp ?? openInternal;
   const setOpen = React.useCallback(
@@ -113,14 +143,14 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="max-w-2xl">
-        <DialogHeader className="relative">
-          <DialogTitle>Cotización {quote.number}</DialogTitle>
+      <DialogContent className="max-w-2xl p-3 sm:p-6 gap-3 sm:gap-4 max-h-[calc(100dvh_-_1rem)] sm:max-h-[calc(100dvh_-_2rem)]">
+        <DialogHeader className="relative pr-10 sm:pr-0">
+          <DialogTitle className="text-base sm:text-lg font-bold">Cotización {quote.number}</DialogTitle>
           <button
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Cerrar"
-            className="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+            className="absolute right-0 top-0 inline-flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] min-h-[40px] min-w-[40px]"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>

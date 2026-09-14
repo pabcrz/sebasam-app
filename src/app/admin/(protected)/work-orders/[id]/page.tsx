@@ -10,7 +10,6 @@ import { correctCompletedWorkQuoteFromWorkspace, updateDraftQuoteFromWorkspace }
 import { listCustomers } from "@/features/customers/queries";
 import {
   Badge,
-  Button,
   Card,
   CardContent,
 } from "@/components/ui";
@@ -20,6 +19,7 @@ import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-d
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import { formatCents, formatVehicle } from "@/features/quotes/lib/format";
 import { isCompletedWorkCorrectable, isQuoteEditable } from "@/features/quotes/lib/editability";
+import { getCurrentProfile, isAdminRole } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Detalle de Trabajo",
@@ -31,10 +31,11 @@ type WorkOrderDetailPageProps = {
 
 export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPageProps) {
   const { id } = await params;
-  const [workOrder, workers, customers] = await Promise.all([
+  const [workOrder, workers, customers, currentProfile] = await Promise.all([
     getWorkOrderById(id),
     listActiveWorkers(),
     listCustomers(),
+    getCurrentProfile(),
   ]);
 
   if (!workOrder) {
@@ -42,9 +43,9 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
   }
 
   const { quote } = workOrder;
+  const isAdmin = isAdminRole(currentProfile?.profile.role);
   const editable = isQuoteEditable({ ...quote, workOrder: { status: workOrder.status } });
-  const correctable = isCompletedWorkCorrectable({ ...quote, workOrder: { status: workOrder.status } })
-    && workOrder.paymentApplications.length === 0;
+  const correctable = isAdmin && isCompletedWorkCorrectable({ ...quote, workOrder: { status: workOrder.status } });
   const master = workOrder.assignments.find((a) => a.worker.workerKind === "MASTER");
   const helpers = workOrder.assignments.filter((a) => a.worker.workerKind === "HELPER");
   const printHref = workOrder.status === "COMPLETED"
@@ -129,11 +130,7 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
                   searchCustomersAction={searchCustomersForQuote}
                   triggerLabel="Corregir trabajo"
                 />
-              ) : (
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  El trabajo tiene pagos activos. Corrige el pago desde Notas antes de modificar conceptos.
-                </p>
-              )}
+              ) : null}
             </div>
             <div className="w-full sm:w-auto">
               <PrintActionButton

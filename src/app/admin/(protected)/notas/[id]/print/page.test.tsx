@@ -65,13 +65,16 @@ describe("WorkOrderPrintPage", () => {
   });
 
   describe("generateMetadata", () => {
-    it("generates dynamic filename with Taller for special work orders", async () => {
+    it("generates dynamic filename with customer, unit and folio for special work orders", async () => {
       getCompletedWorkOrderById.mockResolvedValue({
         number: "T-001",
+        folio: "N-140826-01",
+        status: "COMPLETED",
         isSpecial: true,
         completedAt: new Date("2026-08-14T12:00:00Z"),
         quote: {
           number: "C-001",
+          folio: null,
           customer: { name: "Transportes Del Norte" },
           vehicle: null,
           vehicleSnapshot: null,
@@ -81,13 +84,15 @@ describe("WorkOrderPrintPage", () => {
 
       const result = await generateMetadata({ params: Promise.resolve({ id: "wo-1" }) });
       expect(result).toEqual({
-        title: "TransportesDelNorte-Taller-14082026",
+        title: { absolute: "TransportesDelNorte-Taller-N-140826-01" },
       });
     });
 
-    it("generates dynamic filename with vehicle plates when available", async () => {
+    it("generates dynamic filename falling back to quote number for historical records", async () => {
       getCompletedWorkOrderById.mockResolvedValue({
         number: "OT-002",
+        folio: null,
+        status: "COMPLETED",
         isSpecial: false,
         completedAt: new Date("2026-08-14T12:00:00Z"),
         quote: {
@@ -101,13 +106,15 @@ describe("WorkOrderPrintPage", () => {
 
       const result = await generateMetadata({ params: Promise.resolve({ id: "wo-2" }) });
       expect(result).toEqual({
-        title: "JosePerez-ABC1234-18062026",
+        title: { absolute: "JosePerez-ABC1234-C-002" },
       });
     });
 
-    it("falls back to completedAt if operationalDate is missing on the quote", async () => {
+    it("generates dynamic filename with customer, unit and folio when operationalDate is missing on the quote", async () => {
       getCompletedWorkOrderById.mockResolvedValue({
         number: "OT-003",
+        folio: "N-140826-03",
+        status: "COMPLETED",
         isSpecial: false,
         completedAt: new Date("2026-08-14T00:00:00.000Z"),
         quote: {
@@ -121,16 +128,41 @@ describe("WorkOrderPrintPage", () => {
 
       const result = await generateMetadata({ params: Promise.resolve({ id: "wo-3" }) });
       expect(result).toEqual({
-        title: "Cliente-VolvoVNL-14082026",
+        title: { absolute: "Cliente-VolvoVNL-N-140826-03" },
       });
     });
 
-    it("returns fallback title 'Nota' when work order is not found", async () => {
+    it("formats filename without customer and without SinCliente when customer is absent", async () => {
+      getCompletedWorkOrderById.mockResolvedValue({
+        number: "OT-004",
+        folio: "N-140826-04",
+        status: "COMPLETED",
+        isSpecial: false,
+        completedAt: new Date("2026-08-14T00:00:00.000Z"),
+        quote: {
+          number: "C-004",
+          customer: null,
+          customerSnapshot: null,
+          vehicle: { economicNumber: "Eco 5" },
+          vehicleSnapshot: null,
+          operationalDate: null,
+        },
+      });
+
+      const result = await generateMetadata({ params: Promise.resolve({ id: "wo-4" }) });
+      expect(result).toEqual({
+        title: { absolute: "Eco5-N-140826-04" },
+      });
+      expect((result.title as { absolute: string }).absolute).not.toContain("SinCliente");
+      expect((result.title as { absolute: string }).absolute).not.toContain("Sincliente");
+    });
+
+    it("returns fallback title 'Nota' with absolute object when work order is not found", async () => {
       getCompletedWorkOrderById.mockResolvedValue(null);
 
       const result = await generateMetadata({ params: Promise.resolve({ id: "wo-missing" }) });
       expect(result).toEqual({
-        title: "Nota",
+        title: { absolute: "Nota" },
       });
     });
   });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isMeaningfulText } from "@/lib/meaningful-text";
 
 const optionalTrimmedString = z.preprocess(
   (value) => (value === null || value === undefined || (typeof value === "string" && value.trim() === "") ? undefined : value),
@@ -50,7 +51,7 @@ export const customerContactUpdateSchema = customerContactInputSchema.extend({
 });
 
 export const customerInputSchema = z.object({
-  name: z.string().trim().min(1, "Customer name is required").max(160),
+  name: z.string().trim().min(1, "Customer name is required").max(160).refine(isMeaningfulText, "El nombre debe incluir texto significativo."),
   commercialName: optionalTrimmedString,
   legalName: optionalTrimmedString,
   email: optionalEmail,
@@ -74,4 +75,3 @@ export type CustomerUpdateInput = z.infer<typeof customerUpdateSchema>;
 export type CustomerContactRole = z.infer<typeof customerContactRoleSchema>;
 export type CustomerContactInput = z.infer<typeof customerContactInputSchema>;
 export type CustomerContactUpdateInput = z.infer<typeof customerContactUpdateSchema>;
-

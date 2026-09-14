@@ -5,7 +5,7 @@ import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
 import { PrintActionButton } from "./print-action-button";
 import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, Button, OperationalCard } from "@/components/ui";
+import { Badge, OperationalCard } from "@/components/ui";
 import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
@@ -36,7 +36,7 @@ interface QuoteListCardProps {
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
-  shareAction: () => Promise<{ success: boolean; error?: string }>;
+  shareAction: () => Promise<{ success: boolean; token?: string; error?: string }>;
   authorizeAction: (note: string, authorizedSectionIds?: string[]) => Promise<{ success: boolean; error?: string }>;
   correctDecisionAction: (quoteId: string, nextStatus: "APPROVED" | "REJECTED" | "DRAFT") => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
@@ -90,7 +90,6 @@ export function QuoteListCard({
   const actionPresentation = resolveQuoteActionPresentation({
     status: quote.status,
     editable,
-    hasActiveSharedQuote: Boolean(quote.activeSharedQuote),
     hasWorkOrder: Boolean(quote.workOrder),
     paymentAvailable: paymentRequestContext !== null,
   });
@@ -138,8 +137,6 @@ export function QuoteListCard({
         return (
           <ShareQuoteButton
             action={shareAction}
-            sharedQuote={quote.activeSharedQuote ?? undefined}
-            status={quote.status}
             quoteNumber={quote.number}
             variant={variant}
             className={tileClassName}
@@ -185,11 +182,13 @@ export function QuoteListCard({
     }
   };
 
+  const displayFolio = quote.folio ?? quote.number;
+
   return (
     <OperationalCard
       className="w-full min-w-0"
       onOpen={openPreview}
-      openLabel={`Abrir vista previa de ${quote.number}`}
+      openLabel={`Abrir vista previa de ${displayFolio}`}
       actionsClassName="grid gap-3"
       body={
         <>
@@ -199,7 +198,7 @@ export function QuoteListCard({
                 {quote.title || "Sin título"}
               </h3>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                <span>Folio {quote.number}</span>
+                <span>Folio {displayFolio}</span>
                 <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
                 {quote.isLocked ? (
                   <Badge variant="warning">Bloqueado</Badge>

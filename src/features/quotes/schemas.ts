@@ -1,5 +1,6 @@
 import { QuoteItemType } from "@prisma/client";
 import { z } from "zod";
+import { isMeaningfulText } from "@/lib/meaningful-text";
 import { normalizeOperationalDate } from "./lib/operational-date";
 import { optionalTrimmedString as optionalFilterString } from "@/lib/filters";
 
@@ -57,7 +58,7 @@ const quantitySchema = z.coerce
 
 const quoteItemBaseSchema = z.object({
   type: z.nativeEnum(QuoteItemType),
-  description: z.string().trim().min(1, "Item description is required").max(240),
+  description: z.string().trim().min(1, "Item description is required").max(240).refine(isMeaningfulText, "La descripción debe incluir texto significativo."),
   quantity: quantitySchema,
   unitPriceCents: z.coerce.number().int().nonnegative("Unit price must be zero or greater").max(MAX_UNIT_PRICE_CENTS, "Unit price is too large"),
   includeInPayroll: z.coerce.boolean().default(false),
@@ -115,7 +116,7 @@ const quoteInputBaseSchema = z.object({
   customerContactId: optionalTrimmedString,
   customerFiscalProfileId: optionalTrimmedString,
   vehicle: quoteVehicleInputSchema,
-  title: z.string().trim().min(1, "Quote title is required").max(160),
+  title: z.string().trim().min(1, "Quote title is required").max(160).refine(isMeaningfulText, "El título debe incluir texto significativo."),
   description: optionalTrimmedString,
   administrative: z.boolean().default(false),
   taxEnabled: z.boolean().default(true),
@@ -250,25 +251,33 @@ export const quoteFilterSchema = z.object({
 
 export const quoteLifecycleReasonSchema = z.string().trim().min(3).max(500);
 
+export const quoteCommercialCorrectionSchema = quoteDraftInputSchema.extend({
+  operationKey: z.string().trim().min(1, "La clave de operación es obligatoria."),
+  reason: quoteLifecycleReasonSchema,
+});
+
 export const quoteListPageSchema = z.coerce.number().int().min(1).default(1);
 
-export type QuoteCustomerSnapshot = {
-  customerId?: string | null;
-  name: string;
-  commercialName?: string | null;
-  legalName?: string | null;
-  taxId?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  address?: string | null;
-};
+export const quoteCustomerSnapshotSchema = z.object({
+  customerId: z.string().nullish(),
+  name: z.string().trim().nullish(),
+  commercialName: z.string().nullish(),
+  legalName: z.string().nullish(),
+  fiscalBusinessName: z.string().nullish(),
+  taxId: z.string().nullish(),
+  email: z.string().nullish(),
+  phone: z.string().nullish(),
+  address: z.string().nullish(),
+});
+export type QuoteCustomerSnapshot = z.infer<typeof quoteCustomerSnapshotSchema>;
 
-export type QuoteContactSnapshot = {
-  id?: string | null;
-  name: string;
-  phone: string;
-  role: string;
-};
+export const quoteContactSnapshotSchema = z.object({
+  id: z.string().nullish(),
+  name: z.string().trim().min(1),
+  phone: z.string().nullish(),
+  role: z.string().trim().nullish(),
+});
+export type QuoteContactSnapshot = z.infer<typeof quoteContactSnapshotSchema>;
 
 export type QuoteFilterInput = z.infer<typeof quoteFilterSchema>;
 export type QuoteInput = z.infer<typeof quoteInputSchema>;

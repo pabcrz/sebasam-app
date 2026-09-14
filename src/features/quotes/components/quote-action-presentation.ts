@@ -17,7 +17,6 @@ export type QuoteActionId =
 type QuoteActionPresentationInput = {
   status: QuoteStatus;
   editable: boolean;
-  hasActiveSharedQuote: boolean;
   hasWorkOrder: boolean;
   paymentAvailable: boolean;
 };
@@ -50,14 +49,13 @@ const actionOrder: QuoteActionId[] = [
 export function resolveQuoteActionPresentation({
   status,
   editable,
-  hasActiveSharedQuote,
   hasWorkOrder,
   paymentAvailable,
 }: QuoteActionPresentationInput): QuoteActionPresentation {
   const available = new Set<QuoteActionId>(["print", "duplicate"]);
 
   if (editable) available.add("edit");
-  if (status === "DRAFT" || (hasActiveSharedQuote && (status === "SENT" || status === "APPROVED"))) {
+  if (status !== "CANCELLED") {
     available.add("share");
   }
   if (status === "SENT") available.add("authorize");

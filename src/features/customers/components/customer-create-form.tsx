@@ -17,6 +17,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import type { ButtonVariant } from "@/components/ui";
+import { getMeaningfulTextError } from "@/lib/meaningful-text";
 
 export interface CustomerCreateFormProps {
   action: (formData: FormData) => void | Promise<void>;
@@ -30,9 +31,12 @@ export interface CustomerCreateFormProps {
 export function CustomerCreateForm({ action, triggerVariant, triggerClassName, triggerSize, triggerIconOnly = false, triggerAriaLabel }: CustomerCreateFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
+  const [name, setName] = React.useState("");
+  const nameError = name === "" ? null : getMeaningfulTextError(name, "nombre");
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (getMeaningfulTextError(name, "nombre")) return;
     const formData = new FormData(event.currentTarget);
 
     startTransition(async () => {
@@ -71,7 +75,10 @@ export function CustomerCreateForm({ action, triggerVariant, triggerClassName, t
           <input type="hidden" name="commercialName" value="" />
           <div className="grid gap-2">
             <Label htmlFor="name">Nombre</Label>
-            <Input id="name" name="name" placeholder="Ej. Juan Pérez o Grúas Mejía" required disabled={isPending} />
+            <Input id="name" name="name" placeholder="Ej. Juan Pérez o Grúas Mejía" required disabled={isPending} value={name} onChange={(event) => setName(event.target.value)} aria-describedby={nameError ? "customer-name-error" : undefined} aria-invalid={nameError ? true : undefined} />
+            <span id="customer-name-error" role={nameError ? "alert" : undefined} className="min-h-4 text-xs text-[var(--color-status-danger-fg)]">
+              {nameError}
+            </span>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="legalName">Razón social formal (opcional)</Label>

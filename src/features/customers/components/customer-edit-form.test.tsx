@@ -86,4 +86,21 @@ describe("CustomerEditForm", () => {
       notes: "Cliente frecuente",
     });
   });
+
+  it("shows and clears a meaningful-name error before submission", async () => {
+    const action = vi.fn();
+    const user = userEvent.setup();
+    render(<CustomerEditForm action={action} customer={buildCustomer()} />);
+
+    const name = screen.getByLabelText("Nombre");
+    await user.clear(name);
+    await user.type(name, "...");
+    expect(screen.getByRole("alert")).toHaveTextContent("El nombre debe incluir texto significativo.");
+    fireEvent.submit(screen.getByTestId("customer-edit-form"));
+    expect(action).not.toHaveBeenCalled();
+
+    await user.clear(name);
+    await user.type(name, "Constructora del Sur");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });

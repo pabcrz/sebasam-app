@@ -4,7 +4,13 @@ import userEvent from "@testing-library/user-event";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { QuotePreviewDialog, toQuotePreviewCardProps } from "./quote-preview-dialog";
 
-function createMockQuote(overrides: Partial<QuoteListSummary> = {}): QuoteListSummary {
+type MockQuoteInput = Partial<Omit<QuoteListSummary, "customerContact">> & {
+  customerContact?: Partial<NonNullable<QuoteListSummary["customerContact"]>> | null;
+  contactSnapshot?: unknown;
+  customerSnapshot?: unknown;
+};
+
+function createMockQuote(overrides: MockQuoteInput = {}): QuoteListSummary {
   return {
     id: "quote-1",
     customerId: "cust-1",
@@ -215,5 +221,115 @@ describe("QuotePreviewDialog", () => {
 
     expect(screen.queryByRole("link", { name: /imprimir/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/imprimir cotización/i)).not.toBeInTheDocument();
+  });
+
+  it("renders contact with role 'Operador' when DRIVER is present in snapshot", async () => {
+    const user = userEvent.setup();
+    const quote = createMockQuote({
+      contactSnapshot: {
+        id: "c-1",
+        name: "Roberto Chofer",
+        role: "DRIVER",
+      },
+    });
+
+    render(<QuotePreviewDialog quote={quote} />);
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+
+    expect(screen.getByText("Operador: Roberto Chofer")).toBeInTheDocument();
+  });
+
+  it("renders contact with role 'Contacto responsable' and 'Contacto de facturación'", async () => {
+    const user = userEvent.setup();
+    const contactQuote = createMockQuote({
+      contactSnapshot: {
+        id: "c-2",
+        name: "Maria Directora",
+        role: "CONTACT",
+      },
+    });
+
+    const { unmount } = render(<QuotePreviewDialog quote={contactQuote} />);
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+    expect(screen.getByText("Contacto responsable: Maria Directora")).toBeInTheDocument();
+    unmount();
+
+    const billingQuote = createMockQuote({
+      contactSnapshot: {
+        id: "c-3",
+        name: "Carlos Contador",
+        role: "BILLING",
+      },
+    });
+    render(<QuotePreviewDialog quote={billingQuote} />);
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+    expect(screen.getByText("Contacto de facturación: Carlos Contador")).toBeInTheDocument();
+  });
+
+  it("prioritizes contact snapshot over changed live customer contact", async () => {
+    const user = userEvent.setup();
+    const quote = createMockQuote({
+      contactSnapshot: {
+        id: "c-historical",
+        name: "Chofer Histórico",
+        role: "DRIVER",
+      },
+      customerContact: {
+        id: "c-live",
+        name: "Nuevo Chofer Vivo",
+        role: "CONTACT",
+        phone: "5511223344",
+      },
+    });
+
+    render(<QuotePreviewDialog quote={quote} />);
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+
+    expect(screen.getByText("Operador: Chofer Histórico")).toBeInTheDocument();
+    expect(screen.queryByText(/Nuevo Chofer Vivo/)).not.toBeInTheDocument();
+  });
+
+  it("falls back to live customer contact when contactSnapshot is null", async () => {
+    const user = userEvent.setup();
+    const quote = createMockQuote({
+      contactSnapshot: null,
+      customerContact: {
+        id: "c-live",
+        name: "Contacto Vivo",
+        role: "CONTACT",
+        phone: "5511223344",
+      },
+    });
+
+    render(<QuotePreviewDialog quote={quote} />);
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+
+    expect(screen.getByText("Contacto responsable: Contacto Vivo")).toBeInTheDocument();
+  });
+
+  it("does not render a contact line when no contact is selected", async () => {
+    const user = userEvent.setup();
+    const quote = createMockQuote({
+      contactSnapshot: null,
+      customerContact: null,
+    });
+
+    render(<QuotePreviewDialog quote={quote} />);
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+
+    expect(screen.queryByText(/Operador:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Chofer:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Contacto:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Contacto responsable:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Contacto de facturación:/)).not.toBeInTheDocument();
+  });
+
+  it("has accessible touch target on close button", async () => {
+    const user = userEvent.setup();
+    render(<QuotePreviewDialog quote={createMockQuote()} />);
+    await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
+
+    const closeButton = screen.getByRole("button", { name: /cerrar/i });
+    expect(closeButton).toHaveClass("min-h-[40px]", "min-w-[40px]");
   });
 });

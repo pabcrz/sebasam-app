@@ -74,11 +74,16 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
     where.customerId = filters.customerId;
   }
 
-  if (filters.number) {
-    where.number = { contains: filters.number, mode: "insensitive" };
-  }
-
   const searchOrs: Prisma.QuoteWhereInput[] = [];
+
+  if (filters.number) {
+    searchOrs.push({
+      OR: [
+        { number: { contains: filters.number, mode: "insensitive" } },
+        { folio: { contains: filters.number, mode: "insensitive" } },
+      ],
+    });
+  }
 
   if (filters.plate) {
     const plateSearch = filters.plate;

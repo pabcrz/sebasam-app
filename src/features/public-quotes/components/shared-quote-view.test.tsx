@@ -20,11 +20,13 @@ const acceptSharedQuoteActionMock = vi.mocked(acceptSharedQuoteAction);
 const declineSharedQuoteActionMock = vi.mocked(declineSharedQuoteAction);
 
 function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: WorkOrderStatus): SharedQuoteViewProps["quote"] {
-  const quote: SharedQuoteViewProps["quote"] = {
+  const quote = {
     id: "quote-1",
     submissionKey: null,
     submissionHash: null,
     number: "COT-001",
+    folio: null,
+    issuedAt: null,
     status,
     title: "Servicio general",
     description: "Servicio completo",
@@ -85,7 +87,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
     workOrder: workOrderStatus ? { status: workOrderStatus } : null,
   };
 
-  return quote;
+  return quote as SharedQuoteViewProps["quote"];
 }
 
 function makeMultiSectionQuote(status: QuoteStatus = QuoteStatus.SENT): SharedQuoteViewProps["quote"] {
@@ -291,7 +293,14 @@ describe("SharedQuoteView", () => {
     expect(within(compactItems).getByText("Cambio de aceite").closest("li")).toHaveTextContent("$40.00");
 
     expect(screen.getByTestId("quote-items-table")).toHaveClass("sr-only", "md:not-sr-only", "print:not-sr-only");
-    expect(screen.getByRole("table")).toBeInTheDocument();
+    const table = screen.getByRole("table");
+    expect(table).toBeInTheDocument();
+    expect(screen.getByTestId("quote-items-table")).not.toHaveClass("border", "rounded-[var(--radius-sm)]");
+    expect(table.querySelector("tbody")).toHaveClass("divide-y-0");
+    expect(within(table).getByRole("columnheader", { name: "Cant." }).closest("tr")).not.toHaveClass("border-b");
+    expect(within(table).getByText("Aceite y filtros").closest("tr")).not.toHaveClass("border-b");
+    expect(within(table).getByRole("columnheader", { name: "Cant." })).toHaveClass("py-1.5", "print:py-1");
+    expect(within(table).getByText("Cambio de aceite").closest("td")).toHaveClass("py-1.5", "print:py-1");
   });
 
   it("renders root and section concepts exactly once in the print document", () => {
@@ -326,7 +335,24 @@ describe("SharedQuoteView", () => {
 
     const table = screen.getByTestId("quote-items-table");
     expect(within(table).getAllByText("Mano de obra")).toHaveLength(1);
+    expect(table).toHaveClass("overflow-x-auto", "print:overflow-visible");
+    expect(table).not.toHaveClass("border", "rounded-[var(--radius-sm)]");
+    expect(table.querySelector("tbody")).toHaveClass("divide-y-0", "print:table-row-group");
+    expect(table.querySelector("tbody")).not.toHaveClass("divide-y");
+    expect(within(table).getByRole("columnheader", { name: "Cant." })).toHaveClass("print:py-1");
     expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
+  });
+
+  it("uses compact typography and row spacing for printed concepts", () => {
+    render(<SharedQuoteView quote={makeQuote()} token="" isPrint />);
+
+    const tableContainer = screen.getByTestId("quote-items-table");
+    const table = screen.getByRole("table");
+    expect(table).toHaveClass("print:text-[11px]", "print:leading-tight");
+    expect(tableContainer).not.toHaveClass("print:border-gray-200", "print:rounded-[var(--radius-sm)]");
+    expect(table.querySelector("tbody")).not.toHaveClass("print:divide-blue-100");
+    expect(within(table).getByRole("columnheader", { name: "Cant." }).closest("tr")).not.toHaveClass("print:border-gray-200");
+    expect(within(table).getByText("Mano de obra").closest("td")).toHaveClass("print:py-1");
   });
 
   it.each([

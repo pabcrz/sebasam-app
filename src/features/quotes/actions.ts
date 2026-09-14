@@ -3,13 +3,26 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { PaymentRequestStatus, PaymentStatus, Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import {
+  LedgerEntryType,
+  LedgerMovementType,
+  PaymentRequestStatus,
+  PaymentStatus,
+  Prisma,
+  QuoteStatus,
+  SettlementAgreementStatus,
+  WorkOrderStatus,
+} from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole, requireAdmin } from "@/lib/auth/session";
 import { measureServerTiming, recordServerTiming } from "@/lib/server-timing";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { createVehicleSnapshot } from "@/features/vehicles/schemas";
-import { quoteDraftFormInputSchema, quoteDraftInputSchema, quoteLifecycleReasonSchema } from "./schemas";
+import {
+  quoteDraftFormInputSchema,
+  quoteDraftInputSchema,
+  quoteLifecycleReasonSchema,
+} from "./schemas";
 import {
   calculateItemTotalCents,
   createQuoteValidUntil,
@@ -18,6 +31,7 @@ import { isQuoteEditable } from "./lib/editability";
 import { assertCommercialQuote, CommercialQuoteValidationError } from "./lib/commercial-validation";
 import { normalizeOperationalDate } from "./lib/operational-date";
 import { nextQuoteNumber, nextWorkOrderNumber, withQuoteNumberRetry } from "./lib/sequence";
+import { allocateDailyDocumentFolio } from "./lib/daily-document-sequence";
 import { lockPaymentMutationScope } from "@/features/payments/domain";
 import {
   QuoteDecisionError,
@@ -30,10 +44,20 @@ import {
   correctQuoteDecision,
   getOrCreateSharedQuoteForQuote,
   ensureSharedQuoteInTransaction,
+  revokeCanonicalNoteSharedQuote,
+  SharedQuoteOperationError,
 } from "./domain";
 
 const quotesPath = "/admin/quotes";
 const genericQuoteFormValidationError = "Revisa los datos e intenta de nuevo.";
+
+const shareableQuoteStatuses = new Set<QuoteStatus>([
+  QuoteStatus.DRAFT,
+  QuoteStatus.SENT,
+  QuoteStatus.APPROVED,
+  QuoteStatus.REJECTED,
+  QuoteStatus.ARCHIVED,
+]);
 
 function quoteFormValidationError(issues: Array<{ message: string }>) {
   const actionableIssue = issues.find(({ message }) =>
@@ -61,6 +85,7 @@ async function createQuoteAuthorized(input: unknown) {
   return withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
     const quoteId = randomUUID();
     const quoteNumber = await nextQuoteNumber(tx);
+    const { folio: quoteFolio, issuedAt: quoteIssuedAt } = await allocateDailyDocumentFolio(tx, "C");
     const hasVehicle = hasVehicleData(data.vehicle);
     const shouldLinkVehicle = Boolean(data.customerId && hasVehicle);
     const vehicle = shouldLinkVehicle
@@ -94,6 +119,8 @@ async function createQuoteAuthorized(input: unknown) {
         customerSnapshot,
         contactSnapshot,
         number: quoteNumber,
+        folio: quoteFolio,
+        issuedAt: quoteIssuedAt,
         status: QuoteStatus.DRAFT,
         approvedAt: null,
         title: data.title,
@@ -364,10 +391,24 @@ export async function updateDraftQuoteFromWorkspace(
   return { success: true };
 }
 
-const ACTIVE_PAYMENT_BLOCK_MESSAGE = "No se puede corregir una nota con un pago activo. Reversa el pago primero.";
+const ACTIVE_PAYMENT_REQUEST_STATUSES: PaymentRequestStatus[] = [
+  PaymentRequestStatus.PENDING,
+  PaymentRequestStatus.VIEWED,
+  PaymentRequestStatus.FISCAL_DATA_REQUIRED,
+  PaymentRequestStatus.READY_TO_PAY,
+];
 
 export async function correctCompletedWorkQuote(quoteId: string, input: unknown) {
-  await requireOperationalRole();
+  const session = await requireAdmin();
+  const actorId = session.profile.id;
+
+  const raw = typeof input === "object" && input !== null ? (input as Record<string, unknown>) : {};
+  const operationKey = typeof raw.operationKey === "string" && raw.operationKey.trim() !== ""
+    ? raw.operationKey.trim()
+    : randomUUID();
+  const reason = typeof raw.reason === "string" && raw.reason.trim() !== ""
+    ? raw.reason.trim()
+    : "Ajuste de conceptos en nota completada";
 
   const data = quoteDraftInputSchema.parse(input);
   const requestedOperationalDate = data.operationalDate === undefined
@@ -379,37 +420,80 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
     sortOrder: sIndex,
   }));
   const totals = draftTotals(data);
+  if (
+    totals.totalCents === null ||
+    totals.subtotalCents === null ||
+    totals.taxCents === null
+  ) {
+    throw new Error("Todos los conceptos de una nota completada deben tener precio unitario definido.");
+  }
+  const newTotalCents = totals.totalCents;
+  const newSubtotalCents = totals.subtotalCents;
+  const newTaxCents = totals.taxCents;
 
   return prisma.$transaction(async (tx) => {
-    await lockPaymentMutationScope(tx, { quoteIds: [quoteId] });
+    // 1. Check idempotency
+    const existingCorrection = await tx.quoteCommercialCorrection.findUnique({
+      where: { operationKey },
+      include: {
+        quote: {
+          include: { sections: true },
+        },
+      },
+    });
+    if (existingCorrection) {
+      return existingCorrection.quote;
+    }
 
+    // 2. Pre-read to discover candidate payments to lock
+    const preQuote = await tx.quote.findUnique({
+      where: { id: quoteId },
+      include: {
+        workOrder: {
+          include: {
+            paymentApplications: {
+              where: {
+                reversedAt: null,
+                payment: { status: PaymentStatus.PAID, reversedAt: null },
+              },
+              select: { paymentId: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!preQuote) {
+      throw new Error("Quote not found.");
+    }
+
+    if (!preQuote.workOrder || preQuote.workOrder.status !== WorkOrderStatus.COMPLETED) {
+      throw new Error("Only completed work can be corrected.");
+    }
+
+    const candidatePaymentIds = Array.from(
+      new Set((preQuote.workOrder.paymentApplications ?? []).map((pa) => pa.paymentId)),
+    );
+
+    // 3. Acquire locks in canonical order: Payment then Quote
+    await lockPaymentMutationScope(tx, {
+      paymentIds: candidatePaymentIds,
+      quoteIds: [quoteId],
+    });
+
+    // 4. Re-read quote and active applications under lock
     const quote = await tx.quote.findUnique({
       where: { id: quoteId },
       include: {
         items: true,
         sections: { include: { items: true } },
         workOrder: true,
+        settlementAgreement: true,
       },
     });
 
-    if (!quote) {
-      throw new Error("Quote not found.");
-    }
-
-    if (!quote.workOrder || quote.workOrder.status !== WorkOrderStatus.COMPLETED) {
+    if (!quote || !quote.workOrder || quote.workOrder.status !== WorkOrderStatus.COMPLETED) {
       throw new Error("Only completed work can be corrected.");
-    }
-
-    const activeApplications = await tx.paymentApplication.findMany({
-      where: {
-        workOrderId: quote.workOrder.id,
-        reversedAt: null,
-        payment: { reversedAt: null },
-      },
-    });
-
-    if (activeApplications.length > 0) {
-      throw new Error(ACTIVE_PAYMENT_BLOCK_MESSAGE);
     }
 
     if (
@@ -419,6 +503,214 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
       throw new Error("Only draft quotes can change their operational date.");
     }
 
+    // 5. Re-read effective applications under lock
+    const effectiveApplications = await tx.paymentApplication.findMany({
+      where: {
+        workOrderId: quote.workOrder.id,
+        reversedAt: null,
+        payment: { status: PaymentStatus.PAID, reversedAt: null },
+      },
+      include: {
+        payment: true,
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+
+    // Enforce: cannot transfer note to another customer if payments exist
+    if (effectiveApplications.length > 0 && data.customerId && data.customerId !== quote.customerId) {
+      throw new Error("No se puede cambiar el cliente de una nota con pagos aplicados.");
+    }
+
+    const currentAppliedCents = effectiveApplications.reduce((sum, app) => sum + app.amountCents, 0);
+    const now = new Date();
+
+    // 6. Handle financial reconciliation if newTotalCents < currentAppliedCents
+    const correctionApplicationsToCreate: Array<{
+      originalApplicationId: string;
+      reversalLedgerEntryId: string;
+      replacementApplicationId: string | null;
+      replacementLedgerEntryId: string | null;
+      workOrderId: string;
+      originalAmountCents: number;
+      reversalAmountCents: number;
+      replacementAmountCents: number;
+      releasedCreditCents: number;
+      sortOrder: number;
+    }> = [];
+
+    let excessCreditCents = 0;
+    let finalAppliedCents = currentAppliedCents;
+
+    if (newTotalCents < currentAppliedCents) {
+      let reductionNeeded = currentAppliedCents - newTotalCents;
+      excessCreditCents = reductionNeeded;
+      finalAppliedCents = newTotalCents;
+
+      // Iterate in LIFO order (latest applications reversed first)
+      const lifoApplications = [...effectiveApplications].reverse();
+
+      for (let i = 0; i < lifoApplications.length && reductionNeeded > 0; i++) {
+        const app = lifoApplications[i];
+
+        // Locate original application ledger entry
+        const origLedger = await tx.ledgerEntry.findFirst({
+          where: {
+            movementType: LedgerMovementType.PAYMENT_APPLICATION,
+            paymentApplicationId: app.id,
+          },
+        });
+
+        // Fully reverse original application
+        await tx.paymentApplication.update({
+          where: { id: app.id },
+          data: {
+            reversedAt: now,
+            reversalReason: reason,
+            reversedById: actorId,
+          },
+        });
+
+        // Insert reversal ledger entry
+        const reversalLedger = await tx.ledgerEntry.create({
+          data: {
+            customerId: app.payment.customerId,
+            type: LedgerEntryType.DEBIT,
+            movementType: LedgerMovementType.APPLICATION_REVERSAL,
+            amountCents: app.amountCents,
+            paymentId: app.paymentId,
+            paymentApplicationId: app.id,
+            workOrderId: app.workOrderId,
+            actorId,
+            reason,
+            reversedMovementId: origLedger?.id ?? null,
+          },
+        });
+
+        let replacementAppId: string | null = null;
+        let replacementLedgerId: string | null = null;
+        let replacementAmount = 0;
+
+        if (app.amountCents > reductionNeeded) {
+          // Partial reduction: recreate active application for remaining portion
+          replacementAmount = app.amountCents - reductionNeeded;
+          reductionNeeded = 0;
+
+          const replacementApp = await tx.paymentApplication.create({
+            data: {
+              operationKey: `${operationKey}:app:${app.id}:replacement`,
+              paymentId: app.paymentId,
+              workOrderId: app.workOrderId,
+              amountCents: replacementAmount,
+              actorId,
+            },
+          });
+          replacementAppId = replacementApp.id;
+
+          const replacementLedger = await tx.ledgerEntry.create({
+            data: {
+              customerId: app.payment.customerId,
+              type: LedgerEntryType.CREDIT,
+              movementType: LedgerMovementType.PAYMENT_APPLICATION,
+              amountCents: replacementAmount,
+              paymentId: app.paymentId,
+              paymentApplicationId: replacementApp.id,
+              workOrderId: app.workOrderId,
+              actorId,
+              reason: `Reemplazo parcial por corrección de nota (${reason})`,
+            },
+          });
+          replacementLedgerId = replacementLedger.id;
+        } else {
+          // Full reversal
+          reductionNeeded -= app.amountCents;
+        }
+
+        correctionApplicationsToCreate.push({
+          originalApplicationId: app.id,
+          reversalLedgerEntryId: reversalLedger.id,
+          replacementApplicationId: replacementAppId,
+          replacementLedgerEntryId: replacementLedgerId,
+          workOrderId: app.workOrderId,
+          originalAmountCents: app.amountCents,
+          reversalAmountCents: app.amountCents,
+          replacementAmountCents: replacementAmount,
+          releasedCreditCents: app.amountCents - replacementAmount,
+          sortOrder: i,
+        });
+      }
+    }
+
+    // 7. Invalidate SettlementAgreement and active PaymentRequests if total changed
+    const previousTotalCents = quote.totalCents ?? 0;
+    if (newTotalCents !== previousTotalCents) {
+      if (quote.settlementAgreement && quote.settlementAgreement.status === SettlementAgreementStatus.ACTIVE) {
+        await tx.settlementAgreement.update({
+          where: { id: quote.settlementAgreement.id },
+          data: {
+            status: SettlementAgreementStatus.CANCELLED,
+            cancelledAt: now,
+            cancelledById: actorId,
+            cancellationReason: `Cancelado automáticamente por corrección comercial de la nota: ${reason}`,
+          },
+        });
+
+        const revisionsCount = await tx.settlementAgreementRevision.count({
+          where: { settlementAgreementId: quote.settlementAgreement.id },
+        });
+
+        await tx.settlementAgreementRevision.create({
+          data: {
+            settlementAgreementId: quote.settlementAgreement.id,
+            revisionNumber: revisionsCount + 1,
+            nominalSubtotalCents: newSubtotalCents,
+            nominalTaxCents: newTaxCents,
+            nominalTotalCents: newTotalCents,
+            settlementBaseCents: quote.settlementAgreement.settlementBaseCents,
+            settlementTaxCents: quote.settlementAgreement.settlementTaxCents,
+            settlementTotalCents: quote.settlementAgreement.settlementTotalCents,
+            reason: `Cancelado por corrección comercial de la nota (${reason})`,
+            actorId,
+          },
+        });
+      }
+
+      await tx.paymentRequest.updateMany({
+        where: {
+          quoteId: quote.id,
+          status: { in: ACTIVE_PAYMENT_REQUEST_STATUSES },
+        },
+        data: {
+          status: PaymentRequestStatus.CANCELLED,
+        },
+      });
+    }
+
+    // 8. Persist audit record in QuoteCommercialCorrection
+    const correctionRecord = await tx.quoteCommercialCorrection.create({
+      data: {
+        operationKey,
+        quoteId: quote.id,
+        workOrderId: quote.workOrder.id,
+        previousTotalCents,
+        newTotalCents,
+        previousAppliedCents: currentAppliedCents,
+        newAppliedCents: finalAppliedCents,
+        excessCreditCents,
+        reason,
+        actorId,
+      },
+    });
+
+    if (correctionApplicationsToCreate.length > 0) {
+      await tx.quoteCommercialCorrectionApplication.createMany({
+        data: correctionApplicationsToCreate.map((item) => ({
+          ...item,
+          correctionId: correctionRecord.id,
+        })),
+      });
+    }
+
+    // 9. Update Quote snapshot and items
     const hasVehicle = hasVehicleData(data.vehicle);
     const shouldLinkVehicle = Boolean(data.customerId && hasVehicle);
     const vehicle = shouldLinkVehicle
@@ -501,19 +793,26 @@ export async function correctCompletedWorkQuoteFromWorkspace(
   const parsed = quoteDraftFormInputSchema.safeParse(quoteFormDataToInput(formData));
   if (!parsed.success) return { error: quoteFormValidationError(parsed.error.issues) };
 
+  const operationKey = (formData.get("operationKey") as string | null) || randomUUID();
+  const reason = (formData.get("reason") as string | null) || "Ajuste de conceptos en nota completada";
+
   try {
-    await correctCompletedWorkQuote(quoteId, parsed.data);
+    await correctCompletedWorkQuote(quoteId, {
+      ...parsed.data,
+      operationKey,
+      reason,
+    });
   } catch (error) {
-    if (error instanceof Error && error.message === ACTIVE_PAYMENT_BLOCK_MESSAGE) {
-      return { error: ACTIVE_PAYMENT_BLOCK_MESSAGE };
-    }
     if (error instanceof Error && error.message === "Only completed work can be corrected.") {
       return { error: "Solo se pueden corregir notas de trabajos completados." };
+    }
+    if (error instanceof Error && error.message === "No se puede cambiar el cliente de una nota con pagos aplicados.") {
+      return { error: error.message };
     }
     if (error instanceof Error && error.message.startsWith("Esta cotización ya tiene ")) {
       return { error: error.message };
     }
-    return { error: "No se pudo corregir la nota. Intenta de nuevo." };
+    return { error: error instanceof Error ? error.message : "No se pudo corregir la nota. Intenta de nuevo." };
   }
 
   revalidatePath(quotesPath);
@@ -612,6 +911,65 @@ export async function archiveQuote(quoteId: string, reason: string) {
     });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   revalidatePath(quotesPath);
+}
+
+/** Archives a completed Note without revoking its canonical link or payments. */
+export async function archiveCompletedNote(quoteId: string, reason: string) {
+  const { profile } = await requireAdmin();
+  const parsedReason = quoteLifecycleReasonSchema.safeParse(reason);
+  if (!parsedReason.success) throw new Error("Archive reason is required.");
+
+  await prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true } });
+    if (!quote) throw new Error("Quote not found.");
+    if (quote.isLocked) throw new Error("Este documento está bloqueado.");
+    if (!quote.workOrder || quote.workOrder.status !== WorkOrderStatus.COMPLETED) {
+      throw new Error("Only completed Notes can be archived via this action.");
+    }
+    if (quote.status !== QuoteStatus.APPROVED && quote.status !== QuoteStatus.SENT) {
+      throw new Error("A completed Note must be in APPROVED or SENT status to be archived.");
+    }
+
+    const archived = await tx.quote.updateMany({
+      where: { id: quoteId, status: quote.status },
+      data: { status: QuoteStatus.ARCHIVED },
+    });
+    if (archived.count !== 1) throw new Error("Note archive state changed. Reload and try again.");
+    await tx.quoteLifecycleEvent.create({
+      data: {
+        quoteId,
+        previousState: quote.status,
+        nextState: QuoteStatus.ARCHIVED,
+        actorId: profile.id,
+        reason: parsedReason.data,
+      },
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+  revalidatePath(quotesPath);
+  revalidatePath("/admin/notas");
+  revalidatePath("/admin/work-orders");
+}
+
+export async function revokeNoteCanonicalLinkAction(
+  quoteId: string,
+  reason: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const { profile } = await requireAdmin();
+
+  try {
+    await revokeCanonicalNoteSharedQuote(quoteId, profile.id, reason);
+  } catch (error) {
+    if (error instanceof SharedQuoteOperationError) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "No se pudo revocar el enlace. Intenta de nuevo." };
+  }
+
+  revalidatePath("/cotizacion", "layout");
+  revalidatePath(quotesPath);
+  revalidatePath("/admin/notas");
+  return { success: true };
 }
 
 export async function restoreArchivedQuote(quoteId: string, reason: string) {
@@ -900,6 +1258,37 @@ export async function publishSharedQuote(quoteId: string): Promise<{ success: bo
   return { success: true, token: shared.token };
 }
 
+export async function getOrCreateSharedQuoteAction(
+  quoteId: string,
+): Promise<{ success: boolean; token?: string; error?: string }> {
+  await requireOperationalRole();
+
+  try {
+    const quote = await prisma.quote.findUnique({
+      where: { id: quoteId },
+      select: { status: true, workOrder: { select: { status: true } } },
+    });
+
+    if (!quote || quote.status === QuoteStatus.CANCELLED) {
+      return { success: false, error: "No se puede compartir una cotización cancelada." };
+    }
+    if (!shareableQuoteStatuses.has(quote.status)) {
+      return { success: false, error: "No se puede compartir este documento en su estado actual." };
+    }
+    if (quote.status === QuoteStatus.ARCHIVED && quote.workOrder?.status !== WorkOrderStatus.COMPLETED) {
+      return { success: false, error: "Solo las Notas archivadas pueden compartirse." };
+    }
+
+    const shared = await getOrCreateSharedQuoteForQuote(quoteId);
+    revalidatePath(quotesPath);
+    revalidatePath("/admin/work-orders");
+    revalidatePath("/admin/notas");
+    return { success: true, token: shared.token };
+  } catch {
+    return { success: false, error: "No se pudo preparar el enlace para compartir. Intenta de nuevo." };
+  }
+}
+
 // --- Public accept / decline (no auth required; token is the authorization) ---
 
 export async function acceptSharedQuoteAction(token: string, authorizedSectionIds?: string[]) {
@@ -1017,6 +1406,7 @@ async function duplicateQuoteAuthorized(quoteId: string) {
   return withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
     const duplicatedQuoteId = randomUUID();
     const quoteNumber = await nextQuoteNumber(tx);
+    const { folio: duplicatedFolio, issuedAt: duplicatedIssuedAt } = await allocateDailyDocumentFolio(tx, "C");
     const sectionData = original.sections.map((section, sIndex) => ({
       name: section.name,
       sortOrder: sIndex,
@@ -1033,6 +1423,8 @@ async function duplicateQuoteAuthorized(quoteId: string) {
         vehicleId: original.vehicleId,
         vehicleSnapshot: original.vehicleSnapshot ?? Prisma.JsonNull,
         number: quoteNumber,
+        folio: duplicatedFolio,
+        issuedAt: duplicatedIssuedAt,
         status: "DRAFT",
         title: original.title,
         description: original.description,

@@ -3,10 +3,12 @@ import { render, screen } from "@testing-library/react";
 import { CustomerStatus, Prisma, QuoteItemType, QuoteStatus } from "@prisma/client";
 
 const getSharedQuoteByTokenMock = vi.hoisted(() => vi.fn());
+const getSharedQuotePaymentStatusMock = vi.hoisted(() => vi.fn());
 const sharedQuoteViewMock = vi.hoisted(() => vi.fn(() => <div data-testid="shared-quote-view" />));
 
 vi.mock("@/features/quotes/domain", () => ({
   getSharedQuoteByToken: getSharedQuoteByTokenMock,
+  getSharedQuotePaymentStatus: getSharedQuotePaymentStatusMock,
   SharedQuoteExpiredError: class SharedQuoteExpiredError extends Error {},
   SharedQuoteRevokedError: class SharedQuoteRevokedError extends Error {},
 }));
@@ -99,6 +101,31 @@ describe("CotizacionPage", () => {
     expect(screen.queryByRole("link", { name: /Batalla de Casa Blanca/i })).not.toBeInTheDocument();
   });
 
+  it("keeps private customer fields out of the public client DTO and loads completed Note payment status", async () => {
+    getSharedQuoteByTokenMock.mockResolvedValue({
+      quote: {
+        id: "quote-private", number: "N-001", folio: "N-001", status: QuoteStatus.ARCHIVED,
+        title: "Public service", description: null, vehicleSnapshot: null, subtotalCents: 100,
+        discountCents: 0, taxCents: 0, totalCents: 100, taxEnabled: false,
+        validUntil: new Date("2026-07-15T12:00:00.000Z"), administrative: false,
+        operationalDate: new Date("2026-06-15T00:00:00.000Z"), isLocked: true, paymentDueDate: null,
+        customer: { name: "Public customer", email: "private@example.com", address: "Private address" },
+        customerContact: { name: "Private contact", phone: "5551111111" },
+        customerFiscalProfile: { taxId: "PRIVATE-TAX-ID" }, vehicle: null, items: [], sections: [],
+        workOrder: { id: "wo-1", status: "COMPLETED", folio: "N-001" },
+      },
+    });
+    getSharedQuotePaymentStatusMock.mockResolvedValue({ paidCents: 0, remainingCents: 100, isSettled: false });
+
+    render(await CotizacionPage({ params: Promise.resolve({ token: "private-token" }) }));
+
+    const clientQuote = (sharedQuoteViewMock.mock.calls.at(-1) as unknown as [{ quote: Record<string, unknown> }])[0].quote;
+    expect(clientQuote.customer).toEqual({ name: "Public customer" });
+    expect(JSON.stringify(clientQuote)).not.toContain("private@example.com");
+    expect(JSON.stringify(clientQuote)).not.toContain("PRIVATE-TAX-ID");
+    expect(getSharedQuotePaymentStatusMock).toHaveBeenCalledWith("wo-1");
+  });
+
   describe("generateMetadata", () => {
     it("generates dynamic filename title and OpenGraph metadata when token is valid", async () => {
       getSharedQuoteByTokenMock.mockResolvedValue({
@@ -116,7 +143,7 @@ describe("CotizacionPage", () => {
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
 
       expect(metadata).toEqual({
-        title: "CristianDelToro-freightliner-18062026",
+        title: { absolute: "CristianDelToro-freightliner-COT-001" },
         description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
         openGraph: {
           title: "Cotización COT-001 | SEBASAM",
@@ -131,13 +158,99 @@ describe("CotizacionPage", () => {
       });
     });
 
+    it("generates dynamic filename title using C folio when available", async () => {
+      getSharedQuoteByTokenMock.mockResolvedValue({
+        quote: {
+          id: "quote-1",
+          number: "COT-001",
+          folio: "C-180626-01",
+          customer: { name: "Cristian Del Toro" },
+          vehicle: { brand: "freightliner", model: null, plate: null },
+          vehicleSnapshot: null,
+          operationalDate: new Date("2026-06-18T00:00:00.000Z"),
+          workOrder: null,
+        },
+      });
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
+
+      expect(metadata).toEqual({
+        title: { absolute: "CristianDelToro-freightliner-C-180626-01" },
+        description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
+        openGraph: {
+          title: "Cotización C-180626-01 | SEBASAM",
+          description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Cotización C-180626-01 | SEBASAM",
+          description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
+        },
+      });
+    });
+
+    it("presents assigned work as a Nota while retaining the quote folio without emitting Nota in filename", async () => {
+      getSharedQuoteByTokenMock.mockResolvedValue({
+        quote: {
+          id: "quote-1",
+          number: "COT-001",
+          folio: "C-180626-01",
+          customer: { name: "Cristian Del Toro" },
+          vehicle: { brand: "freightliner", model: null, plate: null },
+          vehicleSnapshot: null,
+          operationalDate: new Date("2026-06-18T00:00:00.000Z"),
+          workOrder: { status: "ASSIGNED", folio: null },
+        },
+      });
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
+
+      expect(metadata).toEqual({
+        title: { absolute: "CristianDelToro-freightliner-C-180626-01" },
+        description: "Nota para Cristian Del Toro - freightliner - Sin placas",
+        openGraph: {
+          title: "Nota C-180626-01 | SEBASAM",
+          description: "Nota para Cristian Del Toro - freightliner - Sin placas",
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Nota C-180626-01 | SEBASAM",
+          description: "Nota para Cristian Del Toro - freightliner - Sin placas",
+        },
+      });
+    });
+
+    it("formats filename without customer and without SinCliente when customer is absent", async () => {
+      getSharedQuoteByTokenMock.mockResolvedValue({
+        quote: {
+          id: "quote-anon",
+          number: "COT-002",
+          folio: "C-180626-02",
+          customer: null,
+          customerSnapshot: null,
+          vehicle: { economicNumber: "Eco 8" },
+          vehicleSnapshot: null,
+          operationalDate: new Date("2026-06-18T00:00:00.000Z"),
+          workOrder: null,
+        },
+      });
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ token: "anon-token" }) });
+
+      expect(metadata.title).toEqual({ absolute: "Eco8-C-180626-02" });
+      expect((metadata.title as { absolute: string }).absolute).not.toContain("SinCliente");
+      expect((metadata.title as { absolute: string }).absolute).not.toContain("Sincliente");
+    });
+
     it("returns safe fallback metadata when token is expired", async () => {
       getSharedQuoteByTokenMock.mockRejectedValue(new SharedQuoteExpiredError());
 
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "expired-token" }) });
 
       expect(metadata).toEqual({
-        title: "Cotización",
+        title: { absolute: "Cotización" },
         description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
         openGraph: {
           title: "Cotización | SEBASAM",
@@ -158,7 +271,7 @@ describe("CotizacionPage", () => {
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "revoked-token" }) });
 
       expect(metadata).toEqual({
-        title: "Cotización",
+        title: { absolute: "Cotización" },
         description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
         openGraph: {
           title: "Cotización | SEBASAM",
@@ -179,7 +292,7 @@ describe("CotizacionPage", () => {
       const metadata = await generateMetadata({ params: Promise.resolve({ token: "invalid-token" }) });
 
       expect(metadata).toEqual({
-        title: "Cotización",
+        title: { absolute: "Cotización" },
         description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
         openGraph: {
           title: "Cotización | SEBASAM",

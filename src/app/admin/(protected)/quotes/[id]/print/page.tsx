@@ -5,6 +5,11 @@ import { getQuoteById } from "@/features/quotes/queries";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { QuoteDocumentView } from "@/features/public-quotes/components/quote-document-view";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
+import { resolveDocumentFolio } from "@/features/quotes/lib/document-resolver";
+import {
+  resolveCustomerDisplayIdentity,
+  resolveOptionalCustomerName,
+} from "@/features/quotes/lib/quote-snapshots";
 import { PrintControls } from "@/features/quotes/components/print-controls";
 
 interface PrintPageProps {
@@ -17,20 +22,23 @@ export async function generateMetadata({ params }: PrintPageProps): Promise<Meta
 
   if (!quote) {
     return {
-      title: "Cotización",
+      title: { absolute: "Cotización" },
     };
   }
 
-  const documentType = quote.workOrder?.status === "COMPLETED" ? "Nota" : "Cotización";
+  const identity = resolveCustomerDisplayIdentity(quote);
+  const customerName = resolveOptionalCustomerName(quote);
+  const folio = resolveDocumentFolio(quote);
   const title = formatDocumentPdfFilename({
-    customerName: quote.customer?.name,
+    customerName,
+    driverName: identity.operatorName,
     vehicle: quote.vehicle ?? quote.vehicleSnapshot,
     operationalDate: quote.operationalDate,
-    fallbackType: documentType,
+    folio,
   });
 
   return {
-    title,
+    title: { absolute: title },
   };
 }
 

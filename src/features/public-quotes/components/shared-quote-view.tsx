@@ -8,18 +8,43 @@ import { Button } from "@/components/ui";
 import { QuotePreviewCard } from "@/features/quotes/components/quote-preview-card";
 import { formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
-import type { Quote, QuoteItem, Customer, Vehicle, WorkOrderStatus, QuoteSection } from "@prisma/client";
+import type { QuoteItemType, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 
-type SerializableQuoteItem = Omit<QuoteItem, "quantity"> & {
+type SerializableQuoteItem = {
+  id: string;
+  quoteId: string;
+  sectionId: string | null;
+  type: QuoteItemType;
+  description: string;
   quantity: string;
-};
+  unitPriceCents: number | null;
+  totalCents: number | null;
+  sortOrder: number;
+} & Record<string, unknown>;
 
-export type SharedQuoteViewQuote = Quote & {
-  customer: Customer | null;
-  vehicle: Vehicle | null;
+export type SharedQuoteViewQuote = {
+  id: string;
+  number: string;
+  folio: string | null;
+  status: QuoteStatus;
+  title: string;
+  description: string | null;
+  vehicleSnapshot: unknown;
+  subtotalCents: number | null;
+  discountCents: number;
+  taxCents: number | null;
+  totalCents: number | null;
+  taxEnabled: boolean;
+  validUntil: Date;
+  administrative: boolean;
+  operationalDate: Date;
+  isLocked: boolean;
+  paymentDueDate: Date | null;
+  customer: ({ name: string } & Record<string, unknown>) | null;
+  vehicle: { plate: string | null; economicNumber: string | null; brand: string | null; model: string | null } | null;
   items: SerializableQuoteItem[];
-  sections: (QuoteSection & { items: SerializableQuoteItem[] })[];
-  workOrder: { status: WorkOrderStatus } | null;
+  sections: { id: string; quoteId: string; name: string; sortOrder: number; isAuthorized: boolean; items: SerializableQuoteItem[] }[];
+  workOrder: { id?: string; status: WorkOrderStatus; folio?: string | null } | null;
 };
 
 export interface SharedQuoteViewProps {
@@ -28,6 +53,7 @@ export interface SharedQuoteViewProps {
   isNote?: boolean;
   isPrint?: boolean;
   business?: { contactPhone: string; contactWhatsapp: string };
+  paymentStatus?: { paidCents: number; remainingCents: number; isSettled: boolean } | null;
 }
 
 function initialSelectedSectionIds(quote: SharedQuoteViewQuote) {
@@ -40,7 +66,7 @@ function initialSelectedSectionIds(quote: SharedQuoteViewQuote) {
   return quote.sections.map((section) => section.id);
 }
 
-export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isPrintProp, business }: SharedQuoteViewProps) {
+export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isPrintProp, business, paymentStatus }: SharedQuoteViewProps) {
   const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
   const isPrint = isPrintProp ?? !token;
@@ -233,6 +259,9 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
         discountCents={Number(quote.discountCents)}
         taxCents={totals.taxCents}
         totalCents={totals.totalCents}
+        paidCents={paymentStatus?.paidCents}
+        remainingCents={paymentStatus?.remainingCents}
+        showPaymentStatus={isNote && paymentStatus !== null && paymentStatus !== undefined}
         selectableSectionIds={showDecisionControls && quote.sections.length > 1 ? selectedSectionIds : undefined}
         onSectionToggle={showDecisionControls && quote.sections.length > 1 ? handleSectionToggle : undefined}
         validUntil={quote.validUntil}

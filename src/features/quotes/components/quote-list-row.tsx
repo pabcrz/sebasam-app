@@ -5,7 +5,7 @@ import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import { Printer } from "lucide-react";
 import { PrintActionButton } from "./print-action-button";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, Button, TableCell, TableRow } from "@/components/ui";
+import { Badge, TableCell, TableRow } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
@@ -33,7 +33,7 @@ interface QuoteListRowProps {
   quoteStatusBadgeVariant: Record<QuoteStatus, "default" | "success" | "warning" | "danger" | "info">;
   approveAction: (formData: FormData) => void | Promise<void>;
   cancelAction: (formData: FormData) => void | Promise<void>;
-  shareAction: () => Promise<{ success: boolean; error?: string }>;
+  shareAction: () => Promise<{ success: boolean; token?: string; error?: string }>;
   authorizeAction: (note: string, authorizedSectionIds?: string[]) => Promise<{ success: boolean; error?: string }>;
   correctDecisionAction: (quoteId: string, nextStatus: "APPROVED" | "REJECTED" | "DRAFT") => Promise<{ success: boolean; error?: string }>;
   paymentRequestAction: () => Promise<PaymentRequest>;
@@ -81,15 +81,17 @@ export function QuoteListRow({
     ? `/admin/notas/${quote.workOrder.id}/print?returnTo=/admin/notas`
     : `/admin/quotes/${quote.id}/print?returnTo=/admin/quotes`;
 
+  const displayFolio = quote.folio ?? quote.number;
+
   return (
     <TableRow
       onClick={() => setPreviewOpen(true)}
       className="cursor-pointer"
-      aria-label={`Abrir vista previa de ${quote.number}`}
+      aria-label={`Abrir vista previa de ${displayFolio}`}
     >
       <TableCell className="whitespace-nowrap">
         <div className="flex flex-wrap items-start gap-1">
-          <span className="font-medium">{quote.number}</span>
+          <span className="font-medium">{displayFolio}</span>
           <Badge variant={quoteStatusBadgeVariant[quote.status]} className="w-fit">
             {quoteStatusLabels[quote.status]}
           </Badge>
@@ -135,8 +137,8 @@ export function QuoteListRow({
             variant="outline"
             size="sm"
             className="min-h-11 min-w-11"
-            title={`Imprimir cotización ${quote.number}`}
-            aria-label={`Imprimir cotización ${quote.number}`}
+            title={`Imprimir cotización ${displayFolio}`}
+            aria-label={`Imprimir cotización ${displayFolio}`}
           >
             <Printer className="h-4 w-4" aria-hidden="true" />
             <span className="sr-only">Imprimir cotización</span>
@@ -159,11 +161,9 @@ export function QuoteListRow({
             <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
           ) : null}
 
-          {quote.status === "DRAFT" || (quote.activeSharedQuote && (quote.status === "SENT" || quote.status === "APPROVED")) ? (
+          {quote.status !== "CANCELLED" ? (
             <ShareQuoteButton
               action={shareAction}
-              sharedQuote={quote.activeSharedQuote ?? undefined}
-              status={quote.status}
               quoteNumber={quote.number}
               variant={quote.status === "DRAFT" ? (isQuoteCommercialReady(quote) ? "primary" : "secondary") : "outline"}
             />

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import {
   getSharedQuoteByToken,
+  getSharedQuotePaymentStatus,
   SharedQuoteExpiredError,
   SharedQuoteRevokedError,
 } from "@/features/quotes/domain";
@@ -9,20 +10,45 @@ import { QuoteDocumentView } from "@/features/public-quotes/components/quote-doc
 import type { SharedQuoteViewQuote } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
-import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import {
+  resolveDocumentFolio,
+  resolveDocumentPresentation,
+} from "@/features/quotes/lib/document-resolver";
+import {
+  resolveCustomerDisplayIdentity,
+  resolveOptionalCustomerName,
+} from "@/features/quotes/lib/quote-snapshots";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
 type SharedQuotePageResult =
-  | { kind: "success"; quote: SharedQuoteViewQuote }
+  | { kind: "success"; quote: SharedQuoteViewQuote; paymentStatus: Awaited<ReturnType<typeof getSharedQuotePaymentStatus>> }
   | { kind: "error"; errorType: SharedQuoteErrorType };
 
 type SharedQuoteDomainResult = Awaited<ReturnType<typeof getSharedQuoteByToken>>["quote"];
 
 function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQuoteViewQuote {
   return {
-    ...quote,
+    id: quote.id,
+    number: quote.number,
+    folio: quote.folio,
+    status: quote.status,
+    title: quote.title,
+    description: quote.description,
+    vehicleSnapshot: quote.vehicleSnapshot,
+    subtotalCents: quote.subtotalCents,
+    discountCents: quote.discountCents,
+    taxCents: quote.taxCents,
+    totalCents: quote.totalCents,
+    taxEnabled: quote.taxEnabled,
+    validUntil: quote.validUntil,
+    administrative: quote.administrative,
+    operationalDate: quote.operationalDate,
+    isLocked: quote.isLocked,
+    paymentDueDate: quote.paymentDueDate,
+    customer: quote.customer ? { name: quote.customer.name } : null,
+    vehicle: quote.vehicle,
     items: quote.items.map((item) => ({
       ...item,
       quantity: item.quantity.toString(),
@@ -34,6 +60,7 @@ function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQu
         quantity: item.quantity.toString(),
       })),
     })) : [],
+    workOrder: quote.workOrder,
   };
 }
 
@@ -52,7 +79,11 @@ function mapErrorToType(error: unknown): SharedQuoteErrorType {
 async function loadSharedQuotePageResult(token: string): Promise<SharedQuotePageResult> {
   try {
     const sharedQuote = await getSharedQuoteByToken(token);
-    return { kind: "success", quote: serializeSharedQuoteForClient(sharedQuote.quote) };
+    const workOrderId = sharedQuote.quote.workOrder?.status === "COMPLETED"
+      ? sharedQuote.quote.workOrder.id
+      : undefined;
+    const paymentStatus = workOrderId ? await getSharedQuotePaymentStatus(workOrderId) : null;
+    return { kind: "success", quote: serializeSharedQuoteForClient(sharedQuote.quote), paymentStatus };
   } catch (error) {
     return { kind: "error", errorType: mapErrorToType(error) };
   }
@@ -67,24 +98,27 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
   try {
     const sharedQuote = await getSharedQuoteByToken(token);
     const quote = sharedQuote.quote;
-    const documentType = quote.workOrder?.status === "COMPLETED" ? "Nota" : quote.workOrder ? "Trabajo" : "Cotización";
+    const { documentType } = resolveDocumentPresentation(quote);
     const identity = resolveCustomerDisplayIdentity(quote);
-    const customerName = identity.displayName;
+    const customerDisplayName = identity.displayName;
+    const realCustomerName = resolveOptionalCustomerName(quote);
     const vehicleDescription = quote.vehicle
       ? formatVehicle(quote.vehicle)
       : formatSnapshotVehicle(quote.vehicleSnapshot);
 
+    const folio = resolveDocumentFolio(quote);
     const title = formatDocumentPdfFilename({
-      customerName: identity.displayName,
+      customerName: realCustomerName,
+      driverName: identity.operatorName,
       vehicle: quote.vehicle ?? quote.vehicleSnapshot,
       operationalDate: quote.operationalDate,
-      fallbackType: documentType,
+      folio,
     });
-    const displayTitle = `${documentType} ${quote.number} | SEBASAM`;
-    const description = `${documentType} para ${customerName} - ${vehicleDescription}`;
+    const displayTitle = `${documentType} ${folio || quote.number} | SEBASAM`;
+    const description = `${documentType} para ${customerDisplayName} - ${vehicleDescription}`;
 
     return {
-      title,
+      title: { absolute: title },
       description,
       openGraph: {
         title: displayTitle,
@@ -99,7 +133,7 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
     };
   } catch {
     return {
-      title: "Cotización",
+      title: { absolute: "Cotización" },
       description: "Portal de clientes SEBASAM para gestión de servicios y cotizaciones.",
       openGraph: {
         title: "Cotización | SEBASAM",
@@ -131,6 +165,7 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
       quote={result.quote}
       paymentSettings={paymentSettings}
       token={token}
+      paymentStatus={result.paymentStatus}
     />
   );
 }

@@ -153,10 +153,12 @@ model UserProfile {
   ledgerEntries        LedgerEntry[]        @relation("LedgerEntryActor")
   helperPayrollWeeks   HelperPayrollWeek[]
   paymentCorrections   PaymentCorrection[]
+  quoteCommercialCorrections QuoteCommercialCorrection[]
   lockedQuotes         Quote[]              @relation("QuoteLockedBy")
   settlementAgreements SettlementAgreement[] @relation("SettlementAgreementActor")
   settlementAgreementRevisions SettlementAgreementRevision[] @relation("SettlementAgreementRevisionActor")
   cancelledSettlementAgreements SettlementAgreement[] @relation("SettlementAgreementCanceller")
+  revokedSharedQuotes  SharedQuote[]        @relation("SharedQuoteRevoker")
 }
 
 model HelperPayrollWeek {
@@ -250,6 +252,8 @@ model Quote {
   customerContactId       String?
   customerFiscalProfileId String?
   number                  String      @unique
+  folio                   String?     @unique
+  issuedAt                DateTime?
   status                  QuoteStatus @default(DRAFT)
   title                   String
   description             String?
@@ -287,6 +291,7 @@ model Quote {
   sharedQuotes          SharedQuote[]
   decisions             QuoteDecision[]
   lifecycleEvents       QuoteLifecycleEvent[]
+  commercialCorrections QuoteCommercialCorrection[]
   settlementAgreement   SettlementAgreement?
 
   @@index([operationalDate])
@@ -296,17 +301,23 @@ model Quote {
 }
 
 model SharedQuote {
-  id        String    @id @default(cuid())
-  token     String    @unique
-  quoteId   String
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
+  id               String       @id @default(cuid())
+  token            String       @unique
+  quoteId          String
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  isCanonical      Boolean      @default(false)
+  revokedByUserId  String?      @db.Uuid
+  revocationReason String?
+  createdAt        DateTime     @default(now())
 
-  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quote         Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  revokedByUser UserProfile? @relation("SharedQuoteRevoker", fields: [revokedByUserId], references: [id], onDelete: SetNull)
 
   @@index([quoteId])
+  @@index([quoteId, isCanonical])
   @@index([token])
+  @@index([revokedByUserId])
 }
 
 model QuoteDecision {
@@ -380,6 +391,8 @@ model WorkOrder {
   id                            String          @id @default(cuid())
   quoteId                       String          @unique
   number                        String          @unique
+  folio                         String?         @unique
+  issuedAt                      DateTime?
   status                        WorkOrderStatus @default(PLANNED)
   scheduledFor                  DateTime?
   siteAddress                   String?
@@ -399,6 +412,8 @@ model WorkOrder {
   ledgerEntries                 LedgerEntry[]
   completedWorkKnowledgeSources CompletedWorkKnowledgeSource[]
   paymentCorrectionApplications PaymentCorrectionApplication[]
+  commercialCorrections         QuoteCommercialCorrection[]
+  commercialCorrectionApplications QuoteCommercialCorrectionApplication[]
 
   @@index([status, completedAt])
   @@index([status, paymentDueDate])
@@ -612,10 +627,63 @@ model PaymentApplication {
   ledgerEntries              LedgerEntry[]
   originalCorrectionMappings PaymentCorrectionApplication[] @relation("OriginalCorrectionApplication")
   replacementCorrectionMappings PaymentCorrectionApplication[] @relation("ReplacementCorrectionApplication")
+  originalQuoteCorrectionMappings QuoteCommercialCorrectionApplication[] @relation("OriginalQuoteCorrectionApplication")
+  replacementQuoteCorrectionMappings QuoteCommercialCorrectionApplication[] @relation("ReplacementQuoteCorrectionApplication")
 
   @@index([paymentId])
   @@index([workOrderId])
   @@index([reversedAt])
+}
+
+model QuoteCommercialCorrection {
+  id                   String   @id @default(cuid())
+  operationKey         String   @unique
+  quoteId              String
+  workOrderId          String
+  previousTotalCents   Int
+  newTotalCents        Int
+  previousAppliedCents Int
+  newAppliedCents      Int
+  excessCreditCents    Int      @default(0)
+  reason               String
+  actorId              String   @db.Uuid
+  createdAt            DateTime @default(now())
+
+  quote        Quote                               @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  workOrder    WorkOrder                           @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  actor        UserProfile                         @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  applications QuoteCommercialCorrectionApplication[]
+
+  @@index([quoteId, createdAt])
+  @@index([workOrderId, createdAt])
+  @@index([actorId])
+}
+
+model QuoteCommercialCorrectionApplication {
+  id                       String   @id @default(cuid())
+  correctionId             String
+  originalApplicationId    String
+  reversalLedgerEntryId    String
+  replacementApplicationId String?
+  replacementLedgerEntryId String?
+  workOrderId              String
+  originalAmountCents      Int
+  reversalAmountCents      Int
+  replacementAmountCents   Int      @default(0)
+  releasedCreditCents      Int      @default(0)
+  sortOrder                Int      @default(0)
+  createdAt                DateTime @default(now())
+
+  correction             QuoteCommercialCorrection @relation(fields: [correctionId], references: [id], onDelete: Cascade)
+  originalApplication    PaymentApplication       @relation("OriginalQuoteCorrectionApplication", fields: [originalApplicationId], references: [id], onDelete: Restrict)
+  reversalLedgerEntry    LedgerEntry              @relation("QuoteCorrectionReversalLedger", fields: [reversalLedgerEntryId], references: [id], onDelete: Restrict)
+  replacementApplication PaymentApplication?      @relation("ReplacementQuoteCorrectionApplication", fields: [replacementApplicationId], references: [id], onDelete: SetNull)
+  replacementLedgerEntry LedgerEntry?             @relation("QuoteCorrectionReplacementLedger", fields: [replacementLedgerEntryId], references: [id], onDelete: SetNull)
+  workOrder              WorkOrder                @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+
+  @@unique([correctionId, originalApplicationId])
+  @@index([correctionId])
+  @@index([workOrderId])
 }
 
 model PaymentCorrection {
@@ -683,6 +751,8 @@ model LedgerEntry {
   actor              UserProfile?        @relation("LedgerEntryActor", fields: [actorId], references: [id], onDelete: Restrict)
   reversedMovement   LedgerEntry?        @relation("MovementReversal", fields: [reversedMovementId], references: [id], onDelete: Restrict)
   reversalMovement   LedgerEntry?        @relation("MovementReversal")
+  quoteCorrectionReversals QuoteCommercialCorrectionApplication[] @relation("QuoteCorrectionReversalLedger")
+  quoteCorrectionReplacements QuoteCommercialCorrectionApplication[] @relation("QuoteCorrectionReplacementLedger")
 
   @@index([customerId, createdAt])
   @@index([paymentId])
@@ -769,4 +839,15 @@ model HistoricalWorkItem {
   @@index([workId])
   @@index([type, description])
   @@map("historical_work_items")
+}
+
+model DailyDocumentSequence {
+  id           String   @id @default(cuid())
+  documentType String
+  businessDate String   @db.VarChar(10) // YYYY-MM-DD
+  lastSequence Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([documentType, businessDate])
 }

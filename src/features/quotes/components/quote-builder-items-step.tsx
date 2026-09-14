@@ -398,6 +398,7 @@ export function QuoteBuilderItemsStep({
                           aria-invalid={itemErrors.unitPrice ? true : undefined}
                           value={item.unitPrice}
                           onChange={(event) => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { unitPrice: event.target.value } })}
+                          onWheelCapture={(event) => event.currentTarget.blur()}
                           className="h-[var(--tap-min-height)] min-w-0 flex-1 bg-transparent py-2 pl-1 pr-3 text-base text-[var(--color-text-main)] outline-none placeholder:text-[var(--color-text-muted)] focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
                       </div>

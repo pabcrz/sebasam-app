@@ -1,10 +1,16 @@
 import crypto from "node:crypto";
-import { QuoteDecisionOrigin, QuoteStatus, type Prisma } from "@prisma/client";
+import { Prisma, QuoteDecisionOrigin, QuoteStatus, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { generateSlug, generateUniqueSlug } from "@/lib/slug";
+import {
+  DOCUMENT_SLUG_SUFFIX_LENGTH,
+  generateSlug,
+  generateUniqueSlug,
+} from "@/lib/slug";
 import { assertCommercialQuote, CommercialQuoteValidationError } from "./lib/commercial-validation";
+import { getNoteFinancialSummary } from "@/features/payments/domain";
 
 const SHARED_QUOTE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const CANONICAL_LINK_EXPIRES_AT = new Date("2099-12-31T23:59:59Z");
 
 export class SharedQuoteError extends Error {
   constructor(message: string) {
@@ -74,7 +80,7 @@ const sharedQuoteInclude = {
         include: { items: { orderBy: { sortOrder: "asc" } } },
         orderBy: { sortOrder: "asc" } 
       },
-      workOrder: { select: { status: true } },
+      workOrder: { select: { id: true, status: true, folio: true } },
     },
   },
 } as const;
@@ -111,7 +117,33 @@ export async function getActiveSharedQuoteForQuote(quoteId: string) {
   });
 }
 
+export type NotePublicPaymentStatus = {
+  paidCents: number;
+  remainingCents: number;
+  isSettled: boolean;
+};
+
+export async function getSharedQuotePaymentStatus(workOrderId: string): Promise<NotePublicPaymentStatus | null> {
+  try {
+    const summary = await getNoteFinancialSummary(prisma, workOrderId);
+    return {
+      paidCents: summary.appliedCents,
+      remainingCents: summary.pendingBalanceCents,
+      isSettled: summary.isSettled,
+    };
+  } catch {
+    return null;
+  }
+}
+
 type TransactionClient = Prisma.TransactionClient;
+
+class CanonicalNoteSharedQuoteRaceError extends Error {
+  constructor() {
+    super("Canonical Note link was created concurrently.");
+    this.name = "CanonicalNoteSharedQuoteRaceError";
+  }
+}
 
 function assertQuoteCanBeShared(quote: { status: QuoteStatus; customerId: string | null; subtotalCents: number | null; discountCents: number | null; taxCents: number | null; totalCents: number | null; taxEnabled: boolean; items: { description: string; quantity: unknown; unitPriceCents: number | null }[] }) {
   if (quote.status !== QuoteStatus.SENT && quote.status !== QuoteStatus.APPROVED) {
@@ -140,10 +172,16 @@ async function createSharedQuoteInTransaction(tx: TransactionClient, quoteId: st
 
   assertQuoteCanBeShared(quote);
 
-  const token = await generateUniqueSlug(quote.number, async (slug) => {
-    const existing = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
-    return existing !== null;
-  });
+  const prefix = quote.folio ?? quote.number;
+  const token = await generateUniqueSlug(
+    prefix,
+    async (slug) => {
+      const existing = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
+      return existing !== null;
+    },
+    5,
+    DOCUMENT_SLUG_SUFFIX_LENGTH,
+  );
 
   return tx.sharedQuote.create({
     data: {
@@ -154,7 +192,56 @@ async function createSharedQuoteInTransaction(tx: TransactionClient, quoteId: st
   });
 }
 
+async function ensureCanonicalNoteSharedQuote(tx: TransactionClient, quoteId: string) {
+  const existing = await tx.sharedQuote.findFirst({
+    where: { quoteId, isCanonical: true, revokedAt: null },
+    orderBy: { createdAt: "asc" },
+  });
+  if (existing) return existing;
+
+  const quote = await tx.quote.findUnique({
+    where: { id: quoteId },
+    select: { id: true, number: true, folio: true },
+  });
+  if (!quote) throw new SharedQuoteOperationError("Quote not found.");
+
+  const prefix = quote.folio ?? quote.number;
+  const token = await generateUniqueSlug(
+    prefix,
+    async (slug) => {
+      const taken = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
+      return taken !== null;
+    },
+    5,
+    DOCUMENT_SLUG_SUFFIX_LENGTH,
+  );
+
+  try {
+    return await tx.sharedQuote.create({
+      data: {
+        token,
+        quoteId: quote.id,
+        isCanonical: true,
+        expiresAt: CANONICAL_LINK_EXPIRES_AT,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new CanonicalNoteSharedQuoteRaceError();
+    }
+    throw error;
+  }
+}
+
 export async function ensureSharedQuoteInTransaction(tx: TransactionClient, quoteId: string) {
+  const workOrder = await tx.workOrder.findFirst({
+    where: { quoteId },
+    select: { status: true },
+  });
+  if (workOrder?.status === WorkOrderStatus.COMPLETED) {
+    return ensureCanonicalNoteSharedQuote(tx, quoteId);
+  }
+
   const existingActive = await tx.sharedQuote.findFirst({
     where: {
       quoteId,
@@ -170,17 +257,23 @@ export async function ensureSharedQuoteInTransaction(tx: TransactionClient, quot
 
   const quote = await tx.quote.findUnique({
     where: { id: quoteId },
-    select: { id: true, number: true },
+    select: { id: true, number: true, folio: true },
   });
 
   if (!quote) {
     throw new SharedQuoteOperationError("Quote not found.");
   }
 
-  const token = await generateUniqueSlug(quote.number, async (slug) => {
-    const existing = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
-    return existing !== null;
-  });
+  const prefix = quote.folio ?? quote.number;
+  const token = await generateUniqueSlug(
+    prefix,
+    async (slug) => {
+      const existing = await tx.sharedQuote.findUnique({ where: { token: slug }, select: { id: true } });
+      return existing !== null;
+    },
+    5,
+    DOCUMENT_SLUG_SUFFIX_LENGTH,
+  );
 
   return tx.sharedQuote.create({
     data: {
@@ -191,12 +284,94 @@ export async function ensureSharedQuoteInTransaction(tx: TransactionClient, quot
   });
 }
 
+export const MAX_SHARED_QUOTE_TRANSACTION_RETRIES = 3;
+
+function isTokenP2002Error(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    const target = (error.meta as { target?: string[] | string })?.target;
+    if (Array.isArray(target)) {
+      return target.includes("token");
+    }
+    if (typeof target === "string") {
+      return target.includes("token");
+    }
+    return true;
+  }
+  return false;
+}
+
 export async function createSharedQuoteForQuote(quoteId: string) {
-  return prisma.$transaction(async (tx) => createSharedQuoteInTransaction(tx, quoteId));
+  for (let attempt = 0; attempt < MAX_SHARED_QUOTE_TRANSACTION_RETRIES; attempt++) {
+    try {
+      return await prisma.$transaction(async (tx) => createSharedQuoteInTransaction(tx, quoteId));
+    } catch (error) {
+      if (isTokenP2002Error(error) && attempt < MAX_SHARED_QUOTE_TRANSACTION_RETRIES - 1) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new SharedQuoteOperationError("Failed to generate unique shared quote after retries.");
 }
 
 export async function getOrCreateSharedQuoteForQuote(quoteId: string) {
-  return prisma.$transaction(async (tx) => ensureSharedQuoteInTransaction(tx, quoteId));
+  for (let attempt = 0; attempt < MAX_SHARED_QUOTE_TRANSACTION_RETRIES; attempt++) {
+    try {
+      return await prisma.$transaction(async (tx) => ensureSharedQuoteInTransaction(tx, quoteId));
+    } catch (error) {
+      if (error instanceof CanonicalNoteSharedQuoteRaceError) {
+        const winner = await prisma.sharedQuote.findFirst({
+          where: { quoteId, isCanonical: true, revokedAt: null },
+          orderBy: { createdAt: "asc" },
+        });
+        if (winner) return winner;
+      }
+
+      if (isTokenP2002Error(error) && attempt < MAX_SHARED_QUOTE_TRANSACTION_RETRIES - 1) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new SharedQuoteOperationError("Failed to generate unique shared quote after retries.");
+}
+
+/** Revokes the durable public link of a completed Note with an audit trail. */
+export async function revokeCanonicalNoteSharedQuote(
+  quoteId: string,
+  actorId: string,
+  reason: string,
+) {
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) {
+    throw new SharedQuoteOperationError("Revocation reason is required.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const workOrder = await tx.workOrder.findFirst({
+      where: { quoteId },
+      select: { status: true },
+    });
+    if (workOrder?.status !== WorkOrderStatus.COMPLETED) {
+      throw new SharedQuoteOperationError("Only completed Notes have canonical links.");
+    }
+
+    const canonical = await tx.sharedQuote.findFirst({
+      where: { quoteId, isCanonical: true, revokedAt: null },
+    });
+    if (!canonical) {
+      throw new SharedQuoteOperationError("No hay enlace canónico activo para esta Nota.");
+    }
+
+    return tx.sharedQuote.update({
+      where: { id: canonical.id },
+      data: {
+        revokedAt: new Date(),
+        revokedByUserId: actorId,
+        revocationReason: trimmedReason,
+      },
+    });
+  });
 }
 
 // --- Quote decision (accept / decline / authorize) ---

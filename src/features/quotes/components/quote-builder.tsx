@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { getMeaningfulTextError } from "@/lib/meaningful-text";
 import { createPortal } from "react-dom";
 import {
   Button,
@@ -20,6 +21,7 @@ import {
   isSundayOperationalDate,
   mexicoCityCalendarDate,
 } from "@/features/quotes/lib/operational-date";
+import { formatQuoteContactRole } from "@/features/quotes/lib/quote-snapshots";
 import {
   getStepError,
   normalizeSections,
@@ -169,6 +171,8 @@ export function QuoteBuilder({
     selectQuoteBuilderSummary(builderState);
   const selectedCustomer = customerOptions.find((customer) => customer.id === customerId);
   const validUntil = createQuoteValidUntil();
+  const titleError = title.trim() === "" ? null : getMeaningfulTextError(title, "título");
+  const newCustomerNameError = newCustomerName === "" ? null : getMeaningfulTextError(newCustomerName, "nombre");
 
   React.useEffect(() => {
     if (actionState.success) onSuccess?.();
@@ -344,6 +348,11 @@ export function QuoteBuilder({
 
   async function handleCreateCustomer() {
     if (!createCustomerAction) return;
+
+    if (getMeaningfulTextError(newCustomerName, "nombre")) {
+      setCreateCustomerError("Revisa el nombre del cliente.");
+      return;
+    }
 
     setCreateCustomerError(null);
     setCreateCustomerMessage(null);
@@ -804,12 +813,7 @@ export function QuoteBuilder({
                           {selectedCustomer.contacts
                             .filter((c) => c.isActive || c.id === customerContactId)
                             .map((c) => {
-                              const roleBadge =
-                                c.role === "DRIVER"
-                                  ? "Chofer"
-                                  : c.role === "BILLING"
-                                    ? "Facturación"
-                                    : "Contacto";
+                              const roleBadge = formatQuoteContactRole(c.role) || "Contacto";
                               return (
                                 <SelectItem key={c.id} value={c.id}>
                                   {c.name} ({roleBadge}{c.phone ? ` · ${c.phone}` : ""})
@@ -877,13 +881,18 @@ export function QuoteBuilder({
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="grid gap-2 sm:col-span-2">
                         <Label htmlFor="quoteCustomerName">Nombre</Label>
-                        <Input
-                          id="quoteCustomerName"
-                          value={newCustomerName}
-                          onChange={(event) => setNewCustomerName(event.target.value)}
-                          placeholder="Ej. Juan Pérez o Grúas Mejía"
-                          required
-                        />
+                          <Input
+                            id="quoteCustomerName"
+                            value={newCustomerName}
+                            onChange={(event) => setNewCustomerName(event.target.value)}
+                            placeholder="Ej. Juan Pérez o Grúas Mejía"
+                            required
+                            aria-describedby={newCustomerNameError ? "quote-customer-name-error" : undefined}
+                            aria-invalid={newCustomerNameError ? true : undefined}
+                          />
+                          <span id="quote-customer-name-error" role={newCustomerNameError ? "alert" : undefined} className="min-h-4 text-xs text-[var(--color-status-danger-fg)]">
+                            {newCustomerNameError}
+                          </span>
                       </div>
                       <div className="grid gap-2 sm:col-span-2">
                         <Label htmlFor="quoteCustomerLegalName">Razón social formal (opcional)</Label>
@@ -953,7 +962,7 @@ export function QuoteBuilder({
                         variant="primary"
                         className="w-full sm:w-fit"
                         loading={isCreatingCustomer}
-                        disabled={newCustomerName.trim() === ""}
+                        disabled={newCustomerName.trim() === "" || Boolean(newCustomerNameError)}
                         onClick={handleCreateCustomer}
                       >
                         Guardar y seleccionar
@@ -1111,7 +1120,12 @@ export function QuoteBuilder({
                   );
                 }}
                 placeholder="Ej. Servicio general"
+                aria-describedby={titleError ? "quote-title-error" : undefined}
+                aria-invalid={titleError ? true : undefined}
               />
+              <span id="quote-title-error" role={titleError ? "alert" : undefined} className="min-h-4 text-xs text-[var(--color-status-danger-fg)]">
+                {titleError}
+              </span>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="operationalDate">
@@ -1176,12 +1190,9 @@ export function QuoteBuilder({
                 selectedFiscal?.businessName ||
                 selectedCustomer?.legalName ||
                 (selectedCustomer?.commercialName ? selectedCustomer?.name : null);
-              const contactRoleBadge =
-                selectedContact?.role === "DRIVER"
-                  ? "Chofer"
-                  : selectedContact?.role === "BILLING"
-                    ? "Facturación"
-                    : "Contacto";
+              const contactRoleBadge = selectedContact
+                ? formatQuoteContactRole(selectedContact.role)
+                : null;
 
               return (
                 <QuotePreviewCard

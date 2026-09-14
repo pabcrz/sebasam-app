@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { quoteContactSnapshotSchema, quoteCustomerSnapshotSchema } from "@/features/quotes/schemas";
 
 export type CustomerSnapshotData = {
   customerId: string;
@@ -117,7 +118,7 @@ export function resolveCustomerDisplayIdentity(source: CustomerDisplayIdentitySo
   const rawRole = contactSnapshot?.role || source.customerContact?.role;
   const operatorRole =
     rawRole === "DRIVER"
-      ? "Chofer"
+      ? "Operador"
       : rawRole === "BILLING"
         ? "Facturación"
         : rawRole === "CONTACT"
@@ -139,5 +140,134 @@ export function resolveCustomerDisplayIdentity(source: CustomerDisplayIdentitySo
     operatorName,
     operatorRole,
     operatorPhone,
+  };
+}
+
+export function resolveOptionalCustomerName(source: CustomerDisplayIdentitySource): string | null {
+  const customerSnapshot = (source.customerSnapshot && typeof source.customerSnapshot === "object"
+    ? source.customerSnapshot
+    : null) as CustomerSnapshotData | null;
+
+  return (
+    customerSnapshot?.commercialName?.trim() ||
+    source.customer?.commercialName?.trim() ||
+    customerSnapshot?.name?.trim() ||
+    source.customer?.name?.trim() ||
+    null
+  );
+}
+
+export function formatQuoteContactRole(role?: string | null): string | null {
+  if (!role) return null;
+  const trimmed = role.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.toUpperCase();
+  if (
+    normalized === "DRIVER" ||
+    normalized === "CHOFER" ||
+    normalized === "OPERADOR"
+  ) {
+    return "Operador";
+  }
+  if (
+    normalized === "BILLING" ||
+    normalized === "FACTURACIÓN" ||
+    normalized === "FACTURACION" ||
+    normalized === "CONTACTO DE FACTURACIÓN" ||
+    normalized === "CONTACTO DE FACTURACION"
+  ) {
+    return "Contacto de facturación";
+  }
+  if (
+    normalized === "CONTACT" ||
+    normalized === "CONTACTO" ||
+    normalized === "CONTACTO RESPONSABLE"
+  ) {
+    return "Contacto responsable";
+  }
+  return trimmed;
+}
+
+export type QuotePreviewContactSource = {
+  contactSnapshot?: unknown;
+  customerContact?: {
+    name?: string | null;
+    role?: string | null;
+    phone?: string | null;
+  } | null;
+};
+
+export function resolveQuotePreviewContact(source: QuotePreviewContactSource): {
+  contactName: string | null;
+  contactRole: string | null;
+} {
+  // 1. Snapshot takes precedence when valid
+  const parsedSnapshot = quoteContactSnapshotSchema.safeParse(source.contactSnapshot);
+  if (parsedSnapshot.success && parsedSnapshot.data.name.trim()) {
+    return {
+      contactName: parsedSnapshot.data.name.trim(),
+      contactRole: formatQuoteContactRole(parsedSnapshot.data.role),
+    };
+  }
+
+  // 2. Fallback to live customerContact
+  const liveName = source.customerContact?.name?.trim();
+  if (liveName) {
+    return {
+      contactName: liveName,
+      contactRole: formatQuoteContactRole(source.customerContact?.role),
+    };
+  }
+
+  // 3. Neither is available / selected
+  return {
+    contactName: null,
+    contactRole: null,
+  };
+}
+
+export type QuotePreviewCustomerSource = {
+  customerSnapshot?: unknown;
+  customer?: {
+    name?: string | null;
+    commercialName?: string | null;
+    legalName?: string | null;
+  } | null;
+  customerFiscalProfile?: {
+    businessName?: string | null;
+  } | null;
+};
+
+export function resolveQuotePreviewCustomer(source: QuotePreviewCustomerSource): {
+  customerName: string;
+  legalName: string | null;
+} {
+  // 1. Valid snapshot takes precedence
+  const parsedSnapshot = quoteCustomerSnapshotSchema.safeParse(source.customerSnapshot);
+  if (parsedSnapshot.success) {
+    const data = parsedSnapshot.data;
+    const commercialName = data.commercialName?.trim() || null;
+    const name = data.name?.trim() || null;
+    const legalName = data.legalName?.trim() || null;
+
+    if (commercialName || name) {
+      return {
+        customerName: commercialName || name!,
+        legalName,
+      };
+    }
+  }
+
+  // 2. Fallback to live customer record
+  const liveCommercial = source.customer?.commercialName?.trim() || null;
+  const liveName = source.customer?.name?.trim() || null;
+  const liveLegal =
+    source.customer?.legalName?.trim() ||
+    source.customerFiscalProfile?.businessName?.trim() ||
+    null;
+
+  return {
+    customerName: liveCommercial || liveName || "Sin cliente",
+    legalName: liveLegal,
   };
 }

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, within, act } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { CustomerStatementView } from "@/features/customers/components/customer-statement-view";
 import type { CustomerDetailedStatement } from "@/features/customers/customer-statement-queries";
+
+const { printDocumentUrl } = vi.hoisted(() => ({ printDocumentUrl: vi.fn() }));
 
 vi.mock("react-hot-toast", () => ({
   default: {
@@ -14,6 +16,8 @@ vi.mock("@/features/quotes/components/quote-preview-dialog", () => ({
   QuotePreviewDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="quote-preview-dialog">Modal de Cotización</div> : null,
 }));
+
+vi.mock("@/features/quotes/lib/print-document", () => ({ printDocumentUrl }));
 
 describe("CustomerStatementView", () => {
   const mockStatement: CustomerDetailedStatement = {
@@ -99,6 +103,7 @@ describe("CustomerStatementView", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    printDocumentUrl.mockResolvedValue(undefined);
   });
 
   it("renders statement header, customer info, and pending notes", () => {
@@ -132,6 +137,23 @@ describe("CustomerStatementView", () => {
     fireEvent.click(noteRow);
 
     expect(screen.getByTestId("quote-preview-dialog")).toBeInTheDocument();
+  });
+
+  it("prints a note without opening its row preview or rendering a view action", async () => {
+    render(<CustomerStatementView statement={mockStatement} />);
+
+    const noteRow = screen.getByTestId("statement-note-OT-001");
+    expect(within(noteRow).queryByRole("button", { name: /ver detalle/i })).not.toBeInTheDocument();
+
+    fireEvent.click(within(noteRow).getByRole("button", { name: "Imprimir nota OT-001" }));
+
+    expect(screen.queryByTestId("quote-preview-dialog")).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(printDocumentUrl).toHaveBeenCalledWith(
+        "/admin/notas/wo-1/print?returnTo=%2Fadmin%2Fcustomers%2Fcust-1%2Festado-de-cuenta%3Fanchor%3D2026-08-15",
+      );
+    });
   });
 
   it("triggers window.print when print button is clicked", () => {

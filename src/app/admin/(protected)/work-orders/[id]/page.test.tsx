@@ -31,14 +31,23 @@ vi.mock("@/features/quotes/components/quote-builder-dialog", () => ({
   QuoteBuilderDialog: ({ triggerLabel = "Editar" }: { triggerLabel?: string }) => <button>{triggerLabel}</button>,
 }));
 vi.mock("@/features/work-orders/components/work-order-operations-dialog", () => ({ WorkOrderOperationsDialog: () => <div /> }));
+vi.mock("@/lib/auth/session", () => ({
+  getCurrentProfile: vi.fn(),
+  isAdminRole: vi.fn((role) => role === "ADMIN"),
+}));
 
 import WorkOrderDetailPage from "./page";
+import { getCurrentProfile } from "@/lib/auth/session";
 
 describe("WorkOrderDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listActiveWorkersMock.mockResolvedValue([]);
     listCustomersMock.mockResolvedValue([]);
+    vi.mocked(getCurrentProfile).mockResolvedValue({
+      user: { id: "admin-1" },
+      profile: { id: "admin-1", role: "ADMIN" },
+    } as never);
   });
 
   it("keeps non-completed detail-page printing on the quote route", async () => {
@@ -101,7 +110,37 @@ describe("WorkOrderDetailPage", () => {
     expect(screen.getByRole("button", { name: "Corregir trabajo" })).toBeInTheDocument();
   });
 
-  it("keeps commercial correction unavailable when completed work has an active payment", async () => {
+  it("allows commercial correction for admin when completed work has active payments", async () => {
+    getWorkOrderByIdMock.mockResolvedValue({
+      id: "wo-detail-paid-1",
+      number: "OT-003",
+      status: "COMPLETED",
+      isSpecial: true,
+      assignments: [],
+      paymentApplications: [{ id: "application-1" }],
+      quote: {
+        id: "quote-detail-paid-1",
+        number: "COT-003",
+        status: "APPROVED",
+        customer: { name: "Cliente de prueba" },
+        vehicle: null,
+        totalCents: 12500,
+        items: [],
+        sections: [],
+      },
+    });
+
+    render(await WorkOrderDetailPage({ params: Promise.resolve({ id: "wo-detail-paid-1" }) }));
+
+    expect(screen.getByRole("button", { name: "Corregir trabajo" })).toBeInTheDocument();
+  });
+
+  it("keeps commercial correction unavailable for non-admins", async () => {
+    vi.mocked(getCurrentProfile).mockResolvedValue({
+      user: { id: "tech-1" },
+      profile: { id: "tech-1", role: "TECHNICIAN" },
+    } as never);
+
     getWorkOrderByIdMock.mockResolvedValue({
       id: "wo-detail-paid-1",
       number: "OT-003",
@@ -124,6 +163,5 @@ describe("WorkOrderDetailPage", () => {
     render(await WorkOrderDetailPage({ params: Promise.resolve({ id: "wo-detail-paid-1" }) }));
 
     expect(screen.queryByRole("button", { name: "Corregir trabajo" })).not.toBeInTheDocument();
-    expect(screen.getByText(/corrige el pago desde notas/i)).toBeInTheDocument();
   });
 });

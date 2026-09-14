@@ -5,6 +5,11 @@
 
 let activePrintIframe: HTMLIFrameElement | null = null;
 let activeCleanupTimer: ReturnType<typeof setTimeout> | null = null;
+let activeRemovalTimer: ReturnType<typeof setTimeout> | null = null;
+let activeWindowCleanup: (() => void) | null = null;
+let activeSessionId = 0;
+let activeOriginalTitle: string | null = null;
+let activeReject: ((reason?: unknown) => void) | null = null;
 
 export interface PrintDocumentOptions {
   timeoutMs?: number;
@@ -48,10 +53,15 @@ function isDocumentReady(doc: Document): boolean {
   return false;
 }
 
-async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<boolean> {
+async function waitForDocumentReady(
+  cw: Window,
+  timeoutMs: number,
+  isCancelled: () => boolean,
+): Promise<boolean> {
   const doc = cw.document;
   if (!doc || typeof doc.querySelector !== "function") return false;
 
+  if (isCancelled()) return false;
   if (isDocumentReady(doc)) {
     return true;
   }
@@ -80,6 +90,10 @@ async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<bool
       const target = doc.body || doc.documentElement;
       if (MutationObserverClass && target) {
         const obs = new MutationObserverClass(() => {
+          if (isCancelled()) {
+            finish(false);
+            return;
+          }
           if (isDocumentReady(doc)) {
             finish(true);
           }
@@ -97,6 +111,10 @@ async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<bool
 
     // Polling interval on parent window
     interval = window.setInterval(() => {
+      if (isCancelled()) {
+        finish(false);
+        return;
+      }
       if (isDocumentReady(doc)) {
         finish(true);
       }
@@ -104,7 +122,7 @@ async function waitForDocumentReady(cw: Window, timeoutMs: number): Promise<bool
   });
 }
 
-async function waitForPaintFrames(cw: Window, frameCount = 2): Promise<void> {
+async function waitForPaintFrames(cw: Window, frameCount = 2, isCancelled?: () => boolean): Promise<void> {
   const requestAnimationFrame = cw.requestAnimationFrame;
   if (typeof requestAnimationFrame !== "function") return;
 
@@ -119,8 +137,16 @@ async function waitForPaintFrames(cw: Window, frameCount = 2): Promise<void> {
     };
     const fallbackTimer = window.setTimeout(finish, 250);
     const requestNextFrame = () => {
+      if (isCancelled?.()) {
+        finish();
+        return;
+      }
       try {
         requestAnimationFrame.call(cw, () => {
+          if (isCancelled?.()) {
+            finish();
+            return;
+          }
           framesRemaining -= 1;
           if (framesRemaining <= 0) {
             finish();
@@ -137,6 +163,46 @@ async function waitForPaintFrames(cw: Window, frameCount = 2): Promise<void> {
   });
 }
 
+export function cancelActivePrintJob(newJobStarting = false): void {
+  // Invalidate any ongoing asynchronous operations
+  activeSessionId += 1;
+
+  if (activeCleanupTimer) {
+    clearTimeout(activeCleanupTimer);
+    activeCleanupTimer = null;
+  }
+  if (activeRemovalTimer) {
+    clearTimeout(activeRemovalTimer);
+    activeRemovalTimer = null;
+  }
+  if (activeWindowCleanup) {
+    activeWindowCleanup();
+    activeWindowCleanup = null;
+  }
+  if (activePrintIframe) {
+    if (activePrintIframe.parentNode) {
+      activePrintIframe.parentNode.removeChild(activePrintIframe);
+    }
+    activePrintIframe = null;
+  }
+
+  // Reject previous pending job explicitly
+  if (activeReject) {
+    activeReject(new Error("La impresión fue cancelada por una nueva solicitud."));
+    activeReject = null;
+  }
+
+  // If NO new job is starting, restore document.title now.
+  // If a new job IS starting, preserve activeOriginalTitle so the new job inherits
+  // the pre-print title and restores it when the final job finishes.
+  if (!newJobStarting && activeOriginalTitle !== null) {
+    if (typeof document !== "undefined") {
+      document.title = activeOriginalTitle;
+    }
+    activeOriginalTitle = null;
+  }
+}
+
 export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}): Promise<void> {
   const { timeoutMs = 15000 } = options;
 
@@ -144,19 +210,16 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
     return Promise.resolve();
   }
 
-  // Clean up any existing print iframe before starting a new one
-  if (activePrintIframe) {
-    if (activeCleanupTimer) {
-      clearTimeout(activeCleanupTimer);
-      activeCleanupTimer = null;
-    }
-    if (activePrintIframe.parentNode) {
-      activePrintIframe.parentNode.removeChild(activePrintIframe);
-    }
-    activePrintIframe = null;
-  }
+  // Cancel any ongoing job, clean listeners, reject previous pending job explicitly,
+  // and preserve original pre-print document.title for the incoming job.
+  cancelActivePrintJob(true);
+
+  const currentSession = activeSessionId;
+  const isCancelled = () => currentSession !== activeSessionId;
 
   return new Promise<void>((resolve, reject) => {
+    activeReject = reject;
+
     const iframe = document.createElement("iframe");
     activePrintIframe = iframe;
 
@@ -175,14 +238,39 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
     iframe.setAttribute("tabindex", "-1");
 
     let isCleanedUp = false;
+    let windowAfterPrintHandler: (() => void) | null = null;
+    let cwAfterPrintHandler: (() => void) | null = null;
+
     const cleanup = () => {
       if (isCleanedUp) return;
       isCleanedUp = true;
+
       if (activeCleanupTimer) {
         clearTimeout(activeCleanupTimer);
         activeCleanupTimer = null;
       }
-      setTimeout(() => {
+      if (windowAfterPrintHandler) {
+        window.removeEventListener("afterprint", windowAfterPrintHandler);
+        windowAfterPrintHandler = null;
+      }
+      if (activeWindowCleanup === removeWindowListener) {
+        activeWindowCleanup = null;
+      }
+
+      try {
+        if (cwAfterPrintHandler && iframe.contentWindow) {
+          iframe.contentWindow.removeEventListener("afterprint", cwAfterPrintHandler);
+          cwAfterPrintHandler = null;
+        }
+      } catch {
+        // Ignore cross-origin / destroyed frame access errors
+      }
+
+      // Schedule deferred removal for this specific iframe
+      activeRemovalTimer = setTimeout(() => {
+        if (activeRemovalTimer) {
+          activeRemovalTimer = null;
+        }
         if (iframe.parentNode) {
           iframe.parentNode.removeChild(iframe);
         }
@@ -190,15 +278,39 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
           activePrintIframe = null;
         }
       }, 1500);
+
+      // Restore document.title ONLY IF this session is still the active session!
+      // If this job was cancelled by a newer job, it must NOT touch document.title
+      // nor clear activeOriginalTitle so the newer job retains control.
+      if (!isCancelled()) {
+        if (activeOriginalTitle !== null) {
+          document.title = activeOriginalTitle;
+          activeOriginalTitle = null;
+        }
+        if (activeReject === reject) {
+          activeReject = null;
+        }
+      }
     };
 
+    const removeWindowListener = () => {
+      if (windowAfterPrintHandler) {
+        window.removeEventListener("afterprint", windowAfterPrintHandler);
+        windowAfterPrintHandler = null;
+      }
+    };
+    activeWindowCleanup = removeWindowListener;
+
     const timeoutId = setTimeout(() => {
+      if (isCancelled()) return;
       cleanup();
       reject(new Error("Tiempo de espera agotado al cargar el documento para imprimir."));
     }, timeoutMs);
 
     iframe.onload = async () => {
       clearTimeout(timeoutId);
+      if (isCancelled()) return;
+
       try {
         const cw = iframe.contentWindow;
         if (!cw) {
@@ -208,12 +320,15 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
         }
 
         // Wait until streamed RSC replaces any loading fallback and marks document as ready
-        const isReady = await waitForDocumentReady(cw, 10000);
+        const isReady = await waitForDocumentReady(cw, 10000, isCancelled);
+        if (isCancelled()) return;
+
         if (!isReady) {
           throw new Error("Tiempo de espera agotado al cargar el documento para imprimir.");
         }
 
-        await waitForPaintFrames(cw);
+        await waitForPaintFrames(cw, 2, isCancelled);
+        if (isCancelled()) return;
 
         const doc = cw.document;
 
@@ -226,6 +341,7 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
         await new Promise<void>((resolveLayout) => {
           window.setTimeout(resolveLayout, 150);
         });
+        if (isCancelled()) return;
 
         // Wait for document fonts to finish loading if FontFaceSet API is supported
         if (doc?.fonts?.ready) {
@@ -238,15 +354,26 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
             // Ignore font loading errors; proceed to print
           }
         }
+        if (isCancelled()) return;
 
         // Force another reflow check after fonts settle
         if (doc?.body) {
           void doc.body.offsetHeight;
         }
 
-        // Listen for afterprint
-        cw.addEventListener("afterprint", cleanup, { once: true });
-        window.addEventListener("afterprint", cleanup, { once: true });
+        // Synchronize document.title with the iframe document title so browser "Save as PDF"
+        // uses the dynamic document title rather than the admin parent window's generic title.
+        if (doc?.title) {
+          activeOriginalTitle ??= document.title;
+          document.title = doc.title;
+        }
+
+        // Listen for afterprint with symmetrical cleanup handlers
+        cwAfterPrintHandler = () => cleanup();
+        windowAfterPrintHandler = () => cleanup();
+
+        cw.addEventListener("afterprint", cwAfterPrintHandler, { once: true });
+        window.addEventListener("afterprint", windowAfterPrintHandler, { once: true });
 
         // Fallback cleanup timer in case afterprint does not fire
         activeCleanupTimer = setTimeout(cleanup, 120000);
@@ -256,15 +383,19 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
 
         resolve();
       } catch (err) {
-        cleanup();
-        reject(err);
+        if (!isCancelled()) {
+          cleanup();
+          reject(err);
+        }
       }
     };
 
     iframe.onerror = (err) => {
       clearTimeout(timeoutId);
-      cleanup();
-      reject(err);
+      if (!isCancelled()) {
+        cleanup();
+        reject(err);
+      }
     };
 
     iframe.src = buildPrintUrl(url);

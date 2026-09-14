@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { QuoteItem, QuoteSection, WorkOrderStatus } from "@prisma/client";
+import type { Prisma, WorkOrderStatus } from "@prisma/client";
 import type { PaymentSettingsData } from "@/features/payment-settings/domain";
 import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
@@ -9,6 +9,10 @@ import {
 } from "@/features/public-quotes/components/shared-quote-view";
 import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import {
+  resolveDocumentFolio,
+  resolveDocumentPresentation,
+} from "@/features/quotes/lib/document-resolver";
 
 export interface QuoteDocumentViewProps {
   quote: QuoteDocumentQuote;
@@ -19,14 +23,15 @@ export interface QuoteDocumentViewProps {
   token?: string;
   isPrint?: boolean;
   controls?: React.ReactNode;
+  paymentStatus?: { paidCents: number; remainingCents: number; isSettled: boolean } | null;
 }
 
-type QuoteDocumentItem = Omit<QuoteItem, "quantity" | "unitPriceCents"> & {
-  quantity: QuoteItem["quantity"] | string | number | null;
-  unitPriceCents: QuoteItem["unitPriceCents"] | bigint;
+type QuoteDocumentItem = Omit<SharedQuoteViewQuote["items"][number], "quantity" | "unitPriceCents"> & {
+  quantity: Prisma.Decimal | string | number | null;
+  unitPriceCents: number | bigint | null;
 };
 
-type QuoteDocumentSection = Omit<QuoteSection, "items"> & {
+type QuoteDocumentSection = Omit<SharedQuoteViewQuote["sections"][number], "items"> & {
   items: QuoteDocumentItem[];
 };
 
@@ -40,7 +45,8 @@ type QuoteDocumentQuote = Omit<
   totalCents: number | bigint | null;
   items: QuoteDocumentItem[];
   sections: QuoteDocumentSection[];
-  workOrder?: { status: WorkOrderStatus } | null;
+  workOrder?: { status: WorkOrderStatus; folio?: string | null } | null;
+  folio?: string | null;
 };
 
 function normalizeItem(item: QuoteDocumentItem) {
@@ -53,7 +59,7 @@ function normalizeItem(item: QuoteDocumentItem) {
 
 export function serializeQuoteForDocument(
   quote: QuoteDocumentQuote,
-  workOrderOverride?: { status: WorkOrderStatus } | null,
+  workOrderOverride?: { status: WorkOrderStatus; folio?: string | null } | null,
 ): SharedQuoteViewQuote {
   return {
     ...quote,
@@ -76,9 +82,9 @@ export function serializeQuoteForDocument(
       workOrderOverride !== undefined
         ? workOrderOverride
         : quote.workOrder
-          ? { status: quote.workOrder.status }
+          ? { status: quote.workOrder.status, folio: quote.workOrder.folio }
           : null,
-  };
+  } as SharedQuoteViewQuote;
 }
 
 export function QuoteDocumentView({
@@ -90,22 +96,35 @@ export function QuoteDocumentView({
   token,
   isPrint = false,
   controls,
+  paymentStatus,
 }: QuoteDocumentViewProps) {
   const resolvedWorkOrder =
     workOrderStatus !== undefined
       ? workOrderStatus
-        ? { status: workOrderStatus }
+        ? { status: workOrderStatus, folio: quote.workOrder?.folio }
         : null
       : quote.workOrder
-        ? { status: quote.workOrder.status }
+        ? { status: quote.workOrder.status, folio: quote.workOrder.folio }
         : null;
 
   const viewQuote = serializeQuoteForDocument(quote, resolvedWorkOrder);
 
-  const isNote = resolvedWorkOrder?.status === "COMPLETED";
   const resolvedDocumentType =
     documentType ??
-    (isNote ? "Nota" : resolvedWorkOrder ? "Trabajo" : "Cotización");
+    resolveDocumentPresentation({
+      number: quote.number,
+      folio: quote.folio,
+      workOrder: resolvedWorkOrder,
+    }).documentType;
+
+  const resolvedDocumentNumber =
+    resolvedDocumentType === "Cotización"
+      ? (quote.folio ?? quote.number)
+      : resolveDocumentFolio({
+          number: quote.number,
+          folio: quote.folio,
+          workOrder: resolvedWorkOrder,
+        });
 
   const { displayName: customerDisplayName, subtitle: customerSubtitle } =
     resolveCustomerDisplayIdentity(quote);
@@ -126,7 +145,7 @@ export function QuoteDocumentView({
         business={toPublicBusinessIdentity(paymentSettings)}
         location={{ address: paymentSettings.address, mapsUrl: paymentSettings.mapsUrl }}
         documentType={resolvedDocumentType}
-        documentNumber={quote.number}
+        documentNumber={resolvedDocumentNumber}
         date={quote.operationalDate}
         title={quote.title}
         customerName={customerDisplayName}
@@ -139,6 +158,7 @@ export function QuoteDocumentView({
           isNote={resolvedDocumentType === "Nota"}
           isPrint={isPrint}
           business={paymentSettings}
+          paymentStatus={paymentStatus}
         />
       </PublicQuoteShell>
     </div>

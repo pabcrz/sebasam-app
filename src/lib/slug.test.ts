@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  DOCUMENT_SLUG_SUFFIX_LENGTH,
   generateBankAccountSlug,
+  generateDocumentSlug,
   generatePaymentSlugFromNumber,
   generateSlug,
   generateUniqueSlug,
@@ -12,6 +14,22 @@ describe("generateSlug", () => {
     const slug = generateSlug("C-0726-03");
 
     expect(slug).toMatch(/^C-0726-03-[0-9A-Za-z]{8}$/);
+  });
+
+  it("supports custom suffix length such as 6 for document slugs", () => {
+    const slug = generateSlug("C-090926-01", DOCUMENT_SLUG_SUFFIX_LENGTH);
+
+    expect(slug).toMatch(/^C-090926-01-[0-9A-Za-z]{6}$/);
+  });
+});
+
+describe("generateDocumentSlug", () => {
+  it("creates a 6-character slug for C and N folios", () => {
+    const quoteSlug = generateDocumentSlug("C-090926-01");
+    expect(quoteSlug).toMatch(/^C-090926-01-[0-9A-Za-z]{6}$/);
+
+    const noteSlug = generateDocumentSlug("N-090926-01");
+    expect(noteSlug).toMatch(/^N-090926-01-[0-9A-Za-z]{6}$/);
   });
 });
 

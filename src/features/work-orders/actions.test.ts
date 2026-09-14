@@ -77,6 +77,7 @@ function operationalQuote(overrides: Record<string, unknown> = {}) {
 }
 
 type MockTx = {
+  $queryRaw: ReturnType<typeof vi.fn>;
   quote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   quoteItem: { createMany: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn> };
@@ -102,6 +103,7 @@ type MockTx = {
 
 function createTx(): MockTx {
   const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ lastSequence: 1 }]),
     quote: {
       create: vi.fn().mockResolvedValue({ id: "quote-new", sections: [{ id: "sec-1", sortOrder: 0 }] }),
       findUnique: vi.fn().mockResolvedValue({ id: "quote-new", number: "0926-001" }),

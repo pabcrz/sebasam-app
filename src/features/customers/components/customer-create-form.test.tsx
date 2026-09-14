@@ -80,6 +80,23 @@ describe("CustomerCreateForm", () => {
     });
   });
 
+  it("shows and clears a meaningful-name error before submission", async () => {
+    const action = vi.fn();
+    const user = userEvent.setup();
+    render(<CustomerCreateForm action={action} />);
+    await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
+
+    const name = screen.getByLabelText("Nombre");
+    await user.type(name, "xyz");
+    expect(screen.getByRole("alert")).toHaveTextContent("El nombre debe incluir texto significativo.");
+    await user.clear(name);
+    await user.type(name, "Grúas Mejía");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+
+    expect(action).toHaveBeenCalledTimes(1);
+  });
+
   it("prevents dismissal and editing while creation is pending", async () => {
     const action = vi.fn(() => new Promise<void>(() => {}));
     const user = userEvent.setup();

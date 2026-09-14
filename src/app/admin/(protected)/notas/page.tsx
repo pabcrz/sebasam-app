@@ -14,6 +14,12 @@ import {
 } from "@/components/ui";
 import { WorkOrderCompletedList } from "@/features/work-orders/components/work-order-completed-list";
 import { correctPaymentAction, recordPaymentAction } from "@/features/payments/actions";
+import {
+  archiveCompletedNote,
+  correctCompletedWorkQuoteFromWorkspace,
+  getOrCreateSharedQuoteAction,
+  revokeNoteCanonicalLinkAction,
+} from "@/features/quotes/actions";
 import { createDirectNoteFromWorkspace, rollbackWorkOrderAction } from "@/features/work-orders/actions";
 import { listActiveMasters } from "@/features/workers/queries";
 import { listCustomers } from "@/features/customers/queries";
@@ -113,6 +119,8 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
             <WorkOrderCompletedList
               workOrders={workOrders}
               quoteMap={quoteMap}
+              customers={customers}
+              searchCustomersAction={searchCustomersForQuote}
               recordPaymentActions={isAdminRole(currentProfile?.profile.role) ? workOrders.map((wo) => ({
                 workOrderId: wo.id,
                 action: recordPaymentAction.bind(null, wo.id),
@@ -123,7 +131,17 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
                   action: correctPaymentAction.bind(null, wo.quote.activePaymentId),
                 }] : []
               ) : []}
-              rollbackAction={rollbackWorkOrderAction}
+               correctWorkOrderActions={isAdminRole(currentProfile?.profile.role) ? workOrders.map((wo) => ({
+                 workOrderId: wo.id,
+                 action: correctCompletedWorkQuoteFromWorkspace.bind(null, wo.quote.id),
+               })) : []}
+               shareAction={getOrCreateSharedQuoteAction}
+               archiveRevocationActions={isAdminRole(currentProfile?.profile.role) ? workOrders.map((wo) => ({
+                 quoteId: wo.quote.id,
+                 archive: archiveCompletedNote.bind(null, wo.quote.id),
+                 revoke: revokeNoteCanonicalLinkAction.bind(null, wo.quote.id),
+               })) : []}
+               rollbackAction={rollbackWorkOrderAction}
               noteReturnTo={noteReturnTo}
             />
           )}

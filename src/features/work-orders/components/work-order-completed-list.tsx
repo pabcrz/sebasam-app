@@ -4,7 +4,7 @@ import * as React from "react";
 import { Printer } from "lucide-react";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
-import { Badge, Button, OperationalActionRow, OperationalCard } from "@/components/ui";
+import { Badge, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import type { CorrectPaymentResult } from "@/features/payments/domain";
 import { derivePaymentState } from "@/features/work-orders/payment-state";
@@ -12,7 +12,13 @@ import { CashPaymentDialog } from "@/features/payments/components/cash-payment-d
 import { PaymentCorrectionDialog } from "@/features/payments/components/payment-correction-dialog";
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import { resolveDocumentFolio, resolveAntecedentQuoteFolio } from "@/features/quotes/lib/document-resolver";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
+import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
+import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
+import { NoteArchiveRevocationActions } from "@/features/quotes/components/note-archive-revocation-actions";
+import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
+import type { QuoteFormActionState } from "@/features/quotes/actions";
 
 type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>["workOrders"][number];
 
@@ -38,11 +44,27 @@ type WorkOrderCorrectionAction = {
   ) => Promise<CorrectPaymentResult>;
 };
 
+type WorkOrderCommercialCorrectionAction = {
+  workOrderId: string;
+  action: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
+};
+
+type NoteArchiveRevocationAction = {
+  quoteId: string;
+  archive: (reason: string) => Promise<void>;
+  revoke: (reason: string) => Promise<{ success: true } | { success: false; error: string }>;
+};
+
 interface WorkOrderCompletedListProps {
   workOrders: WorkOrderItem[];
   quoteMap?: Map<string, WorkOrderItem["quote"]>;
+  customers?: CustomerOption[];
+  searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
   recordPaymentActions?: WorkOrderPaymentAction[];
   correctionActions?: WorkOrderCorrectionAction[];
+  correctWorkOrderActions?: WorkOrderCommercialCorrectionAction[];
+  shareAction: (quoteId: string) => Promise<{ success: boolean; token?: string; error?: string }>;
+  archiveRevocationActions?: NoteArchiveRevocationAction[];
   rollbackAction?: WorkOrderActions["rollback"];
   noteReturnTo?: string;
 }
@@ -58,9 +80,23 @@ function formatVehicle(wo: WorkOrderItem) {
   return [v.brand, v.model, v.year, v.plate ? `· ${v.plate}` : null].filter(Boolean).join(" ");
 }
 
-export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActions = [], correctionActions = [], rollbackAction, noteReturnTo = "/admin/notas" }: WorkOrderCompletedListProps) {
+export function WorkOrderCompletedList({
+  workOrders,
+  quoteMap,
+  customers = [],
+  searchCustomersAction,
+  recordPaymentActions = [],
+  correctionActions = [],
+  correctWorkOrderActions = [],
+  shareAction,
+  archiveRevocationActions = [],
+  rollbackAction,
+  noteReturnTo = "/admin/notas",
+}: WorkOrderCompletedListProps) {
   const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
   const correctionActionMap = new Map(correctionActions.map((p) => [p.workOrderId, p.action]));
+  const correctWorkOrderActionMap = new Map(correctWorkOrderActions.map((c) => [c.workOrderId, c.action]));
+  const archiveRevocationActionMap = new Map(archiveRevocationActions.map((action) => [action.quoteId, action]));
   const [selectedQuoteId, setSelectedQuoteId] = React.useState<string | null>(null);
 
   const selectedQuote = React.useMemo(() => {
@@ -74,14 +110,19 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
       {workOrders.map((wo) => {
         const paymentAction = paymentActionMap.get(wo.id);
         const correctionAction = correctionActionMap.get(wo.id);
+        const correctWorkOrderAction = correctWorkOrderActionMap.get(wo.id);
+        const archiveRevocationAction = archiveRevocationActionMap.get(wo.quote.id);
         const totalCents = Number(wo.quote.totalCents);
         const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
+        const noteFolio = resolveDocumentFolio(wo);
+        const antecedentQuoteFolio = resolveAntecedentQuoteFolio(wo.quote);
         const paymentState = derivePaymentState({
           completedAt: wo.completedAt,
           paymentDueDate: dueDate,
           paidCents: wo.quote.paidCents ?? 0,
           remainingCents: wo.quote.remainingCents ?? totalCents,
         });
+        const quoteDetail = quoteMap?.get(wo.quote.id) ?? wo.quote;
         return (
           <OperationalCard
             key={wo.id}
@@ -106,13 +147,36 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                     size="sm"
                     data-mobile-target="44"
                     className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
-                    title={`Imprimir nota de remisión ${wo.number}`}
-                    aria-label={`Imprimir nota de remisión ${wo.number}`}
+                    title={`Imprimir nota de remisión ${noteFolio}`}
+                    aria-label={`Imprimir nota de remisión ${noteFolio}`}
                   >
                     <Printer className="h-5 w-5" aria-hidden="true" />
                     <span className="sr-only sm:not-sr-only">Imprimir nota</span>
                   </PrintActionButton>
+                  <ShareQuoteButton action={shareAction.bind(null, wo.quote.id)} quoteNumber={wo.quote.number} actionLabelClassName="sr-only sm:not-sr-only" />
+                  {archiveRevocationAction ? (
+                    <NoteArchiveRevocationActions
+                      quoteNumber={wo.quote.number}
+                      archived={wo.quote.status === "ARCHIVED"}
+                      archiveAction={archiveRevocationAction.archive}
+                      revokeAction={archiveRevocationAction.revoke}
+                    />
+                  ) : null}
                   <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile noteReturnTo={noteReturnTo} />
+                  {correctWorkOrderAction ? (
+                    <QuoteBuilderDialog
+                      customers={customers}
+                      quote={quoteDetail as never}
+                      quoteNumber={wo.quote.number}
+                      saveAction={correctWorkOrderAction}
+                      searchCustomersAction={searchCustomersAction}
+                      triggerLabel="Corregir nota"
+                      triggerAriaLabel="Corregir nota"
+                      triggerVariant="outline"
+                      triggerSize="sm"
+                      triggerIconOnlyMobile
+                    />
+                  ) : null}
                   {correctionAction && wo.quote.activePaymentId && wo.quote.activePaymentAmountCents != null ? (
                     <PaymentCorrectionDialog
                       paymentId={wo.quote.activePaymentId}
@@ -132,7 +196,8 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">{wo.number}</span>
+                      <span className="text-xs font-bold text-[var(--color-text-main)]">{noteFolio}</span>
+                      <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">({wo.number})</span>
                       <Badge variant={paymentState.variant} className="w-fit">
                         {paymentState.label}{paymentState.label === "Pago parcial" || paymentState.label === "Vencida" ? ` · Saldo ${formatCents(paymentState.balanceCents!)}` : ""}
                       </Badge>
@@ -166,7 +231,7 @@ export function WorkOrderCompletedList({ workOrders, quoteMap, recordPaymentActi
                 </div>
 
                 <div className="mb-3 text-sm text-[var(--color-text-muted)]">
-                  <span className="font-medium">Cot. {wo.quote.number}</span>
+                  <span className="font-medium">Cot. {antecedentQuoteFolio}</span>
                   {" · "}
                   {wo.isSpecial
                     ? "Taller"

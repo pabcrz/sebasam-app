@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatDocumentPdfFilename,
   formatUtcDateDDMMAAAA,
+  resolveVehiclePdfSegment,
   sanitizeFilenameSegment,
 } from "./pdf-filename";
 
@@ -38,84 +39,149 @@ describe("pdf-filename", () => {
     });
   });
 
+  describe("resolveVehiclePdfSegment", () => {
+    it("prioritizes economicNumber over plate and brand/model", () => {
+      expect(
+        resolveVehiclePdfSegment({
+          economicNumber: "Eco 14",
+          plate: "ABC-1234",
+          brand: "Freightliner",
+          model: "Cascadia",
+        }),
+      ).toBe("Eco14");
+    });
+
+    it("prioritizes plate over brand/model when economicNumber is absent", () => {
+      expect(
+        resolveVehiclePdfSegment({
+          plate: "ABC-1234",
+          brand: "Freightliner",
+          model: "Cascadia",
+        }),
+      ).toBe("ABC1234");
+    });
+
+    it("combines brand and model when economicNumber and plate are absent", () => {
+      expect(
+        resolveVehiclePdfSegment({
+          brand: "Freightliner",
+          model: "Cascadia",
+        }),
+      ).toBe("FreightlinerCascadia");
+    });
+
+    it("handles string literal vehicle like Taller", () => {
+      expect(resolveVehiclePdfSegment("Taller")).toBe("Taller");
+    });
+
+    it("returns empty string when vehicle is null or empty", () => {
+      expect(resolveVehiclePdfSegment(null)).toBe("");
+      expect(resolveVehiclePdfSegment(undefined)).toBe("");
+      expect(resolveVehiclePdfSegment({})).toBe("");
+    });
+  });
+
   describe("formatDocumentPdfFilename", () => {
-    it("formats complete filename with customer, vehicle brand, and operational date", () => {
+    it("formats {Customer}-{Driver}-{Unit}-{Folio} for a quote with full details", () => {
       const filename = formatDocumentPdfFilename({
-        customerName: "Cristian Del Toro",
-        vehicle: { brand: "freightliner", model: null, plate: null },
-        operationalDate: new Date("2026-06-18T00:00:00.000Z"),
+        customerName: "Transportes Hernandez",
+        driverName: "Don Pepe",
+        vehicle: { economicNumber: "Eco 14" },
+        folio: "C-090926-01",
       });
 
-      expect(filename).toBe("CristianDelToro-freightliner-18062026");
+      expect(filename).toBe("TransportesHernandez-DonPepe-Eco14-C-090926-01");
     });
 
-    it("normalizes diacritics and strips special characters in customer and vehicle", () => {
+    it("formats {Customer}-{Unit}-{Folio} when driver is omitted", () => {
       const filename = formatDocumentPdfFilename({
-        customerName: "José Pérez / Transportes",
-        vehicle: { brand: "Camión", model: "Tracto / Especial", plate: null },
-        operationalDate: new Date("2026-06-18T00:00:00.000Z"),
+        customerName: "Acme Corp",
+        vehicle: { plate: "ABC-1234" },
+        folio: "C-090926-01",
       });
 
-      expect(filename).toBe("JosePerezTransportes-CamionTractoEspecial-18062026");
+      expect(filename).toBe("AcmeCorp-ABC1234-C-090926-01");
     });
 
-    it("prioritizes plates over brand/model when plate is present", () => {
+    it("formats {Customer}-{Driver}-{Folio} when unit is omitted", () => {
       const filename = formatDocumentPdfFilename({
-        customerName: "Juan",
-        vehicle: { brand: "Freightliner", model: "Cascadia", plate: "ABC1234" },
-        operationalDate: new Date("2026-06-18T00:00:00.000Z"),
+        customerName: "Acme Corp",
+        driverName: "Juan Perez",
+        folio: "C-090926-01",
       });
 
-      expect(filename).toBe("Juan-ABC1234-18062026");
+      expect(filename).toBe("AcmeCorp-JuanPerez-C-090926-01");
     });
 
-    it("uses brand/model when plate is missing or placeholder 'Sin placas'", () => {
-      const filename = formatDocumentPdfFilename({
-        customerName: "Logística Express",
-        vehicle: { brand: "Kenworth", model: "T680", plate: "Sin placas" },
-        operationalDate: new Date("2026-06-18T00:00:00.000Z"),
-      });
-
-      expect(filename).toBe("LogisticaExpress-KenworthT680-18062026");
-    });
-
-    it("handles string vehicle directly (e.g. special workshop note 'Taller')", () => {
-      const filename = formatDocumentPdfFilename({
-        customerName: "Mantenimiento Interno",
-        vehicle: "Taller",
-        operationalDate: new Date("2026-06-18T00:00:00.000Z"),
-      });
-
-      expect(filename).toBe("MantenimientoInterno-Taller-18062026");
-    });
-
-    it("applies fallbacks SinCliente and SinUnidad when customer or vehicle are null/empty", () => {
+    it("formats {Driver}-{Unit}-{Folio} when customer is absent without emitting SinCliente", () => {
       const filename = formatDocumentPdfFilename({
         customerName: null,
-        vehicle: null,
-        operationalDate: new Date("2026-06-18T00:00:00.000Z"),
+        driverName: "Don Pepe",
+        vehicle: { economicNumber: "Eco-14" },
+        folio: "C-090926-01",
       });
 
-      expect(filename).toBe("SinCliente-SinUnidad-18062026");
-
-      const whitespaceFilename = formatDocumentPdfFilename({
-        customerName: "   ",
-        vehicle: { brand: "", model: "", plate: "" },
-        operationalDate: new Date("2026-06-18T00:00:00.000Z"),
-      });
-
-      expect(whitespaceFilename).toBe("SinCliente-SinUnidad-18062026");
+      expect(filename).toBe("DonPepe-Eco14-C-090926-01");
+      expect(filename).not.toContain("SinCliente");
+      expect(filename).not.toContain("Sincliente");
     });
 
-    it("preserves UTC date regardless of system timezone", () => {
-      const date = new Date("2026-06-18T23:45:00.000Z");
+    it("formats {Unit}-{Folio} when customer and driver are absent", () => {
       const filename = formatDocumentPdfFilename({
-        customerName: "Cliente",
-        vehicle: "Unidad1",
-        operationalDate: date,
+        customerName: undefined,
+        driverName: null,
+        vehicle: { plate: "XYZ-999" },
+        folio: "N-090926-01",
       });
 
-      expect(filename).toBe("Cliente-Unidad1-18062026");
+      expect(filename).toBe("XYZ999-N-090926-01");
+    });
+
+    it("formats only {Folio} when customer, driver, and vehicle are absent", () => {
+      const filename = formatDocumentPdfFilename({
+        customerName: null,
+        driverName: null,
+        vehicle: null,
+        folio: "C-090926-01",
+      });
+
+      expect(filename).toBe("C-090926-01");
+    });
+
+    it("formats special workshop note as Taller-{Folio}", () => {
+      const filename = formatDocumentPdfFilename({
+        customerName: null,
+        vehicle: "Taller",
+        folio: "N-090926-01",
+      });
+
+      expect(filename).toBe("Taller-N-090926-01");
+    });
+
+    it("never emits SEBASAM, SinCliente, SinUnidad, Cotizacion, or Nota", () => {
+      const filename = formatDocumentPdfFilename({
+        customerName: null,
+        driverName: null,
+        vehicle: null,
+        folio: "N-090926-01",
+      });
+
+      expect(filename).not.toContain("SEBASAM");
+      expect(filename).not.toContain("SinCliente");
+      expect(filename).not.toContain("Sincliente");
+      expect(filename).not.toContain("SinUnidad");
+      expect(filename).not.toContain("SinFecha");
+      expect(filename).not.toContain("Cotizacion");
+      expect(filename).not.toContain("Nota");
+    });
+
+    it("formats historical record using legacy number as folio", () => {
+      const filename = formatDocumentPdfFilename({
+        customerName: "Empresa",
+        folio: "0626-001",
+      });
+
+      expect(filename).toBe("Empresa-0626-001");
     });
   });
 });

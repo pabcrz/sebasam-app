@@ -5,8 +5,12 @@ import { getCompletedWorkOrderById } from "@/features/work-orders/queries";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { QuoteDocumentView } from "@/features/public-quotes/components/quote-document-view";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
+import { resolveDocumentFolio } from "@/features/quotes/lib/document-resolver";
 import { PrintControls } from "@/features/quotes/components/print-controls";
-import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import {
+  resolveCustomerDisplayIdentity,
+  resolveOptionalCustomerName,
+} from "@/features/quotes/lib/quote-snapshots";
 
 interface PrintPageProps {
   params: Promise<{ id: string }>;
@@ -18,22 +22,25 @@ export async function generateMetadata({ params }: PrintPageProps): Promise<Meta
 
   if (!workOrder) {
     return {
-      title: "Nota",
+      title: { absolute: "Nota" },
     };
   }
 
   const { quote } = workOrder;
   const identity = resolveCustomerDisplayIdentity(quote);
+  const customerName = resolveOptionalCustomerName(quote);
   const vehicle = workOrder.isSpecial ? "Taller" : quote.vehicle ?? quote.vehicleSnapshot;
+  const folio = resolveDocumentFolio(workOrder);
   const title = formatDocumentPdfFilename({
-    customerName: identity.displayName,
+    customerName,
+    driverName: identity.operatorName,
     vehicle,
     operationalDate: quote.operationalDate ?? workOrder.completedAt,
-    fallbackType: "Nota",
+    folio,
   });
 
   return {
-    title,
+    title: { absolute: title },
   };
 }
 
@@ -50,7 +57,13 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
 
   return (
     <QuoteDocumentView
-      quote={workOrder.quote}
+      quote={{
+        ...workOrder.quote,
+        workOrder: {
+          status: workOrder.status,
+          folio: workOrder.folio,
+        },
+      }}
       workOrderStatus={workOrder.status}
       paymentSettings={paymentSettings}
       documentType="Nota"
