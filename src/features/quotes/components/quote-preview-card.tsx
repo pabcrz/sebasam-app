@@ -262,7 +262,7 @@ export function QuotePreviewCard({
               <div data-testid="quote-items-table" className={`${compactItems ? "sr-only md:not-sr-only print:not-sr-only" : ""} overflow-x-auto print:overflow-visible`}>
                 <table className="w-full border-collapse text-left text-sm print:text-[11px] print:leading-tight">
                 <thead className="print:table-header-group">
-                  <tr className="hidden print:table-row print:h-7" aria-hidden="true">
+                  <tr className="hidden print:table-row print:h-[12mm]" aria-hidden="true">
                     <td colSpan={4} className="p-0 border-0" />
                   </tr>
                   <tr className="bg-[var(--color-bg-soft)]/40 text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider print:bg-transparent print:text-gray-500">
@@ -340,7 +340,7 @@ export function QuotePreviewCard({
                   })}
                 </tbody>
                 <tfoot className="hidden print:table-footer-group">
-                  <tr className="print:h-5" aria-hidden="true">
+                  <tr className="print:h-[12mm]" aria-hidden="true">
                     <td colSpan={4} className="p-0 border-0" />
                   </tr>
                 </tfoot>
