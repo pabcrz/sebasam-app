@@ -19,7 +19,6 @@ type QuoteActionPresentationInput = {
   editable: boolean;
   hasWorkOrder: boolean;
   paymentAvailable: boolean;
-  isCommercialReady?: boolean;
 };
 
 export type QuoteActionPresentation = {
@@ -52,7 +51,6 @@ export function resolveQuoteActionPresentation({
   editable,
   hasWorkOrder,
   paymentAvailable,
-  isCommercialReady = false,
 }: QuoteActionPresentationInput): QuoteActionPresentation {
   const available = new Set<QuoteActionId>(["print", "duplicate"]);
 
@@ -72,7 +70,7 @@ export function resolveQuoteActionPresentation({
   if (status !== "APPROVED") available.add("delete");
 
   const primaryCandidates: Record<QuoteStatus, QuoteActionId[]> = {
-    DRAFT: isCommercialReady ? ["share", "edit"] : ["edit"],
+    DRAFT: [],
     SENT: ["authorize"],
     APPROVED: ["workOrder"],
     REJECTED: ["correctDecision"],

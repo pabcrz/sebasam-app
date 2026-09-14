@@ -5,7 +5,7 @@ import type { PaymentRequest, QuoteStatus } from "@prisma/client";
 import { Printer } from "lucide-react";
 import { PrintActionButton } from "./print-action-button";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, OperationalActionsMenu, TableCell, TableRow } from "@/components/ui";
+import { Badge, TableCell, TableRow } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
@@ -20,12 +20,10 @@ import { PaymentRequestLinkDialog } from "@/features/payment-requests/components
 import type { PaymentRequestDialogBankAccount } from "@/features/payment-requests/components/payment-request-link-dialog";
 import { createPaymentRequestDialogContext } from "@/features/quotes/lib/payment-request-dialog-context";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
-import { QuoteLifecycleForm } from "./quote-lifecycle-form";
 import type { CustomerOption } from "./quote-builder";
 import type { QuoteFormActionState } from "../actions";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
-import { resolveQuoteActionPresentation, type QuoteActionId } from "./quote-action-presentation";
 
 type QuoteListItem = QuoteListSummary;
 
@@ -55,6 +53,7 @@ export function QuoteListRow({
   quote,
   quoteStatusLabels,
   quoteStatusBadgeVariant,
+  approveAction: _approveAction,
   cancelAction,
   shareAction,
   authorizeAction,
@@ -83,100 +82,6 @@ export function QuoteListRow({
     : `/admin/quotes/${quote.id}/print?returnTo=/admin/quotes`;
 
   const displayFolio = quote.folio ?? quote.number;
-  const commercialReady = isQuoteCommercialReady(quote);
-  const actionPresentation = resolveQuoteActionPresentation({
-    status: quote.status,
-    editable,
-    hasWorkOrder: Boolean(quote.workOrder),
-    paymentAvailable: paymentRequestContext !== null,
-    isCommercialReady: commercialReady,
-  });
-
-  const renderAction = (
-    action: QuoteActionId,
-    variant: "primary" | "secondary" | "outline" | "danger" = "outline",
-  ) => {
-    switch (action) {
-      case "print":
-        return (
-          <PrintActionButton
-            url={printHref}
-            variant={variant}
-            size="sm"
-            className="min-h-11 min-w-11"
-            title={`Imprimir cotización ${displayFolio}`}
-            aria-label={`Imprimir cotización ${displayFolio}`}
-          >
-            <Printer className="h-4 w-4" aria-hidden="true" />
-            <span className="sr-only">Imprimir cotización</span>
-          </PrintActionButton>
-        );
-      case "edit":
-        return (
-          <QuoteBuilderDialog
-            customers={customers}
-            saveAction={saveAction}
-            searchCustomersAction={searchCustomersAction}
-            quote={quote}
-            quoteNumber={quote.number}
-            triggerSize="sm"
-            triggerVariant={variant}
-          />
-        );
-      case "share":
-        return (
-          <ShareQuoteButton
-            action={shareAction}
-            quoteNumber={quote.number}
-            variant={variant}
-          />
-        );
-      case "authorize":
-        return (
-          <QuoteAuthorizeForm
-            action={authorizeAction}
-            quoteNumber={quote.number}
-            sections={quote.sections}
-            variant={variant}
-            size="sm"
-          />
-        );
-      case "correctDecision":
-        return (
-          <QuoteCorrectDecisionForm
-            action={correctDecisionAction}
-            quoteId={quote.id}
-            quoteNumber={quote.number}
-            currentStatus={quote.status as "APPROVED" | "REJECTED"}
-            variant={variant}
-            size="sm"
-          />
-        );
-      case "workOrder":
-        return (
-          <WorkOrderOperationsDialog
-            quoteNumber={quote.number}
-            quoteStatus={quote.status}
-            workOrder={quote.workOrder}
-            workers={workers}
-            actions={workOrderActions}
-            triggerVariant={variant}
-          />
-        );
-      case "paymentLink":
-        return paymentRequestContext ? <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} /> : null;
-      case "duplicate":
-        return <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} />;
-      case "cancel":
-        return <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant={variant} size="sm" />;
-      case "archive":
-        return <QuoteLifecycleForm action={archiveAction} mode="archive" quoteNumber={quote.number} />;
-      case "restore":
-        return <QuoteLifecycleForm action={restoreAction} mode="restore" quoteNumber={quote.number} />;
-      case "delete":
-        return <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />;
-    }
-  };
 
   return (
     <TableRow
@@ -225,28 +130,91 @@ export function QuoteListRow({
       </TableCell>
       <TableCell>{quote.validUntil ? formatDate(quote.validUntil) : "—"}</TableCell>
       <TableCell className="min-w-[230px]" onClick={(event) => event.stopPropagation()}>
-        <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
+          <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          {actionPresentation.primary ? renderAction(actionPresentation.primary, "primary") : null}
-          {actionPresentation.frequent.map((action) => (
-            <React.Fragment key={action}>{renderAction(action, "outline")}</React.Fragment>
-          ))}
-          {actionPresentation.overflow.length > 0 || actionPresentation.destructive ? (
-            <OperationalActionsMenu
-              title="Acciones de cotización"
-              description={`Acciones disponibles para ${quote.number}.`}
-              triggerAriaLabel={`Más acciones de cotización ${quote.number}`}
-              triggerTitle={`Más acciones de cotización ${quote.number}`}
-              destructive={actionPresentation.destructive ? renderAction(actionPresentation.destructive) : null}
-              triggerClassName="min-h-9 h-9 w-9 px-0"
-              triggerIconOnly
-            >
-              {actionPresentation.overflow.map((action) => (
-                <React.Fragment key={action}>{renderAction(action)}</React.Fragment>
-              ))}
-            </OperationalActionsMenu>
+          <PrintActionButton
+            url={printHref}
+            variant="outline"
+            size="sm"
+            className="min-h-11 min-w-11"
+            title={`Imprimir cotización ${displayFolio}`}
+            aria-label={`Imprimir cotización ${displayFolio}`}
+          >
+            <Printer className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Imprimir cotización</span>
+          </PrintActionButton>
+          {editable ? (
+            <QuoteBuilderDialog
+              customers={customers}
+              saveAction={saveAction}
+              searchCustomersAction={searchCustomersAction}
+              quote={quote}
+              quoteNumber={quote.number}
+              triggerSize="sm"
+              triggerVariant="outline"
+            />
+          ) : null}
+
+          <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} />
+
+          {quote.status === "DRAFT" || quote.status === "CANCELLED" ? (
+            <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
+          ) : null}
+
+          {quote.status !== "CANCELLED" ? (
+            <ShareQuoteButton
+              action={shareAction}
+              quoteNumber={quote.number}
+              variant={quote.status === "DRAFT" ? (isQuoteCommercialReady(quote) ? "primary" : "secondary") : "outline"}
+            />
+          ) : null}
+
+          {quote.status === "SENT" ? (
+            <QuoteAuthorizeForm
+              action={authorizeAction}
+              quoteNumber={quote.number}
+              sections={quote.sections}
+              variant="outline"
+              size="sm"
+            />
+          ) : null}
+
+          {(quote.status === "APPROVED" || quote.status === "REJECTED") && !quote.workOrder ? (
+            <QuoteCorrectDecisionForm
+              action={correctDecisionAction}
+              quoteId={quote.id}
+              quoteNumber={quote.number}
+              currentStatus={quote.status}
+              variant="outline"
+              size="sm"
+            />
+          ) : null}
+
+          {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
+            <WorkOrderOperationsDialog
+              quoteNumber={quote.number}
+              quoteStatus={quote.status}
+              workOrder={quote.workOrder}
+              workers={workers}
+              actions={workOrderActions}
+            />
+          ) : null}
+
+          {quote.status === "DRAFT" || quote.status === "SENT" ? (
+            <QuoteCancelForm
+              action={cancelAction}
+              quoteId={quote.id}
+              quoteNumber={quote.number}
+              variant="outline"
+              size="sm"
+            />
+          ) : null}
+
+          {canUsePaymentActions && paymentRequestContext ? (
+            <PaymentRequestLinkDialog action={paymentRequestAction} context={paymentRequestContext} />
           ) : null}
         </div>
+
       </TableCell>
     </TableRow>
   );
