@@ -179,8 +179,11 @@ describe("WorkOrderCompletedList", () => {
     );
 
     expect(screen.getByRole("button", { name: "Compartir cotización" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Archivar Nota COT-001" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Revocar enlace de Nota COT-001" })).toBeInTheDocument();
+    const archive = screen.getByRole("button", { name: "Archivar Nota COT-001" });
+    const revoke = screen.getByRole("button", { name: "Revocar enlace de Nota COT-001" });
+    expect(archive.parentElement).not.toBe(revoke.parentElement);
+    expect(archive.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
+    expect(revoke.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
     expect(screen.getAllByRole("button", { name: "Compartir cotización" })).toHaveLength(1);
   });
 });
