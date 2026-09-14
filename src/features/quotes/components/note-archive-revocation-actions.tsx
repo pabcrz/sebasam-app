@@ -18,41 +18,36 @@ import {
 
 type ActionResult = { success: true } | { success: false; error: string };
 
-type NoteArchiveRevocationActionsProps = {
-  quoteNumber: string;
-  archived: boolean;
-  archiveAction: (reason: string) => Promise<void>;
-  revokeAction: (reason: string) => Promise<ActionResult>;
-};
+type NoteArchiveRevocationActionProps =
+  | { quoteNumber: string; mode: "archive"; action: (reason: string) => Promise<void> }
+  | { quoteNumber: string; mode: "revoke"; action: (reason: string) => Promise<ActionResult> };
 
-export function NoteArchiveRevocationActions({
+export function NoteArchiveRevocationAction({
   quoteNumber,
-  archived,
-  archiveAction,
-  revokeAction,
-}: NoteArchiveRevocationActionsProps) {
-  const [dialog, setDialog] = React.useState<"archive" | "revoke" | null>(null);
+  mode,
+  action,
+}: NoteArchiveRevocationActionProps) {
+  const [open, setOpen] = React.useState(false);
   const [reason, setReason] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [isPending, startTransition] = React.useTransition();
+  const isArchive = mode === "archive";
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const currentDialog = dialog;
-    if (!currentDialog) return;
     setError(null);
     startTransition(async () => {
       try {
-        if (currentDialog === "archive") {
-          await archiveAction(reason);
+        if (isArchive) {
+          await action(reason);
         } else {
-          const result = await revokeAction(reason);
+          const result = await action(reason);
           if (!result.success) {
             setError(result.error);
             return;
           }
         }
-        setDialog(null);
+        setOpen(false);
         setReason("");
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "No se pudo actualizar la Nota.");
@@ -60,22 +55,21 @@ export function NoteArchiveRevocationActions({
     });
   }
 
-  const isArchive = dialog === "archive";
-
   return (
     <>
-      {!archived ? (
-        <Button type="button" variant="outline" size="sm" aria-label={`Archivar Nota ${quoteNumber}`} title={`Archivar Nota ${quoteNumber}`} onClick={() => { setError(null); setDialog("archive"); }} disabled={isPending}>
+      {isArchive ? (
+        <Button type="button" variant="outline" size="sm" aria-label={`Archivar Nota ${quoteNumber}`} title={`Archivar Nota ${quoteNumber}`} onClick={() => { setError(null); setOpen(true); }} disabled={isPending}>
           <Archive className="h-5 w-5" aria-hidden="true" />
           <span className="sr-only sm:not-sr-only">Archivar</span>
         </Button>
-      ) : null}
-      <Button type="button" variant="outline" size="sm" aria-label={`Revocar enlace de Nota ${quoteNumber}`} title={`Revocar enlace de Nota ${quoteNumber}`} onClick={() => { setError(null); setDialog("revoke"); }} disabled={isPending}>
-        <ShieldOff className="h-5 w-5" aria-hidden="true" />
-        <span className="sr-only sm:not-sr-only">Revocar enlace</span>
-      </Button>
-      {error && !dialog ? <p role="alert" className="text-sm text-[var(--color-status-danger-fg)]">{error}</p> : null}
-      <Dialog open={dialog !== null} onOpenChange={(open) => { if (!isPending && !open) setDialog(null); }}>
+      ) : (
+        <Button type="button" variant="outline" size="sm" aria-label={`Revocar enlace de Nota ${quoteNumber}`} title={`Revocar enlace de Nota ${quoteNumber}`} onClick={() => { setError(null); setOpen(true); }} disabled={isPending}>
+          <ShieldOff className="h-5 w-5" aria-hidden="true" />
+          <span className="sr-only sm:not-sr-only">Revocar enlace</span>
+        </Button>
+      )}
+      {error && !open ? <p role="alert" className="text-sm text-[var(--color-status-danger-fg)]">{error}</p> : null}
+      <Dialog open={open} onOpenChange={(nextOpen) => { if (!isPending) setOpen(nextOpen); }}>
         <DialogMobileContent className="max-w-lg">
           <DialogMobileHeader>
             <DialogTitle>{isArchive ? "Archivar Nota" : "Revocar enlace público"}</DialogTitle>
@@ -94,7 +88,7 @@ export function NoteArchiveRevocationActions({
               </div>
               {error ? <p role="alert" className="text-sm text-[var(--color-status-danger-fg)]">{error}</p> : null}
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setDialog(null)} disabled={isPending}>Volver</Button>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>Volver</Button>
                 <Button type="submit" variant={isArchive ? "danger" : "outline"} loading={isPending}>{isArchive ? "Archivar Nota" : "Revocar enlace"}</Button>
               </DialogFooter>
             </form>

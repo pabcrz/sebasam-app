@@ -16,7 +16,7 @@ import { resolveDocumentFolio, resolveAntecedentQuoteFolio } from "@/features/qu
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
-import { NoteArchiveRevocationActions } from "@/features/quotes/components/note-archive-revocation-actions";
+import { NoteArchiveRevocationAction } from "@/features/quotes/components/note-archive-revocation-actions";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 
@@ -154,12 +154,18 @@ export function WorkOrderCompletedList({
                     <span className="sr-only sm:not-sr-only">Imprimir nota</span>
                   </PrintActionButton>
                   <ShareQuoteButton action={shareAction.bind(null, wo.quote.id)} quoteNumber={wo.quote.number} actionLabelClassName="sr-only sm:not-sr-only" />
-                  {archiveRevocationAction ? (
-                    <NoteArchiveRevocationActions
+                  {archiveRevocationAction && wo.quote.status !== "ARCHIVED" ? (
+                    <NoteArchiveRevocationAction
                       quoteNumber={wo.quote.number}
-                      archived={wo.quote.status === "ARCHIVED"}
-                      archiveAction={archiveRevocationAction.archive}
-                      revokeAction={archiveRevocationAction.revoke}
+                      mode="archive"
+                      action={archiveRevocationAction.archive}
+                    />
+                  ) : null}
+                  {archiveRevocationAction ? (
+                    <NoteArchiveRevocationAction
+                      quoteNumber={wo.quote.number}
+                      mode="revoke"
+                      action={archiveRevocationAction.revoke}
                     />
                   ) : null}
                   <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile noteReturnTo={noteReturnTo} />
