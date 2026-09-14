@@ -73,7 +73,7 @@ describe("WorkOrderCompletedList", () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it("uses accessible responsive note actions and renders payment balances only when needed", () => {
+  it("does not render a redundant note print action and renders payment balances only when needed", () => {
     render(
       <WorkOrderCompletedList
         workOrders={[workOrder, partialWorkOrder, overdueWorkOrder, noDueDateWorkOrder]}
@@ -82,13 +82,8 @@ describe("WorkOrderCompletedList", () => {
       />,
     );
 
-    const print = screen.getByRole("button", { name: "Imprimir nota de remisión COT-001" });
     const payment = screen.getByRole("button", { name: "Registrar pago para COT-001" });
-    expect(print).toHaveAttribute("title", "Imprimir nota de remisión COT-001");
-    expect(print).toHaveClass("min-h-11", "min-w-11");
-    expect(print).toHaveClass("w-10", "sm:w-auto");
-    expect(print.parentElement).toHaveClass("grid", "w-11", "sm:block", "sm:w-auto");
-    expect(print.parentElement?.parentElement).toHaveClass("flex", "w-full", "flex-wrap", "items-center", "gap-3", "[&_button]:h-10", "[&_button]:w-10", "sm:gap-2", "sm:[&_button]:h-9", "sm:[&_button]:w-auto");
+    expect(screen.queryByRole("button", { name: /imprimir nota de remisión/i })).not.toBeInTheDocument();
     expect(payment).toHaveAttribute("title", "Registrar pago para COT-001");
     expect(payment).toHaveClass("w-10", "sm:w-auto");
     expect(screen.getByText("Sin pago", { exact: true })).toBeVisible();
@@ -97,16 +92,6 @@ describe("WorkOrderCompletedList", () => {
     expect(screen.getByText(/Vencida · Saldo.*75/)).toBeVisible();
     expect(screen.getByText("Sin fecha de vencimiento", { exact: true })).toBeVisible();
     expect(screen.queryByText("Completada")).not.toBeInTheDocument();
-  });
-
-  it("preserves the current Notes state when printing from the completed list", () => {
-    render(<WorkOrderCompletedList workOrders={[workOrder]} shareAction={vi.fn()} noteReturnTo="/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=workshop&page=2" />);
-
-    const print = screen.getByRole("button", { name: "Imprimir nota de remisión COT-001" });
-    expect(print).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dmonth%26anchor%3D2026-08%26payment%3Dpaid%26assignee%3Dworkshop%26page%3D2");
-    expect(print.getAttribute("data-print-url")).not.toContain("/admin/quotes/");
-    expect(print).not.toHaveAttribute("target");
-    expect(print).not.toHaveAttribute("rel");
   });
 
   it("renders a correction trigger for the active payment when an admin action is provided", () => {
@@ -156,7 +141,7 @@ describe("WorkOrderCompletedList", () => {
     expect(screen.getByText("N-140826-01")).toBeInTheDocument();
     expect(screen.getByText("(T-0926-01)")).toBeInTheDocument();
     expect(screen.getByText(/Cot\.\s*C-140826-01/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Imprimir nota de remisión N-140826-01" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /imprimir nota de remisión/i })).not.toBeInTheDocument();
   });
 
   it("renders sharing for completed Notes", () => {
@@ -174,6 +159,7 @@ describe("WorkOrderCompletedList", () => {
           quoteId: "quote-1",
           archive: vi.fn(),
           revoke: vi.fn().mockResolvedValue({ success: true }),
+          canRevoke: true,
         }]}
       />,
     );
@@ -185,5 +171,23 @@ describe("WorkOrderCompletedList", () => {
     expect(archive.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
     expect(revoke.parentElement).toHaveClass("grid", "w-10", "sm:block", "sm:w-auto");
     expect(screen.getAllByRole("button", { name: "Compartir cotización" })).toHaveLength(1);
+  });
+
+  it("hides revocation when the Note has no revocable public link", () => {
+    render(
+      <WorkOrderCompletedList
+        workOrders={[workOrder]}
+        shareAction={vi.fn()}
+        archiveRevocationActions={[{
+          quoteId: "quote-1",
+          archive: vi.fn(),
+          revoke: vi.fn().mockResolvedValue({ success: true }),
+          canRevoke: false,
+        }]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Archivar Nota COT-001" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Revocar enlace de Nota COT-001" })).not.toBeInTheDocument();
   });
 });

@@ -1,8 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Printer } from "lucide-react";
-import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
 import { Badge, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
@@ -53,6 +51,7 @@ type NoteArchiveRevocationAction = {
   quoteId: string;
   archive: (reason: string) => Promise<void>;
   revoke: (reason: string) => Promise<{ success: true } | { success: false; error: string }>;
+  canRevoke: boolean;
 };
 
 interface WorkOrderCompletedListProps {
@@ -141,18 +140,6 @@ export function WorkOrderCompletedList({
                   />
                 ) : null}
                 <OperationalActionRow>
-                  <PrintActionButton
-                    url={`/admin/notas/${wo.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}
-                    variant="outline"
-                    size="sm"
-                    data-mobile-target="44"
-                    className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
-                    title={`Imprimir nota de remisión ${noteFolio}`}
-                    aria-label={`Imprimir nota de remisión ${noteFolio}`}
-                  >
-                    <Printer className="h-5 w-5" aria-hidden="true" />
-                    <span className="sr-only sm:not-sr-only">Imprimir nota</span>
-                  </PrintActionButton>
                   <ShareQuoteButton action={shareAction.bind(null, wo.quote.id)} quoteNumber={wo.quote.number} actionLabelClassName="sr-only sm:not-sr-only" />
                   {archiveRevocationAction && wo.quote.status !== "ARCHIVED" ? (
                     <NoteArchiveRevocationAction
@@ -161,7 +148,7 @@ export function WorkOrderCompletedList({
                       action={archiveRevocationAction.archive}
                     />
                   ) : null}
-                  {archiveRevocationAction ? (
+                  {archiveRevocationAction?.canRevoke ? (
                     <NoteArchiveRevocationAction
                       quoteNumber={wo.quote.number}
                       mode="revoke"
