@@ -47,7 +47,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
   };
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-6 md:px-6 md:py-8 print:p-0 print:m-0 print:max-w-none print:w-full print:gap-4">
+    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-6 md:px-6 md:py-8 print:p-0 print:m-0 print:max-w-none print:w-full print:px-[15mm] print:py-[12mm] print:gap-4">
       {/* Screen navigation & header */}
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Button asChild variant="ghost" size="sm" className="w-fit min-h-[44px] px-3.5">

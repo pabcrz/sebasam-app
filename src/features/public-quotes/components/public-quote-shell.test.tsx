@@ -3,12 +3,13 @@ import { render, screen } from "@testing-library/react";
 import { PublicQuoteShell } from "./public-quote-shell";
 
 describe("PublicQuoteShell", () => {
-  it("delegates page margins to @page without continuous print padding", () => {
+  it("anchors totals at bottom of page in print using calibrated printable height", () => {
     const { container } = render(<PublicQuoteShell>content</PublicQuoteShell>);
 
     expect(container.firstElementChild).toHaveClass("min-h-screen");
-    expect(container.firstElementChild).toHaveClass("print:min-h-0");
-    expect(container.firstElementChild).toHaveClass("print:p-0");
+    expect(container.firstElementChild).toHaveClass("print:min-h-[255mm]");
+    expect(container.firstElementChild).toHaveClass("print:px-[14mm]");
+    expect(container.firstElementChild).toHaveClass("print:py-[12mm]");
   });
 
   it("renders the approved quote brand treatment and subtitle", () => {

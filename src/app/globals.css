@@ -200,8 +200,8 @@ body {
 
 @media print {
   @page {
+    margin: 0;
     size: letter portrait;
-    margin: 12mm 14mm;
   }
   html,
   body {
