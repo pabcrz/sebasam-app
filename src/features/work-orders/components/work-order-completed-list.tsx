@@ -1,8 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Printer } from "lucide-react";
-import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
 import { Badge, OperationalActionRow, OperationalCard } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
@@ -16,7 +14,7 @@ import { resolveDocumentFolio, resolveAntecedentQuoteFolio } from "@/features/qu
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
-import { NoteArchiveRevocationActions } from "@/features/quotes/components/note-archive-revocation-actions";
+import { NoteArchiveRevocationAction } from "@/features/quotes/components/note-archive-revocation-actions";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 
@@ -53,6 +51,7 @@ type NoteArchiveRevocationAction = {
   quoteId: string;
   archive: (reason: string) => Promise<void>;
   revoke: (reason: string) => Promise<{ success: true } | { success: false; error: string }>;
+  canRevoke: boolean;
 };
 
 interface WorkOrderCompletedListProps {
@@ -141,25 +140,19 @@ export function WorkOrderCompletedList({
                   />
                 ) : null}
                 <OperationalActionRow>
-                  <PrintActionButton
-                    url={`/admin/notas/${wo.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}
-                    variant="outline"
-                    size="sm"
-                    data-mobile-target="44"
-                    className="h-10 min-h-11 min-w-11 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
-                    title={`Imprimir nota de remisión ${noteFolio}`}
-                    aria-label={`Imprimir nota de remisión ${noteFolio}`}
-                  >
-                    <Printer className="h-5 w-5" aria-hidden="true" />
-                    <span className="sr-only sm:not-sr-only">Imprimir nota</span>
-                  </PrintActionButton>
                   <ShareQuoteButton action={shareAction.bind(null, wo.quote.id)} quoteNumber={wo.quote.number} actionLabelClassName="sr-only sm:not-sr-only" />
-                  {archiveRevocationAction ? (
-                    <NoteArchiveRevocationActions
+                  {archiveRevocationAction && wo.quote.status !== "ARCHIVED" ? (
+                    <NoteArchiveRevocationAction
                       quoteNumber={wo.quote.number}
-                      archived={wo.quote.status === "ARCHIVED"}
-                      archiveAction={archiveRevocationAction.archive}
-                      revokeAction={archiveRevocationAction.revoke}
+                      mode="archive"
+                      action={archiveRevocationAction.archive}
+                    />
+                  ) : null}
+                  {archiveRevocationAction?.canRevoke ? (
+                    <NoteArchiveRevocationAction
+                      quoteNumber={wo.quote.number}
+                      mode="revoke"
+                      action={archiveRevocationAction.revoke}
                     />
                   ) : null}
                   <WorkOrderOperationsDialog quoteNumber={wo.quote.number} quoteStatus="APPROVED" workOrder={wo} actions={{ rollback: rollbackAction }} triggerIconOnlyMobile noteReturnTo={noteReturnTo} />

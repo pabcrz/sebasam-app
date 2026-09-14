@@ -27,8 +27,12 @@ describe("printDocumentUrl", () => {
     const iframe = document.querySelector("iframe");
     expect(iframe).toBeInTheDocument();
     expect(iframe?.style.position).toBe("fixed");
-    expect(iframe?.style.right).toBe("0px");
-    expect(iframe?.style.bottom).toBe("0px");
+    expect(iframe?.style.top).toBe("0px");
+    expect(iframe?.style.left).toBe("0px");
+    expect(iframe?.style.width).toBe("1px");
+    expect(iframe?.style.height).toBe("1px");
+    expect(iframe?.style.clip).toBe("rect(0px, 0px, 0px, 0px)");
+    expect(iframe?.style.overflow).toBe("hidden");
     expect(iframe?.style.zIndex).toBe("-9999");
     expect(iframe?.getAttribute("aria-hidden")).toBe("true");
     expect(iframe?.getAttribute("tabindex")).toBe("-1");
@@ -160,7 +164,6 @@ describe("printDocumentUrl", () => {
     await rejection;
     expect(focusSpy).not.toHaveBeenCalled();
     expect(printSpy).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(1500);
     expect(iframe).not.toBeInTheDocument();
   });
 
@@ -489,5 +492,155 @@ describe("printDocumentUrl", () => {
     // Only job B's completion restores to original
     afterPrintCallsB.forEach((cb) => cb());
     expect(document.title).toBe("Cotizaciones | SEBASAM");
+  });
+
+  describe("cleanup scenarios and readiness edge cases", () => {
+    it("preserves iframe in DOM on afterprint and does not destroy it with 1.5s timer", async () => {
+      document.title = "Cotizaciones | SEBASAM";
+      const printPromise = printDocumentUrl("/admin/quotes/quote-1/print");
+      const iframe = document.querySelector("iframe");
+      expect(iframe).toBeInTheDocument();
+
+      const afterPrintCalls: Array<() => void> = [];
+      Object.defineProperty(iframe, "contentWindow", {
+        value: {
+          focus: vi.fn(),
+          print: vi.fn(),
+          addEventListener: vi.fn((event: string, cb: () => void) => {
+            if (event === "afterprint") afterPrintCalls.push(cb);
+          }),
+          removeEventListener: vi.fn(),
+          document: {
+            title: "Cotización 001",
+            querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+            fonts: { ready: Promise.resolve() },
+            body: { offsetHeight: 100 },
+          },
+        },
+        writable: true,
+      });
+
+      iframe?.onload?.(new Event("load"));
+      await vi.advanceTimersByTimeAsync(200);
+      await printPromise;
+
+      // Trigger afterprint
+      afterPrintCalls.forEach((cb) => cb());
+
+      // Advance 1500ms (the old destructive timer)
+      await vi.advanceTimersByTimeAsync(1500);
+
+      // Iframe MUST still be in the document (not destroyed by old 1.5s timer)
+      expect(iframe).toBeInTheDocument();
+      expect(document.title).toBe("Cotizaciones | SEBASAM");
+    });
+
+    it("immediately removes iframe from DOM on load error", async () => {
+      const printPromise = printDocumentUrl("/admin/quotes/error/print");
+      const iframe = document.querySelector("iframe");
+      expect(iframe).toBeInTheDocument();
+
+      iframe?.onerror?.(new Event("error"));
+
+      await expect(printPromise).rejects.toThrow();
+      // Iframe MUST be removed immediately on error
+      expect(iframe).not.toBeInTheDocument();
+    });
+
+    it("immediately removes iframe from DOM on load timeout", async () => {
+      const printPromise = printDocumentUrl("/admin/quotes/timeout/print", { timeoutMs: 5000 });
+      const iframe = document.querySelector("iframe");
+      expect(iframe).toBeInTheDocument();
+
+      vi.advanceTimersByTime(5001);
+
+      await expect(printPromise).rejects.toThrow("Tiempo de espera agotado al cargar el documento para imprimir.");
+      // Iframe MUST be removed immediately on load timeout
+      expect(iframe).not.toBeInTheDocument();
+    });
+
+    it("removes dormant iframe when 120s safety fallback expires", async () => {
+      const printPromise = printDocumentUrl("/admin/quotes/quote-1/print");
+      const iframe = document.querySelector("iframe");
+      expect(iframe).toBeInTheDocument();
+
+      Object.defineProperty(iframe, "contentWindow", {
+        value: {
+          focus: vi.fn(),
+          print: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          document: {
+            querySelector: vi.fn((sel: string) => (sel === "[data-document-ready='true']" ? { children: [{}] } : null)),
+            fonts: { ready: Promise.resolve() },
+            body: { offsetHeight: 100 },
+          },
+        },
+        writable: true,
+      });
+
+      iframe?.onload?.(new Event("load"));
+      await vi.advanceTimersByTimeAsync(200);
+      await printPromise;
+
+      expect(iframe).toBeInTheDocument();
+
+      // Advance 120 seconds
+      await vi.advanceTimersByTimeAsync(120000);
+
+      // Now the fallback safety cleanup must have purged the dormant iframe
+      expect(iframe).not.toBeInTheDocument();
+    });
+
+    it("immediately purges previous iframe and rejects pending promise when replaced by a new job", async () => {
+      const job1 = printDocumentUrl("/admin/quotes/quote-1/print");
+      const iframe1 = document.querySelector("iframe");
+      expect(iframe1).toBeInTheDocument();
+
+      // Launch job 2 before job 1 finishes
+      const job2 = printDocumentUrl("/admin/quotes/quote-2/print");
+      const iframe2 = document.querySelectorAll("iframe")[0];
+
+      await expect(job1).rejects.toThrow("La impresión fue cancelada por una nueva solicitud.");
+      expect(iframe1?.parentNode).toBeNull();
+      expect(iframe2).toBeInTheDocument();
+      expect(iframe2?.src).toContain("quote-2");
+      job2.catch(() => {});
+    });
+
+    it("prints empty quote with 'Sin conceptos' without blocking or timing out", async () => {
+      const printPromise = printDocumentUrl("/admin/quotes/empty-quote/print");
+      const iframe = document.querySelector("iframe");
+      const focusSpy = vi.fn();
+      const printSpy = vi.fn();
+
+      // Mock an empty quote: data-document-ready is true with children ("Sin conceptos"), but NO table rows
+      Object.defineProperty(iframe, "contentWindow", {
+        value: {
+          focus: focusSpy,
+          print: printSpy,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          document: {
+            querySelector: vi.fn((sel: string) => {
+              if (sel === "[aria-label='Cargando contenido...']") return null;
+              if (sel === "[data-document-ready='true']") return { children: [{ textContent: "Sin conceptos" }] };
+              if (sel === "table tbody tr") return null;
+              return null;
+            }),
+            fonts: { ready: Promise.resolve() },
+            body: { offsetHeight: 50 },
+          },
+        },
+        writable: true,
+      });
+
+      iframe?.onload?.(new Event("load"));
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(focusSpy).toHaveBeenCalled();
+      expect(printSpy).toHaveBeenCalled();
+      await printPromise;
+    });
   });
 });

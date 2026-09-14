@@ -22,6 +22,20 @@ const workOrderInclude = {
   },
 } as const;
 
+const completedWorkOrderInclude = {
+  ...workOrderInclude,
+  quote: {
+    ...workOrderInclude.quote,
+    include: {
+      ...workOrderInclude.quote.include,
+      sharedQuotes: {
+        where: { isCanonical: true, revokedAt: null },
+        select: { id: true },
+      },
+    },
+  },
+} as const;
+
 function serializeWorkOrder<
   T extends {
     quote: {
@@ -217,7 +231,7 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
 
   const workOrders = await prisma.workOrder.findMany({
     where: { id: { in: pageRows.map(({ id }) => id) } },
-    include: workOrderInclude,
+    include: completedWorkOrderInclude,
   });
 
   const byId = new Map(workOrders.map((wo) => [wo.id, wo]));
@@ -230,16 +244,18 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
       const wo = byId.get(id);
       if (!wo) return [];
       const serialized = serializeWorkOrder(wo);
+      const { sharedQuotes, ...quote } = serialized.quote;
       const totalCents = Number(wo.quote.totalCents);
       return [{
         ...serialized,
         quote: {
-          ...serialized.quote,
+          ...quote,
           paidCents: Number(paidCents),
           remainingCents: totalCents - Number(paidCents),
           activePaymentId: activePaymentId ?? null,
           activePaymentMethod: activePaymentMethod ?? null,
           activePaymentAmountCents: activePaymentAmountCents == null ? null : Number(activePaymentAmountCents),
+          hasRevocablePublicLink: Boolean(sharedQuotes?.length),
         },
       }];
     }),

@@ -375,6 +375,14 @@ describe("SharedQuoteView", () => {
     expect(screen.queryByRole("button", { name: "Declinar cotización" })).not.toBeInTheDocument();
   });
 
+  it("does not expose customer decisions for an active work order link", () => {
+    render(<SharedQuoteView quote={makeQuote(QuoteStatus.APPROVED, WorkOrderStatus.ASSIGNED)} token="token-123" />);
+
+    expect(screen.getByRole("list", { name: "Progreso de la cotización" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Aceptar cotización" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Declinar cotización" })).not.toBeInTheDocument();
+  });
+
   it("shows all sections with authorization status after partial approval", () => {
     render(<SharedQuoteView quote={makePartiallyAuthorizedQuote(QuoteStatus.APPROVED)} token="token-123" />);
 
