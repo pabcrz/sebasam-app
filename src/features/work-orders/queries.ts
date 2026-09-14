@@ -255,7 +255,7 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
           activePaymentId: activePaymentId ?? null,
           activePaymentMethod: activePaymentMethod ?? null,
           activePaymentAmountCents: activePaymentAmountCents == null ? null : Number(activePaymentAmountCents),
-          hasRevocablePublicLink: sharedQuotes.length > 0,
+          hasRevocablePublicLink: Boolean(sharedQuotes?.length),
         },
       }];
     }),

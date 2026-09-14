@@ -5,7 +5,6 @@
 
 let activePrintIframe: HTMLIFrameElement | null = null;
 let activeCleanupTimer: ReturnType<typeof setTimeout> | null = null;
-let activeRemovalTimer: ReturnType<typeof setTimeout> | null = null;
 let activeWindowCleanup: (() => void) | null = null;
 let activeSessionId = 0;
 let activeOriginalTitle: string | null = null;
@@ -171,10 +170,6 @@ export function cancelActivePrintJob(newJobStarting = false): void {
     clearTimeout(activeCleanupTimer);
     activeCleanupTimer = null;
   }
-  if (activeRemovalTimer) {
-    clearTimeout(activeRemovalTimer);
-    activeRemovalTimer = null;
-  }
   if (activeWindowCleanup) {
     activeWindowCleanup();
     activeWindowCleanup = null;
@@ -223,15 +218,16 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
     const iframe = document.createElement("iframe");
     activePrintIframe = iframe;
 
-    // Position within viewport coordinate space with zero visibility and non-interactive z-index
-    // to prevent browser compositor out-of-bounds culling while keeping it completely invisible.
+    // Use clip rect and fixed dimensions instead of opacity: 0 to maintain rasterization validity
+    // in browser GPU compositors while keeping the frame completely hidden from the user.
     iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "1024px";
-    iframe.style.height = "768px";
+    iframe.style.top = "0";
+    iframe.style.left = "0";
+    iframe.style.width = "1px";
+    iframe.style.height = "1px";
     iframe.style.border = "0";
-    iframe.style.opacity = "0";
+    iframe.style.clip = "rect(0, 0, 0, 0)";
+    iframe.style.overflow = "hidden";
     iframe.style.pointerEvents = "none";
     iframe.style.zIndex = "-9999";
     iframe.setAttribute("aria-hidden", "true");
@@ -241,8 +237,16 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
     let windowAfterPrintHandler: (() => void) | null = null;
     let cwAfterPrintHandler: (() => void) | null = null;
 
-    const cleanup = () => {
-      if (isCleanedUp) return;
+    const cleanup = (removeIframeImmediately = false) => {
+      if (isCleanedUp) {
+        if (removeIframeImmediately && iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+          if (activePrintIframe === iframe) {
+            activePrintIframe = null;
+          }
+        }
+        return;
+      }
       isCleanedUp = true;
 
       if (activeCleanupTimer) {
@@ -266,18 +270,25 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
         // Ignore cross-origin / destroyed frame access errors
       }
 
-      // Schedule deferred removal for this specific iframe
-      activeRemovalTimer = setTimeout(() => {
-        if (activeRemovalTimer) {
-          activeRemovalTimer = null;
-        }
+      if (removeIframeImmediately) {
         if (iframe.parentNode) {
           iframe.parentNode.removeChild(iframe);
         }
         if (activePrintIframe === iframe) {
           activePrintIframe = null;
         }
-      }, 1500);
+      } else {
+        // If iframe is not removed immediately (e.g. afterprint), maintain a safety fallback
+        // of 120 seconds to purge the dormant iframe if no subsequent print replaces it.
+        activeCleanupTimer = setTimeout(() => {
+          if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
+          if (activePrintIframe === iframe) {
+            activePrintIframe = null;
+          }
+        }, 120000);
+      }
 
       // Restore document.title ONLY IF this session is still the active session!
       // If this job was cancelled by a newer job, it must NOT touch document.title
@@ -303,7 +314,7 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
 
     const timeoutId = setTimeout(() => {
       if (isCancelled()) return;
-      cleanup();
+      cleanup(true);
       reject(new Error("Tiempo de espera agotado al cargar el documento para imprimir."));
     }, timeoutMs);
 
@@ -314,7 +325,7 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
       try {
         const cw = iframe.contentWindow;
         if (!cw) {
-          cleanup();
+          cleanup(true);
           resolve();
           return;
         }
@@ -368,15 +379,15 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
           document.title = doc.title;
         }
 
-        // Listen for afterprint with symmetrical cleanup handlers
-        cwAfterPrintHandler = () => cleanup();
-        windowAfterPrintHandler = () => cleanup();
+        // Listen for afterprint with symmetrical cleanup handlers (preserves frame during preview)
+        cwAfterPrintHandler = () => cleanup(false);
+        windowAfterPrintHandler = () => cleanup(false);
 
         cw.addEventListener("afterprint", cwAfterPrintHandler, { once: true });
         window.addEventListener("afterprint", windowAfterPrintHandler, { once: true });
 
         // Fallback cleanup timer in case afterprint does not fire
-        activeCleanupTimer = setTimeout(cleanup, 120000);
+        activeCleanupTimer = setTimeout(() => cleanup(true), 120000);
 
         cw.focus();
         cw.print();
@@ -384,7 +395,7 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
         resolve();
       } catch (err) {
         if (!isCancelled()) {
-          cleanup();
+          cleanup(true);
           reject(err);
         }
       }
@@ -393,7 +404,7 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
     iframe.onerror = (err) => {
       clearTimeout(timeoutId);
       if (!isCancelled()) {
-        cleanup();
+        cleanup(true);
         reject(err);
       }
     };
