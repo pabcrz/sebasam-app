@@ -88,14 +88,10 @@ describe("WorkOrderOperationsDialog", () => {
     expect(viewOrder).toHaveAttribute("title", "Gestionar orden de trabajo T-001");
     expect(viewOrder).toHaveClass("h-10", "w-10", "sm:h-9", "sm:w-auto");
     expect(viewOrder.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
-    expect(viewOrder).toHaveTextContent("Ver orden");
+    expect(viewOrder).toHaveTextContent("Gestionar orden");
 
     await user.click(viewOrder);
-    const printNote = screen.getByRole("button", { name: "Imprimir nota de remisión T-001" });
-    expect(printNote).toHaveAttribute("title", "Imprimir nota de remisión T-001");
-    expect(printNote).toHaveClass("min-h-11", "min-w-11");
-    expect(printNote).toHaveClass("w-9", "sm:w-auto");
-    expect(printNote.querySelector("span")).toHaveClass("sr-only", "sm:not-sr-only");
+    expect(screen.queryByRole("button", { name: "Imprimir nota de remisión T-001" })).not.toBeInTheDocument();
   });
 
   it("shows assignment controls including special order toggle", async () => {
@@ -245,20 +241,7 @@ describe("WorkOrderOperationsDialog", () => {
 
     expect(screen.getByText("Completada")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /asignar e iniciar trabajo/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /imprimir nota de remisión/i })).toBeInTheDocument();
-  });
-
-  it("preserves the current Notes state when printing from completed operations", async () => {
-    const user = userEvent.setup();
-    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-note-1", number: "T-001", status: "COMPLETED", assignments: [] }} actions={{}} noteReturnTo="/admin/notas?mode=week&anchor=2026-08-12&payment=pending&assignee=all" />);
-
-    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo t-001/i }));
-
-    const print = screen.getByRole("button", { name: "Imprimir nota de remisión T-001" });
-    expect(print).toHaveAttribute("data-print-url", "/admin/notas/wo-note-1/print?returnTo=%2Fadmin%2Fnotas%3Fmode%3Dweek%26anchor%3D2026-08-12%26payment%3Dpending%26assignee%3Dall");
-    expect(print.getAttribute("data-print-url")).not.toContain("/admin/quotes/");
-    expect(print).not.toHaveAttribute("target");
-    expect(print).not.toHaveAttribute("rel");
+    expect(screen.queryByRole("button", { name: /imprimir nota de remisión/i })).not.toBeInTheDocument();
   });
 
   it("locks the assignment form and trigger while an assignment is pending", async () => {

@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckCircle2, ClipboardList, Printer, RotateCcw, UserCheck, X } from "lucide-react";
-import { PrintActionButton } from "@/features/quotes/components/print-action-button";
+import { CheckCircle2, ClipboardList, RotateCcw, UserCheck, X } from "lucide-react";
 import type { QuoteStatus, UserRole, WorkOrderStatus } from "@prisma/client";
 import {
   Badge,
@@ -68,7 +67,6 @@ type WorkOrderOperationsDialogProps = {
   workers?: WorkerOption[];
   actions?: WorkOrderActions;
   triggerIconOnlyMobile?: boolean;
-  noteReturnTo?: string;
   triggerVariant?: ButtonVariant;
 };
 
@@ -84,7 +82,6 @@ export function WorkOrderOperationsDialog({
   workers = [],
   actions = noopActions,
   triggerIconOnlyMobile = false,
-  noteReturnTo = "/admin/notas",
   triggerVariant = "outline",
 }: WorkOrderOperationsDialogProps) {
   const router = useRouter();
@@ -229,7 +226,7 @@ export function WorkOrderOperationsDialog({
         loading={isAssignmentBusy}
       >
         {!isAssignmentBusy ? <ClipboardList className="h-5 w-5" aria-hidden="true" /> : null}
-        {!isAssignmentBusy ? <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{isCompleted ? "Ver orden" : isAssigned ? "Gestionar trabajo" : "Asignar trabajo"}</span> : null}
+        {!isAssignmentBusy ? <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{isCompleted ? "Gestionar orden" : isAssigned ? "Gestionar trabajo" : "Asignar trabajo"}</span> : null}
       </Button>
 
       <Dialog open={open} onOpenChange={(nextOpen) => { if (!isAssignmentBusy) setOpen(nextOpen); }}>
@@ -428,19 +425,8 @@ export function WorkOrderOperationsDialog({
             {isCompleted ? (
               <section className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
                 <p className="text-sm text-[var(--color-text-muted)]">
-                  Trabajo completado. Podes generar la Nota de Remisión desde el panel de Notas o imprimir la orden.
+                  Trabajo completado. Podes generar la Nota de Remisión desde el panel de Notas.
                 </p>
-                <PrintActionButton
-                  url={`/admin/notas/${workOrder.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}
-                  variant="outline"
-                  size="sm"
-                  className="min-h-11 min-w-11 w-9 px-0 sm:w-auto sm:px-3"
-                  title={`Imprimir nota de remisión ${workOrder.number}`}
-                  aria-label={`Imprimir nota de remisión ${workOrder.number}`}
-                >
-                  <Printer className="h-4 w-4" aria-hidden="true" />
-                  <span className="sr-only sm:not-sr-only">Imprimir Nota de Remisión</span>
-                </PrintActionButton>
               </section>
             ) : null}
 
