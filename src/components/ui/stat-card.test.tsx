@@ -53,6 +53,12 @@ describe("StatCard UI component", () => {
     expect(value).toHaveClass("text-xl", "sm:text-2xl", "tabular-nums", "font-mono");
   });
 
+  it("constrains numeric content so long values can wrap inside the card", () => {
+    render(<StatCard label="Ingresos" value="$123,456,789.00" numericRole="currency" />);
+
+    expect(screen.getByText("$123,456,789.00")).toHaveClass("min-w-0", "flex-1", "break-words");
+  });
+
   it("renders an accessible trend with direction icon and visible label", () => {
     render(
       <StatCard

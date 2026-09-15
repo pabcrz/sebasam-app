@@ -34,11 +34,11 @@ export function PayrollPeriodNav({
   const isCurrent = isCurrentPeriod ?? isCurrentWeek ?? false;
 
   return (
-    <Card className="flex flex-col gap-3 p-4 shadow-sm sm:p-5">
+    <Card data-testid="payroll-period-nav" className="min-w-0 max-w-full flex flex-col gap-3 p-4 shadow-sm sm:p-5">
       {/* Top row: Mode switch & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[var(--color-border-light)]">
+      <div className="flex min-w-0 max-w-full flex-col flex-wrap gap-3 border-b border-[var(--color-border-light)] pb-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Mode Selector */}
-        <div className="flex items-center gap-1 bg-[var(--color-bg-soft)] p-0.5 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] self-start">
+        <div className="flex max-w-full flex-wrap items-center gap-1 self-start rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-0.5">
           <Button
             variant={mode === "weekly" ? "secondary" : "ghost"}
             size="sm"
@@ -58,7 +58,7 @@ export function PayrollPeriodNav({
         </div>
 
         {/* Action Buttons: Excel & Signing Sheet (Disabled when no jobs) */}
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
           {onOpenSigningSheet && (
             <Button
               type="button"
@@ -92,10 +92,10 @@ export function PayrollPeriodNav({
       </div>
 
       {/* Bottom row: Period info & Navigation */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex min-w-0 max-w-full flex-col flex-wrap gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-base sm:text-lg font-semibold text-[var(--color-text-main)] capitalize">
+            <h2 className="break-words text-base font-semibold capitalize text-[var(--color-text-main)] sm:text-lg">
               {rangeLabel}
             </h2>
             {isCurrent && (
@@ -111,7 +111,7 @@ export function PayrollPeriodNav({
           </p>
         </div>
 
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
           <Button variant="outline" size="sm" asChild className="h-9 text-xs px-3">
             <Link
               href={payrollHref({ mode, anchor: prevAnchor })}

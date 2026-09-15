@@ -148,16 +148,16 @@ export function PayrollWorkerEnvelopeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[92vh] overflow-y-auto print:max-w-none print:w-full print:h-auto print:max-h-none print:p-0 print:border-none print:shadow-none print:overflow-visible print:static print:transform-none">
+      <DialogContent className="min-w-0 max-w-full w-[calc(100vw-2rem)] max-w-2xl max-h-[92vh] gap-3 p-2 sm:p-3 overflow-y-auto overflow-x-hidden print:max-w-none print:w-full print:h-auto print:max-h-none print:p-0 print:border-none print:shadow-none print:overflow-visible print:static print:transform-none">
         <DialogHeader className="print:hidden">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Mail className="h-5 w-5 text-[var(--color-primary-600)]" />
-            <DialogTitle>Sobre de Pago - {worker.displayName}</DialogTitle>
+            <DialogTitle className="min-w-0 break-words">Sobre de Pago - {worker.displayName}</DialogTitle>
           </div>
         </DialogHeader>
 
         {/* Flush Envelope Preview */}
-        <div className="flex justify-center w-full py-1">
+        <div className="flex min-w-0 max-w-full justify-center py-1">
           <div
             id="payroll-worker-envelope-document"
             className="w-[360px] max-w-full p-3 bg-white text-slate-900 space-y-3 print:space-y-1.5 rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
@@ -199,7 +199,7 @@ export function PayrollWorkerEnvelopeModal({
 
             {/* Cohesive 4-Column Table - In print: no thead, no line divides, minimal vertical padding */}
             <div className="border border-slate-200 rounded-md overflow-hidden print:border-none print:rounded-none">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full table-fixed border-collapse text-left">
                 <thead className="print:hidden">
                   <tr className="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold text-[10px] uppercase tracking-wide">
                     <th className="py-2 pl-2.5 pr-1 text-left">Mano de Obra</th>
@@ -212,7 +212,7 @@ export function PayrollWorkerEnvelopeModal({
                   {allLaborItems.length > 0 ? (
                     allLaborItems.map((item, idx) => (
                       <tr key={`${item.id}-${idx}`} className="hover:bg-slate-50/50">
-                        <td className="py-2 print:py-0.5 pl-2.5 pr-1 text-slate-900 font-semibold text-xs leading-tight">
+                        <td className="break-words py-2 pl-2.5 pr-1 text-xs font-semibold leading-tight text-slate-900 print:py-0.5">
                           {item.description}
                         </td>
                         <td className="py-2 print:py-0.5 px-1 text-right text-slate-500 font-normal text-[10px] whitespace-nowrap">
@@ -260,16 +260,16 @@ export function PayrollWorkerEnvelopeModal({
         </div>
 
         {/* Action Sharing Bar (Single row below receipt, matching width) */}
-        <div className="print:hidden w-full max-w-[350px] mx-auto p-2 bg-[var(--color-bg-soft)] rounded-md border border-[var(--color-border-light)] flex items-center justify-between gap-2 text-xs">
+        <div className="print:hidden w-full max-w-[350px] mx-auto p-2 bg-[var(--color-bg-soft)] rounded-md border border-[var(--color-border-light)] flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="text-[var(--color-text-muted)] font-semibold shrink-0">Compartir:</span>
-          <div className="grid grid-cols-2 gap-2 flex-1">
+          <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleDownloadImage}
               disabled={isGeneratingImage || isSharingWhatsApp}
-              className="h-8 gap-1.5 text-xs w-full justify-center"
+              className="h-8 min-w-0 gap-1.5 text-xs w-full justify-center"
               title="Descargar imagen PNG para enviar"
             >
               {isGeneratingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-[var(--color-primary)]" />}
@@ -281,7 +281,7 @@ export function PayrollWorkerEnvelopeModal({
               size="sm"
               onClick={handleWhatsApp}
               disabled={isGeneratingImage || isSharingWhatsApp}
-              className="h-8 gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold w-full justify-center"
+              className="h-8 min-w-0 gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold w-full justify-center"
               title="Compartir imagen por WhatsApp"
             >
               {isSharingWhatsApp ? (
@@ -295,7 +295,7 @@ export function PayrollWorkerEnvelopeModal({
         </div>
 
         {/* Dialog Actions (Hidden in Print) */}
-        <DialogFooter className="flex-row justify-end gap-2 pt-1 print:hidden">
+        <DialogFooter className="flex-row flex-wrap justify-end gap-2 pt-1 print:hidden">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>

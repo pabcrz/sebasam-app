@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QuoteItemType, WorkerKind } from "@prisma/client";
 import { PayrollPeriodNav } from "./payroll-period-nav";
 import { PayrollMetrics } from "./payroll-metrics";
@@ -102,6 +102,8 @@ describe("Payroll UI Components", () => {
       "href",
       "/admin/nomina?anchor=2026-08-24"
     );
+    expect(screen.getByTestId("payroll-period-nav")).toHaveClass("min-w-0", "max-w-full");
+    expect(screen.getByTestId("payroll-period-nav").querySelector("div.flex.flex-wrap")).toBeInTheDocument();
   });
 
   it("renders metrics with formatted amounts", () => {
@@ -119,6 +121,8 @@ describe("Payroll UI Components", () => {
     expect(screen.getAllByText("$3,000.00").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("4").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("$3,000.00")[0]).toHaveClass("break-words");
+    expect(screen.getByTestId("payroll-metrics-desktop")).toHaveClass("min-w-0", "max-w-full");
   });
 
   it("renders overview table and allows worker selection", () => {
@@ -132,12 +136,34 @@ describe("Payroll UI Components", () => {
     );
 
     expect(screen.getByText("Resumen General de Nómina")).toBeInTheDocument();
+    expect(screen.getByTestId("payroll-overview-table")).toHaveClass("min-w-0", "max-w-full");
     expect(screen.getAllByText("Maestro Pedro").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Maestro Juan").length).toBeGreaterThanOrEqual(1);
 
     const juanButtons = screen.getAllByRole("button", { name: /ver detalle/i });
     fireEvent.click(juanButtons[0]);
     expect(onSelect).toHaveBeenCalledWith("w-2");
+  });
+
+  it("keeps long worker names untruncated with the worker-kind badge below", () => {
+    const longName = "Refugio Antonio Hernández de la Cruz";
+
+    render(
+      <PayrollOverviewTable
+        workers={[{ ...sampleWorkers[0], displayName: longName }]}
+        selectedWorkerId={null}
+        onSelectWorker={vi.fn()}
+      />
+    );
+
+    const mobileCards = screen.getByTestId("payroll-overview-mobile-cards");
+    const name = within(mobileCards).getByText(longName);
+    const badge = within(mobileCards).getByText("Maestro");
+
+    expect(name).toHaveClass("max-w-full", "break-words");
+    expect(name).not.toHaveClass("truncate");
+    expect(badge.parentElement).toHaveClass("flex", "min-w-0", "max-w-full", "flex-col");
+    expect(badge.parentElement?.textContent).toBe(`${longName}Maestro`);
   });
 
   it("renders worker detail and expands work order accordion", () => {
@@ -413,6 +439,17 @@ describe("Payroll UI Components", () => {
     expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /imagen/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /whatsapp/i })).toBeInTheDocument();
+
+    const dialogContent = screen.getByRole("dialog");
+    expect(dialogContent).toHaveClass(
+      "w-[calc(100vw-2rem)]",
+      "max-w-2xl",
+      "max-h-[92vh]",
+      "overflow-y-auto",
+      "overflow-x-hidden"
+    );
+    expect(dialogContent).toHaveClass("p-2", "sm:p-3");
+    expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toHaveClass("break-words");
   });
 
   describe("Inline Payroll Base Adjustment", () => {

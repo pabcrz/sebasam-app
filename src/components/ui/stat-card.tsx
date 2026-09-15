@@ -85,7 +85,7 @@ export function StatCard({
   return (
     <Card className={clsx("min-w-0 p-4", className)} {...props}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-[var(--color-text-muted)]">{label}</span>
+        <span className="min-w-0 break-words text-xs font-medium text-[var(--color-text-muted)]">{label}</span>
         {icon ? (
           <div
             className={clsx(
@@ -99,7 +99,7 @@ export function StatCard({
       </div>
 
       <div className="mt-2 flex min-w-0 items-baseline justify-between gap-2">
-        <span className={valueClasses} data-numeric-role={numericRole}>
+        <span className={clsx("min-w-0 flex-1 break-words", valueClasses)} data-numeric-role={numericRole}>
           {value}
         </span>
         {action ? <span className="shrink-0">{action}</span> : null}
