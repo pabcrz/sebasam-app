@@ -102,6 +102,8 @@ describe("Payroll UI Components", () => {
       "href",
       "/admin/nomina?anchor=2026-08-24"
     );
+    expect(screen.getByTestId("payroll-period-nav")).toHaveClass("min-w-0", "max-w-full");
+    expect(screen.getByTestId("payroll-period-nav").querySelector("div.flex.flex-wrap")).toBeInTheDocument();
   });
 
   it("renders metrics with formatted amounts", () => {
@@ -120,6 +122,7 @@ describe("Payroll UI Components", () => {
     expect(screen.getAllByText("4").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("$3,000.00")[0]).toHaveClass("break-words");
+    expect(screen.getByTestId("payroll-metrics-desktop")).toHaveClass("min-w-0", "max-w-full");
   });
 
   it("renders overview table and allows worker selection", () => {
@@ -133,6 +136,7 @@ describe("Payroll UI Components", () => {
     );
 
     expect(screen.getByText("Resumen General de Nómina")).toBeInTheDocument();
+    expect(screen.getByTestId("payroll-overview-table")).toHaveClass("min-w-0", "max-w-full");
     expect(screen.getAllByText("Maestro Pedro").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Maestro Juan").length).toBeGreaterThanOrEqual(1);
 
@@ -416,7 +420,13 @@ describe("Payroll UI Components", () => {
     expect(screen.getByRole("button", { name: /whatsapp/i })).toBeInTheDocument();
 
     const dialogContent = screen.getByRole("dialog");
-    expect(dialogContent).toHaveClass("w-[calc(100vw-2rem)]", "max-w-2xl", "overflow-x-hidden");
+    expect(dialogContent).toHaveClass(
+      "w-[calc(100vw-2rem)]",
+      "max-w-2xl",
+      "max-h-[92vh]",
+      "overflow-y-auto",
+      "overflow-x-hidden"
+    );
     expect(dialogContent).toHaveClass("p-2", "sm:p-3");
     expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toHaveClass("break-words");
   });

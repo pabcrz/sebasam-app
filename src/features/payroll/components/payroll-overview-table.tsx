@@ -29,10 +29,10 @@ export function PayrollOverviewTable({
   if (workers.length === 0) return null;
 
   return (
-    <Card>
+    <Card data-testid="payroll-overview-table" className="min-w-0 max-w-full">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex min-w-0 items-center justify-between">
+          <div className="min-w-0">
             <CardTitle as="h2" className="text-base sm:text-lg">
               Resumen General de Nómina
             </CardTitle>
@@ -42,7 +42,7 @@ export function PayrollOverviewTable({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-0 sm:p-4">
+      <CardContent className="min-w-0 max-w-full p-0 sm:p-4">
         {/* Mobile Cards for Overview */}
         <div className="sm:hidden divide-y divide-[var(--color-border-light)]/60">
           {workers.map((worker) => {
@@ -88,7 +88,7 @@ export function PayrollOverviewTable({
         </div>
 
         {/* Desktop Table for Overview */}
-        <div className="hidden sm:block">
+        <div className="hidden min-w-0 max-w-full sm:block">
           <Table>
             <TableHeader>
               <TableRow className="border-b border-[var(--color-border-light)] hover:bg-transparent">

@@ -27,7 +27,7 @@ export function PayrollMetrics({
   return (
     <>
       {/* Mobile Consolidated KPI Card (< sm) */}
-      <Card className="min-w-0 sm:hidden p-3 space-y-2.5 bg-[var(--color-surface)]">
+      <Card data-testid="payroll-metrics-mobile" className="min-w-0 sm:hidden p-3 space-y-2.5 bg-[var(--color-surface)]">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
             <span className="text-[11px] font-medium text-[var(--color-text-muted)] block">
@@ -65,7 +65,7 @@ export function PayrollMetrics({
       </Card>
 
       {/* Desktop 4-Card Grid (>= sm) */}
-      <div className="hidden sm:block">
+      <div data-testid="payroll-metrics-desktop" className="hidden min-w-0 max-w-full sm:block">
         <MetricCardGroup columns={4}>
           <StatCard
             label="Total Nómina a Pagar"

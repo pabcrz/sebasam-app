@@ -38,7 +38,7 @@ export function PayrollView({ report, period }: PayrollViewProps) {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="min-w-0 max-w-full space-y-4 sm:space-y-6">
       {/* Period Navigation */}
       <PayrollPeriodNav
         mode={period.mode}
@@ -68,7 +68,7 @@ export function PayrollView({ report, period }: PayrollViewProps) {
 
       {/* Content: Summary Table + Focused Worker Detail */}
       {hasPayrollEntries ? (
-        <div className="space-y-5">
+        <div className="min-w-0 max-w-full space-y-5">
           {/* Level 1: General Executive Overview Table */}
           {report.workers.length > 0 && (
             <PayrollOverviewTable

@@ -148,7 +148,7 @@ export function PayrollWorkerEnvelopeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[92vh] gap-3 p-2 sm:p-3 overflow-y-auto overflow-x-hidden print:max-w-none print:w-full print:h-auto print:max-h-none print:p-0 print:border-none print:shadow-none print:overflow-visible print:static print:transform-none">
+      <DialogContent className="min-w-0 max-w-full w-[calc(100vw-2rem)] max-w-2xl max-h-[92vh] gap-3 p-2 sm:p-3 overflow-y-auto overflow-x-hidden print:max-w-none print:w-full print:h-auto print:max-h-none print:p-0 print:border-none print:shadow-none print:overflow-visible print:static print:transform-none">
         <DialogHeader className="print:hidden">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Mail className="h-5 w-5 text-[var(--color-primary-600)]" />
@@ -157,7 +157,7 @@ export function PayrollWorkerEnvelopeModal({
         </DialogHeader>
 
         {/* Flush Envelope Preview */}
-        <div className="flex justify-center w-full py-1">
+        <div className="flex min-w-0 max-w-full justify-center py-1">
           <div
             id="payroll-worker-envelope-document"
             className="w-[360px] max-w-full p-3 bg-white text-slate-900 space-y-3 print:space-y-1.5 rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
@@ -199,7 +199,7 @@ export function PayrollWorkerEnvelopeModal({
 
             {/* Cohesive 4-Column Table - In print: no thead, no line divides, minimal vertical padding */}
             <div className="border border-slate-200 rounded-md overflow-hidden print:border-none print:rounded-none">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full table-fixed border-collapse text-left">
                 <thead className="print:hidden">
                   <tr className="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold text-[10px] uppercase tracking-wide">
                     <th className="py-2 pl-2.5 pr-1 text-left">Mano de Obra</th>
@@ -212,7 +212,7 @@ export function PayrollWorkerEnvelopeModal({
                   {allLaborItems.length > 0 ? (
                     allLaborItems.map((item, idx) => (
                       <tr key={`${item.id}-${idx}`} className="hover:bg-slate-50/50">
-                        <td className="py-2 print:py-0.5 pl-2.5 pr-1 text-slate-900 font-semibold text-xs leading-tight">
+                        <td className="break-words py-2 pl-2.5 pr-1 text-xs font-semibold leading-tight text-slate-900 print:py-0.5">
                           {item.description}
                         </td>
                         <td className="py-2 print:py-0.5 px-1 text-right text-slate-500 font-normal text-[10px] whitespace-nowrap">
