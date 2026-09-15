@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QuoteItemType, WorkerKind } from "@prisma/client";
 import { PayrollPeriodNav } from "./payroll-period-nav";
 import { PayrollMetrics } from "./payroll-metrics";
@@ -143,6 +143,27 @@ describe("Payroll UI Components", () => {
     const juanButtons = screen.getAllByRole("button", { name: /ver detalle/i });
     fireEvent.click(juanButtons[0]);
     expect(onSelect).toHaveBeenCalledWith("w-2");
+  });
+
+  it("keeps long worker names untruncated with the worker-kind badge below", () => {
+    const longName = "Refugio Antonio Hernández de la Cruz";
+
+    render(
+      <PayrollOverviewTable
+        workers={[{ ...sampleWorkers[0], displayName: longName }]}
+        selectedWorkerId={null}
+        onSelectWorker={vi.fn()}
+      />
+    );
+
+    const mobileCards = screen.getByTestId("payroll-overview-mobile-cards");
+    const name = within(mobileCards).getByText(longName);
+    const badge = within(mobileCards).getByText("Maestro");
+
+    expect(name).toHaveClass("max-w-full", "break-words");
+    expect(name).not.toHaveClass("truncate");
+    expect(badge.parentElement).toHaveClass("flex", "min-w-0", "max-w-full", "flex-col");
+    expect(badge.parentElement?.textContent).toBe(`${longName}Maestro`);
   });
 
   it("renders worker detail and expands work order accordion", () => {
