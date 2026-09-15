@@ -19,6 +19,12 @@ import { useRouter } from "next/navigation";
 
 import { clsx } from "clsx";
 import type { ButtonVariant } from "@/components/ui";
+import {
+  buildPaymentReceiptMessage,
+  createPaymentReceiptFile,
+  type PaymentReceiptData,
+} from "@/features/payments/lib/payment-receipt";
+import { paymentShareStatusMessage, sharePaymentFile } from "@/features/payments/lib/payment-sharing";
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH: "Efectivo",
@@ -31,7 +37,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 const PAYMENT_METHODS = Object.entries(PAYMENT_METHOD_LABELS);
 
 type PaymentResult = {
-  payment: { amountCents: number };
+  payment: { amountCents: number; createdAt?: Date };
   paidCents: number;
   remainingCents: number;
 };
@@ -75,6 +81,10 @@ export interface CashPaymentDialogProps {
   triggerVariant?: ButtonVariant;
   triggerClassName?: string;
   triggerIconOnlyMobile?: boolean;
+  documentTitle?: string;
+  documentFolio?: string;
+  receiptEnabled?: boolean;
+  allowedMethods?: string[];
 }
 
 function centsToInput(cents: number) {
@@ -104,6 +114,10 @@ export function CashPaymentDialog({
   triggerVariant = "outline",
   triggerClassName,
   triggerIconOnlyMobile = false,
+  documentTitle = "Nota",
+  documentFolio = quoteNumber,
+  receiptEnabled = false,
+  allowedMethods = PAYMENT_METHODS.map(([value]) => value),
 }: CashPaymentDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -116,6 +130,9 @@ export function CashPaymentDialog({
   const [success, setSuccess] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [operationKey, setOperationKey] = React.useState<string | null>(null);
+  const [receipt, setReceipt] = React.useState<PaymentReceiptData | null>(null);
+  const [receiptError, setReceiptError] = React.useState<string | null>(null);
+  const [receiptStatus, setReceiptStatus] = React.useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -142,10 +159,21 @@ export function CashPaymentDialog({
         `Pago por ${PAYMENT_METHOD_LABELS[method] ?? method} registrado por ${formatCents(result.payment.amountCents)}.`,
       );
       setSummary({ paidCents: result.paidCents, remainingCents: result.remainingCents });
+      setReceipt(receiptEnabled ? {
+        title: documentTitle,
+        folio: documentFolio,
+        totalCents,
+        paymentCents: result.payment.amountCents,
+        paidCents: result.paidCents,
+        remainingCents: result.remainingCents,
+        method,
+        paymentDate: result.payment.createdAt ?? new Date(),
+      } : null);
+      setReceiptError(null);
+      setReceiptStatus(null);
       setAmount(centsToInput(result.remainingCents));
       setOperationKey(crypto.randomUUID());
       setTimeout(() => {
-        setOpen(false);
         router.refresh();
       }, 700);
     } catch (err) {
@@ -161,6 +189,9 @@ export function CashPaymentDialog({
     setError(null);
     setAmountError(null);
     setSuccess(null);
+    setReceipt(null);
+    setReceiptError(null);
+    setReceiptStatus(null);
     setOperationKey(crypto.randomUUID());
   }
 
@@ -220,12 +251,16 @@ export function CashPaymentDialog({
         </DialogMobileHeader>
         <DialogMobileBody>
           <form className="grid gap-4" onSubmit={handleSubmit}>
-            <div className="grid gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-sm">
-              <div className="flex justify-between gap-3">
-                <span>Total</span>
-                <span>{formatCents(totalCents)}</span>
-              </div>
-              <div className="flex justify-between gap-3 font-semibold">
+              <div className="grid gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-sm">
+                <div className="flex justify-between gap-3">
+                  <span>Total</span>
+                  <span>{formatCents(totalCents)}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span>Pagado acumulado</span>
+                  <span>{formatCents(summary.paidCents)}</span>
+                </div>
+                <div className="flex justify-between gap-3 font-semibold">
                 <span>Saldo pendiente</span>
                 <span>{formatCents(summary.remainingCents)}</span>
               </div>
@@ -244,7 +279,7 @@ export function CashPaymentDialog({
                 className="flex h-10 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-input)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:ring-offset-2 disabled:opacity-50"
                 required
               >
-                {PAYMENT_METHODS.map(([value, label]) => (
+                {PAYMENT_METHODS.filter(([value]) => allowedMethods.includes(value)).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
@@ -308,6 +343,36 @@ export function CashPaymentDialog({
               >
                 {success}
               </p>
+            ) : null}
+
+            {receipt ? (
+              <section className="grid gap-2 rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] p-3">
+                <p className="text-sm font-semibold text-[var(--color-status-success-fg)]">Recibo listo para compartir</p>
+                <p className="text-xs text-[var(--color-status-success-fg)]">Es un recibo emitido por el sistema, distinto del comprobante bancario.</p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setReceiptError(null);
+                      setReceiptStatus(null);
+                      try {
+                        const file = createPaymentReceiptFile(receipt);
+                        const message = buildPaymentReceiptMessage(receipt);
+                        const result = await sharePaymentFile(file, `Recibo ${receipt.folio}`, message);
+                        setReceiptStatus(paymentShareStatusMessage(result));
+                      } catch {
+                        setReceiptError("No se pudo descargar el recibo. Intenta compartirlo de nuevo o hazlo manualmente.");
+                      }
+                    }}
+                  >
+                    Compartir recibo
+                  </Button>
+                </div>
+                {receiptError ? <p role="alert" className="text-xs text-[var(--color-status-danger-fg)]">{receiptError}</p> : null}
+                {receiptStatus ? <p role="status" className="text-xs text-[var(--color-status-success-fg)]">{receiptStatus}</p> : null}
+              </section>
             ) : null}
 
             <DialogFooter>

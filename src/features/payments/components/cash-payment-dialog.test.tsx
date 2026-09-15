@@ -5,6 +5,7 @@ import { CashPaymentDialog } from "./cash-payment-dialog";
 
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+const validPngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
 function renderDialog(action = vi.fn()) {
   return render(
@@ -54,6 +55,172 @@ describe("CashPaymentDialog", () => {
     expect(screen.getByText("$25.00")).toBeInTheDocument();
     expect(screen.getByText("Saldo pendiente")).toBeInTheDocument();
     expect(screen.getByText("$75.00")).toBeInTheDocument();
+  });
+
+  it("offers one receipt sharing action after a successful Nota payment", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue({
+      payment: { amountCents: 2500 },
+      paidCents: 5000,
+      remainingCents: 5000,
+    });
+
+    render(
+      <CashPaymentDialog
+        action={action}
+        quoteNumber="N-001"
+        documentTitle="Cambio de muelles"
+        documentFolio="N-090926-01"
+        receiptEnabled
+        totalCents={10000}
+        paidCents={2500}
+        remainingCents={7500}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+
+    expect(await screen.findByText("Recibo listo para compartir")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Compartir recibo" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "WhatsApp" })).not.toBeInTheDocument();
+  });
+
+  it("shares the PNG file and complete receipt message through the native share sheet", async () => {
+    const user = userEvent.setup();
+    const share = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      fillStyle: "", strokeStyle: "", lineWidth: 0, textAlign: "left", font: "",
+      fillRect: vi.fn(), beginPath: vi.fn(), roundRect: vi.fn(), fill: vi.fn(), stroke: vi.fn(), fillText: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue(validPngDataUrl);
+    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+    const canShare = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: canShare });
+
+    const action = vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 });
+    render(<CashPaymentDialog action={action} quoteNumber="N-001" documentTitle="Cambio de muelles" documentFolio="N-090926-01" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
+
+    expect(share).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Recibo N-090926-01",
+      text: expect.stringContaining("Pagado acumulado: $50.00"),
+      files: [expect.objectContaining({ name: "N-090926-01-recibo.png", type: "image/png" })],
+    }));
+    expect(canShare).toHaveBeenCalledWith(share.mock.calls[0][0]);
+  });
+
+  it("downloads, copies the message, and opens WhatsApp Web when file sharing is unavailable", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      fillStyle: "", strokeStyle: "", lineWidth: 0, textAlign: "left", font: "",
+      fillRect: vi.fn(), beginPath: vi.fn(), roundRect: vi.fn(), fill: vi.fn(), stroke: vi.fn(), fillText: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue(validPngDataUrl);
+    Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:receipt");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    const action = vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 });
+    render(<CashPaymentDialog action={action} quoteNumber="N-001" documentTitle="Cambio de muelles" documentFolio="N-090926-01" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Saldo restante: $50.00")));
+    expect(open).toHaveBeenCalledWith("https://web.whatsapp.com/", "_blank", "noopener,noreferrer");
+    expect(screen.getByText(/mensaje copiado.*ventana emergente/i)).toBeInTheDocument();
+  });
+
+  it("falls back when native sharing rejects for a reason other than cancellation", async () => {
+    const user = userEvent.setup();
+    const share = vi.fn().mockRejectedValue(new Error("Share failed"));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ fillStyle: "", strokeStyle: "", lineWidth: 0, textAlign: "left", font: "", fillRect: vi.fn(), beginPath: vi.fn(), roundRect: vi.fn(), fill: vi.fn(), stroke: vi.fn(), fillText: vi.fn() } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue(validPngDataUrl);
+    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: vi.fn().mockReturnValue(true) });
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:receipt");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    render(<CashPaymentDialog action={vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 })} quoteNumber="N-001" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText(/mensaje copiado/)).toBeInTheDocument();
+    expect(share).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["throwing", vi.fn().mockImplementation(() => { throw new Error("Unsupported"); })],
+  ])("uses the manual path when canShare is %s", async (_label, canShare) => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ fillStyle: "", strokeStyle: "", lineWidth: 0, textAlign: "left", font: "", fillRect: vi.fn(), beginPath: vi.fn(), roundRect: vi.fn(), fill: vi.fn(), stroke: vi.fn(), fillText: vi.fn() } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue(validPngDataUrl);
+    Object.defineProperty(navigator, "share", { configurable: true, value: vi.fn() });
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: canShare });
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:receipt");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    render(<CashPaymentDialog action={vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 })} quoteNumber="N-001" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(screen.getByText(/mensaje copiado/)).toBeInTheDocument();
+  });
+
+  it("revokes the object URL even when the download click throws", async () => {
+    const user = userEvent.setup();
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    const schedule = vi.spyOn(window, "setTimeout");
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ fillStyle: "", strokeStyle: "", lineWidth: 0, textAlign: "left", font: "", fillRect: vi.fn(), beginPath: vi.fn(), roundRect: vi.fn(), fill: vi.fn(), stroke: vi.fn(), fillText: vi.fn() } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue(validPngDataUrl);
+    Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:receipt");
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => { throw new Error("Download failed"); });
+
+    render(<CashPaymentDialog action={vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 })} quoteNumber="N-001" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
+
+    await waitFor(() => expect(schedule).toHaveBeenCalledWith(expect.any(Function), 0));
+    const cleanup = schedule.mock.calls.at(-1)?.[0];
+    if (typeof cleanup === "function") cleanup();
+    expect(revoke).toHaveBeenCalledWith("blob:receipt");
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo descargar");
+  });
+
+  it("treats native share cancellation as normal status", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ fillStyle: "", strokeStyle: "", lineWidth: 0, textAlign: "left", font: "", fillRect: vi.fn(), beginPath: vi.fn(), roundRect: vi.fn(), fill: vi.fn(), stroke: vi.fn(), fillText: vi.fn() } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue(validPngDataUrl);
+    Object.defineProperty(navigator, "share", { configurable: true, value: vi.fn().mockRejectedValue(new DOMException("Canceled", "AbortError")) });
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: vi.fn().mockReturnValue(true) });
+    const action = vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 });
+    render(<CashPaymentDialog action={action} quoteNumber="N-001" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
+    expect(await screen.findByText("Compartir cancelado.")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("provides a fixed mobile header close control and restores trigger focus", async () => {

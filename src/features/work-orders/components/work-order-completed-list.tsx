@@ -22,6 +22,8 @@ import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-d
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
 import { NoteArchiveRevocationAction } from "@/features/quotes/components/note-archive-revocation-actions";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
+import { NotePaymentHistory } from "@/features/payments/components/note-payment-history";
+import type { NotePaymentHistoryItem } from "@/features/payments/lib/payment-register";
 import { Printer } from "lucide-react";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
@@ -74,6 +76,7 @@ interface WorkOrderCompletedListProps {
   archiveRevocationActions?: NoteArchiveRevocationAction[];
   rollbackAction?: WorkOrderActions["rollback"];
   noteReturnTo?: string;
+  paymentHistories?: Array<{ workOrderId: string; totalCents: number; payments: NotePaymentHistoryItem[] }>;
 }
 
 function formatDate(date: Date | null) {
@@ -99,11 +102,13 @@ export function WorkOrderCompletedList({
   archiveRevocationActions = [],
   rollbackAction,
   noteReturnTo = "/admin/notas",
+  paymentHistories = [],
 }: WorkOrderCompletedListProps) {
   const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
   const correctionActionMap = new Map(correctionActions.map((p) => [p.workOrderId, p.action]));
   const correctWorkOrderActionMap = new Map(correctWorkOrderActions.map((c) => [c.workOrderId, c.action]));
   const archiveRevocationActionMap = new Map(archiveRevocationActions.map((action) => [action.quoteId, action]));
+  const paymentHistoryMap = new Map(paymentHistories.map((history) => [history.workOrderId, history]));
   const [selectedQuoteId, setSelectedQuoteId] = React.useState<string | null>(null);
 
   const selectedQuote = React.useMemo(() => {
@@ -119,7 +124,7 @@ export function WorkOrderCompletedList({
         const correctionAction = correctionActionMap.get(wo.id);
         const correctWorkOrderAction = correctWorkOrderActionMap.get(wo.id);
         const archiveRevocationAction = archiveRevocationActionMap.get(wo.quote.id);
-        const totalCents = Number(wo.quote.totalCents);
+        const totalCents = wo.quote.effectiveTotalCents ?? Number(wo.quote.totalCents);
         const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
         const noteFolio = resolveDocumentFolio(wo);
         const antecedentQuoteFolio = resolveAntecedentQuoteFolio(wo.quote);
@@ -141,6 +146,10 @@ export function WorkOrderCompletedList({
             totalCents={totalCents}
             paidCents={wo.quote.paidCents ?? 0}
             remainingCents={remainingCents}
+            documentTitle={wo.quote.title}
+            documentFolio={noteFolio}
+            receiptEnabled
+            allowedMethods={["CASH", "TRANSFER"]}
             triggerOnly
             triggerVariant="primary"
             triggerClassName="w-full"
@@ -318,6 +327,12 @@ export function WorkOrderCompletedList({
                       totalCents={totalCents}
                       paidCents={wo.quote.paidCents ?? 0}
                       remainingCents={remainingCents}
+                    />
+                    <NotePaymentHistory
+                      title={wo.quote.title}
+                      folio={noteFolio}
+                      totalCents={paymentHistoryMap.get(wo.id)?.totalCents ?? totalCents}
+                      payments={paymentHistoryMap.get(wo.id)?.payments ?? []}
                     />
                   </div>
                 }

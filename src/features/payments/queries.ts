@@ -8,6 +8,98 @@ import {
   type NoteFinancialSummary,
 } from "./domain";
 import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
+import { withHistoricalBalances, type NotePaymentHistoryItem } from "./lib/payment-register";
+
+export type NotePaymentHistory = {
+  totalCents: number;
+  payments: NotePaymentHistoryItem[];
+};
+
+export async function getNotePaymentHistory(workOrderIds: string[]): Promise<Map<string, NotePaymentHistory>> {
+  await requireOperationalRole();
+  if (workOrderIds.length === 0) return new Map();
+
+  const workOrders = await prisma.workOrder.findMany({
+    where: { id: { in: workOrderIds } },
+    select: {
+      id: true,
+      quoteId: true,
+      quote: {
+        select: {
+          subtotalCents: true,
+          taxCents: true,
+          totalCents: true,
+          settlementAgreement: {
+            select: {
+              id: true,
+              status: true,
+              settlementBaseCents: true,
+              settlementTaxCents: true,
+              settlementTotalCents: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  const quoteIds = workOrders.map((workOrder) => workOrder.quoteId);
+  if (quoteIds.length === 0) return new Map();
+
+  const payments = await prisma.payment.findMany({
+    where: { quoteId: { in: quoteIds } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      quoteId: true,
+      amountCents: true,
+      createdAt: true,
+      method: true,
+      status: true,
+      reversedAt: true,
+      applications: {
+        where: { workOrderId: { in: workOrderIds } },
+        select: { workOrderId: true, amountCents: true, reversedAt: true },
+      },
+    },
+  });
+
+  const workOrderByQuoteId = new Map(workOrders.map((workOrder) => [workOrder.quoteId, workOrder]));
+  const histories = new Map<string, NotePaymentHistory>();
+  for (const workOrder of workOrders) {
+    const totals = getEffectiveSettlementTotals(workOrder.quote, workOrder.quote.settlementAgreement);
+    histories.set(workOrder.id, { totalCents: totals.totalCents, payments: [] });
+  }
+
+  for (const payment of payments) {
+    const workOrder = payment.quoteId ? workOrderByQuoteId.get(payment.quoteId) : undefined;
+    if (!workOrder) continue;
+    const history = histories.get(workOrder.id);
+    if (!history) continue;
+    const isReversed = Boolean(payment.reversedAt);
+    const appliedCents = isReversed || payment.status !== "PAID"
+      ? 0
+      : payment.applications
+          .filter((application) => application.reversedAt === null)
+          .reduce((sum, application) => sum + application.amountCents, 0);
+    history.payments.push({
+      id: payment.id,
+      paymentId: payment.id,
+      date: payment.createdAt,
+      method: payment.method,
+      paymentStatus: payment.status,
+      amountCents: payment.amountCents,
+      appliedCents,
+      paidCentsAtPayment: 0,
+      remainingCentsAtPayment: 0,
+      isReversed,
+    });
+  }
+
+  for (const history of histories.values()) {
+    history.payments = withHistoricalBalances(history.totalCents, history.payments);
+  }
+  return histories;
+}
 
 export async function getQuotePaidTotals(quoteIds: string[]): Promise<Map<string, number>> {
   await requireOperationalRole();
