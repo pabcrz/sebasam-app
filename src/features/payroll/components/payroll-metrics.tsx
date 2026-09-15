@@ -27,13 +27,13 @@ export function PayrollMetrics({
   return (
     <>
       {/* Mobile Consolidated KPI Card (< sm) */}
-      <Card className="sm:hidden p-3 space-y-2.5 bg-[var(--color-surface)]">
-        <div className="flex items-center justify-between">
-          <div>
+      <Card className="min-w-0 sm:hidden p-3 space-y-2.5 bg-[var(--color-surface)]">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
             <span className="text-[11px] font-medium text-[var(--color-text-muted)] block">
               Total Nómina a Liquidar
             </span>
-            <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="break-words text-xl font-bold text-emerald-600 dark:text-emerald-400">
               {formatCents(payableCents)}
             </span>
           </div>
@@ -42,20 +42,20 @@ export function PayrollMetrics({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-1 pt-2 border-t border-[var(--color-border-light)]/60 text-center text-xs">
-          <div className="border-r border-[var(--color-border-light)]/50 pr-1">
+        <div className="grid min-w-0 grid-cols-3 gap-1 pt-2 border-t border-[var(--color-border-light)]/60 text-center text-xs">
+          <div className="min-w-0 border-r border-[var(--color-border-light)]/50 pr-1">
             <span className="text-[10px] text-[var(--color-text-muted)] block truncate">Facturado</span>
-            <span className="font-semibold text-[11px] text-[var(--color-text-main)] truncate block">
+            <span className="block break-words font-semibold text-[11px] text-[var(--color-text-main)]">
               {formatCents(totalClientLaborCents)}
             </span>
           </div>
-          <div className="border-r border-[var(--color-border-light)]/50 px-1">
+          <div className="min-w-0 border-r border-[var(--color-border-light)]/50 px-1">
             <span className="text-[10px] text-[var(--color-text-muted)] block">Órdenes</span>
             <span className="font-semibold text-xs text-[var(--color-text-main)] block">
               {totalCompletedOrders}
             </span>
           </div>
-          <div className="pl-1">
+          <div className="min-w-0 pl-1">
             <span className="text-[10px] text-[var(--color-text-muted)] block">Maestros</span>
             <span className="font-semibold text-xs text-[var(--color-text-main)] block">
               {totalWorkers}

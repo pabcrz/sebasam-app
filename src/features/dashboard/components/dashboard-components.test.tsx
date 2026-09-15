@@ -57,6 +57,7 @@ describe("KpiPeriodMetrics", () => {
     expect(within(weekPanel).getByText("Materiales y Refacciones")).toBeInTheDocument();
     expect(within(weekPanel).getByText(/\$1,?500\.00/)).toHaveAttribute("data-numeric-role", "currency");
     expect(within(weekPanel).getByText(/\$1,?500\.00/)).toHaveClass("text-xl", "sm:text-2xl", "tabular-nums");
+    expect(weekPanel.querySelector(".grid")).toHaveClass("grid-cols-1", "sm:grid-cols-2");
     expect(week).toHaveAttribute("aria-selected", "true");
     expect(week).toHaveAttribute("aria-controls");
     expect(weekPanel).toHaveAttribute("aria-labelledby", week.id);

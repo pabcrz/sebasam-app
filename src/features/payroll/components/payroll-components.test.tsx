@@ -119,6 +119,7 @@ describe("Payroll UI Components", () => {
     expect(screen.getAllByText("$3,000.00").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("4").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("$3,000.00")[0]).toHaveClass("break-words");
   });
 
   it("renders overview table and allows worker selection", () => {

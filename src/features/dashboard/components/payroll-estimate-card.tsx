@@ -11,11 +11,11 @@ interface PayrollEstimateCardProps {
 
 export function PayrollEstimateCard({ payroll }: PayrollEstimateCardProps) {
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div className="flex items-center gap-2">
+      <Card className="min-w-0 shadow-sm">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <Banknote className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
-          <CardTitle as="h2" className="text-base font-semibold text-[var(--color-text-main)]">
+          <CardTitle as="h2" className="min-w-0 break-words text-base font-semibold text-[var(--color-text-main)]">
             Nómina Semanal (Estimada)
           </CardTitle>
         </div>
@@ -23,11 +23,11 @@ export function PayrollEstimateCard({ payroll }: PayrollEstimateCardProps) {
       </CardHeader>
 
       <CardContent>
-        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
-          <div>
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
+          <div className="min-w-0">
             <div
               data-numeric-role="currency"
-              className="min-w-0 font-mono text-xl font-bold leading-tight tabular-nums text-[var(--color-text-main)] sm:text-2xl"
+              className="break-words font-mono text-xl font-bold leading-tight tabular-nums text-[var(--color-text-main)] sm:text-2xl"
             >
               {formatCents(payroll.estimatedCommissionsCents)}
             </div>
@@ -36,7 +36,7 @@ export function PayrollEstimateCard({ payroll }: PayrollEstimateCardProps) {
             </p>
           </div>
 
-          <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-text-muted)]">
             <div className="flex items-center gap-1.5">
               <Users className="h-4 w-4" aria-hidden="true" />
               <span>
