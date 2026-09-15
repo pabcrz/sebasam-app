@@ -414,6 +414,11 @@ describe("Payroll UI Components", () => {
     expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /imagen/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /whatsapp/i })).toBeInTheDocument();
+
+    const dialogContent = screen.getByRole("dialog");
+    expect(dialogContent).toHaveClass("w-[calc(100vw-2rem)]", "max-w-2xl", "overflow-x-hidden");
+    expect(dialogContent).toHaveClass("p-2", "sm:p-3");
+    expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toHaveClass("break-words");
   });
 
   describe("Inline Payroll Base Adjustment", () => {
