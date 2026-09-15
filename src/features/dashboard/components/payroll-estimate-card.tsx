@@ -12,14 +12,14 @@ interface PayrollEstimateCardProps {
 export function PayrollEstimateCard({ payroll }: PayrollEstimateCardProps) {
   return (
       <Card className="min-w-0 shadow-sm">
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Banknote className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
+      <CardHeader className="flex flex-col items-start gap-2 pb-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Banknote className="h-5 w-5 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
           <CardTitle as="h2" className="min-w-0 break-words text-base font-semibold text-[var(--color-text-main)]">
             Nómina Semanal (Estimada)
           </CardTitle>
         </div>
-        <Badge variant="warning">Cálculo estimado</Badge>
+        <Badge variant="warning" className="text-xs font-normal">Cálculo estimado</Badge>
       </CardHeader>
 
       <CardContent>

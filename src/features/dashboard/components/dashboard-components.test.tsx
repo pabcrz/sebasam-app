@@ -98,7 +98,12 @@ describe("PayrollEstimateCard", () => {
     );
 
     expect(screen.getByText("Nómina Semanal (Estimada)")).toBeInTheDocument();
-    expect(screen.getByText("Cálculo estimado")).toBeInTheDocument();
+    const title = screen.getByRole("heading", { name: "Nómina Semanal (Estimada)" });
+    const header = title.parentElement?.parentElement;
+    expect(header).toHaveClass("flex-col", "items-start");
+    expect(title.parentElement).toHaveClass("flex", "items-center");
+    expect(title.parentElement?.querySelector("svg")).toHaveClass("shrink-0");
+    expect(screen.getByText("Cálculo estimado")).toHaveClass("text-xs", "font-normal");
     expect(screen.getByText("4").parentElement).toHaveTextContent("4 trabajadores activos");
     expect(screen.getByText("$750.00")).toHaveAttribute("data-numeric-role", "currency");
     expect(screen.getByText("$750.00")).toHaveClass("text-xl", "sm:text-2xl", "tabular-nums");
