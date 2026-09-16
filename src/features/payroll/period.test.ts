@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   formatMonthPayrollRangeLabel,
   formatPayrollRangeLabel,
+  normalizeWeekStart,
   parsePayrollParams,
   payrollHref,
+  PayrollWeekError,
 } from "./period";
 
 describe("Payroll Period Logic", () => {
@@ -96,5 +98,34 @@ describe("Payroll Period Logic", () => {
     expect(payrollHref({ mode: "weekly", anchor: "2026-08-17" })).toBe(
       "/admin/nomina?anchor=2026-08-17"
     );
+  });
+
+  describe("normalizeWeekStart", () => {
+    const fixedNow = new Date("2026-09-15T15:00:00.000Z"); // Tuesday Sep 15, 2026
+
+    it("normalizes a valid string anchor to Monday of that week", () => {
+      const result = normalizeWeekStart("2026-09-17", fixedNow);
+      expect(result.weekStartAnchor).toBe("2026-09-14");
+      expect(result.isCurrentWeek).toBe(true);
+    });
+
+    it("rejects invalid date strings by throwing PayrollWeekError without silent fallback", () => {
+      expect(() => normalizeWeekStart("invalid-date", fixedNow)).toThrow(PayrollWeekError);
+      expect(() => normalizeWeekStart("2026-02-31", fixedNow)).toThrow(PayrollWeekError);
+    });
+
+    it("defaults to current week when input is undefined", () => {
+      const result = normalizeWeekStart(undefined, fixedNow);
+      expect(result.weekStartAnchor).toBe("2026-09-14");
+      expect(result.isCurrentWeek).toBe(true);
+    });
+
+    it("preserves pure calendar date from UTC midnight Date without timezone shift", () => {
+      // Represents a Prisma @db.Date column
+      const dbDate = new Date("2026-09-14T00:00:00.000Z");
+      const result = normalizeWeekStart(dbDate, fixedNow);
+      expect(result.weekStartAnchor).toBe("2026-09-14");
+      expect(result.isCurrentWeek).toBe(true);
+    });
   });
 });

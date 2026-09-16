@@ -37,9 +37,16 @@ describe("Payroll Actions - updatePayrollItemBase", () => {
   });
 
   it("exports only async functions from the use-server entry point", () => {
-    expect(Object.keys(payrollActions)).toEqual(["updateFixedPayHelperAdjustments", "updatePayrollItemBase"]);
+    expect(Object.keys(payrollActions)).toEqual([
+      "updateFixedPayHelperAdjustments",
+      "updatePayrollItemBase",
+      "reopenPayrollWeekAction",
+      "closePayrollWeekAction",
+    ]);
     expect(updatePayrollItemBase.constructor.name).toBe("AsyncFunction");
     expect(updateFixedPayHelperAdjustments.constructor.name).toBe("AsyncFunction");
+    expect(payrollActions.reopenPayrollWeekAction.constructor.name).toBe("AsyncFunction");
+    expect(payrollActions.closePayrollWeekAction.constructor.name).toBe("AsyncFunction");
   });
 
   it("successfully updates custom payroll base for a LABOR item", async () => {
