@@ -92,6 +92,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
         includeInPayroll: false,
         customRatePercent: null,
         customPayrollBaseCents: null,
+        payrollConfigLockedAt: null,
         sortOrder: 0,
       },
     ],

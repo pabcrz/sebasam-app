@@ -37,6 +37,10 @@ export async function recordPaymentAction(
       ? (method as PaymentMethod)
       : PaymentMethod.CASH;
 
+  if (workOrder.status === WorkOrderStatus.COMPLETED && paymentMethod !== PaymentMethod.CASH && paymentMethod !== PaymentMethod.TRANSFER) {
+    throw new Error("Las notas solo admiten pagos en efectivo o transferencia.");
+  }
+
   const result = await recordCashPayment({
     quoteId: workOrder.quoteId,
     amountCents,

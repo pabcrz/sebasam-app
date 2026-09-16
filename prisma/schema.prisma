@@ -130,6 +130,13 @@ enum SettlementAgreementStatus {
   CANCELLED
 }
 
+enum PayrollPeriodStatus {
+  OPEN
+  CLOSED
+  PAID
+  ARCHIVED
+}
+
 model UserProfile {
   id          String      @id @db.Uuid
   username    String      @unique
@@ -159,6 +166,10 @@ model UserProfile {
   settlementAgreementRevisions SettlementAgreementRevision[] @relation("SettlementAgreementRevisionActor")
   cancelledSettlementAgreements SettlementAgreement[] @relation("SettlementAgreementCanceller")
   revokedSharedQuotes  SharedQuote[]        @relation("SharedQuoteRevoker")
+  receivedLaborAdvances WorkOrderLaborAdvance[] @relation("AdvanceWorker")
+  createdLaborAdvances  WorkOrderLaborAdvance[] @relation("AdvanceCreatedBy")
+  closedPayrollWeeks    PayrollWeekControl[]    @relation("WeekClosedBy")
+  reopenedPayrollWeeks  PayrollWeekControl[]    @relation("WeekReopenedBy")
 }
 
 model HelperPayrollWeek {
@@ -378,11 +389,13 @@ model QuoteItem {
   includeInPayroll       Boolean       @default(false)
   customRatePercent      Int?
   customPayrollBaseCents Int?
+  payrollConfigLockedAt  DateTime?
   sortOrder              Int           @default(0)
 
   quote   Quote         @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   section QuoteSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   completedWorkKnowledgeSources CompletedWorkKnowledgeSource[]
+  laborAdvances         WorkOrderLaborAdvance[]
   
   @@index([sectionId])
 }
@@ -414,6 +427,7 @@ model WorkOrder {
   paymentCorrectionApplications PaymentCorrectionApplication[]
   commercialCorrections         QuoteCommercialCorrection[]
   commercialCorrectionApplications QuoteCommercialCorrectionApplication[]
+  laborAdvances                 WorkOrderLaborAdvance[]
 
   @@index([status, completedAt])
   @@index([status, paymentDueDate])
@@ -850,4 +864,47 @@ model DailyDocumentSequence {
   updatedAt    DateTime @updatedAt
 
   @@unique([documentType, businessDate])
+}
+
+model WorkOrderLaborAdvance {
+  id                    String      @id @default(cuid())
+  workOrderId           String
+  quoteItemId           String
+  workerId              String      @db.Uuid
+  weekStart             DateTime    @db.Date
+
+  advanceBaseCents      Int
+  advancePercentage     Int
+  commissionRatePercent Int
+  commissionCents       Int
+
+  notes                 String?
+  createdById           String?     @db.Uuid
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  workOrder             WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  quoteItem             QuoteItem   @relation(fields: [quoteItemId], references: [id], onDelete: Restrict)
+  worker                UserProfile @relation("AdvanceWorker", fields: [workerId], references: [id], onDelete: Restrict)
+  createdBy             UserProfile? @relation("AdvanceCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([quoteItemId, weekStart])
+  @@index([workOrderId, weekStart])
+  @@index([workerId, weekStart])
+}
+
+model PayrollWeekControl {
+  id           String              @id @default(cuid())
+  weekStart    DateTime            @unique @db.Date
+  status       PayrollPeriodStatus @default(CLOSED)
+  closedAt     DateTime?
+  closedById   String?             @db.Uuid
+  reopenedAt   DateTime?
+  reopenedById String?             @db.Uuid
+  reopenReason String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  closedBy     UserProfile?        @relation("WeekClosedBy", fields: [closedById], references: [id])
+  reopenedBy   UserProfile?        @relation("WeekReopenedBy", fields: [reopenedById], references: [id])
 }

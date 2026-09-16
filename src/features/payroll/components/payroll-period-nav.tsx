@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, FileSignature, Printer } from "lucide-react";
+import { PayrollPeriodStatus } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { payrollHref, type PayrollPeriodMode } from "../period";
+import { PayrollWeekStatusControls } from "./payroll-week-status-dialog";
 
 interface PayrollPeriodNavProps {
   mode?: PayrollPeriodMode;
@@ -16,18 +18,21 @@ interface PayrollPeriodNavProps {
   isCurrentPeriod?: boolean;
   hasData?: boolean;
   onOpenGeneralPrint?: () => void;
+  weekStatus?: PayrollPeriodStatus;
   onOpenSigningSheet?: () => void;
 }
 
 export function PayrollPeriodNav({
   mode = "weekly",
   rangeLabel,
+  anchor,
   prevAnchor,
   nextAnchor,
   isCurrentWeek,
   isCurrentPeriod,
   hasData = true,
   onOpenGeneralPrint,
+  weekStatus,
   onOpenSigningSheet,
 }: PayrollPeriodNavProps) {
   const isCurrent = isCurrentPeriod ?? isCurrentWeek ?? false;
@@ -56,7 +61,7 @@ export function PayrollPeriodNav({
           </Button>
         </div>
 
-        {/* Action Buttons: Excel & Signing Sheet (Disabled when no jobs) */}
+        {/* Action Buttons: General Print & Signing Sheet (Disabled when no jobs) */}
         <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
           {onOpenSigningSheet && (
             <Button
@@ -101,6 +106,13 @@ export function PayrollPeriodNav({
               <span className="text-xs font-normal text-[var(--color-text-muted)]">
                 {mode === "monthly" ? "Mes en curso" : "Semana en curso"}
               </span>
+            )}
+            {mode === "weekly" && (
+              <PayrollWeekStatusControls
+                weekStart={anchor}
+                status={weekStatus}
+                isCurrentWeek={isCurrentWeek}
+              />
             )}
           </div>
           <p className="text-xs text-[var(--color-text-muted)]">

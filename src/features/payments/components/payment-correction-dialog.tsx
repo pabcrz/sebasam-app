@@ -31,20 +31,36 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 const PAYMENT_METHODS = Object.entries(PAYMENT_METHOD_LABELS);
 
 function centsToInput(cents: number) {
-  return (cents / 100).toFixed(2);
+  return (Number(cents) / 100).toFixed(2);
 }
 
-function parseAmountCents(value: string): { cents: number; error: string | null } {
-  const trimmed = value.trim();
-  if (!/^\d+(?:\.\d{1,2})?$/.test(trimmed)) {
-    return { cents: 0, error: "Ingresa un monto válido con hasta dos decimales." };
+function normalizeAmountInput(value: string): string | null {
+  let trimmed = value.trim().replace(/\s/g, "");
+  if (trimmed.startsWith("$") || trimmed.startsWith("€")) trimmed = trimmed.slice(1);
+  if (!trimmed || !/^[\d.,]+$/.test(trimmed)) return null;
+
+  const lastComma = trimmed.lastIndexOf(",");
+  const lastDot = trimmed.lastIndexOf(".");
+  const separatorIndex = Math.max(lastComma, lastDot);
+  const fractionalDigits = separatorIndex >= 0 ? trimmed.length - separatorIndex - 1 : 0;
+  const hasDecimal = separatorIndex >= 0 && fractionalDigits > 0 && fractionalDigits <= 2;
+  const whole = (hasDecimal ? trimmed.slice(0, separatorIndex) : trimmed).replace(/[.,]/g, "");
+  const fraction = hasDecimal ? trimmed.slice(separatorIndex + 1) : "";
+  if (!/^\d+$/.test(whole) || (fraction && !/^\d{1,2}$/.test(fraction))) return null;
+  return `${whole}.${fraction.padEnd(2, "0")}`;
+}
+
+function parseAmountCents(value: string): { cents: number; normalized: string | null; error: string | null } {
+  const normalized = normalizeAmountInput(value);
+  if (!normalized) {
+    return { cents: 0, normalized: null, error: "Ingresa un monto válido con hasta dos decimales." };
   }
-  const [whole, fractional = ""] = trimmed.split(".");
+  const [whole, fractional = ""] = normalized.split(".");
   const cents = Number(whole) * 100 + Number(fractional.padEnd(2, "0"));
   if (!Number.isSafeInteger(cents) || cents <= 0) {
-    return { cents: 0, error: "El monto de corrección debe ser mayor que cero." };
+    return { cents: 0, normalized, error: "El monto de corrección debe ser mayor que cero." };
   }
-  return { cents, error: null };
+  return { cents, normalized, error: null };
 }
 
 export interface PaymentCorrectionDialogProps {
@@ -144,7 +160,7 @@ export function PaymentCorrectionDialog({
     setIsLoading(true);
 
     try {
-      const correction = await action(paymentId, amount, method, trimmedReason, operationKey);
+      const correction = await action(paymentId, parsed.normalized!, method, trimmedReason, operationKey);
       setResult(correction);
       onSuccess?.();
       router.refresh();
@@ -326,7 +342,6 @@ export function PaymentCorrectionDialog({
                     value={amount}
                     onChange={(event) => handleAmountChange(event.target.value)}
                     inputMode="decimal"
-                    pattern="[0-9]+([.][0-9]{1,2})?"
                     aria-describedby={`correction-amount-help-${paymentId}${amountError ? ` correction-amount-error-${paymentId}` : ""}`}
                     aria-invalid={amountError ? true : undefined}
                     disabled={isLoading}

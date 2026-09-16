@@ -44,6 +44,7 @@ export function PayrollView({ report, period }: PayrollViewProps) {
         isCurrentWeek={period.isCurrentWeek}
         hasData={hasPayrollEntries}
         onOpenGeneralPrint={handleOpenGeneralPrint}
+        weekStatus={report.weekStatus}
         onOpenSigningSheet={() => setIsSigningSheetOpen(true)}
       />
 

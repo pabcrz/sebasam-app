@@ -1,4 +1,4 @@
-import { QuoteItemType, WorkerKind } from "@prisma/client";
+import { PayrollPeriodStatus, QuoteItemType, WorkerKind } from "@prisma/client";
 
 export const DEFAULT_GENERAL_LABOR_RATE = 50; // 50%
 export const DEFAULT_WELDING_LABOR_RATE = 40; // 40%
@@ -42,6 +42,7 @@ export interface PayrollItemInput {
   includeInPayroll?: boolean | null;
   customPayrollBaseCents?: number | null;
   customRatePercent?: number | null;
+  payrollConfigLockedAt?: Date | string | null;
 }
 
 export interface PayrollItemResult {
@@ -57,6 +58,30 @@ export interface PayrollItemResult {
   commissionCents: number;
   hasCustomBase?: boolean;
   hasCustomRate?: boolean;
+  previousAdvancesBaseCents?: number;
+  remainingBaseCents?: number;
+  isLocked?: boolean;
+}
+
+export interface RawLaborAdvanceForPayroll {
+  id: string;
+  workOrderId: string;
+  workOrderNumber: string;
+  quoteId: string;
+  quoteNumber: string;
+  quoteTitle: string;
+  clientName: string;
+  vehicleSummary: string;
+  workerId: string;
+  workerDisplayName: string;
+  quoteItemId: string;
+  conceptDescription: string;
+  advanceBaseCents: number;
+  advancePercentage: number;
+  commissionRatePercent: number;
+  commissionCents: number;
+  notes?: string | null;
+  createdAt?: Date | string;
 }
 
 export interface WorkOrderPayrollDetail {
@@ -77,6 +102,18 @@ export interface WorkOrderPayrollDetail {
   totalClientLaborCents: number;
   totalPayrollBaseCents: number;
   totalCommissionCents: number;
+
+  // Advance fields
+  isAdvance?: boolean;
+  advanceId?: string;
+  quoteItemId?: string;
+  conceptDescription?: string;
+  advanceBaseCents?: number;
+  advancePercentage?: number;
+  commissionRatePercent?: number;
+  notes?: string | null;
+  previousAdvancesBaseCents?: number;
+  remainingBaseCents?: number;
 }
 
 export interface WorkerPayrollSummary {
@@ -142,6 +179,8 @@ export interface WeeklyPayrollReport {
   workers: WorkerPayrollSummary[];
   fixedPayHelpers?: FixedPayHelperPayrollSummary[];
   unassignedOrders: WorkOrderPayrollDetail[];
+  weekStatus?: PayrollPeriodStatus;
+  laborAdvances?: RawLaborAdvanceForPayroll[];
 }
 
 export type PayrollReport = WeeklyPayrollReport;
@@ -188,7 +227,10 @@ export function getPayrollJobRows(report: WeeklyPayrollReport, masterId = "all")
  * Processes a single quote item for payroll calculation.
  * Returns null if the item is not commissionable (i.e. not LABOR and not an OTHER item with includeInPayroll).
  */
-export function evaluatePayrollItem(item: PayrollItemInput): PayrollItemResult | null {
+export function evaluatePayrollItem(
+  item: PayrollItemInput,
+  previousAdvancesBaseCents = 0
+): PayrollItemResult | null {
   const isLabor = item.type === QuoteItemType.LABOR;
   const isCommissionableOther = item.type === QuoteItemType.OTHER && Boolean(item.includeInPayroll);
 
@@ -210,7 +252,8 @@ export function evaluatePayrollItem(item: PayrollItemInput): PayrollItemResult |
     ratePercent = item.customRatePercent != null ? item.customRatePercent : getDefaultLaborRate(category);
   }
 
-  const commissionCents = computeCommissionCents(payrollBase, ratePercent);
+  const remainingBaseCents = Math.max(0, payrollBase - previousAdvancesBaseCents);
+  const commissionCents = computeCommissionCents(remainingBaseCents, ratePercent);
 
   return {
     id: item.id,
@@ -225,6 +268,9 @@ export function evaluatePayrollItem(item: PayrollItemInput): PayrollItemResult |
     commissionCents,
     hasCustomBase: item.customPayrollBaseCents != null,
     hasCustomRate: item.customRatePercent != null,
+    previousAdvancesBaseCents,
+    remainingBaseCents,
+    isLocked: Boolean(item.payrollConfigLockedAt),
   };
 }
 
@@ -254,6 +300,10 @@ export interface RawWorkOrderForPayroll {
       role: string;
     };
   }>;
+  previousAdvances?: Array<{
+    quoteItemId: string;
+    advanceBaseCents: number;
+  }>;
 }
 
 /**
@@ -267,6 +317,7 @@ export function buildWeeklyPayrollReport(
     endDate: Date;
     rangeLabel: string;
     isCurrentWeek: boolean;
+    advances?: RawLaborAdvanceForPayroll[];
   }
 ): WeeklyPayrollReport {
   const workerMap = new Map<string, WorkerPayrollSummary>();
@@ -292,14 +343,27 @@ export function buildWeeklyPayrollReport(
     }
     const rawItems = Array.from(itemMap.values());
 
+    const previousAdvancesMap = new Map<string, number>();
+    if (wo.previousAdvances) {
+      for (const adv of wo.previousAdvances) {
+        previousAdvancesMap.set(
+          adv.quoteItemId,
+          (previousAdvancesMap.get(adv.quoteItemId) ?? 0) + adv.advanceBaseCents
+        );
+      }
+    }
+
     // Evaluate labor items
     const evaluatedItems: PayrollItemResult[] = [];
     let orderClientLabor = 0;
     let orderPayrollBase = 0;
     let orderCommission = 0;
+    let orderPreviousAdvancesBase = 0;
 
     for (const item of rawItems) {
-      const evaluated = evaluatePayrollItem(item);
+      const prevBase = previousAdvancesMap.get(item.id) ?? 0;
+      orderPreviousAdvancesBase += prevBase;
+      const evaluated = evaluatePayrollItem(item, prevBase);
       if (evaluated) {
         evaluatedItems.push(evaluated);
         orderClientLabor += evaluated.clientTotalCents;
@@ -341,6 +405,9 @@ export function buildWeeklyPayrollReport(
       totalClientLaborCents: orderClientLabor,
       totalPayrollBaseCents: orderPayrollBase,
       totalCommissionCents: orderCommission,
+      isAdvance: false,
+      previousAdvancesBaseCents: orderPreviousAdvancesBase,
+      remainingBaseCents: Math.max(0, orderPayrollBase - orderPreviousAdvancesBase),
     };
 
     if (wo.isSpecial) {
@@ -385,6 +452,61 @@ export function buildWeeklyPayrollReport(
       summary.workOrders.push(detail);
     } else {
       unassignedOrders.push(detail);
+    }
+  }
+
+  // Process period advances
+  if (options.advances && options.advances.length > 0) {
+    for (const adv of options.advances) {
+      grandTotalPayrollBase += adv.advanceBaseCents;
+      grandTotalCommission += adv.commissionCents;
+
+      const workerId = adv.workerId;
+      if (!workerMap.has(workerId)) {
+        workerMap.set(workerId, {
+          workerId,
+          displayName: adv.workerDisplayName,
+          workerKind: WorkerKind.MASTER,
+          completedOrderCount: 0,
+          totalClientLaborCents: 0,
+          totalPayrollBaseCents: 0,
+          totalCommissionCents: 0,
+          workOrders: [],
+        });
+      }
+
+      const summary = workerMap.get(workerId)!;
+      summary.totalPayrollBaseCents += adv.advanceBaseCents;
+      summary.totalCommissionCents += adv.commissionCents;
+
+      const advanceDetail: WorkOrderPayrollDetail = {
+        workOrderId: adv.workOrderId,
+        workOrderNumber: adv.workOrderNumber,
+        quoteId: adv.quoteId,
+        quoteNumber: adv.quoteNumber,
+        quoteTitle: adv.quoteTitle,
+        clientName: adv.clientName,
+        vehicleSummary: adv.vehicleSummary,
+        completedAt: null,
+        isSpecial: false,
+        masterId: adv.workerId,
+        masterName: adv.workerDisplayName,
+        helperNames: [],
+        items: [],
+        totalClientLaborCents: adv.advanceBaseCents,
+        totalPayrollBaseCents: adv.advanceBaseCents,
+        totalCommissionCents: adv.commissionCents,
+        isAdvance: true,
+        advanceId: adv.id,
+        quoteItemId: adv.quoteItemId,
+        conceptDescription: adv.conceptDescription,
+        advanceBaseCents: adv.advanceBaseCents,
+        advancePercentage: adv.advancePercentage,
+        commissionRatePercent: adv.commissionRatePercent,
+        notes: adv.notes,
+      };
+
+      summary.workOrders.push(advanceDetail);
     }
   }
 

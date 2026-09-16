@@ -6,10 +6,12 @@ import {
   calculateFixedPayHelperPayroll,
   type FixedPayHelperPayrollSummary,
   type PayrollItemInput,
+  type RawLaborAdvanceForPayroll,
   type RawWorkOrderForPayroll,
   type WeeklyPayrollReport,
 } from "./domain";
 import { parsePayrollParams } from "./period";
+import { getPayrollWeekStatus } from "./week-control";
 
 function weekStartFromAnchor(anchor: string) {
   return new Date(`${anchor}T00:00:00.000Z`);
@@ -138,6 +140,56 @@ export async function getWeeklyPayroll(
     },
   });
 
+  const orderIds = rawWorkOrders.map((wo) => wo.id);
+  const [historicalAdvances, weekAdvances, weekStatus] = await Promise.all([
+    orderIds.length > 0
+      ? prisma.workOrderLaborAdvance.findMany({
+          where: { workOrderId: { in: orderIds } },
+          select: {
+            workOrderId: true,
+            quoteItemId: true,
+            advanceBaseCents: true,
+          },
+        })
+      : Promise.resolve([]),
+    prisma.workOrderLaborAdvance.findMany({
+      where:
+        period.mode === "monthly"
+          ? {
+              weekStart: {
+                gte: period.start,
+                lt: period.end,
+              },
+            }
+          : {
+              weekStart: weekStartFromAnchor(period.anchor),
+            },
+      include: {
+        workOrder: {
+          include: {
+            quote: {
+              include: {
+                customer: true,
+                vehicle: true,
+              },
+            },
+          },
+        },
+        quoteItem: { select: { description: true } },
+        worker: { select: { displayName: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    getPayrollWeekStatus(period.anchor),
+  ]);
+
+  const historicalAdvancesByOrder = new Map<string, Array<{ quoteItemId: string; advanceBaseCents: number }>>();
+  for (const adv of historicalAdvances) {
+    const list = historicalAdvancesByOrder.get(adv.workOrderId) ?? [];
+    list.push({ quoteItemId: adv.quoteItemId, advanceBaseCents: adv.advanceBaseCents });
+    historicalAdvancesByOrder.set(adv.workOrderId, list);
+  }
+
   const serializedOrders: RawWorkOrderForPayroll[] = rawWorkOrders.map((wo) => {
     const mapItem = (item: (typeof wo.quote.items)[number]): PayrollItemInput => ({
       id: item.id,
@@ -149,6 +201,7 @@ export async function getWeeklyPayroll(
       includeInPayroll: item.includeInPayroll,
       customRatePercent: item.customRatePercent,
       customPayrollBaseCents: item.customPayrollBaseCents == null ? null : Number(item.customPayrollBaseCents),
+      payrollConfigLockedAt: item.payrollConfigLockedAt,
     });
 
     return {
@@ -186,6 +239,38 @@ export async function getWeeklyPayroll(
           role: a.worker.role,
         },
       })),
+      previousAdvances: historicalAdvancesByOrder.get(wo.id) ?? [],
+    };
+  });
+
+  const serializedAdvances: RawLaborAdvanceForPayroll[] = weekAdvances.map((adv) => {
+    const wo = adv.workOrder;
+    const vehicleDesc = wo.quote.vehicle
+      ? [wo.quote.vehicle.brand, wo.quote.vehicle.model].filter(Boolean).join(" ")
+      : "";
+    const vehicleSummary = wo.quote.vehicle
+      ? `${vehicleDesc || "Vehículo"}${wo.quote.vehicle.plate ? ` (${wo.quote.vehicle.plate})` : ""}`
+      : "Sin vehículo";
+
+    return {
+      id: adv.id,
+      workOrderId: adv.workOrderId,
+      workOrderNumber: wo.number,
+      quoteId: wo.quote.id,
+      quoteNumber: wo.quote.number,
+      quoteTitle: wo.quote.title,
+      clientName: wo.quote.customer?.name ?? "Cliente General",
+      vehicleSummary,
+      workerId: adv.workerId,
+      workerDisplayName: adv.worker.displayName,
+      quoteItemId: adv.quoteItemId,
+      conceptDescription: adv.quoteItem.description,
+      advanceBaseCents: adv.advanceBaseCents,
+      advancePercentage: adv.advancePercentage,
+      commissionRatePercent: adv.commissionRatePercent,
+      commissionCents: adv.commissionCents,
+      notes: adv.notes,
+      createdAt: adv.createdAt,
     };
   });
 
@@ -195,10 +280,15 @@ export async function getWeeklyPayroll(
     endDate: period.end,
     rangeLabel: period.rangeLabel,
     isCurrentWeek: period.isCurrentWeek,
+    advances: serializedAdvances,
   });
 
   if (period.mode !== "weekly") {
-    return commissionReport;
+    return {
+      ...commissionReport,
+      weekStatus,
+      laborAdvances: serializedAdvances,
+    };
   }
 
   const fixedPayHelpers = await getFixedPayHelpers(weekStartFromAnchor(period.anchor));
@@ -214,6 +304,8 @@ export async function getWeeklyPayroll(
 
   return {
     ...commissionReport,
+    weekStatus,
+    laborAdvances: serializedAdvances,
     totalWorkers: commissionReport.totalWorkers + fixedPayHelpers.length,
     totalFixedWeeklyPayCents,
     totalAbsenceDeductionsCents,

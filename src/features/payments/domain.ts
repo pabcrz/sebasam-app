@@ -113,6 +113,7 @@ export type RecordedPaymentResult = {
     customerId: string;
     quoteId: string | null;
     reversedAt: Date | null;
+    createdAt: Date;
   };
   appliedToNoteCents: number;
   customerCreditRemainingCents: number;
@@ -169,6 +170,7 @@ export async function getNoteFinancialSummary(
     where: {
       workOrderId,
       reversedAt: null,
+      payment: { status: PaymentStatus.PAID, reversedAt: null },
     },
     _sum: { amountCents: true },
   });
@@ -202,7 +204,7 @@ export async function getCustomerCreditSummary(
 
   const applications = await tx.paymentApplication.aggregate({
     where: {
-      payment: { customerId },
+      payment: { customerId, status: PaymentStatus.PAID, reversedAt: null },
       reversedAt: null,
     },
     _sum: { amountCents: true },
@@ -244,7 +246,7 @@ export async function getCustomerBalanceSummary(
     client.paymentApplication?.aggregate
       ? client.paymentApplication.aggregate({
           where: {
-            payment: { customerId },
+            payment: { customerId, status: PaymentStatus.PAID, reversedAt: null },
             reversedAt: null,
           },
           _sum: { amountCents: true },
@@ -319,7 +321,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
           }
         }
 
-        const paidCents = appliedToNoteCents;
+        const paidCents = noteSummary?.appliedCents ?? appliedToNoteCents;
         const remainingCents = noteSummary ? noteSummary.pendingBalanceCents : 0;
 
         return {
@@ -331,6 +333,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
             customerId: existingPayment.customerId,
             quoteId: existingPayment.quoteId,
             reversedAt: existingPayment.reversedAt,
+            createdAt: existingPayment.createdAt,
           },
           appliedToNoteCents,
           customerCreditRemainingCents: creditSummary.availableCreditCents,
@@ -451,6 +454,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
 
       // 3. If target is a completed Note (WorkOrder), apply up to Note pending balance
       let appliedToNoteCents = 0;
+      let cumulativePaidCents = 0;
       let paymentApplicationId: string | null = null;
       let notePendingBalanceCents: number | null = null;
 
@@ -483,10 +487,12 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
           });
 
           appliedToNoteCents = applyAmount;
+          cumulativePaidCents = noteSummary.appliedCents + applyAmount;
           paymentApplicationId = application.id;
           notePendingBalanceCents = noteSummary.pendingBalanceCents - applyAmount;
         } else {
           notePendingBalanceCents = noteSummary.pendingBalanceCents;
+          cumulativePaidCents = noteSummary.appliedCents;
         }
       }
 
@@ -501,12 +507,13 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
           customerId: payment.customerId,
           quoteId: payment.quoteId,
           reversedAt: payment.reversedAt,
+          createdAt: payment.createdAt,
         },
         appliedToNoteCents,
         customerCreditRemainingCents: creditSummary.availableCreditCents,
         notePendingBalanceCents,
         paymentApplicationId,
-        paidCents: appliedToNoteCents,
+        paidCents: targetWorkOrder?.status === WorkOrderStatus.COMPLETED ? cumulativePaidCents : appliedToNoteCents,
         remainingCents: notePendingBalanceCents ?? 0,
       };
     },
@@ -739,6 +746,7 @@ export async function lockPaymentMutationScope(
         where: {
           paymentId: { in: paymentIds },
           reversedAt: null,
+          payment: { status: PaymentStatus.PAID, reversedAt: null },
         },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       })

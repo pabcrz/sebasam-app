@@ -134,6 +134,7 @@ export function QuoteDocumentView({
     (quote.vehicle
       ? formatVehicle(quote.vehicle)
       : formatSnapshotVehicle(quote.vehicleSnapshot));
+  const configuredBankAccounts = paymentSettings.bankAccounts ?? [];
 
   return (
     <div
@@ -159,6 +160,16 @@ export function QuoteDocumentView({
           isPrint={isPrint}
           business={paymentSettings}
           paymentStatus={paymentStatus}
+          bankAccounts={configuredBankAccounts
+            .filter((account) => isPrint || account.isPubliclyShareable)
+            .map(({ id, accountHolder, bankName, accountNumber, clabe, isForInvoicing }) => ({
+              id,
+              accountHolder,
+              bankName,
+              accountNumber,
+              clabe,
+              isForInvoicing,
+            }))}
         />
       </PublicQuoteShell>
     </div>

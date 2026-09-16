@@ -515,3 +515,239 @@ describe("Fixed-pay helper payroll", () => {
     });
   });
 });
+
+describe("Labor advances domain calculations", () => {
+  it("evaluates labor item deducting previous advances from base", () => {
+    const item = {
+      id: "concept-1",
+      type: QuoteItemType.LABOR,
+      description: "Acorazado de chasis",
+      quantity: 1,
+      unitPriceCents: 10_000_00,
+      totalCents: 10_000_00,
+      customRatePercent: 50,
+    };
+
+    // First evaluation: full base remaining
+    const initial = evaluatePayrollItem(item, 0);
+    expect(initial?.payrollBaseCents).toBe(10_000_00);
+    expect(initial?.previousAdvancesBaseCents).toBe(0);
+    expect(initial?.remainingBaseCents).toBe(10_000_00);
+    expect(initial?.commissionCents).toBe(5_000_00);
+
+    // After $4,000 advance: remaining base is $6,000, commission is $3,000
+    const partial = evaluatePayrollItem(item, 4_000_00);
+    expect(partial?.payrollBaseCents).toBe(10_000_00);
+    expect(partial?.previousAdvancesBaseCents).toBe(4_000_00);
+    expect(partial?.remainingBaseCents).toBe(6_000_00);
+    expect(partial?.commissionCents).toBe(3_000_00);
+
+    // After $8,000 advances ($4,000 + $4,000): remaining base is $2,000, commission is $1,000
+    const finalClose = evaluatePayrollItem(item, 8_000_00);
+    expect(finalClose?.remainingBaseCents).toBe(2_000_00);
+    expect(finalClose?.commissionCents).toBe(1_000_00);
+
+    // If advances cover 100% ($10,000): remaining base is 0, commission is 0
+    const fullyAdvanced = evaluatePayrollItem(item, 10_000_00);
+    expect(fullyAdvanced?.remainingBaseCents).toBe(0);
+    expect(fullyAdvanced?.commissionCents).toBe(0);
+  });
+
+  it("builds weekly report including advances and final completion deducting previous advances", () => {
+    // Week 1: Only an advance of $4,000 on concept-1 (total $10,000 at 50%)
+    const week1Report = buildWeeklyPayrollReport([], {
+      startDate: new Date("2026-09-07T00:00:00.000Z"),
+      endDate: new Date("2026-09-13T00:00:00.000Z"),
+      rangeLabel: "Semana 1",
+      isCurrentWeek: false,
+      advances: [
+        {
+          id: "adv-1",
+          workOrderId: "wo-1",
+          workOrderNumber: "OT-001",
+          quoteId: "q-1",
+          quoteNumber: "C-001",
+          quoteTitle: "Alargado de chasis",
+          clientName: "Transportes MX",
+          vehicleSummary: "Kenworth T680",
+          workerId: "worker-juan",
+          workerDisplayName: "Maestro Juan",
+          quoteItemId: "concept-1",
+          conceptDescription: "Alargado de chasis",
+          advanceBaseCents: 4_000_00,
+          advancePercentage: 40,
+          commissionRatePercent: 50,
+          commissionCents: 2_000_00,
+          notes: "Terminó un lado",
+        },
+      ],
+    });
+
+    expect(week1Report.totalCompletedOrders).toBe(0);
+    expect(week1Report.totalPayrollBaseCents).toBe(4_000_00);
+    expect(week1Report.totalCommissionCents).toBe(2_000_00);
+    expect(week1Report.workers).toHaveLength(1);
+    expect(week1Report.workers[0].displayName).toBe("Maestro Juan");
+    expect(week1Report.workers[0].completedOrderCount).toBe(0);
+    expect(week1Report.workers[0].totalPayrollBaseCents).toBe(4_000_00);
+    expect(week1Report.workers[0].totalCommissionCents).toBe(2_000_00);
+    expect(week1Report.workers[0].workOrders[0].isAdvance).toBe(true);
+    expect(week1Report.workers[0].workOrders[0].advanceBaseCents).toBe(4_000_00);
+
+    // Week 3: Order completed, with $8,000 previous advances recorded in weeks 1 and 2
+    const completedOrder: RawWorkOrderForPayroll = {
+      id: "wo-1",
+      number: "OT-001",
+      status: "COMPLETED",
+      completedAt: new Date("2026-09-22T10:00:00.000Z"),
+      isSpecial: false,
+      specialAssigneeName: null,
+      quote: {
+        id: "q-1",
+        number: "C-001",
+        title: "Alargado de chasis",
+        customer: { name: "Transportes MX" },
+        vehicle: { brand: "Kenworth", model: "T680", year: 2022, plate: "XYZ-123" },
+        items: [
+          {
+            id: "concept-1",
+            type: QuoteItemType.LABOR,
+            description: "Alargado de chasis",
+            quantity: 1,
+            unitPriceCents: 10_000_00,
+            totalCents: 10_000_00,
+            customRatePercent: 50,
+          },
+        ],
+      },
+      assignments: [
+        {
+          workerId: "worker-juan",
+          status: "ASSIGNED",
+          worker: {
+            id: "worker-juan",
+            displayName: "Maestro Juan",
+            workerKind: WorkerKind.MASTER,
+            role: "WORKER",
+          },
+        },
+      ],
+      previousAdvances: [
+        { quoteItemId: "concept-1", advanceBaseCents: 4_000_00 },
+        { quoteItemId: "concept-1", advanceBaseCents: 4_000_00 },
+      ],
+    };
+
+    const week3Report = buildWeeklyPayrollReport([completedOrder], {
+      startDate: new Date("2026-09-21T00:00:00.000Z"),
+      endDate: new Date("2026-09-27T00:00:00.000Z"),
+      rangeLabel: "Semana 3",
+      isCurrentWeek: true,
+    });
+
+    expect(week3Report.totalCompletedOrders).toBe(1);
+    expect(week3Report.workers[0].completedOrderCount).toBe(1);
+    // Remaining base is $2,000 ($10,000 - $8,000), commission is $1,000
+    expect(week3Report.totalCommissionCents).toBe(1_000_00);
+    const orderDetail = week3Report.workers[0].workOrders[0];
+    expect(orderDetail.isAdvance).toBe(false);
+    expect(orderDetail.previousAdvancesBaseCents).toBe(8_000_00);
+    expect(orderDetail.remainingBaseCents).toBe(2_000_00);
+    expect(orderDetail.totalCommissionCents).toBe(1_000_00);
+  });
+
+  it("handles master reassignment: advances paid to Maestro A, remaining base paid to Maestro B on completion", () => {
+    // Week 1: Advance paid to Maestro Juan
+    const week1Report = buildWeeklyPayrollReport([], {
+      startDate: new Date("2026-09-07T00:00:00.000Z"),
+      endDate: new Date("2026-09-13T00:00:00.000Z"),
+      rangeLabel: "Semana 1",
+      isCurrentWeek: false,
+      advances: [
+        {
+          id: "adv-w1",
+          workOrderId: "wo-long",
+          workOrderNumber: "OT-500",
+          quoteId: "q-500",
+          quoteNumber: "COT-500",
+          quoteTitle: "Fabricación de chasis",
+          clientName: "Transportes Centro",
+          vehicleSummary: "Kenworth T680",
+          workerId: "worker-juan",
+          workerDisplayName: "Maestro Juan",
+          quoteItemId: "concept-1",
+          conceptDescription: "Fabricación de chasis",
+          advanceBaseCents: 4_000_00,
+          advancePercentage: 40,
+          commissionRatePercent: 50,
+          commissionCents: 2_000_00,
+          notes: "Avance inicial",
+        },
+      ],
+    });
+
+    // In week 1, Maestro Juan receives $2,000 commission for the advance
+    expect(week1Report.workers).toHaveLength(1);
+    expect(week1Report.workers[0].displayName).toBe("Maestro Juan");
+    expect(week1Report.workers[0].totalCommissionCents).toBe(2_000_00);
+
+    // Week 2: Work order reassigned to Maestro Carlos due to illness and completed
+    const completedOrderReassigned: RawWorkOrderForPayroll = {
+      id: "wo-long",
+      number: "OT-500",
+      status: "COMPLETED",
+      completedAt: new Date("2026-09-16T12:00:00.000Z"),
+      isSpecial: false,
+      specialAssigneeName: null,
+      quote: {
+        id: "q-500",
+        number: "COT-500",
+        title: "Fabricación de chasis",
+        customer: { name: "Transportes Centro" },
+        vehicle: { brand: "Kenworth", model: "T680", year: 2021, plate: "TC-01" },
+        items: [
+          {
+            id: "concept-1",
+            type: QuoteItemType.LABOR,
+            description: "Fabricación de chasis",
+            quantity: 1,
+            unitPriceCents: 10_000_00,
+            totalCents: 10_000_00,
+            customRatePercent: 50,
+          },
+        ],
+      },
+      assignments: [
+        {
+          workerId: "worker-carlos",
+          status: "ASSIGNED",
+          worker: {
+            id: "worker-carlos",
+            displayName: "Maestro Carlos",
+            workerKind: WorkerKind.MASTER,
+            role: "WORKER",
+          },
+        },
+      ],
+      previousAdvances: [
+        { quoteItemId: "concept-1", advanceBaseCents: 4_000_00 },
+      ],
+    };
+
+    const week2Report = buildWeeklyPayrollReport([completedOrderReassigned], {
+      startDate: new Date("2026-09-14T00:00:00.000Z"),
+      endDate: new Date("2026-09-20T00:00:00.000Z"),
+      rangeLabel: "Semana 2",
+      isCurrentWeek: true,
+    });
+
+    // In week 2, Maestro Carlos completes the order and receives remaining commission:
+    // Base: $10,000 - $4,000 = $6,000. Commission @ 50%: $3,000
+    expect(week2Report.workers).toHaveLength(1);
+    const carlosWorker = week2Report.workers[0];
+    expect(carlosWorker.displayName).toBe("Maestro Carlos");
+    expect(carlosWorker.totalCommissionCents).toBe(3_000_00);
+    expect(carlosWorker.workOrders[0].remainingBaseCents).toBe(6_000_00);
+    expect(carlosWorker.workOrders[0].totalCommissionCents).toBe(3_000_00);
+  });
+});

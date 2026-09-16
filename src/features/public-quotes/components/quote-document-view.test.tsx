@@ -135,6 +135,20 @@ describe("QuoteDocumentView", () => {
     expect(screen.getByText("Bajar dos muelles")).toBeInTheDocument();
   });
 
+  it("renders legacy fixtures without payment bank accounts", () => {
+    const legacyPaymentSettings = { ...mockPaymentSettings, bankAccounts: undefined } as unknown as PaymentSettingsData;
+
+    render(
+      <QuoteDocumentView
+        quote={baseQuote}
+        paymentSettings={legacyPaymentSettings}
+        isPrint
+      />,
+    );
+
+    expect(screen.getByText("Bajar dos muelles")).toBeInTheDocument();
+  });
+
   it("renders as Nota with vehicle description override for special orders", () => {
     render(
       <QuoteDocumentView
