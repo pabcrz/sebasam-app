@@ -542,7 +542,7 @@ describe("SharedQuoteView", () => {
       expect(screen.queryByRole("button", { name: /Declinar/i })).not.toBeInTheDocument();
     });
 
-    it("renders paymentDueDate when in note mode", () => {
+  it("renders paymentDueDate when in note mode", () => {
       const quote = {
         ...makeQuote(QuoteStatus.APPROVED, WorkOrderStatus.COMPLETED),
         paymentDueDate: new Date("2026-09-30T00:00:00.000Z"),
@@ -553,5 +553,41 @@ describe("SharedQuoteView", () => {
       expect(screen.getByText(/Fecha de vencimiento de pago/i)).toBeInTheDocument();
       expect(screen.queryByTestId("quote-validity")).not.toBeInTheDocument();
     });
+  });
+
+  it("exposes only note payment data and keeps account text selectable in print mode", () => {
+    const bankAccounts = [{
+      id: 1,
+      accountHolder: "SEBASAM",
+      bankName: "Santander",
+      accountNumber: "1234 5678",
+      clabe: "012345678901234567",
+    }];
+
+    const { rerender } = render(
+      <SharedQuoteView
+        quote={makeQuote(QuoteStatus.APPROVED, WorkOrderStatus.COMPLETED)}
+        token="token-123"
+        isNote
+        bankAccounts={bankAccounts}
+      />,
+    );
+
+    expect(screen.getByTestId("note-payment-data")).toBeInTheDocument();
+    expect(screen.getByText("1234 5678")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /copiar/i })).toHaveLength(2);
+
+    rerender(
+      <SharedQuoteView
+        quote={makeQuote(QuoteStatus.APPROVED, WorkOrderStatus.COMPLETED)}
+        token=""
+        isNote
+        isPrint
+        bankAccounts={bankAccounts}
+      />,
+    );
+
+    expect(screen.getByText("1234 5678")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /copiar/i })[0]).toHaveClass("print:hidden");
   });
 });

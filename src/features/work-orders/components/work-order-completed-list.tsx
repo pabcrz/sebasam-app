@@ -5,16 +5,14 @@ import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
 import {
   Badge,
   OperationalActionsMenu,
-  OperationalCard,
   OperationalCardActions,
   OperationalCardLayout,
 } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import type { CorrectPaymentResult } from "@/features/payments/domain";
 import { derivePaymentState } from "@/features/work-orders/payment-state";
-import { CashPaymentDialog, PaymentBalanceSummary } from "@/features/payments/components/cash-payment-dialog";
-import { PaymentCorrectionDialog } from "@/features/payments/components/payment-correction-dialog";
-import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
+import { NotaDetailDialog } from "./nota-detail-dialog";
+import { NotaCard } from "./nota-card";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import { resolveDocumentFolio, resolveAntecedentQuoteFolio } from "@/features/quotes/lib/document-resolver";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
@@ -22,6 +20,7 @@ import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-d
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
 import { NoteArchiveRevocationAction } from "@/features/quotes/components/note-archive-revocation-actions";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
+import type { NotePaymentHistoryItem } from "@/features/payments/lib/payment-register";
 import { Printer } from "lucide-react";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
@@ -55,6 +54,11 @@ type WorkOrderCommercialCorrectionAction = {
   action: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
 };
 
+type WorkOrderReversePaymentAction = {
+  workOrderId: string;
+  action: (paymentId: string, reason: string, operationKey?: string) => Promise<unknown>;
+};
+
 type NoteArchiveRevocationAction = {
   quoteId: string;
   archive: (reason: string) => Promise<void>;
@@ -69,11 +73,13 @@ interface WorkOrderCompletedListProps {
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
   recordPaymentActions?: WorkOrderPaymentAction[];
   correctionActions?: WorkOrderCorrectionAction[];
+  reversePaymentActions?: WorkOrderReversePaymentAction[];
   correctWorkOrderActions?: WorkOrderCommercialCorrectionAction[];
   shareAction: (quoteId: string) => Promise<{ success: boolean; token?: string; error?: string }>;
   archiveRevocationActions?: NoteArchiveRevocationAction[];
   rollbackAction?: WorkOrderActions["rollback"];
   noteReturnTo?: string;
+  paymentHistories?: Array<{ workOrderId: string; totalCents: number; payments: NotePaymentHistoryItem[] }>;
 }
 
 function formatDate(date: Date | null) {
@@ -94,32 +100,28 @@ export function WorkOrderCompletedList({
   searchCustomersAction,
   recordPaymentActions = [],
   correctionActions = [],
+  reversePaymentActions = [],
   correctWorkOrderActions = [],
   shareAction,
   archiveRevocationActions = [],
   rollbackAction,
   noteReturnTo = "/admin/notas",
+  paymentHistories = [],
 }: WorkOrderCompletedListProps) {
   const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
   const correctionActionMap = new Map(correctionActions.map((p) => [p.workOrderId, p.action]));
+  const reversePaymentActionMap = new Map(reversePaymentActions.map((p) => [p.workOrderId, p.action]));
   const correctWorkOrderActionMap = new Map(correctWorkOrderActions.map((c) => [c.workOrderId, c.action]));
   const archiveRevocationActionMap = new Map(archiveRevocationActions.map((action) => [action.quoteId, action]));
-  const [selectedQuoteId, setSelectedQuoteId] = React.useState<string | null>(null);
-
-  const selectedQuote = React.useMemo(() => {
-    if (!selectedQuoteId || !quoteMap) return null;
-    return quoteMap.get(selectedQuoteId) ?? null;
-  }, [selectedQuoteId, quoteMap]);
+  const [selectedWorkOrderId, setSelectedWorkOrderId] = React.useState<string | null>(null);
 
   return (
     <>
       <div className="grid gap-3 lg:grid-cols-2">
       {workOrders.map((wo) => {
-        const paymentAction = paymentActionMap.get(wo.id);
-        const correctionAction = correctionActionMap.get(wo.id);
         const correctWorkOrderAction = correctWorkOrderActionMap.get(wo.id);
         const archiveRevocationAction = archiveRevocationActionMap.get(wo.quote.id);
-        const totalCents = Number(wo.quote.totalCents);
+        const totalCents = wo.quote.effectiveTotalCents ?? Number(wo.quote.totalCents);
         const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
         const noteFolio = resolveDocumentFolio(wo);
         const antecedentQuoteFolio = resolveAntecedentQuoteFolio(wo.quote);
@@ -129,43 +131,33 @@ export function WorkOrderCompletedList({
           paidCents: wo.quote.paidCents ?? 0,
           remainingCents: wo.quote.remainingCents ?? totalCents,
         });
+        const paymentStatusLabel = paymentState.label === "Pagada"
+          ? "Pagada"
+          : paymentState.label === "Vencida"
+            ? "Vencida"
+            : "Pendiente";
         const quoteDetail = quoteMap?.get(wo.quote.id) ?? wo.quote;
         const remainingCents = wo.quote.remainingCents ?? totalCents;
-        const isPaid = remainingCents <= 0;
-        const hasPaymentAction = Boolean(paymentAction && !isPaid);
-
-        const primaryAction = hasPaymentAction ? (
-          <CashPaymentDialog
-            action={paymentAction!}
-            quoteNumber={wo.quote.number}
-            totalCents={totalCents}
-            paidCents={wo.quote.paidCents ?? 0}
-            remainingCents={remainingCents}
-            triggerOnly
-            triggerVariant="primary"
-            triggerClassName="w-full"
-          />
-        ) : (
-          <ShareQuoteButton
-            action={shareAction.bind(null, wo.quote.id)}
-            quoteNumber={wo.quote.number}
-            variant="primary"
-            className="w-full"
-          />
-        );
 
         const frequentActions = (
           <>
-            <PrintActionButton
+            <ShareQuoteButton
+              action={shareAction.bind(null, wo.quote.id)}
+              quoteNumber={wo.quote.number}
+              variant="outline"
+              className="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
+              iconOnly
+            />
+               <PrintActionButton
               url={`/admin/notas/${wo.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}
               variant="outline"
               size="sm"
               className="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
-              title={`Imprimir nota de remisión ${wo.number}`}
-              aria-label={`Imprimir nota de remisión ${wo.number}`}
+               title={`Imprimir nota de remisión ${noteFolio}`}
+               aria-label={`Imprimir nota de remisión ${noteFolio}`}
             >
               <Printer className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only sm:ml-2">Imprimir</span>
+              <span className="sr-only">Imprimir</span>
             </PrintActionButton>
             {correctWorkOrderAction ? (
               <QuoteBuilderDialog
@@ -179,16 +171,7 @@ export function WorkOrderCompletedList({
                 triggerVariant="outline"
                 triggerSize="sm"
                 triggerClassName="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
-                triggerIconOnlyMobile
-              />
-            ) : null}
-            {hasPaymentAction ? (
-              <ShareQuoteButton
-                action={shareAction.bind(null, wo.quote.id)}
-                quoteNumber={wo.quote.number}
-                variant="outline"
-                className="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
-                actionLabelClassName="sr-only sm:not-sr-only"
+                 triggerIconOnly
               />
             ) : null}
           </>
@@ -197,7 +180,6 @@ export function WorkOrderCompletedList({
         const hasOverflow = Boolean(
           (archiveRevocationAction && wo.quote.status !== "ARCHIVED") ||
             archiveRevocationAction?.canRevoke ||
-            (correctionAction && wo.quote.activePaymentId && wo.quote.activePaymentAmountCents != null) ||
             rollbackAction,
         );
 
@@ -236,89 +218,71 @@ export function WorkOrderCompletedList({
                 action={archiveRevocationAction.revoke}
               />
             ) : null}
-            {correctionAction && wo.quote.activePaymentId && wo.quote.activePaymentAmountCents != null ? (
-              <PaymentCorrectionDialog
-                paymentId={wo.quote.activePaymentId}
-                originalAmountCents={wo.quote.activePaymentAmountCents}
-                originalMethod={wo.quote.activePaymentMethod ?? "CASH"}
-                reference={wo.quote.number}
-                paymentDate={wo.completedAt}
-                quoteNumber={wo.quote.number}
-                action={correctionAction}
-              />
-            ) : null}
           </OperationalActionsMenu>
         ) : null;
 
         return (
-          <OperationalCard
+          <NotaCard
             key={wo.id}
-            onOpen={quoteMap?.has(wo.quote.id) ? () => setSelectedQuoteId(wo.quote.id) : undefined}
-            openLabel={`Ver detalle de cotización ${wo.quote.number}`}
-            actions={
-              <OperationalCardActions
-                primary={primaryAction}
-                frequent={frequentActions}
-                overflow={overflowAction}
-              />
-            }
-            body={
+            onOpen={() => setSelectedWorkOrderId(wo.id)}
+            openLabel={`Ver detalle de nota ${noteFolio}`}
+             actions={
+               <OperationalCardActions
+                 frequent={frequentActions}
+                 overflow={overflowAction}
+                 className="gap-1"
+                 actionGapClassName="gap-1"
+               />
+             }
+             className="!w-full !min-w-0 !p-2"
+             body={
               <OperationalCardLayout
-                header={
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-bold text-[var(--color-text-main)]">{noteFolio}</span>
-                        <span className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">
-                          ({wo.number})
-                        </span>
-                        <Badge variant={paymentState.variant} className="w-fit">
-                          {paymentState.label}
-                          {paymentState.label === "Pago parcial" || paymentState.label === "Vencida"
-                            ? ` · Saldo ${formatCents(paymentState.balanceCents!)}`
-                            : ""}
-                        </Badge>
-                        {wo.quote.isLocked ? <Badge variant="warning">Bloqueado</Badge> : null}
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="font-mono text-2xl font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
-                        {formatCents(totalCents)}
-                      </p>
-                    </div>
-                  </div>
-                }
+                 header={
+                   <div className="grid min-w-0 gap-2">
+                     <div className="flex min-w-0 items-center justify-between gap-3">
+                       <span className="min-w-0 truncate text-xs font-bold text-[var(--color-text-main)]">{noteFolio}</span>
+                       <Badge variant={paymentState.variant} className="w-fit shrink-0">
+                         {paymentStatusLabel}
+                       </Badge>
+                     </div>
+                     <p className="w-full text-right font-mono text-2xl font-extrabold leading-tight tabular-nums whitespace-nowrap text-[var(--color-total-emphasis)]">
+                       {formatCents(totalCents)}
+                     </p>
+                   </div>
+                 }
                 identity={
-                  <div>
-                    <p className="font-semibold text-[var(--color-text-main)]">
+                  <div className="min-w-0">
+                    <p className="min-w-0 truncate font-semibold text-[var(--color-text-main)]">
                       {resolveCustomerDisplayIdentity(wo.quote).displayName}
                     </p>
-                    {resolveCustomerDisplayIdentity(wo.quote).operatorName ? (
-                      <p className="text-xs font-medium text-[var(--color-text-muted)]">
-                        {resolveCustomerDisplayIdentity(wo.quote).operatorRole}:{" "}
-                        {resolveCustomerDisplayIdentity(wo.quote).operatorName}
-                      </p>
-                    ) : null}
-                    <p className="text-sm text-[var(--color-text-muted)]">{formatVehicle(wo)}</p>
+                    <p className="min-w-0 truncate text-sm text-[var(--color-text-muted)]">
+                      {[
+                        resolveCustomerDisplayIdentity(wo.quote).operatorName
+                          ? `${resolveCustomerDisplayIdentity(wo.quote).operatorRole}: ${resolveCustomerDisplayIdentity(wo.quote).operatorName}`
+                          : null,
+                        formatVehicle(wo),
+                      ].filter(Boolean).join(" · ")}
+                    </p>
                   </div>
                 }
                 context={
                   <div className="grid gap-2">
                     <div className="flex flex-wrap items-center gap-x-2 text-sm text-[var(--color-text-muted)]">
-                      <span className="font-medium">Cot. {antecedentQuoteFolio}</span>
+                      <span className="min-w-0 break-words font-medium">Cot. {antecedentQuoteFolio}</span>
                       <span>·</span>
-                      <span>
+                      <span className="min-w-0 break-words">
                         {wo.isSpecial
                           ? "Taller"
                           : wo.assignments.find((a) => a.worker.workerKind === "MASTER")?.worker.displayName ??
                             "Sin maestro"}
                       </span>
                     </div>
-                    <PaymentBalanceSummary
-                      totalCents={totalCents}
-                      paidCents={wo.quote.paidCents ?? 0}
-                      remainingCents={remainingCents}
-                    />
+                     <div className="flex flex-wrap gap-x-2 text-sm text-[var(--color-text-muted)]">
+                       {remainingCents > 0 ? <><span>Total {formatCents(totalCents)}</span><span>·</span></> : null}
+                       <span className={remainingCents === 0 ? "text-[var(--color-status-success-fg)]" : undefined}>
+                         Saldo pendiente {formatCents(remainingCents)}
+                       </span>
+                    </div>
                   </div>
                 }
                 dates={
@@ -334,16 +298,30 @@ export function WorkOrderCompletedList({
       })}
     </div>
 
-    {selectedQuote && (
-      <QuotePreviewDialog
-        quote={selectedQuote}
-        noteReturnTo={noteReturnTo}
-        open={selectedQuoteId !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedQuoteId(null);
-        }}
-      />
-    )}
+    {selectedWorkOrderId ? (() => {
+      const selected = workOrders.find((item) => item.id === selectedWorkOrderId);
+      if (!selected) return null;
+      return (
+        <NotaDetailDialog
+          workOrderId={selected.id}
+          workOrderNumber={selected.number}
+          quote={(quoteMap?.get(selected.quote.id) ?? selected.quote) as never}
+          paymentDueDate={selected.paymentDueDate ?? selected.quote.paymentDueDate ?? null}
+          noteFolio={resolveDocumentFolio(selected)}
+          customerName={resolveCustomerDisplayIdentity(selected.quote).displayName}
+          open
+          onOpenChange={(open) => { if (!open) setSelectedWorkOrderId(null); }}
+          noteReturnTo={noteReturnTo}
+          paymentHistory={paymentHistories.find((history) => history.workOrderId === selected.id)}
+          paymentAction={paymentActionMap.get(selected.id)}
+           correctionAction={correctionActionMap.get(selected.id)}
+           reverseAction={reversePaymentActionMap.get(selected.id)}
+          correctWorkOrderAction={correctWorkOrderActionMap.get(selected.id)}
+          customers={customers}
+          searchCustomersAction={searchCustomersAction}
+        />
+      );
+    })() : null}
   </>
   );
 }

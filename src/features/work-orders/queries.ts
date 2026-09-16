@@ -1,4 +1,4 @@
-import { AssignmentStatus, PaymentStatus, Prisma, WorkerKind, WorkOrderStatus } from "@prisma/client";
+import { AssignmentStatus, PaymentStatus, Prisma, SettlementAgreementStatus, WorkerKind, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { assertOperationalClosureQuote } from "./operational-validation";
@@ -130,7 +130,8 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
   // PaymentApplication not reversed, and associated Payment not reversed with status PAID
   const activeAppCondition = Prisma.sql`pa."reversedAt" IS NULL AND p.id IS NOT NULL AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL`;
   const paidCentsExpr = Prisma.sql`COALESCE(SUM(pa."amountCents") FILTER (WHERE ${activeAppCondition}), 0)`;
-  const balanceExpr = Prisma.sql`q."totalCents" - ${paidCentsExpr}`;
+  const effectiveTotalCentsExpr = Prisma.sql`COALESCE(sa."settlementTotalCents", q."totalCents")`;
+  const balanceExpr = Prisma.sql`${effectiveTotalCentsExpr} - ${paidCentsExpr}`;
 
   const now = new Date();
   const todayParts = mexicoCityDateParts(now);
@@ -191,6 +192,7 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
 
   const eligible = await prisma.$queryRaw<Array<{
     id: string;
+    effectiveTotalCents: bigint;
     paidCents: bigint;
     activePaymentId: string | null;
     activePaymentMethod: string | null;
@@ -201,6 +203,7 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
   }>>(Prisma.sql`
     SELECT
       wo.id,
+      ${effectiveTotalCentsExpr} AS "effectiveTotalCents",
       ${paidCentsExpr} AS "paidCents",
       (array_agg(p.id ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE ${activeAppCondition}))[1] AS "activePaymentId",
       (array_agg(p.method::text ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE ${activeAppCondition}))[1] AS "activePaymentMethod",
@@ -210,10 +213,11 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
       COALESCE(SUM(CASE WHEN ${balanceExpr} > 0 AND wo."paymentDueDate" IS NOT NULL AND wo."paymentDueDate" < ${todayCdmxMidnight} THEN ${balanceExpr} ELSE 0 END) OVER(), 0) AS "totalOverdueCents"
     FROM "WorkOrder" wo
     JOIN "Quote" q ON q.id = wo."quoteId"
+    LEFT JOIN "SettlementAgreement" sa ON sa."quoteId" = q.id AND sa.status::text = ${SettlementAgreementStatus.ACTIVE}
     LEFT JOIN "PaymentApplication" pa ON pa."workOrderId" = wo.id AND pa."reversedAt" IS NULL
     LEFT JOIN "Payment" p ON p.id = pa."paymentId" AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL
     ${baseWhere}
-    GROUP BY wo.id, wo."completedAt", wo."paymentDueDate", q."totalCents"
+    GROUP BY wo.id, wo."completedAt", wo."paymentDueDate", q."totalCents", sa."settlementTotalCents"
     ${havingClause}
     ORDER BY wo."completedAt" DESC, wo.id DESC LIMIT ${pageSize + 1} OFFSET ${(input.page - 1) * pageSize}
   `);
@@ -240,18 +244,19 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
     page: input.page,
     hasNextPage: eligible.length > pageSize,
     totals,
-    workOrders: pageRows.flatMap(({ id, paidCents, activePaymentId, activePaymentMethod, activePaymentAmountCents }) => {
+    workOrders: pageRows.flatMap(({ id, effectiveTotalCents, paidCents, activePaymentId, activePaymentMethod, activePaymentAmountCents }) => {
       const wo = byId.get(id);
       if (!wo) return [];
       const serialized = serializeWorkOrder(wo);
       const { sharedQuotes, ...quote } = serialized.quote;
-      const totalCents = Number(wo.quote.totalCents);
+      const effectiveTotal = effectiveTotalCents == null ? Number(wo.quote.totalCents) : Number(effectiveTotalCents);
       return [{
         ...serialized,
         quote: {
           ...quote,
+          effectiveTotalCents: effectiveTotal,
           paidCents: Number(paidCents),
-          remainingCents: totalCents - Number(paidCents),
+          remainingCents: effectiveTotal - Number(paidCents),
           activePaymentId: activePaymentId ?? null,
           activePaymentMethod: activePaymentMethod ?? null,
           activePaymentAmountCents: activePaymentAmountCents == null ? null : Number(activePaymentAmountCents),

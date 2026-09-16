@@ -340,6 +340,8 @@ function createMockDb(initialState?: Partial<Store>) {
           if (
             (!where.workOrderId || a.workOrderId === where.workOrderId) &&
             (!where.payment?.customerId || (p && p.customerId === where.payment.customerId)) &&
+            (!where.payment?.status || (p && p.status === where.payment.status)) &&
+            (where.payment?.reversedAt !== null || (p && p.reversedAt === null)) &&
             (where.reversedAt !== null || a.reversedAt === null)
           ) {
             total += a.amountCents;
@@ -463,6 +465,36 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
 
     expect(summary.totalContractedCents).toBe(15_000);
     expect(summary.pendingBalanceCents).toBe(15_000);
+  });
+
+  it("does not apply pending or failed payment applications to a Note balance", async () => {
+    const quotes = new Map([
+      ["quote-1", {
+        id: "quote-1", number: "COT-001", customerId: "cust-1", status: QuoteStatus.APPROVED,
+        totalCents: 10_000, subtotalCents: 10_000, taxCents: 0, discountCents: 0, taxEnabled: false,
+        items: [{ id: "item-1", description: "Repair", quantity: 1, unitPriceCents: 10_000 }],
+      }],
+    ]);
+    const workOrders = new Map([
+      ["wo-1", { id: "wo-1", number: "OT-001", quoteId: "quote-1", status: WorkOrderStatus.COMPLETED }],
+    ]);
+    const failedStatus = "FAILED" as unknown as PaymentStatus;
+    const payments = new Map<string, PaymentDouble>([
+      ["payment-pending", { id: "payment-pending", customerId: "cust-1", amountCents: 3_000, status: PaymentStatus.PENDING, reversedAt: null, operationKey: "pending" }],
+      ["payment-failed", { id: "payment-failed", customerId: "cust-1", amountCents: 2_000, status: failedStatus, reversedAt: null, operationKey: "failed" }],
+    ]);
+    const applications = new Map([
+      ["app-pending", { id: "app-pending", paymentId: "payment-pending", workOrderId: "wo-1", amountCents: 3_000, reversedAt: null, operationKey: "pending:app" }],
+      ["app-failed", { id: "app-failed", paymentId: "payment-failed", workOrderId: "wo-1", amountCents: 2_000, reversedAt: null, operationKey: "failed:app" }],
+    ]);
+
+    const { transaction } = createMockDb({ quotes, workOrders, payments, applications });
+
+    await expect(getNoteFinancialSummary(transaction, "wo-1")).resolves.toMatchObject({
+      appliedCents: 0,
+      pendingBalanceCents: 10_000,
+      isSettled: false,
+    });
   });
 
   it("records_10000_capture_applies_8000_and_leaves_2000_customer_credit", async () => {
