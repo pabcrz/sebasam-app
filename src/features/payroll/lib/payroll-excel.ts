@@ -91,20 +91,41 @@ export function exportPayrollToExcel(report: WeeklyPayrollReport, period: Parsed
         ? new Date(order.completedAt).toLocaleDateString("es-MX")
         : "-";
 
-      for (const item of order.items) {
+      if (order.isAdvance) {
         detailAoa.push([
           order.workOrderNumber,
           order.quoteNumber,
-          formattedDate,
+          "-",
           worker.displayName,
           order.clientName,
           order.vehicleSummary,
-          item.description,
-          item.category === "WELDING" ? "Soldadura" : "General",
-          item.payrollBaseCents / 100,
-          `${item.ratePercent}%`,
-          item.commissionCents / 100,
+          `[Avance] ${order.conceptDescription || "Mano de obra"}`,
+          "Avance",
+          (order.advanceBaseCents ?? order.totalPayrollBaseCents) / 100,
+          `${order.commissionRatePercent ?? 50}%`,
+          order.totalCommissionCents / 100,
         ]);
+      } else {
+        for (const item of order.items) {
+          const desc =
+            order.previousAdvancesBaseCents && order.previousAdvancesBaseCents > 0
+              ? `${item.description} (Liq. final)`
+              : item.description;
+          const baseCents = item.remainingBaseCents ?? item.payrollBaseCents;
+          detailAoa.push([
+            order.workOrderNumber,
+            order.quoteNumber,
+            formattedDate,
+            worker.displayName,
+            order.clientName,
+            order.vehicleSummary,
+            desc,
+            item.category === "WELDING" ? "Soldadura" : "General",
+            baseCents / 100,
+            `${item.ratePercent}%`,
+            item.commissionCents / 100,
+          ]);
+        }
       }
     }
   }

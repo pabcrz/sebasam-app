@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckCircle2, ClipboardList, RotateCcw, UserCheck, X } from "lucide-react";
+import { CheckCircle2, ClipboardList, Coins, RotateCcw, UserCheck, X } from "lucide-react";
 import type { QuoteStatus, UserRole, WorkOrderStatus } from "@prisma/client";
 import {
   Badge,
@@ -25,6 +25,7 @@ import {
 import type { ButtonVariant } from "@/components/ui";
 
 import { useRouter } from "next/navigation";
+import { WorkOrderAdvanceDialog } from "./work-order-advance-dialog";
 
 export type WorkerOption = {
   id: string;
@@ -105,6 +106,7 @@ export function WorkOrderOperationsDialog({
   const [showRollback, setShowRollback] = React.useState(false);
   const [rollbackReason, setRollbackReason] = React.useState("");
   const [rollbackTarget, setRollbackTarget] = React.useState<"" | "SENT" | "DRAFT">("");
+  const [advanceOpen, setAdvanceOpen] = React.useState(false);
 
   const eligibleWorkers = workers.filter((worker) => worker.role === "WORKER" && worker.workerKind !== null);
   const masters = eligibleWorkers.filter((worker) => worker.workerKind === "MASTER");
@@ -406,10 +408,23 @@ export function WorkOrderOperationsDialog({
                 )}
 
                 {!reassigning && !confirmComplete ? (
-                  <Button type="button" variant="primary" disabled={isAssignmentBusy} onClick={() => setConfirmComplete(true)}>
-                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                    Finalizar trabajo
-                  </Button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    {!workOrder.isSpecial ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isAssignmentBusy}
+                        onClick={() => setAdvanceOpen(true)}
+                      >
+                        <Coins className="h-4 w-4" aria-hidden="true" />
+                        Avance de mano de obra
+                      </Button>
+                    ) : null}
+                    <Button type="button" variant="primary" disabled={isAssignmentBusy} onClick={() => setConfirmComplete(true)} className="flex-1">
+                      <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                      Finalizar trabajo
+                    </Button>
+                  </div>
                 ) : !reassigning && confirmComplete ? (
                   <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
                     <p className="text-sm font-semibold text-[var(--color-text-main)]">¿Confirmás que el trabajo fue completado?</p>
@@ -478,6 +493,14 @@ export function WorkOrderOperationsDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {workOrder && !workOrder.isSpecial ? (
+        <WorkOrderAdvanceDialog
+          workOrderId={workOrder.id}
+          workOrderNumber={workOrder.number}
+          open={advanceOpen}
+          onOpenChange={setAdvanceOpen}
+        />
+      ) : null}
     </>
   );
 }

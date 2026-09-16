@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronUp, Mail } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock, Mail } from "lucide-react";
 import { formatCents } from "@/features/quotes/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,15 @@ export function PayrollWorkerDetail({
       <Card className="overflow-hidden p-0">
         <CardContent className="p-0 divide-y-2 divide-[var(--color-border-light)]/80">
           {activeWorker.workOrders.map((order) => (
-            <PayrollOrderAccordionRow key={order.workOrderId} order={order} defaultOpen />
+            <PayrollOrderAccordionRow
+              key={
+                order.isAdvance
+                  ? `adv-${order.advanceId ?? order.quoteItemId ?? order.workOrderId}`
+                  : order.workOrderId
+              }
+              order={order}
+              defaultOpen
+            />
           ))}
         </CardContent>
       </Card>
@@ -220,13 +228,23 @@ function PayrollOrderAccordionRow({
             <span className="text-[11px] sm:text-xs text-[var(--color-text-muted)]">
               ({order.quoteNumber})
             </span>
+            {order.isAdvance ? (
+              <Badge variant="warning" className="text-[10px] py-0 px-1.5 font-semibold">
+                Avance Semanal
+              </Badge>
+            ) : (order.previousAdvancesBaseCents ?? 0) > 0 ? (
+              <Badge variant="info" className="text-[10px] py-0 px-1.5 font-semibold">
+                Liquidación Final
+              </Badge>
+            ) : null}
             <span className="text-xs sm:text-sm font-medium text-[var(--color-text-main)]">
               • {order.clientName}
             </span>
           </div>
           <p className="text-[11px] sm:text-xs text-[var(--color-text-muted)] mt-0.5">
             {order.vehicleSummary}
-            {order.helperNames.length > 0 && ` • Ayudantes: ${order.helperNames.join(", ")}`}
+            {order.isAdvance && order.conceptDescription && ` • Concepto: ${order.conceptDescription}`}
+            {!order.isAdvance && order.helperNames.length > 0 && ` • Ayudantes: ${order.helperNames.join(", ")}`}
           </p>
         </div>
 
@@ -252,7 +270,81 @@ function PayrollOrderAccordionRow({
 
       {/* Expanded Concepts Detail */}
       {isOpen && (
-        <div className="px-3 pb-3 sm:px-4 sm:pb-4 pt-1 space-y-2 border-t border-[var(--color-border-light)]/40 bg-[var(--color-bg-soft)]/20">
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4 pt-1 space-y-2.5 border-t border-[var(--color-border-light)]/40 bg-[var(--color-bg-soft)]/20">
+          {order.isAdvance ? (
+            <div className="rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border-light)]/80 p-3 text-xs space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-[var(--color-border-light)]/60 pb-2">
+                <div>
+                  <span className="font-semibold text-sm text-[var(--color-text-main)]">
+                    {order.conceptDescription}
+                  </span>
+                  <span className="text-[11px] text-[var(--color-text-muted)] block sm:inline sm:ml-2">
+                    (Avance registrado en orden de trabajo)
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                <div>
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-text-muted)] block">
+                    Base Registrada
+                  </span>
+                  <span className="font-semibold text-xs text-[var(--color-text-main)]">
+                    {formatCents(order.advanceBaseCents ?? order.totalPayrollBaseCents)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-text-muted)] block">
+                    % Avance
+                  </span>
+                  <span className="font-semibold text-xs text-[var(--color-text-main)]">
+                    {order.advancePercentage}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-text-muted)] block">
+                    % Comisión Maestro
+                  </span>
+                  <span className="font-semibold text-xs text-[var(--color-text-main)]">
+                    {order.commissionRatePercent ?? 50}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-medium text-[var(--color-text-muted)] block">
+                    Comisión a Liquidar
+                  </span>
+                  <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400">
+                    {formatCents(order.totalCommissionCents)}
+                  </span>
+                </div>
+              </div>
+              {order.notes && (
+                <p className="text-[11px] text-[var(--color-text-muted)] italic pt-1 border-t border-[var(--color-border-light)]/40">
+                  Nota: {order.notes}
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              {(order.previousAdvancesBaseCents ?? 0) > 0 && (
+                <div className="rounded-[var(--radius-sm)] bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300/80 dark:border-amber-800/50 p-2.5 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="font-semibold text-amber-900 dark:text-amber-200">
+                      Orden con anticipos previos descontados:
+                    </span>
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
+                      Base original: <span className="font-medium">{formatCents(order.totalPayrollBaseCents)}</span> • Anticipos descontados:{" "}
+                      <span className="font-medium text-red-600 dark:text-red-400">-{formatCents(order.previousAdvancesBaseCents!)}</span> • Base neta liquidada:{" "}
+                      <span className="font-medium">{formatCents(order.remainingBaseCents ?? (order.totalPayrollBaseCents - order.previousAdvancesBaseCents!))}</span>
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] text-amber-800/80 dark:text-amber-300/80 block">Liquidación final</span>
+                    <span className="font-bold text-sm text-emerald-700 dark:text-emerald-300">
+                      {formatCents(order.totalCommissionCents)}
+                    </span>
+                  </div>
+                </div>
+              )}
           {/* Mobile Items (< sm) */}
           <div className="sm:hidden space-y-2 pt-1">
             {order.items.map((item) => {
@@ -429,16 +521,26 @@ function PayrollOrderAccordionRow({
                           General
                         </Badge>
                       )}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => startEditing(item.id, item.payrollBaseCents, item.ratePercent)}
-                        className="h-6 px-1.5 text-[11px] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 font-medium"
-                        aria-label={`Ajustar base de nómina para ${item.description}`}
-                      >
-                        Ajustar
-                      </Button>
+                      {item.isLocked ? (
+                        <span
+                          className="inline-flex items-center gap-1 text-[11px] text-[var(--color-text-muted)] italic px-1"
+                          title="Este concepto tiene anticipos registrados y su configuración está congelada."
+                        >
+                          <Lock className="h-3 w-3 text-amber-500 shrink-0" />
+                          Bloqueado
+                        </span>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startEditing(item.id, item.payrollBaseCents, item.ratePercent)}
+                          className="h-6 px-1.5 text-[11px] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 font-medium"
+                          aria-label={`Ajustar base de nómina para ${item.description}`}
+                        >
+                          Ajustar
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -644,16 +746,26 @@ function PayrollOrderAccordionRow({
                         {formatCents(item.commissionCents)}
                       </TableCell>
                       <TableCell className="px-2 py-1.5 text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => startEditing(item.id, item.payrollBaseCents, item.ratePercent)}
-                          className="h-6 px-2 text-xs text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 font-medium"
-                          aria-label={`Ajustar base para ${item.description}`}
-                        >
-                          Ajustar
-                        </Button>
+                        {item.isLocked ? (
+                          <span
+                            className="inline-flex items-center justify-end gap-1 text-[11px] text-[var(--color-text-muted)] italic"
+                            title="Este concepto tiene anticipos registrados y su configuración está congelada."
+                          >
+                            <Lock className="h-3 w-3 text-amber-500 shrink-0" />
+                            Bloqueado
+                          </span>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEditing(item.id, item.payrollBaseCents, item.ratePercent)}
+                            className="h-6 px-2 text-xs text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 font-medium"
+                            aria-label={`Ajustar base para ${item.description}`}
+                          >
+                            Ajustar
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -661,6 +773,8 @@ function PayrollOrderAccordionRow({
               </TableBody>
             </Table>
           </div>
+        </>
+      )}
         </div>
       )}
     </div>

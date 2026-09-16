@@ -16,23 +16,60 @@ function parts(date: Date) {
   return Object.fromEntries(values.map(({ type, value }) => [type, value]));
 }
 
-function calendarDate(value: string | undefined, fallback = new Date()) {
-  const match = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(value ?? "");
-  const fallbackParts = parts(fallback);
-  const result = match
-    ? { year: +match[1], month: +match[2], day: +(match[3] || "1") }
-    : {
-        year: +fallbackParts.year,
-        month: +fallbackParts.month,
-        day: +fallbackParts.day,
-      };
+export class PayrollWeekError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PayrollWeekError";
+  }
+}
+
+export function toMexicoCityDateString(date: Date): string {
+  if (isNaN(date.getTime())) {
+    throw new PayrollWeekError("Fecha inválida.");
+  }
+  const p = parts(date);
+  return `${p.year}-${p.month.padStart(2, "0")}-${p.day.padStart(2, "0")}`;
+}
+
+function calendarDate(value: string | undefined, fallback = new Date(), allowFallback = true) {
+  if (value === undefined || value === "") {
+    const fallbackParts = parts(fallback);
+    return {
+      year: +fallbackParts.year,
+      month: +fallbackParts.month,
+      day: +fallbackParts.day,
+    };
+  }
+
+  const match = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(value);
+  if (!match) {
+    if (!allowFallback) {
+      throw new PayrollWeekError(`Formato de fecha inválido: "${value}". Se esperaba YYYY-MM o YYYY-MM-DD.`);
+    }
+    const fallbackParts = parts(fallback);
+    return {
+      year: +fallbackParts.year,
+      month: +fallbackParts.month,
+      day: +fallbackParts.day,
+    };
+  }
+
+  const result = { year: +match[1], month: +match[2], day: +(match[3] || "1") };
   const check = new Date(Date.UTC(result.year, result.month - 1, result.day));
   if (
     check.getUTCFullYear() !== result.year ||
     check.getUTCMonth() !== result.month - 1 ||
     check.getUTCDate() !== result.day
   ) {
-    return calendarDate(undefined, fallback);
+    if (!allowFallback) {
+      throw new PayrollWeekError(`Fecha inválida en el calendario: "${value}".`);
+    }
+    const fallbackParts = parts(fallback);
+    return {
+      year: +fallbackParts.year,
+      month: +fallbackParts.month,
+      day: +fallbackParts.day,
+    };
   }
   return result;
 }
@@ -203,4 +240,52 @@ export function payrollHref(
   }
   const qs = params.toString();
   return qs ? `/admin/nomina?${qs}` : "/admin/nomina";
+}
+
+export function normalizeWeekStart(input?: string | Date, now = new Date()): {
+  weekStartDate: Date;
+  weekStartAnchor: string;
+  isCurrentWeek: boolean;
+  start: Date;
+  end: Date;
+} {
+  let anchor: string | undefined;
+
+  if (input instanceof Date) {
+    if (isNaN(input.getTime())) {
+      throw new PayrollWeekError("Fecha inválida.");
+    }
+    if (
+      input.getUTCHours() === 0 &&
+      input.getUTCMinutes() === 0 &&
+      input.getUTCSeconds() === 0 &&
+      input.getUTCMilliseconds() === 0
+    ) {
+      anchor = input.toISOString().slice(0, 10);
+    } else {
+      anchor = toMexicoCityDateString(input);
+    }
+  } else if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed) {
+      anchor = undefined;
+    } else {
+      // Validate strictly without silent fallback to current week
+      calendarDate(trimmed, now, false);
+      anchor = trimmed;
+    }
+  } else if (input === undefined || input === null) {
+    anchor = undefined;
+  } else {
+    throw new PayrollWeekError("Parámetro de fecha de nómina inválido.");
+  }
+
+  const parsed = parsePayrollParams({ anchor, mode: "weekly" }, now);
+  return {
+    weekStartDate: new Date(`${parsed.anchor}T00:00:00.000Z`),
+    weekStartAnchor: parsed.anchor,
+    isCurrentWeek: parsed.isCurrentWeek,
+    start: parsed.start,
+    end: parsed.end,
+  };
 }

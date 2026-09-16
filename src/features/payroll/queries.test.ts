@@ -7,6 +7,8 @@ vi.mock("@/lib/prisma", () => ({
     workOrder: { findMany: vi.fn() },
     userProfile: { findMany: vi.fn() },
     helperPayrollWeek: { findMany: vi.fn(), upsert: vi.fn() },
+    workOrderLaborAdvance: { findMany: vi.fn() },
+    payrollWeekControl: { findUnique: vi.fn() },
   },
 }));
 
@@ -20,6 +22,8 @@ describe("Payroll Queries", () => {
     (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     (prisma.userProfile.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     (prisma.helperPayrollWeek.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (prisma.workOrderLaborAdvance.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (prisma.payrollWeekControl.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
   });
 
   it("queries completed work orders within the weekly window", async () => {
@@ -263,5 +267,66 @@ describe("Payroll Queries", () => {
     expect(generalItem?.clientTotalCents).toBe(80000);
     expect(generalItem?.payrollBaseCents).toBe(80000);
     expect(generalItem?.commissionCents).toBe(40000);
+  });
+
+  it("includes labor advances of the period and reflects week status", async () => {
+    (prisma.payrollWeekControl.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      status: "OPEN",
+    });
+
+    (prisma.workOrderLaborAdvance.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "adv-1",
+        workOrderId: "wo-open-1",
+        quoteItemId: "item-adv",
+        workerId: "worker-1",
+        weekStart: new Date("2026-08-17T00:00:00.000Z"),
+        advanceBaseCents: 4_000_00,
+        advancePercentage: 50,
+        commissionRatePercent: 50,
+        commissionCents: 2_000_00,
+        notes: "Avance de chasis",
+        createdAt: new Date("2026-08-18T10:00:00.000Z"),
+        workOrder: {
+          number: "OT-999",
+          quote: {
+            id: "q-999",
+            number: "COT-999",
+            customer: { name: "Transportes Sur" },
+            vehicle: { brand: "Volvo", model: "VNL", year: 2020, plate: "SUR-01" },
+          },
+        },
+        quoteItem: { description: "Alargado de chasis" },
+        worker: { displayName: "Maestro Juan" },
+      },
+    ]);
+
+    const report = await getWeeklyPayroll({ anchor: "2026-08-19" });
+
+    expect(report.weekStatus).toBe("OPEN");
+    expect(report.laborAdvances).toHaveLength(1);
+    expect(report.totalPayrollBaseCents).toBe(4_000_00);
+    expect(report.totalCommissionCents).toBe(2_000_00);
+
+    const worker = report.workers.find((w) => w.displayName === "Maestro Juan");
+    expect(worker).toBeDefined();
+    expect(worker?.totalCommissionCents).toBe(2_000_00);
+    expect(worker?.workOrders[0].isAdvance).toBe(true);
+    expect(worker?.workOrders[0].advanceBaseCents).toBe(4_000_00);
+  });
+
+  it("queries labor advances using month date range in monthly mode", async () => {
+    await getWeeklyPayroll({ mode: "monthly", anchor: "2026-08" });
+
+    expect(prisma.workOrderLaborAdvance.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          weekStart: {
+            gte: expect.any(Date),
+            lt: expect.any(Date),
+          },
+        }),
+      })
+    );
   });
 });
