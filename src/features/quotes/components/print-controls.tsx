@@ -8,7 +8,7 @@ import { notasHref, parseNotasParams } from "@/features/work-orders/notas-period
 
 export type ReturnDestination = string;
 
-const LEGACY_RETURN_DESTINATIONS = new Set(["/admin/quotes", "/admin/notas", "/admin/work-orders"]);
+const LEGACY_RETURN_DESTINATIONS = new Set(["/admin/quotes", "/admin/notas", "/admin/work-orders", "/admin/nomina"]);
 const NOTE_RETURN_KEYS = new Set(["mode", "anchor", "payment", "assignee", "page"]);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -63,9 +63,9 @@ export function resolveReturnTo(raw: string | null): ReturnDestination {
   return "/admin/quotes";
 }
 
-export function PrintControls({ backLabel = "Volver" }: { backLabel?: string }) {
+export function PrintControls({ backLabel = "Volver", backHref }: { backLabel?: string; backHref?: string }) {
   const searchParams = useSearchParams();
-  const returnTo = resolveReturnTo(searchParams.get("returnTo"));
+  const returnTo = backHref ?? resolveReturnTo(searchParams.get("returnTo"));
 
   return (
     <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom)+1rem)] left-1/2 z-50 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1 shadow-lg print:hidden sm:bottom-4 sm:left-auto sm:right-4 sm:translate-x-0">

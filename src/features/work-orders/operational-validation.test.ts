@@ -61,4 +61,16 @@ describe("operational quote validation", () => {
       totalCents: 11_600,
     });
   });
+
+  it("uses top-level quote items when the loaded sections collection is empty", () => {
+    expect(assertOperationalClosureQuote(quote({
+      sections: [],
+      items: [{ type: "LABOR", description: "Service", quantity: 1, unitPriceCents: 10_000 }],
+    }))).toEqual({
+      subtotalCents: 10_000,
+      discountCents: 0,
+      taxCents: 1_600,
+      totalCents: 11_600,
+    });
+  });
 });

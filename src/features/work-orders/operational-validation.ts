@@ -38,7 +38,8 @@ function hasIdentifiableUnit(quote: OperationalQuote) {
 }
 
 function getItems(quote: OperationalQuote) {
-  return quote.sections?.flatMap((section) => section.items) ?? quote.items ?? [];
+  const sectionItems = quote.sections?.flatMap((section) => section.items) ?? [];
+  return sectionItems.length > 0 ? sectionItems : quote.items ?? [];
 }
 
 function assertIdentityAndConcepts(quote: OperationalQuote) {

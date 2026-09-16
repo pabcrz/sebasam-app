@@ -18,54 +18,53 @@ function weekStartFromAnchor(anchor: string) {
 }
 
 async function getFixedPayHelpers(weekStart: Date): Promise<FixedPayHelperPayrollSummary[]> {
-  const [savedWeeks, activeHelpers] = await Promise.all([
-    prisma.helperPayrollWeek.findMany({
-      where: { weekStart },
-      include: {
-        worker: {
-          select: { id: true, displayName: true },
-        },
+  const savedWeeks = await prisma.helperPayrollWeek.findMany({
+    where: { weekStart },
+    include: {
+      worker: {
+        select: { id: true, displayName: true },
       },
-    }),
-    prisma.userProfile.findMany({
-      where: {
-        role: UserRole.WORKER,
-        workerKind: WorkerKind.HELPER,
-        isActive: true,
-        fixedWeeklyPayCents: { not: null },
-        fixedDailyPayCents: { not: null },
-      },
-      select: {
-        id: true,
-        displayName: true,
-        fixedWeeklyPayCents: true,
-        fixedDailyPayCents: true,
-      },
-    }),
-  ]);
+    },
+  });
+  const activeHelpers = await prisma.userProfile.findMany({
+    where: {
+      role: UserRole.WORKER,
+      workerKind: WorkerKind.HELPER,
+      isActive: true,
+      fixedWeeklyPayCents: { not: null },
+      fixedDailyPayCents: { not: null },
+    },
+    select: {
+      id: true,
+      displayName: true,
+      fixedWeeklyPayCents: true,
+      fixedDailyPayCents: true,
+    },
+  });
 
   const savedWorkerIds = new Set(savedWeeks.map((week) => week.workerId));
-  const newWeeks = await Promise.all(
-    activeHelpers
-      .filter((helper) => !savedWorkerIds.has(helper.id))
-      .map((helper) =>
-        prisma.helperPayrollWeek.upsert({
-          where: {
-            workerId_weekStart: {
-              workerId: helper.id,
-              weekStart,
-            },
-          },
-          create: {
+  const newWeeks = [];
+  for (const helper of activeHelpers) {
+    if (savedWorkerIds.has(helper.id)) continue;
+
+    newWeeks.push(
+      await prisma.helperPayrollWeek.upsert({
+        where: {
+          workerId_weekStart: {
             workerId: helper.id,
             weekStart,
-            weeklyRateCents: helper.fixedWeeklyPayCents!,
-            dailyRateCents: helper.fixedDailyPayCents!,
           },
-          update: {},
-        })
-      )
-  );
+        },
+        create: {
+          workerId: helper.id,
+          weekStart,
+          weeklyRateCents: helper.fixedWeeklyPayCents!,
+          dailyRateCents: helper.fixedDailyPayCents!,
+        },
+        update: {},
+      }),
+    );
+  }
 
   const helperNames = new Map(activeHelpers.map((helper) => [helper.id, helper.displayName]));
   for (const week of savedWeeks) {
@@ -137,7 +136,7 @@ export async function getWeeklyPayroll(
       },
     },
     orderBy: {
-      completedAt: "desc",
+      completedAt: "asc",
     },
   });
 
@@ -215,6 +214,7 @@ export async function getWeeklyPayroll(
       quote: {
         id: wo.quote.id,
         number: wo.quote.number,
+        title: wo.quote.title,
         customer: wo.quote.customer ? { name: wo.quote.customer.name } : null,
         vehicle: wo.quote.vehicle
           ? {
@@ -258,6 +258,7 @@ export async function getWeeklyPayroll(
       workOrderNumber: wo.number,
       quoteId: wo.quote.id,
       quoteNumber: wo.quote.number,
+      quoteTitle: wo.quote.title,
       clientName: wo.quote.customer?.name ?? "Cliente General",
       vehicleSummary,
       workerId: adv.workerId,

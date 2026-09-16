@@ -82,9 +82,9 @@ export function PayrollWorkerCard({ worker }: PayrollWorkerCardProps) {
 
 function WorkOrderDetailRow({ order }: { order: WorkOrderPayrollDetail }) {
   return (
-    <div className="p-3.5 sm:p-4 space-y-2.5 bg-[var(--color-surface)]">
+    <div className="p-4 space-y-2.5 bg-[var(--color-surface)]">
       {/* Order top bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-1.5 border-b border-[var(--color-border-light)]/40">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-1 border-b border-[var(--color-border-light)]/40">
         <div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <span className="font-semibold text-xs sm:text-sm text-[var(--color-text-main)]">
@@ -112,7 +112,7 @@ function WorkOrderDetailRow({ order }: { order: WorkOrderPayrollDetail }) {
       </div>
 
       {/* Mobile Stacked Items (< sm) */}
-      <div className="sm:hidden space-y-1.5 pt-0.5">
+      <div className="sm:hidden space-y-1.5 pt-0">
         {order.items.map((item) => {
           const hasAdjustment = item.payrollBaseCents !== item.clientTotalCents;
           return (
@@ -125,11 +125,11 @@ function WorkOrderDetailRow({ order }: { order: WorkOrderPayrollDetail }) {
                   {item.description}
                 </span>
                 {item.category === "WELDING" ? (
-                  <Badge variant="warning" className="text-[10px] py-0 px-1.5 shrink-0">
+                  <Badge variant="warning" className="text-[10px] py-0 px-2 shrink-0">
                     Soldadura
                   </Badge>
                 ) : (
-                  <Badge variant="default" className="text-[10px] py-0 px-1.5 shrink-0">
+                  <Badge variant="default" className="text-[10px] py-0 px-2 shrink-0">
                     General
                   </Badge>
                 )}
@@ -171,24 +171,24 @@ function WorkOrderDetailRow({ order }: { order: WorkOrderPayrollDetail }) {
               const hasAdjustment = item.payrollBaseCents !== item.clientTotalCents;
               return (
                 <TableRow key={`d-${item.id}`} className="text-xs hover:bg-[var(--color-bg-soft)]/50">
-                  <TableCell className="px-2 py-1.5">
+                  <TableCell className="px-2 py-2">
                     <div className="flex items-center gap-1.5">
                       <span>{item.description}</span>
                       {item.category === "WELDING" ? (
-                        <Badge variant="warning" className="text-[10px] py-0 px-1.5">
+                        <Badge variant="warning" className="text-[10px] py-0 px-2">
                           Soldadura / Soplete
                         </Badge>
                       ) : (
-                        <Badge variant="default" className="text-[10px] py-0 px-1.5">
+                        <Badge variant="default" className="text-[10px] py-0 px-2">
                           General
                         </Badge>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="px-2 py-1.5 text-right text-[var(--color-text-muted)]">
+                  <TableCell className="px-2 py-2 text-right text-[var(--color-text-muted)]">
                     {formatCents(item.clientTotalCents)}
                   </TableCell>
-                  <TableCell className="px-2 py-1.5 text-right">
+                  <TableCell className="px-2 py-2 text-right">
                     {hasAdjustment ? (
                       <span className="text-amber-600 dark:text-amber-400 font-medium">
                         {formatCents(item.payrollBaseCents)}
@@ -197,10 +197,10 @@ function WorkOrderDetailRow({ order }: { order: WorkOrderPayrollDetail }) {
                       formatCents(item.payrollBaseCents)
                     )}
                   </TableCell>
-                  <TableCell className="px-2 py-1.5 text-center font-medium">
+                  <TableCell className="px-2 py-2 text-center font-medium">
                     {item.ratePercent}%
                   </TableCell>
-                  <TableCell className="px-2 py-1.5 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                  <TableCell className="px-2 py-2 text-right font-semibold text-emerald-600 dark:text-emerald-400">
                     {formatCents(item.commissionCents)}
                   </TableCell>
                 </TableRow>
@@ -217,7 +217,7 @@ export function PayrollUnassignedCard({ orders }: { orders: WorkOrderPayrollDeta
   if (orders.length === 0) return null;
 
   return (
-    <Card className="bg-amber-500/5 border-amber-500/30 p-3.5 sm:p-4 space-y-2.5">
+    <Card className="bg-amber-500/5 border-amber-500/30 p-4 space-y-2.5">
       <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
         <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
         <h3 className="font-semibold text-xs sm:text-sm">
@@ -230,7 +230,7 @@ export function PayrollUnassignedCard({ orders }: { orders: WorkOrderPayrollDeta
 
       <div className="divide-y divide-[var(--color-border-light)]/40 rounded-[var(--radius-sm)] border border-[var(--color-border-light)]/60 bg-[var(--color-surface)] overflow-hidden">
         {orders.map((order) => (
-          <div key={order.workOrderId} className="p-2.5 flex items-center justify-between text-xs">
+          <div key={order.workOrderId} className="p-2 flex items-center justify-between text-xs">
             <div>
               <span className="font-semibold">{order.workOrderNumber}</span> • {order.clientName} ({order.vehicleSummary})
             </div>
