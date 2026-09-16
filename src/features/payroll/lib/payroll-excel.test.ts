@@ -43,6 +43,7 @@ describe("exportPayrollToExcel", () => {
               workOrderNumber: "OT-101",
               quoteId: "q-1",
               quoteNumber: "COT-101",
+              quoteTitle: "Servicio de prueba",
               clientName: "Empresa ABC",
               vehicleSummary: "Kenworth T680",
               completedAt: new Date("2026-08-18T15:00:00Z"),

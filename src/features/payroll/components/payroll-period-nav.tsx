@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Download, FileSignature } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileSignature, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { payrollHref, type PayrollPeriodMode } from "../period";
 
@@ -16,7 +15,7 @@ interface PayrollPeriodNavProps {
   isCurrentWeek?: boolean;
   isCurrentPeriod?: boolean;
   hasData?: boolean;
-  onExportExcel?: () => void;
+  onOpenGeneralPrint?: () => void;
   onOpenSigningSheet?: () => void;
 }
 
@@ -28,7 +27,7 @@ export function PayrollPeriodNav({
   isCurrentWeek,
   isCurrentPeriod,
   hasData = true,
-  onExportExcel,
+  onOpenGeneralPrint,
   onOpenSigningSheet,
 }: PayrollPeriodNavProps) {
   const isCurrent = isCurrentPeriod ?? isCurrentWeek ?? false;
@@ -38,7 +37,7 @@ export function PayrollPeriodNav({
       {/* Top row: Mode switch & Actions */}
       <div className="flex min-w-0 max-w-full flex-col flex-wrap gap-3 border-b border-[var(--color-border-light)] pb-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Mode Selector */}
-        <div className="flex max-w-full flex-wrap items-center gap-1 self-start rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-0.5">
+        <div className="flex max-w-full flex-wrap items-center gap-1 self-start rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-1">
           <Button
             variant={mode === "weekly" ? "secondary" : "ghost"}
             size="sm"
@@ -74,18 +73,18 @@ export function PayrollPeriodNav({
             </Button>
           )}
 
-          {onExportExcel && (
+          {onOpenGeneralPrint && (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={onExportExcel}
+              onClick={onOpenGeneralPrint}
               disabled={!hasData}
-              title={!hasData ? "No hay datos para exportar en este período" : "Descargar reporte en Excel"}
+              title={!hasData ? "No hay datos para imprimir en este período" : "Imprimir nómina general"}
               className="h-8 text-xs px-3 gap-1.5 text-[var(--color-status-success)] border-[var(--color-status-success-border)] hover:bg-[var(--color-status-success-bg)]"
             >
-              <Download className="h-3.5 w-3.5" />
-              Descargar Excel
+              <Printer className="h-3.5 w-3.5" />
+              Imprimir nómina
             </Button>
           )}
         </div>
@@ -99,9 +98,9 @@ export function PayrollPeriodNav({
               {rangeLabel}
             </h2>
             {isCurrent && (
-              <Badge variant="info" className="text-xs py-0.5 px-2">
+              <span className="text-xs font-normal text-[var(--color-text-muted)]">
                 {mode === "monthly" ? "Mes en curso" : "Semana en curso"}
-              </Badge>
+              </span>
             )}
           </div>
           <p className="text-xs text-[var(--color-text-muted)]">

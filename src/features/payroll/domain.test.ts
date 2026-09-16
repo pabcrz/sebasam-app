@@ -9,10 +9,43 @@ import {
   detectLaborCategory,
   evaluatePayrollItem,
   getDefaultLaborRate,
+  getPayrollJobRows,
   type RawWorkOrderForPayroll,
 } from "./domain";
 
 describe("Payroll Domain - Labor Detection and Rates", () => {
+  it("flattens jobs chronologically and filters by master without duplicating a job", () => {
+    const order = (id: string, date: string, masterId: string, masterName: string) => ({
+      workOrderId: id,
+      workOrderNumber: id,
+      quoteId: `quote-${id}`,
+       quoteNumber: `quote-${id}`,
+       quoteTitle: `Job ${id}`,
+      clientName: "Client",
+      vehicleSummary: "Vehicle",
+      completedAt: new Date(date),
+      isSpecial: false,
+      masterId,
+      masterName,
+      helperNames: [],
+      items: [],
+      totalClientLaborCents: 0,
+      totalPayrollBaseCents: 0,
+      totalCommissionCents: 0,
+    });
+    const report = {
+      startDate: new Date(), endDate: new Date(), rangeLabel: "Period", isCurrentWeek: false,
+      totalWorkers: 2, totalCompletedOrders: 2, totalClientLaborCents: 0, totalPayrollBaseCents: 0,
+      totalCommissionCents: 0,
+      workers: [
+        { workerId: "m1", displayName: "Master One", workerKind: WorkerKind.MASTER, completedOrderCount: 1, totalClientLaborCents: 0, totalPayrollBaseCents: 0, totalCommissionCents: 0, workOrders: [order("late", "2026-08-20T00:00:00Z", "m1", "Master One")] },
+        { workerId: "m2", displayName: "Master Two", workerKind: WorkerKind.MASTER, completedOrderCount: 1, totalClientLaborCents: 0, totalPayrollBaseCents: 0, totalCommissionCents: 0, workOrders: [order("early", "2026-08-19T00:00:00Z", "m2", "Master Two")] },
+      ], unassignedOrders: [],
+    };
+    expect(getPayrollJobRows(report)).toHaveLength(2);
+    expect(getPayrollJobRows(report).map((row) => row.order.workOrderId)).toEqual(["early", "late"]);
+    expect(getPayrollJobRows(report, "m2").map((row) => row.order.workOrderId)).toEqual(["early"]);
+  });
   it("detects welding and torch cutting as WELDING category", () => {
     expect(detectLaborCategory("Soldadura de escape")).toBe("WELDING");
     expect(detectLaborCategory("Corte con soplete y ajuste")).toBe("WELDING");
@@ -317,7 +350,8 @@ describe("Payroll Domain - Report Builder", () => {
       specialAssigneeName: null,
       quote: {
         id: "q-1",
-        number: "COT-001",
+         number: "COT-001",
+         title: "Frenos de aire",
         customer: { name: "Transportes del Norte" },
         vehicle: { brand: "Kenworth", model: "T680", plate: "ABC-123" },
         items: [
@@ -361,7 +395,8 @@ describe("Payroll Domain - Report Builder", () => {
       specialAssigneeName: null,
       quote: {
         id: "q-2",
-        number: "COT-002",
+         number: "COT-002",
+         title: "Soldadura de soporte",
         customer: { name: "Logística Express" },
         vehicle: { brand: "Freightliner", model: "Cascadia", plate: "XYZ-789" },
         items: [
@@ -397,7 +432,8 @@ describe("Payroll Domain - Report Builder", () => {
       specialAssigneeName: "Taller Externo",
       quote: {
         id: "q-3",
-        number: "COT-003",
+         number: "COT-003",
+         title: "Rectificación de discos",
         customer: { name: "Particular" },
         vehicle: { brand: "Nissan", model: "NP300", plate: "JKL-456" },
         items: [

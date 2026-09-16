@@ -7,6 +7,8 @@ import { PayrollUnassignedCard } from "./payroll-worker-card";
 import { PayrollOverviewTable } from "./payroll-overview-table";
 import { PayrollWorkerDetail } from "./payroll-worker-detail";
 import { PayrollView } from "./payroll-view";
+import { PayrollJobList } from "./payroll-job-list";
+import { PayrollGeneralPrint } from "./payroll-general-print";
 import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 import toast from "react-hot-toast";
@@ -42,7 +44,8 @@ const sampleWorkers: WorkerPayrollSummary[] = [
         workOrderId: "wo-1",
         workOrderNumber: "OT-010",
         quoteId: "q-1",
-        quoteNumber: "COT-010",
+         quoteNumber: "COT-010",
+         quoteTitle: "Reparación de chasis",
         clientName: "Flotillas SA",
         vehicleSummary: "Isuzu Forward (ABC-999)",
         completedAt: new Date("2026-08-20T10:00:00Z"),
@@ -81,6 +84,38 @@ const sampleWorkers: WorkerPayrollSummary[] = [
 ];
 
 describe("Payroll UI Components", () => {
+  it("renders jobs once, collapsed by default, with master filter and Nota actions", () => {
+    const period = { mode: "weekly" as const, anchor: "2026-08-17", prevAnchor: "2026-08-10", nextAnchor: "2026-08-24", rangeLabel: "17–22 de agosto de 2026", isCurrentWeek: true, isCurrentPeriod: true, start: new Date(), end: new Date() };
+    const report = { startDate: new Date(), endDate: new Date(), rangeLabel: period.rangeLabel, isCurrentWeek: true, totalWorkers: 2, totalCompletedOrders: 2, totalClientLaborCents: 300000, totalPayrollBaseCents: 300000, totalCommissionCents: 140000, workers: sampleWorkers, unassignedOrders: [] };
+    render(<PayrollJobList report={report} />);
+    expect(screen.getByTestId("payroll-job-list")).toBeInTheDocument();
+    expect(screen.queryByText("Soldadura chasis")).not.toBeInTheDocument();
+    const printLink = screen.getByRole("link", { name: /ver nota ot-010/i });
+    expect(printLink).toHaveAttribute("href", "/admin/notas/wo-1/print?returnTo=/admin/nomina");
+    expect(screen.getByTestId("payroll-job-list")).toHaveClass("p-0");
+    expect(printLink).toHaveClass("min-h-11", "min-w-11");
+    fireEvent.change(screen.getByRole("combobox", { name: /filtrar por maestro/i }), { target: { value: "w-1" } });
+    expect(screen.getByText(/OT-010.*Flotillas SA/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Abrir detalle.*Reparación de chasis/i }));
+    expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("button", { name: /ajustar/i }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("prints one row per job and aggregates all concepts in its description cell", () => {
+    const report = { startDate: new Date(), endDate: new Date(), rangeLabel: "17–22 de agosto de 2026", isCurrentWeek: true, totalWorkers: 2, totalCompletedOrders: 1, totalClientLaborCents: 100000, totalPayrollBaseCents: 100000, totalCommissionCents: 40000, totalFixedWeeklyPayCents: 210000, totalPayableCents: 250000, workers: [{ ...sampleWorkers[0], workOrders: [{ ...sampleWorkers[0].workOrders[0], items: [{ ...sampleWorkers[0].workOrders[0].items[0], id: "item-1b", description: "Ajuste de soportes", commissionCents: 10000, clientTotalCents: 20000, payrollBaseCents: 20000 }, { ...sampleWorkers[0].workOrders[0].items[0], id: "item-1c", description: "Pintura de defensa", commissionCents: 5000, clientTotalCents: 10000, payrollBaseCents: 10000 }], totalCommissionCents: 50000 }] }], fixedPayHelpers: [{ workerId: "helper", displayName: "Natanael", weeklyRateCents: 210000, dailyRateCents: 35000, absenceDays: 0, absenceDeductionCents: 0, manualCommissionCents: 0, totalPayableCents: 210000 }], unassignedOrders: [] };
+    render(<PayrollGeneralPrint report={report} period={{ mode: "weekly", anchor: "2026-08-17", prevAnchor: "2026-08-10", nextAnchor: "2026-08-24", rangeLabel: report.rangeLabel, isCurrentWeek: true, isCurrentPeriod: true, start: new Date(), end: new Date() }} />);
+    expect(screen.getByTestId("payroll-general-print")).toBeInTheDocument();
+    expect(screen.getByText("Maestro Pedro")).toBeInTheDocument();
+    expect(screen.getByText("Natanael")).toBeInTheDocument();
+    expect(within(screen.getByRole("row", { name: /total por maestro/i })).getByText("$400.00")).toBeInTheDocument();
+    expect(within(screen.getByRole("row", { name: /total general/i })).getByText("$2,500.00")).toBeInTheDocument();
+    expect(within(screen.getByRole("row", { name: /total general/i })).getByText("$1,000.00")).toBeInTheDocument();
+    expect(screen.getAllByRole("row")).toHaveLength(6);
+    expect(screen.getByText("Reparación de chasis")).toBeInTheDocument();
+    expect(screen.queryByText(/Conceptos: Ajuste de soportes · Pintura de defensa/)).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Cobrado" })).toBeInTheDocument();
+    expect(within(screen.getAllByRole("table")[0]).getAllByRole("row")).toHaveLength(6);
+  });
   it("renders period navigation with range label and buttons", () => {
     render(
       <PayrollPeriodNav
@@ -257,7 +292,8 @@ describe("Payroll UI Components", () => {
             workOrderId: "wo-unassigned",
             workOrderNumber: "OT-999",
             quoteId: "q-99",
-            quoteNumber: "COT-999",
+             quoteNumber: "COT-999",
+             quoteTitle: "Trabajo sin maestro",
             clientName: "Cliente Sin Asignar",
             vehicleSummary: "Ford F150",
             completedAt: new Date(),
@@ -427,14 +463,15 @@ describe("Payroll UI Components", () => {
       totalClientLaborCents: 300000,
       totalPayrollBaseCents: 300000,
       totalCommissionCents: 140000,
-      workers: sampleWorkers,
+      workers: [sampleWorkers[0], { ...sampleWorkers[1], workOrders: [{ ...sampleWorkers[0].workOrders[0], workOrderId: "wo-juan", masterId: "w-2", masterName: "Maestro Juan" }] }, { ...sampleWorkers[1], workerId: "w-empty", displayName: "Maestro Vacío" }],
       unassignedOrders: [],
     };
 
     render(<PayrollView report={fullReport} period={period} />);
 
-    const envelopeBtn = screen.getByRole("button", { name: /sobre de pago/i });
-    fireEvent.click(envelopeBtn);
+    const envelopeBtns = screen.getAllByRole("button", { name: /sobre de pago/i });
+    expect(envelopeBtns).toHaveLength(2);
+    fireEvent.click(envelopeBtns[0]);
 
     expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /imagen/i })).toBeInTheDocument();

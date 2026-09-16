@@ -92,6 +92,34 @@ describe("work order operational queues", () => {
     }));
   });
 
+  it("keeps a completed work order addressable by its work-order id when quote items are top-level", async () => {
+    (prisma.workOrder.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "wo-payroll-preview",
+      status: "COMPLETED",
+      quote: {
+        customerId: "customer-1",
+        vehicle: null,
+        vehicleSnapshot: null,
+        subtotalCents: 10_000,
+        discountCents: 0,
+        taxCents: 1_600,
+        totalCents: 11_600,
+        taxEnabled: true,
+        items: [{ type: "LABOR", description: "Service", quantity: 1, unitPriceCents: 10_000, totalCents: 10_000 }],
+        sections: [],
+      },
+      assignments: [],
+    });
+
+    await expect(getCompletedWorkOrderById("wo-payroll-preview")).resolves.toMatchObject({
+      id: "wo-payroll-preview",
+      status: "COMPLETED",
+    });
+    expect(prisma.workOrder.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "wo-payroll-preview", status: "COMPLETED" },
+    }));
+  });
+
   it("excludes reversed payments from completed-list totals and exposes the active payment id", async () => {
     const input = { start: new Date("2026-08-03T06:00:00Z"), end: new Date("2026-08-10T06:00:00Z"), payment: "all" as const, assignee: "all", page: 1 };
     (prisma.$queryRaw as ReturnType<typeof vi.fn>).mockResolvedValue([
@@ -236,4 +264,3 @@ describe("work order operational queues", () => {
     });
   });
 });
-

@@ -390,6 +390,7 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
       quote: {
         id: wo.quote.id,
         number: wo.quote.number,
+        title: wo.quote.title,
         customer: wo.quote.customer ? { name: wo.quote.customer.name } : null,
         vehicle: wo.quote.vehicle
           ? {

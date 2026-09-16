@@ -64,6 +64,7 @@ export interface WorkOrderPayrollDetail {
   workOrderNumber: string;
   quoteId: string;
   quoteNumber: string;
+  quoteTitle: string;
   clientName: string;
   vehicleSummary: string;
   completedAt: Date | string | null;
@@ -145,6 +146,44 @@ export interface WeeklyPayrollReport {
 
 export type PayrollReport = WeeklyPayrollReport;
 
+export interface PayrollJobRow {
+  order: WorkOrderPayrollDetail;
+  masterId: string | null;
+  masterName: string;
+}
+
+/** Flattens worker-oriented report data into the job-first view order. */
+export function getPayrollJobRows(report: WeeklyPayrollReport, masterId = "all"): PayrollJobRow[] {
+  const rows = new Map<string, PayrollJobRow>();
+
+  for (const worker of report.workers) {
+    if (masterId !== "all" && worker.workerId !== masterId) continue;
+    for (const order of worker.workOrders) {
+      rows.set(order.workOrderId, {
+        order,
+        masterId: order.masterId ?? worker.workerId,
+        masterName: order.masterName ?? worker.displayName,
+      });
+    }
+  }
+
+  if (masterId === "all") {
+    for (const order of report.unassignedOrders) {
+      rows.set(order.workOrderId, {
+        order,
+        masterId: order.masterId ?? null,
+        masterName: order.masterName ?? "Sin maestro",
+      });
+    }
+  }
+
+  return [...rows.values()].sort((a, b) => {
+    const aTime = a.order.completedAt ? new Date(a.order.completedAt).getTime() : 0;
+    const bTime = b.order.completedAt ? new Date(b.order.completedAt).getTime() : 0;
+    return aTime - bTime || a.order.workOrderNumber.localeCompare(b.order.workOrderNumber);
+  });
+}
+
 /**
  * Processes a single quote item for payroll calculation.
  * Returns null if the item is not commissionable (i.e. not LABOR and not an OTHER item with includeInPayroll).
@@ -199,6 +238,7 @@ export interface RawWorkOrderForPayroll {
   quote: {
     id: string;
     number: string;
+    title: string;
     customer: { name: string } | null;
     vehicle: { brand?: string | null; model?: string | null; year?: number | null; plate?: string | null } | null;
     items: PayrollItemInput[];
@@ -288,6 +328,7 @@ export function buildWeeklyPayrollReport(
       workOrderNumber: wo.number,
       quoteId: wo.quote.id,
       quoteNumber: wo.quote.number,
+      quoteTitle: wo.quote.title,
       clientName: wo.quote.customer?.name ?? "Cliente General",
       vehicleSummary,
       completedAt: wo.completedAt,
