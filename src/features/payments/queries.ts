@@ -55,7 +55,8 @@ export async function getNotePaymentHistory(workOrderIds: string[]): Promise<Map
       createdAt: true,
       method: true,
       status: true,
-      reversedAt: true,
+       reversedAt: true,
+       correctionsReplacement: { select: { id: true } },
       applications: {
         where: { workOrderId: { in: workOrderIds } },
         select: { workOrderId: true, amountCents: true, reversedAt: true },
@@ -92,6 +93,7 @@ export async function getNotePaymentHistory(workOrderIds: string[]): Promise<Map
       paidCentsAtPayment: 0,
       remainingCentsAtPayment: 0,
       isReversed,
+      isCorrected: (payment.correctionsReplacement?.length ?? 0) > 0,
     });
   }
 
@@ -156,7 +158,10 @@ export async function getEligibleNotesForCreditApplication(customerId: string): 
     include: {
       quote: { select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true } },
       paymentApplications: {
-        where: { reversedAt: null },
+        where: {
+          reversedAt: null,
+          payment: { status: PaymentStatus.PAID, reversedAt: null },
+        },
         select: { amountCents: true },
       },
     },
@@ -204,7 +209,7 @@ export async function hasActivePaymentApplicationForWorkOrder(workOrderId: strin
     where: {
       workOrderId,
       reversedAt: null,
-      payment: { reversedAt: null },
+      payment: { status: PaymentStatus.PAID, reversedAt: null },
     },
   });
 

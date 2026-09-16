@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Download } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -24,7 +24,7 @@ import {
   createPaymentReceiptFile,
   type PaymentReceiptData,
 } from "@/features/payments/lib/payment-receipt";
-import { paymentShareStatusMessage, sharePaymentFile } from "@/features/payments/lib/payment-sharing";
+import { downloadPaymentFile, paymentShareStatusMessage, sharePaymentFile } from "@/features/payments/lib/payment-sharing";
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH: "Efectivo",
@@ -83,6 +83,7 @@ export interface CashPaymentDialogProps {
   triggerIconOnlyMobile?: boolean;
   documentTitle?: string;
   documentFolio?: string;
+  customerName?: string;
   receiptEnabled?: boolean;
   allowedMethods?: string[];
 }
@@ -116,6 +117,7 @@ export function CashPaymentDialog({
   triggerIconOnlyMobile = false,
   documentTitle = "Nota",
   documentFolio = quoteNumber,
+  customerName = "Cliente",
   receiptEnabled = false,
   allowedMethods = PAYMENT_METHODS.map(([value]) => value),
 }: CashPaymentDialogProps) {
@@ -162,6 +164,7 @@ export function CashPaymentDialog({
       setReceipt(receiptEnabled ? {
         title: documentTitle,
         folio: documentFolio,
+        customerName,
         totalCents,
         paymentCents: result.payment.amountCents,
         paidCents: result.paidCents,
@@ -368,6 +371,14 @@ export function CashPaymentDialog({
                     }}
                   >
                     Compartir recibo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => downloadPaymentFile(createPaymentReceiptFile(receipt))}
+                  >
+                    <Download className="h-4 w-4" aria-hidden="true" /> Descargar PNG
                   </Button>
                 </div>
                 {receiptError ? <p role="alert" className="text-xs text-[var(--color-status-danger-fg)]">{receiptError}</p> : null}

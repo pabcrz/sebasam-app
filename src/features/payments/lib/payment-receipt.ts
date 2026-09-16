@@ -1,6 +1,7 @@
 import { formatCents } from "@/features/quotes/lib/format";
 
 export type PaymentReceiptData = {
+  customerName?: string;
   title: string;
   folio: string;
   totalCents: number;
@@ -10,6 +11,7 @@ export type PaymentReceiptData = {
   method: string;
   paymentDate?: Date | string;
   isReversed?: boolean;
+  sequence?: number;
 };
 
 const METHOD_LABELS: Record<string, string> = {
@@ -22,19 +24,20 @@ export function paymentMethodLabel(method: string) {
 }
 
 export function buildPaymentReceiptMessage(data: PaymentReceiptData) {
+  const settled = data.remainingCents <= 0 && !data.isReversed;
   return [
-    `Hola, comparto el recibo de pago de la Nota ${data.title}, folio ${data.folio}.`,
+    `Hola, comparto el recibo de pago de ${data.customerName ?? "Cliente"}. Nota: ${data.title}, folio ${data.folio}.`,
     `Total: ${formatCents(data.totalCents)}.`,
-    `Pago: ${formatCents(data.paymentCents)} (${paymentMethodLabel(data.method)}).`,
-    data.paymentDate ? `Fecha: ${formatReceiptDate(data.paymentDate)}.` : null,
-    `Pagado acumulado: ${formatCents(data.paidCents)}.`,
+    `Abono #${data.sequence ?? 1}: ${formatCents(data.paymentCents)} (${paymentMethodLabel(data.method)}).`,
+    data.paymentDate ? `Fecha y hora: ${formatReceiptDate(data.paymentDate)}.` : null,
+    data.isReversed ? "Estado: Pago revertido." : settled ? "Estado: Nota liquidada." : "Estado: Pago registrado. Nota: Pago parcial.",
+    data.isReversed || settled ? null : `Saldo después de este pago: ${formatCents(data.remainingCents)}.`,
     `Saldo restante: ${formatCents(data.remainingCents)}.`,
-    data.isReversed ? "Estado: Revertido; no es un pago vigente." : null,
   ].filter(Boolean).join(" ");
 }
 
 export function formatReceiptDate(date: Date | string) {
-  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" }).format(new Date(date));
+  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
 }
 
 export function drawPaymentReceipt(canvas: HTMLCanvasElement, data: PaymentReceiptData) {
@@ -56,19 +59,18 @@ export function drawPaymentReceipt(canvas: HTMLCanvasElement, data: PaymentRecei
   context.textAlign = "left";
   context.fillStyle = "#182230";
   context.font = "700 34px Arial, sans-serif";
-  context.fillText("Recibo de pago", 70, 100);
+  context.fillText(data.remainingCents <= 0 && !data.isReversed ? "Nota liquidada" : "Recibo de pago", 70, 100);
   context.fillStyle = "#4b5563";
   context.font = "24px Arial, sans-serif";
-  context.fillText(`Nota: ${data.title}`, 70, 145);
-  context.fillText(`Folio: ${data.folio}`, 70, 182);
-  if (data.paymentDate) context.fillText(`Fecha: ${formatReceiptDate(data.paymentDate)}`, 70, 219);
+  context.fillText(`Cliente: ${data.customerName ?? "Cliente"}`, 70, 145);
+  context.fillText(`Nota: ${data.title} · Folio: ${data.folio}`, 70, 182);
+  if (data.paymentDate) context.fillText(`Fecha y hora: ${formatReceiptDate(data.paymentDate)}`, 70, 219);
 
   const rows = [
     ["Total", formatCents(data.totalCents)],
-    ["Pago", `${formatCents(data.paymentCents)} · ${paymentMethodLabel(data.method)}`],
-    ["Pagado acumulado", formatCents(data.paidCents)],
+    [`Abono #${data.sequence ?? 1}`, `${formatCents(data.paymentCents)} · ${paymentMethodLabel(data.method)}`],
+    ["Estado", data.isReversed ? "Pago revertido" : data.remainingCents <= 0 ? "Nota liquidada" : "Pago registrado · Pago parcial"],
     ["Saldo restante", formatCents(data.remainingCents)],
-    ...(data.isReversed ? [["Estado", "Revertido"]] : []),
   ];
 
   rows.forEach(([label, value], index) => {
@@ -86,7 +88,7 @@ export function drawPaymentReceipt(canvas: HTMLCanvasElement, data: PaymentRecei
   context.textAlign = "left";
   context.fillStyle = "#6b7280";
   context.font = "18px Arial, sans-serif";
-  context.fillText("Recibo emitido por SEBASAM · No es un comprobante bancario", 70, 650);
+  context.fillText("Emitido por SEBASAM · No es un comprobante bancario", 70, 650);
 }
 
 export function createPaymentReceiptImage(data: PaymentReceiptData) {

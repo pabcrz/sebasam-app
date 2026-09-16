@@ -9,6 +9,8 @@ const data = {
   paidCents: 5000,
   remainingCents: 6600,
   method: "TRANSFER",
+  customerName: "Cliente de prueba",
+  sequence: 2,
 };
 
 const validPngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
@@ -37,10 +39,27 @@ describe("payment receipt", () => {
     expect(message).toContain("Cambio de muelles");
     expect(message).toContain("N-090926-01");
     expect(message).toContain("Total: $116.00");
-    expect(message).toContain("Pago: $25.00 (Transferencia)");
+    expect(message).toContain("Abono #2: $25.00 (Transferencia)");
     expect(message).toContain("Transferencia");
-    expect(message).toContain("Pagado acumulado: $50.00");
-    expect(message).toContain("Saldo restante: $66.00");
+    expect(message).toContain("Cliente de prueba");
+    expect(message).toContain("Pago registrado");
+    expect(message).toContain("Saldo después de este pago: $66.00");
+  });
+
+  it("clearly identifies a settled receipt without accumulated paid wording", () => {
+    const message = buildPaymentReceiptMessage({ ...data, remainingCents: 0, sequence: 3 });
+    expect(message).toContain("Nota liquidada");
+    expect(message).toContain("Saldo restante: $0.00");
+    expect(message).not.toContain("Pagado acumulado");
+  });
+
+  it("uses only the reversed status for a reversed receipt", () => {
+    const message = buildPaymentReceiptMessage({ ...data, isReversed: true });
+
+    expect(message).toContain("Estado: Pago revertido.");
+    expect(message).not.toContain("Pago registrado");
+    expect(message).not.toContain("Pago parcial");
+    expect(message).not.toContain("Saldo después de este pago");
   });
 
   it("returns a valid PNG image file with a stable name for sharing", async () => {

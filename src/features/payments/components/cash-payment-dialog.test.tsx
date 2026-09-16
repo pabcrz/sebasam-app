@@ -106,7 +106,7 @@ describe("CashPaymentDialog", () => {
 
     expect(share).toHaveBeenCalledWith(expect.objectContaining({
       title: "Recibo N-090926-01",
-      text: expect.stringContaining("Pagado acumulado: $50.00"),
+      text: expect.stringContaining("Saldo después de este pago: $50.00"),
       files: [expect.objectContaining({ name: "N-090926-01-recibo.png", type: "image/png" })],
     }));
     expect(canShare).toHaveBeenCalledWith(share.mock.calls[0][0]);

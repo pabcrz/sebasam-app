@@ -258,8 +258,17 @@ export function DialogMobileHeader({ className, ...props }: React.HTMLAttributes
   );
 }
 
-export function DialogMobileBody({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={clsx("min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6", className)} {...props} />;
+type DialogMobileBodyProps = React.HTMLAttributes<HTMLDivElement> & {
+  padding?: "default" | "none";
+};
+
+export function DialogMobileBody({ className, padding = "default", ...props }: DialogMobileBodyProps) {
+  return (
+    <div
+      className={clsx("min-h-0 overflow-y-auto", padding === "default" ? "px-4 py-4 sm:px-6 sm:py-6" : "p-0", className)}
+      {...props}
+    />
+  );
 }
 
 export const DialogMobileClose = React.forwardRef<

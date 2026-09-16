@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireOperationalRole } from "@/lib/auth/session";
-import { getNotePaymentHistory, getPaymentCorrectionDetail, hasActivePaymentApplicationForWorkOrder } from "./queries";
+import {
+  getEligibleNotesForCreditApplication,
+  getNotePaymentHistory,
+  getPaymentCorrectionDetail,
+  hasActivePaymentApplicationForWorkOrder,
+} from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -104,7 +109,7 @@ describe("hasActivePaymentApplicationForWorkOrder", () => {
         where: expect.objectContaining({
           workOrderId: "wo-1",
           reversedAt: null,
-          payment: { reversedAt: null },
+          payment: { status: "PAID", reversedAt: null },
         }),
       }),
     );
@@ -220,5 +225,38 @@ describe("getNotePaymentHistory", () => {
     expect(history?.payments.map((payment) => payment.appliedCents)).toEqual([0, 0]);
     expect(history?.payments.map((payment) => payment.paidCentsAtPayment)).toEqual([0, 0]);
     expect(history?.payments.map((payment) => payment.paymentStatus)).toEqual(["PENDING", "FAILED"]);
+  });
+});
+
+describe("getEligibleNotesForCreditApplication", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({
+      profile: { id: "user-1", role: "OPERATIONS", displayName: "Operations User" },
+    });
+  });
+
+  it("only maps active applications from paid payments into the eligible Note balance", async () => {
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "wo-1",
+        number: "OT-001",
+        completedAt: new Date("2026-09-01"),
+        quote: { subtotalCents: 10_000, taxCents: 0, totalCents: 10_000, settlementAgreement: null },
+        paymentApplications: [{ amountCents: 4_000 }],
+      },
+    ]);
+
+    const result = await getEligibleNotesForCreditApplication("cust-1");
+
+    expect(result[0]).toMatchObject({ appliedCents: 4_000, pendingBalanceCents: 6_000 });
+    expect(prisma.workOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      include: expect.objectContaining({
+        paymentApplications: {
+          where: { reversedAt: null, payment: { status: "PAID", reversedAt: null } },
+          select: { amountCents: true },
+        },
+      }),
+    }));
   });
 });

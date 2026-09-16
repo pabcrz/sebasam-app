@@ -170,6 +170,7 @@ export async function getNoteFinancialSummary(
     where: {
       workOrderId,
       reversedAt: null,
+      payment: { status: PaymentStatus.PAID, reversedAt: null },
     },
     _sum: { amountCents: true },
   });
@@ -203,7 +204,7 @@ export async function getCustomerCreditSummary(
 
   const applications = await tx.paymentApplication.aggregate({
     where: {
-      payment: { customerId },
+      payment: { customerId, status: PaymentStatus.PAID, reversedAt: null },
       reversedAt: null,
     },
     _sum: { amountCents: true },
@@ -245,7 +246,7 @@ export async function getCustomerBalanceSummary(
     client.paymentApplication?.aggregate
       ? client.paymentApplication.aggregate({
           where: {
-            payment: { customerId },
+            payment: { customerId, status: PaymentStatus.PAID, reversedAt: null },
             reversedAt: null,
           },
           _sum: { amountCents: true },
@@ -745,6 +746,7 @@ export async function lockPaymentMutationScope(
         where: {
           paymentId: { in: paymentIds },
           reversedAt: null,
+          payment: { status: PaymentStatus.PAID, reversedAt: null },
         },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       })

@@ -11,7 +11,7 @@ export function paymentShareStatusMessage(result: PaymentShareResult) {
   }
 }
 
-function downloadFile(file: File) {
+export function downloadPaymentFile(file: File) {
   const url = URL.createObjectURL(file);
   const link = document.createElement("a");
   link.href = url;
@@ -34,7 +34,7 @@ export async function sharePaymentFile(file: File, title: string, text: string):
     } catch { /* Continue with the desktop fallback. */ }
   }
 
-  downloadFile(file);
+  downloadPaymentFile(file);
   let copied = false;
   try {
     if (typeof navigator.clipboard?.writeText === "function") {
