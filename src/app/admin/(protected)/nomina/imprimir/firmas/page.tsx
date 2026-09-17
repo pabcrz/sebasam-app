@@ -9,10 +9,10 @@ export const metadata: Metadata = {
   title: "Hoja de Firma de Nómina | SEBASAM",
 };
 
-export default async function SigningSheetPrintPage({ searchParams }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+export default async function SigningSheetPrintPage(props?: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const resolvedParams = await searchParams;
+  const resolvedParams = (await props?.searchParams) ?? {};
   const period = parsePayrollParams(resolvedParams);
   const report = await getWeeklyPayroll(resolvedParams);
 
