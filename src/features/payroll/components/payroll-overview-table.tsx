@@ -113,7 +113,7 @@ export function PayrollOverviewTable({
                     }`}
                     onClick={() => onSelectWorker(worker.workerId)}
                   >
-                    <TableCell className="py-2">
+                    <TableCell className="py-2.5">
                       <div className="flex items-center gap-2.5">
                         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
                           <UserCheck className="h-3.5 w-3.5" />
@@ -121,25 +121,25 @@ export function PayrollOverviewTable({
                         <span className="font-semibold text-xs text-[var(--color-text-main)]">
                           {worker.displayName}
                         </span>
-                        <Badge variant="default" className="text-[10px] py-0 px-2 font-normal">
+                        <Badge variant="default" className="text-[10px] py-0 px-1.5 font-normal">
                           {worker.workerKind === "SPECIAL" ? "Asignación Especial" : "Maestro"}
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell className="py-2 text-center text-xs text-[var(--color-text-muted)]">
+                    <TableCell className="py-2.5 text-center text-xs text-[var(--color-text-muted)]">
                       {worker.completedOrderCount}
                     </TableCell>
-                    <TableCell className="py-2 text-right text-xs text-[var(--color-text-muted)]">
+                    <TableCell className="py-2.5 text-right text-xs text-[var(--color-text-muted)]">
                       {formatCents(worker.totalClientLaborCents)}
                     </TableCell>
-                    <TableCell className="py-2 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    <TableCell className="py-2.5 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       {formatCents(worker.totalCommissionCents)}
                     </TableCell>
-                    <TableCell className="py-2 text-right">
+                    <TableCell className="py-2.5 text-right">
                       <Button
                         variant={isSelected ? "primary" : "outline"}
                         size="sm"
-                        className="h-7 text-xs px-2"
+                        className="h-7 text-xs px-2.5"
                         onClick={(e) => {
                           e.stopPropagation();
                           onSelectWorker(worker.workerId);

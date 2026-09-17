@@ -73,11 +73,4 @@ describe("PrintControls", () => {
 
     expect(screen.getByRole("link", { name: /volver/i })).toHaveAttribute("href", "/admin/quotes");
   });
-
-  it("uses an explicit back destination when provided", () => {
-    searchParams.mockReturnValue(new URLSearchParams());
-    render(<PrintControls backHref="/admin/nomina" />);
-
-    expect(screen.getByRole("link", { name: /volver/i })).toHaveAttribute("href", "/admin/nomina");
-  });
 });

@@ -92,7 +92,7 @@ describe("getOperationalDashboardSnapshot", () => {
   it("queries status queues and receivables with only active payment applications", async () => {
     vi.mocked(prisma.workOrder.findMany)
       .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([{ id: "wo-1", number: "OT-1", status: WorkOrderStatus.COMPLETED, completedAt: fixedNow, isSpecial: false, specialAssigneeName: null, quote: { id: "q-1", number: "COT-1", title: "Trabajo de prueba", customer: { name: "Cliente" }, vehicle: null, items: [{ id: "i-1", type: QuoteItemType.LABOR, description: "Trabajo", quantity: 1, unitPriceCents: 100, totalCents: 100 }], sections: [] }, assignments: [{ workerId: "w-1", status: AssignmentStatus.DONE, worker: { id: "w-1", displayName: "Trabajador", workerKind: WorkerKind.MASTER, role: "WORKER" } }] }] as never);
+      .mockResolvedValueOnce([{ id: "wo-1", number: "OT-1", status: WorkOrderStatus.COMPLETED, completedAt: fixedNow, isSpecial: false, specialAssigneeName: null, quote: { id: "q-1", number: "COT-1", customer: { name: "Cliente" }, vehicle: null, items: [{ id: "i-1", type: QuoteItemType.LABOR, description: "Trabajo", quantity: 1, unitPriceCents: 100, totalCents: 100 }], sections: [] }, assignments: [{ workerId: "w-1", status: AssignmentStatus.DONE, worker: { id: "w-1", displayName: "Trabajador", workerKind: WorkerKind.MASTER, role: "WORKER" } }] }] as never);
 
     const snapshot = await getOperationalDashboardSnapshot(fixedNow);
 

@@ -9,43 +9,10 @@ import {
   detectLaborCategory,
   evaluatePayrollItem,
   getDefaultLaborRate,
-  getPayrollJobRows,
   type RawWorkOrderForPayroll,
 } from "./domain";
 
 describe("Payroll Domain - Labor Detection and Rates", () => {
-  it("flattens jobs chronologically and filters by master without duplicating a job", () => {
-    const order = (id: string, date: string, masterId: string, masterName: string) => ({
-      workOrderId: id,
-      workOrderNumber: id,
-      quoteId: `quote-${id}`,
-       quoteNumber: `quote-${id}`,
-       quoteTitle: `Job ${id}`,
-      clientName: "Client",
-      vehicleSummary: "Vehicle",
-      completedAt: new Date(date),
-      isSpecial: false,
-      masterId,
-      masterName,
-      helperNames: [],
-      items: [],
-      totalClientLaborCents: 0,
-      totalPayrollBaseCents: 0,
-      totalCommissionCents: 0,
-    });
-    const report = {
-      startDate: new Date(), endDate: new Date(), rangeLabel: "Period", isCurrentWeek: false,
-      totalWorkers: 2, totalCompletedOrders: 2, totalClientLaborCents: 0, totalPayrollBaseCents: 0,
-      totalCommissionCents: 0,
-      workers: [
-        { workerId: "m1", displayName: "Master One", workerKind: WorkerKind.MASTER, completedOrderCount: 1, totalClientLaborCents: 0, totalPayrollBaseCents: 0, totalCommissionCents: 0, workOrders: [order("late", "2026-08-20T00:00:00Z", "m1", "Master One")] },
-        { workerId: "m2", displayName: "Master Two", workerKind: WorkerKind.MASTER, completedOrderCount: 1, totalClientLaborCents: 0, totalPayrollBaseCents: 0, totalCommissionCents: 0, workOrders: [order("early", "2026-08-19T00:00:00Z", "m2", "Master Two")] },
-      ], unassignedOrders: [],
-    };
-    expect(getPayrollJobRows(report)).toHaveLength(2);
-    expect(getPayrollJobRows(report).map((row) => row.order.workOrderId)).toEqual(["early", "late"]);
-    expect(getPayrollJobRows(report, "m2").map((row) => row.order.workOrderId)).toEqual(["early"]);
-  });
   it("detects welding and torch cutting as WELDING category", () => {
     expect(detectLaborCategory("Soldadura de escape")).toBe("WELDING");
     expect(detectLaborCategory("Corte con soplete y ajuste")).toBe("WELDING");
@@ -350,8 +317,7 @@ describe("Payroll Domain - Report Builder", () => {
       specialAssigneeName: null,
       quote: {
         id: "q-1",
-         number: "COT-001",
-         title: "Frenos de aire",
+        number: "COT-001",
         customer: { name: "Transportes del Norte" },
         vehicle: { brand: "Kenworth", model: "T680", plate: "ABC-123" },
         items: [
@@ -395,8 +361,7 @@ describe("Payroll Domain - Report Builder", () => {
       specialAssigneeName: null,
       quote: {
         id: "q-2",
-         number: "COT-002",
-         title: "Soldadura de soporte",
+        number: "COT-002",
         customer: { name: "Logística Express" },
         vehicle: { brand: "Freightliner", model: "Cascadia", plate: "XYZ-789" },
         items: [
@@ -432,8 +397,7 @@ describe("Payroll Domain - Report Builder", () => {
       specialAssigneeName: "Taller Externo",
       quote: {
         id: "q-3",
-         number: "COT-003",
-         title: "Rectificación de discos",
+        number: "COT-003",
         customer: { name: "Particular" },
         vehicle: { brand: "Nissan", model: "NP300", plate: "JKL-456" },
         items: [
@@ -567,7 +531,6 @@ describe("Labor advances domain calculations", () => {
           workOrderNumber: "OT-001",
           quoteId: "q-1",
           quoteNumber: "C-001",
-          quoteTitle: "Alargado de chasis",
           clientName: "Transportes MX",
           vehicleSummary: "Kenworth T680",
           workerId: "worker-juan",
@@ -605,7 +568,6 @@ describe("Labor advances domain calculations", () => {
       quote: {
         id: "q-1",
         number: "C-001",
-        title: "Alargado de chasis",
         customer: { name: "Transportes MX" },
         vehicle: { brand: "Kenworth", model: "T680", year: 2022, plate: "XYZ-123" },
         items: [
@@ -670,7 +632,6 @@ describe("Labor advances domain calculations", () => {
           workOrderNumber: "OT-500",
           quoteId: "q-500",
           quoteNumber: "COT-500",
-          quoteTitle: "Fabricación de chasis",
           clientName: "Transportes Centro",
           vehicleSummary: "Kenworth T680",
           workerId: "worker-juan",
@@ -702,7 +663,6 @@ describe("Labor advances domain calculations", () => {
       quote: {
         id: "q-500",
         number: "COT-500",
-        title: "Fabricación de chasis",
         customer: { name: "Transportes Centro" },
         vehicle: { brand: "Kenworth", model: "T680", year: 2021, plate: "TC-01" },
         items: [

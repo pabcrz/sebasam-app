@@ -3,16 +3,16 @@
 import * as React from "react";
 import { Inbox } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 import { PayrollPeriodNav } from "./payroll-period-nav";
 import { PayrollMetrics } from "./payroll-metrics";
 import { PayrollUnassignedCard } from "./payroll-worker-card";
+import { PayrollOverviewTable } from "./payroll-overview-table";
 import { FixedPayHelperTable } from "./fixed-pay-helper-table";
+import { PayrollWorkerDetail } from "./payroll-worker-detail";
 import { PayrollSigningSheetModal } from "./payroll-signing-sheet";
 import { PayrollWorkerEnvelopeModal } from "./payroll-worker-envelope";
-import { PayrollJobList } from "./payroll-job-list";
 
 interface PayrollViewProps {
   report: WeeklyPayrollReport;
@@ -20,16 +20,17 @@ interface PayrollViewProps {
 }
 
 export function PayrollView({ report, period }: PayrollViewProps) {
+  const [selectedWorkerId, setSelectedWorkerId] = React.useState<string | null>(null);
   const [isSigningSheetOpen, setIsSigningSheetOpen] = React.useState(false);
   const [envelopeWorker, setEnvelopeWorker] = React.useState<WorkerPayrollSummary | null>(null);
   const fixedPayHelpers = report.fixedPayHelpers ?? [];
-  const envelopeWorkers = report.workers.filter((worker) => worker.workOrders.length > 0);
-  const hasPayrollEntries = envelopeWorkers.length > 0 || fixedPayHelpers.length > 0;
+  const hasPayrollEntries = report.workers.length > 0 || fixedPayHelpers.length > 0;
 
   // Derive active worker ID during render without cascading useEffect
-  const handleOpenGeneralPrint = () => {
-    window.location.href = `/admin/nomina/imprimir/general?mode=${period.mode}&anchor=${period.anchor}`;
-  };
+  const activeWorkerId =
+    selectedWorkerId && report.workers.some((w) => w.workerId === selectedWorkerId)
+      ? selectedWorkerId
+      : (report.workers[0]?.workerId ?? "");
 
   return (
     <div className="min-w-0 max-w-full space-y-4 sm:space-y-6">
@@ -43,7 +44,6 @@ export function PayrollView({ report, period }: PayrollViewProps) {
         isCurrentPeriod={period.isCurrentPeriod}
         isCurrentWeek={period.isCurrentWeek}
         hasData={hasPayrollEntries}
-        onOpenGeneralPrint={handleOpenGeneralPrint}
         weekStatus={report.weekStatus}
         onOpenSigningSheet={() => setIsSigningSheetOpen(true)}
       />
@@ -64,17 +64,25 @@ export function PayrollView({ report, period }: PayrollViewProps) {
       {/* Content: Summary Table + Focused Worker Detail */}
       {hasPayrollEntries ? (
         <div className="min-w-0 max-w-full space-y-5">
-          <PayrollJobList report={report} />
+          {/* Level 1: General Executive Overview Table */}
+          {report.workers.length > 0 && (
+            <PayrollOverviewTable
+              workers={report.workers}
+              selectedWorkerId={activeWorkerId}
+              onSelectWorker={setSelectedWorkerId}
+            />
+          )}
 
           <FixedPayHelperTable helpers={fixedPayHelpers} weekStart={period.anchor} />
 
-          <div className="flex flex-wrap gap-2" aria-label="Sobres de pago">
-            {envelopeWorkers.map((worker) => (
-              <Button key={worker.workerId} type="button" variant="outline" size="sm" onClick={() => setEnvelopeWorker(worker)}>
-                Sobre de Pago · {worker.displayName}
-              </Button>
-            ))}
-          </div>
+          {/* Level 2: Specific Detail per Selected Worker */}
+          {report.workers.length > 0 && (
+            <PayrollWorkerDetail
+              workers={report.workers}
+              selectedWorkerId={activeWorkerId}
+              onOpenEnvelope={(worker) => setEnvelopeWorker(worker)}
+            />
+          )}
         </div>
       ) : (
         <Card className="p-8 sm:p-12 text-center">
