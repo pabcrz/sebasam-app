@@ -49,6 +49,8 @@ function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQu
     isLocked: quote.isLocked,
     paymentDueDate: quote.paymentDueDate,
     customer: quote.customer ? { name: quote.customer.name } : null,
+    contactSnapshot: quote.contactSnapshot,
+    customerContact: quote.customerContact ? { name: quote.customerContact.name, role: quote.customerContact.role } : null,
     vehicle: quote.vehicle,
     items: quote.items.map((item) => ({
       ...item,

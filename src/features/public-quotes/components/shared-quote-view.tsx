@@ -42,6 +42,8 @@ export type SharedQuoteViewQuote = {
   isLocked: boolean;
   paymentDueDate: Date | null;
   customer: ({ name: string } & Record<string, unknown>) | null;
+  contactSnapshot?: unknown;
+  customerContact?: { name: string; role?: string | null } | null;
   vehicle: { plate: string | null; economicNumber: string | null; brand: string | null; model: string | null } | null;
   items: SerializableQuoteItem[];
   sections: { id: string; quoteId: string; name: string; sortOrder: number; isAuthorized: boolean; items: SerializableQuoteItem[] }[];

@@ -7,7 +7,6 @@ import {
   SharedQuoteView,
   type SharedQuoteViewQuote,
 } from "@/features/public-quotes/components/shared-quote-view";
-import { formatVehicle, formatSnapshotVehicle } from "@/features/quotes/lib/format";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 import {
   resolveDocumentFolio,
@@ -128,14 +127,21 @@ export function QuoteDocumentView({
           workOrder: resolvedWorkOrder,
         });
 
-  const { displayName: customerDisplayName, subtitle: customerSubtitle } =
+  const { displayName: customerDisplayName, legalOrFiscalName, operatorName } =
     resolveCustomerDisplayIdentity(quote);
 
-  const vehicleDescription =
-    vehicleDescriptionOverride ??
-    (quote.vehicle
-      ? formatVehicle(quote.vehicle)
-      : formatSnapshotVehicle(quote.vehicleSnapshot));
+  const snapshotVehicle = quote.vehicleSnapshot && typeof quote.vehicleSnapshot === "object"
+    ? quote.vehicleSnapshot as Record<string, unknown>
+    : {};
+  const vehicleData = quote.vehicle ?? {
+    brand: typeof snapshotVehicle.brand === "string" ? snapshotVehicle.brand : null,
+    model: typeof snapshotVehicle.model === "string" ? snapshotVehicle.model : null,
+    plate: typeof snapshotVehicle.plate === "string" ? snapshotVehicle.plate : null,
+    economicNumber: typeof snapshotVehicle.economicNumber === "string" ? snapshotVehicle.economicNumber : null,
+  };
+  const vehicleDescription = [vehicleData.brand, vehicleData.model]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(" ");
   const configuredBankAccounts = paymentSettings.bankAccounts ?? [];
 
   return (
@@ -152,8 +158,14 @@ export function QuoteDocumentView({
         date={quote.operationalDate}
         title={quote.title}
         customerName={customerDisplayName}
-        customerSubtitle={customerSubtitle}
-        vehicleDescription={vehicleDescription}
+        customerSubtitle={legalOrFiscalName ? `Razón social: ${legalOrFiscalName}` : undefined}
+        unitData={{
+          vehicleDescription,
+          plate: vehicleData.plate,
+          economicNumber: vehicleData.economicNumber,
+          operatorName,
+        }}
+        unitDescription={vehicleDescriptionOverride}
       >
         <SharedQuoteView
           quote={viewQuote}
