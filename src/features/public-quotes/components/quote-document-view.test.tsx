@@ -194,6 +194,33 @@ describe("QuoteDocumentView", () => {
     expect(screen.getByText("N-090926-05")).toBeInTheDocument();
   });
 
+  it("renders flat unit metadata in print mode without empty values", () => {
+    render(
+      <QuoteDocumentView
+        quote={{
+          ...baseQuote,
+          vehicle: { ...baseQuote.vehicle, plate: "55-AA-1B", economicNumber: "ECO-7" },
+          contactSnapshot: { id: "contact-1", name: "Luis Pérez", phone: null, role: "DRIVER" },
+        }}
+        paymentSettings={mockPaymentSettings}
+        documentType="Nota"
+        workOrderStatus="COMPLETED"
+        isPrint
+      />,
+    );
+
+    expect(screen.getByText("Placas")).toBeInTheDocument();
+    expect(screen.getByText("55-AA-1B")).toBeInTheDocument();
+    expect(screen.getByText("Eco")).toBeInTheDocument();
+    expect(screen.getByText("ECO-7")).toBeInTheDocument();
+    expect(screen.getByText("Chofer")).toBeInTheDocument();
+    expect(screen.getByText("Luis Pérez")).toBeInTheDocument();
+    expect(screen.getByText("Kenworth T680")).toBeInTheDocument();
+    expect(screen.queryByText("Operador: Luis Pérez")).not.toBeInTheDocument();
+    expect(screen.queryByText(/ECO-7 · 55-AA-1B| - /)).not.toBeInTheDocument();
+    expect(screen.getByText("ECO-7").closest("span")).not.toHaveClass("rounded-[6px]", "bg-white/10", "print:bg-gray-50");
+  });
+
   it("renders assigned work as a Nota while preserving the quote folio", () => {
     render(
       <QuoteDocumentView
