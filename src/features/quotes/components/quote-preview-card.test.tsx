@@ -40,9 +40,10 @@ describe("QuotePreviewCard", () => {
   };
 
   it("renders the concepts table with columns C., Concepto, P. Unitario, and Importe", () => {
-    render(<QuotePreviewCard {...defaultProps} />);
+    const { container } = render(<QuotePreviewCard {...defaultProps} />);
 
     const table = screen.getByTestId("quote-items-table");
+    expect(container.firstElementChild).toHaveClass("print:flex-none");
     expect(table).toBeInTheDocument();
     expect(table).toHaveTextContent("Cant.");
     expect(table).toHaveTextContent("Concepto / Servicio Realizado");
