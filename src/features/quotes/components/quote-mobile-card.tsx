@@ -56,7 +56,6 @@ export function QuoteListCard({
   quote,
   quoteStatusLabels,
   quoteStatusBadgeVariant,
-  approveAction: _approveAction,
   cancelAction,
   shareAction,
   authorizeAction,

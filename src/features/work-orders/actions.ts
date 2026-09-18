@@ -683,14 +683,17 @@ export async function assignWorkOrderAction(input: unknown): Promise<ActionResul
 }
 
 export async function startWorkOrderAction(_input: unknown): Promise<ActionResult> {
+  void _input;
   return { success: true };
 }
 
 export async function recordExecutionAction(_input: unknown): Promise<ActionResult> {
+  void _input;
   return { success: true };
 }
 
 export async function removeExecutionRecordAction(_executionRecordId: string): Promise<ActionResult> {
+  void _executionRecordId;
   return { success: true };
 }
 
