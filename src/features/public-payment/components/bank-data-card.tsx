@@ -16,6 +16,7 @@ export type BankAccountData = {
 
 export interface BankDataCardProps {
   bankAccounts?: BankAccountData[];
+  isPrint?: boolean;
 }
 
 function CopyButton({ value }: { value: string }) {
@@ -73,8 +74,53 @@ export function resolveBankAccounts(bankAccounts?: BankAccountData[]): BankAccou
  * Renders each bank account as an independent compact card. Account number
  * and CLABE rows only render when their values are non-empty.
  */
-export function BankDataCard({ bankAccounts }: BankDataCardProps) {
+export function BankDataCard({ bankAccounts, isPrint = false }: BankDataCardProps) {
   const accounts = resolveBankAccounts(bankAccounts);
+
+  if (isPrint) {
+    return (
+      <section
+        data-testid="bank-data-print"
+        className="px-4 pt-2 print:break-inside-avoid print:page-break-inside-avoid"
+      >
+        <h2 className="text-[11px] font-bold leading-tight text-gray-900">Datos de pago</h2>
+        {accounts.length === 0 ? (
+          <p data-testid="bank-data-empty" className="mt-1 text-[12px] text-gray-500">
+            No hay cuentas bancarias registradas.
+          </p>
+        ) : (
+          <div className="mt-1.5 flex flex-wrap gap-x-[40px] gap-y-3">
+            {accounts.map((account) => {
+              const clabe = account.clabe.trim();
+              const accountNumber = account.accountNumber.trim();
+
+              return (
+                <div key={account.id} data-testid="bank-account-print" className="min-w-[180px] flex-1 basis-[220px] text-[12px] leading-tight">
+                  <p className="text-[10px] text-gray-500">
+                    {account.bankName}
+                    {account.isForInvoicing ? <span className="text-[var(--color-primary)]"> · facturación</span> : null}
+                  </p>
+                  {clabe ? (
+                    <p>
+                      <span>CLABE </span>
+                      <span className="font-mono">{formatGroupedNumber(clabe)}</span>
+                    </p>
+                  ) : null}
+                  {accountNumber ? (
+                    <p>
+                      <span>No. cuenta </span>
+                      <span className="font-mono">{formatGroupedNumber(accountNumber)}</span>
+                    </p>
+                  ) : null}
+                  <p className="text-[10px] text-gray-500">{account.accountHolder}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <Card>

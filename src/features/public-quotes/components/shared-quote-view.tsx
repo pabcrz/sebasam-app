@@ -297,8 +297,8 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
       />
 
       {isNote && bankAccounts ? (
-        <div data-testid="note-payment-data" className="print:break-inside-avoid">
-          <BankDataCard bankAccounts={bankAccounts} />
+        <div data-testid="note-payment-data" className="print:order-last print:break-inside-avoid">
+          <BankDataCard bankAccounts={bankAccounts} isPrint={isPrint} />
         </div>
       ) : null}
 

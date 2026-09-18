@@ -269,6 +269,44 @@ describe("BankDataCard", () => {
       expect(writeText).toHaveBeenNthCalledWith(2, "98765432");
     });
   });
+
+  it("renders the compact print variant without card chrome or copy actions", () => {
+    const { container } = render(
+      <BankDataCard
+        isPrint
+        bankAccounts={[
+          {
+            id: 1,
+            accountHolder: "Holder One",
+            bankName: "BBVA",
+            accountNumber: "1111222233334444",
+            clabe: "012345678901234567",
+            isForInvoicing: true,
+          },
+          {
+            id: 2,
+            accountHolder: "Holder Two",
+            bankName: "Santander",
+            accountNumber: "",
+            clabe: "987654321098765432",
+            isForInvoicing: false,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("bank-data-print")).toHaveClass("px-4", "print:break-inside-avoid");
+    expect(screen.getByTestId("bank-data-print")).not.toHaveClass("border-t");
+    expect(screen.getAllByTestId("bank-account-print")).toHaveLength(2);
+    expect(screen.getByText("· facturación")).toHaveClass("text-[var(--color-primary)]");
+    expect(screen.getByText("0123 4567 8901 2345 67")).toHaveClass("font-mono");
+    expect(screen.getByText("1111 2222 3333 4444")).toHaveClass("font-mono");
+    expect(screen.getByText(/No\. cuenta/)).toBeInTheDocument();
+    expect(screen.getByText("Holder One")).toBeInTheDocument();
+    expect(screen.getByText("Holder Two")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /copiar/i })).not.toBeInTheDocument();
+    expect(container.querySelector("[class*='rounded']")).toBeNull();
+  });
 });
 
 describe("ContactCard", () => {

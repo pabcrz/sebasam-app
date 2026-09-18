@@ -587,7 +587,11 @@ describe("SharedQuoteView", () => {
       />,
     );
 
-    expect(screen.getByText("1234 5678")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /copiar/i })[0]).toHaveClass("print:hidden");
+    expect(screen.getByTestId("bank-data-print")).toBeInTheDocument();
+    expect(screen.getByTestId("note-payment-data")).not.toHaveClass("print:mt-auto");
+    expect(screen.getByText("0123 4567 8901 2345 67")).toHaveClass("font-mono");
+    expect(screen.getByText("1234 5678")).toHaveClass("font-mono");
+    expect(screen.getByText("SEBASAM")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /copiar/i })).not.toBeInTheDocument();
   });
 });
