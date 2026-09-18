@@ -200,7 +200,7 @@ body {
 
 @media print {
   @page {
-    margin: 0;
+    margin: 12mm 0;
     size: letter portrait;
   }
   html,
@@ -432,4 +432,3 @@ button:hover .icon-copy-hover,
 html[data-font-scale="large"] {
   font-size: 118.75%; /* 19px base (1.1875rem * 16px) */
 }
-
