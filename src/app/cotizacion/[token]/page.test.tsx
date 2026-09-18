@@ -9,6 +9,7 @@ const sharedQuoteViewMock = vi.hoisted(() => vi.fn(() => <div data-testid="share
 vi.mock("@/features/quotes/domain", () => ({
   getSharedQuoteByToken: getSharedQuoteByTokenMock,
   getSharedQuotePaymentStatus: getSharedQuotePaymentStatusMock,
+  getSharedQuoteStatusRevision: vi.fn(() => "initial-revision"),
   SharedQuoteExpiredError: class SharedQuoteExpiredError extends Error {},
   SharedQuoteRevokedError: class SharedQuoteRevokedError extends Error {},
 }));

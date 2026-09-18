@@ -24,6 +24,7 @@ export interface QuoteDocumentViewProps {
   isPrint?: boolean;
   controls?: React.ReactNode;
   paymentStatus?: { paidCents: number; remainingCents: number; isSettled: boolean } | null;
+  statusRevision?: string;
 }
 
 type QuoteDocumentItem = Omit<SharedQuoteViewQuote["items"][number], "quantity" | "unitPriceCents"> & {
@@ -97,6 +98,7 @@ export function QuoteDocumentView({
   isPrint = false,
   controls,
   paymentStatus,
+  statusRevision,
 }: QuoteDocumentViewProps) {
   const resolvedWorkOrder =
     workOrderStatus !== undefined
@@ -160,6 +162,7 @@ export function QuoteDocumentView({
           isPrint={isPrint}
           business={paymentSettings}
           paymentStatus={paymentStatus}
+          initialStatusRevision={statusRevision}
           bankAccounts={configuredBankAccounts
             .filter((account) => isPrint || account.isPubliclyShareable)
             .map(({ id, accountHolder, bankName, accountNumber, clabe, isForInvoicing }) => ({
