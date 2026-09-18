@@ -25,8 +25,8 @@ export function QuoteTotalsCard({
   const hasPrintOverride = printTotalCents !== undefined && printTotalCents !== totalCents;
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 sm:p-4 md:p-5 print:border-gray-200 print:bg-gray-50/50 print:p-4 mt-3 sm:mt-6 print:mt-4 print:break-inside-avoid print:overflow-visible">
-      <div className="flex flex-col md:flex-row print:flex-row md:items-end print:items-end md:justify-between gap-3 sm:gap-6 print:gap-4">
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 sm:p-4 md:p-5 print:border-0 print:bg-white print:p-2 mt-3 sm:mt-6 print:mt-2 print:break-inside-avoid print:overflow-visible">
+      <div className="flex flex-col md:flex-row print:flex-row md:items-end print:items-end md:justify-between gap-3 sm:gap-6 print:gap-2">
         <div className="flex-1 order-2 md:order-1 print:order-1 text-xs text-[var(--color-text-muted)] print:text-gray-700 uppercase tracking-wide">
           <p data-testid="quote-total-in-words" className="print:text-xs print:text-gray-700 print:tracking-normal">
             {hasPrintOverride ? (
@@ -77,7 +77,7 @@ export function QuoteTotalsCard({
               )}
             </span>
           </div>
-          <div className="flex items-center justify-between text-xl sm:text-2xl md:text-xl font-bold text-[var(--color-total-emphasis)] print:text-blue-800">
+          <div className="flex items-center justify-between text-xl sm:text-2xl md:text-xl font-bold text-[var(--color-total-emphasis)] print:text-base print:text-blue-800">
             <span>Total</span>
             <span data-testid="quote-total" className="tabular-nums">
               {hasPrintOverride ? (
