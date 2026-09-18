@@ -115,6 +115,7 @@ export async function updatePayrollItemBase(
         type: true,
         totalCents: true,
         includeInPayroll: true,
+        payrollConfigLockedAt: true,
       },
     });
 
@@ -122,6 +123,13 @@ export async function updatePayrollItemBase(
       return {
         success: false,
         error: "El concepto no existe o no fue encontrado.",
+      };
+    }
+
+    if (item.payrollConfigLockedAt) {
+      return {
+        success: false,
+        error: "La configuración de nómina de este concepto está congelada porque ya tiene avances registrados.",
       };
     }
 
@@ -187,4 +195,29 @@ export async function updatePayrollItemBase(
       error: "Error inesperado al actualizar la base de nómina.",
     };
   }
+}
+
+export async function reopenPayrollWeekAction(input: {
+  weekStart: string;
+  reason: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { reopenPayrollWeekAction: reopenWeek } = await import("./week-control");
+  const res = await reopenWeek(input);
+  if (res.success) {
+    revalidatePath("/admin/nomina");
+    revalidatePath("/admin/work-orders");
+  }
+  return res;
+}
+
+export async function closePayrollWeekAction(input: {
+  weekStart: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { closePayrollWeekAction: closeWeek } = await import("./week-control");
+  const res = await closeWeek(input);
+  if (res.success) {
+    revalidatePath("/admin/nomina");
+    revalidatePath("/admin/work-orders");
+  }
+  return res;
 }

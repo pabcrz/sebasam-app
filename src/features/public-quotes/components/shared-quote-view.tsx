@@ -9,6 +9,7 @@ import { QuotePreviewCard } from "@/features/quotes/components/quote-preview-car
 import { formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
 import type { QuoteItemType, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { BankDataCard, type BankAccountData } from "@/features/public-payment/components/bank-data-card";
 
 type SerializableQuoteItem = {
   id: string;
@@ -54,6 +55,7 @@ export interface SharedQuoteViewProps {
   isPrint?: boolean;
   business?: { contactPhone: string; contactWhatsapp: string };
   paymentStatus?: { paidCents: number; remainingCents: number; isSettled: boolean } | null;
+  bankAccounts?: BankAccountData[];
 }
 
 function initialSelectedSectionIds(quote: SharedQuoteViewQuote) {
@@ -66,7 +68,7 @@ function initialSelectedSectionIds(quote: SharedQuoteViewQuote) {
   return quote.sections.map((section) => section.id);
 }
 
-export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isPrintProp, business, paymentStatus }: SharedQuoteViewProps) {
+export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isPrintProp, business, paymentStatus, bankAccounts }: SharedQuoteViewProps) {
   const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
   const isPrint = isPrintProp ?? !token;
@@ -272,6 +274,12 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
         compactHeader={true}
         compactItems={!isPrint}
       />
+
+      {isNote && bankAccounts ? (
+        <div data-testid="note-payment-data" className="print:break-inside-avoid">
+          <BankDataCard bankAccounts={bankAccounts} />
+        </div>
+      ) : null}
 
       {progressStatus ? <QuoteProgress status={progressStatus} /> : null}
 

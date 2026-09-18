@@ -13,7 +13,6 @@ import { FixedPayHelperTable } from "./fixed-pay-helper-table";
 import { PayrollWorkerDetail } from "./payroll-worker-detail";
 import { PayrollSigningSheetModal } from "./payroll-signing-sheet";
 import { PayrollWorkerEnvelopeModal } from "./payroll-worker-envelope";
-import { exportPayrollToExcel } from "../lib/payroll-excel";
 
 interface PayrollViewProps {
   report: WeeklyPayrollReport;
@@ -33,12 +32,8 @@ export function PayrollView({ report, period }: PayrollViewProps) {
       ? selectedWorkerId
       : (report.workers[0]?.workerId ?? "");
 
-  const handleExportExcel = () => {
-    exportPayrollToExcel(report, period);
-  };
-
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="min-w-0 max-w-full space-y-4 sm:space-y-6">
       {/* Period Navigation */}
       <PayrollPeriodNav
         mode={period.mode}
@@ -49,7 +44,7 @@ export function PayrollView({ report, period }: PayrollViewProps) {
         isCurrentPeriod={period.isCurrentPeriod}
         isCurrentWeek={period.isCurrentWeek}
         hasData={hasPayrollEntries}
-        onExportExcel={handleExportExcel}
+        weekStatus={report.weekStatus}
         onOpenSigningSheet={() => setIsSigningSheetOpen(true)}
       />
 
@@ -68,7 +63,7 @@ export function PayrollView({ report, period }: PayrollViewProps) {
 
       {/* Content: Summary Table + Focused Worker Detail */}
       {hasPayrollEntries ? (
-        <div className="space-y-5">
+        <div className="min-w-0 max-w-full space-y-5">
           {/* Level 1: General Executive Overview Table */}
           {report.workers.length > 0 && (
             <PayrollOverviewTable

@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Download, FileSignature } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileSignature } from "lucide-react";
+import { PayrollPeriodStatus } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { payrollHref, type PayrollPeriodMode } from "../period";
+import { PayrollWeekStatusControls } from "./payroll-week-status-dialog";
 
 interface PayrollPeriodNavProps {
   mode?: PayrollPeriodMode;
@@ -16,29 +18,30 @@ interface PayrollPeriodNavProps {
   isCurrentWeek?: boolean;
   isCurrentPeriod?: boolean;
   hasData?: boolean;
-  onExportExcel?: () => void;
+  weekStatus?: PayrollPeriodStatus;
   onOpenSigningSheet?: () => void;
 }
 
 export function PayrollPeriodNav({
   mode = "weekly",
   rangeLabel,
+  anchor,
   prevAnchor,
   nextAnchor,
   isCurrentWeek,
   isCurrentPeriod,
   hasData = true,
-  onExportExcel,
+  weekStatus,
   onOpenSigningSheet,
 }: PayrollPeriodNavProps) {
   const isCurrent = isCurrentPeriod ?? isCurrentWeek ?? false;
 
   return (
-    <Card className="flex flex-col gap-3 p-4 shadow-sm sm:p-5">
+    <Card data-testid="payroll-period-nav" className="min-w-0 max-w-full flex flex-col gap-3 p-4 shadow-sm sm:p-5">
       {/* Top row: Mode switch & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[var(--color-border-light)]">
+      <div className="flex min-w-0 max-w-full flex-col flex-wrap gap-3 border-b border-[var(--color-border-light)] pb-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Mode Selector */}
-        <div className="flex items-center gap-1 bg-[var(--color-bg-soft)] p-0.5 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] self-start">
+        <div className="flex max-w-full flex-wrap items-center gap-1 self-start rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-0.5">
           <Button
             variant={mode === "weekly" ? "secondary" : "ghost"}
             size="sm"
@@ -57,8 +60,8 @@ export function PayrollPeriodNav({
           </Button>
         </div>
 
-        {/* Action Buttons: Excel & Signing Sheet (Disabled when no jobs) */}
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        {/* Action Buttons: General PDF report (Disabled when no jobs) */}
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
           {onOpenSigningSheet && (
             <Button
               type="button"
@@ -73,35 +76,27 @@ export function PayrollPeriodNav({
               Hoja de Firmas
             </Button>
           )}
-
-          {onExportExcel && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onExportExcel}
-              disabled={!hasData}
-              title={!hasData ? "No hay datos para exportar en este período" : "Descargar reporte en Excel"}
-              className="h-8 text-xs px-3 gap-1.5 text-[var(--color-status-success)] border-[var(--color-status-success-border)] hover:bg-[var(--color-status-success-bg)]"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Descargar Excel
-            </Button>
-          )}
         </div>
       </div>
 
       {/* Bottom row: Period info & Navigation */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex min-w-0 max-w-full flex-col flex-wrap gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-base sm:text-lg font-semibold text-[var(--color-text-main)] capitalize">
+            <h2 className="break-words text-base font-semibold capitalize text-[var(--color-text-main)] sm:text-lg">
               {rangeLabel}
             </h2>
             {isCurrent && (
               <Badge variant="info" className="text-xs py-0.5 px-2">
                 {mode === "monthly" ? "Mes en curso" : "Semana en curso"}
               </Badge>
+            )}
+            {mode === "weekly" && (
+              <PayrollWeekStatusControls
+                weekStart={anchor}
+                status={weekStatus}
+                isCurrentWeek={isCurrentWeek}
+              />
             )}
           </div>
           <p className="text-xs text-[var(--color-text-muted)]">
@@ -111,7 +106,7 @@ export function PayrollPeriodNav({
           </p>
         </div>
 
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
           <Button variant="outline" size="sm" asChild className="h-9 text-xs px-3">
             <Link
               href={payrollHref({ mode, anchor: prevAnchor })}

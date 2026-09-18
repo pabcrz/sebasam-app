@@ -18,7 +18,29 @@ export function PayrollWorkerEnvelopeDocument({
     timeZone: "America/Mexico_City",
   }).format(new Date());
 
-  const allLaborItems = worker.workOrders.flatMap((order) => order.items);
+  const allLaborItems = worker.workOrders.flatMap((order) => {
+    if (order.isAdvance) {
+      return [
+        {
+          id: order.advanceId ?? `adv-${order.workOrderId}-${order.quoteItemId}`,
+          description: `[Avance] ${order.conceptDescription || "Mano de obra"} (${order.workOrderNumber})`,
+          payrollBaseCents: order.advanceBaseCents ?? order.totalPayrollBaseCents,
+          ratePercent: order.commissionRatePercent ?? 50,
+          commissionCents: order.totalCommissionCents,
+        },
+      ];
+    }
+    return order.items.map((item) => ({
+      id: item.id,
+      description:
+        order.previousAdvancesBaseCents && order.previousAdvancesBaseCents > 0
+          ? `${item.description} (Liq. ${order.workOrderNumber})`
+          : item.description,
+      payrollBaseCents: item.remainingBaseCents ?? item.payrollBaseCents,
+      ratePercent: item.ratePercent,
+      commissionCents: item.commissionCents,
+    }));
+  });
 
   return (
     <div className="flex flex-col items-center justify-start p-1 sm:p-4 print:p-0 print:m-0 print:block">

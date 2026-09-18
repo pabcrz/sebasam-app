@@ -119,6 +119,18 @@ describe("PaymentCorrectionDialog", () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
+  it.each(["1000", "1000.00", "1,000.00", "1.000,00"])("normalizes %s before calling the correction action", async (input) => {
+    const user = userEvent.setup();
+    const { action } = renderDialog();
+    await user.click(screen.getByRole("button", { name: /corregir pago/i }));
+    const amount = screen.getByRole("textbox", { name: /nuevo monto/i });
+    await user.clear(amount);
+    await user.type(amount, input);
+    await user.type(screen.getByLabelText(/motivo de la corrección/i), "Ajuste de captura");
+    await user.click(screen.getByRole("button", { name: "Confirmar corrección" }));
+    await waitFor(() => expect(action).toHaveBeenCalledWith("pay-1", "1000.00", "CASH", "Ajuste de captura", expect.any(String)));
+  });
+
   it("displays mapped server errors without exposing raw internals", async () => {
     const user = userEvent.setup();
     const action = vi.fn().mockRejectedValue(new Error("Este pago ya fue corregido."));

@@ -13,7 +13,7 @@ import {
   StatCard,
 } from "@/components/ui";
 import { WorkOrderCompletedList } from "@/features/work-orders/components/work-order-completed-list";
-import { correctPaymentAction, recordPaymentAction } from "@/features/payments/actions";
+import { correctPaymentAction, recordPaymentAction, reversePaymentCaptureAction } from "@/features/payments/actions";
 import {
   archiveCompletedNote,
   correctCompletedWorkQuoteFromWorkspace,
@@ -27,6 +27,7 @@ import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/featur
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { getCurrentProfile, isAdminRole } from "@/lib/auth/session";
 import { formatCents } from "@/features/quotes/lib/format";
+import { getNotePaymentHistory } from "@/features/payments/queries";
 
 export const metadata: Metadata = {
   title: "Notas",
@@ -41,6 +42,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
     getCurrentProfile(),
   ]);
   const { workOrders, totals } = result;
+  const paymentHistories = await getNotePaymentHistory(workOrders.map((workOrder) => workOrder.id));
   const quoteMap = new Map(workOrders.map((wo) => [wo.quote.id, wo.quote]));
   const noteReturnTo = notasHref(filters);
   const selectedCustomer = filters.customerId
@@ -125,12 +127,8 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
                 workOrderId: wo.id,
                 action: recordPaymentAction.bind(null, wo.id),
               })) : []}
-              correctionActions={isAdminRole(currentProfile?.profile.role) ? workOrders.flatMap((wo) =>
-                wo.quote.activePaymentId ? [{
-                  workOrderId: wo.id,
-                  action: correctPaymentAction.bind(null, wo.quote.activePaymentId),
-                }] : []
-              ) : []}
+               correctionActions={isAdminRole(currentProfile?.profile.role) ? workOrders.map((wo) => ({ workOrderId: wo.id, action: correctPaymentAction })) : []}
+               reversePaymentActions={isAdminRole(currentProfile?.profile.role) ? workOrders.map((wo) => ({ workOrderId: wo.id, action: reversePaymentCaptureAction })) : []}
                correctWorkOrderActions={isAdminRole(currentProfile?.profile.role) ? workOrders.map((wo) => ({
                  workOrderId: wo.id,
                  action: correctCompletedWorkQuoteFromWorkspace.bind(null, wo.quote.id),
@@ -143,8 +141,12 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
                  canRevoke: wo.quote.hasRevocablePublicLink,
                })) : []}
                rollbackAction={rollbackWorkOrderAction}
-              noteReturnTo={noteReturnTo}
-            />
+               noteReturnTo={noteReturnTo}
+              paymentHistories={workOrders.map((workOrder) => ({
+                workOrderId: workOrder.id,
+                ...(paymentHistories.get(workOrder.id) ?? { totalCents: Number(workOrder.quote.totalCents ?? 0), payments: [] }),
+              }))}
+             />
           )}
           <div className="mt-4 flex justify-between gap-3">
             {result.page > 1 ? <Button asChild variant="outline" size="sm"><Link href={notasHref({ ...filters, page: result.page - 1 })}>Página anterior</Link></Button> : <span />}

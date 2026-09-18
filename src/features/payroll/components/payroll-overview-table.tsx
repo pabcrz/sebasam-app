@@ -29,10 +29,10 @@ export function PayrollOverviewTable({
   if (workers.length === 0) return null;
 
   return (
-    <Card>
+    <Card data-testid="payroll-overview-table" className="min-w-0 max-w-full">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex min-w-0 items-center justify-between">
+          <div className="min-w-0">
             <CardTitle as="h2" className="text-base sm:text-lg">
               Resumen General de Nómina
             </CardTitle>
@@ -42,9 +42,12 @@ export function PayrollOverviewTable({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-0 sm:p-4">
+      <CardContent className="min-w-0 max-w-full p-0 sm:p-4">
         {/* Mobile Cards for Overview */}
-        <div className="sm:hidden divide-y divide-[var(--color-border-light)]/60">
+        <div
+          data-testid="payroll-overview-mobile-cards"
+          className="sm:hidden divide-y divide-[var(--color-border-light)]/60"
+        >
           {workers.map((worker) => {
             const isSelected = worker.workerId === selectedWorkerId;
             return (
@@ -55,13 +58,13 @@ export function PayrollOverviewTable({
                   isSelected ? "bg-[var(--color-primary)]/5" : "hover:bg-[var(--color-bg-soft)]/50"
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
                     <UserCheck className="h-4 w-4" />
                   </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-semibold text-xs text-[var(--color-text-main)] truncate">
+                  <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+                    <div className="flex min-w-0 max-w-full flex-col items-start">
+                      <span className="max-w-full break-words font-semibold text-xs text-[var(--color-text-main)]">
                         {worker.displayName}
                       </span>
                       <Badge variant="default" className="text-[9px] py-0 px-1 font-normal">
@@ -88,7 +91,7 @@ export function PayrollOverviewTable({
         </div>
 
         {/* Desktop Table for Overview */}
-        <div className="hidden sm:block">
+        <div className="hidden min-w-0 max-w-full sm:block">
           <Table>
             <TableHeader>
               <TableRow className="border-b border-[var(--color-border-light)] hover:bg-transparent">

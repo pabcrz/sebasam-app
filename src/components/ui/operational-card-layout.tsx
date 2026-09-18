@@ -40,6 +40,7 @@ export type OperationalCardActionsProps = {
   frequent?: React.ReactNode;
   overflow?: React.ReactNode;
   className?: string;
+  actionGapClassName?: string;
 };
 
 export function OperationalCardActions({
@@ -47,6 +48,7 @@ export function OperationalCardActions({
   frequent,
   overflow,
   className,
+  actionGapClassName = "gap-2",
 }: OperationalCardActionsProps) {
   return (
     <div className={clsx("grid gap-3", className)}>
@@ -58,10 +60,10 @@ export function OperationalCardActions({
       {frequent || overflow ? (
         <div
           data-testid="operational-card-secondary-actions"
-          className="flex w-full items-center gap-2"
+          className={clsx("flex w-full items-center", actionGapClassName)}
         >
           {frequent ? (
-            <div className="flex flex-1 items-center gap-2 min-w-0 [&>*]:flex-1 [&>*]:min-w-0">
+            <div className={clsx("flex min-w-0 flex-1 items-center [&>*]:flex-1 [&>*]:min-w-0", actionGapClassName)}>
               {frequent}
             </div>
           ) : null}

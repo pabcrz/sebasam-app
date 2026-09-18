@@ -32,6 +32,8 @@ describe("work order operational queues", () => {
     expect(sql).toContain('wo.status::text = ?');
     expect(sql).toContain('wo."completedAt" >= ?');
     expect(sql).toContain('wo."completedAt" < ?');
+    expect(sql).toContain('LEFT JOIN "SettlementAgreement" sa');
+    expect(sql).toContain('COALESCE(sa."settlementTotalCents", q."totalCents")');
     expect(sql).toContain('ORDER BY wo."completedAt" DESC, wo.id DESC LIMIT ? OFFSET ?');
     expect(sql.includes("HAVING")).toBe(payment !== "all");
     if (payment === "pending") expect(sql).toMatch(/HAVING .* > 0/);
@@ -95,8 +97,8 @@ describe("work order operational queues", () => {
   it("excludes reversed payments from completed-list totals and exposes the active payment id", async () => {
     const input = { start: new Date("2026-08-03T06:00:00Z"), end: new Date("2026-08-10T06:00:00Z"), payment: "all" as const, assignee: "all", page: 1 };
     (prisma.$queryRaw as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: "wo-paid", paidCents: BigInt(5_000), activePaymentId: "pay-active" },
-      { id: "wo-reversed", paidCents: BigInt(0), activePaymentId: null },
+      { id: "wo-paid", effectiveTotalCents: BigInt(10_000), paidCents: BigInt(5_000), activePaymentId: "pay-active" },
+      { id: "wo-reversed", effectiveTotalCents: BigInt(8_000), paidCents: BigInt(0), activePaymentId: null },
     ]);
     (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
       {
@@ -132,6 +134,31 @@ describe("work order operational queues", () => {
     expect(reversedRow?.quote.paidCents).toBe(0);
     expect(reversedRow?.quote.remainingCents).toBe(8_000);
     expect(reversedRow?.quote.activePaymentId).toBeNull();
+  });
+
+  it("uses the active settlement total for Nota balances and hydrated payment inputs", async () => {
+    const input = { start: new Date("2026-08-03T06:00:00Z"), end: new Date("2026-08-10T06:00:00Z"), payment: "all" as const, assignee: "all" as const, page: 1 };
+    (prisma.$queryRaw as ReturnType<typeof vi.fn>).mockResolvedValue([{
+      id: "wo-settled",
+      effectiveTotalCents: BigInt(9_280),
+      paidCents: BigInt(3_000),
+      activePaymentId: "pay-1",
+      activePaymentMethod: "TRANSFER",
+      activePaymentAmountCents: BigInt(3_000),
+    }]);
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{
+      id: "wo-settled",
+      status: "COMPLETED",
+      quote: { id: "quote-1", number: "COT-01", totalCents: 11_600, items: [], sections: [] },
+      assignments: [],
+    }]);
+
+    const result = await listCompletedWorkOrders(input);
+    const workOrder = result.workOrders[0];
+
+    expect(workOrder?.quote.effectiveTotalCents).toBe(9_280);
+    expect(workOrder?.quote.paidCents).toBe(3_000);
+    expect(workOrder?.quote.remainingCents).toBe(6_280);
   });
 
   it("hides a completed work order from Nota routes when closure data is invalid", async () => {
@@ -236,4 +263,3 @@ describe("work order operational queues", () => {
     });
   });
 });
-
