@@ -344,7 +344,7 @@ export function QuotePreviewCard({
 
         <div className="mt-auto flex flex-col gap-2.5 sm:gap-4 print:mt-auto print:gap-2 print:break-inside-avoid print:overflow-visible">
           {description ? (
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-2.5 sm:p-3 print:border-gray-200 print:bg-gray-50 text-xs sm:text-sm text-[var(--color-text-muted)] print:text-gray-600 print:break-inside-avoid">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-2.5 sm:p-3 print:border-gray-200 print:bg-white text-xs sm:text-sm text-[var(--color-text-muted)] print:text-gray-600 print:break-inside-avoid">
               <p className="font-semibold text-[10px] uppercase tracking-wider mb-0.5 sm:mb-1">Notas / Observaciones</p>
               <p className="whitespace-pre-wrap" data-testid="preview-notes-text">{description}</p>
             </div>

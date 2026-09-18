@@ -44,6 +44,7 @@ describe("QuotePreviewCard", () => {
 
     const table = screen.getByTestId("quote-items-table");
     expect(container.firstElementChild).not.toHaveClass("print:flex-none");
+    expect(screen.getByTestId("preview-notes-text").parentElement).toHaveClass("print:bg-white", "print:border-gray-200");
     expect(table).toBeInTheDocument();
     expect(table).toHaveTextContent("Cant.");
     expect(table).toHaveTextContent("Concepto / Servicio Realizado");
