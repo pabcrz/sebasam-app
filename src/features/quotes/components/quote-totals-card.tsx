@@ -77,7 +77,7 @@ export function QuoteTotalsCard({
               )}
             </span>
           </div>
-          <div className="flex items-center justify-between text-xl sm:text-2xl md:text-xl font-bold text-[var(--color-total-emphasis)] print:text-base print:text-blue-800">
+          <div className="flex items-center justify-between text-xl sm:text-2xl md:text-xl font-bold text-[var(--color-total-emphasis)] print:text-lg print:text-blue-800 print:tracking-tight">
             <span>Total</span>
             <span data-testid="quote-total" className="tabular-nums">
               {hasPrintOverride ? (
