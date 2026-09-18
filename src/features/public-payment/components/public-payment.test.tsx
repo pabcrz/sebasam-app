@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { BankDataCard } from "./bank-data-card";
 import { ContactCard } from "./contact-card";
 import { WhatsAppReceiptCta } from "./whatsapp-receipt-cta";
@@ -45,8 +45,8 @@ describe("BankDataCard", () => {
   it("renders bank details and copy buttons when no props (legacy fallback)", () => {
     render(<BankDataCard />);
 
-    expect(screen.getByText("Titular")).toBeInTheDocument();
-    expect(screen.getByText("Banco")).toBeInTheDocument();
+    expect(screen.getByText(/Titular:/)).toBeInTheDocument();
+    expect(screen.getByText("Solo transferencias")).toBeInTheDocument();
     expect(screen.getByText("No. Cuenta")).toBeInTheDocument();
     expect(screen.getByText("CLABE")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /copiar/i })).toHaveLength(2);
@@ -58,7 +58,7 @@ describe("BankDataCard", () => {
     expect(screen.getByTestId("bank-data-empty")).toHaveTextContent(
       "No hay cuentas bancarias registradas.",
     );
-    expect(screen.queryByText("Titular")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Titular:/)).not.toBeInTheDocument();
     expect(screen.queryByText("No. Cuenta")).not.toBeInTheDocument();
     expect(screen.queryByText("CLABE")).not.toBeInTheDocument();
   });
@@ -78,9 +78,9 @@ describe("BankDataCard", () => {
       />,
     );
 
-    expect(screen.getByText("Juan Pérez")).toBeInTheDocument();
+    expect(screen.getByText(/Titular: Juan Pérez/)).toBeInTheDocument();
     expect(screen.getByText("BBVA")).toBeInTheDocument();
-    expect(screen.getByText("987654")).toBeInTheDocument();
+    expect(screen.getByText("9876 54")).toBeInTheDocument();
     expect(screen.getByText("0123 4567 8901 2345")).toBeInTheDocument();
   });
 
@@ -100,7 +100,7 @@ describe("BankDataCard", () => {
     );
 
     expect(screen.getByText("No. Cuenta")).toBeInTheDocument();
-    expect(screen.getByText("987654")).toBeInTheDocument();
+    expect(screen.getByText("9876 54")).toBeInTheDocument();
     expect(screen.queryByText("CLABE")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /copiar/i })).toBeInTheDocument();
   });
@@ -141,9 +141,8 @@ describe("BankDataCard", () => {
       />,
     );
 
-    expect(screen.getByText("Titular")).toBeInTheDocument();
-    expect(screen.getByText("Banco")).toBeInTheDocument();
-    expect(screen.getByText("Juan Pérez")).toBeInTheDocument();
+    expect(screen.getByText(/Titular:/)).toBeInTheDocument();
+    expect(screen.getByText(/Titular: Juan Pérez/)).toBeInTheDocument();
     expect(screen.getByText("BBVA")).toBeInTheDocument();
     expect(screen.queryByText("No. Cuenta")).not.toBeInTheDocument();
     expect(screen.queryByText("CLABE")).not.toBeInTheDocument();
@@ -173,7 +172,7 @@ describe("BankDataCard", () => {
     );
 
     // First account: account number only, no CLABE
-    expect(screen.getByText("123456")).toBeInTheDocument();
+    expect(screen.getByText("1234 56")).toBeInTheDocument();
     expect(screen.getByText("Santander")).toBeInTheDocument();
 
     // Second account: CLABE only, no account number
@@ -183,6 +182,92 @@ describe("BankDataCard", () => {
     // Each account has one copy button
     const copyButtons = screen.getAllByRole("button", { name: /copiar/i });
     expect(copyButtons).toHaveLength(2);
+  });
+
+  it("keeps accounts separate with purpose labels and only copy action icons", () => {
+    const { container } = render(
+      <BankDataCard
+        bankAccounts={[
+          {
+            id: 1,
+            accountHolder: "Holder One",
+            bankName: "BBVA",
+            accountNumber: "1111222233334444",
+            clabe: "012345678901234567",
+            isForInvoicing: true,
+          },
+          {
+            id: 2,
+            accountHolder: "Holder Two",
+            bankName: "Santander",
+            accountNumber: "9999888877776666",
+            clabe: "987654321098765432",
+            isForInvoicing: false,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getAllByTestId("bank-account-card")).toHaveLength(2);
+    expect(screen.getByText("Facturación y transferencias")).toBeInTheDocument();
+    expect(screen.getByText("Solo transferencias")).toBeInTheDocument();
+    expect(screen.queryByText("Facturación", { exact: true })).not.toBeInTheDocument();
+    expect(screen.getByText("0123 4567 8901 2345 67")).toBeInTheDocument();
+    expect(screen.getByText("1111 2222 3333 4444")).toBeInTheDocument();
+    expect(screen.getByText("Titular: Holder One")).toBeInTheDocument();
+    expect(screen.getByText("Titular: Holder Two")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /copiar/i })).toHaveLength(4);
+    expect(container.querySelectorAll("svg")).toHaveLength(4);
+  });
+
+  it("uses inline emphasized purpose text without sharing context", () => {
+    const { container } = render(
+      <BankDataCard
+        bankAccounts={[{
+          id: 1,
+          accountHolder: "Holder One",
+          bankName: "BBVA",
+          accountNumber: "1111",
+          clabe: "2222",
+          isForInvoicing: true,
+        }]}
+      />,
+    );
+
+    const purpose = screen.getByText("Facturación y transferencias");
+    expect(purpose).toHaveClass("text-[var(--color-status-info)]", "font-semibold");
+    expect(purpose.previousElementSibling).toHaveTextContent("·");
+    expect(container).not.toHaveTextContent(/vista pública|estás compartiendo|datos-de-pago|compartir esta cuenta/i);
+  });
+
+  it("copies the original unspaced values for both fields", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    render(
+      <BankDataCard
+        bankAccounts={[{
+          id: 1,
+          accountHolder: "Juan Pérez",
+          bankName: "BBVA",
+          accountNumber: "9876 5432",
+          clabe: "0123 4567 8901 2345",
+        }]}
+      />,
+    );
+
+    const copyButtons = screen.getAllByRole("button", { name: /copiar/i });
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+      fireEvent.click(copyButtons[1]);
+    });
+
+    await vi.waitFor(() => {
+      expect(writeText).toHaveBeenNthCalledWith(1, "0123456789012345");
+      expect(writeText).toHaveBeenNthCalledWith(2, "98765432");
+    });
   });
 });
 
@@ -255,7 +340,7 @@ describe("PublicPaymentPage", () => {
 
     expect(screen.getByText("Q-001")).toBeInTheDocument();
     expect(screen.getByText(/Total: \$4,000\.00/)).toBeInTheDocument();
-    expect(screen.getByText("Juan Pérez")).toBeInTheDocument();
+    expect(screen.getByText(/Titular: Juan Pérez/)).toBeInTheDocument();
     expect(screen.getByText("BBVA")).toBeInTheDocument();
     expect(screen.getByText("5511223344")).toBeInTheDocument();
     expect(screen.getByText("5544332211")).toBeInTheDocument();
@@ -358,7 +443,7 @@ describe("PublicPaymentShell", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Custom Business" })).toBeInTheDocument();
-    expect(screen.getByText("Custom Holder")).toBeInTheDocument();
+    expect(screen.getByText(/Titular: Custom Holder/)).toBeInTheDocument();
     expect(screen.getByText("Custom Bank")).toBeInTheDocument();
     expect(screen.getByText("5500000000")).toBeInTheDocument();
     expect(screen.getByText("5511111111")).toBeInTheDocument();
