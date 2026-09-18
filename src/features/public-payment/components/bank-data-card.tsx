@@ -81,7 +81,7 @@ export function BankDataCard({ bankAccounts, isPrint = false }: BankDataCardProp
     return (
       <section
         data-testid="bank-data-print"
-        className="border-t border-gray-300 px-4 pt-2 print:break-inside-avoid print:page-break-inside-avoid"
+        className="px-4 pt-2 print:break-inside-avoid print:page-break-inside-avoid"
       >
         <h2 className="text-[11px] font-bold leading-tight text-gray-900">Datos de pago</h2>
         {accounts.length === 0 ? (

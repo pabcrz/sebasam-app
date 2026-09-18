@@ -295,7 +295,8 @@ describe("BankDataCard", () => {
       />,
     );
 
-    expect(screen.getByTestId("bank-data-print")).toHaveClass("border-t", "px-4", "print:break-inside-avoid");
+    expect(screen.getByTestId("bank-data-print")).toHaveClass("px-4", "print:break-inside-avoid");
+    expect(screen.getByTestId("bank-data-print")).not.toHaveClass("border-t");
     expect(screen.getAllByTestId("bank-account-print")).toHaveLength(2);
     expect(screen.getByText("· facturación")).toHaveClass("text-[var(--color-primary)]");
     expect(screen.getByText("0123 4567 8901 2345 67")).toHaveClass("font-mono");
