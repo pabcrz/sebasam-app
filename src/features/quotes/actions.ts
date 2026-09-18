@@ -1011,8 +1011,34 @@ async function deleteQuoteAuthorized(quoteId: string) {
       throw new Error("This quote has financial activity and cannot be deleted.");
     }
 
-    if (await tx.workOrder.count({ where: { quoteId } })) {
+    const workOrder = await tx.workOrder.findUnique({
+      where: { quoteId },
+      select: { id: true, status: true },
+    });
+
+    if (workOrder && workOrder.status !== WorkOrderStatus.CANCELLED) {
       throw new Error("This quote has an associated work order and cannot be deleted.");
+    }
+
+    if (workOrder) {
+      const [applicationCount, ledgerEntryCount, laborAdvanceCount] = await Promise.all([
+        tx.paymentApplication.count({ where: { workOrderId: workOrder.id } }),
+        tx.ledgerEntry.count({
+          where: {
+            OR: [
+              { workOrderId: workOrder.id },
+              { payment: { quoteId } },
+            ],
+          },
+        }),
+        tx.workOrderLaborAdvance.count({ where: { workOrderId: workOrder.id } }),
+      ]);
+
+      if (applicationCount > 0 || ledgerEntryCount > 0 || laborAdvanceCount > 0) {
+        throw new Error("This quote has financial activity and cannot be deleted.");
+      }
+
+      await tx.workOrder.delete({ where: { id: workOrder.id } });
     }
 
     await tx.sharedQuote.deleteMany({ where: { quoteId } });
