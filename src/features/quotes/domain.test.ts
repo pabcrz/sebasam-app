@@ -7,6 +7,7 @@ import {
   authorizeQuote,
   correctQuoteDecision,
   getSharedQuoteByToken,
+  getSharedQuoteStatusByToken,
   SharedQuoteExpiredError,
   SharedQuoteRevokedError,
   SharedQuoteNotFoundError,
@@ -20,6 +21,45 @@ import {
 } from "./domain";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+describe("getSharedQuoteStatusByToken", () => {
+  it("selects only link, quote, and work-order status fields", async () => {
+    const sharedQuote = {
+      expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+      revokedAt: null,
+      quote: {
+        id: "quote-1",
+        status: QuoteStatus.SENT,
+        updatedAt: new Date("2026-09-18T00:00:00.000Z"),
+        deletedAt: null,
+        workOrder: { status: WorkOrderStatus.PLANNED },
+      },
+    };
+    (prisma.sharedQuote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(sharedQuote);
+
+    await expect(getSharedQuoteStatusByToken("public-token")).resolves.toEqual({
+      revision: "quote-1:SENT:1789689600000:active:PLANNED:active:4070908800000",
+      quoteStatus: QuoteStatus.SENT,
+      workOrderStatus: WorkOrderStatus.PLANNED,
+    });
+    expect(prisma.sharedQuote.findUnique).toHaveBeenCalledWith({
+      where: { token: "public-token" },
+      select: {
+        expiresAt: true,
+        revokedAt: true,
+        quote: {
+          select: {
+            id: true,
+            status: true,
+            updatedAt: true,
+            deletedAt: true,
+            workOrder: { select: { status: true } },
+          },
+        },
+      },
+    });
+  });
+});
 
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: vi.fn(), sharedQuote: { findFirst: vi.fn(), findUnique: vi.fn() } } }));
 
