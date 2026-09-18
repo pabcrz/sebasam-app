@@ -115,7 +115,7 @@ describe("WorkOrderCompletedList", () => {
     expect(screen.getAllByTestId("card-header")[0]?.parentElement?.parentElement?.parentElement).toHaveClass("!p-2");
   });
 
-  it("owns payment correction in the historical payment row instead of the note actions", () => {
+  it("does not render administrative payment actions in the historical payment row", () => {
     const correctableWorkOrder = {
       ...workOrder,
       quote: { ...workOrder.quote, activePaymentId: "pay-1", activePaymentMethod: "CASH", activePaymentAmountCents: 12_500 },
@@ -125,14 +125,14 @@ describe("WorkOrderCompletedList", () => {
       <WorkOrderCompletedList
         workOrders={[correctableWorkOrder]}
         shareAction={vi.fn()}
-        correctionActions={[{ workOrderId: correctableWorkOrder.id, action: vi.fn() }]}
-        paymentHistories={[{ workOrderId: correctableWorkOrder.id, totalCents: 12_500, payments: [longPaymentHistory[0]] }]}
+         paymentHistories={[{ workOrderId: correctableWorkOrder.id, totalCents: 12_500, payments: [longPaymentHistory[0]] }]}
       />,
     );
 
     expect(screen.queryByRole("button", { name: "Más acciones de nota COT-001" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ver detalle de nota COT-001" }));
-    expect(screen.getByRole("button", { name: /corregir pago de \$10\.00/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /corregir pago/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /revertir pago/i })).not.toBeInTheDocument();
   });
 
   it("renders Corregir nota trigger when admin action is provided", () => {

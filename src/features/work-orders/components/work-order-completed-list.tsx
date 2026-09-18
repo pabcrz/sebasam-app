@@ -9,7 +9,6 @@ import {
   OperationalCardLayout,
 } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
-import type { CorrectPaymentResult } from "@/features/payments/domain";
 import { derivePaymentState } from "@/features/work-orders/payment-state";
 import { NotaDetailDialog } from "./nota-detail-dialog";
 import { NotaCard } from "./nota-card";
@@ -38,25 +37,9 @@ type WorkOrderPaymentAction = {
   action: (amount: string, operationKey: string, method: string) => Promise<PaymentResult>;
 };
 
-type WorkOrderCorrectionAction = {
-  workOrderId: string;
-  action: (
-    paymentId: string,
-    amount: string,
-    method: string,
-    reason: string,
-    operationKey: string,
-  ) => Promise<CorrectPaymentResult>;
-};
-
 type WorkOrderCommercialCorrectionAction = {
   workOrderId: string;
   action: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
-};
-
-type WorkOrderReversePaymentAction = {
-  workOrderId: string;
-  action: (paymentId: string, reason: string, operationKey?: string) => Promise<unknown>;
 };
 
 type NoteArchiveRevocationAction = {
@@ -72,8 +55,6 @@ interface WorkOrderCompletedListProps {
   customers?: CustomerOption[];
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
   recordPaymentActions?: WorkOrderPaymentAction[];
-  correctionActions?: WorkOrderCorrectionAction[];
-  reversePaymentActions?: WorkOrderReversePaymentAction[];
   correctWorkOrderActions?: WorkOrderCommercialCorrectionAction[];
   shareAction: (quoteId: string) => Promise<{ success: boolean; token?: string; error?: string }>;
   archiveRevocationActions?: NoteArchiveRevocationAction[];
@@ -99,8 +80,6 @@ export function WorkOrderCompletedList({
   customers = [],
   searchCustomersAction,
   recordPaymentActions = [],
-  correctionActions = [],
-  reversePaymentActions = [],
   correctWorkOrderActions = [],
   shareAction,
   archiveRevocationActions = [],
@@ -109,8 +88,6 @@ export function WorkOrderCompletedList({
   paymentHistories = [],
 }: WorkOrderCompletedListProps) {
   const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
-  const correctionActionMap = new Map(correctionActions.map((p) => [p.workOrderId, p.action]));
-  const reversePaymentActionMap = new Map(reversePaymentActions.map((p) => [p.workOrderId, p.action]));
   const correctWorkOrderActionMap = new Map(correctWorkOrderActions.map((c) => [c.workOrderId, c.action]));
   const archiveRevocationActionMap = new Map(archiveRevocationActions.map((action) => [action.quoteId, action]));
   const [selectedWorkOrderId, setSelectedWorkOrderId] = React.useState<string | null>(null);
@@ -314,8 +291,6 @@ export function WorkOrderCompletedList({
           noteReturnTo={noteReturnTo}
           paymentHistory={paymentHistories.find((history) => history.workOrderId === selected.id)}
           paymentAction={paymentActionMap.get(selected.id)}
-           correctionAction={correctionActionMap.get(selected.id)}
-           reverseAction={reversePaymentActionMap.get(selected.id)}
           correctWorkOrderAction={correctWorkOrderActionMap.get(selected.id)}
           customers={customers}
           searchCustomersAction={searchCustomersAction}

@@ -13,7 +13,7 @@ import {
   StatCard,
 } from "@/components/ui";
 import { WorkOrderCompletedList } from "@/features/work-orders/components/work-order-completed-list";
-import { correctPaymentAction, recordPaymentAction, reversePaymentCaptureAction } from "@/features/payments/actions";
+import { recordPaymentAction } from "@/features/payments/actions";
 import {
   archiveCompletedNote,
   correctCompletedWorkQuoteFromWorkspace,
@@ -127,8 +127,6 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
                 workOrderId: wo.id,
                 action: recordPaymentAction.bind(null, wo.id),
               })) : []}
-               correctionActions={isAdminRole(currentProfile?.profile.role) ? workOrders.map((wo) => ({ workOrderId: wo.id, action: correctPaymentAction })) : []}
-               reversePaymentActions={isAdminRole(currentProfile?.profile.role) ? workOrders.map((wo) => ({ workOrderId: wo.id, action: reversePaymentCaptureAction })) : []}
                correctWorkOrderActions={isAdminRole(currentProfile?.profile.role) ? workOrders.map((wo) => ({
                  workOrderId: wo.id,
                  action: correctCompletedWorkQuoteFromWorkspace.bind(null, wo.quote.id),

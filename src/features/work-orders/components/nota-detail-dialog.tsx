@@ -15,11 +15,9 @@ import { CashPaymentDialog, PaymentBalanceSummary } from "@/features/payments/co
 import { NotePaymentHistory } from "@/features/payments/components/note-payment-history";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { formatDate } from "@/features/quotes/lib/format";
-import type { CorrectPaymentResult } from "@/features/payments/domain";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 import type { NotePaymentHistoryItem } from "@/features/payments/lib/payment-register";
-import type { ReversePaymentDialogProps } from "@/features/payments/components/reverse-payment-dialog";
 
 type PaymentAction = (amount: string, operationKey: string, method: string) => Promise<{
   payment: { amountCents: number };
@@ -46,14 +44,6 @@ type Props = {
   noteReturnTo: string;
   paymentHistory?: { totalCents: number; payments: NotePaymentHistoryItem[] };
   paymentAction?: PaymentAction;
-  correctionAction?: (
-    paymentId: string,
-    amount: string,
-    method: string,
-    reason: string,
-    operationKey: string,
-  ) => Promise<CorrectPaymentResult>;
-  reverseAction?: ReversePaymentDialogProps["action"];
   correctWorkOrderAction?: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   customers: CustomerOption[];
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
@@ -69,8 +59,6 @@ export function NotaDetailDialog({
   onOpenChange,
   paymentHistory,
   paymentAction,
-  correctionAction,
-  reverseAction,
   correctWorkOrderAction,
   customers,
   searchCustomersAction,
@@ -139,8 +127,6 @@ export function NotaDetailDialog({
             customerName={customerName}
             totalCents={paymentHistory?.totalCents ?? totalCents}
            payments={paymentHistory?.payments ?? []}
-            correctionAction={correctionAction}
-            reverseAction={reverseAction}
           />
         </DialogMobileBody>
       </DialogMobileContent>

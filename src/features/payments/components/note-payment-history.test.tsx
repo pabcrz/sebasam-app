@@ -91,7 +91,7 @@ describe("NotePaymentHistory", () => {
     expect(screen.queryByRole("button", { name: /Compartir recibo/ })).not.toBeInTheDocument();
   });
 
-  it("keeps correction and reversal actions attached to each valid payment row", () => {
+  it("does not render administrative correction or reversal actions in payment history", () => {
     render(
       <NotePaymentHistory
         title="Servicio"
@@ -107,12 +107,10 @@ describe("NotePaymentHistory", () => {
           remainingCentsAtPayment: 6_000,
           isReversed: false,
         }]}
-        correctionAction={vi.fn()}
-        reverseAction={vi.fn()}
-      />,
+       />,
     );
 
-    expect(screen.getByRole("button", { name: /Corregir pago de \$40\.00/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Revertir pago de \$40\.00/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Corregir pago/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Revertir pago/i })).not.toBeInTheDocument();
   });
 });
