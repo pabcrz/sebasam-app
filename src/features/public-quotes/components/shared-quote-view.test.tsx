@@ -588,7 +588,7 @@ describe("SharedQuoteView", () => {
     );
 
     expect(screen.getByTestId("bank-data-print")).toBeInTheDocument();
-    expect(screen.getByTestId("note-payment-data")).toHaveClass("print:mt-auto");
+    expect(screen.getByTestId("note-payment-data")).not.toHaveClass("print:mt-auto");
     expect(screen.getByText("0123 4567 8901 2345 67")).toHaveClass("font-mono");
     expect(screen.getByText("1234 5678")).toHaveClass("font-mono");
     expect(screen.getByText("SEBASAM")).toBeInTheDocument();

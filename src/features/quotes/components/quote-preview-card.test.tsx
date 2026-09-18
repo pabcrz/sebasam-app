@@ -43,7 +43,7 @@ describe("QuotePreviewCard", () => {
     const { container } = render(<QuotePreviewCard {...defaultProps} />);
 
     const table = screen.getByTestId("quote-items-table");
-    expect(container.firstElementChild).toHaveClass("print:flex-none");
+    expect(container.firstElementChild).not.toHaveClass("print:flex-none");
     expect(table).toBeInTheDocument();
     expect(table).toHaveTextContent("Cant.");
     expect(table).toHaveTextContent("Concepto / Servicio Realizado");
