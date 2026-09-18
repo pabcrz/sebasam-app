@@ -42,6 +42,8 @@ export type SharedQuoteViewQuote = {
   isLocked: boolean;
   paymentDueDate: Date | null;
   customer: ({ name: string } & Record<string, unknown>) | null;
+  contactSnapshot?: unknown;
+  customerContact?: { name: string; role?: string | null } | null;
   vehicle: { plate: string | null; economicNumber: string | null; brand: string | null; model: string | null } | null;
   items: SerializableQuoteItem[];
   sections: { id: string; quoteId: string; name: string; sortOrder: number; isAuthorized: boolean; items: SerializableQuoteItem[] }[];
@@ -56,6 +58,7 @@ export interface SharedQuoteViewProps {
   business?: { contactPhone: string; contactWhatsapp: string };
   paymentStatus?: { paidCents: number; remainingCents: number; isSettled: boolean } | null;
   bankAccounts?: BankAccountData[];
+  initialStatusRevision?: string;
 }
 
 function initialSelectedSectionIds(quote: SharedQuoteViewQuote) {
@@ -68,25 +71,45 @@ function initialSelectedSectionIds(quote: SharedQuoteViewQuote) {
   return quote.sections.map((section) => section.id);
 }
 
-export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isPrintProp, business, paymentStatus, bankAccounts }: SharedQuoteViewProps) {
+export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isPrintProp, business, paymentStatus, bankAccounts, initialStatusRevision }: SharedQuoteViewProps) {
   const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
   const isPrint = isPrintProp ?? !token;
   const isNote = isNoteProp ?? (quote.workOrder?.status === "COMPLETED");
 
   React.useEffect(() => {
-    // Refresh the quote data every 5 seconds if no decision has been made
-    // and only if the browser tab is actually visible.
-    if (decision !== null) return;
-    
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") {
-        router.refresh();
+    if (!token || isPrint || isNote || quote.status !== "SENT" || decision !== null || !initialStatusRevision) return;
+
+    let active = true;
+    let controller: AbortController | null = null;
+
+    const pollStatus = async () => {
+      if (!active || document.visibilityState !== "visible") return;
+      controller = new AbortController();
+      try {
+        const response = await fetch(`/api/cotizacion/${encodeURIComponent(token)}/status`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!active) return;
+        if (!response.ok) {
+          if (response.status === 404 || response.status === 410) router.refresh();
+          return;
+        }
+        const status = await response.json() as { revision?: string };
+        if (status.revision && status.revision !== initialStatusRevision) router.refresh();
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
       }
-    }, 5000);
-    
-    return () => clearInterval(interval);
-  }, [router, decision]);
+    };
+
+    const interval = setInterval(pollStatus, 60_000);
+    return () => {
+      active = false;
+      controller?.abort();
+      clearInterval(interval);
+    };
+  }, [initialStatusRevision, isNote, isPrint, quote.status, router, token, decision]);
   const [error, setError] = React.useState<string | null>(null);
   const [selectedSectionIds, setSelectedSectionIds] = React.useState(() => initialSelectedSectionIds(quote));
 
@@ -276,8 +299,8 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
       />
 
       {isNote && bankAccounts ? (
-        <div data-testid="note-payment-data" className="print:break-inside-avoid">
-          <BankDataCard bankAccounts={bankAccounts} />
+        <div data-testid="note-payment-data" className="print:order-last print:break-inside-avoid">
+          <BankDataCard bankAccounts={bankAccounts} isPrint={isPrint} />
         </div>
       ) : null}
 

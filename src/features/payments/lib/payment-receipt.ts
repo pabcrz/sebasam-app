@@ -30,9 +30,8 @@ export function buildPaymentReceiptMessage(data: PaymentReceiptData) {
     `Total: ${formatCents(data.totalCents)}.`,
     `Abono #${data.sequence ?? 1}: ${formatCents(data.paymentCents)} (${paymentMethodLabel(data.method)}).`,
     data.paymentDate ? `Fecha y hora: ${formatReceiptDate(data.paymentDate)}.` : null,
-    data.isReversed ? "Estado: Pago revertido." : settled ? "Estado: Nota liquidada." : "Estado: Pago registrado. Nota: Pago parcial.",
-    data.isReversed || settled ? null : `Saldo después de este pago: ${formatCents(data.remainingCents)}.`,
-    `Saldo restante: ${formatCents(data.remainingCents)}.`,
+    data.isReversed ? "Estado: Pago revertido." : settled ? "Estado: Nota liquidada." : "Estado: Pago registrado.",
+    `Saldo pendiente: ${formatCents(data.remainingCents)}.`,
   ].filter(Boolean).join(" ");
 }
 

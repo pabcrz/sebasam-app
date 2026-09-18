@@ -7,9 +7,9 @@ describe("PublicQuoteShell", () => {
     const { container } = render(<PublicQuoteShell>content</PublicQuoteShell>);
 
     expect(container.firstElementChild).toHaveClass("min-h-screen");
-    expect(container.firstElementChild).toHaveClass("print:min-h-[255mm]");
+    expect(container.firstElementChild).toHaveClass("print:min-h-[255mm]", "print:py-0");
     expect(container.firstElementChild).toHaveClass("print:px-[14mm]");
-    expect(container.firstElementChild).toHaveClass("print:py-[12mm]");
+    expect(container.firstElementChild).toHaveClass("print:py-0");
   });
 
   it("renders the approved quote brand treatment and subtitle", () => {
@@ -63,7 +63,7 @@ describe("PublicQuoteShell", () => {
     expect(screen.getAllByText(/1 de julio de 2026/i).length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders the header with complete client, vehicle, date, and document metadata", () => {
+  it("renders client, date, and document metadata without legacy vehicle descriptions", () => {
     const { container } = render(
         <PublicQuoteShell
           business={{ businessName: "SEBASAM", fullName: "Servicio y Refacciones para Suspensiones de Aire y Muelles", phone: "5556007675", whatsapp: "5536239346" }}
@@ -84,7 +84,7 @@ describe("PublicQuoteShell", () => {
     expect(container).toHaveTextContent("5536239346");
     expect(container).toHaveTextContent("Batalla de Casa Blanca");
     expect(container).toHaveTextContent("Cristian Del Toro");
-    expect(container).toHaveTextContent("Freightliner - Sin placas");
+    expect(container).not.toHaveTextContent("Freightliner - Sin placas");
     expect(container).toHaveTextContent("18 de junio de 2026");
     expect(container).toHaveTextContent("C-0826-001");
   });
@@ -105,5 +105,89 @@ describe("PublicQuoteShell", () => {
     expect(container.textContent).not.toMatch(/Santander/i);
     expect(container.textContent).not.toMatch(/Mercado\s*Pago/i);
     expect(container.textContent).not.toMatch(/Cuenta\s*bancaria/i);
+  });
+
+  it.each([
+    [{}, []],
+    [{ plate: "ABC-123" }, ["Placas ABC-123"]],
+    [{ plate: "ABC-123", economicNumber: "ECO-7" }, ["Placas ABC-123", "Eco ECO-7"]],
+    [{ plate: "ABC-123", economicNumber: "ECO-7", operatorName: "Luis Pérez" }, ["Placas ABC-123", "Eco ECO-7", "Chofer Luis Pérez"]],
+  ])("renders only the %s unit values", (unitData, expectedValues) => {
+    const { container } = render(
+      <PublicQuoteShell business={{ businessName: "SEBASAM" }} documentType="Nota" documentNumber="N-001" customerName="Cliente" unitData={unitData}>
+        content
+      </PublicQuoteShell>,
+    );
+
+    for (const value of expectedValues) expect(container).toHaveTextContent(value);
+    for (const value of ["Placas", "Eco", "Chofer"]) {
+      if (!expectedValues.some((expected) => expected.startsWith(`${value} `))) expect(container).not.toHaveTextContent(value);
+    }
+  });
+
+  it("renders flat unit metadata without chip treatment", () => {
+    const { container } = render(
+      <PublicQuoteShell business={{ businessName: "SEBASAM" }} customerName="Cliente" unitData={{ plate: "ABC-123" }}>
+        content
+      </PublicQuoteShell>,
+    );
+
+    expect(container.querySelector("header > div > div > div > div:first-child")?.className).toContain("print:flex-[11_1_0%]");
+    expect(container.querySelector('[aria-label="Datos de unidad"]')).toHaveClass("border-t");
+    expect(screen.getByText("ABC-123").closest("span")).not.toHaveClass("rounded-[6px]", "bg-white/10", "print:bg-gray-50");
+    expect(container.querySelector('[aria-label="Datos de unidad"]')?.textContent).not.toContain(" · ");
+    expect(container.querySelector("header > div:first-child")?.className).toContain("rgba(255,255,255,0.03)");
+  });
+
+  it("keeps the same compact card anatomy at every viewport", () => {
+    const { container } = render(
+      <PublicQuoteShell
+        customerName="A customer with a deliberately long readable name"
+        documentType="Cotización"
+        documentNumber="A-2026-09-09-THIS-IS-A-LONG-FOLIO"
+        date={new Date("2026-09-09T00:00:00.000Z")}
+        unitData={{ plate: "55-AA-1B", economicNumber: "ECO-7" }}
+      >
+        content
+      </PublicQuoteShell>,
+    );
+
+    const folioCard = container.querySelector("header > div > div > div > div:nth-child(2)");
+    const contentGrid = folioCard?.firstElementChild;
+    const customerColumn = contentGrid?.firstElementChild;
+    const folioColumn = contentGrid?.lastElementChild;
+
+    expect(contentGrid).toHaveClass("grid-cols-[minmax(0,1fr)_minmax(0,auto)]");
+    expect(customerColumn).toHaveClass("min-w-0", "flex-1", "break-words");
+    expect(folioColumn).toHaveClass("min-w-0", "shrink-0", "max-w-full");
+    expect(screen.getByText("9 de septiembre de 2026")).toBeInTheDocument();
+    expect(container.querySelector('[aria-label="Datos de unidad"]')).toHaveTextContent("9 de septiembre de 2026");
+    expect(folioColumn).toHaveTextContent("A-2026-09-09-THIS-IS-A-LONG-FOLIO");
+  });
+
+  it("keeps the compact card anatomy in print", () => {
+    const { container } = render(<PublicQuoteShell customerName="Cliente" documentNumber="C-001">content</PublicQuoteShell>);
+
+    const folioCard = container.querySelector("header > div > div > div > div:nth-child(2)");
+    const contentGrid = folioCard?.firstElementChild;
+
+    expect(contentGrid).toHaveClass("grid-cols-[minmax(0,1fr)_minmax(0,auto)]");
+  });
+
+  it("hides the verbose customer subtitle on mobile while preserving it on desktop", () => {
+    render(<PublicQuoteShell customerName="Cliente" customerSubtitle="Identidad secundaria">content</PublicQuoteShell>);
+
+    expect(screen.getByText("Identidad secundaria")).toHaveClass("hidden", "sm:block");
+  });
+
+  it("keeps only separator-free special document labels", () => {
+    const { container } = render(
+      <PublicQuoteShell documentType="Nota" unitDescription="Taller" vehicleDescription="Freightliner - ECO-7 · ABC-123">
+        content
+      </PublicQuoteShell>,
+    );
+
+    expect(container).toHaveTextContent("Taller");
+    expect(container).not.toHaveTextContent("Freightliner");
   });
 });

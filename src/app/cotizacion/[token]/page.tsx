@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {
   getSharedQuoteByToken,
   getSharedQuotePaymentStatus,
+  getSharedQuoteStatusRevision,
   SharedQuoteExpiredError,
   SharedQuoteRevokedError,
 } from "@/features/quotes/domain";
@@ -23,7 +24,7 @@ import { getPaymentSettings } from "@/features/payment-settings/domain";
 type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
 type SharedQuotePageResult =
-  | { kind: "success"; quote: SharedQuoteViewQuote; paymentStatus: Awaited<ReturnType<typeof getSharedQuotePaymentStatus>> }
+  | { kind: "success"; quote: SharedQuoteViewQuote; paymentStatus: Awaited<ReturnType<typeof getSharedQuotePaymentStatus>>; statusRevision: string }
   | { kind: "error"; errorType: SharedQuoteErrorType };
 
 type SharedQuoteDomainResult = Awaited<ReturnType<typeof getSharedQuoteByToken>>["quote"];
@@ -48,6 +49,8 @@ function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQu
     isLocked: quote.isLocked,
     paymentDueDate: quote.paymentDueDate,
     customer: quote.customer ? { name: quote.customer.name } : null,
+    contactSnapshot: quote.contactSnapshot,
+    customerContact: quote.customerContact ? { name: quote.customerContact.name, role: quote.customerContact.role } : null,
     vehicle: quote.vehicle,
     items: quote.items.map((item) => ({
       ...item,
@@ -83,7 +86,12 @@ async function loadSharedQuotePageResult(token: string): Promise<SharedQuotePage
       ? sharedQuote.quote.workOrder.id
       : undefined;
     const paymentStatus = workOrderId ? await getSharedQuotePaymentStatus(workOrderId) : null;
-    return { kind: "success", quote: serializeSharedQuoteForClient(sharedQuote.quote), paymentStatus };
+    return {
+      kind: "success",
+      quote: serializeSharedQuoteForClient(sharedQuote.quote),
+      paymentStatus,
+      statusRevision: getSharedQuoteStatusRevision(sharedQuote),
+    };
   } catch (error) {
     return { kind: "error", errorType: mapErrorToType(error) };
   }
@@ -166,6 +174,7 @@ export default async function CotizacionPage({ params }: CotizacionPageProps) {
       paymentSettings={paymentSettings}
       token={token}
       paymentStatus={result.paymentStatus}
+      statusRevision={result.statusRevision}
     />
   );
 }

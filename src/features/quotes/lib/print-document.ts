@@ -234,10 +234,13 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
     iframe.setAttribute("tabindex", "-1");
 
     let isCleanedUp = false;
+    let cleanupTimer: ReturnType<typeof setTimeout> | null = null;
     let windowAfterPrintHandler: (() => void) | null = null;
     let cwAfterPrintHandler: (() => void) | null = null;
 
     const cleanup = (removeIframeImmediately = false) => {
+      // A superseded job must not mutate the active job's timer or listeners.
+      if (isCancelled()) return;
       if (isCleanedUp) {
         if (removeIframeImmediately && iframe.parentNode) {
           iframe.parentNode.removeChild(iframe);
@@ -249,9 +252,12 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
       }
       isCleanedUp = true;
 
-      if (activeCleanupTimer) {
-        clearTimeout(activeCleanupTimer);
-        activeCleanupTimer = null;
+      if (cleanupTimer) {
+        clearTimeout(cleanupTimer);
+        if (activeCleanupTimer === cleanupTimer) {
+          activeCleanupTimer = null;
+        }
+        cleanupTimer = null;
       }
       if (windowAfterPrintHandler) {
         window.removeEventListener("afterprint", windowAfterPrintHandler);
@@ -280,7 +286,11 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
       } else {
         // If iframe is not removed immediately (e.g. afterprint), maintain a safety fallback
         // of 120 seconds to purge the dormant iframe if no subsequent print replaces it.
-        activeCleanupTimer = setTimeout(() => {
+        const fallbackTimer = setTimeout(() => {
+          if (activeCleanupTimer === fallbackTimer) {
+            activeCleanupTimer = null;
+          }
+          cleanupTimer = null;
           if (iframe.parentNode) {
             iframe.parentNode.removeChild(iframe);
           }
@@ -288,6 +298,8 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
             activePrintIframe = null;
           }
         }, 120000);
+        cleanupTimer = fallbackTimer;
+        activeCleanupTimer = fallbackTimer;
       }
 
       // Restore document.title ONLY IF this session is still the active session!
@@ -387,7 +399,8 @@ export function printDocumentUrl(url: string, options: PrintDocumentOptions = {}
         window.addEventListener("afterprint", windowAfterPrintHandler, { once: true });
 
         // Fallback cleanup timer in case afterprint does not fire
-        activeCleanupTimer = setTimeout(() => cleanup(true), 120000);
+        cleanupTimer = setTimeout(() => cleanup(true), 120000);
+        activeCleanupTimer = cleanupTimer;
 
         cw.focus();
         cw.print();

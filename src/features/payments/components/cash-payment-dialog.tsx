@@ -237,7 +237,7 @@ export function CashPaymentDialog({
   const dialogElement = (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!isLoading) setOpen(nextOpen); }}>
       <DialogMobileContent
-        className="max-w-md"
+        className="max-w-sm"
         onEscapeKeyDown={(event) => { if (isLoading) event.preventDefault(); }}
         onPointerDownOutside={(event) => { if (isLoading) event.preventDefault(); }}
         onCloseAutoFocus={(event) => {

@@ -1101,7 +1101,7 @@ describe("correctPayment", () => {
   }
 
   it("returns correction audit fields and per-application allocation summary", async () => {
-    const { store } = baseCorrectionStore();
+    baseCorrectionStore();
     const paymentResult = await recordPayment({ workOrderId: "wo-1", amountCents: 10_000, operationKey: "op-original-audit", actorId: "user-1" });
 
     vi.useFakeTimers();

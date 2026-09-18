@@ -118,8 +118,8 @@ describe("PaymentSettingsForm", () => {
   it("shows invoicing status and exposes an accessible add-account checkbox", () => {
     renderForm();
 
-    expect(screen.getByText("Para facturación")).toBeInTheDocument();
-    expect(screen.getByText("No usada para facturación")).toBeInTheDocument();
+    expect(screen.getByText("Facturación y transferencias")).toBeInTheDocument();
+    expect(screen.getByText("Solo transferencias")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Usar esta cuenta para facturación" })).toBeInTheDocument();
   });
 
@@ -350,6 +350,13 @@ describe("PaymentSettingsForm", () => {
       expect(checkboxes[1]).not.toBeChecked();
 
       expect(screen.getByRole("button", { name: "Copiar enlace público" })).toBeInTheDocument();
+      expect(screen.getByText("Enlace público de esta cuenta individual")).toBeInTheDocument();
+      expect(screen.getByText("Santander · Facturación y transferencias")).toBeInTheDocument();
+      expect(screen.getByText("/datos-de-pago/cuenta/santander-token")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Abrir enlace" })).toHaveAttribute(
+        "href",
+        "/datos-de-pago/cuenta/santander-token",
+      );
     });
 
     it("calls setBankAccountPublicSharingAction when toggling sharing checkbox", async () => {

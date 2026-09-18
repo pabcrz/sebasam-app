@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { clsx } from "clsx";
-import { User, Building2, Hash, CreditCard, Copy, Check } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Badge } from "@/components/ui";
+import { Copy, Check } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@/components/ui";
 import { businessPaymentConfig } from "@/config/payment";
 
 export type BankAccountData = {
@@ -17,15 +16,8 @@ export type BankAccountData = {
 
 export interface BankDataCardProps {
   bankAccounts?: BankAccountData[];
+  isPrint?: boolean;
 }
-
-type BankField = {
-  key: string;
-  label: string;
-  icon: React.ElementType;
-  value: string;
-  copyable?: boolean;
-};
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = React.useState(false);
@@ -56,6 +48,10 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
+function formatGroupedNumber(value: string) {
+  return value.replace(/\s/g, "").match(/.{1,4}/g)?.join(" ") ?? "";
+}
+
 export function resolveBankAccounts(bankAccounts?: BankAccountData[]): BankAccountData[] {
   // Only fall back to config when the prop is undefined (legacy / no prop).
   // An explicit empty array means the DB has no bank accounts yet — show empty state.
@@ -75,12 +71,56 @@ export function resolveBankAccounts(bankAccounts?: BankAccountData[]): BankAccou
 }
 
 /**
- * Renders a list of bank account rows within a card. Each account shows
- * account holder and bank name unconditionally. Account number and CLABE
- * rows only render when their values are non-empty, each with a copy button.
+ * Renders each bank account as an independent compact card. Account number
+ * and CLABE rows only render when their values are non-empty.
  */
-export function BankDataCard({ bankAccounts }: BankDataCardProps) {
+export function BankDataCard({ bankAccounts, isPrint = false }: BankDataCardProps) {
   const accounts = resolveBankAccounts(bankAccounts);
+
+  if (isPrint) {
+    return (
+      <section
+        data-testid="bank-data-print"
+        className="px-4 pt-2 print:break-inside-avoid print:page-break-inside-avoid"
+      >
+        <h2 className="text-[11px] font-bold leading-tight text-gray-900">Datos de pago</h2>
+        {accounts.length === 0 ? (
+          <p data-testid="bank-data-empty" className="mt-1 text-[12px] text-gray-500">
+            No hay cuentas bancarias registradas.
+          </p>
+        ) : (
+          <div className="mt-1.5 flex flex-wrap gap-x-[40px] gap-y-3">
+            {accounts.map((account) => {
+              const clabe = account.clabe.trim();
+              const accountNumber = account.accountNumber.trim();
+
+              return (
+                <div key={account.id} data-testid="bank-account-print" className="min-w-[180px] flex-1 basis-[220px] text-[12px] leading-tight">
+                  <p className="text-[10px] text-gray-500">
+                    {account.bankName}
+                    {account.isForInvoicing ? <span className="text-[var(--color-primary)]"> · facturación</span> : null}
+                  </p>
+                  {clabe ? (
+                    <p>
+                      <span>CLABE </span>
+                      <span className="font-mono">{formatGroupedNumber(clabe)}</span>
+                    </p>
+                  ) : null}
+                  {accountNumber ? (
+                    <p>
+                      <span>No. cuenta </span>
+                      <span className="font-mono">{formatGroupedNumber(accountNumber)}</span>
+                    </p>
+                  ) : null}
+                  <p className="text-[10px] text-gray-500">{account.accountHolder}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <Card>
@@ -90,84 +130,69 @@ export function BankDataCard({ bankAccounts }: BankDataCardProps) {
           Datos para transferencia directa. Cuenta y CLABE tienen acción de copiar al portapapeles.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
         {accounts.length === 0 ? (
           <p className="text-sm text-[var(--color-text-muted)]" data-testid="bank-data-empty">
             No hay cuentas bancarias registradas.
           </p>
         ) : (
-          accounts.map((account, index) => {
-          const isLast = index === accounts.length - 1;
-          const fields: BankField[] = [
-            { key: `accountHolder-${account.id}`, label: "Titular", icon: User, value: account.accountHolder },
-            { key: `bankName-${account.id}`, label: "Banco", icon: Building2, value: account.bankName },
-          ];
-
-          if (account.accountNumber.trim()) {
-            fields.push({
-              key: `accountNumber-${account.id}`,
-              label: "No. Cuenta",
-              icon: Hash,
-              value: account.accountNumber,
-              copyable: true,
-            });
-          }
-
-          if (account.clabe.trim()) {
-            fields.push({
-              key: `clabe-${account.id}`,
-              label: "CLABE",
-              icon: CreditCard,
-              value: account.clabe,
-              copyable: true,
-            });
-          }
-
+          accounts.map((account) => {
+          const purpose = account.isForInvoicing
+            ? "Facturación y transferencias"
+            : "Solo transferencias";
           return (
-            <div key={account.id}>
-              {accounts.length > 1 || account.isForInvoicing ? (
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  {accounts.length > 1 ? (
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                      Cuenta {index + 1}
+            <div
+              key={account.id}
+              data-testid="bank-account-card"
+              className="space-y-4 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
+            >
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <p className="text-base font-semibold text-[var(--color-text-main)]">{account.bankName}</p>
+                <span aria-hidden="true" className="text-sm text-[var(--color-text-muted)]">·</span>
+                <p className="text-sm font-semibold text-[var(--color-status-info)]">{purpose}</p>
+              </div>
+
+              {account.clabe.trim() ? (
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-[var(--color-text-muted)]">CLABE</p>
+                    <p className="break-all font-mono text-base font-semibold tracking-wide text-[var(--color-text-main)]">
+                      {formatGroupedNumber(account.clabe)}
                     </p>
-                  ) : <div />}
-                  {account.isForInvoicing ? (
-                    <Badge variant="info">Facturación</Badge>
-                  ) : null}
+                  </div>
+                  <CopyButton value={account.clabe} />
                 </div>
               ) : null}
-              <div className={clsx("space-y-3", !isLast && "pb-6 border-b border-[var(--color-border-light)]")}>
-                {fields.map((field) => {
-                  const Icon = field.icon;
-                  return (
-                    <div
-                      key={field.key}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface)] text-[var(--color-primary)]">
-                          <Icon className="h-4 w-4" aria-hidden="true" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-[var(--color-text-muted)]">{field.label}</p>
-                          <p
-                            className={clsx(
-                              "truncate text-sm font-semibold text-[var(--color-text-main)]",
-                              (field.key.startsWith("accountNumber") || field.key.startsWith("clabe"))
-                                ? "font-mono"
-                                : "",
-                            )}
-                          >
-                            {field.value}
-                          </p>
-                        </div>
-                      </div>
-                      {field.copyable ? <CopyButton value={field.value} /> : null}
-                    </div>
-                  );
-                })}
-              </div>
+
+              {account.accountNumber.trim() ? (
+                <div
+                  className={
+                    `flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
+                      account.clabe.trim() ? "border-t border-[var(--color-border-light)] pt-4" : ""
+                    }`
+                  }
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-[var(--color-text-muted)]">No. Cuenta</p>
+                    <p className="break-all font-mono text-sm text-[var(--color-text-main)]">
+                      {formatGroupedNumber(account.accountNumber)}
+                    </p>
+                  </div>
+                  <CopyButton value={account.accountNumber} />
+                </div>
+              ) : null}
+
+              <p
+                className={
+                  `text-xs text-[var(--color-text-muted)] ${
+                    account.clabe.trim() || account.accountNumber.trim()
+                      ? "border-t border-[var(--color-border-light)] pt-4"
+                      : ""
+                  }`
+                }
+              >
+                Titular: {account.accountHolder}
+              </p>
             </div>
           );
         })

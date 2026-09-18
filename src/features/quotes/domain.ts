@@ -106,6 +106,74 @@ export async function getSharedQuoteByToken(token: string) {
   return sharedQuote;
 }
 
+export type SharedQuoteStatus = {
+  revision: string;
+  quoteStatus: QuoteStatus;
+  workOrderStatus: WorkOrderStatus | null;
+};
+
+type SharedQuoteStatusInput = {
+  expiresAt: Date;
+  revokedAt: Date | null;
+  quote: {
+    id: string;
+    status: QuoteStatus;
+    updatedAt: Date;
+    deletedAt: Date | null;
+    workOrder: { status: WorkOrderStatus } | null;
+  } | null;
+};
+
+export function getSharedQuoteStatusRevision(sharedQuote: SharedQuoteStatusInput): string {
+  const workOrderStatus = sharedQuote.quote?.workOrder?.status ?? "none";
+  return [
+    sharedQuote.quote?.id ?? "missing",
+    sharedQuote.quote?.status ?? "missing",
+    sharedQuote.quote?.updatedAt?.getTime() ?? "missing",
+    sharedQuote.quote?.deletedAt?.getTime() ?? "active",
+    workOrderStatus,
+    sharedQuote.revokedAt?.getTime() ?? "active",
+    sharedQuote.expiresAt?.getTime() ?? "missing",
+  ].join(":");
+}
+
+export async function getSharedQuoteStatusByToken(token: string): Promise<SharedQuoteStatus> {
+  const sharedQuote = await prisma.sharedQuote.findUnique({
+    where: { token },
+    select: {
+      expiresAt: true,
+      revokedAt: true,
+      quote: {
+        select: {
+          id: true,
+          status: true,
+          updatedAt: true,
+          deletedAt: true,
+          workOrder: { select: { status: true } },
+        },
+      },
+    },
+  });
+
+  if (!sharedQuote || !sharedQuote.quote || sharedQuote.quote.deletedAt !== null) {
+    throw new SharedQuoteNotFoundError();
+  }
+
+  if (sharedQuote.revokedAt) {
+    throw new SharedQuoteRevokedError();
+  }
+
+  if (sharedQuote.expiresAt < new Date()) {
+    throw new SharedQuoteExpiredError();
+  }
+
+  return {
+    revision: getSharedQuoteStatusRevision(sharedQuote),
+    quoteStatus: sharedQuote.quote.status,
+    workOrderStatus: sharedQuote.quote.workOrder?.status ?? null,
+  };
+}
+
 export async function getActiveSharedQuoteForQuote(quoteId: string) {
   return prisma.sharedQuote.findFirst({
     where: {

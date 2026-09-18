@@ -44,12 +44,17 @@ describe("QuoteBuilder state core", () => {
     expect(existing.nextItemRowId).toBe(3);
     expect(empty).toMatchObject({
       customerId: "",
-      taxEnabled: true,
+      taxEnabled: false,
       discount: "",
       operationalDate: date,
       nextItemRowId: 1,
     });
     expect(empty.sections[0]?.rowIds).toEqual(["quote-item-0"]);
+  });
+
+  it("preserves the existing document tax setting", () => {
+    expect(initializeQuoteBuilderState({ ...initialData, taxEnabled: false }, date).taxEnabled).toBe(false);
+    expect(initializedState().taxEnabled).toBe(true);
   });
 
   it("reduces scalar fields without mutating prior state", () => {

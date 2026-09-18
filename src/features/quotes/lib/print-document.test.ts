@@ -494,6 +494,77 @@ describe("printDocumentUrl", () => {
     expect(document.title).toBe("Cotizaciones | SEBASAM");
   });
 
+  it("keeps three sequential print jobs isolated across late afterprint cleanup", async () => {
+    const windowAfterPrintHandlers: Array<() => void> = [];
+    const addEventListenerSpy = vi.spyOn(window, "addEventListener");
+
+    const completeJob = async (url: string, beforeLoad?: () => void) => {
+      const printPromise = printDocumentUrl(url);
+      const iframe = document.querySelector("iframe");
+      const afterPrintHandlers: Array<() => void> = [];
+      const printSpy = vi.fn();
+
+      Object.defineProperty(iframe, "contentWindow", {
+        value: {
+          focus: vi.fn(),
+          print: printSpy,
+          addEventListener: vi.fn((event: string, callback: () => void) => {
+            if (event === "afterprint") afterPrintHandlers.push(callback);
+          }),
+          removeEventListener: vi.fn(),
+          document: {
+            title: url,
+            querySelector: vi.fn((selector: string) =>
+              selector === "[data-document-ready='true']" ? { children: [{}] } : null,
+            ),
+            fonts: { ready: Promise.resolve() },
+            body: { offsetHeight: 100 },
+          },
+        },
+        writable: true,
+      });
+
+      beforeLoad?.();
+      iframe?.onload?.(new Event("load"));
+      await vi.advanceTimersByTimeAsync(200);
+      await printPromise;
+
+      const windowHandler = addEventListenerSpy.mock.calls
+        .filter(([event]) => event === "afterprint")
+        .at(-1)?.[1];
+      if (typeof windowHandler === "function") {
+        windowAfterPrintHandlers.push(() => windowHandler(new Event("afterprint")));
+      }
+
+      expect(printSpy).toHaveBeenCalledOnce();
+      expect(iframe).toBeInTheDocument();
+      return { afterPrint: afterPrintHandlers[0], iframe };
+    };
+
+    const jobA = await completeJob("/admin/quotes/quote-A/print");
+
+    // A late callback from A must not clear or clean up the active lifecycle for B.
+    const jobB = await completeJob("/admin/work-orders/order-B/print", () => {
+      windowAfterPrintHandlers[0]?.();
+    });
+    const jobC = await completeJob("/admin/notas/nota-C/print", () => {
+      const cIframe = document.querySelector("iframe");
+      const cSrc = cIframe?.src;
+
+      // B's afterprint callback is stale once C has started and must not touch C.
+      jobB.afterPrint?.();
+
+      expect(cIframe).toBeInTheDocument();
+      expect(cIframe?.src).toBe(cSrc);
+    });
+    jobC.afterPrint?.();
+
+    expect(document.querySelectorAll("iframe")).toHaveLength(1);
+    expect(jobA.iframe).not.toBeInTheDocument();
+    expect(jobB.iframe).not.toBeInTheDocument();
+    expect(jobC.iframe).toBeInTheDocument();
+  });
+
   describe("cleanup scenarios and readiness edge cases", () => {
     it("preserves iframe in DOM on afterprint and does not destroy it with 1.5s timer", async () => {
       document.title = "Cotizaciones | SEBASAM";

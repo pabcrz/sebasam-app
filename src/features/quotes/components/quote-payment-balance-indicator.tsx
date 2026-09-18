@@ -19,6 +19,7 @@ export function QuotePaymentBalanceIndicator({ paidCents, remainingCents, showOu
     <Badge
       data-testid="quote-payment-balance-indicator"
       variant={settled ? "success" : "warning"}
+      className="self-start"
       aria-label={settled ? "Cotización liquidada" : `Saldo pendiente ${formatCents(remainingCents)}`}
     >
       {settled ? "Liquidada" : `Saldo pendiente: ${formatCents(remainingCents)}`}

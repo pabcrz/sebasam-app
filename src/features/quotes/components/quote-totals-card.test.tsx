@@ -4,7 +4,7 @@ import { QuoteTotalsCard } from "./quote-totals-card";
 
 describe("QuoteTotalsCard", () => {
   it("renders subtotal, tax, and total formatted as currency", () => {
-    render(
+    const { container } = render(
       <QuoteTotalsCard
         subtotalCents={1006000}
         taxCents={160960}
@@ -15,6 +15,8 @@ describe("QuoteTotalsCard", () => {
     expect(screen.getByTestId("quote-subtotal")).toHaveTextContent("$10,060.00");
     expect(screen.getByTestId("quote-tax")).toHaveTextContent("$1,609.60");
     expect(screen.getByTestId("quote-total")).toHaveTextContent("$11,669.60");
+    expect(container.firstElementChild).toHaveClass("print:border", "print:border-gray-200", "print:bg-white", "print:p-2");
+    expect(screen.getByTestId("quote-total").parentElement).toHaveClass("print:text-lg", "print:tracking-tight");
   });
 
   it("renders the total amount in words in both screen and print spans", () => {
