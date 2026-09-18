@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Building2, Check, Copy, FileText, Hash, Key, Plus, Save, Share2, Trash2, User } from "lucide-react";
+import { Building2, Check, Copy, ExternalLink, FileText, Hash, Key, Plus, Save, Share2, Trash2, User } from "lucide-react";
 import toast from "react-hot-toast";
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox } from "@/components/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox } from "@/components/ui";
 import { Input } from "@/components/ui";
 import { Label } from "@/components/ui";
 import {
@@ -66,11 +66,12 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
   return (
     <div className="rounded-lg border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Cuenta bancaria</span>
-          <Badge variant={account.isForInvoicing ? "info" : "default"}>
-            {account.isForInvoicing ? "Para facturación" : "No usada para facturación"}
-          </Badge>
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-base font-semibold text-[var(--color-text-main)]">{account.bankName}</span>
+          <span aria-hidden="true" className="text-sm text-[var(--color-text-muted)]">·</span>
+          <span className="text-sm font-semibold text-[var(--color-status-info)]">
+            {account.isForInvoicing ? "Facturación y transferencias" : "Solo transferencias"}
+          </span>
         </div>
         <form onSubmit={handleRemove}>
           <Button
@@ -99,16 +100,33 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
           Compartir esta cuenta públicamente
         </label>
         {shareable && publicUrl ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleCopyLink}
-            aria-label="Copiar enlace público"
-          >
-            {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
-            <span>{copied ? "Copiado" : "Copiar enlace"}</span>
-          </Button>
+          <div className="w-full space-y-3 rounded-md border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+            <div className="space-y-1 text-sm">
+              <p className="font-semibold text-[var(--color-text-main)]">Enlace público de esta cuenta individual</p>
+              <p className="text-[var(--color-text-main)]">
+                {account.bankName} · {account.isForInvoicing ? "Facturación y transferencias" : "Solo transferencias"}
+              </p>
+              <p className="break-all font-mono text-xs text-[var(--color-text-muted)]">{publicUrl}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm">
+                <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  <span>Abrir enlace</span>
+                </a>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyLink}
+                aria-label="Copiar enlace público"
+              >
+                {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+                <span>{copied ? "Copiado" : "Copiar enlace"}</span>
+              </Button>
+            </div>
+          </div>
         ) : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
