@@ -75,8 +75,9 @@ type MockTx = {
   quoteSection: { deleteMany: ReturnType<typeof vi.fn> };
   quoteDecision: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   payment: { count: ReturnType<typeof vi.fn>; aggregate: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
-  paymentApplication: { findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
-  ledgerEntry: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  paymentApplication: { count: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  ledgerEntry: { count: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  workOrderLaborAdvance: { count: ReturnType<typeof vi.fn> };
   quoteCommercialCorrection: { findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
   quoteCommercialCorrectionApplication: { createMany: ReturnType<typeof vi.fn> };
   settlementAgreement: { update: ReturnType<typeof vi.fn> };
@@ -84,7 +85,7 @@ type MockTx = {
   sharedQuote: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
-  workOrder: { count: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
+  workOrder: { count: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
   customer?: { findUnique: ReturnType<typeof vi.fn> };
   customerContact?: { findUnique: ReturnType<typeof vi.fn> };
 };
@@ -106,8 +107,9 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
     quoteSection: { deleteMany: vi.fn() },
     quoteDecision: { create: vi.fn(), deleteMany: vi.fn() },
     payment: { count: vi.fn().mockResolvedValue(0), aggregate: vi.fn().mockResolvedValue({ _sum: { amountCents: null } }), findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
-    paymentApplication: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue(null), create: vi.fn().mockImplementation((args) => Promise.resolve({ id: "replacement-app-1", ...args.data })), update: vi.fn().mockResolvedValue({ id: "app-1" }) },
-    ledgerEntry: { findFirst: vi.fn().mockResolvedValue({ id: "orig-ledger-1" }), create: vi.fn().mockImplementation((args) => Promise.resolve({ id: "ledger-entry-1", ...args.data })) },
+    paymentApplication: { count: vi.fn().mockResolvedValue(0), findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue(null), create: vi.fn().mockImplementation((args) => Promise.resolve({ id: "replacement-app-1", ...args.data })), update: vi.fn().mockResolvedValue({ id: "app-1" }) },
+    ledgerEntry: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn().mockResolvedValue({ id: "orig-ledger-1" }), create: vi.fn().mockImplementation((args) => Promise.resolve({ id: "ledger-entry-1", ...args.data })) },
+    workOrderLaborAdvance: { count: vi.fn().mockResolvedValue(0) },
     quoteCommercialCorrection: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({ id: "correction-1" }) },
     quoteCommercialCorrectionApplication: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
     settlementAgreement: { update: vi.fn().mockResolvedValue({ id: "settlement-1" }) },
@@ -115,7 +117,7 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
     sharedQuote: { updateMany: vi.fn(), deleteMany: vi.fn() },
     paymentRequest: { updateMany: vi.fn(), deleteMany: vi.fn() },
     quoteLifecycleEvent: { create: vi.fn(), deleteMany: vi.fn() },
-    workOrder: { count: vi.fn().mockResolvedValue(0), findUnique: vi.fn().mockResolvedValue(null) },
+    workOrder: { count: vi.fn().mockResolvedValue(0), findUnique: vi.fn().mockResolvedValue(null), delete: vi.fn() },
   };
   (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation((callback: (tx: MockTx) => Promise<unknown>) => callback(tx));
   (findOrCreateVehicle as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "vehicle-1" });
@@ -1002,9 +1004,59 @@ describe("deleteQuote", () => {
 
   it("rejects deletion when quote has an associated work order", async () => {
     const tx = mockTx();
-    tx.workOrder.count.mockResolvedValue(1);
+    tx.workOrder.findUnique.mockResolvedValue({ id: "wo-1", status: WorkOrderStatus.PLANNED });
 
     await expect(deleteQuote("quote-1")).rejects.toThrow("This quote has an associated work order and cannot be deleted.");
+    expect(tx.quote.delete).not.toHaveBeenCalled();
+  });
+
+  it("deletes a draft quote with a cancelled work order when it has no financial activity", async () => {
+    const tx = mockTx();
+    tx.workOrder.findUnique.mockResolvedValue({ id: "wo-1", status: WorkOrderStatus.CANCELLED });
+
+    await deleteQuote("quote-1");
+
+    expect(tx.paymentApplication.count).toHaveBeenCalledWith({ where: { workOrderId: "wo-1" } });
+    expect(tx.ledgerEntry.count).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { workOrderId: "wo-1" },
+          { payment: { quoteId: "quote-1" } },
+        ],
+      },
+    });
+    expect(tx.workOrderLaborAdvance.count).toHaveBeenCalledWith({ where: { workOrderId: "wo-1" } });
+    expect(tx.workOrder.delete).toHaveBeenCalledWith({ where: { id: "wo-1" } });
+    expect(tx.quote.delete).toHaveBeenCalledWith({ where: { id: "quote-1" } });
+  });
+
+  it("rejects deletion when a cancelled work order has payment applications", async () => {
+    const tx = mockTx();
+    tx.workOrder.findUnique.mockResolvedValue({ id: "wo-1", status: WorkOrderStatus.CANCELLED });
+    tx.paymentApplication.count.mockResolvedValue(1);
+
+    await expect(deleteQuote("quote-1")).rejects.toThrow("This quote has financial activity and cannot be deleted.");
+    expect(tx.workOrder.delete).not.toHaveBeenCalled();
+    expect(tx.quote.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejects deletion when a cancelled work order has ledger activity", async () => {
+    const tx = mockTx();
+    tx.workOrder.findUnique.mockResolvedValue({ id: "wo-1", status: WorkOrderStatus.CANCELLED });
+    tx.ledgerEntry.count.mockResolvedValue(1);
+
+    await expect(deleteQuote("quote-1")).rejects.toThrow("This quote has financial activity and cannot be deleted.");
+    expect(tx.workOrder.delete).not.toHaveBeenCalled();
+    expect(tx.quote.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejects deletion when a cancelled work order has labor advances", async () => {
+    const tx = mockTx();
+    tx.workOrder.findUnique.mockResolvedValue({ id: "wo-1", status: WorkOrderStatus.CANCELLED });
+    tx.workOrderLaborAdvance.count.mockResolvedValue(1);
+
+    await expect(deleteQuote("quote-1")).rejects.toThrow("This quote has financial activity and cannot be deleted.");
+    expect(tx.workOrder.delete).not.toHaveBeenCalled();
     expect(tx.quote.delete).not.toHaveBeenCalled();
   });
 });
