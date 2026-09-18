@@ -106,7 +106,7 @@ describe("CashPaymentDialog", () => {
 
     expect(share).toHaveBeenCalledWith(expect.objectContaining({
       title: "Recibo N-090926-01",
-      text: expect.stringContaining("Saldo después de este pago: $50.00"),
+       text: expect.stringContaining("Saldo pendiente: $50.00"),
       files: [expect.objectContaining({ name: "N-090926-01-recibo.png", type: "image/png" })],
     }));
     expect(canShare).toHaveBeenCalledWith(share.mock.calls[0][0]);
@@ -133,7 +133,7 @@ describe("CashPaymentDialog", () => {
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
 
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Saldo restante: $50.00")));
+     await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Saldo pendiente: $50.00")));
     expect(open).toHaveBeenCalledWith("https://web.whatsapp.com/", "_blank", "noopener,noreferrer");
     expect(screen.getByText(/mensaje copiado.*ventana emergente/i)).toBeInTheDocument();
   });
@@ -231,6 +231,7 @@ describe("CashPaymentDialog", () => {
     await user.click(trigger);
 
     const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveClass("max-w-sm");
     expect(dialog).toHaveClass("overflow-hidden");
     expect(dialog.querySelector("[class*='overflow-y-auto']")).toBeInTheDocument();
 

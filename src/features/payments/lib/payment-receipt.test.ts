@@ -43,13 +43,15 @@ describe("payment receipt", () => {
     expect(message).toContain("Transferencia");
     expect(message).toContain("Cliente de prueba");
     expect(message).toContain("Pago registrado");
-    expect(message).toContain("Saldo después de este pago: $66.00");
+    expect(message).toContain("Saldo pendiente: $66.00");
+    expect(message).not.toContain("Saldo después de este pago");
+    expect(message).not.toContain("Saldo restante");
   });
 
   it("clearly identifies a settled receipt without accumulated paid wording", () => {
     const message = buildPaymentReceiptMessage({ ...data, remainingCents: 0, sequence: 3 });
     expect(message).toContain("Nota liquidada");
-    expect(message).toContain("Saldo restante: $0.00");
+    expect(message).toContain("Saldo pendiente: $0.00");
     expect(message).not.toContain("Pagado acumulado");
   });
 
@@ -60,6 +62,7 @@ describe("payment receipt", () => {
     expect(message).not.toContain("Pago registrado");
     expect(message).not.toContain("Pago parcial");
     expect(message).not.toContain("Saldo después de este pago");
+    expect(message).toContain("Saldo pendiente: $66.00");
   });
 
   it("returns a valid PNG image file with a stable name for sharing", async () => {
