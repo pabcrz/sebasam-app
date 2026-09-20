@@ -46,7 +46,7 @@ export function PublicPaymentShell({ children, badge = "payment-and-invoice", bu
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>
 
-      <footer className="bg-[var(--color-navy-900)] px-6 py-5 text-[var(--color-on-navy-tint)] md:px-8">
+      <footer className="border-t border-white/10 bg-[var(--color-navy-900)] px-6 py-5 text-[var(--color-on-navy-tint)] md:px-8">
         <div className="mx-auto max-w-6xl">
           {location?.address ? (
             mapsUrl ? <a

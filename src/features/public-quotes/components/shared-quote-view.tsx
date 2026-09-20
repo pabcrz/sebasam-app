@@ -311,7 +311,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
           ref={decisionFeedbackRef}
           role="status"
           tabIndex={-1}
-          className="rounded-[var(--radius-md)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] p-4 text-center print:hidden"
+          className="rounded-[var(--radius-md)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] p-4 text-center shadow-[var(--shadow-xs)] print:hidden"
         >
           <Check className="mx-auto h-8 w-8 text-[var(--color-status-success-fg)]" aria-hidden="true" />
           <p className="mt-2 font-semibold text-[var(--color-status-success-fg)]">Cotización aceptada</p>
@@ -324,7 +324,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
           ref={decisionFeedbackRef}
           role="status"
           tabIndex={-1}
-          className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4 text-center print:hidden"
+          className="rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-muted)] p-4 text-center shadow-[var(--shadow-xs)] print:hidden"
         >
           <X className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" aria-hidden="true" />
           <p className="mt-2 font-semibold text-[var(--color-text-main)]">Cotización declinada</p>
@@ -344,7 +344,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
       ) : null}
 
       {showDecisionControls ? (
-        <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 sm:flex-row print:hidden">
+        <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)] sm:flex-row print:hidden">
           <Button
             variant="primary"
             size="default"
@@ -400,7 +400,7 @@ function QuoteProgress({ status }: { status: "accepted" | "active" | "completed"
   const activeIndex = status === "completed" ? 2 : status === "active" ? 1 : 0;
   const stages = ["Aceptada", "Orden asignada / En proceso", "Finalizada"];
   return (
-    <ol aria-label="Progreso de la cotización" className="grid grid-cols-3 gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-center text-xs print:hidden">
+    <ol aria-label="Progreso de la cotización" className="grid grid-cols-3 gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-muted)] p-3 text-center text-xs shadow-[var(--shadow-xs)] print:hidden">
       {stages.map((stage, index) => (
         <li key={stage} aria-current={index === activeIndex ? "step" : undefined} className={index <= activeIndex ? "font-semibold text-[var(--color-text-main)]" : "text-[var(--color-text-muted)]"}>{stage}</li>
       ))}

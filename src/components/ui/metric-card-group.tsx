@@ -43,7 +43,7 @@ export function MetricCardGroup({
   if (empty) {
     return (
       <div className={clsx(gridClasses, className)} {...props}>
-        <Card className="flex flex-col items-center justify-center gap-2 p-8 text-center sm:col-span-full">
+        <Card className="flex flex-col items-center justify-center gap-2 p-8 text-center sm:col-span-full shadow-[var(--shadow-xs)]">
           <Inbox className="h-6 w-6 text-[var(--color-text-muted)]" aria-hidden="true" />
           <p className="text-sm font-medium text-[var(--color-text-main)]">{emptyTitle}</p>
           {emptyDescription ? (

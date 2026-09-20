@@ -30,7 +30,7 @@ export const DialogOverlay = React.forwardRef<
       ref={ref}
       data-dialog-overlay
       className={clsx(
-        "fixed inset-0 z-50 bg-[var(--color-navy-900)]/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-[var(--color-overlay)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         className,
       )}
       {...props}
@@ -190,7 +190,7 @@ export const DialogContent = React.forwardRef<
           <DialogPrimitive.Content
             ref={setRef}
             className={clsx(
-              "fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh_-_2rem)] w-[calc(100vw_-_2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-[var(--space-md)] shadow-lg",
+              "fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh_-_2rem)] w-[calc(100vw_-_2rem)] translate-x-[-50%] translate-y-[-50%] gap-[var(--space-md)] overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-[var(--space-lg)] shadow-[var(--shadow-dialog)]",
               className,
             )}
             onInteractOutside={(event) => {
@@ -250,7 +250,7 @@ export function DialogMobileHeader({ className, ...props }: React.HTMLAttributes
   return (
     <DialogHeader
       className={clsx(
-        "relative shrink-0 border-b border-[var(--color-border-light)] px-4 py-3 pr-12 text-left sm:px-6 sm:pr-14",
+        "relative shrink-0 border-b border-[var(--color-border-subtle)] px-4 py-3 pr-12 text-left sm:px-6 sm:pr-14",
         className,
       )}
       {...props}
