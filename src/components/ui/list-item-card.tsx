@@ -28,10 +28,10 @@ export function ListItemCard({
   );
 
   return (
-    <div className={clsx("w-full rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm", className)}>
+     <div className={clsx("w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]", className)}>
       <div className="flex items-start gap-4">
         {onOpen ? (
-          <button type="button" onClick={onOpen} aria-label={openLabel} className={clsx(contentClassName, "cursor-pointer hover:bg-[var(--color-bg-soft)]")}>
+          <button type="button" onClick={onOpen} aria-label={openLabel} className={clsx(contentClassName, "cursor-pointer hover:bg-[var(--color-surface-muted)]")}>
             {body}
           </button>
         ) : (

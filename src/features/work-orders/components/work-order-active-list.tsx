@@ -186,7 +186,7 @@ export function WorkOrderActiveList({
                 }
                 identity={null}
                 context={
-                  <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 text-sm">
+                  <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-muted)] p-3 text-sm shadow-[var(--shadow-xs)]">
                     <span className="text-xs font-medium text-[var(--color-text-muted)]">Asignación:</span>
                     <AssigneeText wo={wo} />
                     {wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length > 0 ? (

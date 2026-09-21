@@ -26,7 +26,7 @@ export function OperationalCardLayout({
       {dates ? (
         <div
           data-testid="card-dates"
-          className="border-t border-[var(--color-border-light)] pt-3 text-xs text-[var(--color-text-muted)]"
+          className="border-t border-[var(--color-border-subtle)] pt-3 text-xs text-[var(--color-text-muted)]"
         >
           {dates}
         </div>
