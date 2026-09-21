@@ -74,7 +74,6 @@ export function PayrollWorkerDetail({
                   : order.workOrderId
               }
               order={order}
-              defaultOpen
             />
           ))}
         </CardContent>

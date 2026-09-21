@@ -166,7 +166,7 @@ describe("Payroll UI Components", () => {
     expect(badge.parentElement?.textContent).toBe(`${longName}Maestro`);
   });
 
-  it("renders worker detail and expands work order accordion", () => {
+  it("renders worker detail with work order concepts collapsed by default", () => {
     render(
       <PayrollWorkerDetail
         workers={sampleWorkers}
@@ -176,11 +176,16 @@ describe("Payroll UI Components", () => {
 
     expect(screen.getByText("Mano de obra - Maestro Pedro")).toBeInTheDocument();
     expect(screen.getByText("OT-010")).toBeInTheDocument();
+    expect(screen.queryByText("Soldadura chasis")).not.toBeInTheDocument();
+    expect(screen.queryByText("Soldadura / Soplete")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
+
     expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Soldadura / Soplete")).toBeInTheDocument();
+    expect(screen.getAllByText("Soldadura / Soplete").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("expands every order for the selected worker while keeping each accordion controllable", () => {
+  it("keeps every order collapsed until its concepts are opened manually", () => {
     const selectedWorkerWithTwoOrders: WorkerPayrollSummary = {
       ...sampleWorkers[0],
       completedOrderCount: 2,
@@ -236,17 +241,18 @@ describe("Payroll UI Components", () => {
       />
     );
 
-    expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Instalación de frenos").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Soldadura chasis")).not.toBeInTheDocument();
+    expect(screen.queryByText("Instalación de frenos")).not.toBeInTheDocument();
     expect(screen.queryByText("Trabajo de otro maestro")).not.toBeInTheDocument();
 
-    const hideButtons = screen.getAllByRole("button", { name: "Ocultar conceptos" });
-    expect(hideButtons).toHaveLength(2);
+    const showButtons = screen.getAllByRole("button", { name: "Ver conceptos" });
+    expect(showButtons).toHaveLength(2);
 
-    fireEvent.click(hideButtons[1]);
+    fireEvent.click(showButtons[1]);
 
-    expect(screen.queryByText("Instalación de frenos")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ver conceptos" })).toBeInTheDocument();
+    expect(screen.getAllByText("Instalación de frenos").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Soldadura chasis")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Ver conceptos" })).toHaveLength(1);
   });
 
   it("renders unassigned card warning when orders exist without master", () => {
@@ -464,6 +470,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       // Verify initial state shows cobro and commission
       expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
@@ -500,6 +507,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
       fireEvent.click(adjustBtns[0]);
@@ -530,6 +538,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
       fireEvent.click(adjustBtns[0]);
@@ -564,6 +573,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
       fireEvent.click(adjustBtns[0]);
@@ -586,6 +596,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
       fireEvent.click(adjustBtns[0]);
@@ -607,6 +618,7 @@ describe("Payroll UI Components", () => {
       (updatePayrollItemBase as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true });
 
       render(<PayrollWorkerDetail workers={sampleWorkers} selectedWorkerId="w-1" />);
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
       fireEvent.click(screen.getAllByRole("button", { name: /ajustar base/i })[0]);
 
       const baseInputs = screen.getAllByDisplayValue("1000");
@@ -627,6 +639,7 @@ describe("Payroll UI Components", () => {
 
     it("clamps and rounds commission rates to the shared integer 1..100 contract", () => {
       render(<PayrollWorkerDetail workers={sampleWorkers} selectedWorkerId="w-1" />);
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
       fireEvent.click(screen.getAllByRole("button", { name: /ajustar base/i })[0]);
 
       const rateInput = screen.getAllByDisplayValue("40")[0];
@@ -673,6 +686,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       // Verify adjusted badge/text is shown
       expect(screen.getAllByText(/\(Base: \$1,000\.00\)/i).length).toBeGreaterThanOrEqual(1);
