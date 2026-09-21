@@ -18,10 +18,14 @@
   --color-on-navy-tint: #e6f1fb;
   --color-nav-active-text: #004aad;
 
-  /* Surfaces */
+  /* Surfaces and boundaries */
   --color-bg-soft: #f3f6fa;
   --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc;
   --color-border-light: #d7e0ea;
+  --color-border-subtle: rgba(148, 163, 184, 0.28);
+  --color-border-strong: #b9c9da;
+  --color-overlay: rgba(0, 16, 36, 0.42);
 
   /* Text */
   --color-text-main: #001024;
@@ -57,11 +61,13 @@
   --gradient-primary-hover: linear-gradient(90deg, #003e91 0%, #001024 100%);
 
   /* Spacing */
+  --space-2xs: 2px;
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
   --space-lg: 24px;
   --space-xl: 32px;
+  --space-2xl: 40px;
 
   /* Radii */
   --radius-sm: 8px;
@@ -70,13 +76,24 @@
   --radius-full: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.05);
+  --shadow-xs: 0 1px 2px rgba(0, 16, 36, 0.04);
+  --shadow-sm: 0 1px 4px rgba(0, 16, 36, 0.06), 0 1px 2px rgba(0, 16, 36, 0.03);
+  --shadow-md: 0 4px 12px rgba(0, 16, 36, 0.07), 0 2px 4px rgba(0, 16, 36, 0.03);
+  --shadow-lg: 0 8px 24px rgba(0, 16, 36, 0.1), 0 4px 8px rgba(0, 16, 36, 0.04);
+  --shadow-control: var(--shadow-xs);
+  --shadow-card: var(--shadow-sm);
+  --shadow-dialog: var(--shadow-lg);
+  --shadow-action: 0 2px 6px rgba(0, 44, 104, 0.2);
   --shadow-focus: 0 0 0 3px rgba(30, 77, 140, 0.18);
 
   /* Focus ring */
   --color-focus-ring: rgba(30, 77, 140, 0.18);
+
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 240ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
   /* Touch */
   --tap-min-height: 44px;
@@ -90,7 +107,11 @@
   /* Surfaces */
   --color-bg-soft: #0a2038;
   --color-surface: #0d2744;
+  --color-surface-muted: #102d4b;
   --color-border-light: #1a4166;
+  --color-border-subtle: rgba(147, 197, 253, 0.2);
+  --color-border-strong: #2b5b85;
+  --color-overlay: rgba(0, 0, 0, 0.58);
   --color-blue-tint: #123b62;
   --color-nav-active-text: #e6f1fb;
 
@@ -118,6 +139,7 @@
 
   /* Focus ring: stronger on deep navy surfaces so keyboard focus remains visible */
   --color-focus-ring: rgba(147, 197, 253, 0.45);
+  --shadow-action: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 @theme inline {
@@ -143,7 +165,11 @@
   /* Surfaces */
   --color-bg-soft: var(--color-bg-soft);
   --color-surface: var(--color-surface);
+  --color-surface-muted: var(--color-surface-muted);
   --color-border-light: var(--color-border-light);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-strong: var(--color-border-strong);
+  --color-overlay: var(--color-overlay);
 
   /* Text */
   --color-text-main: var(--color-text-main);
@@ -182,9 +208,19 @@
 
   /* Shadows */
   --shadow-sm: var(--shadow-sm);
+  --shadow-xs: var(--shadow-xs);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
+  --shadow-control: var(--shadow-control);
+  --shadow-card: var(--shadow-card);
+  --shadow-dialog: var(--shadow-dialog);
+  --shadow-action: var(--shadow-action);
   --shadow-focus: var(--shadow-focus);
+
+  /* Motion */
+  --motion-fast: var(--motion-fast);
+  --motion-base: var(--motion-base);
+  --motion-slow: var(--motion-slow);
 
   /* Touch */
   --spacing-tap: var(--tap-min-height);
