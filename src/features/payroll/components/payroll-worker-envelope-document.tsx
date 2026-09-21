@@ -46,7 +46,7 @@ export function PayrollWorkerEnvelopeDocument({
     <div className="flex flex-col items-center justify-start p-1 sm:p-4 print:p-0 print:m-0 print:block">
       <div
         id="payroll-worker-envelope-document"
-        className="w-[360px] max-w-full px-4 py-3 bg-white text-slate-900 space-y-3 print:space-y-1.5 mx-auto rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
+        className="w-[360px] max-w-full px-4 py-3 bg-white text-slate-900 space-y-3 print:space-y-1 mx-auto rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
       >
         {/* Header with Inverted Logo */}
         <div className="border-b-2 border-slate-900 pb-2 print:pb-1 flex items-center justify-between gap-1.5">
@@ -83,13 +83,12 @@ export function PayrollWorkerEnvelopeDocument({
           </div>
         </div>
 
-        {/* Cohesive 4-Column Table - In print: no thead, no line divides, minimal vertical padding */}
+        {/* Compact envelope table - In print: no thead, no lines, minimal vertical padding */}
         <div className="border border-slate-200 rounded-md overflow-hidden print:border-none print:rounded-none">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full table-fixed text-left border-collapse">
             <thead className="print:hidden">
               <tr className="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold text-[10px] uppercase tracking-wide">
                 <th className="py-2 pl-2.5 pr-1 text-left">Mano de Obra</th>
-                <th className="py-2 px-1 text-right w-14 text-[9px] font-bold text-slate-600">Base</th>
                 <th className="py-2 px-0.5 text-center w-7 text-[9px] font-bold text-slate-600">%</th>
                 <th className="py-2 pl-1 pr-2.5 text-right w-16 text-[10px] font-bold text-slate-900">A Cobrar</th>
               </tr>
@@ -98,23 +97,20 @@ export function PayrollWorkerEnvelopeDocument({
               {allLaborItems.length > 0 ? (
                 allLaborItems.map((item, idx) => (
                   <tr key={`${item.id}-${idx}`} className="hover:bg-slate-50/50">
-                    <td className="py-2 print:py-0.5 pl-2.5 pr-1 text-slate-800 font-medium text-xs leading-tight">
+                    <td className="py-2 print:py-0.5 print:leading-none pl-2.5 pr-1 text-slate-800 font-medium text-xs leading-tight">
                       {item.description}
                     </td>
-                    <td className="py-2 print:py-0.5 px-1 text-right text-slate-500 font-normal text-[10px] whitespace-nowrap">
-                      {formatCents(item.payrollBaseCents)}
-                    </td>
-                    <td className="py-2 print:py-0.5 px-0.5 text-center text-slate-400 font-normal text-[10px] whitespace-nowrap">
+                    <td className="py-2 print:py-0.5 print:leading-none px-0.5 text-center text-slate-400 font-normal text-[10px] whitespace-nowrap">
                       {item.ratePercent}%
                     </td>
-                    <td className="py-2 print:py-0.5 pl-1 pr-2.5 text-right font-medium text-slate-950 text-xs whitespace-nowrap">
+                    <td className="py-2 print:py-0.5 print:leading-none pl-1 pr-2.5 text-right font-medium text-slate-950 text-xs whitespace-nowrap">
                       {formatCents(item.commissionCents)}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="py-4 text-center text-slate-500 text-xs">
+                  <td colSpan={3} className="py-4 text-center text-slate-500 text-xs">
                     Sin conceptos registrados
                   </td>
                 </tr>

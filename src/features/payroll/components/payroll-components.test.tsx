@@ -7,6 +7,8 @@ import { PayrollUnassignedCard } from "./payroll-worker-card";
 import { PayrollOverviewTable } from "./payroll-overview-table";
 import { PayrollWorkerDetail } from "./payroll-worker-detail";
 import { PayrollView } from "./payroll-view";
+import { PayrollWorkerEnvelopeDocument } from "./payroll-worker-envelope-document";
+import { PayrollWorkerEnvelopeModal } from "./payroll-worker-envelope";
 import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 import toast from "react-hot-toast";
@@ -456,6 +458,37 @@ describe("Payroll UI Components", () => {
     );
     expect(dialogContent).toHaveClass("p-2", "sm:p-3");
     expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toHaveClass("break-words");
+  });
+
+  it("renders compact envelope columns in both print and modal paths", () => {
+    const period: ParsedPayrollParams = {
+      mode: "weekly",
+      anchor: "2026-08-17",
+      prevAnchor: "2026-08-10",
+      nextAnchor: "2026-08-24",
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      isCurrentPeriod: true,
+      start: new Date("2026-08-17T06:00:00Z"),
+      end: new Date("2026-08-23T06:00:00Z"),
+    };
+
+    render(
+      <>
+        <PayrollWorkerEnvelopeDocument worker={sampleWorkers[0]} period={period} />
+        <PayrollWorkerEnvelopeModal worker={sampleWorkers[0]} period={period} open onOpenChange={vi.fn()} />
+      </>
+    );
+
+    const tables = Array.from(document.querySelectorAll("table"));
+    expect(tables).toHaveLength(2);
+    for (const table of tables) {
+      expect(within(table).getByText("Mano de Obra")).toBeInTheDocument();
+      expect(within(table).getByText("%")).toBeInTheDocument();
+      expect(within(table).getByText("A Cobrar")).toBeInTheDocument();
+      expect(within(table).queryByText("Base")).not.toBeInTheDocument();
+      expect(table.querySelectorAll("th")).toHaveLength(3);
+    }
   });
 
   describe("Inline Payroll Base Adjustment", () => {
