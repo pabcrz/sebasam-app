@@ -411,7 +411,7 @@ describe("Payroll UI Components", () => {
     expect(screen.getByText("Ayudante Roberto")).toBeInTheDocument();
   });
 
-  it("opens individual pay envelope modal when clicking Sobre de Pago", () => {
+  it("opens individual payroll receipt modal when clicking Recibo de Nómina", () => {
     const period: ParsedPayrollParams = {
       mode: "weekly",
       anchor: "2026-08-17",
@@ -441,23 +441,23 @@ describe("Payroll UI Components", () => {
 
     render(<PayrollView report={fullReport} period={period} />);
 
-    const envelopeBtn = screen.getByRole("button", { name: /sobre de pago/i });
+    const envelopeBtn = screen.getByRole("button", { name: /recibo de nómina/i });
     fireEvent.click(envelopeBtn);
 
-    expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recibo de Nómina - Maestro Pedro/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /imagen/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /whatsapp/i })).toBeInTheDocument();
 
     const dialogContent = screen.getByRole("dialog");
     expect(dialogContent).toHaveClass(
       "w-[calc(100vw-2rem)]",
-      "max-w-2xl",
+      "max-w-[460px]",
       "max-h-[92vh]",
       "overflow-y-auto",
       "overflow-x-hidden"
     );
     expect(dialogContent).toHaveClass("p-2", "sm:p-3");
-    expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toHaveClass("break-words");
+    expect(screen.getByText(/Recibo de Nómina - Maestro Pedro/i)).toHaveClass("break-words");
   });
 
   it("renders compact envelope columns in both print and modal paths", () => {

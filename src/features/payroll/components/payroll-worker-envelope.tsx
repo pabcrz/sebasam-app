@@ -32,11 +32,12 @@ export function PayrollWorkerEnvelopeModal({
 }: PayrollWorkerEnvelopeProps) {
   const [isGeneratingImage, setIsGeneratingImage] = React.useState(false);
   const [isSharingWhatsApp, setIsSharingWhatsApp] = React.useState(false);
+  const [shareStatus, setShareStatus] = React.useState<string | null>(null);
 
   if (!worker) return null;
 
   const handlePrint = () => {
-    printElementById("payroll-worker-envelope-document", `Sobre de Pago - ${worker.displayName}`);
+    printElementById("payroll-worker-envelope-document", `Recibo de Nómina - ${worker.displayName}`);
   };
 
   const todayStr = new Intl.DateTimeFormat("es-MX", {
@@ -67,24 +68,6 @@ export function PayrollWorkerEnvelopeModal({
       commissionCents: item.commissionCents,
     }));
   });
-
-  const generateTextSummary = () => {
-    let text = `*SEBASAM - Recibo de Mano de Obra*\n`;
-    text += `*Trabajador:* ${worker.displayName}\n`;
-    text += `*Período:* ${period.rangeLabel}\n`;
-    text += `*Fecha de emisión:* ${todayStr}\n\n`;
-    text += `*DESGLOSE DE TRABAJOS:*\n`;
-
-    allLaborItems.forEach((item) => {
-      text += `  • ${item.description}: ${item.ratePercent}% ➔ *${formatCents(item.commissionCents)}*\n`;
-    });
-
-    text += `\n─────────────────────\n`;
-    text += `*Mano de Obra Taller:* ${formatCents(worker.totalPayrollBaseCents)}\n`;
-    text += `*TOTAL A LIQUIDAR:* *${formatCents(worker.totalCommissionCents)}*\n`;
-
-    return text;
-  };
 
   const generateEnvelopePngDataUrl = async (): Promise<string | null> => {
     const node = document.getElementById("payroll-worker-envelope-document");
@@ -121,48 +104,35 @@ export function PayrollWorkerEnvelopeModal({
 
   const handleWhatsApp = async () => {
     setIsSharingWhatsApp(true);
+    setShareStatus(null);
     try {
       const dataUrl = await generateEnvelopePngDataUrl();
+      if (!dataUrl) throw new Error("No se pudo generar la imagen del recibo.");
+
       const safeName = worker.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const summaryText = generateTextSummary();
 
-      if (dataUrl) {
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        const file = new File([blob], `recibo-nomina-${safeName}.png`, { type: "image/png" });
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `recibo-nomina-${safeName}.png`, { type: "image/png" });
 
-        // If Web Share API supports file sharing, invoke it directly
-        if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: `Recibo de Nómina - ${worker.displayName}`,
-            text: summaryText,
-          });
-          return;
-        }
-
-        // Fallback for desktop: Copy image to clipboard so user can paste (Cmd+V / Ctrl+V) in WhatsApp
-        if (typeof navigator !== "undefined" && navigator.clipboard && typeof ClipboardItem !== "undefined") {
-          try {
-            await navigator.clipboard.write([
-              new ClipboardItem({
-                "image/png": blob,
-              }),
-            ]);
-          } catch {
-            // Clipboard fallback
-          }
-        }
+      if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Recibo de Nómina - ${worker.displayName}`,
+        });
+        return;
       }
 
-      // Open WhatsApp Web
-      const encodedText = encodeURIComponent(summaryText);
-      window.open(`https://wa.me/?text=${encodedText}`, "_blank");
+      const link = document.createElement("a");
+      link.download = file.name;
+      link.href = dataUrl;
+      link.click();
+      setShareStatus("Imagen descargada. Adjuntala manualmente en WhatsApp.");
     } catch (err) {
-      console.error("Error al compartir por WhatsApp:", err);
-      // Fallback
-      const text = encodeURIComponent(generateTextSummary());
-      window.open(`https://wa.me/?text=${text}`, "_blank");
+      if ((err as Error)?.name !== "AbortError") {
+        console.error("Error al compartir imagen por WhatsApp:", err);
+        setShareStatus("No se pudo compartir la imagen. Descargala e intentá adjuntarla manualmente.");
+      }
     } finally {
       setIsSharingWhatsApp(false);
     }
@@ -170,11 +140,11 @@ export function PayrollWorkerEnvelopeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="min-w-0 max-w-full w-[calc(100vw-2rem)] max-w-2xl max-h-[92vh] gap-3 p-2 sm:p-3 overflow-y-auto overflow-x-hidden print:max-w-none print:w-full print:h-auto print:max-h-none print:p-0 print:border-none print:shadow-none print:overflow-visible print:static print:transform-none">
+      <DialogContent className="min-w-0 w-[calc(100vw-2rem)] max-w-[460px] max-h-[92vh] gap-3 p-2 sm:p-3 overflow-y-auto overflow-x-hidden print:max-w-none print:w-full print:h-auto print:max-h-none print:p-0 print:border-none print:shadow-none print:overflow-visible print:static print:transform-none">
         <DialogHeader className="print:hidden">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Mail className="h-5 w-5 text-[var(--color-primary-600)]" />
-            <DialogTitle className="min-w-0 break-words">Sobre de Pago - {worker.displayName}</DialogTitle>
+            <DialogTitle className="min-w-0 break-words">Recibo de Nómina - {worker.displayName}</DialogTitle>
           </div>
         </DialogHeader>
 
@@ -182,12 +152,12 @@ export function PayrollWorkerEnvelopeModal({
         <div className="flex min-w-0 max-w-full justify-center py-1">
           <div
             id="payroll-worker-envelope-document"
-            className="w-[360px] max-w-full p-3 bg-white text-slate-900 space-y-3 print:space-y-1 rounded-none print:w-[8.9cm] print:max-w-[8.9cm] print:min-h-[16.5cm] print:p-0 print:m-0 print:border-none print:shadow-none print:break-inside-avoid"
+            className="w-[360px] max-w-full rounded-xl border border-slate-200 bg-white p-4 text-slate-900 shadow-sm space-y-4 print:box-border print:w-full print:max-w-none print:min-h-[237mm] print:space-y-5 print:rounded-none print:border-none print:p-[14mm_18mm] print:m-0 print:shadow-none print:break-inside-avoid"
           >
             {/* Header with Clean Inverted Logo */}
-            <div className="border-b-2 border-slate-900 pb-2 print:pb-1 flex items-center justify-between gap-1.5">
+            <div className="border-b-2 border-slate-900 pb-3 print:pb-3 flex items-center justify-between gap-1.5">
               <div className="flex items-center gap-2">
-                <div className="relative h-8 w-8 shrink-0 flex items-center justify-center">
+                <div className="relative h-9 w-9 shrink-0 flex items-center justify-center print:h-10 print:w-10">
                   <Image
                     src="/logo-white-short.png"
                     alt="Logo de SEBASAM"
@@ -208,7 +178,7 @@ export function PayrollWorkerEnvelopeModal({
             </div>
 
             {/* Worker & Period Info */}
-            <div className="bg-slate-50 rounded-md p-2.5 print:p-1.5 border border-slate-200 text-xs space-y-0.5 print:space-y-0">
+            <div className="bg-slate-50 rounded-md p-3 print:p-3 border border-slate-200 text-xs space-y-1 print:space-y-1 print:break-inside-avoid">
               <div className="flex items-baseline justify-between gap-1">
                 <span className="text-[10px] uppercase font-bold text-slate-500">Trabajador:</span>
                 <span className="font-black text-slate-900 text-xs truncate">{worker.displayName}</span>
@@ -220,9 +190,9 @@ export function PayrollWorkerEnvelopeModal({
             </div>
 
             {/* Compact envelope table - In print: no thead, no lines, minimal vertical padding */}
-            <div className="border border-slate-200 rounded-md overflow-hidden print:border-none print:rounded-none">
+            <div className="border border-slate-200 rounded-md overflow-hidden print:break-inside-avoid">
               <table className="w-full table-fixed border-collapse text-left">
-                <thead className="print:hidden">
+                <thead className="print:table-header-group">
                   <tr className="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold text-[10px] uppercase tracking-wide">
                     <th className="py-2 pl-2.5 pr-1 text-left">Mano de Obra</th>
                     <th className="py-2 px-0.5 text-center w-7 text-[9px] font-bold text-slate-600">%</th>
@@ -256,7 +226,7 @@ export function PayrollWorkerEnvelopeModal({
             </div>
 
             {/* Light Totals Summary */}
-            <div className="bg-slate-50 border border-slate-200 rounded-md p-2.5 print:p-1.5 flex items-center justify-between">
+            <div className="bg-slate-50 border border-slate-200 rounded-md p-3 print:p-3 flex items-center justify-between print:break-inside-avoid">
               <div>
                 <span className="text-[9px] uppercase tracking-wider block font-bold text-slate-500">
                   Mano de Obra Taller:
@@ -310,6 +280,7 @@ export function PayrollWorkerEnvelopeModal({
               <span>WhatsApp</span>
             </Button>
           </div>
+          {shareStatus ? <p className="basis-full text-[11px] text-[var(--color-text-muted)]">{shareStatus}</p> : null}
         </div>
 
         {/* Dialog Actions (Hidden in Print) */}
@@ -319,7 +290,7 @@ export function PayrollWorkerEnvelopeModal({
           </Button>
           <Button type="button" variant="primary" onClick={handlePrint} className="gap-1.5">
             <Printer className="h-4 w-4" />
-            Imprimir Sobre (16.5 x 8.9 cm)
+            Imprimir en hoja Carta
           </Button>
         </DialogFooter>
       </DialogContent>
