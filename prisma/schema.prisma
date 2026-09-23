@@ -94,6 +94,12 @@ enum PaymentStatus {
   PAID
 }
 
+enum PayableNoteStatus {
+  DRAFT
+  ISSUED
+  CANCELLED
+}
+
 enum LedgerEntryType {
   CREDIT
   DEBIT
@@ -209,6 +215,7 @@ model Customer {
   paymentRequests PaymentRequest[]
   payments        Payment[]
   ledgerEntries   LedgerEntry[]
+  payableNotes    PayableNote[]
 
   @@index([name])
   @@index([commercialName])
@@ -304,6 +311,7 @@ model Quote {
   lifecycleEvents       QuoteLifecycleEvent[]
   commercialCorrections QuoteCommercialCorrection[]
   settlementAgreement   SettlementAgreement?
+  payableNote           PayableNote?
 
   @@index([operationalDate])
   @@index([customerContactId])
@@ -428,6 +436,7 @@ model WorkOrder {
   commercialCorrections         QuoteCommercialCorrection[]
   commercialCorrectionApplications QuoteCommercialCorrectionApplication[]
   laborAdvances                 WorkOrderLaborAdvance[]
+  payableNote                   PayableNote?
 
   @@index([status, completedAt])
   @@index([status, paymentDueDate])
@@ -518,6 +527,7 @@ model PaymentRequest {
   customerId              String
   quoteId                 String?
   workOrderId             String?
+  payableNoteId           String?
   requiresInvoice         Boolean              @default(false)
   customerFiscalProfileId String?
   fiscalSnapshot          Json?
@@ -533,13 +543,45 @@ model PaymentRequest {
   customer              Customer               @relation(fields: [customerId], references: [id], onDelete: Cascade)
   quote                 Quote?                 @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   workOrder             WorkOrder?             @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  payableNote           PayableNote?           @relation(fields: [payableNoteId], references: [id], onDelete: Cascade)
   customerFiscalProfile CustomerFiscalProfile? @relation(fields: [customerFiscalProfileId], references: [id], onDelete: SetNull)
   payments              Payment[]
 
   @@index([customerId])
   @@index([quoteId])
   @@index([workOrderId])
+  @@index([payableNoteId])
   @@index([token])
+}
+
+model PayableNote {
+  id              String            @id @default(cuid())
+  customerId      String?
+  quoteId         String?           @unique
+  workOrderId     String?           @unique
+  referenceNumber String            @unique
+  title           String
+  subtotalCents   Int
+  taxCents        Int
+  totalCents      Int
+  status          PayableNoteStatus @default(DRAFT)
+  issuedAt        DateTime?
+  paymentDueDate  DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  customer                    Customer?                              @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  quote                       Quote?                                 @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  workOrder                   WorkOrder?                             @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  paymentRequests             PaymentRequest[]
+  payments                    Payment[]
+  paymentApplications         PaymentApplication[]
+  ledgerEntries               LedgerEntry[]
+  correctionApplications      PaymentCorrectionApplication[]
+  quoteCorrectionApplications QuoteCommercialCorrectionApplication[]
+
+  @@index([customerId, status, issuedAt])
+  @@index([workOrderId])
 }
 
 model SettlementAgreement {
@@ -595,6 +637,7 @@ model Payment {
   operationKey     String        @unique
   customerId       String
   quoteId          String?
+  payableNoteId    String?
   paymentRequestId String?
   method           PaymentMethod
   amountCents      Int
@@ -607,6 +650,7 @@ model Payment {
 
   customer             Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
   quote                Quote?               @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  payableNote          PayableNote?         @relation(fields: [payableNoteId], references: [id], onDelete: Restrict)
   paymentRequest       PaymentRequest?      @relation(fields: [paymentRequestId], references: [id], onDelete: SetNull)
   reversedBy           UserProfile?         @relation("PaymentReverser", fields: [reversedById], references: [id], onDelete: Restrict)
   applications         PaymentApplication[]
@@ -616,6 +660,7 @@ model Payment {
 
   @@index([customerId])
   @@index([quoteId])
+  @@index([payableNoteId])
   @@index([paymentRequestId])
   @@index([quoteId, status])
   @@index([status, createdAt])
@@ -626,7 +671,8 @@ model PaymentApplication {
   id             String    @id @default(cuid())
   operationKey   String    @unique
   paymentId      String
-  workOrderId    String
+  workOrderId    String?
+  payableNoteId  String
   amountCents    Int
   actorId        String?   @db.Uuid
   reversedAt     DateTime?
@@ -635,7 +681,8 @@ model PaymentApplication {
   createdAt      DateTime  @default(now())
 
   payment                    Payment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
-  workOrder                  WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  workOrder                  WorkOrder?    @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  payableNote                PayableNote   @relation(fields: [payableNoteId], references: [id], onDelete: Restrict)
   actor                      UserProfile?  @relation("PaymentApplicationCreator", fields: [actorId], references: [id], onDelete: Restrict)
   reversedBy                 UserProfile?  @relation("PaymentApplicationReverser", fields: [reversedById], references: [id], onDelete: Restrict)
   ledgerEntries              LedgerEntry[]
@@ -646,6 +693,7 @@ model PaymentApplication {
 
   @@index([paymentId])
   @@index([workOrderId])
+  @@index([payableNoteId])
   @@index([reversedAt])
 }
 
@@ -681,6 +729,7 @@ model QuoteCommercialCorrectionApplication {
   replacementApplicationId String?
   replacementLedgerEntryId String?
   workOrderId              String
+  payableNoteId            String
   originalAmountCents      Int
   reversalAmountCents      Int
   replacementAmountCents   Int      @default(0)
@@ -694,6 +743,7 @@ model QuoteCommercialCorrectionApplication {
   replacementApplication PaymentApplication?      @relation("ReplacementQuoteCorrectionApplication", fields: [replacementApplicationId], references: [id], onDelete: SetNull)
   replacementLedgerEntry LedgerEntry?             @relation("QuoteCorrectionReplacementLedger", fields: [replacementLedgerEntryId], references: [id], onDelete: SetNull)
   workOrder              WorkOrder                @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  payableNote            PayableNote               @relation(fields: [payableNoteId], references: [id], onDelete: Restrict)
 
   @@unique([correctionId, originalApplicationId])
   @@index([correctionId])
@@ -726,7 +776,8 @@ model PaymentCorrectionApplication {
   paymentCorrectionId      String
   originalApplicationId    String
   replacementApplicationId String?
-  workOrderId              String
+  workOrderId              String?
+  payableNoteId            String
   originalAmountCents      Int
   replacementAmountCents   Int
   shortfallCents           Int     @default(0)
@@ -736,11 +787,13 @@ model PaymentCorrectionApplication {
   paymentCorrection      PaymentCorrection  @relation(fields: [paymentCorrectionId], references: [id], onDelete: Cascade)
   originalApplication    PaymentApplication @relation("OriginalCorrectionApplication", fields: [originalApplicationId], references: [id], onDelete: Restrict)
   replacementApplication PaymentApplication? @relation("ReplacementCorrectionApplication", fields: [replacementApplicationId], references: [id], onDelete: SetNull)
-  workOrder              WorkOrder          @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  workOrder              WorkOrder?         @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  payableNote            PayableNote        @relation(fields: [payableNoteId], references: [id], onDelete: Restrict)
 
   @@unique([paymentCorrectionId, originalApplicationId])
   @@index([paymentCorrectionId])
   @@index([workOrderId])
+  @@index([payableNoteId])
 }
 
 model LedgerEntry {
@@ -755,6 +808,7 @@ model LedgerEntry {
   paymentId             String?
   paymentApplicationId  String?
   workOrderId           String?
+  payableNoteId         String?
   reversedMovementId    String?            @unique
   createdAt             DateTime           @default(now())
 
@@ -762,6 +816,7 @@ model LedgerEntry {
   payment            Payment?            @relation(fields: [paymentId], references: [id], onDelete: Restrict)
   paymentApplication PaymentApplication? @relation(fields: [paymentApplicationId], references: [id], onDelete: Restrict)
   workOrder          WorkOrder?          @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  payableNote         PayableNote?       @relation(fields: [payableNoteId], references: [id], onDelete: Restrict)
   actor              UserProfile?        @relation("LedgerEntryActor", fields: [actorId], references: [id], onDelete: Restrict)
   reversedMovement   LedgerEntry?        @relation("MovementReversal", fields: [reversedMovementId], references: [id], onDelete: Restrict)
   reversalMovement   LedgerEntry?        @relation("MovementReversal")
@@ -772,6 +827,7 @@ model LedgerEntry {
   @@index([paymentId])
   @@index([paymentApplicationId])
   @@index([workOrderId])
+  @@index([payableNoteId])
 }
 
 model PaymentSettings {
