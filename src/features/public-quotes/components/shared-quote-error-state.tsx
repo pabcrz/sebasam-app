@@ -49,7 +49,7 @@ export function SharedQuoteErrorState({ type }: SharedQuoteErrorStateProps) {
       </header>
 
       <main className="flex flex-1 items-center bg-[var(--color-bg-soft)] px-4 py-6 md:px-8 md:py-8">
-        <Card className="mx-auto w-full max-w-xl border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)]">
+        <Card className="mx-auto w-full max-w-xl border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] print:shadow-none">
           <CardHeader>
             <div className="flex items-center gap-3">
               <Icon className="h-6 w-6 text-[var(--color-status-danger-fg)]" aria-hidden="true" />

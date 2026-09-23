@@ -123,7 +123,7 @@ export function BankDataCard({ bankAccounts, isPrint = false }: BankDataCardProp
   }
 
   return (
-    <Card>
+    <Card className="border-none shadow-none">
       <CardHeader>
         <CardTitle>Datos de pago</CardTitle>
         <CardDescription>
@@ -144,7 +144,7 @@ export function BankDataCard({ bankAccounts, isPrint = false }: BankDataCardProp
             <div
               key={account.id}
               data-testid="bank-account-card"
-              className="space-y-4 rounded-xl border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4"
+              className="space-y-4 rounded-[var(--radius-md)] bg-[var(--color-surface-muted)] p-4 print:shadow-none"
             >
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <p className="text-base font-semibold text-[var(--color-text-main)]">{account.bankName}</p>
@@ -168,7 +168,7 @@ export function BankDataCard({ bankAccounts, isPrint = false }: BankDataCardProp
                 <div
                   className={
                     `flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
-                      account.clabe.trim() ? "border-t border-[var(--color-border-light)] pt-4" : ""
+                      account.clabe.trim() ? "border-t border-[var(--color-border-subtle)] pt-4" : ""
                     }`
                   }
                 >
@@ -186,7 +186,7 @@ export function BankDataCard({ bankAccounts, isPrint = false }: BankDataCardProp
                 className={
                   `text-xs text-[var(--color-text-muted)] ${
                     account.clabe.trim() || account.accountNumber.trim()
-                      ? "border-t border-[var(--color-border-light)] pt-4"
+                      ? "border-t border-[var(--color-border-subtle)] pt-4"
                       : ""
                   }`
                 }
