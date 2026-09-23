@@ -103,7 +103,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
       }
     };
 
-    const interval = setInterval(pollStatus, 60_000);
+    const interval = setInterval(pollStatus, 10_000);
     return () => {
       active = false;
       controller?.abort();
