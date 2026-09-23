@@ -84,6 +84,7 @@ type MockTx = {
   settlementAgreementRevision: { count: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
   sharedQuote: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
+  payableNote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   workOrder: { count: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
   customer?: { findUnique: ReturnType<typeof vi.fn> };
@@ -116,6 +117,11 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
     settlementAgreementRevision: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockResolvedValue({ id: "rev-1" }) },
     sharedQuote: { updateMany: vi.fn(), deleteMany: vi.fn() },
     paymentRequest: { updateMany: vi.fn(), deleteMany: vi.fn() },
+    payableNote: {
+      create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: data.id, ...data })),
+      findUnique: vi.fn().mockResolvedValue({ id: "wo-1" }),
+      delete: vi.fn(),
+    },
     quoteLifecycleEvent: { create: vi.fn(), deleteMany: vi.fn() },
     workOrder: { count: vi.fn().mockResolvedValue(0), findUnique: vi.fn().mockResolvedValue(null), delete: vi.fn() },
   };
@@ -1016,16 +1022,18 @@ describe("deleteQuote", () => {
 
     await deleteQuote("quote-1");
 
-    expect(tx.paymentApplication.count).toHaveBeenCalledWith({ where: { workOrderId: "wo-1" } });
+    expect(tx.paymentApplication.count).toHaveBeenCalledWith({ where: { OR: [{ workOrderId: "wo-1" }, { payableNoteId: "wo-1" }] } });
     expect(tx.ledgerEntry.count).toHaveBeenCalledWith({
       where: {
         OR: [
           { workOrderId: "wo-1" },
+          { payableNoteId: "wo-1" },
           { payment: { quoteId: "quote-1" } },
         ],
       },
     });
     expect(tx.workOrderLaborAdvance.count).toHaveBeenCalledWith({ where: { workOrderId: "wo-1" } });
+    expect(tx.payableNote.delete).toHaveBeenCalledWith({ where: { id: "wo-1" } });
     expect(tx.workOrder.delete).toHaveBeenCalledWith({ where: { id: "wo-1" } });
     expect(tx.quote.delete).toHaveBeenCalledWith({ where: { id: "quote-1" } });
   });

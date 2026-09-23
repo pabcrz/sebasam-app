@@ -186,6 +186,7 @@ async function createActivePaymentWithApplication(
           {
             operationKey: `app-${randomUUID()}`,
             workOrderId,
+            payableNoteId: workOrderId,
             amountCents,
             actorId,
           },

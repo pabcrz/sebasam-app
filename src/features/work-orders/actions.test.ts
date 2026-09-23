@@ -97,6 +97,7 @@ type MockTx = {
     findUnique: ReturnType<typeof vi.fn>;
   };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
+  payableNote: { create: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   completedWorkKnowledgeSource: { updateMany: ReturnType<typeof vi.fn> };
   vehicle: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
   customer: { findUnique: ReturnType<typeof vi.fn> };
@@ -128,6 +129,10 @@ function createTx(): MockTx {
       findUnique: vi.fn().mockResolvedValue(null),
     },
     paymentRequest: { updateMany: vi.fn() },
+    payableNote: {
+      create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: data.id, ...data })),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
     completedWorkKnowledgeSource: { updateMany: vi.fn() },
     vehicle: { findFirst: vi.fn().mockResolvedValue({ id: "veh-1" }), create: vi.fn(), update: vi.fn().mockResolvedValue({ id: "veh-1" }) },
     customer: { findUnique: vi.fn().mockResolvedValue(null) },
@@ -334,6 +339,10 @@ describe("work order actions", () => {
       // should set completedAt and paymentDueDate
       expect(tx.workOrder.updateMany.mock.calls[0][0].data.completedAt).toBeInstanceOf(Date);
       expect(tx.workOrder.updateMany.mock.calls[0][0].data.paymentDueDate).toBeInstanceOf(Date);
+      expect(tx.payableNote.updateMany).toHaveBeenCalledWith({
+        where: { workOrderId: "wo-1", status: "DRAFT" },
+        data: expect.objectContaining({ status: "ISSUED", issuedAt: expect.any(Date) }),
+      });
       expect(tx.workAssignment.updateMany).toHaveBeenCalledWith({
         where: {
           workOrderId: "wo-1",
@@ -882,6 +891,13 @@ describe("work order actions", () => {
           status: WorkOrderStatus.COMPLETED,
         }),
       }));
+      expect(tx.payableNote.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          id: "wo-new",
+          workOrderId: "wo-new",
+          status: "ISSUED",
+        }),
+      }));
     });
 
     it("creates a direct note from workspace FormData and revalidates paths", async () => {
@@ -948,6 +964,57 @@ describe("work order actions", () => {
           reason: "Convertida a nota",
         }),
       }));
+    });
+
+    it("issues the linked draft payable note when completing an existing work order", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      const dueDate = new Date("2026-09-30T00:00:00.000Z");
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        id: "quote-1",
+        workOrder: {
+          id: "wo-existing",
+          status: WorkOrderStatus.ASSIGNED,
+          folio: null,
+          issuedAt: null,
+          paymentDueDate: null,
+          assignments: [],
+        },
+      }));
+
+      await convertQuoteToNoteAction({
+        quoteId: "quote-1",
+        paymentDueDate: dueDate,
+      });
+
+      expect(tx.payableNote.updateMany).toHaveBeenCalledWith({
+        where: { workOrderId: "wo-existing", status: "DRAFT" },
+        data: {
+          status: "ISSUED",
+          issuedAt: expect.any(Date),
+          paymentDueDate: dueDate,
+        },
+      });
+    });
+
+    it("does not reissue the payable note when the existing work order is already completed", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        id: "quote-1",
+        workOrder: {
+          id: "wo-completed",
+          status: WorkOrderStatus.COMPLETED,
+          folio: "N-0926-01",
+          issuedAt: new Date("2026-09-01T00:00:00.000Z"),
+          paymentDueDate: new Date("2026-09-15T00:00:00.000Z"),
+          assignments: [],
+        },
+      }));
+
+      await convertQuoteToNoteAction({ quoteId: "quote-1" });
+
+      expect(tx.payableNote.updateMany).not.toHaveBeenCalled();
     });
 
     it("blocks converting a locked quote to note", async () => {

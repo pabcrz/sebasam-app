@@ -172,6 +172,13 @@ async function ensureWorkOrderPlanned(
         notes: input.notes,
       },
     });
+    await tx.payableNote.create({
+      data: {
+        id: workOrder.id, customerId: quote.customerId, quoteId: quote.id, workOrderId: workOrder.id,
+        referenceNumber: workOrder.number, title: quote.title, subtotalCents: quote.subtotalCents ?? 0,
+        taxCents: quote.taxCents ?? 0, totalCents: quote.totalCents ?? 0, status: "DRAFT",
+      },
+    });
     await ensureSharedQuoteInTransaction(tx, quoteId);
     return workOrder;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -332,6 +339,13 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
       const created = await tx.workOrder.create({
         data: { quoteId, number },
       });
+      await tx.payableNote.create({
+        data: {
+          id: created.id, customerId: quote.customerId, quoteId: quote.id, workOrderId: created.id,
+          referenceNumber: created.number, title: quote.title, subtotalCents: quote.subtotalCents ?? 0,
+          taxCents: quote.taxCents ?? 0, totalCents: quote.totalCents ?? 0, status: "DRAFT",
+        },
+      });
       workOrderId = created.id;
     }
 
@@ -444,6 +458,14 @@ export async function completeWorkOrder(input: unknown) {
 
     if (updated.count !== 1) {
       throw new WorkOrderOperationError("El estado de la orden cambió. Recarga e intenta de nuevo.");
+    }
+
+    const payableNote = await tx.payableNote.updateMany({
+      where: { workOrderId: data.workOrderId, status: "DRAFT" },
+      data: { status: "ISSUED", issuedAt: completedAt, paymentDueDate },
+    });
+    if (payableNote.count !== 1) {
+      throw new WorkOrderOperationError("La orden no tiene una nota pagable pendiente para completar.");
     }
 
     if (!workOrder.folio) {
@@ -906,7 +928,6 @@ export async function createDirectWorkOrder(input: unknown) {
             paymentDueDate: calculatedDueDate,
           },
         });
-
         await tx.workAssignment.create({
           data: {
             workOrderId: workOrder.id,
@@ -1083,6 +1104,22 @@ export async function convertQuoteToNoteAction(input: unknown) {
         include: { assignments: true },
       });
       workOrder = createdWorkOrder;
+      await tx.payableNote.create({
+        data: {
+          id: createdWorkOrder.id,
+          customerId: quote.customerId,
+          quoteId: quote.id,
+          workOrderId: createdWorkOrder.id,
+          referenceNumber: createdWorkOrder.number,
+          title: quote.title,
+          subtotalCents: quote.subtotalCents ?? 0,
+          taxCents: quote.taxCents ?? 0,
+          totalCents: quote.totalCents ?? 0,
+          status: "ISSUED",
+          issuedAt: createdWorkOrder.completedAt ?? effectiveDate,
+          paymentDueDate: createdWorkOrder.paymentDueDate,
+        },
+      });
 
       await tx.workAssignment.create({
         data: {
@@ -1129,6 +1166,18 @@ export async function convertQuoteToNoteAction(input: unknown) {
             issuedAt: nIssuedAt,
           },
         });
+
+        const payableNote = await tx.payableNote.updateMany({
+          where: { workOrderId: workOrder.id, status: "DRAFT" },
+          data: {
+            status: "ISSUED",
+            issuedAt: effectiveDate,
+            paymentDueDate: notePaymentDueDate,
+          },
+        });
+        if (payableNote.count !== 1) {
+          throw new WorkOrderOperationError("La orden no tiene una nota pagable pendiente para completar.");
+        }
 
         await tx.workAssignment.updateMany({
           where: {

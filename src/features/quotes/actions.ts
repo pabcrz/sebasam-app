@@ -580,6 +580,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
             paymentId: app.paymentId,
             paymentApplicationId: app.id,
             workOrderId: app.workOrderId,
+            payableNoteId: app.payableNoteId,
             actorId,
             reason,
             reversedMovementId: origLedger?.id ?? null,
@@ -600,6 +601,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
               operationKey: `${operationKey}:app:${app.id}:replacement`,
               paymentId: app.paymentId,
               workOrderId: app.workOrderId,
+              payableNoteId: app.payableNoteId,
               amountCents: replacementAmount,
               actorId,
             },
@@ -615,6 +617,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
               paymentId: app.paymentId,
               paymentApplicationId: replacementApp.id,
               workOrderId: app.workOrderId,
+              payableNoteId: app.payableNoteId,
               actorId,
               reason: `Reemplazo parcial por corrección de nota (${reason})`,
             },
@@ -631,6 +634,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
           replacementApplicationId: replacementAppId,
           replacementLedgerEntryId: replacementLedgerId,
           workOrderId: app.workOrderId,
+          payableNoteId: app.payableNoteId,
           originalAmountCents: app.amountCents,
           reversalAmountCents: app.amountCents,
           replacementAmountCents: replacementAmount,
@@ -1021,12 +1025,19 @@ async function deleteQuoteAuthorized(quoteId: string) {
     }
 
     if (workOrder) {
+      const payableNote = await tx.payableNote.findUnique({
+        where: { workOrderId: workOrder.id },
+        select: { id: true },
+      });
+      if (!payableNote) throw new Error("This cancelled work order has no payable note reference.");
+
       const [applicationCount, ledgerEntryCount, laborAdvanceCount] = await Promise.all([
-        tx.paymentApplication.count({ where: { workOrderId: workOrder.id } }),
+        tx.paymentApplication.count({ where: { OR: [{ workOrderId: workOrder.id }, { payableNoteId: payableNote.id }] } }),
         tx.ledgerEntry.count({
           where: {
             OR: [
               { workOrderId: workOrder.id },
+              { payableNoteId: payableNote.id },
               { payment: { quoteId } },
             ],
           },
@@ -1038,6 +1049,7 @@ async function deleteQuoteAuthorized(quoteId: string) {
         throw new Error("This quote has financial activity and cannot be deleted.");
       }
 
+      await tx.payableNote.delete({ where: { id: payableNote.id } });
       await tx.workOrder.delete({ where: { id: workOrder.id } });
     }
 
@@ -1228,12 +1240,20 @@ export async function approveQuoteAndCreateWorkOrder(quoteId: string) {
 
     const woNumber = await nextWorkOrderNumber(tx);
 
-    return tx.workOrder.create({
+    const workOrder = await tx.workOrder.create({
       data: {
         quoteId: quote.id,
         number: woNumber,
       },
     });
+    await tx.payableNote.create({
+      data: {
+        id: workOrder.id, customerId: quote.customerId, quoteId: quote.id, workOrderId: workOrder.id,
+        referenceNumber: workOrder.number, title: quote.title, subtotalCents: quote.subtotalCents ?? 0,
+        taxCents: quote.taxCents ?? 0, totalCents: quote.totalCents ?? 0, status: "DRAFT",
+      },
+    });
+    return workOrder;
   });
 }
 
