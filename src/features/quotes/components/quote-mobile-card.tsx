@@ -220,7 +220,7 @@ export function QuoteListCard({
             <span>{vehicleDescription || "Sin vehículo"}</span>
           </p>
 
-          <div className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+          <div className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-muted)] p-3 shadow-[var(--shadow-xs)]">
             {quote.workOrder ? (
               <div className="flex items-center justify-between gap-3">
                 <span className="flex min-w-0 items-center gap-2">
@@ -242,7 +242,7 @@ export function QuoteListCard({
             )}
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--color-border-light)] pt-3 text-xs text-[var(--color-text-muted)]">
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--color-border-subtle)] pt-3 text-xs text-[var(--color-text-muted)]">
             <p className="flex items-center gap-1.5">
               <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Fecha de cotización: {formatOperationalDate(quote.operationalDate)}</span>
