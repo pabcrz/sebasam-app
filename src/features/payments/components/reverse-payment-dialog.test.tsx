@@ -43,7 +43,7 @@ describe("ReversePaymentDialog", () => {
     expect(screen.getByText("OP-987")).toBeInTheDocument();
   });
 
-  it("requires a non-empty reason before submitting", async () => {
+  it("submits the default Error reason without an optional detail", async () => {
     const user = userEvent.setup();
     const { action } = renderDialog();
 
@@ -52,8 +52,7 @@ describe("ReversePaymentDialog", () => {
     const submitBtn = screen.getByRole("button", { name: "Confirmar reversión" });
     await user.click(submitBtn);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Ingresa el motivo de la reversión.");
-    expect(action).not.toHaveBeenCalled();
+    await waitFor(() => expect(action).toHaveBeenCalledWith("pay-123", "Error", expect.any(String)));
   });
 
   it("calls action with paymentId, reason, and operationKey when submitted", async () => {
@@ -63,7 +62,8 @@ describe("ReversePaymentDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /revertir pago/i }));
 
-    const textarea = screen.getByLabelText(/motivo de reversión/i);
+    const textarea = screen.getByLabelText(/detalle de reversión/i);
+    await user.clear(textarea);
     await user.type(textarea, "Error de captura en monto");
 
     const submitBtn = screen.getByRole("button", { name: "Confirmar reversión" });
@@ -92,7 +92,8 @@ describe("ReversePaymentDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /revertir pago/i }));
 
-    const textarea = screen.getByLabelText(/motivo de reversión/i);
+    const textarea = screen.getByLabelText(/detalle de reversión/i);
+    await user.clear(textarea);
     await user.type(textarea, "Motivo válido");
 
     await user.click(screen.getByRole("button", { name: "Confirmar reversión" }));

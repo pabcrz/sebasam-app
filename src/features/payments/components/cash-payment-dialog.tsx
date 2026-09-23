@@ -124,7 +124,7 @@ export function CashPaymentDialog({
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const [amount, setAmount] = React.useState(centsToInput(remainingCents));
+  const [amount, setAmount] = React.useState("");
   const [method, setMethod] = React.useState("CASH");
   const [summary, setSummary] = React.useState({ paidCents, remainingCents });
   const [amountError, setAmountError] = React.useState<string | null>(null);
@@ -188,7 +188,7 @@ export function CashPaymentDialog({
 
   function handleOpen() {
     setOpen(true);
-    setAmount(centsToInput(summary.remainingCents));
+    setAmount("");
     setError(null);
     setAmountError(null);
     setSuccess(null);
