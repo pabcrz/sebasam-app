@@ -311,6 +311,21 @@ describe("acceptSharedQuote", () => {
     expect(result.origin).toBe(QuoteDecisionOrigin.CUSTOMER);
   });
 
+  it("accepts a commercially valid DRAFT quote", async () => {
+    mockSharedQuote({ quote: { status: QuoteStatus.DRAFT } });
+    const tx = mockTx();
+    stubTxSharedQuote(tx, { status: QuoteStatus.DRAFT });
+
+    await expect(acceptSharedQuote("token-valid")).resolves.toMatchObject({
+      quoteId: "q-1",
+      status: QuoteStatus.APPROVED,
+      origin: QuoteDecisionOrigin.CUSTOMER,
+    });
+    expect(tx.quote.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "q-1", status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT] } },
+    }));
+  });
+
   it("only uses quote and quoteDecision inside the transaction — no work order or payment request", async () => {
     mockSharedQuote();
     const tx = mockTx();
@@ -328,7 +343,7 @@ describe("acceptSharedQuote", () => {
     );
   });
 
-  it("throws QuoteDecisionError when quote status is not SENT", async () => {
+  it("throws QuoteDecisionError when quote status is not DRAFT or SENT", async () => {
     mockSharedQuote({ quote: { id: "q-1", status: QuoteStatus.APPROVED } });
     const tx = mockTx();
     stubTxSharedQuote(tx, { status: QuoteStatus.APPROVED });
@@ -363,6 +378,23 @@ describe("acceptSharedQuote", () => {
 
     await expect(acceptSharedQuote("token-revoked")).rejects.toThrow(SharedQuoteRevokedError);
   });
+
+  it("rejects an incomplete DRAFT quote without changing its status", async () => {
+    mockSharedQuote({ quote: {
+      status: QuoteStatus.DRAFT,
+      items: [{ description: "Repair", quantity: 1, unitPriceCents: null }],
+    } });
+    const tx = mockTx();
+    stubTxSharedQuote(tx, {
+      status: QuoteStatus.DRAFT,
+      items: [{ description: "Repair", quantity: 1, unitPriceCents: null }],
+    });
+
+    await expect(acceptSharedQuote("token-valid")).rejects.toThrow(
+      "Completa la descripción, cantidad y precio de todos los conceptos antes de compartir.",
+    );
+    expect(tx.quote.updateMany).not.toHaveBeenCalled();
+  });
 });
 
 describe("declineSharedQuote", () => {
@@ -392,7 +424,19 @@ describe("declineSharedQuote", () => {
     expect(result.origin).toBe(QuoteDecisionOrigin.CUSTOMER);
   });
 
-  it("throws QuoteDecisionError when quote status is not SENT", async () => {
+  it("declines a DRAFT quote and creates a CUSTOMER decision", async () => {
+    mockSharedQuote({ quote: { status: QuoteStatus.DRAFT } });
+    const tx = mockTx();
+    stubTxSharedQuote(tx, { status: QuoteStatus.DRAFT });
+
+    await expect(declineSharedQuote("token-valid")).resolves.toMatchObject({
+      quoteId: "q-1",
+      status: QuoteStatus.REJECTED,
+      origin: QuoteDecisionOrigin.CUSTOMER,
+    });
+  });
+
+  it("throws QuoteDecisionError when quote status is not DRAFT or SENT", async () => {
     mockSharedQuote({ quote: { id: "q-1", status: QuoteStatus.REJECTED } });
     const tx = mockTx();
     stubTxSharedQuote(tx, { status: QuoteStatus.REJECTED });

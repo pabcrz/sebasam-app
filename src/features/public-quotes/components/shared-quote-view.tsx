@@ -78,7 +78,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
   const isNote = isNoteProp ?? (quote.workOrder?.status === "COMPLETED");
 
   React.useEffect(() => {
-    if (!token || isPrint || isNote || quote.status !== "SENT" || decision !== null || !initialStatusRevision) return;
+    if (!token || isPrint || isNote || (quote.status !== "DRAFT" && quote.status !== "SENT") || decision !== null || !initialStatusRevision) return;
 
     let active = true;
     let controller: AbortController | null = null;
@@ -198,7 +198,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
       }));
   const sections = [...rootSection, ...sectionItems];
 
-  const showDecisionControls = !isPrint && Boolean(token) && quote.status === "SENT" && !hasDecided && !isNote && !quote.isLocked;
+  const showDecisionControls = !isPrint && Boolean(token) && (quote.status === "DRAFT" || quote.status === "SENT") && !hasDecided && !isNote && !quote.isLocked;
 
   const calculateSelectedTotals = () => {
     let subtotalCents = 0;

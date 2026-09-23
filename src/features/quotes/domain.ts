@@ -540,8 +540,8 @@ export async function declineSharedQuote(token: string) {
       throw new QuoteDecisionError("Este documento es una nota y no puede ser declinado como cotización.");
     }
 
-    if (sharedQuote.quote.status !== QuoteStatus.SENT) {
-      throw new QuoteDecisionError("Solo se puede declinar una cotización enviada.");
+    if (sharedQuote.quote.status !== QuoteStatus.DRAFT && sharedQuote.quote.status !== QuoteStatus.SENT) {
+      throw new QuoteDecisionError("Solo se puede declinar una cotización en borrador o enviada.");
     }
 
     const result = await tx.quote.updateMany({
