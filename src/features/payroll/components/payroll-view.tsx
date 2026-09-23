@@ -108,7 +108,7 @@ export function PayrollView({ report, period }: PayrollViewProps) {
         onOpenChange={setIsSigningSheetOpen}
       />
 
-      {/* Modal: Sobre de Pago Individual */}
+      {/* Modal: Recibo de Nómina Individual */}
       <PayrollWorkerEnvelopeModal
         worker={envelopeWorker}
         period={period}

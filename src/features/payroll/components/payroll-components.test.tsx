@@ -7,6 +7,8 @@ import { PayrollUnassignedCard } from "./payroll-worker-card";
 import { PayrollOverviewTable } from "./payroll-overview-table";
 import { PayrollWorkerDetail } from "./payroll-worker-detail";
 import { PayrollView } from "./payroll-view";
+import { PayrollWorkerEnvelopeDocument } from "./payroll-worker-envelope-document";
+import { PayrollWorkerEnvelopeModal } from "./payroll-worker-envelope";
 import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 import toast from "react-hot-toast";
@@ -166,7 +168,7 @@ describe("Payroll UI Components", () => {
     expect(badge.parentElement?.textContent).toBe(`${longName}Maestro`);
   });
 
-  it("renders worker detail and expands work order accordion", () => {
+  it("renders worker detail with work order concepts collapsed by default", () => {
     render(
       <PayrollWorkerDetail
         workers={sampleWorkers}
@@ -176,11 +178,16 @@ describe("Payroll UI Components", () => {
 
     expect(screen.getByText("Mano de obra - Maestro Pedro")).toBeInTheDocument();
     expect(screen.getByText("OT-010")).toBeInTheDocument();
+    expect(screen.queryByText("Soldadura chasis")).not.toBeInTheDocument();
+    expect(screen.queryByText("Soldadura / Soplete")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
+
     expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Soldadura / Soplete")).toBeInTheDocument();
+    expect(screen.getAllByText("Soldadura / Soplete").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("expands every order for the selected worker while keeping each accordion controllable", () => {
+  it("keeps every order collapsed until its concepts are opened manually", () => {
     const selectedWorkerWithTwoOrders: WorkerPayrollSummary = {
       ...sampleWorkers[0],
       completedOrderCount: 2,
@@ -236,17 +243,18 @@ describe("Payroll UI Components", () => {
       />
     );
 
-    expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Instalación de frenos").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Soldadura chasis")).not.toBeInTheDocument();
+    expect(screen.queryByText("Instalación de frenos")).not.toBeInTheDocument();
     expect(screen.queryByText("Trabajo de otro maestro")).not.toBeInTheDocument();
 
-    const hideButtons = screen.getAllByRole("button", { name: "Ocultar conceptos" });
-    expect(hideButtons).toHaveLength(2);
+    const showButtons = screen.getAllByRole("button", { name: "Ver conceptos" });
+    expect(showButtons).toHaveLength(2);
 
-    fireEvent.click(hideButtons[1]);
+    fireEvent.click(showButtons[1]);
 
-    expect(screen.queryByText("Instalación de frenos")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ver conceptos" })).toBeInTheDocument();
+    expect(screen.getAllByText("Instalación de frenos").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Soldadura chasis")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Ver conceptos" })).toHaveLength(1);
   });
 
   it("renders unassigned card warning when orders exist without master", () => {
@@ -403,7 +411,7 @@ describe("Payroll UI Components", () => {
     expect(screen.getByText("Ayudante Roberto")).toBeInTheDocument();
   });
 
-  it("opens individual pay envelope modal when clicking Sobre de Pago", () => {
+  it("opens individual payroll receipt modal when clicking Recibo de Nómina", () => {
     const period: ParsedPayrollParams = {
       mode: "weekly",
       anchor: "2026-08-17",
@@ -433,23 +441,54 @@ describe("Payroll UI Components", () => {
 
     render(<PayrollView report={fullReport} period={period} />);
 
-    const envelopeBtn = screen.getByRole("button", { name: /sobre de pago/i });
+    const envelopeBtn = screen.getByRole("button", { name: /recibo de nómina/i });
     fireEvent.click(envelopeBtn);
 
-    expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recibo de Nómina - Maestro Pedro/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /imagen/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /whatsapp/i })).toBeInTheDocument();
 
     const dialogContent = screen.getByRole("dialog");
     expect(dialogContent).toHaveClass(
       "w-[calc(100vw-2rem)]",
-      "max-w-2xl",
+      "max-w-[460px]",
       "max-h-[92vh]",
       "overflow-y-auto",
       "overflow-x-hidden"
     );
     expect(dialogContent).toHaveClass("p-2", "sm:p-3");
-    expect(screen.getByText(/Sobre de Pago - Maestro Pedro/i)).toHaveClass("break-words");
+    expect(screen.getByText(/Recibo de Nómina - Maestro Pedro/i)).toHaveClass("break-words");
+  });
+
+  it("renders compact envelope columns in both print and modal paths", () => {
+    const period: ParsedPayrollParams = {
+      mode: "weekly",
+      anchor: "2026-08-17",
+      prevAnchor: "2026-08-10",
+      nextAnchor: "2026-08-24",
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      isCurrentPeriod: true,
+      start: new Date("2026-08-17T06:00:00Z"),
+      end: new Date("2026-08-23T06:00:00Z"),
+    };
+
+    render(
+      <>
+        <PayrollWorkerEnvelopeDocument worker={sampleWorkers[0]} period={period} />
+        <PayrollWorkerEnvelopeModal worker={sampleWorkers[0]} period={period} open onOpenChange={vi.fn()} />
+      </>
+    );
+
+    const tables = Array.from(document.querySelectorAll("table"));
+    expect(tables).toHaveLength(2);
+    for (const table of tables) {
+      expect(within(table).getByText("Mano de Obra")).toBeInTheDocument();
+      expect(within(table).getByText("%")).toBeInTheDocument();
+      expect(within(table).getByText("A Cobrar")).toBeInTheDocument();
+      expect(within(table).queryByText("Base")).not.toBeInTheDocument();
+      expect(table.querySelectorAll("th")).toHaveLength(3);
+    }
   });
 
   describe("Inline Payroll Base Adjustment", () => {
@@ -464,6 +503,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       // Verify initial state shows cobro and commission
       expect(screen.getAllByText("Soldadura chasis").length).toBeGreaterThanOrEqual(1);
@@ -500,6 +540,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
       fireEvent.click(adjustBtns[0]);
@@ -530,6 +571,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
       fireEvent.click(adjustBtns[0]);
@@ -564,6 +606,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
       fireEvent.click(adjustBtns[0]);
@@ -586,6 +629,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       const adjustBtns = screen.getAllByRole("button", { name: /ajustar base/i });
       fireEvent.click(adjustBtns[0]);
@@ -607,6 +651,7 @@ describe("Payroll UI Components", () => {
       (updatePayrollItemBase as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true });
 
       render(<PayrollWorkerDetail workers={sampleWorkers} selectedWorkerId="w-1" />);
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
       fireEvent.click(screen.getAllByRole("button", { name: /ajustar base/i })[0]);
 
       const baseInputs = screen.getAllByDisplayValue("1000");
@@ -627,6 +672,7 @@ describe("Payroll UI Components", () => {
 
     it("clamps and rounds commission rates to the shared integer 1..100 contract", () => {
       render(<PayrollWorkerDetail workers={sampleWorkers} selectedWorkerId="w-1" />);
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
       fireEvent.click(screen.getAllByRole("button", { name: /ajustar base/i })[0]);
 
       const rateInput = screen.getAllByDisplayValue("40")[0];
@@ -673,6 +719,7 @@ describe("Payroll UI Components", () => {
           selectedWorkerId="w-1"
         />
       );
+      fireEvent.click(screen.getByRole("button", { name: "Ver conceptos" }));
 
       // Verify adjusted badge/text is shown
       expect(screen.getAllByText(/\(Base: \$1,000\.00\)/i).length).toBeGreaterThanOrEqual(1);

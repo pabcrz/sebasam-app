@@ -35,11 +35,13 @@ export function notePaymentStatusLabel(register: Pick<NotePaymentRegister, "paid
 }
 
 export function buildNotePaymentRegister(input: Omit<NotePaymentRegister, "paidCents" | "remainingCents">) {
-  const paidCents = input.payments
-    .filter((payment) => !payment.isReversed && contributesToPaidTotals(payment))
+  const payments = input.payments.filter((payment) => !payment.isReversed);
+  const paidCents = payments
+    .filter(contributesToPaidTotals)
     .reduce((sum, payment) => sum + (payment.appliedCents ?? payment.amountCents), 0);
   return {
     ...input,
+    payments,
     paidCents,
     remainingCents: Math.max(0, input.totalCents - paidCents),
   } satisfies NotePaymentRegister;

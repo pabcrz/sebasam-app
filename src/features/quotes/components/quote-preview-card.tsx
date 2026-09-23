@@ -32,6 +32,7 @@ export interface QuotePreviewCardProps {
   isPrint?: boolean;
   isApproved?: boolean;
   compactHeader?: boolean;
+  borderlessDocument?: boolean;
   /** Renders accessible item cards below the table breakpoint. */
   compactItems?: boolean;
   /** When provided, sections become selectable (partial authorization). */
@@ -64,6 +65,7 @@ export function QuotePreviewCard({
   isPrint,
   isApproved,
   compactHeader,
+  borderlessDocument = false,
   compactItems,
   selectableSectionIds,
   onSectionToggle,
@@ -153,10 +155,10 @@ export function QuotePreviewCard({
   });
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm print:border-none print:shadow-none print:bg-white print:rounded-none flex-1 flex flex-col print:w-full print:overflow-visible">
+    <div className={`overflow-hidden rounded-[var(--radius-md)] ${borderlessDocument ? "" : "border border-[var(--color-border-subtle)] shadow-[var(--shadow-card)]"} bg-[var(--color-surface)] print:border-none print:shadow-none print:bg-white print:rounded-none flex-1 flex flex-col print:w-full print:overflow-visible`}>
       <div className="flex-1 flex flex-col gap-3.5 sm:gap-5 md:gap-6 p-3 sm:p-5 md:p-6 print:gap-3 print:p-0 print:pt-2 print:overflow-visible">
         {!compactHeader && (
-          <div className="flex flex-col rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-2.5 sm:p-3 print:border-gray-200 print:bg-gray-50">
+          <div className="flex flex-col rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-muted)] p-2.5 sm:p-3 print:border-gray-200 print:bg-gray-50">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-4 print:grid-cols-2">
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-0.5 sm:mb-1">
@@ -204,7 +206,7 @@ export function QuotePreviewCard({
               {compactItems ? (
                 <div data-testid="quote-compact-items" className="grid gap-2.5 sm:gap-3 md:hidden print:hidden">
                   {visibleSections.map(({ section, sectionIndex, displayItems, isSelectable, isSelected, showsBadge, shouldShowSectionHeader }) => (
-                    <section key={section.id ?? sectionIndex} className={`rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] ${isSelected ? "" : "opacity-40"}`}>
+                    <section key={section.id ?? sectionIndex} className={`rounded-[var(--radius-sm)] ${borderlessDocument ? "" : "border border-[var(--color-border-subtle)] shadow-[var(--shadow-xs)]"} bg-[var(--color-surface)] ${isSelected ? "" : "opacity-40"}`}>
                       {shouldShowSectionHeader ? (
                         <div className="flex items-center gap-2 border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)] px-3 py-1.5 sm:py-2 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-main)]">
                           {isSelectable ? (
@@ -344,7 +346,7 @@ export function QuotePreviewCard({
 
         <div className="mt-auto flex flex-col gap-2.5 sm:gap-4 print:mt-auto print:gap-2 print:break-inside-avoid print:overflow-visible">
           {description ? (
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-2.5 sm:p-3 print:border-gray-200 print:bg-white text-xs sm:text-sm text-[var(--color-text-muted)] print:text-gray-600 print:break-inside-avoid">
+            <div className={`rounded-[var(--radius-sm)] ${borderlessDocument ? "" : "border border-[var(--color-border-subtle)]"} bg-[var(--color-surface-muted)] p-2.5 sm:p-3 print:border-gray-200 print:bg-white text-xs sm:text-sm text-[var(--color-text-muted)] print:text-gray-600 print:break-inside-avoid`}>
               <p className="font-semibold text-[10px] uppercase tracking-wider mb-0.5 sm:mb-1">Notas / Observaciones</p>
               <p className="whitespace-pre-wrap" data-testid="preview-notes-text">{description}</p>
             </div>
@@ -360,6 +362,7 @@ export function QuotePreviewCard({
               printTaxCents={fullTaxCents}
               printTotalCents={fullTotalCents}
               partialNotice={partialNotice}
+              borderlessDocument={borderlessDocument}
             />
           </div>
           <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} showOutstanding={showPaymentStatus} />

@@ -9,7 +9,7 @@ export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
       <div
         ref={ref}
         className={clsx(
-          "w-full rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-[var(--space-md)] shadow-sm",
+          "w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-[var(--space-md)] shadow-[var(--shadow-card)]",
           className,
         )}
         {...props}
@@ -21,7 +21,7 @@ Card.displayName = "Card";
 
 export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
-    return <div ref={ref} className={clsx("mb-4 space-y-1", className)} {...props} />;
+    return <div ref={ref} className={clsx("mb-[var(--space-md)] space-y-1", className)} {...props} />;
   },
 );
 CardHeader.displayName = "CardHeader";
@@ -35,7 +35,7 @@ export const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
     return (
         <Tag
         ref={ref}
-        className={clsx("text-lg font-semibold leading-tight text-[var(--color-text-main)]", className)}
+        className={clsx("text-lg font-semibold leading-tight tracking-[-0.01em] text-[var(--color-text-main)]", className)}
         {...props}
       />
     );
@@ -54,14 +54,14 @@ CardDescription.displayName = "CardDescription";
 
 export const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
-    return <div ref={ref} className={clsx("space-y-4", className)} {...props} />;
+    return <div ref={ref} className={clsx("space-y-[var(--space-md)]", className)} {...props} />;
   },
 );
 CardContent.displayName = "CardContent";
 
 export const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
-    return <div ref={ref} className={clsx("mt-4 flex items-center gap-3", className)} {...props} />;
+    return <div ref={ref} className={clsx("mt-[var(--space-md)] flex items-center gap-[var(--space-sm)]", className)} {...props} />;
   },
 );
 CardFooter.displayName = "CardFooter";

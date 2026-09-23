@@ -21,16 +21,17 @@ describe("note payment register", () => {
     expect(buildNotePaymentRegisterMessage(register)).toContain("Pagos registrados: ninguno");
   });
 
-  it("preserves order, method labels, and excludes reversed payments from current totals", () => {
+  it("keeps shared statements active-only while calculating current totals", () => {
     const withBalances = withHistoricalBalances(10000, payments);
     const register = buildNotePaymentRegister({ title: "Servicio", folio: "N-001", totalCents: 10000, payments: withBalances });
     expect(register.paidCents).toBe(2500);
     expect(register.remainingCents).toBe(7500);
+    expect(register.payments.map((payment) => payment.id)).toEqual(["a"]);
     expect(withBalances.map((payment) => payment.paidCentsAtPayment)).toEqual([2500, 2500]);
     expect(withBalances.map((payment) => payment.remainingCentsAtPayment)).toEqual([7500, 7500]);
     const message = buildNotePaymentRegisterMessage(register);
-    expect(message.indexOf("Efectivo")).toBeLessThan(message.indexOf("Transferencia"));
-    expect(message).toContain("Pago revertido");
+    expect(message).toContain("Efectivo");
+    expect(message).not.toContain("Pago revertido");
   });
 
   it("renders a PNG file for the consolidated statement", async () => {
@@ -74,15 +75,16 @@ describe("note payment register", () => {
       fillStyle: "", strokeStyle: "", lineWidth: 0, textAlign: "left", font: "",
       fillRect: vi.fn(), beginPath: vi.fn(), roundRect: vi.fn(), fill: vi.fn(), stroke: vi.fn(), fillText,
     } as unknown as CanvasRenderingContext2D);
-    const register = buildNotePaymentRegister({
+    const register = {
       title: "Servicio",
       folio: "N-001",
       totalCents: 10000,
+      paidCents: 0,
+      remainingCents: 10000,
       payments: [{ ...payments[1], remainingCentsAtPayment: 10000 }],
-    });
+    };
 
     expect(buildNotePaymentRegisterMessage(register)).toContain("Pago revertido");
-    expect(buildNotePaymentRegisterMessage(register)).not.toContain("Pago registrado");
     drawNotePaymentRegister(document.createElement("canvas"), register);
     expect(fillText).toHaveBeenCalledWith("Pago revertido", 980, expect.any(Number));
   });

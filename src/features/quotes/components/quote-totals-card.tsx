@@ -10,6 +10,7 @@ export interface QuoteTotalsCardProps {
   printTaxCents?: number | null;
   printTotalCents?: number | null;
   partialNotice?: string | null;
+  borderlessDocument?: boolean;
 }
 
 export function QuoteTotalsCard({
@@ -21,11 +22,12 @@ export function QuoteTotalsCard({
   printTaxCents,
   printTotalCents,
   partialNotice,
+  borderlessDocument = false,
 }: QuoteTotalsCardProps) {
   const hasPrintOverride = printTotalCents !== undefined && printTotalCents !== totalCents;
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3 sm:p-4 md:p-5 print:border print:border-gray-200 print:bg-white print:p-2 mt-3 sm:mt-6 print:mt-2 print:break-inside-avoid print:overflow-visible">
+    <div className={`rounded-[var(--radius-md)] ${borderlessDocument ? "" : "border border-[var(--color-border-subtle)] shadow-[var(--shadow-xs)]"} bg-[var(--color-surface-muted)] p-3 sm:p-4 md:p-5 print:shadow-none ${borderlessDocument ? "print:border-none" : "print:border print:border-gray-200"} print:bg-white print:p-2 mt-3 sm:mt-6 print:mt-2 print:break-inside-avoid print:overflow-visible`}>
       <div className="flex flex-col md:flex-row print:flex-row md:items-end print:items-end md:justify-between gap-3 sm:gap-6 print:gap-2">
         <div className="flex-1 order-2 md:order-1 print:order-1 text-xs text-[var(--color-text-muted)] print:text-gray-700 uppercase tracking-wide">
           <p data-testid="quote-total-in-words" className="print:text-xs print:text-gray-700 print:tracking-normal">

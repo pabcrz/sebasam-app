@@ -192,6 +192,13 @@ describe("SharedQuoteView", () => {
     expect(screen.queryByRole("list", { name: "Progreso de la cotización" })).not.toBeInTheDocument();
   });
 
+  it("renders decision controls for draft shared quotes", () => {
+    render(<SharedQuoteView quote={makeQuote(QuoteStatus.DRAFT)} token="token-123" />);
+
+    expect(screen.getByRole("button", { name: "Aceptar cotización" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Declinar cotización" })).toBeInTheDocument();
+  });
+
   it("uses clear focus rings for public quotation actions", () => {
     render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
 
@@ -426,6 +433,30 @@ describe("SharedQuoteView", () => {
     expect(feedback).toHaveFocus();
     expect(screen.queryByRole("button", { name: "Aceptar cotización" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Declinar cotización" })).not.toBeInTheDocument();
+  });
+
+  it("accepts a draft shared quote through the public decision action", async () => {
+    const user = userEvent.setup();
+    acceptSharedQuoteActionMock.mockResolvedValue({ success: true });
+
+    render(<SharedQuoteView quote={makeQuote(QuoteStatus.DRAFT)} token="token-123" />);
+
+    await user.click(screen.getByRole("button", { name: "Aceptar cotización" }));
+
+    expect(acceptSharedQuoteActionMock).toHaveBeenCalledWith("token-123", []);
+    expect(await screen.findByRole("status")).toHaveTextContent("Cotización aceptada");
+  });
+
+  it("allows a draft shared quote to be declined through the public decision action", async () => {
+    const user = userEvent.setup();
+    declineSharedQuoteActionMock.mockResolvedValue({ success: true });
+
+    render(<SharedQuoteView quote={makeQuote(QuoteStatus.DRAFT)} token="token-123" />);
+
+    await user.click(screen.getByRole("button", { name: "Declinar cotización" }));
+
+    expect(declineSharedQuoteActionMock).toHaveBeenCalledWith("token-123");
+    expect(await screen.findByRole("status")).toHaveTextContent("Cotización declinada");
   });
 
   it("shows an error when the public decision action fails", async () => {

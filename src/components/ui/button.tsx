@@ -16,23 +16,23 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const baseClasses =
-  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-md font-medium transition-colors active-press-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex cursor-pointer items-center justify-center gap-[var(--space-sm)] rounded-[var(--radius-sm)] font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--motion-fast)] active-press-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] focus-visible:shadow-[var(--shadow-focus)] disabled:cursor-not-allowed disabled:opacity-50";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-[image:var(--gradient-primary)] text-white shadow-sm hover:bg-[image:var(--gradient-primary-hover)] dark:bg-[var(--color-primary)] dark:bg-none dark:hover:bg-[var(--color-primary-hover)]",
+    "bg-[image:var(--gradient-primary)] text-white shadow-[var(--shadow-action)] hover:bg-[image:var(--gradient-primary-hover)] dark:bg-[var(--color-primary)] dark:bg-none dark:hover:bg-[var(--color-primary-hover)]",
   secondary:
-    "bg-[var(--color-blue-tint)] text-[var(--color-text-main)] shadow-sm hover:bg-[var(--color-blue-tint-strong)] hover:text-[var(--color-text-main)] hover:shadow-md dark:hover:bg-[var(--color-navy-600)] dark:hover:text-white",
+    "bg-[var(--color-blue-tint)] text-[var(--color-text-main)] shadow-[var(--shadow-control)] hover:bg-[var(--color-blue-tint-strong)] hover:text-[var(--color-text-main)] hover:shadow-[var(--shadow-md)] dark:hover:bg-[var(--color-navy-600)] dark:hover:text-white",
   outline:
     "border border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]",
   ghost: "text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]",
-  danger: "bg-[var(--color-status-danger)] text-white hover:bg-[var(--color-status-danger-hover)] shadow-sm",
+  danger: "bg-[var(--color-status-danger)] text-white shadow-[var(--shadow-action)] hover:bg-[var(--color-status-danger-hover)]",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  default: "min-h-[var(--tap-min-height)] px-4 py-2 text-base",
-  sm: "h-9 px-3 text-sm",
-  lg: "min-h-[var(--tap-min-height)] px-6 py-3 text-lg",
+  default: "min-h-[var(--tap-min-height)] px-[var(--space-md)] py-[var(--space-sm)] text-base",
+  sm: "h-9 px-[var(--space-sm)] text-sm",
+  lg: "min-h-[var(--tap-min-height)] px-[var(--space-lg)] py-3 text-lg",
   icon: "h-9 w-9 px-0",
 };
 

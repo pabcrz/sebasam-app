@@ -22,7 +22,7 @@ export const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => {
-  return <thead ref={ref} className={clsx("border-b border-[var(--color-border-light)]", className)} {...props} />;
+  return <thead ref={ref} className={clsx("border-b border-[var(--color-border-subtle)]", className)} {...props} />;
 });
 TableHeader.displayName = "TableHeader";
 
@@ -30,7 +30,7 @@ export const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => {
-  return <tbody ref={ref} className={clsx("divide-y divide-[var(--color-border-light)]", className)} {...props} />;
+  return <tbody ref={ref} className={clsx("divide-y divide-[var(--color-border-subtle)]", className)} {...props} />;
 });
 TableBody.displayName = "TableBody";
 
@@ -40,7 +40,7 @@ export const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttribut
       <tr
         ref={ref}
         className={clsx(
-          "transition-colors hover:bg-[var(--color-bg-soft)] data-[state=selected]:bg-[var(--color-bg-soft)]",
+          "transition-colors duration-[var(--motion-fast)] hover:bg-[var(--color-bg-soft)] data-[state=selected]:bg-[var(--color-bg-soft)]",
           className,
         )}
         {...props}
