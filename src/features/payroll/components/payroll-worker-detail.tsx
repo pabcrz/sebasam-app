@@ -54,7 +54,7 @@ export function PayrollWorkerDetail({
               className="h-7 text-xs px-2.5 gap-1.5"
             >
               <Mail className="h-3.5 w-3.5 text-[var(--color-primary)]" />
-              Sobre de Pago
+              Recibo de Nómina
             </Button>
           )}
           <span className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
