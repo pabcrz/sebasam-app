@@ -57,7 +57,7 @@ export function NotePaymentHistory({
   }
 
   return (
-    <section className="mt-3 grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3" data-testid="nota-payment-history">
+    <section className="mt-3 grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-muted)] p-4 shadow-[var(--shadow-xs)]" data-testid="nota-payment-history">
        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
          <div className="min-w-0">
           <h3 className="font-semibold text-[var(--color-text-main)]">Historial de pagos</h3>
@@ -78,13 +78,13 @@ export function NotePaymentHistory({
       ) : (
         <ol className="grid gap-2">
            {payments.map((payment, index) => (
-             <li key={payment.id} className="grid min-w-0 gap-3 overflow-hidden rounded border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+             <li key={payment.id} className="grid min-w-0 gap-3 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-3 text-sm shadow-[var(--shadow-xs)] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                <div className="min-w-0">
                  <p className="truncate font-medium text-[var(--color-text-main)]">{new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(payment.date))} · {payment.method === "CASH" ? "Efectivo" : payment.method === "TRANSFER" ? "Transferencia" : payment.method}</p>
                  <p className="text-xs text-[var(--color-text-muted)]">Abono #{index + 1} · {payment.isReversed ? "Pago revertido" : payment.isCorrected ? "Pago corregido" : payment.paymentStatus === "PENDING" ? "Pendiente" : payment.paymentStatus === "FAILED" ? "Fallido" : payment.remainingCentsAtPayment <= 0 ? "Nota liquidada" : "Pago registrado"}</p>
                  <p className="text-xs text-[var(--color-text-muted)]">Saldo después de este pago: {formatCents(payment.remainingCentsAtPayment)}</p>
                </div>
-                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--color-border-light)] pt-2 sm:border-t-0 sm:pt-0">
+                 <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--color-border-subtle)] pt-2 sm:border-t-0 sm:pt-0">
                   <span className="shrink-0 font-semibold tabular-nums">{formatCents(payment.amountCents)}</span>
                   <div className="flex min-w-0 flex-wrap items-center gap-1">
                     {payment.isReversed ? <Badge variant="danger">Revertido</Badge> : null}

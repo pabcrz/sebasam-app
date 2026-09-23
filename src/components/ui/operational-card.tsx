@@ -30,13 +30,13 @@ export function OperationalCard({ body, actions, onOpen, openLabel, className, b
   const contentClassName = clsx("w-full rounded-[var(--radius-sm)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2", bodyClassName);
 
   return (
-    <div className={clsx("rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 shadow-sm", className)}>
+    <div className={clsx("rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]", className)}>
       {onOpen ? (
         <button
           type="button"
           onClick={onOpen}
           aria-label={openLabel}
-          className={clsx(contentClassName, "active-press-subtle cursor-pointer hover:bg-[var(--color-bg-soft)]")}
+          className={clsx(contentClassName, "active-press-subtle cursor-pointer hover:bg-[var(--color-surface-muted)]")}
         >
           {body}
         </button>
