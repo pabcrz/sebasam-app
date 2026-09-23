@@ -123,7 +123,7 @@ export function BankDataCard({ bankAccounts, isPrint = false }: BankDataCardProp
   }
 
   return (
-    <Card>
+    <Card className="border-none shadow-none">
       <CardHeader>
         <CardTitle>Datos de pago</CardTitle>
         <CardDescription>
@@ -144,7 +144,7 @@ export function BankDataCard({ bankAccounts, isPrint = false }: BankDataCardProp
             <div
               key={account.id}
               data-testid="bank-account-card"
-              className="space-y-4 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-muted)] p-4 shadow-[var(--shadow-xs)] print:shadow-none"
+              className="space-y-4 rounded-[var(--radius-md)] bg-[var(--color-surface-muted)] p-4 print:shadow-none"
             >
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <p className="text-base font-semibold text-[var(--color-text-main)]">{account.bankName}</p>
