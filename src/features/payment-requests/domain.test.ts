@@ -344,6 +344,23 @@ describe("getPaymentRequestByToken", () => {
     expect(request.viewedAt).not.toBeNull();
   });
 
+  it("refreshes a stale payable total before returning a payment link", async () => {
+    const quote = await createTestQuote(testCustomerId, { taxEnabled: true });
+    const created = await createPaymentRequestForQuote(quote.id);
+    createdPaymentRequestIds.push(created.id);
+
+    await prisma.quoteItem.updateMany({
+      where: { quoteId: quote.id },
+      data: { unitPriceCents: 15000 },
+    });
+
+    const request = await getPaymentRequestByToken(created.token);
+
+    expect(request.payableSubtotalCents).toBe(15000);
+    expect(request.payableTaxCents).toBe(2400);
+    expect(request.payableTotalCents).toBe(17400);
+  });
+
   it("throws NotFound for an invalid token", async () => {
     await expect(getPaymentRequestByToken("invalid-token")).rejects.toThrow(
       PaymentRequestNotFoundError,
@@ -538,4 +555,3 @@ describe("public lookup by stored slug", () => {
   });
 });
 });
-

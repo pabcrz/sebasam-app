@@ -531,9 +531,9 @@ describe("updateDraftQuoteFromForm", () => {
     await updateDraftQuoteFromForm("quote-1", {}, buildFormData({ "sections.0.items.0.unitPrice": "" }));
 
     expect(tx.quote.update.mock.calls[0][0].data).toMatchObject({
-      subtotalCents: null,
-      taxCents: null,
-      totalCents: null,
+      subtotalCents: 0,
+      taxCents: 0,
+      totalCents: 0,
     });
     expect(tx.quoteItem.createMany).toHaveBeenCalledWith({
       data: [expect.objectContaining({ unitPriceCents: null, totalCents: null })],
@@ -604,7 +604,7 @@ describe("createQuoteFromForm", () => {
     await createQuoteFromForm({}, buildFormData({ "sections.0.items.0.unitPrice": "" }));
 
     const createData = tx.quote.create.mock.calls[0][0].data;
-    expect(createData).toMatchObject({ subtotalCents: null, taxCents: null, totalCents: null });
+    expect(createData).toMatchObject({ subtotalCents: 0, taxCents: 0, totalCents: 0 });
     expect(tx.quoteItem.createMany).toHaveBeenCalledWith({
       data: [
         expect.objectContaining({

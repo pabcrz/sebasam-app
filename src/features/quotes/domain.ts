@@ -219,7 +219,7 @@ function assertQuoteCanBeShared(quote: { status: QuoteStatus; customerId: string
   }
 
   try {
-    assertCommercialQuote(quote);
+    assertCommercialQuote(quote, { allowStaleTotals: true });
   } catch (error) {
     if (error instanceof CommercialQuoteValidationError) {
       throw new SharedQuoteOperationError(error.message);
@@ -475,7 +475,7 @@ export async function acceptSharedQuote(token: string, authorizedSectionIds?: st
     }
 
     try {
-      assertCommercialQuote(sharedQuote.quote);
+      assertCommercialQuote(sharedQuote.quote, { allowStaleTotals: true });
     } catch (error) {
       if (error instanceof CommercialQuoteValidationError) throw new QuoteDecisionError(error.message);
       throw error;

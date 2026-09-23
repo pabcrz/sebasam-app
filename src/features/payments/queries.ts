@@ -7,7 +7,6 @@ import {
   type CustomerCreditSummary,
   type NoteFinancialSummary,
 } from "./domain";
-import { getPayableNotePaymentHistory } from "@/features/payable-notes/domain";
 import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
 import { withHistoricalBalances, type NotePaymentHistoryItem } from "./lib/payment-register";
 
@@ -18,40 +17,91 @@ export type NotePaymentHistory = {
 
 export async function getNotePaymentHistory(workOrderIds: string[]): Promise<Map<string, NotePaymentHistory>> {
   await requireOperationalRole();
-  // Kept for focused legacy query tests and older read replicas while the
-  // payable-note columns are being rolled out. Production uses the generic
-  // boundary below whenever the delegate exists.
-  if (!(prisma as typeof prisma & { payableNote?: unknown }).payableNote) {
-    const workOrders = await prisma.workOrder.findMany({
-      where: { id: { in: workOrderIds } },
-      select: { id: true, quoteId: true, quote: { select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true } } },
-    });
-    const payments = await prisma.payment.findMany({
-      where: { quoteId: { in: workOrders.map((workOrder) => workOrder.quoteId) } },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      select: { id: true, quoteId: true, amountCents: true, createdAt: true, method: true, status: true, reversedAt: true, correctionsReplacement: { select: { id: true } }, applications: { where: { workOrderId: { in: workOrderIds } }, select: { workOrderId: true, amountCents: true, reversedAt: true } } },
-    });
-    const byQuote = new Map(workOrders.map((workOrder) => [workOrder.quoteId, workOrder]));
-    const histories = new Map<string, NotePaymentHistory>(workOrders.map((workOrder) => [workOrder.id, { totalCents: getEffectiveSettlementTotals(workOrder.quote, workOrder.quote.settlementAgreement).totalCents, payments: [] }]));
-    for (const payment of payments) {
-      const workOrder = payment.quoteId ? byQuote.get(payment.quoteId) : undefined;
-      const history = workOrder ? histories.get(workOrder.id) : undefined;
-      if (!history) continue;
-      const isReversed = Boolean(payment.reversedAt);
-      history.payments.push({ id: payment.id, paymentId: payment.id, date: payment.createdAt, method: payment.method, paymentStatus: payment.status, amountCents: payment.amountCents, appliedCents: isReversed || payment.status !== "PAID" ? 0 : payment.applications.filter((application) => application.reversedAt === null).reduce((sum, application) => sum + application.amountCents, 0), paidCentsAtPayment: 0, remainingCentsAtPayment: 0, isReversed, isCorrected: (payment.correctionsReplacement?.length ?? 0) > 0 });
-    }
-    for (const history of histories.values()) history.payments = withHistoricalBalances(history.totalCents, history.payments);
-    return histories;
-  }
+  if (workOrderIds.length === 0) return new Map();
+
+  const workOrders = await prisma.workOrder.findMany({
+    where: { id: { in: workOrderIds } },
+    select: {
+      id: true,
+      quoteId: true,
+        quote: {
+          select: {
+            subtotalCents: true,
+            discountCents: true,
+            taxCents: true,
+            totalCents: true,
+            taxEnabled: true,
+            items: { select: { quantity: true, unitPriceCents: true } },
+          settlementAgreement: {
+            select: {
+              id: true,
+              status: true,
+              settlementBaseCents: true,
+              settlementTaxCents: true,
+              settlementTotalCents: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  const quoteIds = workOrders.map((workOrder) => workOrder.quoteId);
+  if (quoteIds.length === 0) return new Map();
+
+  const payments = await prisma.payment.findMany({
+    where: { quoteId: { in: quoteIds } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      quoteId: true,
+      amountCents: true,
+      createdAt: true,
+      method: true,
+      status: true,
+       reversedAt: true,
+       correctionsReplacement: { select: { id: true } },
+      applications: {
+        where: { workOrderId: { in: workOrderIds } },
+        select: { workOrderId: true, amountCents: true, reversedAt: true },
+      },
+    },
+  });
+
+  const workOrderByQuoteId = new Map(workOrders.map((workOrder) => [workOrder.quoteId, workOrder]));
   const histories = new Map<string, NotePaymentHistory>();
-  for (const id of workOrderIds) {
-    const payableNote = await prisma.payableNote.findFirst({
-      where: { OR: [{ id }, { workOrderId: id }] },
-      select: { id: true },
+  for (const workOrder of workOrders) {
+    const totals = getEffectiveSettlementTotals(workOrder.quote, workOrder.quote.settlementAgreement);
+    histories.set(workOrder.id, { totalCents: totals.totalCents, payments: [] });
+  }
+
+  for (const payment of payments) {
+    const workOrder = payment.quoteId ? workOrderByQuoteId.get(payment.quoteId) : undefined;
+    if (!workOrder) continue;
+    const history = histories.get(workOrder.id);
+    if (!history) continue;
+    const isReversed = Boolean(payment.reversedAt);
+    const appliedCents = isReversed || payment.status !== "PAID"
+      ? 0
+      : payment.applications
+          .filter((application) => application.reversedAt === null)
+          .reduce((sum, application) => sum + application.amountCents, 0);
+    history.payments.push({
+      id: payment.id,
+      paymentId: payment.id,
+      date: payment.createdAt,
+      method: payment.method,
+      paymentStatus: payment.status,
+      amountCents: payment.amountCents,
+      appliedCents,
+      paidCentsAtPayment: 0,
+      remainingCentsAtPayment: 0,
+      isReversed,
+      isCorrected: (payment.correctionsReplacement?.length ?? 0) > 0,
     });
-    if (!payableNote) continue;
-    const history = await getPayableNotePaymentHistory(payableNote.id);
-    histories.set(id, { totalCents: history.note.totalCents, payments: history.payments });
+  }
+
+  for (const history of histories.values()) {
+    history.payments = withHistoricalBalances(history.totalCents, history.payments);
   }
   return histories;
 }
@@ -109,7 +159,17 @@ export async function getEligibleNotesForCreditApplication(customerId: string): 
       quote: { customerId },
     },
     include: {
-      quote: { select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true } },
+      quote: {
+        select: {
+          subtotalCents: true,
+          discountCents: true,
+          taxCents: true,
+          totalCents: true,
+          taxEnabled: true,
+          items: { select: { quantity: true, unitPriceCents: true } },
+          settlementAgreement: true,
+        },
+      },
       paymentApplications: {
         where: {
           reversedAt: null,

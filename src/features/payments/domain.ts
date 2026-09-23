@@ -162,7 +162,7 @@ export async function getNoteFinancialSummary(
     throw new PaymentOperationError("La cotización no tiene cliente asignado.");
   }
 
-  assertCommercialQuote(workOrder.quote);
+  assertCommercialQuote(workOrder.quote, { allowStaleTotals: true });
 
   const chargedCents = getEffectiveSettlementTotals(workOrder.quote, workOrder.quote.settlementAgreement).totalCents;
 
@@ -233,7 +233,15 @@ export async function getCustomerBalanceSummary(
         status: QuoteStatus.APPROVED,
         workOrder: { status: WorkOrderStatus.COMPLETED },
       },
-      select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true },
+      select: {
+        subtotalCents: true,
+        discountCents: true,
+        taxCents: true,
+        totalCents: true,
+        taxEnabled: true,
+        items: { select: { quantity: true, unitPriceCents: true } },
+        settlementAgreement: true,
+      },
     }),
     client.payment.aggregate({
       where: {
@@ -382,6 +390,24 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
         } else if (request.quoteId && !quoteId) {
           quoteId = request.quoteId;
         }
+
+        if (quoteId) {
+          const requestQuote = await tx.quote.findUnique({
+            where: { id: quoteId },
+            include: { items: true, sections: { include: { items: true } }, settlementAgreement: true },
+          });
+          if (!requestQuote) throw new PaymentOperationError("La cotización de la solicitud no existe.");
+          assertCommercialQuote(requestQuote, { allowStaleTotals: true });
+          const currentPayable = getEffectiveSettlementTotals(requestQuote, requestQuote.settlementAgreement);
+          if (
+            request.payableSubtotalCents !== currentPayable.subtotalCents ||
+            request.payableTaxCents !== currentPayable.taxCents ||
+            request.payableTotalCents !== currentPayable.totalCents ||
+            request.settlementAgreementId !== currentPayable.agreementId
+          ) {
+            throw new PaymentOperationError("El importe de esta solicitud cambió. Actualiza o vuelve a abrir el enlace de pago antes de cobrar.");
+          }
+        }
       }
 
       if (quoteId && !targetWorkOrder) {
@@ -418,7 +444,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
         if (!quote) {
           throw new PaymentOperationError("La cotización no existe.");
         }
-        assertCommercialQuote(quote);
+        assertCommercialQuote(quote, { allowStaleTotals: true });
 
         if (!targetWorkOrder || targetWorkOrder.status !== WorkOrderStatus.COMPLETED) {
           if (!CASH_PAYMENT_QUOTE_STATUSES.includes(quote.status)) {

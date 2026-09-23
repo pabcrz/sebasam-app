@@ -225,32 +225,19 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
 
   const fullTotals = React.useMemo(() => {
     let subtotalCents = 0;
-    let hasPending = false;
 
     for (const section of quote.sections) {
       for (const item of section.items) {
-        if (item.unitPriceCents == null) {
-          hasPending = true;
-        } else {
+        if (item.unitPriceCents != null) {
           subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
         }
       }
     }
     for (const item of quote.items) {
       if (item.sectionId !== null) continue;
-      if (item.unitPriceCents == null) {
-        hasPending = true;
-      } else {
+      if (item.unitPriceCents != null) {
         subtotalCents += Math.round(Number(item.quantity) * Number(item.unitPriceCents));
       }
-    }
-
-    if (hasPending) {
-      return {
-        subtotalCents: quote.subtotalCents == null ? null : Number(quote.subtotalCents),
-        taxCents: quote.taxCents == null ? null : Number(quote.taxCents),
-        totalCents: quote.totalCents == null ? null : Number(quote.totalCents),
-      };
     }
 
     const discountCents = Number(quote.discountCents ?? 0);

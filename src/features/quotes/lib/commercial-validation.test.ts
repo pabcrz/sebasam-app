@@ -27,16 +27,36 @@ describe("assertCommercialQuote", () => {
   it.each([
     ["missing customer", { customerId: null }],
     ["no concepts", { sections: [{ items: [] }] }],
-    ["pending price", { sections: [{ items: [{ description: "Service", quantity: 1, unitPriceCents: null }] }] }],
     ["stale totals", { totalCents: 0 }],
   ])("rejects %s", (_, overrides) => {
     expect(() => assertCommercialQuote(quote(overrides))).toThrow(CommercialQuoteValidationError);
   });
 
-  it("keeps a pending-price draft out of final authorization", () => {
-    expect(() => assertCommercialQuote(quote({
+  it("accepts valid pending prices and excludes them from confirmed totals", () => {
+    expect(assertCommercialQuote(quote({
       sections: [{ items: [{ description: "Precio por confirmar", quantity: 1, unitPriceCents: null }] }],
-    }))).toThrow("Completa la descripción, cantidad y precio de todos los conceptos antes de compartir.");
+      subtotalCents: 0,
+      taxCents: 0,
+      totalCents: 0,
+    }))).toEqual({ subtotalCents: 0, discountCents: 0, taxCents: 0, totalCents: 0 });
+  });
+
+  it("calculates confirmed totals from priced concepts when another concept is pending", () => {
+    expect(assertCommercialQuote(quote({
+      sections: [{ items: [
+        { description: "Servicio", quantity: 1, unitPriceCents: 10_000 },
+        { description: "Parte por confirmar", quantity: 2, unitPriceCents: null },
+      ] }],
+      subtotalCents: 10_000,
+      taxCents: 1_600,
+      totalCents: 11_600,
+    }))).toEqual({ subtotalCents: 10_000, discountCents: 0, taxCents: 1_600, totalCents: 11_600 });
+  });
+
+  it("still rejects invalid descriptions and quantities with pending prices", () => {
+    expect(() => assertCommercialQuote(quote({
+      sections: [{ items: [{ description: "", quantity: 1, unitPriceCents: null }] }],
+    }))).toThrow(CommercialQuoteValidationError);
   });
 
   describe("isQuoteCommercialReady", () => {
