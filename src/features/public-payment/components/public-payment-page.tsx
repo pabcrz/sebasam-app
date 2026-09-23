@@ -55,7 +55,7 @@ export function PublicPaymentPage({
 
   return (
     <PublicPaymentShell badge="payment" business={business} location={location}>
-      <div className="mb-6 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)] md:p-5">
+      <div className="mb-6 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 md:p-5 print:shadow-none">
         <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">Referencia</p>
         <p className="text-lg font-bold text-[var(--color-text-main)]">{reference}</p>
         {request.quote ? (

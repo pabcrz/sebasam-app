@@ -32,7 +32,7 @@ export function PaymentRequestErrorState({ type }: PaymentRequestErrorStateProps
   const Icon = config.icon;
 
   return (
-    <Card className="mx-auto max-w-xl border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)]">
+    <Card className="mx-auto max-w-xl border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] print:shadow-none">
       <CardHeader>
         <div className="flex items-center gap-3">
           <Icon className="h-6 w-6 text-[var(--color-status-danger-fg)]" aria-hidden="true" />
