@@ -58,8 +58,7 @@ export function ReversePaymentDialog({
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const [reason, setReason] = React.useState("");
-  const [reasonError, setReasonError] = React.useState<string | null>(null);
+  const [reason, setReason] = React.useState("Error");
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
 
@@ -70,8 +69,7 @@ export function ReversePaymentDialog({
 
   function handleOpen(event: React.MouseEvent) {
     event.stopPropagation();
-    setReason("");
-    setReasonError(null);
+    setReason("Error");
     setError(null);
     setOpen(true);
   }
@@ -81,12 +79,7 @@ export function ReversePaymentDialog({
     event.stopPropagation();
     setError(null);
 
-    const trimmedReason = reason.trim();
-    if (!trimmedReason) {
-      setReasonError("Ingresa el motivo de la reversión.");
-      return;
-    }
-    setReasonError(null);
+    const trimmedReason = reason.trim() || "Error";
 
     setIsLoading(true);
 
@@ -175,34 +168,22 @@ export function ReversePaymentDialog({
               </div>
 
               <div className="grid gap-2">
-                <label
+                  <label
                   htmlFor={`reversal-reason-${paymentId}`}
                   className="text-sm font-medium text-[var(--color-text-main)]"
-                >
-                  Motivo de reversión <span className="text-[var(--color-status-danger-fg)]">*</span>
+                  >
+                   Detalle de reversión (opcional)
                 </label>
                 <Textarea
                   id={`reversal-reason-${paymentId}`}
                   value={reason}
                   onChange={(e) => {
                     setReason(e.target.value);
-                    if (e.target.value.trim()) setReasonError(null);
                   }}
-                  placeholder="Ej. Error de captura en monto, pago duplicado, cheque devuelto..."
+                  placeholder="Agrega contexto adicional si es necesario..."
                   disabled={isLoading}
                   rows={3}
-                  aria-invalid={reasonError ? "true" : undefined}
-                  aria-describedby={reasonError ? `reversal-reason-error-${paymentId}` : undefined}
                 />
-                {reasonError && (
-                  <p
-                    id={`reversal-reason-error-${paymentId}`}
-                    className="text-xs text-[var(--color-status-danger-fg)]"
-                    role="alert"
-                  >
-                    {reasonError}
-                  </p>
-                )}
               </div>
 
               {error && (

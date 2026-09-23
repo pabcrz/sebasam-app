@@ -41,6 +41,7 @@ describe("CashPaymentDialog", () => {
     const action = vi.fn().mockRejectedValueOnce(new Error("Falló")).mockResolvedValueOnce({ payment: { amountCents: 7500 }, paidCents: 10000, remainingCents: 0 });
     renderDialog(action);
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await screen.findByRole("alert");
     expect(refresh).not.toHaveBeenCalled();
@@ -79,6 +80,7 @@ describe("CashPaymentDialog", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
 
     expect(await screen.findByText("Recibo listo para compartir")).toBeInTheDocument();
@@ -101,6 +103,7 @@ describe("CashPaymentDialog", () => {
     const action = vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 });
     render(<CashPaymentDialog action={action} quoteNumber="N-001" documentTitle="Cambio de muelles" documentFolio="N-090926-01" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
 
@@ -130,6 +133,7 @@ describe("CashPaymentDialog", () => {
     const action = vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 });
     render(<CashPaymentDialog action={action} quoteNumber="N-001" documentTitle="Cambio de muelles" documentFolio="N-090926-01" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
 
@@ -153,6 +157,7 @@ describe("CashPaymentDialog", () => {
 
     render(<CashPaymentDialog action={vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 })} quoteNumber="N-001" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
 
@@ -179,6 +184,7 @@ describe("CashPaymentDialog", () => {
 
     render(<CashPaymentDialog action={vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 })} quoteNumber="N-001" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
 
@@ -198,6 +204,7 @@ describe("CashPaymentDialog", () => {
 
     render(<CashPaymentDialog action={vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 })} quoteNumber="N-001" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
 
@@ -217,6 +224,7 @@ describe("CashPaymentDialog", () => {
     const action = vi.fn().mockResolvedValue({ payment: { amountCents: 2500 }, paidCents: 5000, remainingCents: 5000 });
     render(<CashPaymentDialog action={action} quoteNumber="N-001" receiptEnabled totalCents={10000} paidCents={2500} remainingCents={7500} />);
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await user.click(await screen.findByRole("button", { name: "Compartir recibo" }));
     expect(await screen.findByText("Compartir cancelado.")).toBeInTheDocument();
@@ -241,7 +249,7 @@ describe("CashPaymentDialog", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("blocks an overpayment immediately and accepts a corrected partial amount", async () => {
+  it("starts empty, supports a partial payment, and submits the selected method", async () => {
     const user = userEvent.setup();
     const action = vi.fn().mockResolvedValue({
       payment: { amountCents: 1250 },
@@ -253,11 +261,10 @@ describe("CashPaymentDialog", () => {
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
     const amount = screen.getByRole("textbox", { name: /monto recibido/i });
     const errorSlot = document.getElementById("cash-amount-error-C-001");
-    expect(amount).toHaveValue("75.00");
+    expect(amount).toHaveValue("");
     expect(errorSlot).toBeEmptyDOMElement();
     expect(errorSlot).toHaveClass("min-h-4", "text-xs");
     expect(errorSlot).not.toHaveAttribute("role");
-    await user.clear(amount);
     await user.type(amount, "75.01");
     expect(screen.getByRole("alert")).toHaveTextContent("El pago no puede exceder el saldo pendiente.");
     expect(errorSlot).toHaveAttribute("role", "alert");
@@ -276,9 +283,55 @@ describe("CashPaymentDialog", () => {
     expect(screen.getByRole("button", { name: "Registrar pago" })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
 
-    await waitFor(() => expect(action).toHaveBeenCalledWith("12.50", expect.any(String), expect.any(String)));
+    await waitFor(() => expect(action).toHaveBeenCalledWith("12.50", expect.any(String), "CASH"));
     expect(screen.getByRole("status")).toHaveTextContent("$12.50");
     expect(screen.getAllByText("$62.50")).toHaveLength(2);
+  });
+
+  it("submits a non-default payment method without an extra confirmation step", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue({
+      payment: { amountCents: 1250 },
+      paidCents: 3750,
+      remainingCents: 6250,
+    });
+    renderDialog(action);
+
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Tipo de pago" }), "TRANSFER");
+    await user.type(screen.getByRole("textbox", { name: /monto recibido/i }), "12.50");
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+
+    await waitFor(() => expect(action).toHaveBeenCalledWith("12.50", expect.any(String), "TRANSFER"));
+    expect(screen.queryByRole("button", { name: /confirmar/i })).not.toBeInTheDocument();
+  });
+
+  it("fills the current balance only when full payment is requested", async () => {
+    const user = userEvent.setup();
+    renderDialog(vi.fn());
+
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    const amount = screen.getByRole("textbox", { name: /monto recibido/i });
+    expect(amount).toHaveValue("");
+
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
+    expect(amount).toHaveValue("75.00");
+  });
+
+  it("submits the current balance after requesting full payment", async () => {
+    const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue({
+      payment: { amountCents: 7500 },
+      paidCents: 10000,
+      remainingCents: 0,
+    });
+    renderDialog(action);
+
+    await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+
+    await waitFor(() => expect(action).toHaveBeenCalledWith("75.00", expect.any(String), "CASH"));
   });
 
   it("rejects invalid formatting and non-positive values before submit", async () => {
@@ -305,6 +358,7 @@ describe("CashPaymentDialog", () => {
     renderDialog(action);
 
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("El pago no puede exceder el saldo pendiente.");
@@ -323,6 +377,7 @@ describe("CashPaymentDialog", () => {
     renderDialog(action);
 
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await screen.findByRole("alert");
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
@@ -348,6 +403,7 @@ describe("CashPaymentDialog", () => {
     renderDialog(action);
 
     await user.click(screen.getByRole("button", { name: /registrar pago para/i }));
+    await user.click(screen.getByRole("button", { name: "Pagar saldo completo" }));
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
     await screen.findByRole("status");
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));

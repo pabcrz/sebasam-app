@@ -208,6 +208,43 @@ describe("getNotePaymentHistory", () => {
     expect(history?.payments.map((payment) => payment.isReversed)).toEqual([true, false]);
   });
 
+  it("retains the reversed original and corrected replacement for internal history", async () => {
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{
+      id: "wo-1",
+      quoteId: "quote-1",
+      quote: { subtotalCents: 10_000, taxCents: 0, totalCents: 10_000, settlementAgreement: null },
+    }]);
+    (prisma.payment.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "original",
+        quoteId: "quote-1",
+        amountCents: 10_000,
+        createdAt: new Date("2026-09-01"),
+        method: "CASH",
+        status: "PAID",
+        reversedAt: new Date("2026-09-02"),
+        applications: [{ workOrderId: "wo-1", amountCents: 10_000, reversedAt: new Date("2026-09-02") }],
+      },
+      {
+        id: "replacement",
+        quoteId: "quote-1",
+        amountCents: 10_000,
+        createdAt: new Date("2026-09-02"),
+        method: "TRANSFER",
+        status: "PAID",
+        reversedAt: null,
+        applications: [{ workOrderId: "wo-1", amountCents: 10_000, reversedAt: null }],
+      },
+    ]);
+
+    const history = (await getNotePaymentHistory(["wo-1"])).get("wo-1");
+
+    expect(history?.payments).toMatchObject([
+      { id: "original", method: "CASH", isReversed: true, appliedCents: 0 },
+      { id: "replacement", method: "TRANSFER", isReversed: false, appliedCents: 10_000 },
+    ]);
+  });
+
   it("does not label pending or failed payments as reversed without a reversal timestamp", async () => {
     (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{
       id: "wo-1",
