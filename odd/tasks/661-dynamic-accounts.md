@@ -24,16 +24,18 @@ PR #669 was written against the work-order-only payment model. PRs #675 and #676
 - Route: delegated direct writer. Trigger evidence: integration spans multiple non-trivial payment/domain/query/test files and requires reading current merged source before editing.
 
 ## Tasks
-- [ ] **ODD-661-01** Integrate dynamic totals and payment applications with `PayableNote` identity for WORK and standalone SALE targets.
+- [x] **ODD-661-01** Integrate dynamic totals and payment applications with `PayableNote` identity for WORK and standalone SALE targets.
   - Acceptance: quote-backed WORK notes calculate the current confirmed payable total (including active settlement agreement rules) and subtract active applications linked to the actual payable-note ID.
   - Acceptance: standalone SALE notes remain payable with no WorkOrder and keep their own payable-note total as the source of truth.
   - Acceptance: capture/application/reversal/correction paths retain valid note references; no code assumes `payableNoteId === workOrderId`.
   - Acceptance: master/workshop WorkOrder behavior and payroll isolation remain unchanged.
-  - Checks: focused payment and payable-note tests; `pnpm prisma generate`; `pnpm typecheck`; `pnpm lint`; `pnpm test:ui`; `git diff --check`.
-  - Evidence: work-unit commit hash, focused/full check results, and native review outcome when applicable.
+  - Checks observed: `pnpm prisma generate` passed; targeted RED at `pnpm exec vitest run src/features/payments/payable-note-payment.test.ts` failed because a priced WORK note still used its stale stored total (expected 4,640 cents, received 9,000); the post-fix focused runner passed 4 files / 59 tests; `pnpm typecheck`, `pnpm lint`, and `git diff --check` passed. The database-backed payment-request tests ran and passed; Prisma emitted the expected check-constraint error from the test asserting rejection of a customer-only request.
+  - Runtime harness: N/A — this work unit changes server-side payment/read-model behavior and uses focused Vitest tests; no configured E2E harness exists (testing-capabilities #2374).
+  - Rollback boundary: revert the PayableNote read-model/query/payment-identity changes and their focused tests in this work unit; do not revert the preceding #669 replay commit.
+  - Evidence: code work-unit commit `ba1ebce`; focused verification passed 4 files / 59 tests. Native review deferred to parent; no remote operation performed.
 
 ## Progress and Next Step
 - Confirmed PRs #675 and #676 merged; PR #669 remains open and GitHub reports `DIRTY`.
 - Read the merged schema and payable-note/payment domains through GitHub API; do not rely on the stale local main worktree.
-- Next: rebase the clean #669 worktree onto the merged `develop`, add failing tests, implement ODD-661-01, run checks, and prepare the existing PR update. Remote push is deferred until local implementation and checks are complete.
+- Rebase completed locally as `941ad0a`; ODD-661-01 implementation is `ba1ebce`. No GitHub write, push, merge, or native review was performed; parent retains remote/RDD coordination.
 - Engram mirror created and read back at topic `odd/661-dynamic-accounts/tasks` (observation #3918).
