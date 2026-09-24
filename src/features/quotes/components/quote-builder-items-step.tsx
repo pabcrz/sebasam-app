@@ -74,6 +74,7 @@ export interface QuoteBuilderItemsStepProps {
   summary: QuoteBuilderItemsSummary;
   dispatch: (action: QuoteBuilderItemsAction) => void;
   focus: QuoteBuilderItemsFocus;
+  allowedItemTypes?: QuoteItemType[];
 }
 
 export function QuoteBuilderItemsStep({
@@ -81,6 +82,7 @@ export function QuoteBuilderItemsStep({
   summary: { completeItemsCount, subtotalCents, discountCents, taxCents, totalCents },
   dispatch,
   focus: { animatedRowId, expandedItemRowId, onToggleItem, onRowRef, onDescriptionRef },
+  allowedItemTypes = itemTypes,
 }: QuoteBuilderItemsStepProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -289,7 +291,7 @@ export function QuoteBuilderItemsStep({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {itemTypes.map((type) => (
+                        {allowedItemTypes.map((type) => (
                           <SelectItem key={type} value={type}>
                             {itemTypeLabels[type]}
                           </SelectItem>
@@ -305,7 +307,15 @@ export function QuoteBuilderItemsStep({
                       name={`sections.${sectionIndex}.items.${itemIndex}.description`}
                       value={item.description}
                       onChange={(event) => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { description: event.target.value } })}
-                      placeholder="Ej. Bajar dos muelles"
+                      placeholder={
+                        item.type === "MATERIAL"
+                          ? "Ej. Bujes o perchas"
+                          : item.type === "REFACCIONES"
+                            ? "Ej. Tensores o balancines"
+                            : item.type === "OTHER"
+                              ? "Ej. Servicio general"
+                              : "Ej. Bajar dos muelles"
+                      }
                       aria-describedby={itemErrors.description ? descriptionErrorId : undefined}
                       aria-invalid={itemErrors.description ? true : undefined}
                     />
@@ -486,7 +496,7 @@ export function QuoteBuilderItemsStep({
             className="flex min-w-0 flex-nowrap items-center gap-2"
             aria-label={`Agregar concepto a sección ${sectionIndex + 1}`}
           >
-            <Button
+            {allowedItemTypes.includes("LABOR") ? <Button
               type="button"
               variant="outline"
               size="sm"
@@ -497,8 +507,8 @@ export function QuoteBuilderItemsStep({
             >
               <span className="sm:hidden">+ M. O.</span>
               <span className="hidden sm:inline">+ Mano de obra</span>
-            </Button>
-            <Button
+            </Button> : null}
+            {allowedItemTypes.includes("REFACCIONES") ? <Button
               type="button"
               variant="outline"
               size="sm"
@@ -509,8 +519,8 @@ export function QuoteBuilderItemsStep({
             >
               <span className="sm:hidden">+ Refac.</span>
               <span className="hidden sm:inline">+ Refacciones</span>
-            </Button>
-            <Button
+            </Button> : null}
+            {allowedItemTypes.includes("MATERIAL") ? <Button
               type="button"
               variant="outline"
               size="sm"
@@ -521,8 +531,8 @@ export function QuoteBuilderItemsStep({
             >
               <span className="sm:hidden">+ Mat.</span>
               <span className="hidden sm:inline">+ Materiales</span>
-            </Button>
-            <ConceptTypePopover onSelect={(itemType) => dispatch({ type: "addItem", sectionIndex, itemType })} />
+            </Button> : null}
+            {allowedItemTypes.includes("OTHER") ? <ConceptTypePopover onSelect={(itemType) => dispatch({ type: "addItem", sectionIndex, itemType })} /> : null}
           </div>
         </div>
       </SortableSection>

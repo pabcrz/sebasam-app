@@ -4,6 +4,7 @@ import { PaymentMethod, WorkOrderStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { recordPayableNotePayment } from "@/features/payable-notes/domain";
 import {
   applyCustomerCredit,
   correctPayment,
@@ -27,7 +28,6 @@ export async function recordPaymentAction(
     where: { id: workOrderId },
     select: { quoteId: true, status: true },
   });
-
   if (!workOrder || workOrder.status !== WorkOrderStatus.COMPLETED) {
     throw new Error("Solo se pueden registrar pagos desde notas de trabajos completados.");
   }
@@ -37,7 +37,7 @@ export async function recordPaymentAction(
       ? (method as PaymentMethod)
       : PaymentMethod.CASH;
 
-  if (workOrder.status === WorkOrderStatus.COMPLETED && paymentMethod !== PaymentMethod.CASH && paymentMethod !== PaymentMethod.TRANSFER) {
+  if (paymentMethod !== PaymentMethod.CASH && paymentMethod !== PaymentMethod.TRANSFER) {
     throw new Error("Las notas solo admiten pagos en efectivo o transferencia.");
   }
 
@@ -55,6 +55,33 @@ export async function recordPaymentAction(
   revalidatePath("/admin/customers");
 
   return result;
+}
+
+export async function recordPayableNotePaymentAction(
+  payableNoteId: string,
+  amount: string,
+  operationKey: string,
+  method: string,
+) {
+  const session = await requireAdmin();
+  const amountCents = parseCashAmountCents(amount);
+  const paymentMethod = Object.values(PaymentMethod).includes(method as PaymentMethod)
+    ? (method as PaymentMethod)
+    : PaymentMethod.CASH;
+  const result = await recordPayableNotePayment({
+    payableNoteId,
+    amountCents,
+    operationKey,
+    method: paymentMethod,
+    actorId: session?.profile?.id,
+  });
+  revalidatePath("/admin/notas");
+  revalidatePath("/admin/customers");
+  return {
+    payment: result.payment,
+    paidCents: result.note.paidCents,
+    remainingCents: result.note.remainingCents,
+  };
 }
 
 export async function applyCustomerCreditAction(

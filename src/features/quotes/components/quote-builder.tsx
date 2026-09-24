@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { QuoteItemType } from "@prisma/client";
 import { getMeaningfulTextError } from "@/lib/meaningful-text";
 import { createPortal } from "react-dom";
 import {
@@ -106,7 +107,13 @@ export function QuoteBuilder({
   const [isSearchingCustomers, setIsSearchingCustomers] = React.useState(false);
   const [isCustomerListOpen, setIsCustomerListOpen] = React.useState(false);
   const [activeCustomerIndex, setActiveCustomerIndex] = React.useState(-1);
-  const isDirect = mode === "direct-work-order" || mode === "direct-note";
+  const isDirect = mode === "direct" || mode === "direct-work-order" || mode === "direct-note" || mode === "direct-sale";
+  const isUnifiedDirect = isDirect;
+  const [operation, setOperation] = React.useState<"WORK" | "SALE">(
+    mode === "direct-sale" ? "SALE" : "WORK",
+  );
+  const isSale = isUnifiedDirect && operation === "SALE";
+  const isWorkshopDirect = isUnifiedDirect && operation === "WORK";
   const [masterId, setMasterId] = React.useState("");
   const [isCompleted, setIsCompleted] = React.useState(mode === "direct-note");
   const [paymentDueDate, setPaymentDueDate] = React.useState("");
@@ -180,9 +187,34 @@ export function QuoteBuilder({
 
   React.useEffect(() => {
     const current = serializeQuoteBuilderSnapshot(builderState, customerSearch, [newCustomerName, newCustomerEmail, newCustomerPhone]);
-    const isDirectDirty = isDirect ? Boolean(masterId || paymentDueDate) : false;
+    const isDirectDirty = isUnifiedDirect ? Boolean(masterId || paymentDueDate || operation !== "WORK") : false;
     onDirtyChange?.(current !== initialFormState || isDirectDirty);
-  }, [builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, isDirect, masterId, paymentDueDate]);
+  }, [builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, isUnifiedDirect, masterId, operation, paymentDueDate]);
+
+  function changeOperation(next: "WORK" | "SALE") {
+    if (next === operation) return;
+    if (next === "SALE") {
+      const hasIneligibleItems = sections.some((section) => section.items.some((item) =>
+        (item.type === "LABOR" || item.type === "OTHER") &&
+        (item.description.trim() !== "" || item.unitPrice.trim() !== "" || item.quantity !== "1"),
+      ));
+      if (hasIneligibleItems) {
+        setStepError("No puedes cambiar a Venta de refacciones mientras existan conceptos de mano de obra u otros. Elimínalos o cámbialos antes de continuar.");
+        return;
+      }
+      dispatch({
+        type: "replaceSections",
+        sections: sections.map((section) => ({
+          ...section,
+          items: section.items.map((item) => item.description.trim() === "" && item.unitPrice.trim() === "" && item.quantity === "1"
+            ? { ...item, type: "MATERIAL" as QuoteItemType }
+            : item),
+        })),
+      });
+    }
+    setOperation(next);
+    setStepError(null);
+  }
 
   React.useEffect(() => {
     if (!hasChangedStep.current) {
@@ -464,7 +496,7 @@ export function QuoteBuilder({
         return;
       }
 
-      if (isDirect && isCompleted) {
+      if (isWorkshopDirect && isCompleted) {
         const hasMissingPrice = normalizedSecs.some((s) =>
           s.items.some((item) => !item.unitPrice || Number(item.unitPrice) < 0)
         );
@@ -477,19 +509,21 @@ export function QuoteBuilder({
       setStepError(null);
       dispatch({ type: "replaceSections", sections: normalizedSecs });
     } else {
-      const error = getStepError(step, { customerId, vehicle, title, sections });
+      const error = isSale && step === "client" && !customerId
+        ? "Selecciona un cliente para la venta."
+        : getStepError(step, { customerId, vehicle, title, sections });
 
       if (error) {
         setStepError(error);
         return;
       }
 
-      if (step === "client" && isDirect && !masterId) {
+      if (step === "client" && isWorkshopDirect && !masterId) {
         setStepError("El maestro responsable es obligatorio.");
         return;
       }
 
-      if (step === "notes" && isSundayOperationalDate(operationalDate)) {
+      if (step === "notes" && isWorkshopDirect && isSundayOperationalDate(operationalDate)) {
         setStepError("No se pueden registrar trabajos en domingo. Selecciona una fecha válida de lunes a sábado.");
         return;
       }
@@ -525,7 +559,9 @@ export function QuoteBuilder({
       return false;
     }
 
-    const clientError = getStepError("client", { customerId, vehicle, title, sections });
+    const clientError = isSale && !customerId
+      ? "Selecciona un cliente para la venta."
+      : getStepError("client", { customerId, vehicle, title, sections });
     const itemsError = getStepError("items", { customerId, vehicle, title, sections });
     const notesError = getStepError("notes", { customerId, vehicle, title, sections });
     const error = clientError ?? itemsError ?? notesError;
@@ -535,13 +571,13 @@ export function QuoteBuilder({
       return false;
     }
 
-    if (isSundayOperationalDate(operationalDate)) {
+    if (isWorkshopDirect && isSundayOperationalDate(operationalDate)) {
       setStep("notes");
       setStepError("No se pueden registrar trabajos en domingo. Selecciona una fecha válida de lunes a sábado.");
       return false;
     }
 
-    if (isDirect) {
+    if (isWorkshopDirect) {
       if (!masterId) {
         setStep("client");
         setStepError("El maestro responsable es obligatorio.");
@@ -628,9 +664,9 @@ export function QuoteBuilder({
             ? (isEdit ? "Guardando..." : "Creando...")
             : isEdit
               ? "Guardar cambios"
-              : mode === "direct-note"
+            : isSale || mode === "direct-note"
                 ? "Crear nota"
-                : mode === "direct-work-order"
+            : mode === "direct-work-order" || mode === "direct"
                   ? "Crear trabajo"
                   : "Crear cotización"}
         </Button>
@@ -691,10 +727,11 @@ export function QuoteBuilder({
             } : undefined}
           >
             <div className="grid content-start gap-6">
-          {isDirect ? (
+          {isUnifiedDirect ? (
             <>
-              <input type="hidden" name="masterId" value={masterId} />
-              <input type="hidden" name="isCompleted" value={isCompleted ? "true" : "false"} />
+              <input type="hidden" name="operation" value={operation} />
+              {isWorkshopDirect ? <input type="hidden" name="masterId" value={masterId} /> : null}
+              {isWorkshopDirect ? <input type="hidden" name="isCompleted" value={isCompleted ? "true" : "false"} /> : null}
               {paymentDueDate ? <input type="hidden" name="paymentDueDate" value={paymentDueDate} /> : null}
             </>
           ) : null}
@@ -718,6 +755,18 @@ export function QuoteBuilder({
             <h2 className="sr-only" tabIndex={-1} data-step-heading="client">
               Cliente y unidad
             </h2>
+            {isUnifiedDirect ? (
+              <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
+                <Label htmlFor="direct-operation">Tipo de operación</Label>
+                <Select value={operation} onValueChange={(value) => changeOperation(value as "WORK" | "SALE")}>
+                  <SelectTrigger id="direct-operation"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WORK">Trabajo de taller</SelectItem>
+                    <SelectItem value="SALE">Venta de refacciones</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
             <div className="grid gap-2">
               <Label htmlFor="customerId">Cliente</Label>
               <input type="hidden" name="customerId" value={customerId} />
@@ -979,7 +1028,7 @@ export function QuoteBuilder({
               ) : null}
             </div>
 
-            {isDirect ? (
+            {isWorkshopDirect ? (
               <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
                 <div className="grid gap-2">
                   <Label htmlFor="masterId">Maestro responsable *</Label>
@@ -1016,7 +1065,7 @@ export function QuoteBuilder({
               </div>
             ) : null}
 
-            <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
+            {!isSale ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
               <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
@@ -1071,7 +1120,7 @@ export function QuoteBuilder({
                   />
                 </div>
               </div>
-            </div>
+            </div> : null}
           </section>
 
           {/* Step 2: Conceptos */}
@@ -1096,6 +1145,7 @@ export function QuoteBuilder({
                   else itemDescriptionRefs.current.delete(rowId);
                 },
               }}
+              allowedItemTypes={isSale ? ["MATERIAL", "REFACCIONES"] : undefined}
             />
           </div>
 
@@ -1130,7 +1180,7 @@ export function QuoteBuilder({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="operationalDate">
-                {mode === "direct-note" ? "Fecha de la nota" : mode === "direct-work-order" ? "Fecha del trabajo" : "Fecha de cotización"}
+                {isSale || mode === "direct-note" ? "Fecha de la nota" : mode === "direct-work-order" || mode === "direct" ? "Fecha del trabajo" : "Fecha de cotización"}
               </Label>
               <Input
                 id="operationalDate"
@@ -1142,13 +1192,13 @@ export function QuoteBuilder({
                 onChange={(event) => dispatch({ type: "setOperationalDate", operationalDate: event.target.value })}
               />
               {!isOperationalDateEditable ? <input type="hidden" name="operationalDate" value={operationalDate} /> : null}
-              {isSundayOperationalDate(operationalDate) && (
+              {isWorkshopDirect && isSundayOperationalDate(operationalDate) && (
                 <p className="text-xs font-medium text-[var(--color-status-danger-fg)]" role="alert">
                   No se pueden registrar trabajos en domingo. Selecciona una fecha de lunes a sábado.
                 </p>
               )}
             </div>
-            {mode === "direct-note" ? (
+            {isSale || mode === "direct-note" ? (
               <div className="grid gap-2">
                 <Label htmlFor="paymentDueDate">Fecha de vencimiento de pago (opcional)</Label>
                 <Input
@@ -1167,7 +1217,7 @@ export function QuoteBuilder({
                 rows={4}
                 value={description}
                 onChange={(event) => dispatch({ type: "setDescription", description: event.target.value })}
-                placeholder={mode === "direct-note" ? "Detalles adicionales de la nota..." : mode === "direct-work-order" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
+                placeholder={isSale || mode === "direct-note" ? "Detalles adicionales de la nota..." : mode === "direct-work-order" || mode === "direct" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
               />
             </div>
             <Checkbox
@@ -1181,7 +1231,7 @@ export function QuoteBuilder({
           {/* Step 4: Review and submit */}
           <section hidden={step !== "preview"} className="grid gap-4">
             <h2 className="sr-only" tabIndex={-1} data-step-heading="preview">
-              {mode === "direct-note" ? "Revisar y confirmar nota" : mode === "direct-work-order" ? "Revisar y confirmar trabajo" : "Revisar y enviar cotización"}
+              {isSale || mode === "direct-note" ? "Revisar y confirmar nota" : mode === "direct-work-order" || mode === "direct" ? "Revisar y confirmar trabajo" : "Revisar y enviar cotización"}
             </h2>
             {(() => {
               const selectedContact = selectedCustomer?.contacts?.find((c) => c.id === customerContactId);

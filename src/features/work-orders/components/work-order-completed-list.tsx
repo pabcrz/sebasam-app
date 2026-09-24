@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { listCompletedWorkOrders } from "@/features/work-orders/queries";
+import type { CompletedNoteItem } from "@/features/work-orders/queries";
 import {
   Badge,
   OperationalActionsMenu,
@@ -24,7 +24,7 @@ import { Printer } from "lucide-react";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 
-type WorkOrderItem = Awaited<ReturnType<typeof listCompletedWorkOrders>>["workOrders"][number];
+type WorkOrderItem = CompletedNoteItem;
 
 type PaymentResult = {
   payment: { amountCents: number };
@@ -154,6 +154,7 @@ export function WorkOrderCompletedList({
           </>
         );
 
+        const workOrder = wo.kind === "WORK" ? wo : null;
         const hasOverflow = Boolean(
           (archiveRevocationAction && wo.quote.status !== "ARCHIVED") ||
             archiveRevocationAction?.canRevoke ||
@@ -169,11 +170,11 @@ export function WorkOrderCompletedList({
             triggerClassName="h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
             triggerIconOnly
             destructive={
-              rollbackAction ? (
+              rollbackAction && workOrder ? (
                 <WorkOrderOperationsDialog
                   quoteNumber={wo.quote.number}
                   quoteStatus="APPROVED"
-                  workOrder={wo}
+                  workOrder={workOrder as never}
                   actions={{ rollback: rollbackAction }}
                   triggerVariant="danger"
                   triggerIconOnlyMobile={false}
@@ -292,6 +293,7 @@ export function WorkOrderCompletedList({
           paymentHistory={paymentHistories.find((history) => history.workOrderId === selected.id)}
           paymentAction={paymentActionMap.get(selected.id)}
           correctWorkOrderAction={correctWorkOrderActionMap.get(selected.id)}
+          shareAction={shareAction.bind(null, selected.quote.id)}
           customers={customers}
           searchCustomersAction={searchCustomersAction}
         />

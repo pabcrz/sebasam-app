@@ -237,13 +237,44 @@ describe("WorkOrderCompletedList", () => {
     expect(screen.getByTestId("note-due-date")).toHaveTextContent(/Fecha de vencimiento de pago: 21 de agosto de 2026\./);
     expect(screen.queryByTestId("quote-validity")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Registrar pago para COT-001" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Imprimir nota/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Imprimir nota de remisión COT-001/ })).toBeInTheDocument();
+    expect(screen.getByTestId("nota-detail-actions").querySelector('[aria-label="Compartir cotización COT-001"]')).not.toBeNull();
     expect(screen.getByTestId("nota-detail-summary")).toHaveTextContent("Cliente de prueba");
     expect(screen.getByTestId("nota-detail-summary")).toHaveTextContent("Referencia interna: OT-001");
     expect(screen.getByTestId("nota-detail-body")).toHaveClass("overflow-y-auto");
     expect(screen.getByTestId("nota-detail-body")).toHaveClass("p-0");
     expect(screen.getByTestId("nota-detail-body")).not.toHaveClass("px-4", "py-4", "sm:px-6", "sm:py-6");
     expect(screen.getByTestId("nota-detail-dialog")).toHaveClass("h-dvh", "w-screen", "sm:max-w-6xl");
+  });
+
+  it("renders SALE notes through the same payable actions without a WorkOrder", () => {
+    const saleNote = {
+      ...workOrder,
+      id: "sale-note-1",
+      number: "N-080526-01",
+      folio: "N-080526-01",
+      kind: "SALE",
+      payableNoteId: "sale-note-1",
+      quote: { ...workOrder.quote, title: "Venta directa", number: "COT-SALE-01" },
+    } as unknown as CompletedListProps["workOrders"][number];
+
+    render(
+      <WorkOrderCompletedList
+        workOrders={[saleNote]}
+        shareAction={vi.fn()}
+        recordPaymentActions={[{ workOrderId: saleNote.id, action: vi.fn() }]}
+        correctWorkOrderActions={[{ workOrderId: saleNote.id, action: vi.fn() }]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Compartir cotización COT-SALE-01" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Imprimir nota de remisión N-080526-01" })).toHaveAttribute(
+      "data-print-url",
+      "/admin/notas/sale-note-1/print?returnTo=%2Fadmin%2Fnotas",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ver detalle de nota N-080526-01" }));
+    expect(screen.getByRole("button", { name: "Registrar pago para COT-SALE-01" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Corregir nota" })).toBeInTheDocument();
   });
 
   it("preserves the current Notes state in the card print URL", () => {

@@ -1,7 +1,7 @@
 import { AssignmentStatus, Prisma, QuoteDecisionOrigin, QuoteLifecycleEventType, QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { requireOperationalRole } from "@/lib/auth/session";
+import { requireAdmin, requireOperationalRole } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import {
   assignWorker,
@@ -12,6 +12,7 @@ import {
   completeWorkOrder,
   createDirectNote,
   createDirectNoteFromWorkspace,
+  createDirectOperationFromWorkspace,
   createDirectWorkOrder,
   createDirectWorkOrderFromWorkspace,
   recordExecution,
@@ -28,7 +29,7 @@ const { after, ineligibleCompletedWorkKnowledge, prepareCompletedWorkKnowledge, 
   synchronizeCompletedWorkKnowledge: vi.fn(),
 }));
 
-vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn(), requireAdmin: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/server", () => ({ after }));
 vi.mock("@/features/completed-work-knowledge/service", () => ({
@@ -97,6 +98,7 @@ type MockTx = {
     findUnique: ReturnType<typeof vi.fn>;
   };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn> };
+  payableNote: { create: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   completedWorkKnowledgeSource: { updateMany: ReturnType<typeof vi.fn> };
   vehicle: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
   customer: { findUnique: ReturnType<typeof vi.fn> };
@@ -107,7 +109,7 @@ function createTx(): MockTx {
   const tx = {
     $queryRaw: vi.fn().mockResolvedValue([{ lastSequence: 1 }]),
     quote: {
-      create: vi.fn().mockResolvedValue({ id: "quote-new", sections: [{ id: "sec-1", sortOrder: 0 }] }),
+      create: vi.fn().mockResolvedValue({ id: "quote-new", title: "Direct Work Order", sections: [{ id: "sec-1", sortOrder: 0 }] }),
       findUnique: vi.fn().mockResolvedValue({ id: "quote-new", number: "0926-001" }),
       update: vi.fn().mockResolvedValue({ id: "quote-new" }),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -115,7 +117,7 @@ function createTx(): MockTx {
     quoteItem: { createMany: vi.fn() },
     quoteDecision: { create: vi.fn() },
     quoteLifecycleEvent: { create: vi.fn() },
-    workOrder: { create: vi.fn().mockResolvedValue({ id: "wo-new" }), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: vi.fn() },
+    workOrder: { create: vi.fn().mockResolvedValue({ id: "wo-new", number: "WO-001", folio: null }), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: vi.fn() },
     userProfile: { findFirst: vi.fn().mockResolvedValue(worker(masterId, WorkerKind.MASTER)), findMany: vi.fn(), findUnique: vi.fn() },
     workAssignment: { create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
     executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
@@ -128,6 +130,10 @@ function createTx(): MockTx {
       findUnique: vi.fn().mockResolvedValue(null),
     },
     paymentRequest: { updateMany: vi.fn() },
+    payableNote: {
+      create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: data.id, ...data })),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
     completedWorkKnowledgeSource: { updateMany: vi.fn() },
     vehicle: { findFirst: vi.fn().mockResolvedValue({ id: "veh-1" }), create: vi.fn(), update: vi.fn().mockResolvedValue({ id: "veh-1" }) },
     customer: { findUnique: vi.fn().mockResolvedValue(null) },
@@ -144,6 +150,7 @@ describe("work order worker guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+    vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: workerId } } as never);
     vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId } as never);
     vi.mocked(after).mockImplementation(() => undefined);
     vi.mocked(prisma.workAssignment.create).mockResolvedValue({ id: "assignment-1" } as never);
@@ -182,6 +189,7 @@ describe("work order actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+    vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: workerId } } as never);
     vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId } as never);
   });
 
@@ -334,6 +342,10 @@ describe("work order actions", () => {
       // should set completedAt and paymentDueDate
       expect(tx.workOrder.updateMany.mock.calls[0][0].data.completedAt).toBeInstanceOf(Date);
       expect(tx.workOrder.updateMany.mock.calls[0][0].data.paymentDueDate).toBeInstanceOf(Date);
+      expect(tx.payableNote.updateMany).toHaveBeenCalledWith({
+        where: { workOrderId: "wo-1", status: "DRAFT" },
+        data: expect.objectContaining({ status: "ISSUED", issuedAt: expect.any(Date) }),
+      });
       expect(tx.workAssignment.updateMany).toHaveBeenCalledWith({
         where: {
           workOrderId: "wo-1",
@@ -611,6 +623,21 @@ describe("work order actions", () => {
           completedAt: null,
         }),
       }));
+      expect(tx.payableNote.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          id: "wo-new",
+          customerId: "customer-1",
+          quoteId: "quote-new",
+          workOrderId: "wo-new",
+          referenceNumber: "WO-001",
+          subtotalCents: 15_000,
+          taxCents: 2_400,
+          totalCents: 17_400,
+          status: "DRAFT",
+          issuedAt: null,
+        }),
+      });
+      expect(tx.payableNote.create).toHaveBeenCalledTimes(1);
       expect(tx.workAssignment.create).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({
           workerId: masterId,
@@ -709,6 +736,31 @@ describe("work order actions", () => {
       }));
     });
 
+    it("creates an issued payable note for a completed direct work order", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      tx.workOrder.create.mockResolvedValue({ id: "wo-new", number: "WO-001", folio: "N-0826-01" });
+
+      await createDirectWorkOrder({ ...validDirectInput, isCompleted: true });
+
+      expect(tx.payableNote.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          id: "wo-new",
+          customerId: "customer-1",
+          quoteId: "quote-new",
+          workOrderId: "wo-new",
+          referenceNumber: "N-0826-01",
+          subtotalCents: 15_000,
+          taxCents: 2_400,
+          totalCents: 17_400,
+          status: "ISSUED",
+          issuedAt: expect.any(Date),
+          paymentDueDate: expect.any(Date),
+        }),
+      });
+      expect(tx.payableNote.create).toHaveBeenCalledTimes(1);
+    });
+
     it("creates a completed direct work order with COMPLETED status and DONE assignment", async () => {
       const tx = createTx();
       vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
@@ -730,6 +782,7 @@ describe("work order actions", () => {
           status: AssignmentStatus.DONE,
         }),
       }));
+      expect(tx.payableNote.create).toHaveBeenCalledTimes(1);
       expect(prepareCompletedWorkKnowledge).toHaveBeenCalledWith("wo-new");
       expect(after).toHaveBeenCalledOnce();
       expect(synchronizeCompletedWorkKnowledge).not.toHaveBeenCalled();
@@ -882,6 +935,13 @@ describe("work order actions", () => {
           status: WorkOrderStatus.COMPLETED,
         }),
       }));
+      expect(tx.payableNote.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          id: "wo-new",
+          workOrderId: "wo-new",
+          status: "ISSUED",
+        }),
+      }));
     });
 
     it("creates a direct note from workspace FormData and revalidates paths", async () => {
@@ -906,6 +966,39 @@ describe("work order actions", () => {
       expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
       expect(revalidatePath).toHaveBeenCalledWith("/admin/work-orders");
       expect(revalidatePath).toHaveBeenCalledWith("/admin/notas");
+    });
+
+    it("routes SALE FormData to an issued standalone sale note without a work order or master", async () => {
+      const tx = createTx();
+      tx.quote.create.mockResolvedValue({
+        id: "quote-sale",
+        customerId: "customer-1",
+        title: "Refacciones",
+        subtotalCents: 10_000,
+        taxCents: 1_600,
+        totalCents: 11_600,
+        sections: [{ id: "section-sale", sortOrder: 0 }],
+      });
+      const formData = new FormData();
+      formData.set("operation", "SALE");
+      formData.set("customerId", "customer-1");
+      formData.set("title", "Refacciones");
+      formData.set("operationalDate", "2026-08-31");
+      formData.set("sections.0.name", "General");
+      formData.set("sections.0.items.0.type", "MATERIAL");
+      formData.set("sections.0.items.0.description", "Filtro de aceite");
+      formData.set("sections.0.items.0.quantity", "1");
+      formData.set("sections.0.items.0.unitPrice", "100");
+
+      const result = await createDirectOperationFromWorkspace({}, formData);
+
+      expect(result).toEqual({ success: true });
+      expect(tx.payableNote.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ customerId: "customer-1", kind: "SALE", status: "ISSUED" }),
+      });
+      expect(tx.payableNote.create.mock.calls[0]?.[0].data).not.toHaveProperty("workOrderId");
+      expect(tx.workOrder.create).not.toHaveBeenCalled();
+      expect(tx.userProfile.findFirst).not.toHaveBeenCalled();
     });
 
     it("converts a draft quote to a completed note with master and paymentDueDate", async () => {
@@ -948,6 +1041,57 @@ describe("work order actions", () => {
           reason: "Convertida a nota",
         }),
       }));
+    });
+
+    it("issues the linked draft payable note when completing an existing work order", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      const dueDate = new Date("2026-09-30T00:00:00.000Z");
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        id: "quote-1",
+        workOrder: {
+          id: "wo-existing",
+          status: WorkOrderStatus.ASSIGNED,
+          folio: null,
+          issuedAt: null,
+          paymentDueDate: null,
+          assignments: [],
+        },
+      }));
+
+      await convertQuoteToNoteAction({
+        quoteId: "quote-1",
+        paymentDueDate: dueDate,
+      });
+
+      expect(tx.payableNote.updateMany).toHaveBeenCalledWith({
+        where: { workOrderId: "wo-existing", status: "DRAFT" },
+        data: {
+          status: "ISSUED",
+          issuedAt: expect.any(Date),
+          paymentDueDate: dueDate,
+        },
+      });
+    });
+
+    it("does not reissue the payable note when the existing work order is already completed", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        id: "quote-1",
+        workOrder: {
+          id: "wo-completed",
+          status: WorkOrderStatus.COMPLETED,
+          folio: "N-0926-01",
+          issuedAt: new Date("2026-09-01T00:00:00.000Z"),
+          paymentDueDate: new Date("2026-09-15T00:00:00.000Z"),
+          assignments: [],
+        },
+      }));
+
+      await convertQuoteToNoteAction({ quoteId: "quote-1" });
+
+      expect(tx.payableNote.updateMany).not.toHaveBeenCalled();
     });
 
     it("blocks converting a locked quote to note", async () => {
