@@ -15,6 +15,7 @@ function createMockRequest(requiresInvoice = false) {
     customerId: "customer-123",
     quoteId: null,
     workOrderId: null,
+    payableNoteId: null,
     requiresInvoice,
     customerFiscalProfileId: null,
     fiscalSnapshot: null,
