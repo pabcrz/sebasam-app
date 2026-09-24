@@ -1257,6 +1257,7 @@ describe("correctCompletedWorkQuote", () => {
 
   it("reverses excess payment applications and creates replacement when newTotal < applied", async () => {
     const tx = mockTx();
+    tx.payableNote.findUnique.mockResolvedValue({ id: "payable-note-1" });
     completedWorkQuoteSetup(tx, {
       applications: [
         { id: "app-1", paymentId: "pay-1", amountCents: 100000, reversedAt: null },
@@ -1301,6 +1302,9 @@ describe("correctCompletedWorkQuote", () => {
         excessCreditCents: 52800,
       }),
     }));
+    expect(tx.quoteCommercialCorrectionApplication.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ payableNoteId: "payable-note-1", workOrderId: "wo-1" })],
+    });
   });
 
   it("rejects changing customer when the note has applied payments", async () => {

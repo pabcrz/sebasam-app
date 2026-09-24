@@ -7,7 +7,7 @@ import { correctPaymentAction, recordPaymentAction, reversePaymentCaptureAction 
 
 vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({ prisma: { workOrder: { findUnique: vi.fn() } } }));
+vi.mock("@/lib/prisma", () => ({ prisma: { workOrder: { findUnique: vi.fn() }, payableNote: { findFirst: vi.fn() } } }));
 vi.mock("./domain", async () => ({
   ...(await vi.importActual<typeof import("./domain")>("./domain")),
   correctPayment: vi.fn(),
@@ -76,6 +76,20 @@ describe("recordPaymentAction", () => {
     );
 
     expect(recordCashPayment).not.toHaveBeenCalled();
+  });
+
+  it("uses the completed work order quote without relying on payable note kind", async () => {
+    (recordCashPayment as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "payment-1" });
+
+    await recordPaymentAction("work-order-1", "10", "payment-operation-1", "TRANSFER");
+
+    expect(recordCashPayment).toHaveBeenCalledWith({
+      quoteId: "quote-1",
+      amountCents: 1000,
+      operationKey: "payment-operation-1",
+      method: "TRANSFER",
+    });
+    expect(prisma.payableNote.findFirst).not.toHaveBeenCalled();
   });
 });
 

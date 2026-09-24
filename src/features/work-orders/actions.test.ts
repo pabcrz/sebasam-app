@@ -108,7 +108,7 @@ function createTx(): MockTx {
   const tx = {
     $queryRaw: vi.fn().mockResolvedValue([{ lastSequence: 1 }]),
     quote: {
-      create: vi.fn().mockResolvedValue({ id: "quote-new", sections: [{ id: "sec-1", sortOrder: 0 }] }),
+      create: vi.fn().mockResolvedValue({ id: "quote-new", title: "Direct Work Order", sections: [{ id: "sec-1", sortOrder: 0 }] }),
       findUnique: vi.fn().mockResolvedValue({ id: "quote-new", number: "0926-001" }),
       update: vi.fn().mockResolvedValue({ id: "quote-new" }),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -116,7 +116,7 @@ function createTx(): MockTx {
     quoteItem: { createMany: vi.fn() },
     quoteDecision: { create: vi.fn() },
     quoteLifecycleEvent: { create: vi.fn() },
-    workOrder: { create: vi.fn().mockResolvedValue({ id: "wo-new" }), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: vi.fn() },
+    workOrder: { create: vi.fn().mockResolvedValue({ id: "wo-new", number: "WO-001", folio: null }), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: vi.fn() },
     userProfile: { findFirst: vi.fn().mockResolvedValue(worker(masterId, WorkerKind.MASTER)), findMany: vi.fn(), findUnique: vi.fn() },
     workAssignment: { create: vi.fn(), createMany: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
     executionRecord: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
@@ -620,6 +620,20 @@ describe("work order actions", () => {
           completedAt: null,
         }),
       }));
+      expect(tx.payableNote.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          id: "wo-new",
+          customerId: "customer-1",
+          quoteId: "quote-new",
+          workOrderId: "wo-new",
+          referenceNumber: expect.any(String),
+          subtotalCents: 15_000,
+          taxCents: expect.any(Number),
+          totalCents: expect.any(Number),
+          status: "DRAFT",
+          issuedAt: null,
+        }),
+      });
       expect(tx.workAssignment.create).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({
           workerId: masterId,
@@ -716,6 +730,28 @@ describe("work order actions", () => {
       expect(tx.workOrder.create).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({ status: WorkOrderStatus.ASSIGNED, completedAt: null }),
       }));
+    });
+
+    it("creates an issued payable note for a completed direct work order", async () => {
+      const tx = createTx();
+      vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+
+      await createDirectWorkOrder({ ...validDirectInput, isCompleted: true });
+
+      expect(tx.payableNote.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          id: "wo-new",
+          customerId: "customer-1",
+          quoteId: "quote-new",
+          workOrderId: "wo-new",
+          referenceNumber: expect.any(String),
+          subtotalCents: 15_000,
+          taxCents: expect.any(Number),
+          totalCents: expect.any(Number),
+          status: "ISSUED",
+          issuedAt: expect.any(Date),
+        }),
+      });
     });
 
     it("creates a completed direct work order with COMPLETED status and DONE assignment", async () => {
