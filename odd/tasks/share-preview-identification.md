@@ -94,7 +94,7 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - No application source files were changed in this setup task.
 - Strict TDD is enabled by the existing project testing-capabilities observation; its exact UI runner is `pnpm test:ui`.
 - Feature document read-back: successfully read after creation; contents and scope verified.
-- Engram mirror: pending; prior write rejected because multiple active sessions matched. Retry only with an unambiguous session identity.
+- Engram mirror: completed after T5 using the independent `engram save --project sebasam-app` path; the updated full record was read back from observation #3916.
 
 ### T1 outcome
 
