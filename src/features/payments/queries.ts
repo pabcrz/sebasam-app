@@ -9,6 +9,7 @@ import {
 } from "./domain";
 import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
 import { withHistoricalBalances, type NotePaymentHistoryItem } from "./lib/payment-register";
+import { getPayableNotePaymentHistory } from "@/features/payable-notes/domain";
 
 export type NotePaymentHistory = {
   totalCents: number;
@@ -18,6 +19,22 @@ export type NotePaymentHistory = {
 export async function getNotePaymentHistory(workOrderIds: string[]): Promise<Map<string, NotePaymentHistory>> {
   await requireOperationalRole();
   if (workOrderIds.length === 0) return new Map();
+
+  if (prisma.payableNote) {
+    const notes = await prisma.payableNote.findMany({
+      where: { workOrderId: { in: workOrderIds } },
+      select: { id: true, workOrderId: true },
+    });
+    if (notes) {
+      const histories = new Map<string, NotePaymentHistory>();
+      for (const note of notes) {
+        if (!note.workOrderId) continue;
+        const history = await getPayableNotePaymentHistory(note.id);
+        histories.set(note.workOrderId, { totalCents: history.note.totalCents, payments: history.payments });
+      }
+      return histories;
+    }
+  }
 
   const workOrders = await prisma.workOrder.findMany({
     where: { id: { in: workOrderIds } },
