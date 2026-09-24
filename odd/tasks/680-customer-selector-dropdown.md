@@ -40,8 +40,8 @@ Issue #680 reports that scrolling the customer selector in notes/quotes does not
 - Follow-up RED: `pnpm exec vitest run src/features/quotes/components/quote-builder.test.tsx` failed the new Cliente combobox assertion because its class list lacked `focus-visible:ring-inset`.
 - Follow-up GREEN: `pnpm exec vitest run src/features/quotes/components/quote-builder.test.tsx` passed (73 tests); `pnpm lint` passed with the same 8 existing warnings outside this issue; `pnpm typecheck` passed.
 - Native assessment: medium, under_budget; no review due.
-- Parent spot-check command/result: not provided to this task, so it is not recorded as verified.
-- Follow-up commit identity will be recorded after commit creation.
+- Parent spot-check: `pnpm test:ui -- src/features/quotes/components/quote-builder.test.tsx` passed (192 files, 1,548 tests passed, 3 files/29 tests skipped); the dialog test that timed out in an earlier full-suite run passed in this run.
+- Follow-up work-unit commit: `daa5f97` — `fix(quotes): contain customer input focus ring`.
 
 ## Next step
-Next: review the follow-up work-unit and open a PR for issue #680 when authorized; no remote operations were performed in this task.
+Implementation complete. PR creation remains a separate human decision; no remote operations were performed in this task.
