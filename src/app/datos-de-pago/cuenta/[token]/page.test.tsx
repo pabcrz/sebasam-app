@@ -49,6 +49,7 @@ describe("PublicBankAccountPage", () => {
     const image = imageResponseMock.mock.calls.at(-1)?.[0];
     expect(JSON.stringify(image)).toContain("Datos de cuenta bancaria");
     expect(JSON.stringify(image)).toContain("BBVA");
+    expect(JSON.stringify(image)).toContain("data:image/png;base64,");
     expect(JSON.stringify(image)).not.toMatch(/pago seguro|gateway|accountHolder|accountNumber|clabe|123456|012345678901234567|valid-token/i);
   });
 

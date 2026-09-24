@@ -37,6 +37,16 @@ function collectText(node: unknown): string {
   return "";
 }
 
+function collectImages(node: unknown): Array<{ src?: string; style?: Record<string, unknown> }> {
+  if (Array.isArray(node)) return node.flatMap(collectImages);
+  if (!node || typeof node !== "object" || !("props" in node)) return [];
+  const element = node as { type?: unknown; props: { src?: string; style?: Record<string, unknown>; children?: unknown } };
+  return [
+    ...(element.type === "img" ? [{ src: element.props.src, style: element.props.style }] : []),
+    ...collectImages(element.props.children),
+  ];
+}
+
 describe("OpengraphImage for /cotizacion/[token]", () => {
   it("exports correct size and contentType", () => {
     expect(size).toEqual({ width: 1200, height: 630 });
@@ -69,6 +79,9 @@ describe("OpengraphImage for /cotizacion/[token]", () => {
     expect(collectText(response.element).indexOf("Transportes San Juan")).toBeLessThan(
       collectText(response.element).indexOf("C-0826-007"),
     );
+    expect(collectImages(response.element)).toEqual([
+      expect.objectContaining({ src: expect.stringContaining("data:image/png;base64,") }),
+    ]);
   });
 
   it("renders assigned work as a service note", async () => {
@@ -101,5 +114,8 @@ describe("OpengraphImage for /cotizacion/[token]", () => {
 
     expect(response.type).toBe("image-response");
     expect(response.options).toEqual({ width: 1200, height: 630 });
+    expect(collectImages(response.element)).toEqual([
+      expect.objectContaining({ src: expect.stringContaining("data:image/png;base64,") }),
+    ]);
   });
 });

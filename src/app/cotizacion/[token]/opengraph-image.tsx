@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { getSharedQuoteByToken } from "@/features/quotes/domain";
 import { formatVehicle, formatSnapshotVehicle, formatOperationalDate } from "@/features/quotes/lib/format";
 import {
@@ -20,6 +22,7 @@ interface OpengraphImageProps {
 
 export default async function OpengraphImage({ params }: OpengraphImageProps) {
   const { token } = await params;
+  const logo = `data:image/png;base64,${(await readFile(join(process.cwd(), "public/logo-white-short.png"))).toString("base64")}`;
 
   try {
     const sharedQuote = await getSharedQuoteByToken(token);
@@ -64,16 +67,7 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
             }}
           >
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <span
-                style={{
-                  fontSize: "36px",
-                  fontWeight: 900,
-                  letterSpacing: "2px",
-                  color: "#FFFFFF",
-                }}
-              >
-                SEBASAM
-              </span>
+              <img alt="" src={logo} width={180} height={45} style={{ objectFit: "contain", objectPosition: "left center" }} />
               <span
                 style={{
                   fontSize: "15px",
@@ -297,17 +291,7 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
             textAlign: "center",
           }}
         >
-          <span
-            style={{
-              fontSize: "48px",
-              fontWeight: 900,
-              letterSpacing: "2px",
-              color: "#FFFFFF",
-              marginBottom: "12px",
-            }}
-          >
-            SEBASAM
-          </span>
+          <img alt="" src={logo} width={240} height={60} style={{ objectFit: "contain", marginBottom: "12px" }} />
           <span
             style={{
               fontSize: "24px",

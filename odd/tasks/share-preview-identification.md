@@ -19,21 +19,23 @@ Recipients need to recognize what a shared link concerns before opening it. Paym
 - **T1:** Make quote, work-order, and service-note share previews identify customer and unit/operator before the folio.
 - **T2:** Make the payment-account share link preview explicitly identify payment details and be visually recognizable.
 - **T4:** Refine the bank-account preview to include the account's bank name dynamically and remove claims of secure/gateway-based payment processing.
+- **T5:** Add the SEBASAM logo to the Open Graph images for shared quotes/work/service notes and bank-account links.
 - Preserve useful fallbacks when identifying information is unavailable.
 - Do not leak payment credentials or account details in metadata.
 - The bank name may be shown; do not show account numbers, CLABE, account holder, or token in metadata or the Open Graph image.
 - Do not claim that payment is secure or processed through an integrated gateway; occasional Mercado Pago use does not make this bank-account share link a payment gateway.
-- Implement only T1, T2, and the accepted T4 refinement within the approved issue scope; task-document and setup-only workers must not edit application source.
+- Use the existing white logo asset against the dark preview backgrounds without obscuring customer, unit, document type, or bank-name information.
+- Implement only T1, T2, T4, and accepted T5 within the approved issue scope; task-document and setup-only workers must not edit application source.
 - Do not fetch or push. Local work-unit commits on this issue branch are part of the authorized implementation.
 
 ## Authorized scope
 
-Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authorized local branch/worktree: `feature/681-identifiable-share-previews` at `/Users/pabcrz/Dev/sebasam/sebasam-app-worktrees/681-identifiable-share-previews`, based on the existing local `develop` branch. Application changes for T1, T2, and accepted refinement T4 are authorized only in this worktree and only within issue #681's stated scope. Do not fetch or push.
+Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authorized local branch/worktree: `feature/681-identifiable-share-previews` at `/Users/pabcrz/Dev/sebasam/sebasam-app-worktrees/681-identifiable-share-previews`, based on the existing local `develop` branch. Application changes for T1, T2, and accepted refinements T4/T5 are authorized only in this worktree and only within issue #681's stated scope. Do not fetch or push.
 
 ## Route and trigger evidence
 
-- **Route:** Delegated-direct. The user authorized implementation in the requested worktree; T4 changes metadata, image rendering, and regression coverage across multiple non-trivial files.
-- **Trigger evidence:** The approved issue and accepted T4 refinement require bank-name identification, safe generic fallback, removal of unsupported payment-security/gateway claims, and account-detail privacy. The multi-file writer trigger selects delegated-direct; it does not select SDD.
+- **Route:** Delegated-direct. The user authorized the logo refinement in the requested worktree; T5 changes both image generators and their regression coverage across multiple non-trivial files.
+- **Trigger evidence:** The accepted request is to add the existing SEBASAM logo to quote/note/work and bank-account link previews while preserving legibility of identity and payment purpose. The multi-file writer trigger selects delegated-direct; it does not select SDD.
 
 ## Effective TDD mode and runner
 
@@ -48,6 +50,7 @@ Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authori
 - [x] **T2** — Update the payment-account share-link preview to explicitly identify payment details and appear visually recognizable, without exposing credentials or account details in metadata.
 - [x] **T3** — Resolve and record effective TDD mode/source before app implementation.
 - [x] **T4** — Show the bank name dynamically in the account preview; remove unsupported security/gateway claims.
+- [x] **T5** — Add the SEBASAM logo to document and bank-account Open Graph images without hiding key identifying information.
 
 ## Acceptance criteria
 
@@ -57,6 +60,7 @@ Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authori
 - Metadata contains no payment credentials or account details.
 - The account preview identifies the bank name when available, with generic fallback copy when absent.
 - The preview does not claim “pago seguro” or imply an integrated payment gateway.
+- Shared quote/note/work and bank-account preview images include the SEBASAM logo legibly against their dark background.
 - Focused tests cover the preview content, fallback behavior, and sensitive-metadata exclusion; applicable lint/typecheck/build checks are recorded.
 
 ## Applicable checks
@@ -81,6 +85,7 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - [x] Resolve the effective TDD mode before implementation.
 - [x] Implement T1 and T2, verify acceptance criteria, and commit both work units.
 - [x] Implement accepted refinement T4, verify its acceptance criteria, and commit the refinement work unit.
+- [x] Implement accepted logo refinement T5, verify its acceptance criteria, and commit the refinement work unit.
 
 ## Verification evidence
 
@@ -139,4 +144,16 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 
 ## Next step
 
-The browser-title correction is complete locally. No PR or remote Git operation is authorized.
+T5 is implemented and locally assessed below. No PR or remote Git operation is authorized.
+
+### T5 accepted logo refinement — implemented
+
+- The installed Next.js 16.2.9 `ImageResponse` guide was read before edits. The existing public PNG is loaded server-side with `node:fs/promises` from `process.cwd()/public/logo-white-short.png`, then embedded as a base64 data URI for Satori's nested `<img>` support; no remote asset fetch is needed.
+- The shared quote/work-order/service-note card places the white logo (180×45) in the existing header brand column above the tagline; its error fallback also displays the logo (240×60). Document badge, customer, vehicle/operator, folio, date, and footer remain in their existing hierarchy. The bank-account image places the logo (240×60) above the payment title, purpose line, and dynamic bank label. Dark backgrounds and all metadata/data lookup behavior remain unchanged.
+- Strict TDD RED: after adding logo-source assertions, `pnpm exec vitest run 'src/app/cotizacion/[token]/opengraph-image.test.tsx'` failed 2 logo assertions (2 passed); `pnpm exec vitest run 'src/app/datos-de-pago/cuenta/[token]/page.test.tsx'` failed the new logo assertion (5 passed). No database access was used by these tests.
+- Strict TDD GREEN: those focused commands passed after implementation: quote OG image 4/4 tests; account route/image suite 6/6 tests. Both assert an embedded PNG data URI; the quote suite checks valid and fallback images, and existing text-order/privacy assertions remain intact.
+- Closure checks: `pnpm lint` passed with 8 warnings in unrelated existing files; `pnpm typecheck` passed; `pnpm build` passed on Next.js 16.2.9 (production compile, TypeScript, 24 static pages generated). The build reports `.env` as loaded; it was not inspected, and no production or database access was performed.
+- The known full `pnpm test:ui` outcome remains 7 unrelated failures in payment concurrency and quote-builder-dialog suites (recorded above); the full suite was not rerun.
+- Rollback boundary: revert only the two OG-image generators, the focused assertions in their existing test files, and this T5 evidence/checklist; preserve all T1/T2/T4 behavior, public asset, metadata, lookups, and unrelated work.
+- Runtime harness: N/A — this is a generated social preview presentation change with no additional runtime workflow; the focused tests exercise both generators without data services.
+- T5 work-unit commit: pending. Committed-only native assessment: pending. Engram mirror/read-back: pending.
