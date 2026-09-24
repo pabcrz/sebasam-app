@@ -42,7 +42,7 @@ Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authori
 ## Actionable checklist
 
 - [x] **T1** — Update quote, work-order, and service-note share previews to prioritize customer and unit/operator identification before the folio; retain useful fallbacks.
-- [ ] **T2** — Update the payment-account share-link preview to explicitly identify payment details and appear visually recognizable, without exposing credentials or account details in metadata.
+- [x] **T2** — Update the payment-account share-link preview to explicitly identify payment details and appear visually recognizable, without exposing credentials or account details in metadata.
 - [x] **T3** — Resolve and record effective TDD mode/source before app implementation.
 
 ## Acceptance criteria
@@ -73,7 +73,7 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - [x] Created the issue-specific local worktree and branch from local `develop`.
 - [x] Created and read back this feature task document before any app source edit; corrected its TDD source and route evidence before implementation.
 - [x] Resolve the effective TDD mode before implementation.
-- [x] Implement T1; T2 remains in progress.
+- [x] Implement T1 and T2; closure checks passed, with local T2 work-unit commit pending.
 
 ## Verification evidence
 
@@ -82,7 +82,7 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - No application source files were changed in this setup task.
 - Strict TDD is enabled by the existing project testing-capabilities observation; its exact UI runner is `pnpm test:ui`.
 - Feature document read-back: successfully read after creation; contents and scope verified.
-- Engram mirror: pending.
+- Engram mirror: pending; prior write rejected because multiple active sessions matched. Retry only with an unambiguous session identity.
 
 ### T1 outcome
 
@@ -90,8 +90,19 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - The Open Graph image now headlines the customer, follows with vehicle/operator identity, and demotes the folio to a smaller document-reference line. Missing customer and vehicle continue to use existing useful fallbacks.
 - Strict TDD: `pnpm exec vitest run 'src/app/cotizacion/[token]/page.test.tsx'` first failed three metadata assertions (RED); after implementation it passed (9 tests). `pnpm exec vitest run 'src/app/cotizacion/[token]/opengraph-image.test.tsx'` first failed the new ordering assertion (RED); after implementation it passed (4 tests).
 - Rollback boundary: revert only the quote metadata and OG-image changes and their two focused tests; preserve unrelated code and current fallback behavior.
-- T1 commit identity: pending.
-- `pnpm test:ui -- 'src/app/cotizacion/[token]/page.test.tsx'` was attempted but its script ran the full suite; 79 suites failed from ungenerated Prisma Client, plus one unrelated assertion. After `pnpm exec prisma generate`, the direct focused Vitest commands above ran successfully.
+- T1 work-unit commit: `8ad6b20` (`feat(shares): identify customers in quote previews`). Parent's fresh native assessment for this committed-only candidate against the base recorded `risk: medium`, `review_due: false`, `review_due_reason: under_budget`, `changed_paths: 5`, and `changed_lines: 145`; no `next_transition` was returned.
+- `pnpm test:ui -- 'src/app/cotizacion/[token]/page.test.tsx'` was attempted but its script ran the full suite; 79 suites initially failed from ungenerated Prisma Client and one unrelated assertion failed. After `pnpm exec prisma generate`, the direct focused Vitest commands above ran successfully.
+
+### T2 plan and progress
+
+- Exact route currently mapped: `/datos-de-pago/cuenta/[token]` (`src/app/datos-de-pago/cuenta/[token]/page.tsx`). A repository glob for `src/app/**/datos-de-cuenta/**` found no route, so the provided `/datos-de-cuenta/estandar-<token>` example does not match this checkout's route layout; the existing shareable bank-account token route remains unchanged.
+- Keep payment-account metadata generic and add a purpose-built Open Graph card with no token/account-specific values. Preserve `getPublicBankAccountByToken`, `DirectPaymentPage`, and not-found behavior.
+- T2 privacy assertion test covers generic metadata and OG-card text without account-specific values.
+- T2 strict TDD evidence: with the regression test retained, temporarily restored only the original generic metadata and a neutral image; `pnpm exec vitest run 'src/app/datos-de-pago/cuenta/[token]/page.test.tsx'` failed the metadata and image-recognition assertions (RED, 2 failures/2 existing tests passed). Restored the descriptive generic metadata and payment card; the same command passed all 4 tests (GREEN).
+- The OG metadata and card contain only fixed generic payment purpose text; they do not incorporate route token, bank, account holder, account number, CLABE, or other per-account values. `getPublicBankAccountByToken`, page rendering, and not-found handling are unchanged.
+- T2 rollback boundary: revert only this route's metadata, its token-scoped `opengraph-image.tsx`, and the focused test changes; do not touch payment account storage, share-token resolution, or payment rendering.
+- Full closure checks: `pnpm test:ui` passed (192 files passed, 3 skipped; 1,549 tests passed, 29 skipped); `pnpm lint` passed with 8 warnings, all outside the changed files; `pnpm typecheck` passed; `pnpm build` passed, including production compilation, TypeScript, and static-page generation.
+- T2 work-unit commit identity: pending.
 
 ## Rollback boundaries
 
@@ -100,4 +111,4 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 
 ## Next step
 
-Map the share-preview call sites and implement T1/T2 within approved issue #681 scope using strict TDD. The Engram mirror remains pending because the store reported multiple active sessions; preserve the local task document and retry synchronization only when session identity is unambiguous.
+Finalize the T2 work-unit commit and its post-commit assessment. The Engram mirror remains pending because the store reported multiple active sessions; preserve the local task document and retry synchronization only when session identity is unambiguous.

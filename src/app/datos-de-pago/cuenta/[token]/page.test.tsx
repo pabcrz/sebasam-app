@@ -1,20 +1,38 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const { getPaymentSettings, getPublicBankAccountByToken, notFound } = vi.hoisted(() => ({
+const { getPaymentSettings, getPublicBankAccountByToken, notFound, imageResponseMock } = vi.hoisted(() => ({
   getPaymentSettings: vi.fn(),
   getPublicBankAccountByToken: vi.fn(),
   notFound: vi.fn(),
+  imageResponseMock: vi.fn(function ImageResponse(element: unknown) { return { element }; }),
 }));
 
 vi.mock("next/navigation", () => ({ notFound }));
+vi.mock("next/og", () => ({ ImageResponse: imageResponseMock }));
 vi.mock("@/features/payment-settings/domain", () => ({
   getPaymentSettings,
   getPublicBankAccountByToken,
 }));
 
-import PublicBankAccountPage from "./page";
+import PublicBankAccountPage, { metadata } from "./page";
+import OpenGraphImage from "./opengraph-image";
 
 describe("PublicBankAccountPage", () => {
+  it("describes payment account details without exposing account data", () => {
+    const serializedMetadata = JSON.stringify(metadata);
+    expect(serializedMetadata).toContain("Datos de cuenta bancaria");
+    expect(serializedMetadata).toContain("realizar tu pago");
+    expect(serializedMetadata).not.toMatch(/accountNumber|clabe|123456|012345678901234567/i);
+  });
+
+  it("renders a recognizable payment image without account details", () => {
+    OpenGraphImage();
+    const image = imageResponseMock.mock.calls.at(-1)?.[0];
+    expect(JSON.stringify(image)).toContain("Datos de cuenta bancaria");
+    expect(JSON.stringify(image)).toContain("PAGO SEGURO");
+    expect(JSON.stringify(image)).not.toMatch(/accountNumber|clabe|123456|012345678901234567/i);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });

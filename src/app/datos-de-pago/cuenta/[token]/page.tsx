@@ -3,7 +3,20 @@ import { notFound } from "next/navigation";
 import { getPaymentSettings, getPublicBankAccountByToken } from "@/features/payment-settings/domain";
 import { DirectPaymentPage } from "@/features/public-payment/components/direct-payment-page";
 
-export const metadata: Metadata = { title: "Cuenta bancaria" };
+export const metadata: Metadata = {
+  title: "Datos de cuenta bancaria | SEBASAM",
+  description: "Consulta los datos para realizar tu pago a SEBASAM.",
+  openGraph: {
+    title: "Datos de cuenta bancaria | SEBASAM",
+    description: "Consulta los datos para realizar tu pago a SEBASAM.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Datos de cuenta bancaria | SEBASAM",
+    description: "Consulta los datos para realizar tu pago a SEBASAM.",
+  },
+};
 
 export default async function PublicBankAccountPage({
   params,
