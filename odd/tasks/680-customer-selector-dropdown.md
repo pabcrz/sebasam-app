@@ -45,4 +45,4 @@ Issue #680 reports that scrolling the customer selector in notes/quotes does not
 - Follow-up work-unit commit: `daa5f97` — `fix(quotes): contain customer input focus ring`.
 
 ## Next step
-Implementation complete. PR creation remains a separate human decision; no remote operations were performed in this task.
+Implementation and local checks are complete; the user has authorized opening the PR. Record the confirmed PR identity after creation.
