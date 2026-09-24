@@ -52,7 +52,7 @@ export function QuoteBuilderDialog({
     setChromeHosts((current) => (current.footerHost === el ? current : { ...current, footerHost: el }));
   }, []);
   const isEdit = saveAction != null;
-  const isDirectWorkOrder = mode === "direct-work-order";
+  const isDirectWorkOrder = mode === "direct-work-order" || mode === "direct";
   const initialData = initialDataProp ?? (quote ? mapPersistedQuoteToBuilderInitialData(quote) : undefined);
 
   const handleOpenChange = React.useCallback((nextOpen: boolean) => {
@@ -80,7 +80,7 @@ export function QuoteBuilderDialog({
 
   const defaultButtonLabel = isEdit
     ? "Editar"
-    : mode === "direct-note"
+    : mode === "direct-note" || mode === "direct-sale"
       ? "Nueva nota"
       : isDirectWorkOrder
         ? "Agregar trabajo"
@@ -88,14 +88,14 @@ export function QuoteBuilderDialog({
   const effectiveButtonLabel = triggerLabel ?? defaultButtonLabel;
   const dialogTitle = isEdit
     ? `Editar cotización ${quoteNumber}`
-    : mode === "direct-note"
+    : mode === "direct-note" || mode === "direct-sale"
       ? "Nueva nota"
       : isDirectWorkOrder
         ? "Agregar trabajo"
         : "Crear cotización";
   const discardTitle = isEdit
     ? "¿Descartar los cambios?"
-    : mode === "direct-note"
+    : mode === "direct-note" || mode === "direct-sale"
       ? "¿Descartar la nota?"
       : isDirectWorkOrder
         ? "¿Descartar el trabajo?"
