@@ -118,12 +118,56 @@ apply_pending_migrations() {
   DATABASE_URL="$url" DIRECT_URL="$url" pnpm exec prisma migrate deploy --schema "$schema_path"
 }
 
+historical_schema_path() {
+  printf '%s/%s/schema.prisma' "$temporary_root" "$1"
+}
+
+apply_target_migration_with_history() {
+  local database_name="$1"
+  local schema_path
+  local migration_dir migration_dir_name
+
+  schema_path="$(historical_schema_path "$database_name")"
+  if [[ ! -d "$(dirname "$schema_path")/migrations/${migration_name}" ]]; then
+    printf 'Target migration %s is missing from the historical migration set.\n' "$migration_name" >&2
+    return 1
+  fi
+
+  for migration_dir in "$(dirname "$schema_path")"/migrations/*; do
+    [[ -d "$migration_dir" ]] || continue
+    migration_dir_name="${migration_dir##*/}"
+    if [[ "$migration_dir_name" > "$migration_name" ]]; then
+      printf 'Refusing historical validation with newer migration present: %s\n' "$migration_dir_name" >&2
+      return 1
+    fi
+  done
+
+  apply_pending_migrations "$database_name" "$schema_path"
+}
+
 prepare_pre_migration_schema() {
   local database_name="$1"
   local baseline_root="${temporary_root}/${database_name}"
+  local migration_dir migration_dir_name
 
   cp -R prisma "$baseline_root"
-  rm -rf "${baseline_root}/migrations/${migration_name}"
+  for migration_dir in "${baseline_root}"/migrations/*; do
+    [[ -d "$migration_dir" ]] || continue
+    migration_dir_name="${migration_dir##*/}"
+    if [[ "$migration_dir_name" > "$migration_name" ]]; then
+      rm -rf "$migration_dir"
+    fi
+  done
+
+  for migration_dir in "${baseline_root}"/migrations/*; do
+    [[ -d "$migration_dir" ]] || continue
+    migration_dir_name="${migration_dir##*/}"
+    if [[ "$migration_dir_name" > "$migration_name" ]]; then
+      printf 'Unexpected migration after %s in prepared historical schema: %s\n' "$migration_name" "$migration_dir_name" >&2
+      return 1
+    fi
+  done
+
   apply_pending_migrations "$database_name" "${baseline_root}/schema.prisma"
 }
 
@@ -199,7 +243,7 @@ apply_migration_sql_without_history quote_commercial_corrections_legacy
 assert_monitored_tables_unchanged quote_commercial_corrections_legacy "$legacy_snapshot"
 assert_correction_tables_empty quote_commercial_corrections_legacy
 assert_migration_row quote_commercial_corrections_legacy 0
-apply_pending_migrations quote_commercial_corrections_legacy prisma/schema.prisma
+apply_target_migration_with_history quote_commercial_corrections_legacy
 assert_migration_row quote_commercial_corrections_legacy 1
 assert_monitored_tables_unchanged quote_commercial_corrections_legacy "$legacy_snapshot"
 assert_correction_tables_empty quote_commercial_corrections_legacy
@@ -211,7 +255,7 @@ apply_migration_sql_without_history quote_commercial_corrections_drifted
 psql "$(database_url quote_commercial_corrections_drifted)" -v ON_ERROR_STOP=1 -c 'ALTER TABLE "QuoteCommercialCorrection" ADD COLUMN "unexpectedDrift" TEXT' >/dev/null
 assert_migration_row quote_commercial_corrections_drifted 0
 
-if apply_pending_migrations quote_commercial_corrections_drifted prisma/schema.prisma >"${temporary_root}/drifted.log" 2>&1; then
+if apply_pending_migrations quote_commercial_corrections_drifted "$(historical_schema_path quote_commercial_corrections_drifted)" >"${temporary_root}/drifted.log" 2>&1; then
   printf 'Expected the drifted legacy schema to fail migration validation.\n' >&2
   exit 1
 fi
