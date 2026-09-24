@@ -70,6 +70,17 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
               <img alt="" src={logo} width={180} height={45} style={{ objectFit: "contain", objectPosition: "left center" }} />
               <span
                 style={{
+                  fontSize: "16px",
+                  fontWeight: 800,
+                  letterSpacing: "2px",
+                  color: "#F8FAFC",
+                  marginTop: "2px",
+                }}
+              >
+                SEBASAM
+              </span>
+              <span
+                style={{
                   fontSize: "15px",
                   fontWeight: 600,
                   letterSpacing: "1px",
@@ -162,70 +173,14 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
               }}
             />
 
-            {/* Info Grid */}
+            {/* Compact date keeps the document's only secondary detail. */}
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
-                gap: "32px",
+                justifyContent: "flex-end",
               }}
             >
-              {/* Cliente */}
-              <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                <span
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 700,
-                    letterSpacing: "1px",
-                    color: "#64748B",
-                    marginBottom: "4px",
-                  }}
-                >
-                  CLIENTE
-                </span>
-                <span
-                  style={{
-                    fontSize: "26px",
-                    fontWeight: 700,
-                    color: "#F1F5F9",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {customerName}
-                </span>
-              </div>
-
-              {/* Vehículo */}
-              <div style={{ display: "flex", flexDirection: "column", flex: 1.2 }}>
-                <span
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 700,
-                    letterSpacing: "1px",
-                    color: "#64748B",
-                    marginBottom: "4px",
-                  }}
-                >
-                  VEHÍCULO
-                </span>
-                <span
-                  style={{
-                    fontSize: "26px",
-                    fontWeight: 700,
-                    color: "#F1F5F9",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {vehicleDescription}
-                </span>
-              </div>
-
-              {/* Fecha */}
-              <div style={{ display: "flex", flexDirection: "column", flex: 0.8 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                 <span
                   style={{
                     fontSize: "14px",
@@ -292,6 +247,17 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
           }}
         >
           <img alt="" src={logo} width={240} height={60} style={{ objectFit: "contain", marginBottom: "12px" }} />
+          <span
+            style={{
+              fontSize: "20px",
+              fontWeight: 800,
+              letterSpacing: "2px",
+              color: "#F8FAFC",
+              marginBottom: "8px",
+            }}
+          >
+            SEBASAM
+          </span>
           <span
             style={{
               fontSize: "24px",
