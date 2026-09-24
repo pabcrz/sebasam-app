@@ -100,6 +100,11 @@ enum PayableNoteStatus {
   CANCELLED
 }
 
+enum PayableNoteKind {
+  WORK
+  SALE
+}
+
 enum LedgerEntryType {
   CREDIT
   DEBIT
@@ -565,6 +570,7 @@ model PayableNote {
   taxCents        Int
   totalCents      Int
   status          PayableNoteStatus @default(DRAFT)
+  kind            PayableNoteKind   @default(WORK)
   issuedAt        DateTime?
   paymentDueDate  DateTime?
   createdAt       DateTime          @default(now())

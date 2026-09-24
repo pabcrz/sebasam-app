@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import {
   AssignmentStatus,
+  PayableNoteKind,
   PaymentRequestStatus,
   Prisma,
   QuoteDecisionOrigin,
@@ -15,7 +16,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireOperationalRole } from "@/lib/auth/session";
+import { requireOperationalRole, requireAdmin } from "@/lib/auth/session";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { createVehicleSnapshot } from "@/features/vehicles/schemas";
 import { nextQuoteNumber, nextWorkOrderNumber, withQuoteNumberRetry } from "@/features/quotes/lib/sequence";
@@ -38,6 +39,10 @@ import {
   convertQuoteToNoteInputSchema,
   directWorkOrderFormInputSchema,
   directWorkOrderInputSchema,
+  directMaterialSaleFormInputSchema,
+  directMaterialSaleInputSchema,
+  directOperationFormInputSchema,
+  directOperationInputSchema,
   executionRecordInputSchema,
   returnNoteToQuoteInputSchema,
   rollbackWorkOrderInputSchema,
@@ -59,6 +64,7 @@ import {
 } from "./domain";
 import { ZodError } from "zod";
 import { assertOperationalClosureQuote, assertOperationalStartQuote } from "./operational-validation";
+import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
 import {
   ineligibleCompletedWorkKnowledge,
   prepareCompletedWorkKnowledge,
@@ -737,6 +743,102 @@ function directWorkOrderFormDataToInput(formData: FormData) {
     masterId: formData.get("masterId"),
     isCompleted: formData.get("isCompleted"),
   };
+}
+
+function directMaterialSaleFormDataToInput(formData: FormData) {
+  return { ...quoteFormDataToInput(formData), paymentDueDate: formData.get("paymentDueDate") };
+}
+
+function directOperationFormDataToInput(formData: FormData) {
+  return {
+    ...quoteFormDataToInput(formData),
+    operation: formData.get("operation") ?? "WORK",
+    masterId: formData.get("masterId"),
+    isCompleted: formData.get("isCompleted"),
+    paymentDueDate: formData.get("paymentDueDate"),
+  };
+}
+
+export async function createDirectOperation(input: unknown) {
+  const data = directOperationInputSchema.parse(input);
+  if (data.operation === "SALE") return createDirectMaterialSale(data);
+  return createDirectWorkOrder(data);
+}
+
+export async function createDirectOperationFromWorkspace(
+  _previousState: QuoteFormActionState,
+  formData: FormData,
+): Promise<QuoteFormActionState> {
+  const parsed = directOperationFormInputSchema.safeParse(directOperationFormDataToInput(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos e intenta de nuevo." };
+  try {
+    await createDirectOperation(parsed.data);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "No se pudo crear la operación." };
+  }
+  revalidatePath(quotesPath);
+  revalidatePath(workOrdersPath);
+  revalidatePath(notasPath);
+  return { success: true };
+}
+
+/** Creates an issued SALE note backed by a commercial quote, without creating a work order. */
+export async function createDirectMaterialSale(input: unknown) {
+  const { profile } = await requireAdmin();
+  const data = directMaterialSaleInputSchema.parse(input);
+  const totals = draftTotals(data);
+  const operationalDate = normalizeOperationalDate(data.operationalDate);
+  const effectiveDate = operationalDateToCompletedAt(data.operationalDate);
+  const quoteLike = {
+    customerId: data.customerId ?? null,
+    subtotalCents: totals.subtotalCents,
+    discountCents: totals.discountCents ?? data.discountCents,
+    taxCents: totals.taxCents,
+    totalCents: totals.totalCents,
+    taxEnabled: data.taxEnabled,
+    sections: data.sections.map((section) => ({ items: section.items.map((item) => ({ description: item.description, quantity: item.quantity, unitPriceCents: item.unitPriceCents ?? null })) })),
+  };
+  assertCommercialQuote(quoteLike);
+
+  const result = await withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
+    const quoteId = randomUUID();
+    const quoteNumber = await nextQuoteNumber(tx);
+    const allocation = await allocateDailyDocumentFolio(tx, "N", effectiveDate);
+    const hasVehicle = hasVehicleData(data.vehicle);
+    const vehicleInput = buildVehicleInput(data.customerId, data.vehicle);
+    const vehicle = hasVehicle ? await findOrCreateVehicle(tx, vehicleInput) : null;
+    const vehicleSnapshot = hasVehicle ? createVehicleSnapshot(vehicleInput) : Prisma.JsonNull;
+    const { customerSnapshot, contactSnapshot } = await resolveQuoteSnapshots(tx, data.customerId, data.customerContactId, data.customerFiscalProfileId);
+    const quote = await tx.quote.create({
+      data: {
+        id: quoteId, customerId: data.customerId, vehicleId: vehicle?.id ?? null,
+        customerContactId: data.customerContactId ?? null, customerFiscalProfileId: data.customerFiscalProfileId ?? null,
+        vehicleSnapshot, customerSnapshot, contactSnapshot, number: quoteNumber, status: QuoteStatus.APPROVED,
+        approvedAt: effectiveDate, title: data.title, description: nullableOptional(data.description), administrative: data.administrative,
+        taxEnabled: data.taxEnabled, subtotalCents: totals.subtotalCents, discountCents: totals.discountCents ?? data.discountCents,
+        taxCents: totals.taxCents, totalCents: totals.totalCents, operationalDate, validUntil: createQuoteValidUntil(), paymentDueDate: data.paymentDueDate ?? null,
+        sections: { create: data.sections.map((section, sortOrder) => ({ name: section.name, isAuthorized: true, sortOrder })) },
+      }, include: { sections: true },
+    });
+    await tx.quoteItem.createMany({ data: data.sections.flatMap((section, sectionIndex) => {
+      const createdSection = quote.sections.find((item) => item.sortOrder === sectionIndex);
+      return section.items.map((item, sortOrder) => ({ quoteId, sectionId: createdSection?.id, type: item.type, description: item.description, quantity: item.quantity, unitPriceCents: item.unitPriceCents ?? 0, totalCents: calculateItemTotalCents(item.quantity, item.unitPriceCents ?? 0), includeInPayroll: false, customRatePercent: null, sortOrder }));
+    }) });
+    await ensureSharedQuoteInTransaction(tx, quoteId);
+    await tx.quoteDecision.create({ data: { quoteId, status: QuoteStatus.APPROVED, origin: QuoteDecisionOrigin.ADMIN, actorId: profile.id, note: "Venta de materiales creada directamente", authorizedSectionIds: quote.sections.map((section) => section.id), createdAt: effectiveDate } });
+    await tx.quoteLifecycleEvent.create({ data: { quoteId, previousState: QuoteStatus.DRAFT, nextState: QuoteStatus.APPROVED, eventType: QuoteLifecycleEventType.CONVERT_TO_NOTE, actorId: profile.id, reason: "Venta de materiales creada directamente", createdAt: effectiveDate } });
+    const note = await tx.payableNote.create({ data: { customerId: quote.customerId, quoteId, referenceNumber: allocation.folio, title: quote.title, subtotalCents: quote.subtotalCents ?? 0, taxCents: quote.taxCents ?? 0, totalCents: quote.totalCents ?? 0, status: "ISSUED", kind: PayableNoteKind.SALE, issuedAt: allocation.issuedAt, paymentDueDate: quote.paymentDueDate } });
+    return { quote, note };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
+  revalidatePath(quotesPath); revalidatePath(notasPath); revalidatePath("/admin/customers");
+  return result;
+}
+
+export async function createDirectMaterialSaleFromWorkspace(_previousState: QuoteFormActionState, formData: FormData): Promise<QuoteFormActionState> {
+  const parsed = directMaterialSaleFormInputSchema.safeParse(directMaterialSaleFormDataToInput(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos e intenta de nuevo." };
+  try { await createDirectMaterialSale(parsed.data); } catch (error) { return { error: error instanceof Error ? error.message : "No se pudo crear la venta." }; }
+  return { success: true };
 }
 
 export async function createDirectWorkOrder(input: unknown) {

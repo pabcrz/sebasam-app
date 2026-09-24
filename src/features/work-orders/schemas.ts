@@ -79,8 +79,36 @@ export const directWorkOrderFormInputSchema = quoteDraftFormInputSchema.extend({
   paymentDueDate: z.preprocess((val) => (typeof val === "string" && val.trim() !== "" ? new Date(val) : undefined), z.date().optional()),
 });
 
+export const directMaterialSaleInputSchema = quoteDraftInputSchema.extend({
+  paymentDueDate: z.preprocess((val) => (val ? new Date(String(val)) : undefined), z.date().optional()),
+}).superRefine((input, ctx) => {
+  if (input.sections.some((section) => section.items.some((item) => item.type !== "MATERIAL" && item.type !== "REFACCIONES"))) {
+    ctx.addIssue({ code: "custom", message: "Las ventas directas solo admiten conceptos de material o refacciones.", path: ["sections"] });
+  }
+});
+
+export const directMaterialSaleFormInputSchema = quoteDraftFormInputSchema.extend({
+  paymentDueDate: z.preprocess((val) => (typeof val === "string" && val.trim() !== "" ? new Date(val) : undefined), z.date().optional()),
+}).superRefine((input, ctx) => {
+  if (input.sections.some((section) => section.items.some((item) => item.type !== "MATERIAL" && item.type !== "REFACCIONES"))) {
+    ctx.addIssue({ code: "custom", message: "Las ventas directas solo admiten conceptos de material o refacciones.", path: ["sections"] });
+  }
+});
+
+export const directOperationInputSchema = z.discriminatedUnion("operation", [
+  directWorkOrderInputSchema.extend({ operation: z.literal("WORK") }),
+  directMaterialSaleInputSchema.extend({ operation: z.literal("SALE") }),
+]);
+
+export const directOperationFormInputSchema = z.discriminatedUnion("operation", [
+  directWorkOrderFormInputSchema.extend({ operation: z.literal("WORK") }),
+  directMaterialSaleFormInputSchema.extend({ operation: z.literal("SALE") }),
+]);
+
 export type DirectWorkOrderInput = z.infer<typeof directWorkOrderInputSchema>;
 export type DirectWorkOrderFormInput = z.infer<typeof directWorkOrderFormInputSchema>;
+export type DirectMaterialSaleInput = z.infer<typeof directMaterialSaleInputSchema>;
+export type DirectMaterialSaleFormInput = z.infer<typeof directMaterialSaleFormInputSchema>;
 
 export const convertQuoteToNoteInputSchema = z.object({
   quoteId: z.string().min(1),
