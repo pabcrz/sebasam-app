@@ -266,7 +266,8 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
     ? await prisma.payableNote.findFirst({ where: { kind: "SALE", status: "ISSUED" }, select: { id: true } })
     : null;
   const saleHavingConditions: Prisma.Sql[] = [];
-  const saleBalanceExpr = Prisma.sql`pn."totalCents" - COALESCE(SUM(pa."amountCents") FILTER (WHERE pa."reversedAt" IS NULL AND p.id IS NOT NULL), 0)`;
+  const salePaidCentsExpr = Prisma.sql`COALESCE(SUM(pa."amountCents") FILTER (WHERE pa."reversedAt" IS NULL AND p.id IS NOT NULL AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL), 0)`;
+  const saleBalanceExpr = Prisma.sql`pn."totalCents" - ${salePaidCentsExpr}`;
   if (input.payment === "pending") saleHavingConditions.push(Prisma.sql`${saleBalanceExpr} > 0`);
   if (input.payment === "paid") saleHavingConditions.push(Prisma.sql`${saleBalanceExpr} = 0`);
   if (input.overdue === "overdue") saleHavingConditions.push(Prisma.sql`${saleBalanceExpr} > 0 AND pn."paymentDueDate" IS NOT NULL AND pn."paymentDueDate" < ${todayCdmxMidnight}`);
@@ -288,14 +289,14 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
         SELECT
           pn.id,
           pn."totalCents"::bigint AS "effectiveTotalCents",
-          COALESCE(SUM(pa."amountCents") FILTER (WHERE pa."reversedAt" IS NULL AND p.id IS NOT NULL AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL), 0) AS "paidCents",
+          ${salePaidCentsExpr} AS "paidCents",
           (array_agg(p.id ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE pa."reversedAt" IS NULL AND p.id IS NOT NULL AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL))[1] AS "activePaymentId",
           (array_agg(p.method::text ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE pa."reversedAt" IS NULL AND p.id IS NOT NULL AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL))[1] AS "activePaymentMethod",
           (array_agg(pa."amountCents" ORDER BY p."createdAt" ASC, p.id ASC) FILTER (WHERE pa."reversedAt" IS NULL AND p.id IS NOT NULL AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL))[1] AS "activePaymentAmountCents",
           pn."issuedAt",
-          COALESCE(SUM(COALESCE(pa."amountCents", 0)) FILTER (WHERE pa."reversedAt" IS NULL AND p.id IS NOT NULL AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL) OVER (), 0) AS "totalPaidCents",
-          COALESCE(SUM(CASE WHEN pn."totalCents" - COALESCE(pa."amountCents", 0) > 0 THEN pn."totalCents" - COALESCE(pa."amountCents", 0) ELSE 0 END) OVER (), 0) AS "totalPendingCents",
-          COALESCE(SUM(CASE WHEN pn."totalCents" - COALESCE(pa."amountCents", 0) > 0 AND pn."paymentDueDate" IS NOT NULL AND pn."paymentDueDate" < ${todayCdmxMidnight} THEN pn."totalCents" - COALESCE(pa."amountCents", 0) ELSE 0 END) OVER (), 0) AS "totalOverdueCents"
+          COALESCE(SUM(${salePaidCentsExpr}) OVER (), 0) AS "totalPaidCents",
+          COALESCE(SUM(CASE WHEN ${saleBalanceExpr} > 0 THEN ${saleBalanceExpr} ELSE 0 END) OVER (), 0) AS "totalPendingCents",
+          COALESCE(SUM(CASE WHEN ${saleBalanceExpr} > 0 AND pn."paymentDueDate" IS NOT NULL AND pn."paymentDueDate" < ${todayCdmxMidnight} THEN ${saleBalanceExpr} ELSE 0 END) OVER (), 0) AS "totalOverdueCents"
         FROM "PayableNote" pn
         LEFT JOIN "PaymentApplication" pa ON pa."payableNoteId" = pn.id AND pa."reversedAt" IS NULL
         LEFT JOIN "Payment" p ON p.id = pa."paymentId" AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL

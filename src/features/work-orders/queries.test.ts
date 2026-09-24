@@ -282,6 +282,9 @@ describe("work order operational queues", () => {
         activePaymentMethod: "TRANSFER",
         activePaymentAmountCents: BigInt(1_000),
         issuedAt: new Date("2026-08-05T10:00:00Z"),
+        totalPaidCents: BigInt(1_000),
+        totalPendingCents: BigInt(1_500),
+        totalOverdueCents: BigInt(1_500),
       }]);
     (prisma.payableNote.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "sale-note-1" });
     (prisma.payableNote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([{
@@ -302,6 +305,8 @@ describe("work order operational queues", () => {
     }]);
 
     const result = await listCompletedWorkOrders(input);
+    const saleQuery = (prisma.$queryRaw as ReturnType<typeof vi.fn>).mock.calls[1][0];
+    const saleSql = saleQuery.strings.join("?");
 
     expect(result.workOrders[0]).toMatchObject({
       kind: "SALE",
@@ -309,6 +314,11 @@ describe("work order operational queues", () => {
       number: "N-080526-01",
       quote: { paidCents: 1_000, remainingCents: 1_500 },
     });
+    expect(result.totals).toEqual({ totalPaidCents: 1_000, totalPendingCents: 1_500, totalOverdueCents: 1_500 });
+    expect(saleSql).toContain('SUM(COALESCE(SUM(pa."amountCents")');
+    expect(saleSql).toContain('FILTER (WHERE pa."reversedAt" IS NULL AND p.id IS NOT NULL');
+    expect(saleSql).toContain('pn."paymentDueDate" < ?');
+    expect(saleSql).not.toContain('SUM(COALESCE(pa."amountCents", 0)) FILTER');
     expect(prisma.workOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: { in: [] } } }));
   });
 });

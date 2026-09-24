@@ -20,7 +20,7 @@ import {
   getOrCreateSharedQuoteAction,
   revokeNoteCanonicalLinkAction,
 } from "@/features/quotes/actions";
-import { createDirectNoteFromWorkspace, rollbackWorkOrderAction } from "@/features/work-orders/actions";
+import { createDirectOperationFromWorkspace, rollbackWorkOrderAction } from "@/features/work-orders/actions";
 import { listActiveMasters } from "@/features/workers/queries";
 import { listCustomers } from "@/features/customers/queries";
 import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
@@ -58,7 +58,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         <div className="hidden sm:block">
           <QuoteBuilderDialog
             customers={customers}
-            createAction={createDirectNoteFromWorkspace}
+            createAction={createDirectOperationFromWorkspace}
             createCustomerAction={createOrReuseCustomerForQuote}
             searchCustomersAction={searchCustomersForQuote}
             mode="direct-note"
@@ -160,7 +160,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
       >
         <QuoteBuilderDialog
           customers={customers}
-          createAction={createDirectNoteFromWorkspace}
+          createAction={createDirectOperationFromWorkspace}
           createCustomerAction={createOrReuseCustomerForQuote}
           searchCustomersAction={searchCustomersForQuote}
           mode="direct-note"
