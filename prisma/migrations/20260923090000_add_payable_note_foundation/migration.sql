@@ -69,12 +69,6 @@ WHERE (
   WHERE application."paymentId" = payment."id"
 ) = 1;
 
-ALTER TABLE "PaymentApplication" ALTER COLUMN "workOrderId" DROP NOT NULL;
-ALTER TABLE "PaymentCorrectionApplication" ALTER COLUMN "workOrderId" DROP NOT NULL;
-ALTER TABLE "PaymentApplication" ALTER COLUMN "payableNoteId" SET NOT NULL;
-ALTER TABLE "PaymentCorrectionApplication" ALTER COLUMN "payableNoteId" SET NOT NULL;
-ALTER TABLE "QuoteCommercialCorrectionApplication" ALTER COLUMN "payableNoteId" SET NOT NULL;
-
 CREATE INDEX "PaymentRequest_payableNoteId_idx" ON "PaymentRequest"("payableNoteId");
 CREATE INDEX "Payment_payableNoteId_idx" ON "Payment"("payableNoteId");
 CREATE INDEX "PaymentApplication_payableNoteId_idx" ON "PaymentApplication"("payableNoteId");
