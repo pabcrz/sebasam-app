@@ -307,7 +307,15 @@ export function QuoteBuilderItemsStep({
                       name={`sections.${sectionIndex}.items.${itemIndex}.description`}
                       value={item.description}
                       onChange={(event) => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { description: event.target.value } })}
-                      placeholder="Ej. Bajar dos muelles"
+                      placeholder={
+                        item.type === "MATERIAL"
+                          ? "Ej. Bujes o perchas"
+                          : item.type === "REFACCIONES"
+                            ? "Ej. Tensores o balancines"
+                            : item.type === "OTHER"
+                              ? "Ej. Servicio general"
+                              : "Ej. Bajar dos muelles"
+                      }
                       aria-describedby={itemErrors.description ? descriptionErrorId : undefined}
                       aria-invalid={itemErrors.description ? true : undefined}
                     />

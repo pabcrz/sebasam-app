@@ -1,7 +1,7 @@
 import { AssignmentStatus, Prisma, QuoteDecisionOrigin, QuoteLifecycleEventType, QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { requireOperationalRole } from "@/lib/auth/session";
+import { requireAdmin, requireOperationalRole } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import {
   assignWorker,
@@ -12,6 +12,7 @@ import {
   completeWorkOrder,
   createDirectNote,
   createDirectNoteFromWorkspace,
+  createDirectOperationFromWorkspace,
   createDirectWorkOrder,
   createDirectWorkOrderFromWorkspace,
   recordExecution,
@@ -28,7 +29,7 @@ const { after, ineligibleCompletedWorkKnowledge, prepareCompletedWorkKnowledge, 
   synchronizeCompletedWorkKnowledge: vi.fn(),
 }));
 
-vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn(), requireAdmin: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/server", () => ({ after }));
 vi.mock("@/features/completed-work-knowledge/service", () => ({
@@ -149,6 +150,7 @@ describe("work order worker guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+    vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: workerId } } as never);
     vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId } as never);
     vi.mocked(after).mockImplementation(() => undefined);
     vi.mocked(prisma.workAssignment.create).mockResolvedValue({ id: "assignment-1" } as never);
@@ -187,6 +189,7 @@ describe("work order actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+    vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: workerId } } as never);
     vi.mocked(prisma.userProfile.findFirst).mockResolvedValue({ id: workerId } as never);
   });
 
@@ -958,6 +961,39 @@ describe("work order actions", () => {
       expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
       expect(revalidatePath).toHaveBeenCalledWith("/admin/work-orders");
       expect(revalidatePath).toHaveBeenCalledWith("/admin/notas");
+    });
+
+    it("routes SALE FormData to an issued standalone sale note without a work order or master", async () => {
+      const tx = createTx();
+      tx.quote.create.mockResolvedValue({
+        id: "quote-sale",
+        customerId: "customer-1",
+        title: "Refacciones",
+        subtotalCents: 10_000,
+        taxCents: 1_600,
+        totalCents: 11_600,
+        sections: [{ id: "section-sale", sortOrder: 0 }],
+      });
+      const formData = new FormData();
+      formData.set("operation", "SALE");
+      formData.set("customerId", "customer-1");
+      formData.set("title", "Refacciones");
+      formData.set("operationalDate", "2026-08-31");
+      formData.set("sections.0.name", "General");
+      formData.set("sections.0.items.0.type", "MATERIAL");
+      formData.set("sections.0.items.0.description", "Filtro de aceite");
+      formData.set("sections.0.items.0.quantity", "1");
+      formData.set("sections.0.items.0.unitPrice", "100");
+
+      const result = await createDirectOperationFromWorkspace({}, formData);
+
+      expect(result).toEqual({ success: true });
+      expect(tx.payableNote.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ customerId: "customer-1", kind: "SALE", status: "ISSUED" }),
+      });
+      expect(tx.payableNote.create.mock.calls[0]?.[0].data).not.toHaveProperty("workOrderId");
+      expect(tx.workOrder.create).not.toHaveBeenCalled();
+      expect(tx.userProfile.findFirst).not.toHaveBeenCalled();
     });
 
     it("converts a draft quote to a completed note with master and paymentDueDate", async () => {

@@ -509,7 +509,9 @@ export function QuoteBuilder({
       setStepError(null);
       dispatch({ type: "replaceSections", sections: normalizedSecs });
     } else {
-      const error = getStepError(step, { customerId, vehicle, title, sections });
+      const error = isSale && step === "client" && !customerId
+        ? "Selecciona un cliente para la venta."
+        : getStepError(step, { customerId, vehicle, title, sections });
 
       if (error) {
         setStepError(error);
@@ -557,7 +559,9 @@ export function QuoteBuilder({
       return false;
     }
 
-    const clientError = getStepError("client", { customerId, vehicle, title, sections });
+    const clientError = isSale && !customerId
+      ? "Selecciona un cliente para la venta."
+      : getStepError("client", { customerId, vehicle, title, sections });
     const itemsError = getStepError("items", { customerId, vehicle, title, sections });
     const notesError = getStepError("notes", { customerId, vehicle, title, sections });
     const error = clientError ?? itemsError ?? notesError;
@@ -726,8 +730,8 @@ export function QuoteBuilder({
           {isUnifiedDirect ? (
             <>
               <input type="hidden" name="operation" value={operation} />
-              <input type="hidden" name="masterId" value={masterId} />
-              <input type="hidden" name="isCompleted" value={isCompleted ? "true" : "false"} />
+              {isWorkshopDirect ? <input type="hidden" name="masterId" value={masterId} /> : null}
+              {isWorkshopDirect ? <input type="hidden" name="isCompleted" value={isCompleted ? "true" : "false"} /> : null}
               {paymentDueDate ? <input type="hidden" name="paymentDueDate" value={paymentDueDate} /> : null}
             </>
           ) : null}
@@ -1060,7 +1064,7 @@ export function QuoteBuilder({
               </div>
             ) : null}
 
-            <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
+            {!isSale ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
               <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
@@ -1115,7 +1119,7 @@ export function QuoteBuilder({
                   />
                 </div>
               </div>
-            </div>
+            </div> : null}
           </section>
 
           {/* Step 2: Conceptos */}
