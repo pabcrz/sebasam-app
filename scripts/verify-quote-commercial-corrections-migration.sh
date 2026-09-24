@@ -121,9 +121,26 @@ apply_pending_migrations() {
 prepare_pre_migration_schema() {
   local database_name="$1"
   local baseline_root="${temporary_root}/${database_name}"
+  local migration_dir migration_dir_name
 
   cp -R prisma "$baseline_root"
-  rm -rf "${baseline_root}/migrations/${migration_name}"
+  for migration_dir in "${baseline_root}"/migrations/*; do
+    [[ -d "$migration_dir" ]] || continue
+    migration_dir_name="${migration_dir##*/}"
+    if [[ "$migration_dir_name" > "$migration_name" || "$migration_dir_name" == "$migration_name" ]]; then
+      rm -rf "$migration_dir"
+    fi
+  done
+
+  for migration_dir in "${baseline_root}"/migrations/*; do
+    [[ -d "$migration_dir" ]] || continue
+    migration_dir_name="${migration_dir##*/}"
+    if [[ "$migration_dir_name" > "$migration_name" || "$migration_dir_name" == "$migration_name" ]]; then
+      printf 'Unexpected migration at or after %s in prepared historical schema: %s\n' "$migration_name" "$migration_dir_name" >&2
+      return 1
+    fi
+  done
+
   apply_pending_migrations "$database_name" "${baseline_root}/schema.prisma"
 }
 
