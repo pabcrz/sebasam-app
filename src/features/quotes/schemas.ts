@@ -236,6 +236,8 @@ export const quoteDraftFormInputSchema = quoteDraftInputBaseSchema.extend({
   sections: z.array(quoteSectionBaseSchema.extend({ items: z.array(quoteDraftFormItemSchema) })).min(1, "At least one quote section is required").max(10),
 }).superRefine(validateDraftIdentity);
 
+export const directOperationSchema = z.enum(["WORK", "SALE"]);
+
 export const quoteFilterSchema = z.object({
   status: optionalFilterString(),
   customerId: optionalFilterString(),

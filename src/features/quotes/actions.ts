@@ -460,6 +460,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
             },
           },
         },
+        payableNote: { select: { id: true, kind: true, status: true } },
       },
     });
 
@@ -467,13 +468,18 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
       throw new Error("Quote not found.");
     }
 
-    if (!preQuote.workOrder || preQuote.workOrder.status !== WorkOrderStatus.COMPLETED) {
-      throw new Error("Only completed work can be corrected.");
+    if (
+      (!preQuote.workOrder || preQuote.workOrder.status !== WorkOrderStatus.COMPLETED) &&
+      (!preQuote.payableNote || preQuote.payableNote.kind !== "SALE" || preQuote.payableNote.status !== "ISSUED")
+    ) {
+      throw new Error("Only issued notes can be corrected.");
     }
 
-    const candidatePaymentIds = Array.from(
-      new Set((preQuote.workOrder.paymentApplications ?? []).map((pa) => pa.paymentId)),
-    );
+    const candidatePaymentApplications = preQuote.workOrder?.paymentApplications ?? await tx.paymentApplication.findMany({
+      where: { payableNoteId: preQuote.payableNote?.id, reversedAt: null, payment: { status: PaymentStatus.PAID, reversedAt: null } },
+      select: { paymentId: true },
+    });
+    const candidatePaymentIds = Array.from(new Set(candidatePaymentApplications.map((pa) => pa.paymentId)));
 
     // 3. Acquire locks in canonical order: Payment then Quote
     await lockPaymentMutationScope(tx, {
@@ -489,11 +495,16 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
         sections: { include: { items: true } },
         workOrder: true,
         settlementAgreement: true,
+        payableNote: true,
       },
     });
 
-    if (!quote || !quote.workOrder || quote.workOrder.status !== WorkOrderStatus.COMPLETED) {
-      throw new Error("Only completed work can be corrected.");
+    if (
+      !quote ||
+      ((!quote.workOrder || quote.workOrder.status !== WorkOrderStatus.COMPLETED) &&
+        (!quote.payableNote || quote.payableNote.kind !== "SALE" || quote.payableNote.status !== "ISSUED"))
+    ) {
+      throw new Error("Only issued notes can be corrected.");
     }
 
     if (
@@ -506,7 +517,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
     // 5. Re-read effective applications under lock
     const effectiveApplications = await tx.paymentApplication.findMany({
       where: {
-        workOrderId: quote.workOrder.id,
+        ...(quote.workOrder ? { workOrderId: quote.workOrder.id } : { payableNoteId: quote.payableNote?.id }),
         reversedAt: null,
         payment: { status: PaymentStatus.PAID, reversedAt: null },
       },
@@ -530,7 +541,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
       reversalLedgerEntryId: string;
       replacementApplicationId: string | null;
       replacementLedgerEntryId: string | null;
-      workOrderId: string;
+      workOrderId: string | null;
       payableNoteId: string;
       originalAmountCents: number;
       reversalAmountCents: number;
@@ -543,10 +554,12 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
     let finalAppliedCents = currentAppliedCents;
 
     if (newTotalCents < currentAppliedCents) {
-      const payableNote = await tx.payableNote.findUnique({
-        where: { workOrderId: quote.workOrder.id },
-        select: { id: true },
-      });
+      const payableNote = quote.payableNote ?? (quote.workOrder
+        ? await tx.payableNote.findUnique({
+            where: { workOrderId: quote.workOrder.id },
+            select: { id: true, workOrderId: true },
+          })
+        : null);
       if (!payableNote) throw new Error("The completed work order has no payable note.");
 
       let reductionNeeded = currentAppliedCents - newTotalCents;
@@ -640,7 +653,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
           reversalLedgerEntryId: reversalLedger.id,
           replacementApplicationId: replacementAppId,
           replacementLedgerEntryId: replacementLedgerId,
-          workOrderId: quote.workOrder.id,
+          workOrderId: app.workOrderId,
           payableNoteId: payableNote.id,
           originalAmountCents: app.amountCents,
           reversalAmountCents: app.amountCents,
@@ -701,7 +714,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
       data: {
         operationKey,
         quoteId: quote.id,
-        workOrderId: quote.workOrder.id,
+        workOrderId: quote.workOrder?.id ?? null,
         previousTotalCents,
         newTotalCents,
         previousAppliedCents: currentAppliedCents,
@@ -792,6 +805,19 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
       await tx.quoteItem.createMany({ data: itemsToCreate });
     }
 
+    if (quote.payableNote) {
+      await tx.payableNote.update({
+        where: { id: quote.payableNote.id },
+        data: {
+          customerId: data.customerId ?? null,
+          title: data.title,
+          subtotalCents: newSubtotalCents,
+          taxCents: newTaxCents,
+          totalCents: newTotalCents,
+        },
+      });
+    }
+
     return updatedQuote;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
@@ -814,8 +840,8 @@ export async function correctCompletedWorkQuoteFromWorkspace(
       reason,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "Only completed work can be corrected.") {
-      return { error: "Solo se pueden corregir notas de trabajos completados." };
+    if (error instanceof Error && error.message === "Only issued notes can be corrected.") {
+      return { error: "Solo se pueden corregir notas emitidas." };
     }
     if (error instanceof Error && error.message === "No se puede cambiar el cliente de una nota con pagos aplicados.") {
       return { error: error.message };
@@ -895,7 +921,7 @@ export async function archiveQuote(quoteId: string, reason: string) {
   if (!parsedReason.success) throw new Error("Archive reason is required.");
 
   await prisma.$transaction(async (tx) => {
-    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true } });
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true, payableNote: true } });
     if (!quote) throw new Error("Quote not found.");
     if (quote.isLocked) throw new Error("Este documento está bloqueado.");
     if (!archivableQuoteStatuses.includes(quote.status) || quote.workOrder) {
@@ -931,11 +957,14 @@ export async function archiveCompletedNote(quoteId: string, reason: string) {
   if (!parsedReason.success) throw new Error("Archive reason is required.");
 
   await prisma.$transaction(async (tx) => {
-    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true } });
+    const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { workOrder: true, payableNote: true } });
     if (!quote) throw new Error("Quote not found.");
     if (quote.isLocked) throw new Error("Este documento está bloqueado.");
-    if (!quote.workOrder || quote.workOrder.status !== WorkOrderStatus.COMPLETED) {
-      throw new Error("Only completed Notes can be archived via this action.");
+    if (
+      (!quote.workOrder || quote.workOrder.status !== WorkOrderStatus.COMPLETED) &&
+      (!quote.payableNote || quote.payableNote.kind !== "SALE" || quote.payableNote.status !== "ISSUED")
+    ) {
+      throw new Error("Only issued Notes can be archived via this action.");
     }
     if (quote.status !== QuoteStatus.APPROVED && quote.status !== QuoteStatus.SENT) {
       throw new Error("A completed Note must be in APPROVED or SENT status to be archived.");

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getCompletedWorkOrderById } from "@/features/work-orders/queries";
+import { getCompletedWorkOrderById, getIssuedSaleNoteById } from "@/features/work-orders/queries";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { QuoteDocumentView } from "@/features/public-quotes/components/quote-document-view";
 import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
@@ -19,23 +19,24 @@ interface PrintPageProps {
 export async function generateMetadata({ params }: PrintPageProps): Promise<Metadata> {
   const { id } = await params;
   const workOrder = await getCompletedWorkOrderById(id);
+  const saleNote = workOrder ? null : await getIssuedSaleNoteById(id);
 
-  if (!workOrder) {
+  if (!workOrder && !saleNote) {
     return {
       title: { absolute: "Nota" },
     };
   }
 
-  const { quote } = workOrder;
+  const quote = workOrder?.quote ?? saleNote!.quote;
   const identity = resolveCustomerDisplayIdentity(quote);
   const customerName = resolveOptionalCustomerName(quote);
-  const vehicle = workOrder.isSpecial ? "Taller" : quote.vehicle ?? quote.vehicleSnapshot;
-  const folio = resolveDocumentFolio(workOrder);
+  const vehicle = workOrder?.isSpecial ? "Taller" : quote.vehicle ?? quote.vehicleSnapshot;
+  const folio = workOrder ? resolveDocumentFolio(workOrder) : saleNote!.referenceNumber;
   const title = formatDocumentPdfFilename({
     customerName,
     driverName: identity.operatorName,
     vehicle,
-    operationalDate: quote.operationalDate ?? workOrder.completedAt,
+    operationalDate: quote.operationalDate ?? workOrder?.completedAt ?? saleNote!.issuedAt,
     folio,
   });
 
@@ -46,28 +47,26 @@ export async function generateMetadata({ params }: PrintPageProps): Promise<Meta
 
 export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
   const { id } = await params;
-  const [workOrder, paymentSettings] = await Promise.all([
+  const [workOrder, saleNote, paymentSettings] = await Promise.all([
     getCompletedWorkOrderById(id),
+    getIssuedSaleNoteById(id),
     getPaymentSettings(),
   ]);
 
-  if (!workOrder) {
+  if (!workOrder && !saleNote) {
     notFound();
   }
 
   return (
     <QuoteDocumentView
       quote={{
-        ...workOrder.quote,
-        workOrder: {
-          status: workOrder.status,
-          folio: workOrder.folio,
-        },
+        ...(workOrder?.quote ?? saleNote!.quote),
+        ...(workOrder ? { workOrder: { status: workOrder.status, folio: workOrder.folio } } : {}),
       }}
-      workOrderStatus={workOrder.status}
+      workOrderStatus={workOrder?.status}
       paymentSettings={paymentSettings}
       documentType="Nota"
-      vehicleDescriptionOverride={workOrder.isSpecial ? "Taller" : undefined}
+      vehicleDescriptionOverride={workOrder?.isSpecial ? "Taller" : undefined}
       isPrint={true}
       controls={<Suspense fallback={null}><PrintControls backLabel="Volver a notas" /></Suspense>}
     />
