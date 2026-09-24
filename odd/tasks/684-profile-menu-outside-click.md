@@ -33,6 +33,7 @@ Issue #684 reports that the profile menu closes only when its trigger is clicked
 - GREEN: `pnpm exec vitest run src/components/layout/admin-shell.test.tsx` — passed, 1 file and 25 tests.
 - `pnpm lint` — passed with 0 errors and 8 warnings in unrelated payment, quote, and work-order files.
 - `pnpm typecheck` — passed after `pnpm exec prisma generate`; the first typecheck attempt failed because the locally installed Prisma client had not been generated, and generation used the checked-in local schema only.
+- `pnpm build` — passed; emitted an available Prisma update notice and a Node experimental `localStorage` warning.
 - Native assessment: medium, under_budget; no review due.
 - Parent spot-check: `pnpm exec vitest run src/components/layout/admin-shell.test.tsx` — passed, 1 file and 25 tests.
 - Offline install did not change tracked dependency manifests or lockfile.
@@ -40,4 +41,4 @@ Issue #684 reports that the profile menu closes only when its trigger is clicked
 - Commit identity: `19569b719c95a5d7774eb671b361ccdc8c815321` — `fix(admin): close profile menu on outside click` on `bugfix/684-profile-menu-outside-click`.
 
 ## Next step
-Review and merge the issue-scoped commit through the approved GitHub workflow; no push or PR was performed in this task.
+PR #685 was opened and read back against `develop`: https://github.com/pabcrz/sebasam-app/pull/685. Await CI/review; merge remains human-owned.
