@@ -20,7 +20,7 @@ PR #669 was written against the work-order-only payment model. PRs #675 and #676
 - Preserve immutable payment/receipt history and existing payment-reversal semantics.
 - Use English for code, tests, comments, and this document.
 - Resolved TDD mode: strict TDD enabled per existing project testing-capabilities observation #2374; runner `pnpm test:ui`.
-- Delivery strategy: `ask-on-risk`; forecast approximately 250 authored changed lines, excluding generated files.
+- Delivery strategy: `exception-ok`; the user explicitly approved the `size:exception` for this single PR after the full branch diff measured 648 authored changed lines against `develop` (519 additions, 129 deletions; generated files excluded).
 - Route: delegated direct writer. Trigger evidence: integration spans multiple non-trivial payment/domain/query/test files and requires reading current merged source before editing.
 
 ## Tasks
@@ -29,13 +29,15 @@ PR #669 was written against the work-order-only payment model. PRs #675 and #676
   - Acceptance: standalone SALE notes remain payable with no WorkOrder and keep their own payable-note total as the source of truth.
   - Acceptance: capture/application/reversal/correction paths retain valid note references; no code assumes `payableNoteId === workOrderId`.
   - Acceptance: master/workshop WorkOrder behavior and payroll isolation remain unchanged.
-  - Checks observed: `pnpm prisma generate` passed; targeted RED at `pnpm exec vitest run src/features/payments/payable-note-payment.test.ts` failed because a priced WORK note still used its stale stored total (expected 4,640 cents, received 9,000); the post-fix focused runner passed 4 files / 59 tests; `pnpm typecheck`, `pnpm lint`, and `git diff --check` passed. The database-backed payment-request tests ran and passed; Prisma emitted the expected check-constraint error from the test asserting rejection of a customer-only request.
+  - Checks observed by the writer: `pnpm prisma generate` passed; targeted RED at `pnpm exec vitest run src/features/payments/payable-note-payment.test.ts` failed because a priced WORK note still used its stale stored total (expected 4,640 cents, received 9,000); post-fix focused runner passed 4 files / 59 tests; `pnpm typecheck`, `pnpm lint`, and `git diff --check` passed. The database-backed payment-request tests ran and passed; Prisma emitted the expected check-constraint error from the test asserting rejection of a customer-only request.
+  - Parent spot-check: the same 4-file Vitest command exceeded the 120-second tool timeout after three files reported passing; this second run is incomplete and was not retried.
   - Runtime harness: N/A — this work unit changes server-side payment/read-model behavior and uses focused Vitest tests; no configured E2E harness exists (testing-capabilities #2374).
   - Rollback boundary: revert the PayableNote read-model/query/payment-identity changes and their focused tests in this work unit; do not revert the preceding #669 replay commit.
-  - Evidence: code work-unit commit `ba1ebce`; focused verification passed 4 files / 59 tests. Native review deferred to parent; no remote operation performed.
+  - Evidence: code work-unit commit `ba1ebce`; writer-reported focused verification passed 4 files / 59 tests. Native high-risk review for this candidate was approved and acknowledged; it returned one non-blocking reliability warning. Parent readback confirmed the missing-note guard and application path are both restricted to completed WorkOrders. No corrective review transition was opened.
 
 ## Progress and Next Step
 - Confirmed PRs #675 and #676 merged; PR #669 remains open and GitHub reports `DIRTY`.
 - Read the merged schema and payable-note/payment domains through GitHub API; do not rely on the stale local main worktree.
-- Rebase completed locally as `941ad0a`; ODD-661-01 implementation is `ba1ebce`. No GitHub write, push, merge, or native review was performed; parent retains remote/RDD coordination.
+- Rebase completed locally as `941ad0a`; ODD-661-01 implementation is `ba1ebce`; task evidence is `00fdf42`.
+- The user approved `size:exception` for the single 648-line PR #669 and authorized the later `--force-with-lease` update. The local branch update is pending publication; no merge is authorized.
 - Engram mirror created and read back at topic `odd/661-dynamic-accounts/tasks` (observation #3918).
