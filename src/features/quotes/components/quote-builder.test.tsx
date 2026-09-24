@@ -209,6 +209,29 @@ describe("QuoteBuilder", () => {
     vi.unstubAllGlobals();
   });
 
+  it("keeps dropdown scrolling available and contains focused option rings", async () => {
+    const user = userEvent.setup();
+    const manyCustomers = Array.from({ length: 12 }, (_, index) => ({
+      id: `cust-${index}`,
+      name: `Customer ${index}`,
+    }));
+    render(<QuoteBuilder customers={manyCustomers} createAction={vi.fn()} />);
+
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+    await user.click(search);
+    expect(search).toHaveClass("focus-visible:ring-inset");
+
+    const listbox = screen.getByRole("listbox", { name: /resultados de clientes/i });
+    const firstOption = screen.getByRole("option", { name: "Customer 0" });
+
+    expect(listbox).toHaveClass("overflow-y-auto", "overscroll-contain", "touch-pan-y");
+    expect(listbox).toHaveStyle({ maxHeight: "224px" });
+
+    firstOption.focus();
+    expect(firstOption).toHaveFocus();
+    expect(firstOption).toHaveClass("focus-visible:ring-inset");
+  });
+
   it("requires a meaningful query and reuses identical cached searches", async () => {
     const user = userEvent.setup();
     const searchCustomersAction = vi.fn().mockResolvedValue([

@@ -726,6 +726,7 @@ export function QuoteBuilder({
               <Input
                 ref={customerInputRef}
                 id="customerId"
+                className="focus-visible:ring-inset"
                 role="combobox"
                 aria-controls="customer-results"
                 aria-expanded={isCustomerListOpen}
@@ -759,7 +760,7 @@ export function QuoteBuilder({
               {isSearchingCustomers ? <p className="text-sm text-[var(--color-text-muted)]" role="status">Buscando clientes...</p> : null}
               {customerSearchError ? <p className="text-sm text-[var(--color-status-danger-fg)]" role="alert">{customerSearchError}</p> : null}
               {isCustomerListOpen && !customerSearchError ? createPortal(
-                <div ref={customerListRef} id="customer-results" role="listbox" aria-label="Resultados de clientes" data-dialog-popover style={{ ...customerListPosition, pointerEvents: "auto" }} className="fixed z-[60] overflow-y-auto overscroll-contain rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1 shadow-lg">
+                <div ref={customerListRef} id="customer-results" role="listbox" aria-label="Resultados de clientes" data-dialog-popover style={{ ...customerListPosition, pointerEvents: "auto" }} className="fixed z-[60] overflow-y-auto overscroll-contain touch-pan-y rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1 shadow-lg">
                   {customerOptions.length ? customerOptions.map((customer) => (
                     <button
                       key={customer.id}
@@ -767,7 +768,7 @@ export function QuoteBuilder({
                       type="button"
                       role="option"
                       aria-selected={customerOptions[activeCustomerIndex]?.id === customer.id}
-                      className={`flex min-h-11 w-full items-center rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] ${customerOptions[activeCustomerIndex]?.id === customer.id ? "bg-[var(--color-bg-soft)]" : ""}`}
+                      className={`flex min-h-11 w-full items-center rounded-[var(--radius-sm)] px-3 py-2 text-left text-sm text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] ${customerOptions[activeCustomerIndex]?.id === customer.id ? "bg-[var(--color-bg-soft)]" : ""}`}
                       onMouseEnter={() => setActiveCustomerIndex(customerOptions.indexOf(customer))}
                       onPointerDown={(event) => event.preventDefault()}
                       onClick={() => selectCustomer(customer)}
