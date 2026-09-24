@@ -554,6 +554,14 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
     let finalAppliedCents = currentAppliedCents;
 
     if (newTotalCents < currentAppliedCents) {
+      const payableNote = quote.payableNote ?? (quote.workOrder
+        ? await tx.payableNote.findUnique({
+            where: { workOrderId: quote.workOrder.id },
+            select: { id: true, workOrderId: true },
+          })
+        : null);
+      if (!payableNote) throw new Error("The completed work order has no payable note.");
+
       let reductionNeeded = currentAppliedCents - newTotalCents;
       excessCreditCents = reductionNeeded;
       finalAppliedCents = newTotalCents;
@@ -592,7 +600,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
             paymentId: app.paymentId,
             paymentApplicationId: app.id,
             workOrderId: app.workOrderId,
-            payableNoteId: app.payableNoteId,
+            payableNoteId: payableNote.id,
             actorId,
             reason,
             reversedMovementId: origLedger?.id ?? null,
@@ -613,7 +621,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
               operationKey: `${operationKey}:app:${app.id}:replacement`,
               paymentId: app.paymentId,
               workOrderId: app.workOrderId,
-              payableNoteId: app.payableNoteId,
+              payableNoteId: payableNote.id,
               amountCents: replacementAmount,
               actorId,
             },
@@ -646,7 +654,7 @@ export async function correctCompletedWorkQuote(quoteId: string, input: unknown)
           replacementApplicationId: replacementAppId,
           replacementLedgerEntryId: replacementLedgerId,
           workOrderId: app.workOrderId,
-          payableNoteId: app.payableNoteId,
+          payableNoteId: payableNote.id,
           originalAmountCents: app.amountCents,
           reversalAmountCents: app.amountCents,
           replacementAmountCents: replacementAmount,

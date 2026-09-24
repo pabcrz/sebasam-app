@@ -4,6 +4,7 @@ import { PaymentMethod, WorkOrderStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { recordPayableNotePayment } from "@/features/payable-notes/domain";
 import {
   applyCustomerCredit,
   correctPayment,
@@ -11,7 +12,6 @@ import {
   recordCashPayment,
   reversePaymentCapture,
 } from "./domain";
-import { recordPayableNotePayment } from "@/features/payable-notes/domain";
 
 export async function recordPaymentAction(
   workOrderId: string,
@@ -24,31 +24,12 @@ export async function recordPaymentAction(
 
   const amountCents = parseCashAmountCents(amount);
 
-  const payableNoteDelegate = (prisma as typeof prisma & { payableNote?: unknown }).payableNote;
-  if (!payableNoteDelegate) {
-    const workOrder = await prisma.workOrder.findUnique({ where: { id: workOrderId }, select: { quoteId: true, status: true } });
-    if (!workOrder || workOrder.status !== WorkOrderStatus.COMPLETED) {
-      throw new Error("Solo se pueden registrar pagos desde notas de trabajos completados.");
-    }
-    const paymentMethod = Object.values(PaymentMethod).includes(method as PaymentMethod) ? (method as PaymentMethod) : PaymentMethod.CASH;
-    if (paymentMethod !== PaymentMethod.CASH && paymentMethod !== PaymentMethod.TRANSFER) {
-      throw new Error("Las notas solo admiten pagos en efectivo o transferencia.");
-    }
-    const result = await recordCashPayment({ quoteId: workOrder.quoteId, amountCents, operationKey, method: paymentMethod, ...(actorId ? { actorId } : {}) });
-    revalidatePath("/admin/quotes");
-    revalidatePath("/admin/work-orders");
-    revalidatePath("/admin/notas");
-    revalidatePath("/admin/customers");
-    return result;
-  }
-
-  const payableNote = await prisma.payableNote.findFirst({
-    where: { OR: [{ id: workOrderId }, { workOrderId }] },
-    select: { id: true, kind: true, workOrder: { select: { status: true } } },
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+    select: { quoteId: true, status: true },
   });
-
-  if (!payableNote || (payableNote.kind === "WORK" && payableNote.workOrder?.status !== WorkOrderStatus.COMPLETED)) {
-    throw new Error("Solo se pueden registrar pagos desde notas emitidas.");
+  if (!workOrder || workOrder.status !== WorkOrderStatus.COMPLETED) {
+    throw new Error("Solo se pueden registrar pagos desde notas de trabajos completados.");
   }
 
   const paymentMethod =
@@ -60,8 +41,8 @@ export async function recordPaymentAction(
     throw new Error("Las notas solo admiten pagos en efectivo o transferencia.");
   }
 
-  const result = await recordPayableNotePayment({
-    payableNoteId: payableNote.id,
+  const result = await recordCashPayment({
+    quoteId: workOrder.quoteId,
     amountCents,
     operationKey,
     method: paymentMethod,
@@ -73,11 +54,7 @@ export async function recordPaymentAction(
   revalidatePath("/admin/notas");
   revalidatePath("/admin/customers");
 
-  return {
-    payment: result.payment,
-    paidCents: result.note.paidCents,
-    remainingCents: result.note.remainingCents,
-  };
+  return result;
 }
 
 export async function recordPayableNotePaymentAction(
