@@ -24,6 +24,9 @@ describe("PublicBankAccountPage", () => {
     getPublicBankNameByToken.mockResolvedValue("BBVA");
     const result = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
     const serializedMetadata = JSON.stringify(result);
+    expect(result.title).toBe("Datos de cuenta bancaria BBVA");
+    expect(result.openGraph?.title).toBe("Datos de cuenta bancaria BBVA | SEBASAM");
+    expect(result.twitter?.title).toBe("Datos de cuenta bancaria BBVA | SEBASAM");
     expect(serializedMetadata).toContain("Datos de cuenta bancaria");
     expect(serializedMetadata).toContain("BBVA");
     expect(serializedMetadata).toContain("realizar tu pago");
@@ -33,6 +36,9 @@ describe("PublicBankAccountPage", () => {
   it("uses generic metadata when the bank name is missing", async () => {
     getPublicBankNameByToken.mockResolvedValue("   ");
     const result = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
+    expect(result.title).toBe("Datos de cuenta bancaria");
+    expect(result.openGraph?.title).toBe("Datos de cuenta bancaria | SEBASAM");
+    expect(result.twitter?.title).toBe("Datos de cuenta bancaria | SEBASAM");
     expect(JSON.stringify(result)).toContain("Datos de cuenta bancaria");
     expect(JSON.stringify(result)).not.toContain("|    ");
   });

@@ -13,14 +13,15 @@ export async function generateMetadata({
   const { token } = await params;
   const bankName = (await getPublicBankNameByToken(token))?.trim();
   const title = bankName
-    ? `Datos de cuenta bancaria ${bankName} | SEBASAM`
-    : "Datos de cuenta bancaria | SEBASAM";
+    ? `Datos de cuenta bancaria ${bankName}`
+    : "Datos de cuenta bancaria";
+  const brandedTitle = `${title} | SEBASAM`;
 
   return {
     title,
     description,
-    openGraph: { title, description, type: "website" },
-    twitter: { card: "summary_large_image", title, description },
+    openGraph: { title: brandedTitle, description, type: "website" },
+    twitter: { card: "summary_large_image", title: brandedTitle, description },
   };
 }
 

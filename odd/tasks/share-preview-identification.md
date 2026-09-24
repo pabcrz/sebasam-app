@@ -123,6 +123,15 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - Rollback boundary: revert only the new bank-name lookup, dynamic metadata/image rendering, focused tests, and this T4 evidence; preserve existing public account retrieval, page rendering, and token validation.
 - T4 work-unit commit: `e52e3da` (`feat(shares): identify bank in account previews`). Committed-only native assessment against `6a40db6765b22830c3236a711c8748c4c05a7116`: `risk: medium`, `review_due: false`, `review_due_reason: under_budget`, `changed_paths: 9`, `changed_lines: 307`; reason code `executable_change` referenced `src/app/cotizacion/[token]/opengraph-image.test.tsx`. No `next_transition` was returned. This assessment is not a review approval.
 
+### Corrective work unit — browser title
+
+- The user-provided DEVELOPMENT account URL returned HTTP 200. Its browser title duplicated `| SEBASAM` because the page title included the brand while the root layout applies the `%s | SEBASAM` template. The Open Graph title already had the single intended brand suffix.
+- Strict TDD: updated `src/app/datos-de-pago/cuenta/[token]/page.test.tsx` first to assert the unbranded bank-specific/generic `title` and singly branded Open Graph/Twitter titles. `pnpm exec vitest run 'src/app/datos-de-pago/cuenta/[token]/page.test.tsx'` was RED (2 failed, 4 passed), exposing the duplicate suffix in `title`. After separating the base page title from the branded social title, the same command was GREEN (6 passed).
+- Browser title now resolves through the root template to `Datos de cuenta bancaria santander | SEBASAM`; Open Graph and Twitter titles retain exactly one suffix: `Datos de cuenta bancaria santander | SEBASAM`. Generic fallback follows the same pattern. Dynamic bank name, fallback, sensitive-value exclusions, and payment wording remain covered and unchanged.
+- Checks: `pnpm lint` passed with 8 warnings in unrelated files; `pnpm typecheck` passed; `pnpm build` passed (production compile, TypeScript, static-page generation). Full `pnpm test:ui` was not rerun; the prior T4 full-suite result remains 7 failures in unrelated payment concurrency and quote-builder-dialog tests, with 1,573 passed.
+- Rollback boundary: revert only the `generateMetadata` title separation, its focused title assertions, and this corrective evidence; keep all previous T1/T2/T4 behavior intact.
+- Corrective work-unit commit and native assessment: pending.
+
 ## Rollback boundaries
 
 - Setup rollback: remove only `odd/tasks/share-preview-identification.md` and the issue-specific worktree/branch if explicitly requested; do not alter the base checkout or its unrelated payroll changes.
@@ -130,4 +139,4 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 
 ## Next step
 
-All approved issue #681 implementation is complete in this worktree. The T4 work-unit commit and committed-only native assessment are recorded above. Engram mirror remains pending because the store reported multiple active sessions; retry synchronization only when session identity is unambiguous. No PR or remote Git operation is authorized.
+The browser-title correction is the only remaining local work unit for issue #681. No PR or remote Git operation is authorized.
