@@ -121,7 +121,7 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - The existing full account page lookup, rendering props, and not-found validation were not changed. Tests mock the bank-name lookup and make no database request.
 - Full closure checks: `pnpm test:ui` failed (2 files failed, 193 passed; 7 tests failed, 1,573 passed). Failures were in unrelated payment concurrency integration tests (Prisma `payableNoteId` constraint) and quote-builder-dialog UI tests (timeouts/interaction failures). `pnpm lint` passed with 8 existing warnings outside changed files; `pnpm typecheck` passed; `pnpm build` passed.
 - Rollback boundary: revert only the new bank-name lookup, dynamic metadata/image rendering, focused tests, and this T4 evidence; preserve existing public account retrieval, page rendering, and token validation.
-- Work-unit commit and committed-only native assessment will be recorded after commit; assessment must not be represented as review approval.
+- T4 work-unit commit: `e52e3da` (`feat(shares): identify bank in account previews`). Committed-only native assessment against `6a40db6765b22830c3236a711c8748c4c05a7116`: `risk: medium`, `review_due: false`, `review_due_reason: under_budget`, `changed_paths: 9`, `changed_lines: 307`; reason code `executable_change` referenced `src/app/cotizacion/[token]/opengraph-image.test.tsx`. No `next_transition` was returned. This assessment is not a review approval.
 
 ## Rollback boundaries
 
@@ -130,4 +130,4 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 
 ## Next step
 
-T4 implementation and verification are complete. Record the work-unit commit and native assessment after commit. Engram mirror remains pending because the store reported multiple active sessions; retry synchronization only when session identity is unambiguous. No PR or remote Git operation is authorized.
+All approved issue #681 implementation is complete in this worktree. The T4 work-unit commit and committed-only native assessment are recorded above. Engram mirror remains pending because the store reported multiple active sessions; retry synchronization only when session identity is unambiguous. No PR or remote Git operation is authorized.
