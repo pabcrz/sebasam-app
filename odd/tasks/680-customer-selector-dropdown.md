@@ -35,6 +35,13 @@ Issue #680 reports that scrolling the customer selector in notes/quotes does not
 - A prior run of the full Vitest command had one unrelated timeout in `quote-builder-dialog.test.tsx` (`discards state and starts fresh when reopened`); the subsequent full rerun passed.
 - Runtime harness: N/A — the change is CSS utility behavior in an existing client-side component, covered by UI tests; no separate runtime harness was available or required.
 - Rollback boundary: revert only the customer-results listbox/option style changes and the corresponding regression test in the shared quote builder.
+- Work-unit commit: `ad1fdd1` — `fix(quotes): contain customer dropdown scrolling and focus`.
+- Parent follow-up review found the reported oversized ring belongs to the Cliente search input, whose shared `Input` defaults to a 3px external focus ring. The shared component remains unchanged; this selector now opts into `focus-visible:ring-inset` locally, with a regression assertion on its combobox class.
+- Follow-up RED: `pnpm exec vitest run src/features/quotes/components/quote-builder.test.tsx` failed the new Cliente combobox assertion because its class list lacked `focus-visible:ring-inset`.
+- Follow-up GREEN: `pnpm exec vitest run src/features/quotes/components/quote-builder.test.tsx` passed (73 tests); `pnpm lint` passed with the same 8 existing warnings outside this issue; `pnpm typecheck` passed.
+- Native assessment: medium, under_budget; no review due.
+- Parent spot-check command/result: not provided to this task, so it is not recorded as verified.
+- Follow-up commit identity will be recorded after commit creation.
 
 ## Next step
-Record the final commit hash and message after the single work-unit commit, then mirror this task document to Engram topic `odd/680-customer-selector-dropdown/tasks` and read back both copies.
+Next: review the follow-up work-unit and open a PR for issue #680 when authorized; no remote operations were performed in this task.

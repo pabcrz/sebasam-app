@@ -219,6 +219,7 @@ describe("QuoteBuilder", () => {
 
     const search = screen.getByRole("combobox", { name: /cliente/i });
     await user.click(search);
+    expect(search).toHaveClass("focus-visible:ring-inset");
 
     const listbox = screen.getByRole("listbox", { name: /resultados de clientes/i });
     const firstOption = screen.getByRole("option", { name: "Customer 0" });

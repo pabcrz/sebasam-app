@@ -726,6 +726,7 @@ export function QuoteBuilder({
               <Input
                 ref={customerInputRef}
                 id="customerId"
+                className="focus-visible:ring-inset"
                 role="combobox"
                 aria-controls="customer-results"
                 aria-expanded={isCustomerListOpen}
