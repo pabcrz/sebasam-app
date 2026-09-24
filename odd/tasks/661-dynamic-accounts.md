@@ -39,5 +39,5 @@ PR #669 was written against the work-order-only payment model. PRs #675 and #676
 - Confirmed PRs #675 and #676 merged; PR #669 remains open and GitHub reports `DIRTY`.
 - Read the merged schema and payable-note/payment domains through GitHub API; do not rely on the stale local main worktree.
 - Rebase completed locally as `941ad0a`; ODD-661-01 implementation is `ba1ebce`; task evidence is `00fdf42`.
-- The user approved `size:exception` for the single 650-line PR #669 and authorized the later `--force-with-lease` update. The local branch update is pending publication; no merge is authorized.
+- The user approved `size:exception` for the single 650-line PR #669 and authorized the `--force-with-lease` update. The branch has been synchronized to PR #669; the PR remains open, Vercel deployment is pending, and no merge is authorized.
 - Engram mirror created and read back at topic `odd/661-dynamic-accounts/tasks` (observation #3918).
