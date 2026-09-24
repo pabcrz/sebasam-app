@@ -170,4 +170,4 @@ T5 is implemented and locally assessed below. No PR or remote Git operation is a
     "review_due_reason": "under_budget"
   }
   ```
-- Engram mirror/read-back: pending.
+- Engram mirror/read-back: complete. `engram save --project sebasam-app` updated observation #3916 at topic `odd/share-preview-identification/tasks`; `mem_search` found it and `mem_get_observation` verified the complete task record, including T5 and the assessment evidence.
