@@ -156,4 +156,18 @@ T5 is implemented and locally assessed below. No PR or remote Git operation is a
 - The known full `pnpm test:ui` outcome remains 7 unrelated failures in payment concurrency and quote-builder-dialog suites (recorded above); the full suite was not rerun.
 - Rollback boundary: revert only the two OG-image generators, the focused assertions in their existing test files, and this T5 evidence/checklist; preserve all T1/T2/T4 behavior, public asset, metadata, lookups, and unrelated work.
 - Runtime harness: N/A — this is a generated social preview presentation change with no additional runtime workflow; the focused tests exercise both generators without data services.
-- T5 work-unit commit: pending. Committed-only native assessment: pending. Engram mirror/read-back: pending.
+- T5 work-unit commit: `6ace71d` (`feat(shares): add logo to generated previews`). The requested committed-only assessment against base `6a40db6765b22830c3236a711c8748c4c05a7116` returned `risk: medium`, `review_due: false`, `review_due_reason: under_budget`, `changed_paths: 9`, and `changed_lines: 386`; no `next_transition` was returned. This is an assessment, not native review approval. The assessment JSON was:
+
+  ```json
+  {
+    "schema": "gentle-ai.review-assessment/v1",
+    "risk": "medium",
+    "reasons": [{ "code": "executable_change", "path": "src/app/cotizacion/[token]/opengraph-image.test.tsx" }],
+    "changed_paths": 9,
+    "changed_lines": 386,
+    "candidate": { "kind": "base-diff", "base_ref": "6a40db6765b22830c3236a711c8748c4c05a7116", "consumed": false },
+    "review_due": false,
+    "review_due_reason": "under_budget"
+  }
+  ```
+- Engram mirror/read-back: pending.
