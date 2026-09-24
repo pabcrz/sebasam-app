@@ -263,7 +263,7 @@ apply_migration_sql_without_history quote_commercial_corrections_drifted
 psql "$(database_url quote_commercial_corrections_drifted)" -v ON_ERROR_STOP=1 -c 'ALTER TABLE "QuoteCommercialCorrection" ADD COLUMN "unexpectedDrift" TEXT' >/dev/null
 assert_migration_row quote_commercial_corrections_drifted 0
 
-if apply_pending_migrations quote_commercial_corrections_drifted "$(historical_schema_path quote_commercial_corrections_drifted)" >"${temporary_root}/drifted.log" 2>&1; then
+if apply_target_migration_with_history quote_commercial_corrections_drifted >"${temporary_root}/drifted.log" 2>&1; then
   printf 'Expected the drifted legacy schema to fail migration validation.\n' >&2
   exit 1
 fi
