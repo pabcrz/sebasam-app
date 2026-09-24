@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { SVGProps } from "react";
 import { AdminShell } from "./admin-shell";
 
@@ -44,6 +44,43 @@ vi.mock("@/components/font-scale-toggle", () => ({
 describe("AdminShell", () => {
   beforeEach(() => {
     mockPathname = "/admin";
+  });
+
+  it("closes the profile menu when clicking outside it", () => {
+    render(
+      <AdminShell displayName="Admin User" role="admin">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const profileMenu = screen.getByText("Salir").closest("details");
+    expect(profileMenu).not.toBeNull();
+    fireEvent.click(profileMenu!.querySelector("summary")!);
+    expect(profileMenu).toHaveProperty("open", true);
+
+    fireEvent.click(screen.getByText("Content"));
+
+    expect(profileMenu).toHaveProperty("open", false);
+  });
+
+  it("keeps the profile menu open for inside clicks and preserves trigger toggling", () => {
+    render(
+      <AdminShell displayName="Admin User" role="admin">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const profileMenu = screen.getByText("Salir").closest("details");
+    const trigger = profileMenu!.querySelector("summary")!;
+
+    fireEvent.click(trigger);
+    expect(profileMenu).toHaveProperty("open", true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    expect(profileMenu).toHaveProperty("open", true);
+
+    fireEvent.click(trigger);
+    expect(profileMenu).toHaveProperty("open", false);
   });
 
   it("marks the Inicio mobile tab as current on the dashboard route", () => {
@@ -225,4 +262,3 @@ describe("AdminShell", () => {
     expect(screen.getByRole("navigation", { name: "Navegación móvil" })).toHaveClass("print:hidden");
   });
 });
-

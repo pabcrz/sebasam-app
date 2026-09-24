@@ -147,7 +147,23 @@ export function getSectionTitle(pathname: string): string {
 export function AdminShell({ displayName, role, children }: AdminShellProps) {
   const [isGlobalPending, setGlobalPending] = React.useState(false);
   const [isMoreOpen, setIsMoreOpen] = React.useState(false);
+  const profileMenuRef = React.useRef<HTMLDetailsElement>(null);
   const pathname = usePathname();
+
+  React.useEffect(() => {
+    const closeProfileMenuOnOutsideClick = (event: MouseEvent) => {
+      if (
+        profileMenuRef.current?.open &&
+        event.target instanceof Node &&
+        !profileMenuRef.current.contains(event.target)
+      ) {
+        profileMenuRef.current.open = false;
+      }
+    };
+
+    document.addEventListener("click", closeProfileMenuOnOutsideClick);
+    return () => document.removeEventListener("click", closeProfileMenuOnOutsideClick);
+  }, []);
 
   // Reset global pending indicator and close more drawer when pathname changes
   React.useEffect(() => {
@@ -210,7 +226,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
             </div>
 
             <div className="flex items-center gap-1">
-              <details className="relative">
+              <details ref={profileMenuRef} className="relative">
                 <summary className="flex min-h-[var(--tap-min-height)] cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-[var(--color-bg-soft)] [&::-webkit-details-marker]:hidden">
                   <CircleUserRound className="h-5 w-5" aria-hidden="true" />
                   <span className="hidden text-right sm:flex sm:flex-col">
