@@ -1030,6 +1030,22 @@ export async function createDirectWorkOrder(input: unknown) {
             paymentDueDate: calculatedDueDate,
           },
         });
+        await tx.payableNote.create({
+          data: {
+            id: workOrder.id,
+            customerId: createdQuote.customerId,
+            quoteId: createdQuote.id,
+            workOrderId: workOrder.id,
+            referenceNumber: workOrder.number,
+            title: createdQuote.title,
+            subtotalCents: createdQuote.subtotalCents ?? 0,
+            taxCents: createdQuote.taxCents ?? 0,
+            totalCents: createdQuote.totalCents ?? 0,
+            status: data.isCompleted ? "ISSUED" : "DRAFT",
+            issuedAt: data.isCompleted ? (workOrder.completedAt ?? effectiveDate) : null,
+            paymentDueDate: workOrder.paymentDueDate,
+          },
+        });
         await tx.workAssignment.create({
           data: {
             workOrderId: workOrder.id,
