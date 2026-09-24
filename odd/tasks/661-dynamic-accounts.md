@@ -20,7 +20,7 @@ PR #669 was written against the work-order-only payment model. PRs #675 and #676
 - Preserve immutable payment/receipt history and existing payment-reversal semantics.
 - Use English for code, tests, comments, and this document.
 - Resolved TDD mode: strict TDD enabled per existing project testing-capabilities observation #2374; runner `pnpm test:ui`.
-- Delivery strategy: `exception-ok`; the user explicitly approved the `size:exception` for this single PR after the full branch diff measured 648 authored changed lines against `develop` (519 additions, 129 deletions; generated files excluded).
+- Delivery strategy: `exception-ok`; the user explicitly approved the `size:exception` for this single PR after the full branch diff measured 650 authored changed lines against `develop` (521 additions, 129 deletions; generated files excluded).
 - Route: delegated direct writer. Trigger evidence: integration spans multiple non-trivial payment/domain/query/test files and requires reading current merged source before editing.
 
 ## Tasks
@@ -39,5 +39,5 @@ PR #669 was written against the work-order-only payment model. PRs #675 and #676
 - Confirmed PRs #675 and #676 merged; PR #669 remains open and GitHub reports `DIRTY`.
 - Read the merged schema and payable-note/payment domains through GitHub API; do not rely on the stale local main worktree.
 - Rebase completed locally as `941ad0a`; ODD-661-01 implementation is `ba1ebce`; task evidence is `00fdf42`.
-- The user approved `size:exception` for the single 648-line PR #669 and authorized the later `--force-with-lease` update. The local branch update is pending publication; no merge is authorized.
+- The user approved `size:exception` for the single 650-line PR #669 and authorized the later `--force-with-lease` update. The local branch update is pending publication; no merge is authorized.
 - Engram mirror created and read back at topic `odd/661-dynamic-accounts/tasks` (observation #3918).
