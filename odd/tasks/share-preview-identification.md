@@ -73,7 +73,7 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - [x] Created the issue-specific local worktree and branch from local `develop`.
 - [x] Created and read back this feature task document before any app source edit; corrected its TDD source and route evidence before implementation.
 - [x] Resolve the effective TDD mode before implementation.
-- [x] Implement T1 and T2; closure checks passed, with local T2 work-unit commit pending.
+- [x] Implement T1 and T2, verify acceptance criteria, and commit both work units.
 
 ## Verification evidence
 
@@ -102,7 +102,7 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - The OG metadata and card contain only fixed generic payment purpose text; they do not incorporate route token, bank, account holder, account number, CLABE, or other per-account values. `getPublicBankAccountByToken`, page rendering, and not-found handling are unchanged.
 - T2 rollback boundary: revert only this route's metadata, its token-scoped `opengraph-image.tsx`, and the focused test changes; do not touch payment account storage, share-token resolution, or payment rendering.
 - Full closure checks: `pnpm test:ui` passed (192 files passed, 3 skipped; 1,549 tests passed, 29 skipped); `pnpm lint` passed with 8 warnings, all outside the changed files; `pnpm typecheck` passed; `pnpm build` passed, including production compilation, TypeScript, and static-page generation.
-- T2 work-unit commit identity: pending.
+- T2 work-unit commit: `edfe51a` (`feat(shares): brand public bank account preview`). Its committed-only assessment against base `6a40db6765b22830c3236a711c8748c4c05a7116` reported `risk: medium`, `review_due: false`, `review_due_reason: under_budget`, `changed_paths: 8`, and `changed_lines: 237`; no `next_transition` was returned.
 
 ## Rollback boundaries
 
@@ -111,4 +111,4 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 
 ## Next step
 
-Finalize the T2 work-unit commit and its post-commit assessment. The Engram mirror remains pending because the store reported multiple active sessions; preserve the local task document and retry synchronization only when session identity is unambiguous.
+All approved issue #681 work is complete in this worktree. Engram mirror remains pending because the store reported multiple active sessions; retry synchronization only when session identity is unambiguous. No PR or remote Git operation is authorized.
