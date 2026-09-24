@@ -32,6 +32,7 @@ Issue #680 reports that scrolling the customer selector in notes/quotes does not
 - RED: `pnpm exec vitest run src/features/quotes/components/quote-builder.test.tsx` failed the new contract test because the listbox did not include `touch-pan-y`; it already had bounded height, vertical overflow, and overscroll containment.
 - GREEN: after adding touch gesture panning and making option focus rings inset, the focused suite passed (73 tests).
 - Verification: `pnpm test:ui -- src/features/quotes/components/quote-builder.test.tsx` passed (192 files, 1548 tests passed, 3 files/29 tests skipped); `pnpm lint` passed with 8 existing warnings outside this issue; `pnpm typecheck` passed.
+- Production build: `pnpm build` passed (Prisma Client generated; Next.js compile, TypeScript checks, and static page generation completed). Output included an upstream Prisma update notice and a Node experimental `localStorage` warning.
 - A prior run of the full Vitest command had one unrelated timeout in `quote-builder-dialog.test.tsx` (`discards state and starts fresh when reopened`); the subsequent full rerun passed.
 - Runtime harness: N/A — the change is CSS utility behavior in an existing client-side component, covered by UI tests; no separate runtime harness was available or required.
 - Rollback boundary: revert only the customer-results listbox/option style changes and the corresponding regression test in the shared quote builder.
