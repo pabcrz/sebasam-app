@@ -937,6 +937,23 @@ export async function createDirectWorkOrder(input: unknown) {
           },
         });
 
+        await tx.payableNote.create({
+          data: {
+            id: workOrder.id,
+            customerId: data.customerId ?? null,
+            quoteId: createdQuote.id,
+            workOrderId: workOrder.id,
+            referenceNumber: workOrder.folio ?? workOrder.number,
+            title: createdQuote.title,
+            subtotalCents: totals.subtotalCents ?? 0,
+            taxCents: totals.taxCents ?? 0,
+            totalCents: totals.totalCents ?? 0,
+            status: data.isCompleted ? "ISSUED" : "DRAFT",
+            issuedAt: data.isCompleted ? (noteAllocation?.issuedAt ?? effectiveDate) : null,
+            paymentDueDate: calculatedDueDate,
+          },
+        });
+
         return { quote: createdQuote, workOrder };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
