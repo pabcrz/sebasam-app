@@ -1,8 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const { getPaymentSettings, getPublicBankAccountByToken, notFound, imageResponseMock } = vi.hoisted(() => ({
+const { getPaymentSettings, getPublicBankAccountByToken, getPublicBankNameByToken, notFound, imageResponseMock } = vi.hoisted(() => ({
   getPaymentSettings: vi.fn(),
   getPublicBankAccountByToken: vi.fn(),
+  getPublicBankNameByToken: vi.fn(),
   notFound: vi.fn(),
   imageResponseMock: vi.fn(function ImageResponse(element: unknown) { return { element }; }),
 }));
@@ -12,25 +13,43 @@ vi.mock("next/og", () => ({ ImageResponse: imageResponseMock }));
 vi.mock("@/features/payment-settings/domain", () => ({
   getPaymentSettings,
   getPublicBankAccountByToken,
+  getPublicBankNameByToken,
 }));
 
-import PublicBankAccountPage, { metadata } from "./page";
+import PublicBankAccountPage, { generateMetadata } from "./page";
 import OpenGraphImage from "./opengraph-image";
 
 describe("PublicBankAccountPage", () => {
-  it("describes payment account details without exposing account data", () => {
-    const serializedMetadata = JSON.stringify(metadata);
+  it("includes the bank name in metadata without exposing account data", async () => {
+    getPublicBankNameByToken.mockResolvedValue("BBVA");
+    const result = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
+    const serializedMetadata = JSON.stringify(result);
     expect(serializedMetadata).toContain("Datos de cuenta bancaria");
+    expect(serializedMetadata).toContain("BBVA");
     expect(serializedMetadata).toContain("realizar tu pago");
-    expect(serializedMetadata).not.toMatch(/accountNumber|clabe|123456|012345678901234567/i);
+    expect(serializedMetadata).not.toMatch(/pago seguro|secure payment|gateway|accountHolder|accountNumber|clabe|123456|012345678901234567|valid-token/i);
   });
 
-  it("renders a recognizable payment image without account details", () => {
-    OpenGraphImage();
+  it("uses generic metadata when the bank name is missing", async () => {
+    getPublicBankNameByToken.mockResolvedValue("   ");
+    const result = await generateMetadata({ params: Promise.resolve({ token: "valid-token" }) });
+    expect(JSON.stringify(result)).toContain("Datos de cuenta bancaria");
+    expect(JSON.stringify(result)).not.toContain("|    ");
+  });
+
+  it("renders a recognizable payment image with bank name and no sensitive or gateway claims", async () => {
+    getPublicBankNameByToken.mockResolvedValue("BBVA");
+    await OpenGraphImage({ params: Promise.resolve({ token: "valid-token" }) });
     const image = imageResponseMock.mock.calls.at(-1)?.[0];
     expect(JSON.stringify(image)).toContain("Datos de cuenta bancaria");
-    expect(JSON.stringify(image)).toContain("PAGO SEGURO");
-    expect(JSON.stringify(image)).not.toMatch(/accountNumber|clabe|123456|012345678901234567/i);
+    expect(JSON.stringify(image)).toContain("BBVA");
+    expect(JSON.stringify(image)).not.toMatch(/pago seguro|gateway|accountHolder|accountNumber|clabe|123456|012345678901234567|valid-token/i);
+  });
+
+  it("uses a generic bank label in the image when the name is missing", async () => {
+    getPublicBankNameByToken.mockResolvedValue(null);
+    await OpenGraphImage({ params: Promise.resolve({ token: "valid-token" }) });
+    expect(JSON.stringify(imageResponseMock.mock.calls.at(-1)?.[0])).toContain("Banco");
   });
 
   beforeEach(() => {

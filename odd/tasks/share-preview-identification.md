@@ -18,19 +18,22 @@ Recipients need to recognize what a shared link concerns before opening it. Paym
 
 - **T1:** Make quote, work-order, and service-note share previews identify customer and unit/operator before the folio.
 - **T2:** Make the payment-account share link preview explicitly identify payment details and be visually recognizable.
+- **T4:** Refine the bank-account preview to include the account's bank name dynamically and remove claims of secure/gateway-based payment processing.
 - Preserve useful fallbacks when identifying information is unavailable.
 - Do not leak payment credentials or account details in metadata.
-- Implement only T1 and T2 within the approved issue scope; task-document and setup-only workers must not edit application source.
+- The bank name may be shown; do not show account numbers, CLABE, account holder, or token in metadata or the Open Graph image.
+- Do not claim that payment is secure or processed through an integrated gateway; occasional Mercado Pago use does not make this bank-account share link a payment gateway.
+- Implement only T1, T2, and the accepted T4 refinement within the approved issue scope; task-document and setup-only workers must not edit application source.
 - Do not fetch or push. Local work-unit commits on this issue branch are part of the authorized implementation.
 
 ## Authorized scope
 
-Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authorized local branch/worktree: `feature/681-identifiable-share-previews` at `/Users/pabcrz/Dev/sebasam/sebasam-app-worktrees/681-identifiable-share-previews`, based on the existing local `develop` branch. Application changes for T1 and T2 are authorized only in this worktree and only within issue #681's stated scope. Do not fetch or push.
+Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authorized local branch/worktree: `feature/681-identifiable-share-previews` at `/Users/pabcrz/Dev/sebasam/sebasam-app-worktrees/681-identifiable-share-previews`, based on the existing local `develop` branch. Application changes for T1, T2, and accepted refinement T4 are authorized only in this worktree and only within issue #681's stated scope. Do not fetch or push.
 
 ## Route and trigger evidence
 
-- **Route:** Delegated-direct. The user authorized implementation in the requested worktree; source mapping spans multiple files and the writer trigger applies because T1/T2 require non-trivial changes across multiple files.
-- **Trigger evidence:** The approved issue and task request require both T1 and T2 behaviors, fallback preservation, and payment-metadata privacy. The mapping and multi-file writer delegation triggers select delegated-direct; they do not select SDD.
+- **Route:** Delegated-direct. The user authorized implementation in the requested worktree; T4 changes metadata, image rendering, and regression coverage across multiple non-trivial files.
+- **Trigger evidence:** The approved issue and accepted T4 refinement require bank-name identification, safe generic fallback, removal of unsupported payment-security/gateway claims, and account-detail privacy. The multi-file writer trigger selects delegated-direct; it does not select SDD.
 
 ## Effective TDD mode and runner
 
@@ -44,6 +47,7 @@ Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authori
 - [x] **T1** — Update quote, work-order, and service-note share previews to prioritize customer and unit/operator identification before the folio; retain useful fallbacks.
 - [x] **T2** — Update the payment-account share-link preview to explicitly identify payment details and appear visually recognizable, without exposing credentials or account details in metadata.
 - [x] **T3** — Resolve and record effective TDD mode/source before app implementation.
+- [x] **T4** — Show the bank name dynamically in the account preview; remove unsupported security/gateway claims.
 
 ## Acceptance criteria
 
@@ -51,6 +55,8 @@ Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authori
 - Missing identifying values use useful existing or defined fallback content rather than blank/unhelpful previews.
 - The payment-account share preview clearly identifies payment details and is visually distinguishable.
 - Metadata contains no payment credentials or account details.
+- The account preview identifies the bank name when available, with generic fallback copy when absent.
+- The preview does not claim “pago seguro” or imply an integrated payment gateway.
 - Focused tests cover the preview content, fallback behavior, and sensitive-metadata exclusion; applicable lint/typecheck/build checks are recorded.
 
 ## Applicable checks
@@ -74,6 +80,7 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - [x] Created and read back this feature task document before any app source edit; corrected its TDD source and route evidence before implementation.
 - [x] Resolve the effective TDD mode before implementation.
 - [x] Implement T1 and T2, verify acceptance criteria, and commit both work units.
+- [x] Implement accepted refinement T4, verify its acceptance criteria, and commit the refinement work unit.
 
 ## Verification evidence
 
@@ -104,6 +111,18 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - Full closure checks: `pnpm test:ui` passed (192 files passed, 3 skipped; 1,549 tests passed, 29 skipped); `pnpm lint` passed with 8 warnings, all outside the changed files; `pnpm typecheck` passed; `pnpm build` passed, including production compilation, TypeScript, and static-page generation.
 - T2 work-unit commit: `edfe51a` (`feat(shares): brand public bank account preview`). Its committed-only assessment against base `6a40db6765b22830c3236a711c8748c4c05a7116` reported `risk: medium`, `review_due: false`, `review_due_reason: under_budget`, `changed_paths: 8`, and `changed_lines: 237`; no `next_transition` was returned.
 
+### T4 accepted refinement — implemented
+
+- User approved adding the bank name dynamically to the account preview so the shared link is easier to identify.
+- Remove any “pago seguro” claim and wording that suggests an integrated payment gateway; Mercado Pago may be used occasionally, but this link displays account/payment details rather than processing payments.
+- Preserve generic fallback copy when no bank name is available and keep account numbers, CLABE, account-holder data, and token out of metadata and the Open Graph image.
+- Strict TDD: `pnpm exec vitest run 'src/app/datos-de-pago/cuenta/[token]/page.test.tsx'` failed the four new dynamic-bank/fallback assertions (RED; 4 failed, 2 passed). After implementation the same command passed all 6 tests (GREEN).
+- Added `getPublicBankNameByToken`, which applies the same public-share eligibility constraints as the full account lookup but selects only `bankName`. Metadata and the OG image use this narrow lookup; metadata includes the bank when nonblank, and the image uses `Banco` when missing. No account number, CLABE, holder, token, or gateway/security claim is included.
+- The existing full account page lookup, rendering props, and not-found validation were not changed. Tests mock the bank-name lookup and make no database request.
+- Full closure checks: `pnpm test:ui` failed (2 files failed, 193 passed; 7 tests failed, 1,573 passed). Failures were in unrelated payment concurrency integration tests (Prisma `payableNoteId` constraint) and quote-builder-dialog UI tests (timeouts/interaction failures). `pnpm lint` passed with 8 existing warnings outside changed files; `pnpm typecheck` passed; `pnpm build` passed.
+- Rollback boundary: revert only the new bank-name lookup, dynamic metadata/image rendering, focused tests, and this T4 evidence; preserve existing public account retrieval, page rendering, and token validation.
+- Work-unit commit and committed-only native assessment will be recorded after commit; assessment must not be represented as review approval.
+
 ## Rollback boundaries
 
 - Setup rollback: remove only `odd/tasks/share-preview-identification.md` and the issue-specific worktree/branch if explicitly requested; do not alter the base checkout or its unrelated payroll changes.
@@ -111,4 +130,4 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 
 ## Next step
 
-All approved issue #681 work is complete in this worktree. Engram mirror remains pending because the store reported multiple active sessions; retry synchronization only when session identity is unambiguous. No PR or remote Git operation is authorized.
+T4 implementation and verification are complete. Record the work-unit commit and native assessment after commit. Engram mirror remains pending because the store reported multiple active sessions; retry synchronization only when session identity is unambiguous. No PR or remote Git operation is authorized.

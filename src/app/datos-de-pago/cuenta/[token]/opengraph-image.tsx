@@ -1,9 +1,17 @@
 import { ImageResponse } from "next/og";
+import { getPublicBankNameByToken } from "@/features/payment-settings/domain";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpenGraphImage() {
+export default async function OpenGraphImage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = await params;
+  const bankName = (await getPublicBankNameByToken(token))?.trim() || "Banco";
+
   return new ImageResponse(
     (
       <div
@@ -35,7 +43,7 @@ export default function OpenGraphImage() {
             fontWeight: 700,
           }}
         >
-          PAGO SEGURO
+          {bankName}
         </div>
       </div>
     ),
