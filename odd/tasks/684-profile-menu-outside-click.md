@@ -29,13 +29,15 @@ Issue #684 reports that the profile menu closes only when its trigger is clicked
 ## Progress and evidence
 - Approved issue #684; isolated branch: `bugfix/684-profile-menu-outside-click`.
 - Initial check: original checkout contains unrelated modified payroll files; implementation is isolated in a separate worktree.
-- Strict TDD RED: the outside-click regression test failed before implementation because the profile `<details>` remained open after an outside click (observed by the user after the offline install; RED was not rerun).
+- Strict TDD RED: the outside-click regression test failed before implementation because the profile `<details>` remained open after an outside click (observed after the offline install; RED was not rerun).
 - GREEN: `pnpm exec vitest run src/components/layout/admin-shell.test.tsx` — passed, 1 file and 25 tests.
 - `pnpm lint` — passed with 0 errors and 8 warnings in unrelated payment, quote, and work-order files.
 - `pnpm typecheck` — passed after `pnpm exec prisma generate`; the first typecheck attempt failed because the locally installed Prisma client had not been generated, and generation used the checked-in local schema only.
+- Native assessment: medium, under_budget; no review due.
+- Parent spot-check: `pnpm exec vitest run src/components/layout/admin-shell.test.tsx` — passed, 1 file and 25 tests.
 - Offline install did not change tracked dependency manifests or lockfile.
 - Rollback boundary: revert the task commit to remove outside-click handling, its regression tests, and this task evidence; no runtime harness beyond the focused jsdom tests applies.
-- Commit identity: `fix(admin): close profile menu on outside click` on `bugfix/684-profile-menu-outside-click` (hash is captured in the task handoff).
+- Commit identity: `19569b719c95a5d7774eb671b361ccdc8c815321` — `fix(admin): close profile menu on outside click` on `bugfix/684-profile-menu-outside-click`.
 
 ## Next step
 Review and merge the issue-scoped commit through the approved GitHub workflow; no push or PR was performed in this task.
