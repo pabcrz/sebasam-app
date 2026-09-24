@@ -125,15 +125,18 @@ historical_schema_path() {
 apply_target_migration_with_history() {
   local database_name="$1"
   local schema_path
-  local migration_dir migration_dir_name
+  local migration_root migration_dir migration_dir_name
 
   schema_path="$(historical_schema_path "$database_name")"
-  if [[ ! -d "$(dirname "$schema_path")/migrations/${migration_name}" ]]; then
-    printf 'Target migration %s is missing from the historical migration set.\n' "$migration_name" >&2
+  migration_root="$(dirname "$schema_path")/migrations"
+  if [[ -e "${migration_root}/${migration_name}" ]]; then
+    printf 'Target migration %s unexpectedly exists before it is restored.\n' "$migration_name" >&2
     return 1
   fi
 
-  for migration_dir in "$(dirname "$schema_path")"/migrations/*; do
+  cp -R "prisma/migrations/${migration_name}" "$migration_root/"
+
+  for migration_dir in "$migration_root"/*; do
     [[ -d "$migration_dir" ]] || continue
     migration_dir_name="${migration_dir##*/}"
     if [[ "$migration_dir_name" > "$migration_name" ]]; then
@@ -141,6 +144,11 @@ apply_target_migration_with_history() {
       return 1
     fi
   done
+
+  if [[ ! -d "${migration_root}/${migration_name}" ]]; then
+    printf 'Target migration %s is missing from the restored historical migration set.\n' "$migration_name" >&2
+    return 1
+  fi
 
   apply_pending_migrations "$database_name" "$schema_path"
 }
@@ -154,7 +162,7 @@ prepare_pre_migration_schema() {
   for migration_dir in "${baseline_root}"/migrations/*; do
     [[ -d "$migration_dir" ]] || continue
     migration_dir_name="${migration_dir##*/}"
-    if [[ "$migration_dir_name" > "$migration_name" ]]; then
+    if [[ "$migration_dir_name" > "$migration_name" || "$migration_dir_name" == "$migration_name" ]]; then
       rm -rf "$migration_dir"
     fi
   done
