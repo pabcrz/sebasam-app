@@ -114,7 +114,14 @@ export async function generateMetadata({ params }: CotizacionPageProps): Promise
       operationalDate: quote.operationalDate,
       folio,
     });
-    const displayTitle = `${documentType} ${folio || quote.number} | SEBASAM`;
+    const identifyingDetails = [
+      customerDisplayName,
+      identity.operatorName ? `${identity.operatorRole}: ${identity.operatorName}` : null,
+      vehicleDescription,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const displayTitle = `${identifyingDetails ? `${identifyingDetails} · ` : ""}${documentType} ${folio || quote.number} | SEBASAM`;
     const description = `${documentType} para ${customerDisplayName} - ${vehicleDescription}`;
 
     return {

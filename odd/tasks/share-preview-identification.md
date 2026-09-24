@@ -1,0 +1,103 @@
+# Identifiable Share Previews — Issue #681
+
+Issue: [#681 — Identifiable share previews](https://github.com/pabcrz/sebasam-app/issues/681) (approved)
+
+## Objective
+
+Make shared quotes, work orders, service notes, and payment-account links recognizable from their preview while preserving useful fallbacks and protecting sensitive payment information in metadata.
+
+## Problem
+
+Current share previews do not reliably identify the customer and unit/operator before the folio for quote, work-order, and service-note links; payment-account links also need an explicit payment-details identity and visually recognizable presentation.
+
+## Why
+
+Recipients need to recognize what a shared link concerns before opening it. Payment metadata must communicate the purpose without exposing credentials or account details.
+
+## Scope and constraints
+
+- **T1:** Make quote, work-order, and service-note share previews identify customer and unit/operator before the folio.
+- **T2:** Make the payment-account share link preview explicitly identify payment details and be visually recognizable.
+- Preserve useful fallbacks when identifying information is unavailable.
+- Do not leak payment credentials or account details in metadata.
+- Implement only T1 and T2 within the approved issue scope; task-document and setup-only workers must not edit application source.
+- Do not fetch or push. Local work-unit commits on this issue branch are part of the authorized implementation.
+
+## Authorized scope
+
+Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authorized local branch/worktree: `feature/681-identifiable-share-previews` at `/Users/pabcrz/Dev/sebasam/sebasam-app-worktrees/681-identifiable-share-previews`, based on the existing local `develop` branch. Application changes for T1 and T2 are authorized only in this worktree and only within issue #681's stated scope. Do not fetch or push.
+
+## Route and trigger evidence
+
+- **Route:** Delegated-direct. The user authorized implementation in the requested worktree; source mapping spans multiple files and the writer trigger applies because T1/T2 require non-trivial changes across multiple files.
+- **Trigger evidence:** The approved issue and task request require both T1 and T2 behaviors, fallback preservation, and payment-metadata privacy. The mapping and multi-file writer delegation triggers select delegated-direct; they do not select SDD.
+
+## Effective TDD mode and runner
+
+- **Mode:** Strict TDD enabled.
+- **Source:** Existing project Engram testing-capabilities configuration `sdd/sebasam-app/testing-capabilities` (#2374), recorded 2026-08-27. This was read as existing project configuration; no `sdd-init` command was run.
+- **Runner:** `pnpm test:ui` (`vitest run`). Focused coverage: `pnpm test:ui -- <focused test file>`; app checks: `pnpm lint`, `pnpm typecheck`, and `pnpm build` if production build output may be affected, per `docs/AI_WORKFLOW.md`.
+- **Requirement:** For each behavior, first add/update focused tests and observe RED, implement to GREEN, then refactor without changing behavior.
+
+## Actionable checklist
+
+- [x] **T1** — Update quote, work-order, and service-note share previews to prioritize customer and unit/operator identification before the folio; retain useful fallbacks.
+- [ ] **T2** — Update the payment-account share-link preview to explicitly identify payment details and appear visually recognizable, without exposing credentials or account details in metadata.
+- [x] **T3** — Resolve and record effective TDD mode/source before app implementation.
+
+## Acceptance criteria
+
+- Quote, work-order, and service-note previews surface customer and unit/operator identification before the folio when available.
+- Missing identifying values use useful existing or defined fallback content rather than blank/unhelpful previews.
+- The payment-account share preview clearly identifies payment details and is visually distinguishable.
+- Metadata contains no payment credentials or account details.
+- Focused tests cover the preview content, fallback behavior, and sensitive-metadata exclusion; applicable lint/typecheck/build checks are recorded.
+
+## Applicable checks
+
+- `pnpm test:ui -- <focused test file>` for focused preview and metadata tests (exact focused test file to be determined during implementation).
+- `pnpm lint` and `pnpm typecheck` for app-code changes.
+- `pnpm build` if changes can affect production build output.
+- Keep focused tests with each behavior and record exact test commands/results and commit IDs here; run `pnpm lint` and `pnpm typecheck` at task closure, plus `pnpm build` if production output is affected.
+
+## Advisory changed-line forecast
+
+Estimate only: approximately **80–180 authored changed lines** across implementation, focused tests, and supporting metadata/presentation changes; generated artifacts excluded. Multi-file scope has uncertainty, so revisit after mapping actual call sites. This is below the repository's 400-line review budget as a planning estimate, not a guarantee.
+
+## Delivery strategy
+
+**`ask-on-risk`** — ask before expanding scope or crossing the review-size/risk boundary; do not silently split or broaden this issue.
+
+## Progress
+
+- [x] Created the issue-specific local worktree and branch from local `develop`.
+- [x] Created and read back this feature task document before any app source edit; corrected its TDD source and route evidence before implementation.
+- [x] Resolve the effective TDD mode before implementation.
+- [x] Implement T1; T2 remains in progress.
+
+## Verification evidence
+
+- Base commit: `6a40db6765b22830c3236a711c8748c4c05a7116` (local `develop`).
+- Worktree and branch creation succeeded using local refs only.
+- No application source files were changed in this setup task.
+- Strict TDD is enabled by the existing project testing-capabilities observation; its exact UI runner is `pnpm test:ui`.
+- Feature document read-back: successfully read after creation; contents and scope verified.
+- Engram mirror: pending.
+
+### T1 outcome
+
+- Shared `/cotizacion/[token]` Open Graph and Twitter titles now lead with customer, operator (when present), and vehicle description; the opaque folio follows those identifiers. The existing fallback still returns the document type when token/customer data is unavailable.
+- The Open Graph image now headlines the customer, follows with vehicle/operator identity, and demotes the folio to a smaller document-reference line. Missing customer and vehicle continue to use existing useful fallbacks.
+- Strict TDD: `pnpm exec vitest run 'src/app/cotizacion/[token]/page.test.tsx'` first failed three metadata assertions (RED); after implementation it passed (9 tests). `pnpm exec vitest run 'src/app/cotizacion/[token]/opengraph-image.test.tsx'` first failed the new ordering assertion (RED); after implementation it passed (4 tests).
+- Rollback boundary: revert only the quote metadata and OG-image changes and their two focused tests; preserve unrelated code and current fallback behavior.
+- T1 commit identity: pending.
+- `pnpm test:ui -- 'src/app/cotizacion/[token]/page.test.tsx'` was attempted but its script ran the full suite; 79 suites failed from ungenerated Prisma Client, plus one unrelated assertion. After `pnpm exec prisma generate`, the direct focused Vitest commands above ran successfully.
+
+## Rollback boundaries
+
+- Setup rollback: remove only `odd/tasks/share-preview-identification.md` and the issue-specific worktree/branch if explicitly requested; do not alter the base checkout or its unrelated payroll changes.
+- Implementation rollback: revert only the files and behavior introduced for T1/T2, preserving pre-existing fallback behavior and unrelated changes. Do not remove or modify payment credentials/account data; none belongs in preview metadata.
+
+## Next step
+
+Map the share-preview call sites and implement T1/T2 within approved issue #681 scope using strict TDD. The Engram mirror remains pending because the store reported multiple active sessions; preserve the local task document and retry synchronization only when session identity is unambiguous.

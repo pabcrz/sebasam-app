@@ -64,6 +64,11 @@ describe("OpengraphImage for /cotizacion/[token]", () => {
     expect(response.type).toBe("image-response");
     expect(getSharedQuoteByTokenMock).toHaveBeenCalledWith("valid-token");
     expect(response.options).toEqual({ width: 1200, height: 630 });
+    expect(collectText(response.element)).toContain("Transportes San Juan");
+    expect(collectText(response.element)).toContain("Kenworth T680");
+    expect(collectText(response.element).indexOf("Transportes San Juan")).toBeLessThan(
+      collectText(response.element).indexOf("C-0826-007"),
+    );
   });
 
   it("renders assigned work as a service note", async () => {

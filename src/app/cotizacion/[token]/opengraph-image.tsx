@@ -5,6 +5,7 @@ import {
   resolveDocumentFolio,
   resolveDocumentPresentation,
 } from "@/features/quotes/lib/document-resolver";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
 
 export const size = {
   width: 1200,
@@ -25,7 +26,8 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
     const quote = sharedQuote.quote;
     const { documentTitle } = resolveDocumentPresentation(quote);
     const displayFolio = resolveDocumentFolio(quote) || quote.number;
-    const customerName = quote.customer?.name ?? "Sin cliente";
+    const identity = resolveCustomerDisplayIdentity(quote);
+    const customerName = identity.displayName;
     const vehicleDescription = quote.vehicle
       ? formatVehicle(quote.vehicle)
       : formatSnapshotVehicle(quote.vehicleSnapshot);
@@ -122,20 +124,23 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
               boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
             }}
           >
-            {/* Folio & Subtitle */}
+            {/* Customer and vehicle identity lead; folio remains secondary. */}
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
                 <span
                   style={{
-                    fontSize: "50px",
+                    fontSize: "38px",
                     fontWeight: 900,
                     color: "#FFFFFF",
                     letterSpacing: "-0.5px",
                   }}
                 >
-                  {displayFolio}
+                  {customerName}
                 </span>
               </div>
+              <span style={{ fontSize: "24px", color: "#CBD5E1", fontWeight: 600 }}>
+                {vehicleDescription}{identity.operatorName ? ` · ${identity.operatorRole}: ${identity.operatorName}` : ""}
+              </span>
               {quote.title ? (
                 <span
                   style={{
@@ -150,6 +155,9 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
                   {quote.title}
                 </span>
               ) : null}
+              <span style={{ fontSize: "16px", color: "#64748B", fontWeight: 600 }}>
+                {documentTitle} · {displayFolio}
+              </span>
             </div>
 
             <div

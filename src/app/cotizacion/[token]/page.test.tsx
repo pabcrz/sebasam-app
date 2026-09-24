@@ -146,13 +146,13 @@ describe("CotizacionPage", () => {
         title: { absolute: "CristianDelToro-freightliner-COT-001" },
         description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
         openGraph: {
-          title: "Cotización COT-001 | SEBASAM",
+          title: "Cristian Del Toro · freightliner - Sin placas · Cotización COT-001 | SEBASAM",
           description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
           type: "website",
         },
         twitter: {
           card: "summary_large_image",
-          title: "Cotización COT-001 | SEBASAM",
+          title: "Cristian Del Toro · freightliner - Sin placas · Cotización COT-001 | SEBASAM",
           description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
         },
       });
@@ -178,13 +178,13 @@ describe("CotizacionPage", () => {
         title: { absolute: "CristianDelToro-freightliner-C-180626-01" },
         description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
         openGraph: {
-          title: "Cotización C-180626-01 | SEBASAM",
+          title: "Cristian Del Toro · freightliner - Sin placas · Cotización C-180626-01 | SEBASAM",
           description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
           type: "website",
         },
         twitter: {
           card: "summary_large_image",
-          title: "Cotización C-180626-01 | SEBASAM",
+          title: "Cristian Del Toro · freightliner - Sin placas · Cotización C-180626-01 | SEBASAM",
           description: "Cotización para Cristian Del Toro - freightliner - Sin placas",
         },
       });
@@ -210,13 +210,13 @@ describe("CotizacionPage", () => {
         title: { absolute: "CristianDelToro-freightliner-C-180626-01" },
         description: "Nota para Cristian Del Toro - freightliner - Sin placas",
         openGraph: {
-          title: "Nota C-180626-01 | SEBASAM",
+          title: "Cristian Del Toro · freightliner - Sin placas · Nota C-180626-01 | SEBASAM",
           description: "Nota para Cristian Del Toro - freightliner - Sin placas",
           type: "website",
         },
         twitter: {
           card: "summary_large_image",
-          title: "Nota C-180626-01 | SEBASAM",
+          title: "Cristian Del Toro · freightliner - Sin placas · Nota C-180626-01 | SEBASAM",
           description: "Nota para Cristian Del Toro - freightliner - Sin placas",
         },
       });
