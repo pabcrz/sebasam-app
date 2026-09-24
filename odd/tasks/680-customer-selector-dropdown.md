@@ -45,4 +45,4 @@ Issue #680 reports that scrolling the customer selector in notes/quotes does not
 - Follow-up work-unit commit: `daa5f97` — `fix(quotes): contain customer input focus ring`.
 
 ## Next step
-Implementation and local checks are complete; the user has authorized opening the PR. Record the confirmed PR identity after creation.
+Implementation and local checks are complete. PR #683 was created and read back: https://github.com/pabcrz/sebasam-app/pull/683. Await CI/review; merge remains human-owned.
