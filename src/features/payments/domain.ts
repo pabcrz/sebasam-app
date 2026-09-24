@@ -313,7 +313,9 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
         if (firstApp) {
           appliedToNoteCents = firstApp.amountCents;
           paymentApplicationId = firstApp.id;
-          noteSummary = await getNoteFinancialSummary(tx, firstApp.workOrderId);
+          if (firstApp.workOrderId) {
+            noteSummary = await getNoteFinancialSummary(tx, firstApp.workOrderId);
+          }
         } else if (existingPayment.quoteId) {
           const wo = await tx.workOrder.findUnique({ where: { quoteId: existingPayment.quoteId } });
           if (wo) {

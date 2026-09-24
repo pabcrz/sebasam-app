@@ -79,7 +79,8 @@ type PaymentDouble = {
 type PaymentApplicationDouble = {
   id: string;
   paymentId: string;
-  workOrderId: string;
+  workOrderId: string | null;
+  payableNoteId?: string;
   amountCents: number;
   reversedAt: Date | null;
   operationKey: string;
@@ -974,9 +975,42 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
 
     expect(secondResult.payment.id).toBe(firstResult.payment.id);
     expect(secondResult.appliedToNoteCents).toBe(firstResult.appliedToNoteCents);
+    expect(secondResult.notePendingBalanceCents).toBe(5000);
     expect(store.payments.size).toBe(1);
     expect(store.applications.size).toBe(1);
     expect(store.ledgerEntries.length).toBe(2);
+  });
+
+  it("returns an idempotent result for an application without a legacy work order", async () => {
+    const { store, transaction } = createMockDb();
+    store.payments.set("payment-note-only", {
+      id: "payment-note-only",
+      customerId: "cust-1",
+      amountCents: 2500,
+      status: PaymentStatus.PAID,
+      reversedAt: null,
+      operationKey: "op-note-only",
+    });
+    store.applications.set("app-note-only", {
+      id: "app-note-only",
+      paymentId: "payment-note-only",
+      workOrderId: null,
+      payableNoteId: "payable-note-1",
+      amountCents: 2500,
+      reversedAt: null,
+      operationKey: "op-note-only-application",
+    });
+
+    const result = await recordPayment({ customerId: "cust-1", amountCents: 2500, operationKey: "op-note-only" });
+
+    expect(result).toMatchObject({
+      payment: { id: "payment-note-only" },
+      appliedToNoteCents: 2500,
+      notePendingBalanceCents: null,
+      paidCents: 2500,
+      remainingCents: 0,
+    });
+    expect(transaction.workOrder.findUnique).not.toHaveBeenCalled();
   });
 
   it("customer_statement_orders_auditable_charges_captures_applications_and_reversals", async () => {
