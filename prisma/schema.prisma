@@ -100,6 +100,11 @@ enum PayableNoteStatus {
   CANCELLED
 }
 
+enum PayableNoteKind {
+  WORK
+  SALE
+}
+
 enum LedgerEntryType {
   CREDIT
   DEBIT
@@ -565,6 +570,7 @@ model PayableNote {
   taxCents        Int
   totalCents      Int
   status          PayableNoteStatus @default(DRAFT)
+  kind            PayableNoteKind   @default(WORK)
   issuedAt        DateTime?
   paymentDueDate  DateTime?
   createdAt       DateTime          @default(now())
@@ -671,8 +677,8 @@ model PaymentApplication {
   id             String    @id @default(cuid())
   operationKey   String    @unique
   paymentId      String
-  workOrderId    String
-  payableNoteId  String?
+  workOrderId    String?
+  payableNoteId  String
   amountCents    Int
   actorId        String?   @db.Uuid
   reversedAt     DateTime?
@@ -681,8 +687,8 @@ model PaymentApplication {
   createdAt      DateTime  @default(now())
 
   payment                    Payment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
-  workOrder                  WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
-  payableNote                PayableNote?  @relation(fields: [payableNoteId], references: [id], onDelete: Restrict)
+  workOrder                  WorkOrder?    @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  payableNote                PayableNote   @relation(fields: [payableNoteId], references: [id], onDelete: Restrict)
   actor                      UserProfile?  @relation("PaymentApplicationCreator", fields: [actorId], references: [id], onDelete: Restrict)
   reversedBy                 UserProfile?  @relation("PaymentApplicationReverser", fields: [reversedById], references: [id], onDelete: Restrict)
   ledgerEntries              LedgerEntry[]
@@ -701,7 +707,7 @@ model QuoteCommercialCorrection {
   id                   String   @id @default(cuid())
   operationKey         String   @unique
   quoteId              String
-  workOrderId          String
+  workOrderId          String?
   previousTotalCents   Int
   newTotalCents        Int
   previousAppliedCents Int
@@ -712,7 +718,7 @@ model QuoteCommercialCorrection {
   createdAt            DateTime @default(now())
 
   quote        Quote                               @relation(fields: [quoteId], references: [id], onDelete: Restrict)
-  workOrder    WorkOrder                           @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  workOrder    WorkOrder?                             @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
   actor        UserProfile                         @relation(fields: [actorId], references: [id], onDelete: Restrict)
   applications QuoteCommercialCorrectionApplication[]
 
@@ -728,7 +734,7 @@ model QuoteCommercialCorrectionApplication {
   reversalLedgerEntryId    String
   replacementApplicationId String?
   replacementLedgerEntryId String?
-  workOrderId              String
+  workOrderId              String?
   payableNoteId            String?
   originalAmountCents      Int
   reversalAmountCents      Int
@@ -742,7 +748,7 @@ model QuoteCommercialCorrectionApplication {
   reversalLedgerEntry    LedgerEntry              @relation("QuoteCorrectionReversalLedger", fields: [reversalLedgerEntryId], references: [id], onDelete: Restrict)
   replacementApplication PaymentApplication?      @relation("ReplacementQuoteCorrectionApplication", fields: [replacementApplicationId], references: [id], onDelete: SetNull)
   replacementLedgerEntry LedgerEntry?             @relation("QuoteCorrectionReplacementLedger", fields: [replacementLedgerEntryId], references: [id], onDelete: SetNull)
-  workOrder              WorkOrder                @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  workOrder              WorkOrder?               @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
   payableNote            PayableNote?              @relation(fields: [payableNoteId], references: [id], onDelete: Restrict)
 
   @@unique([correctionId, originalApplicationId])
@@ -776,8 +782,8 @@ model PaymentCorrectionApplication {
   paymentCorrectionId      String
   originalApplicationId    String
   replacementApplicationId String?
-  workOrderId              String
-  payableNoteId            String?
+  workOrderId              String?
+  payableNoteId            String
   originalAmountCents      Int
   replacementAmountCents   Int
   shortfallCents           Int     @default(0)
@@ -787,8 +793,8 @@ model PaymentCorrectionApplication {
   paymentCorrection      PaymentCorrection  @relation(fields: [paymentCorrectionId], references: [id], onDelete: Cascade)
   originalApplication    PaymentApplication @relation("OriginalCorrectionApplication", fields: [originalApplicationId], references: [id], onDelete: Restrict)
   replacementApplication PaymentApplication? @relation("ReplacementCorrectionApplication", fields: [replacementApplicationId], references: [id], onDelete: SetNull)
-  workOrder              WorkOrder          @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
-  payableNote            PayableNote?       @relation(fields: [payableNoteId], references: [id], onDelete: Restrict)
+  workOrder              WorkOrder?         @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  payableNote            PayableNote        @relation(fields: [payableNoteId], references: [id], onDelete: Restrict)
 
   @@unique([paymentCorrectionId, originalApplicationId])
   @@index([paymentCorrectionId])

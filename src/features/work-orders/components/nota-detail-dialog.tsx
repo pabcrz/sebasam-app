@@ -14,6 +14,8 @@ import type { QuotePreviewSummary } from "@/features/quotes/components/quote-pre
 import { CashPaymentDialog, PaymentBalanceSummary } from "@/features/payments/components/cash-payment-dialog";
 import { NotePaymentHistory } from "@/features/payments/components/note-payment-history";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
+import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
+import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import { formatDate } from "@/features/quotes/lib/format";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
@@ -47,9 +49,11 @@ type Props = {
   correctWorkOrderAction?: (state: QuoteFormActionState, formData: FormData) => Promise<QuoteFormActionState>;
   customers: CustomerOption[];
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
+  shareAction: () => Promise<{ success: boolean; token?: string; error?: string }>;
 };
 
 export function NotaDetailDialog({
+  workOrderId,
   workOrderNumber,
   quote,
   paymentDueDate,
@@ -57,11 +61,13 @@ export function NotaDetailDialog({
   customerName,
   open,
   onOpenChange,
+  noteReturnTo,
   paymentHistory,
   paymentAction,
   correctWorkOrderAction,
   customers,
   searchCustomersAction,
+  shareAction,
 }: Props) {
   const totalCents = quote.effectiveTotalCents ?? Number(quote.totalCents ?? 0);
   const paidCents = quote.paidCents ?? 0;
@@ -75,7 +81,7 @@ export function NotaDetailDialog({
       >
         <DialogMobileHeader>
           <DialogTitle>Nota {noteFolio}</DialogTitle>
-          <DialogDescription>Detalle completo de la nota {workOrderNumber}.</DialogDescription>
+          <DialogDescription>{customerName} · {quote.title}</DialogDescription>
           <DialogMobileClose aria-label="Cerrar detalle de nota" />
         </DialogMobileHeader>
         <DialogMobileBody data-testid="nota-detail-body" padding="none" className="grid content-start gap-4">
@@ -86,11 +92,21 @@ export function NotaDetailDialog({
             <p className="text-xs text-[var(--color-text-muted)]">Referencia interna: {workOrderNumber}</p>
             {paymentDueDate ? <p data-testid="note-due-date" className="text-xs text-[var(--color-text-muted)]">Fecha de vencimiento de pago: {formatDate(paymentDueDate)}.</p> : null}
           </section>
-          <section className="grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3" data-testid="nota-detail-payment-actions">
+          <section className="grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3" data-testid="nota-detail-actions">
             <div data-testid="quote-payment-balance-indicator">
               <PaymentBalanceSummary totalCents={totalCents} paidCents={paidCents} remainingCents={remainingCents} />
             </div>
             <div className="flex flex-wrap gap-2">
+              <ShareQuoteButton action={shareAction} quoteNumber={noteFolio} />
+              <PrintActionButton
+                url={`/admin/notas/${workOrderId}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}
+                variant="outline"
+                size="sm"
+                aria-label={`Imprimir nota de remisión ${noteFolio}`}
+                title={`Imprimir nota de remisión ${noteFolio}`}
+              >
+                Imprimir / descargar
+              </PrintActionButton>
                 {paymentAction && remainingCents > 0 ? (
                   <CashPaymentDialog
                     action={paymentAction}

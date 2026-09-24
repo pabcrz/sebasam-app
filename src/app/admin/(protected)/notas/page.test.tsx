@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
+const quoteBuilderDialogProps = vi.hoisted(() => vi.fn());
 const listCompletedWorkOrders = vi.hoisted(() =>
   vi.fn().mockResolvedValue({
     workOrders: [],
@@ -24,8 +26,15 @@ vi.mock("@/features/payments/actions", () => ({
 }));
 vi.mock("@/features/work-orders/actions", () => ({
   rollbackWorkOrderAction: vi.fn(),
-  createDirectNoteFromWorkspace: vi.fn(),
+  createDirectOperationFromWorkspace: vi.fn(),
 }));
+vi.mock("@/features/quotes/components/quote-builder-dialog", () => ({
+  QuoteBuilderDialog: (props: Record<string, unknown>) => {
+    quoteBuilderDialogProps(props);
+    return createElement("button", { type: "button" }, props.triggerLabel as string);
+  },
+}));
+import { createDirectOperationFromWorkspace } from "@/features/work-orders/actions";
 import NotasPage from "./page";
 describe("NotasPage", () => {
   it("renders the workspace without a redundant page header card and with Nueva nota trigger", async () => {
@@ -49,5 +58,14 @@ describe("NotasPage", () => {
     render(await NotasPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByText("Limpiar filtros")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Limpiar filtros" })).toHaveAttribute("href", "/admin/notas");
+  });
+
+  it("wires both direct-note dialogs to the discriminated operation action", async () => {
+    render(await NotasPage({ searchParams: Promise.resolve({}) }));
+
+    const dialogProps = quoteBuilderDialogProps.mock.calls.map(([props]) => props);
+    const noteDialogs = dialogProps.filter((props) => props.mode === "direct-note");
+    expect(noteDialogs.length).toBeGreaterThanOrEqual(2);
+    expect(noteDialogs.every((props) => props.createAction === createDirectOperationFromWorkspace)).toBe(true);
   });
 });
