@@ -68,7 +68,7 @@ export type QuoteBuilderProps = {
   onDirtyChange?: (dirty: boolean) => void;
   onSuccess?: () => void;
   layout?: "page" | "dialog";
-  mode?: "quote" | "direct-work-order" | "direct-note";
+  mode?: "quote" | "direct" | "direct-work-order" | "direct-note" | "direct-sale";
   masters?: MasterOption[];
 };
 
@@ -93,7 +93,6 @@ export type QuoteBuilderDialogProps = {
   triggerLabel?: string;
   createCustomerAction?: QuoteBuilderProps["createCustomerAction"];
   searchCustomersAction?: QuoteBuilderProps["searchCustomersAction"];
-  mode?: "quote" | "direct-work-order" | "direct-note";
+  mode?: "quote" | "direct" | "direct-work-order" | "direct-note" | "direct-sale";
   masters?: MasterOption[];
 };
-

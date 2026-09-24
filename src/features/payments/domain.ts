@@ -313,7 +313,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
         if (firstApp) {
           appliedToNoteCents = firstApp.amountCents;
           paymentApplicationId = firstApp.id;
-          noteSummary = await getNoteFinancialSummary(tx, firstApp.workOrderId);
+          noteSummary = await getNoteFinancialSummary(tx, firstApp.workOrderId!);
         } else if (existingPayment.quoteId) {
           const wo = await tx.workOrder.findUnique({ where: { quoteId: existingPayment.quoteId } });
           if (wo) {
@@ -468,6 +468,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
               operationKey: `${input.operationKey}:app`,
               paymentId: payment.id,
               workOrderId: targetWorkOrder.id,
+              payableNoteId: targetWorkOrder.id,
               amountCents: applyAmount,
               actorId: input.actorId ?? null,
             },
@@ -482,6 +483,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
               paymentId: payment.id,
               paymentApplicationId: application.id,
               workOrderId: targetWorkOrder.id,
+              payableNoteId: targetWorkOrder.id,
               actorId: input.actorId ?? null,
             },
           });
@@ -553,7 +555,7 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
 
       if (existingApplication) {
         const [noteSummary, creditSummary] = await Promise.all([
-          getNoteFinancialSummary(tx, existingApplication.workOrderId),
+          getNoteFinancialSummary(tx, existingApplication.workOrderId!),
           getCustomerCreditSummary(tx, input.customerId),
         ]);
 
@@ -561,7 +563,7 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
           application: {
             id: existingApplication.id,
             amountCents: existingApplication.amountCents,
-            workOrderId: existingApplication.workOrderId,
+            workOrderId: existingApplication.workOrderId!,
             paymentId: existingApplication.paymentId,
           },
           notePendingBalanceCents: noteSummary.pendingBalanceCents,
@@ -660,6 +662,7 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
           operationKey: input.operationKey,
           paymentId: backingPayment.id,
           workOrderId: input.workOrderId,
+          payableNoteId: input.workOrderId,
           amountCents: input.amountCents,
           actorId: input.actorId ?? null,
         },
@@ -675,6 +678,7 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
           paymentId: backingPayment.id,
           paymentApplicationId: application.id,
           workOrderId: input.workOrderId,
+          payableNoteId: input.workOrderId,
           actorId: input.actorId ?? null,
         },
       });
@@ -686,7 +690,7 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
         application: {
           id: application.id,
           amountCents: application.amountCents,
-          workOrderId: application.workOrderId,
+          workOrderId: application.workOrderId!,
           paymentId: application.paymentId,
         },
         notePendingBalanceCents: remainingNoteBalance,
@@ -806,7 +810,7 @@ async function buildCorrectPaymentResult(
     actorName: correction.actorName,
     createdAt: correction.createdAt,
     applications: mappings.map((m) => ({
-      workOrderId: m.workOrderId,
+      workOrderId: m.workOrderId!,
       originalAmountCents: m.originalAmountCents,
       replacementAmountCents: m.replacementAmountCents,
       shortfallCents: m.shortfallCents,
@@ -922,6 +926,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
             paymentId: original.id,
             paymentApplicationId: app.id,
             workOrderId: app.workOrderId,
+            payableNoteId: app.payableNoteId,
             actorId,
             reason,
             reversedMovementId: originalApplicationEntry?.id ?? null,
@@ -973,7 +978,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
 
       for (let index = 0; index < activeApplications.length; index++) {
         const app = activeApplications[index];
-        const noteSummary = await getNoteFinancialSummary(tx, app.workOrderId);
+        const noteSummary = await getNoteFinancialSummary(tx, app.workOrderId!);
         const applyAmount = Math.min(app.amountCents, remainingCents, noteSummary.pendingBalanceCents);
 
         let replacementApplicationId: string | null = null;
@@ -983,6 +988,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
               operationKey: `${input.operationKey}:app:${index}`,
               paymentId: replacement.id,
               workOrderId: app.workOrderId,
+              payableNoteId: app.payableNoteId,
               amountCents: applyAmount,
               actorId,
             },
@@ -997,6 +1003,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
               paymentId: replacement.id,
               paymentApplicationId: replacementApplication.id,
               workOrderId: app.workOrderId,
+              payableNoteId: app.payableNoteId,
               actorId,
               reason,
             },
@@ -1011,7 +1018,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
         totalShortfallCents += shortfallCents;
 
         applications.push({
-          workOrderId: app.workOrderId,
+          workOrderId: app.workOrderId!,
           originalAmountCents: app.amountCents,
           replacementAmountCents: applyAmount,
           shortfallCents,
@@ -1022,7 +1029,8 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
             paymentCorrectionId: correction.id,
             originalApplicationId: app.id,
             replacementApplicationId,
-            workOrderId: app.workOrderId,
+            workOrderId: app.workOrderId!,
+            payableNoteId: app.payableNoteId,
             originalAmountCents: app.amountCents,
             replacementAmountCents: applyAmount,
             shortfallCents,
@@ -1148,6 +1156,7 @@ export async function reversePaymentCapture(input: ReversePaymentInput): Promise
             paymentId: payment.id,
             paymentApplicationId: app.id,
             workOrderId: app.workOrderId,
+            payableNoteId: app.payableNoteId,
             actorId: input.actorId,
             reason,
           },

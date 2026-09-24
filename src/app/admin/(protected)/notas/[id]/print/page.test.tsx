@@ -12,7 +12,7 @@ const { getCompletedWorkOrderById, getPaymentSettings } = vi.hoisted(() => ({
   getPaymentSettings: vi.fn(),
 }));
 
-vi.mock("@/features/work-orders/queries", () => ({ getCompletedWorkOrderById }));
+vi.mock("@/features/work-orders/queries", () => ({ getCompletedWorkOrderById, getIssuedSaleNoteById: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/features/payment-settings/domain", () => ({ getPaymentSettings }));
 vi.mock("@/features/quotes/components/print-controls", () => ({ PrintControls: () => <button type="button">Imprimir</button> }));
 

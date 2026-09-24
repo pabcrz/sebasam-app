@@ -81,7 +81,7 @@ export function initializeQuoteBuilderState(
     title: initialData?.title ?? "",
     description: initialData?.description ?? "",
     administrative: initialData?.administrative ?? false,
-    taxEnabled: initialData?.taxEnabled ?? false,
+    taxEnabled: initialData?.taxEnabled ?? true,
     discount: initialData?.discountCents ? String(initialData.discountCents / 100) : "",
     operationalDate: initialData?.operationalDate ?? defaultOperationalDate,
     sections,

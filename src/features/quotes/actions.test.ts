@@ -84,6 +84,7 @@ type MockTx = {
   settlementAgreementRevision: { count: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
   sharedQuote: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   paymentRequest: { updateMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
+  payableNote: { create: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
   quoteLifecycleEvent: { create: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
   workOrder: { count: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
   customer?: { findUnique: ReturnType<typeof vi.fn> };
@@ -116,6 +117,12 @@ function mockTx(status: QuoteStatus = QuoteStatus.DRAFT): MockTx {
     settlementAgreementRevision: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockResolvedValue({ id: "rev-1" }) },
     sharedQuote: { updateMany: vi.fn(), deleteMany: vi.fn() },
     paymentRequest: { updateMany: vi.fn(), deleteMany: vi.fn() },
+    payableNote: {
+      create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: data.id, ...data })),
+      findUnique: vi.fn().mockResolvedValue({ id: "wo-1" }),
+      update: vi.fn().mockResolvedValue({ id: "payable-note-1" }),
+      delete: vi.fn(),
+    },
     quoteLifecycleEvent: { create: vi.fn(), deleteMany: vi.fn() },
     workOrder: { count: vi.fn().mockResolvedValue(0), findUnique: vi.fn().mockResolvedValue(null), delete: vi.fn() },
   };
@@ -1016,16 +1023,18 @@ describe("deleteQuote", () => {
 
     await deleteQuote("quote-1");
 
-    expect(tx.paymentApplication.count).toHaveBeenCalledWith({ where: { workOrderId: "wo-1" } });
+    expect(tx.paymentApplication.count).toHaveBeenCalledWith({ where: { OR: [{ workOrderId: "wo-1" }, { payableNoteId: "wo-1" }] } });
     expect(tx.ledgerEntry.count).toHaveBeenCalledWith({
       where: {
         OR: [
           { workOrderId: "wo-1" },
+          { payableNoteId: "wo-1" },
           { payment: { quoteId: "quote-1" } },
         ],
       },
     });
     expect(tx.workOrderLaborAdvance.count).toHaveBeenCalledWith({ where: { workOrderId: "wo-1" } });
+    expect(tx.payableNote.delete).toHaveBeenCalledWith({ where: { id: "wo-1" } });
     expect(tx.workOrder.delete).toHaveBeenCalledWith({ where: { id: "wo-1" } });
     expect(tx.quote.delete).toHaveBeenCalledWith({ where: { id: "quote-1" } });
   });
@@ -1181,7 +1190,7 @@ describe("quote lifecycle", () => {
   });
 });
 
-function completedWorkQuoteSetup(tx: MockTx, overrides: { status?: QuoteStatus; workOrder?: unknown; applications?: { id: string; paymentId: string; amountCents: number; reversedAt: Date | null }[] } = {}) {
+function completedWorkQuoteSetup(tx: MockTx, overrides: { status?: QuoteStatus; workOrder?: unknown; applications?: { id: string; paymentId: string; amountCents: number; reversedAt: Date | null; workOrderId?: string | null; payableNoteId?: string }[] } = {}) {
   tx.quote.findUnique.mockResolvedValue({
     id: "quote-1",
     status: overrides.status ?? QuoteStatus.APPROVED,
@@ -1200,6 +1209,8 @@ function completedWorkQuoteSetup(tx: MockTx, overrides: { status?: QuoteStatus; 
   });
     const appsWithPayment = (overrides.applications?.filter((a) => a.reversedAt === null) ?? []).map((app) => ({
       ...app,
+      workOrderId: app.workOrderId === undefined ? "wo-1" : app.workOrderId,
+      payableNoteId: app.payableNoteId ?? "payable-note-1",
       payment: { customerId: "cust-1", id: app.paymentId, status: "PAID", reversedAt: null },
     }));
     tx.paymentApplication.findMany.mockResolvedValue(appsWithPayment);
@@ -1249,6 +1260,7 @@ describe("correctCompletedWorkQuote", () => {
 
   it("reverses excess payment applications and creates replacement when newTotal < applied", async () => {
     const tx = mockTx();
+    tx.payableNote.findUnique.mockResolvedValue({ id: "payable-note-1" });
     completedWorkQuoteSetup(tx, {
       applications: [
         { id: "app-1", paymentId: "pay-1", amountCents: 100000, reversedAt: null },
@@ -1293,6 +1305,58 @@ describe("correctCompletedWorkQuote", () => {
         excessCreditCents: 52800,
       }),
     }));
+    expect(tx.quoteCommercialCorrectionApplication.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ payableNoteId: "payable-note-1", workOrderId: "wo-1" })],
+    });
+  });
+
+  it("corrects a SALE note with a partial payment without requiring a work order", async () => {
+    const tx = mockTx();
+    completedWorkQuoteSetup(tx, {
+      workOrder: null,
+      applications: [{ id: "sale-app-1", paymentId: "sale-pay-1", amountCents: 5000, reversedAt: null, workOrderId: null, payableNoteId: "sale-note-1" }],
+    });
+    tx.quote.findUnique.mockImplementation(async () => ({
+      id: "quote-1",
+      status: QuoteStatus.APPROVED,
+      customerId: "cust-1",
+      subtotalCents: 10000,
+      discountCents: 0,
+      taxCents: 1600,
+      totalCents: 11600,
+      taxEnabled: true,
+      operationalDate: new Date("2026-07-14T00:00:00.000Z"),
+      approvedAt: new Date("2026-07-10T00:00:00.000Z"),
+      items: [],
+      sections: [],
+      workOrder: null,
+      payableNote: { id: "sale-note-1", kind: "SALE", status: "ISSUED", workOrderId: null },
+    }));
+    tx.paymentApplication.findMany.mockResolvedValue([{
+      id: "sale-app-1",
+      paymentId: "sale-pay-1",
+      workOrderId: null,
+      payableNoteId: "sale-note-1",
+      amountCents: 5000,
+      payment: { customerId: "cust-1", id: "sale-pay-1", status: "PAID", reversedAt: null },
+    }]);
+    const reducedTotalInput = {
+      ...validInput(),
+      sections: [{ name: "General", items: [{ type: "OTHER" as const, description: "Material", quantity: 1, unitPriceCents: 1000 }] }],
+    };
+
+    await expect(correctCompletedWorkQuote("quote-1", reducedTotalInput)).resolves.toBeDefined();
+
+    expect(tx.paymentApplication.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "sale-app-1" } }));
+    expect(tx.paymentApplication.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ workOrderId: null, payableNoteId: "sale-note-1", amountCents: 1160 }),
+    }));
+    expect(tx.ledgerEntry.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ movementType: "APPLICATION_REVERSAL", workOrderId: null, payableNoteId: "sale-note-1" }),
+    }));
+    expect(tx.quoteCommercialCorrectionApplication.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ workOrderId: null, payableNoteId: "sale-note-1" })],
+    });
   });
 
   it("rejects changing customer when the note has applied payments", async () => {

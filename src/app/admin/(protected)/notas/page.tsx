@@ -136,7 +136,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
                  quoteId: wo.quote.id,
                  archive: archiveCompletedNote.bind(null, wo.quote.id),
                  revoke: revokeNoteCanonicalLinkAction.bind(null, wo.quote.id),
-                 canRevoke: wo.quote.hasRevocablePublicLink,
+                  canRevoke: Boolean(wo.quote.hasRevocablePublicLink),
                })) : []}
                rollbackAction={rollbackWorkOrderAction}
                noteReturnTo={noteReturnTo}

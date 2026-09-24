@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import {
   AssignmentStatus,
+  PayableNoteKind,
   PaymentRequestStatus,
   Prisma,
   QuoteDecisionOrigin,
@@ -15,7 +16,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireOperationalRole } from "@/lib/auth/session";
+import { requireOperationalRole, requireAdmin } from "@/lib/auth/session";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
 import { createVehicleSnapshot } from "@/features/vehicles/schemas";
 import { nextQuoteNumber, nextWorkOrderNumber, withQuoteNumberRetry } from "@/features/quotes/lib/sequence";
@@ -38,6 +39,10 @@ import {
   convertQuoteToNoteInputSchema,
   directWorkOrderFormInputSchema,
   directWorkOrderInputSchema,
+  directMaterialSaleFormInputSchema,
+  directMaterialSaleInputSchema,
+  directOperationFormInputSchema,
+  directOperationInputSchema,
   executionRecordInputSchema,
   returnNoteToQuoteInputSchema,
   rollbackWorkOrderInputSchema,
@@ -59,6 +64,7 @@ import {
 } from "./domain";
 import { ZodError } from "zod";
 import { assertOperationalClosureQuote, assertOperationalStartQuote } from "./operational-validation";
+import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
 import {
   ineligibleCompletedWorkKnowledge,
   prepareCompletedWorkKnowledge,
@@ -170,6 +176,13 @@ async function ensureWorkOrderPlanned(
         scheduledFor: input.scheduledFor,
         siteAddress: input.siteAddress,
         notes: input.notes,
+      },
+    });
+    await tx.payableNote.create({
+      data: {
+        id: workOrder.id, customerId: quote.customerId, quoteId: quote.id, workOrderId: workOrder.id,
+        referenceNumber: workOrder.number, title: quote.title, subtotalCents: quote.subtotalCents ?? 0,
+        taxCents: quote.taxCents ?? 0, totalCents: quote.totalCents ?? 0, status: "DRAFT",
       },
     });
     await ensureSharedQuoteInTransaction(tx, quoteId);
@@ -332,6 +345,13 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
       const created = await tx.workOrder.create({
         data: { quoteId, number },
       });
+      await tx.payableNote.create({
+        data: {
+          id: created.id, customerId: quote.customerId, quoteId: quote.id, workOrderId: created.id,
+          referenceNumber: created.number, title: quote.title, subtotalCents: quote.subtotalCents ?? 0,
+          taxCents: quote.taxCents ?? 0, totalCents: quote.totalCents ?? 0, status: "DRAFT",
+        },
+      });
       workOrderId = created.id;
     }
 
@@ -444,6 +464,14 @@ export async function completeWorkOrder(input: unknown) {
 
     if (updated.count !== 1) {
       throw new WorkOrderOperationError("El estado de la orden cambió. Recarga e intenta de nuevo.");
+    }
+
+    const payableNote = await tx.payableNote.updateMany({
+      where: { workOrderId: data.workOrderId, status: "DRAFT" },
+      data: { status: "ISSUED", issuedAt: completedAt, paymentDueDate },
+    });
+    if (payableNote.count !== 1) {
+      throw new WorkOrderOperationError("La orden no tiene una nota pagable pendiente para completar.");
     }
 
     if (!workOrder.folio) {
@@ -717,6 +745,102 @@ function directWorkOrderFormDataToInput(formData: FormData) {
   };
 }
 
+function directMaterialSaleFormDataToInput(formData: FormData) {
+  return { ...quoteFormDataToInput(formData), paymentDueDate: formData.get("paymentDueDate") };
+}
+
+function directOperationFormDataToInput(formData: FormData) {
+  return {
+    ...quoteFormDataToInput(formData),
+    operation: formData.get("operation") ?? "WORK",
+    masterId: formData.get("masterId"),
+    isCompleted: formData.get("isCompleted"),
+    paymentDueDate: formData.get("paymentDueDate"),
+  };
+}
+
+export async function createDirectOperation(input: unknown) {
+  const data = directOperationInputSchema.parse(input);
+  if (data.operation === "SALE") return createDirectMaterialSale(data);
+  return createDirectWorkOrder(data);
+}
+
+export async function createDirectOperationFromWorkspace(
+  _previousState: QuoteFormActionState,
+  formData: FormData,
+): Promise<QuoteFormActionState> {
+  const parsed = directOperationFormInputSchema.safeParse(directOperationFormDataToInput(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos e intenta de nuevo." };
+  try {
+    await createDirectOperation(parsed.data);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "No se pudo crear la operación." };
+  }
+  revalidatePath(quotesPath);
+  revalidatePath(workOrdersPath);
+  revalidatePath(notasPath);
+  return { success: true };
+}
+
+/** Creates an issued SALE note backed by a commercial quote, without creating a work order. */
+export async function createDirectMaterialSale(input: unknown) {
+  const { profile } = await requireAdmin();
+  const data = directMaterialSaleInputSchema.parse(input);
+  const totals = draftTotals(data);
+  const operationalDate = normalizeOperationalDate(data.operationalDate);
+  const effectiveDate = operationalDateToCompletedAt(data.operationalDate);
+  const quoteLike = {
+    customerId: data.customerId ?? null,
+    subtotalCents: totals.subtotalCents,
+    discountCents: totals.discountCents ?? data.discountCents,
+    taxCents: totals.taxCents,
+    totalCents: totals.totalCents,
+    taxEnabled: data.taxEnabled,
+    sections: data.sections.map((section) => ({ items: section.items.map((item) => ({ description: item.description, quantity: item.quantity, unitPriceCents: item.unitPriceCents ?? null })) })),
+  };
+  assertCommercialQuote(quoteLike);
+
+  const result = await withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
+    const quoteId = randomUUID();
+    const quoteNumber = await nextQuoteNumber(tx);
+    const allocation = await allocateDailyDocumentFolio(tx, "N", effectiveDate);
+    const hasVehicle = hasVehicleData(data.vehicle);
+    const vehicleInput = buildVehicleInput(data.customerId, data.vehicle);
+    const vehicle = hasVehicle ? await findOrCreateVehicle(tx, vehicleInput) : null;
+    const vehicleSnapshot = hasVehicle ? createVehicleSnapshot(vehicleInput) : Prisma.JsonNull;
+    const { customerSnapshot, contactSnapshot } = await resolveQuoteSnapshots(tx, data.customerId, data.customerContactId, data.customerFiscalProfileId);
+    const quote = await tx.quote.create({
+      data: {
+        id: quoteId, customerId: data.customerId, vehicleId: vehicle?.id ?? null,
+        customerContactId: data.customerContactId ?? null, customerFiscalProfileId: data.customerFiscalProfileId ?? null,
+        vehicleSnapshot, customerSnapshot, contactSnapshot, number: quoteNumber, status: QuoteStatus.APPROVED,
+        approvedAt: effectiveDate, title: data.title, description: nullableOptional(data.description), administrative: data.administrative,
+        taxEnabled: data.taxEnabled, subtotalCents: totals.subtotalCents, discountCents: totals.discountCents ?? data.discountCents,
+        taxCents: totals.taxCents, totalCents: totals.totalCents, operationalDate, validUntil: createQuoteValidUntil(), paymentDueDate: data.paymentDueDate ?? null,
+        sections: { create: data.sections.map((section, sortOrder) => ({ name: section.name, isAuthorized: true, sortOrder })) },
+      }, include: { sections: true },
+    });
+    await tx.quoteItem.createMany({ data: data.sections.flatMap((section, sectionIndex) => {
+      const createdSection = quote.sections.find((item) => item.sortOrder === sectionIndex);
+      return section.items.map((item, sortOrder) => ({ quoteId, sectionId: createdSection?.id, type: item.type, description: item.description, quantity: item.quantity, unitPriceCents: item.unitPriceCents ?? 0, totalCents: calculateItemTotalCents(item.quantity, item.unitPriceCents ?? 0), includeInPayroll: false, customRatePercent: null, sortOrder }));
+    }) });
+    await ensureSharedQuoteInTransaction(tx, quoteId);
+    await tx.quoteDecision.create({ data: { quoteId, status: QuoteStatus.APPROVED, origin: QuoteDecisionOrigin.ADMIN, actorId: profile.id, note: "Venta de materiales creada directamente", authorizedSectionIds: quote.sections.map((section) => section.id), createdAt: effectiveDate } });
+    await tx.quoteLifecycleEvent.create({ data: { quoteId, previousState: QuoteStatus.DRAFT, nextState: QuoteStatus.APPROVED, eventType: QuoteLifecycleEventType.CONVERT_TO_NOTE, actorId: profile.id, reason: "Venta de materiales creada directamente", createdAt: effectiveDate } });
+    const note = await tx.payableNote.create({ data: { customerId: quote.customerId, quoteId, referenceNumber: allocation.folio, title: quote.title, subtotalCents: quote.subtotalCents ?? 0, taxCents: quote.taxCents ?? 0, totalCents: quote.totalCents ?? 0, status: "ISSUED", kind: PayableNoteKind.SALE, issuedAt: allocation.issuedAt, paymentDueDate: quote.paymentDueDate } });
+    return { quote, note };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
+  revalidatePath(quotesPath); revalidatePath(notasPath); revalidatePath("/admin/customers");
+  return result;
+}
+
+export async function createDirectMaterialSaleFromWorkspace(_previousState: QuoteFormActionState, formData: FormData): Promise<QuoteFormActionState> {
+  const parsed = directMaterialSaleFormInputSchema.safeParse(directMaterialSaleFormDataToInput(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos e intenta de nuevo." };
+  try { await createDirectMaterialSale(parsed.data); } catch (error) { return { error: error instanceof Error ? error.message : "No se pudo crear la venta." }; }
+  return { success: true };
+}
+
 export async function createDirectWorkOrder(input: unknown) {
   const { profile } = await requireOperationalRole();
   const data = directWorkOrderInputSchema.parse(input);
@@ -906,13 +1030,45 @@ export async function createDirectWorkOrder(input: unknown) {
             paymentDueDate: calculatedDueDate,
           },
         });
-
+        await tx.payableNote.create({
+          data: {
+            id: workOrder.id,
+            customerId: createdQuote.customerId,
+            quoteId: createdQuote.id,
+            workOrderId: workOrder.id,
+            referenceNumber: workOrder.number,
+            title: createdQuote.title,
+            subtotalCents: createdQuote.subtotalCents ?? 0,
+            taxCents: createdQuote.taxCents ?? 0,
+            totalCents: createdQuote.totalCents ?? 0,
+            status: data.isCompleted ? "ISSUED" : "DRAFT",
+            issuedAt: data.isCompleted ? (workOrder.completedAt ?? effectiveDate) : null,
+            paymentDueDate: workOrder.paymentDueDate,
+          },
+        });
         await tx.workAssignment.create({
           data: {
             workOrderId: workOrder.id,
             workerId: data.masterId,
             status: data.isCompleted ? AssignmentStatus.DONE : AssignmentStatus.ASSIGNED,
             assignedAt: effectiveDate,
+          },
+        });
+
+        await tx.payableNote.create({
+          data: {
+            id: workOrder.id,
+            customerId: data.customerId ?? null,
+            quoteId: createdQuote.id,
+            workOrderId: workOrder.id,
+            referenceNumber: workOrder.folio ?? workOrder.number,
+            title: createdQuote.title,
+            subtotalCents: totals.subtotalCents ?? 0,
+            taxCents: totals.taxCents ?? 0,
+            totalCents: totals.totalCents ?? 0,
+            status: data.isCompleted ? "ISSUED" : "DRAFT",
+            issuedAt: data.isCompleted ? (noteAllocation?.issuedAt ?? effectiveDate) : null,
+            paymentDueDate: calculatedDueDate,
           },
         });
 
@@ -1083,6 +1239,22 @@ export async function convertQuoteToNoteAction(input: unknown) {
         include: { assignments: true },
       });
       workOrder = createdWorkOrder;
+      await tx.payableNote.create({
+        data: {
+          id: createdWorkOrder.id,
+          customerId: quote.customerId,
+          quoteId: quote.id,
+          workOrderId: createdWorkOrder.id,
+          referenceNumber: createdWorkOrder.number,
+          title: quote.title,
+          subtotalCents: quote.subtotalCents ?? 0,
+          taxCents: quote.taxCents ?? 0,
+          totalCents: quote.totalCents ?? 0,
+          status: "ISSUED",
+          issuedAt: createdWorkOrder.completedAt ?? effectiveDate,
+          paymentDueDate: createdWorkOrder.paymentDueDate,
+        },
+      });
 
       await tx.workAssignment.create({
         data: {
@@ -1129,6 +1301,18 @@ export async function convertQuoteToNoteAction(input: unknown) {
             issuedAt: nIssuedAt,
           },
         });
+
+        const payableNote = await tx.payableNote.updateMany({
+          where: { workOrderId: workOrder.id, status: "DRAFT" },
+          data: {
+            status: "ISSUED",
+            issuedAt: effectiveDate,
+            paymentDueDate: notePaymentDueDate,
+          },
+        });
+        if (payableNote.count !== 1) {
+          throw new WorkOrderOperationError("La orden no tiene una nota pagable pendiente para completar.");
+        }
 
         await tx.workAssignment.updateMany({
           where: {
