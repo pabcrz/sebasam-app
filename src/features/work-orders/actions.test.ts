@@ -629,14 +629,15 @@ describe("work order actions", () => {
           customerId: "customer-1",
           quoteId: "quote-new",
           workOrderId: "wo-new",
-          referenceNumber: expect.any(String),
+          referenceNumber: "WO-001",
           subtotalCents: 15_000,
-          taxCents: expect.any(Number),
-          totalCents: expect.any(Number),
+          taxCents: 2_400,
+          totalCents: 17_400,
           status: "DRAFT",
           issuedAt: null,
         }),
       });
+      expect(tx.payableNote.create).toHaveBeenCalledTimes(1);
       expect(tx.workAssignment.create).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({
           workerId: masterId,
@@ -738,6 +739,7 @@ describe("work order actions", () => {
     it("creates an issued payable note for a completed direct work order", async () => {
       const tx = createTx();
       vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);
+      tx.workOrder.create.mockResolvedValue({ id: "wo-new", number: "WO-001", folio: "N-0826-01" });
 
       await createDirectWorkOrder({ ...validDirectInput, isCompleted: true });
 
@@ -747,14 +749,16 @@ describe("work order actions", () => {
           customerId: "customer-1",
           quoteId: "quote-new",
           workOrderId: "wo-new",
-          referenceNumber: expect.any(String),
+          referenceNumber: "N-0826-01",
           subtotalCents: 15_000,
-          taxCents: expect.any(Number),
-          totalCents: expect.any(Number),
+          taxCents: 2_400,
+          totalCents: 17_400,
           status: "ISSUED",
           issuedAt: expect.any(Date),
+          paymentDueDate: expect.any(Date),
         }),
       });
+      expect(tx.payableNote.create).toHaveBeenCalledTimes(1);
     });
 
     it("creates a completed direct work order with COMPLETED status and DONE assignment", async () => {
@@ -778,6 +782,7 @@ describe("work order actions", () => {
           status: AssignmentStatus.DONE,
         }),
       }));
+      expect(tx.payableNote.create).toHaveBeenCalledTimes(1);
       expect(prepareCompletedWorkKnowledge).toHaveBeenCalledWith("wo-new");
       expect(after).toHaveBeenCalledOnce();
       expect(synchronizeCompletedWorkKnowledge).not.toHaveBeenCalled();

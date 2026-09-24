@@ -179,8 +179,6 @@ export async function recordPayableNotePayment(input: RecordPayableNotePaymentIn
       throw new PayableNoteError("Payments can only be registered for issued notes.");
     }
     if (!note.customerId) throw new PayableNoteError("The payable note has no customer.");
-    if (!note.workOrderId) throw new PayableNoteError("The payable note is not linked to a work order.");
-
     const payment = await tx.payment.create({
       data: {
         operationKey: input.operationKey,
