@@ -78,4 +78,18 @@ describe("Notas periods", () => {
     expect(href).toContain("customerId=cust-99");
     expect(href).toContain("overdue=overdue");
   });
+
+  it.each(["all", "WORK", "SALE"] as const)("round-trips the %s note type selector", (kind) => {
+    const parsed = parseNotasParams({ kind });
+    expect(parsed.kind).toBe(kind);
+
+    const href = notasHref({
+      mode: "week",
+      anchor: "2026-08-12",
+      payment: "pending",
+      assignee: "all",
+      kind,
+    });
+    expect(new URL(href, "https://example.test").searchParams.get("kind")).toBe(kind);
+  });
 });

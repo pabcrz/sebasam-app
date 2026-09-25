@@ -95,6 +95,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         assignee={filters.assignee}
         customerId={filters.customerId}
         overdue={filters.overdue}
+        kind={filters.kind}
         anchor={filters.anchor}
         rangeLabel={filters.rangeLabel}
         isCurrentWeek={filters.isCurrentWeek}
