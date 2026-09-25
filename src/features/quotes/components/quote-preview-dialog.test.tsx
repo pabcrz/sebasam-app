@@ -77,6 +77,16 @@ describe("QuotePreviewDialog", () => {
     expect(screen.getByTestId("quote-total")).toHaveTextContent("$116.00");
   });
 
+  it("uses a caller-provided preview title", async () => {
+    const user = userEvent.setup();
+
+    render(<QuotePreviewDialog quote={createMockQuote()} previewTitle="Nota N-140826-01" />);
+
+    await user.click(screen.getByRole("button", { name: /ver vista previa de c-001/i }));
+
+    expect(screen.getByRole("heading", { name: "Nota N-140826-01" })).toBeInTheDocument();
+  });
+
   it("closes the dialog when the close button is clicked", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote();
