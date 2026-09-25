@@ -42,13 +42,13 @@ Align the primary card interaction with the document-oriented task users expect 
   - Verification evidence: `pnpm exec vitest run src/features/work-orders/components/work-order-completed-list.test.tsx` — 14/14 passed; `pnpm typecheck` — passed; `pnpm lint` — passed with 8 warnings and 0 errors; `git diff --check` — passed. RED ordering/result could not be confirmed because the implementation delegation returned a transport error; the final regression suite is green.
   - Runtime harness: N/A — the card interaction is covered by the focused component test; local dev server remains available at port 3003 for manual inspection.
   - Rollback boundary: revert the new primary payment-management action and its focused coverage in `src/features/work-orders/components/work-order-completed-list.tsx` and `src/features/work-orders/components/work-order-completed-list.test.tsx`.
-  - Commit identity: pending.
-  - Receipt-driven assessment: pending commit assessment.
+  - Commit identity: `06a8bbe7cb5cce9c8591c3547e1ce3b3a8dca1fa` (`feat(notas): make payment management a primary action`).
+  - Receipt-driven assessment: medium; `under_budget` (159 changed lines across the current committed feature slice), no review is due.
   - Route: delegated direct; trigger: implementation and regression test both change the completed-note card behavior.
 
 ## Progress and next step
 - Worktree created clean from local `develop` at `6a40db6`.
 - NCP-1 implementation complete: card click opens the note preview with its note folio and concepts; the payment/detail dialog is available separately.
 - NCP-2 implementation complete: every Notes card now has a primary `Gestionar pagos` button with the Quotes `ClipboardList` icon; the existing card body still opens preview and the payment item was removed from the overflow menu.
-- NCP-2 awaits its work-unit commit and post-commit assessment record.
+- NCP-2 committed as `06a8bbe7cb5cce9c8591c3547e1ce3b3a8dca1fa`; receipt-driven assessment is medium / under_budget, so no review is due for the current slice.
 - No push, PR, or merge has been performed; the feature branch remains local.
