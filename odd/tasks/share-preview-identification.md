@@ -208,4 +208,13 @@ At the time this section was written, T5 and T6 were implemented and no delivery
 - Parent's committed-only assessment: `risk: medium`, `changed_paths: 9`, `changed_lines: 466`, `review_due: true`, `review_due_reason: slice_budget_reached`. The returned STATUS continuation started lineage `review-9286418ddef6955e` for target `sha256:d00b985c80a802027603cffe04cf903cbd122785fabe85c8451654076c8c27a2`.
 - The user explicitly granted this candidate's review. The single `review-reliability` lens completed with no findings after inspecting all nine candidate paths.
 - Exact acknowledgement completed successfully: `gentle-ai.review-acknowledged/v1` reported `action: acknowledged`, `authority: burned`, lineage `review-9286418ddef6955e`, and consumed revision `sha256:46ff86f084cf5a5d68167d5201a8122dc6476c4ab071f2c33a7a96a089d7eb2a`.
-- The native review is approved and burned; it is not delivery permission. No PR/push was performed.
+- The native review is approved and burned; it is not delivery permission. The integration tracker PR is open and the correction commit was pushed without merging.
+
+### Post-review correction — public bank-name coverage
+
+- Added direct domain coverage for `getPublicBankNameByToken` in `src/features/payment-settings/domain.test.ts`.
+- The test verifies the stable-token, singleton ownership, public-sharing, non-empty account, and account-number/CLABE eligibility predicates, plus the `{ bankName: true }` selection and returned value.
+- Focused check: `pnpm exec vitest run src/features/payment-settings/domain.test.ts` — 10 tests passed.
+- Closure checks after Prisma Client generation: `pnpm typecheck` passed, `pnpm build` passed, and `pnpm lint` passed with the same 8 unrelated warnings. The full UI suite retains the previously recorded 7 unrelated failures.
+- Correction work-unit commit: `586ae4c` (`test(payment-settings): cover public bank name query`).
+- Rollback boundary: revert only `src/features/payment-settings/domain.test.ts` commit `586ae4c`; production behavior is unchanged.
