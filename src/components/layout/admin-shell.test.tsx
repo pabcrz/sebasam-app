@@ -261,4 +261,43 @@ describe("AdminShell", () => {
     expect(screen.getByRole("banner")).toHaveClass("print:hidden");
     expect(screen.getByRole("navigation", { name: "Navegación móvil" })).toHaveClass("print:hidden");
   });
+
+  it("limits ADMIN desktop and mobile navigation to patron destinations", () => {
+    render(
+      <AdminShell displayName="Patron User" role="ADMIN">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const desktopNav = screen.getByRole("navigation", { name: "Navegación principal" });
+    expect(within(desktopNav).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/admin",
+      "/admin/customers",
+      "/admin/quotes",
+      "/admin/work-orders",
+      "/admin/notas",
+    ]);
+
+    const mobileNav = screen.getByRole("navigation", { name: "Navegación móvil" });
+    expect(within(mobileNav).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/admin",
+      "/admin/customers",
+      "/admin/quotes",
+      "/admin/work-orders",
+      "/admin/notas",
+    ]);
+    expect(within(mobileNav).queryByRole("button", { name: "Más" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the complete navigation for SUPER_ADMIN", () => {
+    render(
+      <AdminShell displayName="Super Admin" role="SUPER_ADMIN">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const desktopNav = screen.getByRole("navigation", { name: "Navegación principal" });
+    expect(within(desktopNav).getByRole("link", { name: "Nómina" })).toBeInTheDocument();
+    expect(within(desktopNav).getByRole("link", { name: "Usuarios" })).toBeInTheDocument();
+  });
 });
