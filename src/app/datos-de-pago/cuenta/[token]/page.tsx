@@ -1,9 +1,29 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPaymentSettings, getPublicBankAccountByToken } from "@/features/payment-settings/domain";
+import { getPaymentSettings, getPublicBankAccountByToken, getPublicBankNameByToken } from "@/features/payment-settings/domain";
 import { DirectPaymentPage } from "@/features/public-payment/components/direct-payment-page";
 
-export const metadata: Metadata = { title: "Cuenta bancaria" };
+const description = "Consulta los datos de cuenta bancaria para realizar tu pago a SEBASAM.";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}): Promise<Metadata> {
+  const { token } = await params;
+  const bankName = (await getPublicBankNameByToken(token))?.trim();
+  const title = bankName
+    ? `Datos de cuenta bancaria ${bankName}`
+    : "Datos de cuenta bancaria";
+  const brandedTitle = `${title} | SEBASAM`;
+
+  return {
+    title,
+    description,
+    openGraph: { title: brandedTitle, description, type: "website" },
+    twitter: { card: "summary_large_image", title: brandedTitle, description },
+  };
+}
 
 export default async function PublicBankAccountPage({
   params,
