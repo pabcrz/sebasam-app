@@ -32,10 +32,11 @@ Align the primary card interaction with the document-oriented task users expect 
   - Verification evidence: `pnpm exec vitest run src/features/work-orders/components/work-order-completed-list.test.tsx` — 13/13 passed; `pnpm exec vitest run src/features/quotes/components/quote-preview-dialog.test.tsx` — 13/13 passed; `pnpm typecheck` — passed; `pnpm lint` — passed with 8 existing warnings and 0 errors; `git diff --check` — passed. The first attempt to observe RED for the card-interaction test was blocked by absent dependencies before source changes; RED was later observed for the preview-title override (`Cotización C-001` rendered instead of expected `Nota N-140826-01`). The initial `pnpm test:ui -- <file>` form ran the full suite and failed while Prisma Client was ungenerated; after local offline install and `pnpm prisma generate`, focused tests passed. Full suite was not rerun.
   - Runtime harness: N/A — this is an in-app UI interaction covered by the focused component test.
   - Rollback boundary: revert `src/features/work-orders/components/work-order-completed-list.tsx`, `src/features/work-orders/components/work-order-completed-list.test.tsx`, `src/features/quotes/components/quote-preview-dialog.tsx`, and `src/features/quotes/components/quote-preview-dialog.test.tsx`; this removes the preview/menu interaction and optional title override without affecting other callers' default preview titles.
-  - Commit identity: pending.
+  - Commit identity: `cf521849aa093b7c3e9d9496544f1d955a3bf282` (`feat(notas): open note preview from cards`).
+  - Receipt-driven assessment: medium; `under_budget` (132 changed lines), so no review is due for this slice yet.
   - Route: delegated direct (writer prepares by reading implementation and tests; behavior spans component and tests).
 
 ## Progress and next step
 - Worktree created clean from local `develop` at `6a40db6`.
 - NCP-1 implementation complete: card click opens the note preview with its note folio and concepts; actions menu opens the existing payment/detail dialog and preserves existing actions.
-- Next: commit the verified work unit, then record its commit identity here and in the Engram mirror.
+- Complete. No push, PR, or merge was performed; the feature branch remains local.
