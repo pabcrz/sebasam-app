@@ -1,6 +1,10 @@
 import Link from "next/link";
+import type { UserRole } from "@prisma/client";
 import {
   Banknote,
+  ClipboardList,
+  FileCheck,
+  FileText,
   UserCog,
   Users,
 } from "lucide-react";
@@ -30,6 +34,7 @@ interface DashboardViewProps {
     reused?: boolean;
   }>;
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
+  role: UserRole;
 }
 
 const modules = [
@@ -53,13 +58,38 @@ const modules = [
   },
 ];
 
+const patronModules = [
+  modules[0],
+  {
+    href: "/admin/quotes",
+    title: "Cotizaciones",
+    description: "Crear y dar seguimiento a cotizaciones.",
+    icon: FileText,
+  },
+  {
+    href: "/admin/work-orders",
+    title: "Trabajos",
+    description: "Revisar y gestionar trabajos operativos.",
+    icon: ClipboardList,
+  },
+  {
+    href: "/admin/notas",
+    title: "Notas",
+    description: "Consultar y gestionar notas de trabajo y venta.",
+    icon: FileCheck,
+  },
+];
+
 export function DashboardView({
   snapshot,
   customers,
   createQuoteAction,
   createCustomerForQuoteAction,
   searchCustomersAction,
+  role,
 }: DashboardViewProps) {
+  const isPatron = role === "ADMIN";
+  const quickAccessModules = isPatron ? patronModules : modules;
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -84,19 +114,19 @@ export function DashboardView({
         {/* 1. Live Queues Snapshot */}
         <QueueSnapshotCards queues={snapshot.queues} />
 
-        <ReceivablesSection customers={snapshot.receivables} />
+        {!isPatron ? <ReceivablesSection customers={snapshot.receivables} /> : null}
 
         {/* 3. Operational KPIs per Period */}
-        <KpiPeriodMetrics kpis={snapshot.kpis} />
+        {!isPatron ? <KpiPeriodMetrics kpis={snapshot.kpis} /> : null}
 
         {/* 3. Weekly Payroll Estimate */}
-        <PayrollEstimateCard payroll={snapshot.weeklyPayroll} />
+        {!isPatron ? <PayrollEstimateCard payroll={snapshot.weeklyPayroll} /> : null}
 
         {/* 4. Quick Access Modules */}
         <div>
           <SectionLabel className="mb-3">Módulos del Sistema</SectionLabel>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {modules.map((module) => (
+            {quickAccessModules.map((module) => (
               <Link
                 key={module.href}
                 href={module.href}

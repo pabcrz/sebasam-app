@@ -41,18 +41,19 @@ Reduce navigation and first-glance cognitive load without introducing a duplicat
 - [x] Add/update shell tests for ADMIN and SUPER_ADMIN navigation.
 - Route: delegated direct writer.
 - Checks: focused `admin-shell` tests passed; `pnpm typecheck` passed; `git diff --check` passed.
-- Commit: pending.
+- Commit: `4937b88` (`feat(admin): simplify patron navigation`).
 
 ### T2 — Simplified patron dashboard
 
-- [ ] Pass the authenticated role into the dashboard view.
-- [ ] For `ADMIN`, remove payroll, worker, KPI, and receivables complexity from the first glance.
-- [ ] Keep operational quote/work queues and add direct quick access for Clientes, Cotizaciones, Trabajos, and Notas where needed.
-- [ ] Preserve the existing quote creation action and customer lookup.
-- [ ] Keep the complete dashboard for `SUPER_ADMIN`.
-- [ ] Add/update dashboard tests for both surfaces.
+- [x] Pass the authenticated role into the dashboard view.
+- [x] For `ADMIN`, remove payroll, worker, KPI, and receivables complexity from the first glance.
+- [x] Keep operational quote/work queues and add direct quick access for Clientes, Cotizaciones, Trabajos, and Notas where needed.
+- [x] Preserve the existing quote creation action and customer lookup.
+- [x] Keep the complete dashboard for `SUPER_ADMIN`.
+- [x] Add/update dashboard tests for both surfaces.
 - Route: delegated direct writer.
-- Checks: focused dashboard/page tests, `pnpm typecheck`.
+- Checks: focused dashboard/page tests passed; `pnpm typecheck` passed; `git diff --check` passed.
+- Commit: pending.
 
 ### T3 — Integration regression verification
 
@@ -74,9 +75,9 @@ Reduce navigation and first-glance cognitive load without introducing a duplicat
 
 ## Progress
 
-- Status: T1 implemented; T2 implementation pending.
+- Status: T1 and T2 implemented; T3 verification pending.
 - Verification evidence: clean worktree created from `origin/develop`; CodeGraph initialized.
-- Next step: commit T1, implement T2, then run T3 checks.
+- Next step: commit T2, then run T3 checks.
 
 ## Work-unit evidence
 

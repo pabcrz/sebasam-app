@@ -203,6 +203,7 @@ describe("DashboardView", () => {
         snapshot={sampleSnapshot}
         customers={[]}
         createQuoteAction={vi.fn()}
+        role="SUPER_ADMIN"
       />
     );
 
@@ -217,5 +218,43 @@ describe("DashboardView", () => {
     expect(screen.getByRole("heading", { level: 3, name: "Trabajadores" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 3, name: "Notas" })).not.toBeInTheDocument();
     expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
+  });
+
+  it("renders the simplified operational surface for ADMIN", () => {
+    render(
+      <DashboardView
+        snapshot={sampleSnapshot}
+        customers={[]}
+        createQuoteAction={vi.fn()}
+        role="ADMIN"
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
+    expect(screen.getByText("Módulos del Sistema")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Clientes" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Cotizaciones" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Trabajos" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Notas" })).toBeInTheDocument();
+    expect(screen.queryByText("Cuentas por cobrar")).not.toBeInTheDocument();
+    expect(screen.queryByText("Resumen del período")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nómina Semanal (Estimada)")).not.toBeInTheDocument();
+    const quickLinks = screen.getAllByRole("link");
+    expect(quickLinks.find((link) => link.getAttribute("href") === "/admin/customers")).toHaveAttribute(
+      "href",
+      "/admin/customers",
+    );
+    expect(quickLinks.find((link) => link.getAttribute("href") === "/admin/quotes")).toHaveAttribute(
+      "href",
+      "/admin/quotes",
+    );
+    expect(quickLinks.find((link) => link.getAttribute("href") === "/admin/work-orders")).toHaveAttribute(
+      "href",
+      "/admin/work-orders",
+    );
+    expect(quickLinks.find((link) => link.getAttribute("href") === "/admin/notas")).toHaveAttribute(
+      "href",
+      "/admin/notas",
+    );
   });
 });
