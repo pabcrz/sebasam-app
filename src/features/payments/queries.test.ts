@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireOperationalRole } from "@/lib/auth/session";
-import { getPayableNotePaymentHistory } from "@/features/payable-notes/domain";
 import {
   getEligibleNotesForCreditApplication,
   getNotePaymentHistory,
@@ -131,6 +130,7 @@ describe("hasActivePaymentApplicationForWorkOrder", () => {
 describe("getNotePaymentHistory", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (prisma as unknown as { payableNote?: unknown }).payableNote = undefined;
     (requireOperationalRole as ReturnType<typeof vi.fn>).mockResolvedValue({
       profile: { id: "user-1", role: "OPERATIONS", displayName: "Operations User" },
     });
@@ -145,20 +145,23 @@ describe("getNotePaymentHistory", () => {
   });
 
   it("uses the actual PayableNote ID for history and keeps the legacy work-order map key", async () => {
-    (prisma.payableNote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: "payable-note-actual", workOrderId: "wo-legacy-key" },
-    ]);
-    (getPayableNotePaymentHistory as ReturnType<typeof vi.fn>).mockResolvedValue({
-      note: { totalCents: 5000 },
-      payments: [{ id: "payment-1", paymentId: "payment-1", amountCents: 1000, appliedCents: 1000 }],
-    });
+    const findMany = vi.fn().mockResolvedValue([{
+      id: "payable-note-actual",
+      workOrderId: "wo-legacy-key",
+      totalCents: 5_000,
+      quote: null,
+    }]);
+    (prisma as unknown as { payableNote: unknown }).payableNote = { findMany } as never;
+    (prisma.payment.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
     const history = await getNotePaymentHistory(["wo-legacy-key"]);
 
-    expect(prisma.payableNote.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { workOrderId: { in: ["wo-legacy-key"] } },
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { OR: [{ id: { in: ["wo-legacy-key"] } }, { workOrderId: { in: ["wo-legacy-key"] } }] },
     }));
-    expect(getPayableNotePaymentHistory).toHaveBeenCalledWith("payable-note-actual");
+    expect(prisma.payment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { applications: { some: { payableNoteId: { in: ["payable-note-actual"] } } } },
+    }));
     expect(history.get("wo-legacy-key")).toMatchObject({ totalCents: 5000 });
     expect(history.has("payable-note-actual")).toBe(false);
     (prisma.payableNote.findMany as ReturnType<typeof vi.fn>).mockReset();
@@ -215,6 +218,152 @@ describe("getNotePaymentHistory", () => {
       { id: "payment-2", amountCents: 2_000, appliedCents: 0, paidCentsAtPayment: 3_000, remainingCentsAtPayment: 6_280 },
     ]);
     expect(prisma.payment.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { quoteId: { in: ["quote-1"] } } }));
+  });
+
+  it("loads multiple note histories with one batch per model and maps ordered balances to each requested note", async () => {
+    const firstDate = new Date("2026-09-01T12:00:00.000Z");
+    const secondDate = new Date("2026-09-02T12:00:00.000Z");
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "wo-2", quoteId: "quote-2", quote: { subtotalCents: 20_000, taxCents: 0, totalCents: 20_000, settlementAgreement: null } },
+      { id: "wo-1", quoteId: "quote-1", quote: { subtotalCents: 10_000, taxCents: 0, totalCents: 10_000, settlementAgreement: null } },
+    ]);
+    (prisma.payment.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "payment-wo-1",
+        quoteId: "quote-1",
+        amountCents: 4_000,
+        createdAt: firstDate,
+        method: "CASH",
+        status: "PAID",
+        reversedAt: null,
+        correctionsReplacement: [],
+        applications: [{ workOrderId: "wo-1", amountCents: 3_000, reversedAt: null }],
+      },
+      {
+        id: "payment-wo-2",
+        quoteId: "quote-2",
+        amountCents: 6_000,
+        createdAt: secondDate,
+        method: "TRANSFER",
+        status: "PAID",
+        reversedAt: null,
+        correctionsReplacement: [{ id: "correction-1" }],
+        applications: [{ workOrderId: "wo-2", amountCents: 5_000, reversedAt: null }],
+      },
+    ]);
+
+    const result = await getNotePaymentHistory(["wo-1", "wo-2"]);
+
+    expect(prisma.workOrder.findMany).toHaveBeenCalledOnce();
+    expect(prisma.workOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: { in: ["wo-1", "wo-2"] } } }));
+    expect(prisma.payment.findMany).toHaveBeenCalledOnce();
+    expect(prisma.payment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { quoteId: { in: ["quote-2", "quote-1"] } },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: expect.objectContaining({
+        applications: expect.objectContaining({ where: { workOrderId: { in: ["wo-1", "wo-2"] } } }),
+      }),
+    }));
+    expect([...result.keys()]).toEqual(["wo-2", "wo-1"]);
+    expect(result.get("wo-1")).toMatchObject({
+      totalCents: 10_000,
+      payments: [{ id: "payment-wo-1", appliedCents: 3_000, paidCentsAtPayment: 3_000, remainingCentsAtPayment: 7_000, isReversed: false, isCorrected: false }],
+    });
+    expect(result.get("wo-2")).toMatchObject({
+      totalCents: 20_000,
+      payments: [{ id: "payment-wo-2", appliedCents: 5_000, paidCentsAtPayment: 5_000, remainingCentsAtPayment: 15_000, isReversed: false, isCorrected: true }],
+    });
+  });
+
+  it("batches payable-note lookup and payment-history reads for multiple requested work orders", async () => {
+    const payableNotes = [
+      {
+        id: "note-1",
+        workOrderId: "wo-1",
+        totalCents: 10_000,
+        quote: {
+          subtotalCents: 10_000,
+          taxCents: 1_600,
+          totalCents: 11_600,
+          settlementAgreement: {
+            id: "agreement-1",
+            status: "ACTIVE",
+            settlementBaseCents: 8_000,
+            settlementTaxCents: 1_280,
+            settlementTotalCents: 9_280,
+          },
+        },
+      },
+      { id: "note-2", workOrderId: "wo-2", totalCents: 20_000 },
+    ];
+    (prisma as unknown as { payableNote: unknown }).payableNote = {
+      findMany: vi.fn(async () => payableNotes),
+    } as never;
+    (prisma.payment.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "paid-1", amountCents: 3_000, createdAt: new Date("2026-09-01"), method: "CASH", status: "PAID", reversedAt: null, correctionsReplacement: [], applications: [{ payableNoteId: "note-1", amountCents: 3_000, reversedAt: null }] },
+      { id: "paid-2", amountCents: 5_000, createdAt: new Date("2026-09-01"), method: "TRANSFER", status: "PAID", reversedAt: null, correctionsReplacement: [], applications: [{ payableNoteId: "note-2", amountCents: 5_000, reversedAt: null }] },
+      { id: "reversed-1", amountCents: 2_000, createdAt: new Date("2026-09-02"), method: "CASH", status: "PAID", reversedAt: new Date("2026-09-03"), correctionsReplacement: [], applications: [{ payableNoteId: "note-1", amountCents: 2_000, reversedAt: new Date("2026-09-03") }] },
+      { id: "pending-2", amountCents: 2_000, createdAt: new Date("2026-09-02"), method: "CASH", status: "PENDING", reversedAt: null, correctionsReplacement: [], applications: [{ payableNoteId: "note-2", amountCents: 2_000, reversedAt: null }] },
+      { id: "corrected-1", amountCents: 1_000, createdAt: new Date("2026-09-04"), method: "TRANSFER", status: "PAID", reversedAt: null, correctionsReplacement: [{ id: "correction-1" }], applications: [{ payableNoteId: "note-1", amountCents: 0, reversedAt: null }] },
+    ]);
+
+    const result = await getNotePaymentHistory(["wo-1", "wo-2", "wo-missing", "wo-1"]);
+
+    expect({
+      payableNoteLookups: (prisma.payableNote.findMany as ReturnType<typeof vi.fn>).mock.calls.length,
+      paymentHistoryReads: (prisma.payment.findMany as ReturnType<typeof vi.fn>).mock.calls.length,
+    }).toEqual({ payableNoteLookups: 1, paymentHistoryReads: 1 });
+    expect(prisma.payableNote.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { OR: [{ id: { in: ["wo-1", "wo-2", "wo-missing"] } }, { workOrderId: { in: ["wo-1", "wo-2", "wo-missing"] } }] },
+    }));
+    expect(prisma.payment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { applications: { some: { payableNoteId: { in: ["note-1", "note-2"] } } } },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    }));
+    expect([...result.keys()]).toEqual(["wo-1", "wo-2"]);
+    expect(result.get("wo-1")).toMatchObject({
+      totalCents: 9_280,
+      payments: [
+        { id: "paid-1", appliedCents: 3_000, paidCentsAtPayment: 3_000, remainingCentsAtPayment: 6_280, isReversed: false, isCorrected: false },
+        { id: "reversed-1", appliedCents: 0, paidCentsAtPayment: 3_000, remainingCentsAtPayment: 6_280, isReversed: true },
+        { id: "corrected-1", appliedCents: 0, paidCentsAtPayment: 3_000, remainingCentsAtPayment: 6_280, isCorrected: true },
+      ],
+    });
+    expect(result.get("wo-2")).toMatchObject({
+      totalCents: 20_000,
+      payments: [
+        { id: "paid-2", appliedCents: 5_000, paidCentsAtPayment: 5_000, remainingCentsAtPayment: 15_000 },
+        { id: "pending-2", appliedCents: 0, paidCentsAtPayment: 5_000, remainingCentsAtPayment: 15_000, paymentStatus: "PENDING" },
+      ],
+    });
+  });
+
+  it("uses a standalone SALE note's stored total", async () => {
+    (prisma as unknown as { payableNote: unknown }).payableNote = {
+      findMany: vi.fn().mockResolvedValue([{ id: "sale-note-1", workOrderId: null, totalCents: 7_650, quote: null }]),
+    } as never;
+    (prisma.payment.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    const result = await getNotePaymentHistory(["sale-note-1"]);
+
+    expect(result.get("sale-note-1")).toEqual({ totalCents: 7_650, payments: [] });
+    expect(prisma.payment.findMany).toHaveBeenCalledOnce();
+  });
+
+  it("returns no histories for empty or unknown IDs and deduplicates requested IDs", async () => {
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (prisma.payment.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    await expect(getNotePaymentHistory([])).resolves.toEqual(new Map());
+    expect(prisma.workOrder.findMany).not.toHaveBeenCalled();
+    expect(prisma.payment.findMany).not.toHaveBeenCalled();
+
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockClear();
+    (prisma.payment.findMany as ReturnType<typeof vi.fn>).mockClear();
+    await expect(getNotePaymentHistory(["unknown", "unknown"])).resolves.toEqual(new Map());
+    expect(prisma.workOrder.findMany).toHaveBeenCalledOnce();
+    expect(prisma.workOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: { in: ["unknown"] } } }));
+    expect(prisma.payment.findMany).not.toHaveBeenCalled();
   });
 
   it("does not count a reversed original alongside its replacement", async () => {
