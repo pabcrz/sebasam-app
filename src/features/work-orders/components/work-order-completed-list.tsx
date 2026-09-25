@@ -5,7 +5,6 @@ import type { CompletedNoteItem } from "@/features/work-orders/queries";
 import {
   Badge,
   Button,
-  DialogClose,
   OperationalActionsMenu,
   OperationalCardActions,
   OperationalCardLayout,
@@ -122,17 +121,6 @@ export function WorkOrderCompletedList({
 
         const frequentActions = (
           <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setSelectedWorkOrderId(wo.id)}
-              aria-label={`Gestionar pagos de nota ${noteFolio}`}
-              title="Gestionar pagos"
-              className="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
-            >
-              <ClipboardList className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only">Gestionar pagos</span>
-            </Button>
             <ShareQuoteButton
               action={shareAction.bind(null, wo.quote.id)}
               quoteNumber={wo.quote.number}
@@ -191,15 +179,6 @@ export function WorkOrderCompletedList({
               ) : undefined
             }
           >
-            <DialogClose asChild>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setSelectedWorkOrderId(wo.id)}
-              >
-                Ver pagos e historial
-              </Button>
-            </DialogClose>
             {archiveRevocationAction && wo.quote.status !== "ARCHIVED" ? (
               <NoteArchiveRevocationAction
                 quoteNumber={wo.quote.number}
@@ -231,8 +210,19 @@ export function WorkOrderCompletedList({
                    onOpenChange={(open) => setPreviewQuoteId(open ? wo.quote.id : null)}
                    showTrigger={false}
                  />
-                 <OperationalCardActions
-                   frequent={frequentActions}
+                  <OperationalCardActions
+                    primary={(
+                      <Button
+                        type="button"
+                        variant="primary"
+                        className="w-full justify-center"
+                        onClick={() => setSelectedWorkOrderId(wo.id)}
+                      >
+                        <ClipboardList className="h-5 w-5" aria-hidden="true" />
+                        Gestionar pagos
+                      </Button>
+                    )}
+                    frequent={frequentActions}
                    overflow={overflowAction}
                    className="gap-1"
                    actionGapClassName="gap-1"

@@ -1,7 +1,7 @@
 # Notes Card Preview — Issue #688
 
 ## Objective
-Make selecting a Notes card open the document preview and keep payment actions and payment details accessible from the card's actions menu.
+Make selecting a Notes card open the document preview and provide an explicit primary card action for managing payments.
 
 ## Problem
 The current Notes card click behavior prioritizes payment details, while users need to inspect the note and its concepts. This differs from Quotes and active Work Orders, whose cards open a preview.
@@ -13,7 +13,8 @@ Align the primary card interaction with the document-oriented task users expect 
 - Authorized issue: GitHub issue #688.
 - Work only in `odd/tasks/notes-card-preview.md`'s repository worktree on branch `feature/688-notes-card-preview`.
 - Clicking the note card body opens the note preview with document concepts.
-- Keep payment history/details and current payment actions accessible through the card actions menu.
+- Provide a visible, labeled primary “Gestionar pagos” action on every note card, using the same manage icon as Quotes; it opens the existing payment/detail dialog.
+- Keep archive, revoke, rollback, and other existing actions in the card actions menu.
 - Preserve existing role, state, and payment-action permission behavior.
 - Do not change payment calculations, persistence, filters, or metrics.
 - TDD: strict; source: project testing-capability configuration (`sdd-init/sebasam-app`); runner: `pnpm test:ui -- <test-file>`.
@@ -22,7 +23,8 @@ Align the primary card interaction with the document-oriented task users expect 
 
 ## Acceptance criteria
 - Clicking a Notes card opens the document preview with the note's concepts.
-- Payment history/details and payment actions remain available from the actions menu.
+- Every Notes card presents a primary “Gestionar pagos” button with the Quotes manage icon, opening the existing payment/detail dialog.
+- Archive, revoke, rollback, and other secondary actions remain in the actions menu.
 - Existing permission and state restrictions remain unchanged.
 - Quotes and active Work Orders retain their existing interactions.
 
@@ -35,8 +37,18 @@ Align the primary card interaction with the document-oriented task users expect 
   - Commit identity: `cf521849aa093b7c3e9d9496544f1d955a3bf282` (`feat(notas): open note preview from cards`).
   - Receipt-driven assessment: medium; `under_budget` (132 changed lines), so no review is due for this slice yet.
   - Route: delegated direct (writer prepares by reading implementation and tests; behavior spans component and tests).
+- [x] NCP-2 — Promote payment management to a visible primary action on every Notes card, matching the Quotes manage icon.
+  - Checks: focused completed-note list test; `pnpm typecheck`; `pnpm lint`.
+  - Verification evidence: `pnpm exec vitest run src/features/work-orders/components/work-order-completed-list.test.tsx` — 14/14 passed; `pnpm typecheck` — passed; `pnpm lint` — passed with 8 warnings and 0 errors; `git diff --check` — passed. RED ordering/result could not be confirmed because the implementation delegation returned a transport error; the final regression suite is green.
+  - Runtime harness: N/A — the card interaction is covered by the focused component test; local dev server remains available at port 3003 for manual inspection.
+  - Rollback boundary: revert the new primary payment-management action and its focused coverage in `src/features/work-orders/components/work-order-completed-list.tsx` and `src/features/work-orders/components/work-order-completed-list.test.tsx`.
+  - Commit identity: pending.
+  - Receipt-driven assessment: pending commit assessment.
+  - Route: delegated direct; trigger: implementation and regression test both change the completed-note card behavior.
 
 ## Progress and next step
 - Worktree created clean from local `develop` at `6a40db6`.
-- NCP-1 implementation complete: card click opens the note preview with its note folio and concepts; actions menu opens the existing payment/detail dialog and preserves existing actions.
-- Complete. No push, PR, or merge was performed; the feature branch remains local.
+- NCP-1 implementation complete: card click opens the note preview with its note folio and concepts; the payment/detail dialog is available separately.
+- NCP-2 implementation complete: every Notes card now has a primary `Gestionar pagos` button with the Quotes `ClipboardList` icon; the existing card body still opens preview and the payment item was removed from the overflow menu.
+- NCP-2 awaits its work-unit commit and post-commit assessment record.
+- No push, PR, or merge has been performed; the feature branch remains local.
