@@ -252,7 +252,7 @@ describe("WorkOrderCompletedList", () => {
     expect(screen.getByTestId("nota-detail-body")).toHaveClass("overflow-y-auto");
     expect(screen.getByTestId("nota-detail-body")).toHaveClass("p-0");
     expect(screen.getByTestId("nota-detail-body")).not.toHaveClass("px-4", "py-4", "sm:px-6", "sm:py-6");
-    expect(screen.getByTestId("nota-detail-dialog")).toHaveClass("h-dvh", "w-screen", "sm:max-w-6xl");
+    expect(screen.getByTestId("nota-detail-dialog")).toHaveClass("h-dvh", "w-screen", "sm:max-w-2xl");
   });
 
   it("renders SALE notes through the same payable actions without a WorkOrder", () => {

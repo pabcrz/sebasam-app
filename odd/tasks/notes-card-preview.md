@@ -14,6 +14,7 @@ Align the primary card interaction with the document-oriented task users expect 
 - Work only in `odd/tasks/notes-card-preview.md`'s repository worktree on branch `feature/688-notes-card-preview`.
 - Clicking the note card body opens the note preview with document concepts.
 - Provide a visible, labeled primary “Gestionar pagos” action on every note card, using the same manage icon as Quotes; it opens the existing payment/detail dialog.
+- Size the payment/detail dialog to approximately the document preview width on desktop (`max-w-2xl`) while retaining its current full-screen mobile layout.
 - Keep archive, revoke, rollback, and other existing actions in the card actions menu.
 - Preserve existing role, state, and payment-action permission behavior.
 - Do not change payment calculations, persistence, filters, or metrics.
@@ -24,6 +25,7 @@ Align the primary card interaction with the document-oriented task users expect 
 ## Acceptance criteria
 - Clicking a Notes card opens the document preview with the note's concepts.
 - Every Notes card presents a primary “Gestionar pagos” button with the Quotes manage icon, opening the existing payment/detail dialog.
+- The payment/detail dialog is approximately as wide as the document preview on desktop and remains full-screen on mobile.
 - Archive, revoke, rollback, and other secondary actions remain in the actions menu.
 - Existing permission and state restrictions remain unchanged.
 - Quotes and active Work Orders retain their existing interactions.
@@ -45,10 +47,20 @@ Align the primary card interaction with the document-oriented task users expect 
   - Commit identity: `06a8bbe7cb5cce9c8591c3547e1ce3b3a8dca1fa` (`feat(notas): make payment management a primary action`).
   - Receipt-driven assessment: medium; `under_budget` (159 changed lines across the current committed feature slice), no review is due.
   - Route: delegated direct; trigger: implementation and regression test both change the completed-note card behavior.
+- [x] NCP-3 — Reduce the payment/detail dialog's desktop width to match the document preview while preserving mobile full-screen behavior.
+  - Checks: focused completed-note list test; `pnpm typecheck`; `pnpm lint`.
+  - Verification evidence: baseline focused test passed 14/14; RED failed 13/14 on the old width; GREEN and parent spot check `pnpm exec vitest run src/features/work-orders/components/work-order-completed-list.test.tsx` passed 14/14; `pnpm typecheck` passed; `pnpm lint` passed with 8 warnings and 0 errors; `git diff --check` passed.
+  - Runtime harness: N/A — the dialog width is covered by the focused UI component test; mobile full-screen classes remain unchanged.
+  - Rollback boundary: restore `sm:max-w-6xl` in `src/features/work-orders/components/nota-detail-dialog.tsx` and its prior focused expectation in `src/features/work-orders/components/work-order-completed-list.test.tsx`.
+  - Commit identity: pending.
+  - Receipt-driven assessment: pending commit assessment.
+  - Route: delegated direct; trigger: preparation and implementation span the dialog component and its tests.
 
 ## Progress and next step
 - Worktree created clean from local `develop` at `6a40db6`.
 - NCP-1 implementation complete: card click opens the note preview with its note folio and concepts; the payment/detail dialog is available separately.
 - NCP-2 implementation complete: every Notes card now has a primary `Gestionar pagos` button with the Quotes `ClipboardList` icon; the existing card body still opens preview and the payment item was removed from the overflow menu.
 - NCP-2 committed as `06a8bbe7cb5cce9c8591c3547e1ce3b3a8dca1fa`; receipt-driven assessment is medium / under_budget, so no review is due for the current slice.
+- NCP-3 implementation complete: payment dialog now uses `sm:max-w-2xl` on desktop while retaining full-screen mobile classes.
+- NCP-3 awaits its work-unit commit and post-commit assessment record.
 - No push, PR, or merge has been performed; the feature branch remains local.
