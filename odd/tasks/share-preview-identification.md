@@ -158,7 +158,7 @@ At the time this section was written, T5 and T6 were implemented and no delivery
 - Stale-base preflight: `6a40db6765b22830c3236a711c8748c4c05a7116` is an ancestor of fetched `origin/develop` (`23d20416259b30ba7a7845ad0afc3e2e8ec9d724`). `git merge-tree --write-tree origin/develop <boundary>` completed without conflicts for T1 (`8ad6b20`), T2 (`edfe51a`), and T6 (`07bba85`). No source rewrite or rebase is planned.
 - Tracker slice: `feat/681-share-preview-tracker` at T1 `8ad6b20`; base `develop`; 145 changed lines (additions + deletions). This is a draft/no-merge integration tracker.
 - Child 1 slice: `feat/681-bank-account-preview` at T2 `edfe51a`, descended from T1; base `feat/681-share-preview-tracker`; 104 changed lines (additions + deletions).
-- Child 2 slice: `feat/681-preview-branding` at T6 `07bba85` plus the final task-record completion updates, descended from child 1; base `feat/681-bank-account-preview`; 345 changed lines including the chain record (additions + deletions; below the 400-line budget).
+- Child 2 slice: `feat/681-preview-branding` at T6 `07bba85` plus the final task-record completion updates, descended from child 1; base `feat/681-bank-account-preview`; 343 changed lines including the chain record (additions + deletions; below the 400-line budget).
 - Remote branch names were checked and are not currently present. Integrate children in dependency order, then merge the draft tracker to `develop`; only that final integration closes #681. No merge is authorized in this execution.
 - Dependency order:
 
