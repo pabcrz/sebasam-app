@@ -37,6 +37,16 @@ function collectText(node: unknown): string {
   return "";
 }
 
+function collectImages(node: unknown): Array<{ src?: string; style?: Record<string, unknown> }> {
+  if (Array.isArray(node)) return node.flatMap(collectImages);
+  if (!node || typeof node !== "object" || !("props" in node)) return [];
+  const element = node as { type?: unknown; props: { src?: string; style?: Record<string, unknown>; children?: unknown } };
+  return [
+    ...(element.type === "img" ? [{ src: element.props.src, style: element.props.style }] : []),
+    ...collectImages(element.props.children),
+  ];
+}
+
 describe("OpengraphImage for /cotizacion/[token]", () => {
   it("exports correct size and contentType", () => {
     expect(size).toEqual({ width: 1200, height: 630 });
@@ -66,9 +76,22 @@ describe("OpengraphImage for /cotizacion/[token]", () => {
     expect(response.options).toEqual({ width: 1200, height: 630 });
     expect(collectText(response.element)).toContain("Transportes San Juan");
     expect(collectText(response.element)).toContain("Kenworth T680");
-    expect(collectText(response.element).indexOf("Transportes San Juan")).toBeLessThan(
-      collectText(response.element).indexOf("C-0826-007"),
+    const renderedText = collectText(response.element);
+    const wordmarkIndex = renderedText.indexOf("SEBASAM");
+    const taglineIndex = renderedText.indexOf("SUSPENSIONES DE AIRE Y MUELLES");
+    expect(wordmarkIndex).toBeGreaterThan(-1);
+    expect(wordmarkIndex).toBeLessThan(taglineIndex);
+    expect(renderedText.match(/Transportes San Juan/g)).toHaveLength(1);
+    expect(renderedText.match(/Kenworth T680/g)).toHaveLength(1);
+    expect(renderedText).not.toContain("CLIENTE");
+    expect(renderedText).not.toContain("VEHÍCULO");
+    expect(renderedText.match(/2026/g)).toHaveLength(1);
+    expect(renderedText.indexOf("Transportes San Juan")).toBeLessThan(
+      renderedText.indexOf("C-0826-007"),
     );
+    expect(collectImages(response.element)).toEqual([
+      expect.objectContaining({ src: expect.stringContaining("data:image/png;base64,") }),
+    ]);
   });
 
   it("renders assigned work as a service note", async () => {
@@ -101,5 +124,8 @@ describe("OpengraphImage for /cotizacion/[token]", () => {
 
     expect(response.type).toBe("image-response");
     expect(response.options).toEqual({ width: 1200, height: 630 });
+    expect(collectImages(response.element)).toEqual([
+      expect.objectContaining({ src: expect.stringContaining("data:image/png;base64,") }),
+    ]);
   });
 });

@@ -1,9 +1,20 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { getPublicBankNameByToken } from "@/features/payment-settings/domain";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpenGraphImage() {
+export default async function OpenGraphImage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = await params;
+  const bankName = (await getPublicBankNameByToken(token))?.trim() || "Banco";
+  const logo = `data:image/png;base64,${(await readFile(join(process.cwd(), "public/logo-white-short.png"))).toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -20,7 +31,7 @@ export default function OpenGraphImage() {
           fontFamily: "Arial, sans-serif",
         }}
       >
-        <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: 5, color: "#7dd3fc" }}>SEBASAM</div>
+        <img alt="" src={logo} width={240} height={60} style={{ objectFit: "contain" }} />
         <div style={{ fontSize: 58, fontWeight: 800 }}>Datos de cuenta bancaria</div>
         <div style={{ fontSize: 28, color: "#cbd5e1" }}>Información para realizar tu pago</div>
         <div
@@ -35,7 +46,7 @@ export default function OpenGraphImage() {
             fontWeight: 700,
           }}
         >
-          PAGO SEGURO
+          {bankName}
         </div>
       </div>
     ),

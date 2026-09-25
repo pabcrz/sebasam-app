@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { getSharedQuoteByToken } from "@/features/quotes/domain";
 import { formatVehicle, formatSnapshotVehicle, formatOperationalDate } from "@/features/quotes/lib/format";
 import {
@@ -20,6 +22,7 @@ interface OpengraphImageProps {
 
 export default async function OpengraphImage({ params }: OpengraphImageProps) {
   const { token } = await params;
+  const logo = `data:image/png;base64,${(await readFile(join(process.cwd(), "public/logo-white-short.png"))).toString("base64")}`;
 
   try {
     const sharedQuote = await getSharedQuoteByToken(token);
@@ -64,12 +67,14 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
             }}
           >
             <div style={{ display: "flex", flexDirection: "column" }}>
+              <img alt="" src={logo} width={180} height={45} style={{ objectFit: "contain", objectPosition: "left center" }} />
               <span
                 style={{
-                  fontSize: "36px",
-                  fontWeight: 900,
+                  fontSize: "16px",
+                  fontWeight: 800,
                   letterSpacing: "2px",
-                  color: "#FFFFFF",
+                  color: "#F8FAFC",
+                  marginTop: "2px",
                 }}
               >
                 SEBASAM
@@ -168,70 +173,14 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
               }}
             />
 
-            {/* Info Grid */}
+            {/* Compact date keeps the document's only secondary detail. */}
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
-                gap: "32px",
+                justifyContent: "flex-end",
               }}
             >
-              {/* Cliente */}
-              <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                <span
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 700,
-                    letterSpacing: "1px",
-                    color: "#64748B",
-                    marginBottom: "4px",
-                  }}
-                >
-                  CLIENTE
-                </span>
-                <span
-                  style={{
-                    fontSize: "26px",
-                    fontWeight: 700,
-                    color: "#F1F5F9",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {customerName}
-                </span>
-              </div>
-
-              {/* Vehículo */}
-              <div style={{ display: "flex", flexDirection: "column", flex: 1.2 }}>
-                <span
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 700,
-                    letterSpacing: "1px",
-                    color: "#64748B",
-                    marginBottom: "4px",
-                  }}
-                >
-                  VEHÍCULO
-                </span>
-                <span
-                  style={{
-                    fontSize: "26px",
-                    fontWeight: 700,
-                    color: "#F1F5F9",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {vehicleDescription}
-                </span>
-              </div>
-
-              {/* Fecha */}
-              <div style={{ display: "flex", flexDirection: "column", flex: 0.8 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                 <span
                   style={{
                     fontSize: "14px",
@@ -297,13 +246,14 @@ export default async function OpengraphImage({ params }: OpengraphImageProps) {
             textAlign: "center",
           }}
         >
+          <img alt="" src={logo} width={240} height={60} style={{ objectFit: "contain", marginBottom: "12px" }} />
           <span
             style={{
-              fontSize: "48px",
-              fontWeight: 900,
+              fontSize: "20px",
+              fontWeight: 800,
               letterSpacing: "2px",
-              color: "#FFFFFF",
-              marginBottom: "12px",
+              color: "#F8FAFC",
+              marginBottom: "8px",
             }}
           >
             SEBASAM
