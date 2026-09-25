@@ -33,6 +33,7 @@ import {
   getPaymentSettings,
   updatePaymentSettings,
   getPublicBankAccountByToken,
+  getPublicBankNameByToken,
   setBankAccountPublicSharing,
 } from "./domain";
 
@@ -137,6 +138,23 @@ describe("getPaymentSettings", () => {
         bankName: { not: "" },
         OR: [{ accountNumber: { not: "" } }, { clabe: { not: "" } }],
       },
+    });
+  });
+
+  it("selects and returns the public bank name by stable token", async () => {
+    findFirst.mockResolvedValue({ bankName: "Banco Azteca" });
+
+    await expect(getPublicBankNameByToken("stable-token")).resolves.toBe("Banco Azteca");
+    expect(findFirst).toHaveBeenCalledWith({
+      where: {
+        publicToken: "stable-token",
+        paymentSettingsId: 1,
+        isPubliclyShareable: true,
+        accountHolder: { not: "" },
+        bankName: { not: "" },
+        OR: [{ accountNumber: { not: "" } }, { clabe: { not: "" } }],
+      },
+      select: { bankName: true },
     });
   });
 
