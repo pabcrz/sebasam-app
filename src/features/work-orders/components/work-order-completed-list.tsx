@@ -4,6 +4,7 @@ import * as React from "react";
 import type { CompletedNoteItem } from "@/features/work-orders/queries";
 import {
   Badge,
+  Button,
   OperationalActionsMenu,
   OperationalCardActions,
   OperationalCardLayout,
@@ -16,11 +17,12 @@ import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snap
 import { resolveDocumentFolio, resolveAntecedentQuoteFolio } from "@/features/quotes/lib/document-resolver";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
+import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
 import { NoteArchiveRevocationAction } from "@/features/quotes/components/note-archive-revocation-actions";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { NotePaymentHistoryItem } from "@/features/payments/lib/payment-register";
-import { Printer } from "lucide-react";
+import { ClipboardList, Printer } from "lucide-react";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 
@@ -91,6 +93,7 @@ export function WorkOrderCompletedList({
   const correctWorkOrderActionMap = new Map(correctWorkOrderActions.map((c) => [c.workOrderId, c.action]));
   const archiveRevocationActionMap = new Map(archiveRevocationActions.map((action) => [action.quoteId, action]));
   const [selectedWorkOrderId, setSelectedWorkOrderId] = React.useState<string | null>(null);
+  const [previewQuoteId, setPreviewQuoteId] = React.useState<string | null>(null);
 
   return (
     <>
@@ -155,13 +158,7 @@ export function WorkOrderCompletedList({
         );
 
         const workOrder = wo.kind === "WORK" ? wo : null;
-        const hasOverflow = Boolean(
-          (archiveRevocationAction && wo.quote.status !== "ARCHIVED") ||
-            archiveRevocationAction?.canRevoke ||
-            rollbackAction,
-        );
-
-        const overflowAction = hasOverflow ? (
+        const overflowAction = (
           <OperationalActionsMenu
             title="Acciones de nota"
             description={`Opciones para la nota ${noteFolio}.`}
@@ -197,20 +194,40 @@ export function WorkOrderCompletedList({
               />
             ) : null}
           </OperationalActionsMenu>
-        ) : null;
+        );
 
         return (
           <NotaCard
             key={wo.id}
-            onOpen={() => setSelectedWorkOrderId(wo.id)}
-            openLabel={`Ver detalle de nota ${noteFolio}`}
+            onOpen={() => setPreviewQuoteId(wo.quote.id)}
+            openLabel={`Ver vista previa de nota ${noteFolio}`}
              actions={
-               <OperationalCardActions
-                 frequent={frequentActions}
-                 overflow={overflowAction}
-                 className="gap-1"
-                 actionGapClassName="gap-1"
-               />
+               <>
+                 <QuotePreviewDialog
+                   quote={quoteDetail as never}
+                   previewTitle={`Nota ${noteFolio}`}
+                   open={previewQuoteId === wo.quote.id}
+                   onOpenChange={(open) => setPreviewQuoteId(open ? wo.quote.id : null)}
+                   showTrigger={false}
+                 />
+                  <OperationalCardActions
+                    primary={(
+                      <Button
+                        type="button"
+                        variant="primary"
+                        className="w-full justify-center"
+                        onClick={() => setSelectedWorkOrderId(wo.id)}
+                      >
+                        <ClipboardList className="h-5 w-5" aria-hidden="true" />
+                        Gestionar pagos
+                      </Button>
+                    )}
+                    frequent={frequentActions}
+                   overflow={overflowAction}
+                   className="gap-1"
+                   actionGapClassName="gap-1"
+                 />
+               </>
              }
              className="!w-full !min-w-0 !p-2"
              body={

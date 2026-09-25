@@ -77,7 +77,7 @@ export function NotaDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogMobileContent
         data-testid="nota-detail-dialog"
-        className="h-dvh min-w-0 w-screen max-h-dvh rounded-none sm:h-auto sm:max-h-[calc(100dvh_-_2rem)] sm:w-[calc(100vw_-_2rem)] sm:max-w-6xl sm:rounded-[var(--radius-md)]"
+        className="h-dvh min-w-0 w-screen max-h-dvh rounded-none sm:h-auto sm:max-h-[calc(100dvh_-_2rem)] sm:w-[calc(100vw_-_2rem)] sm:max-w-2xl sm:rounded-[var(--radius-md)]"
       >
         <DialogMobileHeader>
           <DialogTitle>Nota {noteFolio}</DialogTitle>

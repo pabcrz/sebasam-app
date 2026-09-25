@@ -44,6 +44,7 @@ interface QuotePreviewDialogProps {
   onOpenChange?: (open: boolean) => void;
   showTrigger?: boolean;
   noteReturnTo?: string;
+  previewTitle?: string;
 }
 
 export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePreviewCardProps {
@@ -116,7 +117,7 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
 }
 
 
-export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true }: QuotePreviewDialogProps) {
+export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true, previewTitle }: QuotePreviewDialogProps) {
   const [openInternal, setOpenInternal] = React.useState(false);
   const open = openProp ?? openInternal;
   const setOpen = React.useCallback(
@@ -145,7 +146,7 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
       ) : null}
       <DialogContent className="max-w-2xl p-3 sm:p-6 gap-3 sm:gap-4 max-h-[calc(100dvh_-_1rem)] sm:max-h-[calc(100dvh_-_2rem)]">
         <DialogHeader className="relative pr-10 sm:pr-0">
-          <DialogTitle className="text-base sm:text-lg font-bold">Cotización {quote.number}</DialogTitle>
+          <DialogTitle className="text-base sm:text-lg font-bold">{previewTitle ?? `Cotización ${quote.number}`}</DialogTitle>
           <button
             type="button"
             onClick={() => setOpen(false)}
