@@ -67,7 +67,7 @@ Reduce navigation and first-glance cognitive load without introducing a duplicat
 - Route: single authorized writer.
 - Checks: `pnpm test:ui src/components/layout/admin-shell.test.tsx 'src/app/admin/(protected)/nomina/page.test.tsx' src/features/payroll/components/payroll-components.test.tsx` — 3 files, 49 tests passed; `pnpm test:ui src/features/payroll/domain.test.ts src/features/payroll/period.test.ts` — 2 files, 36 tests passed; `pnpm typecheck` passed; `pnpm lint` passed; `pnpm build` passed; `git diff --check` passed.
 - Observed evidence: ADMIN receives six desktop/mobile destinations including `/admin/nomina`; the page resolves and passes the authenticated role into `PayrollView`, forcing ADMIN requests to weekly mode; ADMIN sees weekly previous/next navigation only, with monthly/status/signing/receipt/edit controls absent; SUPER_ADMIN retains the existing complete payroll controls; work rows render quote title, customer or vehicle/unit fallback, and folio metadata without repeating the selected master.
-- Commit: pending (parent will inspect and commit the work unit).
+- Commit: `c0dcdad` (`feat(payroll): simplify patron weekly view`).
 
 ### T3 — Integration regression verification
 
@@ -95,11 +95,11 @@ Reduce navigation and first-glance cognitive load without introducing a duplicat
 
 - Status: T1–T4 complete; full-suite unrelated failures remain documented.
 - Verification evidence: clean worktree created from `origin/develop`; CodeGraph initialized.
-- Next step: commit T4, run the final review assessment, and hand off the clean worktree; no runtime harness is configured.
+- Next step: hand off the clean worktree; no runtime harness is configured.
 
 ## Work-unit evidence
 
 - T1 commit: `4937b88`.
 - T2 commit: `9529e51`.
 - T3 verification: `68236da`; all scoped checks passed.
-- T4 commit: pending; uncommitted by instruction.
+- T4 commit: `c0dcdad` (`feat(payroll): simplify patron weekly view`).
