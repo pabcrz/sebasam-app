@@ -63,4 +63,5 @@ Align the primary card interaction with the document-oriented task users expect 
 - NCP-2 committed as `856a87df2691a07a19d6af6ef02a01a584b9e422`; receipt-driven assessment is medium / under_budget, so no review is due for the current slice.
 - NCP-3 implementation complete: payment dialog now uses `sm:max-w-2xl` on desktop while retaining full-screen mobile classes.
 - NCP-3 committed as `0c4dd2e609d8d348d5425ed18a67aafb940114d5`; receipt-driven assessment is medium / under_budget, so no review is due for the current slice.
-- No push, PR, or merge has been performed; the feature branch remains local.
+- PR #693 is open from `feature/688-notes-card-preview` into `develop`: https://github.com/pabcrz/sebasam-app/pull/693.
+- The initial PR checks passed; a final documentation-only follow-up may trigger another check run.
