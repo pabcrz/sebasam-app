@@ -20,22 +20,24 @@ Recipients need to recognize what a shared link concerns before opening it. Paym
 - **T2:** Make the payment-account share link preview explicitly identify payment details and be visually recognizable.
 - **T4:** Refine the bank-account preview to include the account's bank name dynamically and remove claims of secure/gateway-based payment processing.
 - **T5:** Add the SEBASAM logo to the Open Graph images for shared quotes/work/service notes and bank-account links.
+- **T6:** Show the SEBASAM wordmark directly under the logo and remove repeated customer/vehicle information from the document preview.
 - Preserve useful fallbacks when identifying information is unavailable.
 - Do not leak payment credentials or account details in metadata.
 - The bank name may be shown; do not show account numbers, CLABE, account holder, or token in metadata or the Open Graph image.
 - Do not claim that payment is secure or processed through an integrated gateway; occasional Mercado Pago use does not make this bank-account share link a payment gateway.
 - Use the existing white logo asset against the dark preview backgrounds without obscuring customer, unit, document type, or bank-name information.
-- Implement only T1, T2, T4, and accepted T5 within the approved issue scope; task-document and setup-only workers must not edit application source.
-- Do not fetch or push. Local work-unit commits on this issue branch are part of the authorized implementation.
+- In document previews, show customer and vehicle/operator in the primary content only; do not repeat those values in a secondary grid. Keep the date at most once.
+- Implement only T1, T2, T4, T5, and accepted T6 within the approved issue scope; task-document and setup-only workers must not edit application source.
+- Local work-unit commits on this issue branch are part of the authorized implementation. Remote fetch, push, and pull-request creation are authorized only for `github.com/pabcrz/sebasam-app`, using the authenticated GitHub CLI account `pabcrz` and the configured SSH credential for pushes; no merge is authorized.
 
 ## Authorized scope
 
-Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authorized local branch/worktree: `feature/681-identifiable-share-previews` at `/Users/pabcrz/Dev/sebasam/sebasam-app-worktrees/681-identifiable-share-previews`, based on the existing local `develop` branch. Application changes for T1, T2, and accepted refinements T4/T5 are authorized only in this worktree and only within issue #681's stated scope. Do not fetch or push.
+Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authorized local branch/worktree: `feature/681-identifiable-share-previews` at `/Users/pabcrz/Dev/sebasam/sebasam-app-worktrees/681-identifiable-share-previews`, based on local `develop` at `6a40db6765b22830c3236a711c8748c4c05a7116`. Application changes for T1, T2, and accepted refinements T4/T5/T6 are authorized only in this worktree and only within issue #681's stated scope. The user later authorized fetch of `origin develop`, pushes, and PR creation to `github.com/pabcrz/sebasam-app` using GitHub CLI account `pabcrz` and the configured SSH credential; no merge is authorized.
 
 ## Route and trigger evidence
 
-- **Route:** Delegated-direct. The user authorized the logo refinement in the requested worktree; T5 changes both image generators and their regression coverage across multiple non-trivial files.
-- **Trigger evidence:** The accepted request is to add the existing SEBASAM logo to quote/note/work and bank-account link previews while preserving legibility of identity and payment purpose. The multi-file writer trigger selects delegated-direct; it does not select SDD.
+- **Route:** Delegated-direct. The user authorized a logo-wordmark and no-duplicate-content refinement in the requested worktree; T6 updates the document OG image and its regression coverage.
+- **Trigger evidence:** The user asked for `SEBASAM` under the logo and identified repeated customer/vehicle values under the divider. The multi-file writer trigger selects delegated-direct for implementation and focused tests; it does not select SDD.
 
 ## Effective TDD mode and runner
 
@@ -51,6 +53,7 @@ Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authori
 - [x] **T3** — Resolve and record effective TDD mode/source before app implementation.
 - [x] **T4** — Show the bank name dynamically in the account preview; remove unsupported security/gateway claims.
 - [x] **T5** — Add the SEBASAM logo to document and bank-account Open Graph images without hiding key identifying information.
+- [x] **T6** — Put the SEBASAM wordmark under the logo and remove repeated customer/vehicle details from document images; keep date at most once.
 
 ## Acceptance criteria
 
@@ -61,6 +64,8 @@ Approved issue #681: <https://github.com/pabcrz/sebasam-app/issues/681>. Authori
 - The account preview identifies the bank name when available, with generic fallback copy when absent.
 - The preview does not claim “pago seguro” or imply an integrated payment gateway.
 - Shared quote/note/work and bank-account preview images include the SEBASAM logo legibly against their dark background.
+- Document images show the SEBASAM wordmark directly below the logo.
+- Customer and vehicle/operator values appear once in the document card; the date appears at most once.
 - Focused tests cover the preview content, fallback behavior, and sensitive-metadata exclusion; applicable lint/typecheck/build checks are recorded.
 
 ## Applicable checks
@@ -76,7 +81,7 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 
 ## Delivery strategy
 
-**`ask-on-risk`** — ask before expanding scope or crossing the review-size/risk boundary; do not silently split or broaden this issue.
+**Feature Branch Chain** — the user selected this strategy to prevent a child merge from closing issue #681 before the feature is integrated. The integration tracker is the only PR targeting `develop`; child PRs target the immediately preceding feature branch. All PRs link `Closes #681`, but no PR is to be merged by this workflow.
 
 ## Progress
 
@@ -86,6 +91,7 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 - [x] Implement T1 and T2, verify acceptance criteria, and commit both work units.
 - [x] Implement accepted refinement T4, verify its acceptance criteria, and commit the refinement work unit.
 - [x] Implement accepted logo refinement T5, verify its acceptance criteria, and commit the refinement work unit.
+- [x] Implement accepted T6 layout refinement and commit the work unit; complete native review continuation before delivery.
 
 ## Verification evidence
 
@@ -144,7 +150,26 @@ Estimate only: approximately **80–180 authored changed lines** across implemen
 
 ## Next step
 
-T5 is implemented and locally assessed below. No PR or remote Git operation is authorized.
+At the time this section was written, T5 and T6 were implemented and no delivery action was authorized. Delivery was later explicitly authorized as the feature-branch chain recorded below; no PR or push had yet been performed when this task-record update began.
+
+### Authorized feature-branch chain — issue #681
+
+- Target: `github.com/pabcrz/sebasam-app`, issue #681; base/final target `develop`. The issue must be re-read from GitHub as OPEN with `status:approved` before PR creation.
+- Stale-base preflight: `6a40db6765b22830c3236a711c8748c4c05a7116` is an ancestor of fetched `origin/develop` (`23d20416259b30ba7a7845ad0afc3e2e8ec9d724`). `git merge-tree --write-tree origin/develop <boundary>` completed without conflicts for T1 (`8ad6b20`), T2 (`edfe51a`), and T6 (`07bba85`). No source rewrite or rebase is planned.
+- Tracker slice: `feat/681-share-preview-tracker` at T1 `8ad6b20`; base `develop`; 145 changed lines (additions + deletions). This is a draft/no-merge integration tracker.
+- Child 1 slice: `feat/681-bank-account-preview` at T2 `edfe51a`, descended from T1; base `feat/681-share-preview-tracker`; 104 changed lines (additions + deletions).
+- Child 2 slice: `feat/681-preview-branding` at T6 `07bba85` plus this task-record completion commit, descended from child 1; base `feat/681-bank-account-preview`; 320 changed lines before this final chain record (the completed slice must remain at or below 400 additions + deletions).
+- Remote branch names were checked and are not currently present. Integrate children in dependency order, then merge the draft tracker to `develop`; only that final integration closes #681. No merge is authorized in this execution.
+- Dependency order:
+
+  ```text
+  develop
+  └── 📍 feat/681-share-preview-tracker (draft integration tracker)
+      └── feat/681-bank-account-preview (PR1)
+          └── 📍 feat/681-preview-branding (PR2)
+  ```
+
+- Known verification: focused T6 OG-image tests passed 4/4; `pnpm lint`, `pnpm typecheck`, and `pnpm build` passed. The last full `pnpm test:ui` run reported 7 unrelated failures in payment-concurrency and quote-builder-dialog suites, with 1,573 passed.
 
 ### T5 accepted logo refinement — implemented
 
@@ -171,3 +196,16 @@ T5 is implemented and locally assessed below. No PR or remote Git operation is a
   }
   ```
 - Engram mirror/read-back: complete. `engram save --project sebasam-app` updated observation #3916 at topic `odd/share-preview-identification/tasks`; `mem_search` found it and `mem_get_observation` verified the complete task record, including T5 and the assessment evidence.
+
+### T6 accepted composition refinement — implementation and review complete
+
+- The document-preview header now shows `SEBASAM` directly below the existing white logo and keeps the service tagline below the wordmark.
+- Removed the secondary `CLIENTE` and `VEHÍCULO` cells below the divider. Customer and vehicle/operator remain in the primary content, and the date appears once.
+- Strict TDD RED: the quote OG-image test failed on the missing wordmark; existing valid-image, service-note, and fallback assertions passed. GREEN: `pnpm exec vitest run 'src/app/cotizacion/[token]/opengraph-image.test.tsx'` passed 4 tests.
+- `pnpm lint` passed with 8 unrelated warnings; `pnpm typecheck` passed; `pnpm build` passed with an ExperimentalWarning about `localStorage`. Full `pnpm test:ui` was not rerun; the previously recorded 7 unrelated failures remain.
+- Rollback boundary: revert only the document OG-image header/content layout and its focused tests; keep the bank-account card and previous document metadata/fallbacks unchanged.
+- T6 implementation commit: `07bba85` (`feat(shares): refine document preview identity`).
+- Parent's committed-only assessment: `risk: medium`, `changed_paths: 9`, `changed_lines: 466`, `review_due: true`, `review_due_reason: slice_budget_reached`. The returned STATUS continuation started lineage `review-9286418ddef6955e` for target `sha256:d00b985c80a802027603cffe04cf903cbd122785fabe85c8451654076c8c27a2`.
+- The user explicitly granted this candidate's review. The single `review-reliability` lens completed with no findings after inspecting all nine candidate paths.
+- Exact acknowledgement completed successfully: `gentle-ai.review-acknowledged/v1` reported `action: acknowledged`, `authority: burned`, lineage `review-9286418ddef6955e`, and consumed revision `sha256:46ff86f084cf5a5d68167d5201a8122dc6476c4ab071f2c33a7a96a089d7eb2a`.
+- The native review is approved and burned; it is not delivery permission. No PR/push was performed.
