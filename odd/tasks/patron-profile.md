@@ -53,15 +53,18 @@ Reduce navigation and first-glance cognitive load without introducing a duplicat
 - [x] Add/update dashboard tests for both surfaces.
 - Route: delegated direct writer.
 - Checks: focused dashboard/page tests passed; `pnpm typecheck` passed; `git diff --check` passed.
-- Commit: pending.
+- Commit: `9529e51` (`feat(admin): simplify patron dashboard`).
 
 ### T3 — Integration regression verification
 
-- [ ] Verify that existing quote preview, edit, share, and conversion actions remain unchanged.
-- [ ] Verify that existing WORK and SALE note detail/payment/share/print actions remain unchanged.
-- [ ] Verify that Customers remains accessible from the simplified surface.
-- [ ] Run `pnpm lint`, `pnpm typecheck`, focused tests, and `pnpm build` if the final diff affects production build wiring.
+- [x] Verify that existing quote preview, edit, share, and conversion actions remain unchanged.
+- [x] Verify that existing WORK and SALE note detail/payment/share/print actions remain unchanged.
+- [x] Verify that Customers remains accessible from the simplified surface.
+- [x] Run `pnpm lint`, `pnpm typecheck`, focused tests, and `pnpm build` if the final diff affects production build wiring.
 - Route: delegated direct verification.
+- Checks: `pnpm lint` passed; `pnpm typecheck` passed; profile tests passed (35 tests); quote/work/note regression tests passed (63 tests); `pnpm build` passed. Full `pnpm test:ui` remains partial with 192 passed, 7 failed, and 3 skipped in unchanged files.
+- Runtime harness: N/A — no browser harness is configured.
+- Commit: pending documentation commit.
 
 ## Acceptance criteria
 
@@ -75,12 +78,12 @@ Reduce navigation and first-glance cognitive load without introducing a duplicat
 
 ## Progress
 
-- Status: T1 and T2 implemented; T3 verification pending.
+- Status: T1, T2, and T3 complete; full-suite unrelated failures remain documented.
 - Verification evidence: clean worktree created from `origin/develop`; CodeGraph initialized.
-- Next step: commit T2, then run T3 checks.
+- Next step: commit the verification evidence, then hand off the clean worktree and checks.
 
 ## Work-unit evidence
 
-- T1 commit: pending.
-- T2 commit: pending.
-- T3 verification: pending.
+- T1 commit: `4937b88`.
+- T2 commit: `9529e51`.
+- T3 verification: pending documentation commit; all scoped checks passed.
