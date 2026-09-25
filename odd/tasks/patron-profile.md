@@ -64,7 +64,7 @@ Reduce navigation and first-glance cognitive load without introducing a duplicat
 - Route: delegated direct verification.
 - Checks: `pnpm lint` passed; `pnpm typecheck` passed; profile tests passed (35 tests); quote/work/note regression tests passed (63 tests); `pnpm build` passed. Full `pnpm test:ui` remains partial with 192 passed, 7 failed, and 3 skipped in unchanged files.
 - Runtime harness: N/A — no browser harness is configured.
-- Commit: pending documentation commit.
+- Commit: `68236da` (`docs(odd): record patron profile verification`).
 
 ## Acceptance criteria
 
@@ -80,10 +80,10 @@ Reduce navigation and first-glance cognitive load without introducing a duplicat
 
 - Status: T1, T2, and T3 complete; full-suite unrelated failures remain documented.
 - Verification evidence: clean worktree created from `origin/develop`; CodeGraph initialized.
-- Next step: commit the verification evidence, then hand off the clean worktree and checks.
+- Next step: hand off the clean worktree and checks.
 
 ## Work-unit evidence
 
 - T1 commit: `4937b88`.
 - T2 commit: `9529e51`.
-- T3 verification: pending documentation commit; all scoped checks passed.
+- T3 verification: `68236da`; all scoped checks passed.
