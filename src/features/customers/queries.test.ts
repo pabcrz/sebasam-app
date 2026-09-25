@@ -209,7 +209,15 @@ describe("getCustomerAccountStatement", () => {
         status: "APPROVED",
         workOrder: { status: WorkOrderStatus.COMPLETED },
       },
-      select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true },
+      select: {
+        subtotalCents: true,
+        taxCents: true,
+        totalCents: true,
+        settlementAgreement: true,
+        discountCents: true,
+        taxEnabled: true,
+        items: { select: { quantity: true, unitPriceCents: true } },
+      },
     });
     expect(prisma.payment.aggregate).toHaveBeenCalledWith({
       where: {
