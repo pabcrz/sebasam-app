@@ -26,12 +26,14 @@ interface PayrollWorkerDetailProps {
   workers: WorkerPayrollSummary[];
   selectedWorkerId: string;
   onOpenEnvelope?: (worker: WorkerPayrollSummary) => void;
+  readOnly?: boolean;
 }
 
 export function PayrollWorkerDetail({
   workers,
   selectedWorkerId,
   onOpenEnvelope,
+  readOnly = false,
 }: PayrollWorkerDetailProps) {
   const activeWorker = workers.find((w) => w.workerId === selectedWorkerId) || workers[0];
 
@@ -56,7 +58,7 @@ export function PayrollWorkerDetail({
               <Mail className="h-3.5 w-3.5 text-[var(--color-primary)]" />
               Recibo de Nómina
             </Button>
-          )}
+            )}
           <span className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
             Total: {formatCents(activeWorker.totalCommissionCents)}
           </span>
@@ -74,6 +76,7 @@ export function PayrollWorkerDetail({
                   : order.workOrderId
               }
               order={order}
+              readOnly={readOnly}
             />
           ))}
         </CardContent>
@@ -85,9 +88,11 @@ export function PayrollWorkerDetail({
 function PayrollOrderAccordionRow({
   order,
   defaultOpen = false,
+  readOnly = false,
 }: {
   order: WorkOrderPayrollDetail;
   defaultOpen?: boolean;
+  readOnly?: boolean;
 }) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
   const [editingItemId, setEditingItemId] = React.useState<string | null>(null);
@@ -222,10 +227,7 @@ function PayrollOrderAccordionRow({
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <span className="font-semibold text-xs sm:text-sm text-[var(--color-text-main)]">
-              {order.workOrderNumber}
-            </span>
-            <span className="text-[11px] sm:text-xs text-[var(--color-text-muted)]">
-              ({order.quoteNumber})
+              {order.workTitle || "Trabajo"}
             </span>
             {order.isAdvance ? (
               <Badge variant="warning" className="text-[10px] py-0 px-1.5 font-semibold">
@@ -235,9 +237,12 @@ function PayrollOrderAccordionRow({
               <Badge variant="info" className="text-[10px] py-0 px-1.5 font-semibold">
                 Liquidación Final
               </Badge>
-            ) : null}
+              ) : null}
             <span className="text-xs sm:text-sm font-medium text-[var(--color-text-main)]">
-              • {order.clientName}
+              • {order.clientName || order.vehicleSummary}
+            </span>
+            <span className="text-[11px] sm:text-xs text-[var(--color-text-muted)]">
+              Folio {order.workOrderNumber} · {order.quoteNumber}
             </span>
           </div>
           <p className="text-[11px] sm:text-xs text-[var(--color-text-muted)] mt-0.5">
@@ -474,7 +479,7 @@ function PayrollOrderAccordionRow({
                       >
                         Cancelar
                       </Button>
-                      {hasAdjustment && (
+                      {!readOnly && hasAdjustment && (
                         <Button
                           type="button"
                           variant="outline"
@@ -486,7 +491,7 @@ function PayrollOrderAccordionRow({
                           Restablecer original
                         </Button>
                       )}
-                      <Button
+                      {!readOnly && <Button
                         type="button"
                         variant="primary"
                         size="sm"
@@ -495,7 +500,7 @@ function PayrollOrderAccordionRow({
                         className="h-7 text-xs px-3 font-semibold"
                       >
                         {isPending ? "Guardando..." : "Guardar"}
-                      </Button>
+                      </Button>}
                     </div>
                   </div>
                 );
@@ -528,7 +533,7 @@ function PayrollOrderAccordionRow({
                           <Lock className="h-3 w-3 text-amber-500 shrink-0" />
                           Bloqueado
                         </span>
-                      ) : (
+                      ) : !readOnly ? (
                         <Button
                           type="button"
                           variant="ghost"
@@ -539,7 +544,7 @@ function PayrollOrderAccordionRow({
                         >
                           Ajustar
                         </Button>
-                      )}
+                       ) : null}
                     </div>
                   </div>
 
@@ -577,7 +582,7 @@ function PayrollOrderAccordionRow({
                   <TableHead className="h-7 px-2 py-1 text-right text-xs font-medium">Base Nómina</TableHead>
                   <TableHead className="h-7 px-2 py-1 text-center text-xs font-medium">% Pago</TableHead>
                   <TableHead className="h-7 px-2 py-1 text-right text-xs font-medium">A Liquidar</TableHead>
-                  <TableHead className="h-7 px-2 py-1 text-right text-xs font-medium w-36">Acciones</TableHead>
+                      {!readOnly && <TableHead className="h-7 px-2 py-1 text-right text-xs font-medium w-36">Acciones</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -744,7 +749,7 @@ function PayrollOrderAccordionRow({
                       <TableCell className="px-2 py-1.5 text-right font-semibold text-emerald-600 dark:text-emerald-400">
                         {formatCents(item.commissionCents)}
                       </TableCell>
-                      <TableCell className="px-2 py-1.5 text-right">
+                      {!readOnly && <TableCell className="px-2 py-1.5 text-right">
                         {item.isLocked ? (
                           <span
                             className="inline-flex items-center justify-end gap-1 text-[11px] text-[var(--color-text-muted)] italic"
@@ -765,7 +770,7 @@ function PayrollOrderAccordionRow({
                             Ajustar
                           </Button>
                         )}
-                      </TableCell>
+                      </TableCell>}
                     </TableRow>
                   );
                 })}

@@ -231,8 +231,9 @@ export function PayrollUnassignedCard({ orders }: { orders: WorkOrderPayrollDeta
       <div className="divide-y divide-[var(--color-border-light)]/40 rounded-[var(--radius-sm)] border border-[var(--color-border-light)]/60 bg-[var(--color-surface)] overflow-hidden">
         {orders.map((order) => (
           <div key={order.workOrderId} className="p-2.5 flex items-center justify-between text-xs">
-            <div>
-              <span className="font-semibold">{order.workOrderNumber}</span> • {order.clientName} ({order.vehicleSummary})
+              <div>
+                <span className="font-semibold">{order.workTitle || "Trabajo"}</span> • {order.clientName || order.vehicleSummary}
+                <span className="ml-1 text-[var(--color-text-muted)]">(Folio {order.workOrderNumber} · {order.quoteNumber})</span>
             </div>
             <span className="font-semibold text-amber-600 dark:text-amber-400">
               Mano de obra: {formatCents(order.totalCommissionCents)}

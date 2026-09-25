@@ -55,6 +55,15 @@ const navItems: NavItem[] = [
   { href: "/admin/users", label: "Usuarios", icon: Shield }, // Added for SUPER_ADMIN
 ];
 
+const patronNavHrefs = new Set([
+  "/admin",
+  "/admin/customers",
+  "/admin/quotes",
+  "/admin/work-orders",
+  "/admin/notas",
+  "/admin/nomina",
+]);
+
 /** Primary operational destinations shown directly in the 5-item mobile bottom nav bar. */
 export const primaryMobileNavItems: NavItem[] = [
   { href: "/admin", label: "Inicio", icon: Home },
@@ -72,6 +81,15 @@ export const secondaryMobileNavItems: NavItem[] = [
   { href: "/admin/workers", label: "Trabajadores", icon: UserCog },
   { href: "/admin/configuracion-pago", label: "Configuración", icon: Bolt },
   { href: "/admin/users", label: "Usuarios", icon: Shield },
+];
+
+const patronMobileNavItems: NavItem[] = [
+  primaryMobileNavItems[0],
+  secondaryMobileNavItems[0],
+  primaryMobileNavItems[1],
+  primaryMobileNavItems[2],
+  primaryMobileNavItems[3],
+  secondaryMobileNavItems[1],
 ];
 
 function NavLink({
@@ -177,6 +195,10 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
   const isSecondaryActive = secondaryMobileNavItems.some(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
+  const isPatron = role === "ADMIN";
+  const desktopNavItems = isPatron
+    ? navItems.filter((item) => patronNavHrefs.has(item.href))
+    : navItems.filter((item) => item.href !== "/admin/users" || role === "SUPER_ADMIN");
 
   return (
     <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 print:min-h-0 print:bg-transparent print:pb-0 print:block print:w-full">
@@ -191,7 +213,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         </div>
 
         <nav aria-label="Navegación principal" className="mt-6 flex flex-1 flex-col gap-1">
-          {navItems.filter(item => item.href !== "/admin/users" || role === "SUPER_ADMIN").map((item) => (
+          {desktopNavItems.map((item) => (
             <NavLink key={item.href} {...item} onNavStart={() => setGlobalPending(true)} />
           ))}
         </nav>
@@ -276,7 +298,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
       </div>
 
       {/* Mobile "Más" drawer backdrop & sheet */}
-      {isMoreOpen ? (
+      {isMoreOpen && !isPatron ? (
         <div className="fixed inset-0 z-40 md:hidden print:hidden">
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
@@ -326,31 +348,33 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] text-white md:hidden print:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto grid w-full max-w-md grid-cols-5 gap-1 px-1 pt-2">
-          {primaryMobileNavItems.map((item) => (
+        <div className={`mx-auto grid w-full max-w-md gap-1 px-1 pt-2 ${isPatron ? "grid-cols-6" : "grid-cols-5"}`}>
+          {(isPatron ? patronMobileNavItems : primaryMobileNavItems).map((item) => (
             <NavLink key={item.href} {...item} mobile onNavStart={() => setGlobalPending(true)} />
           ))}
-          <button
-            type="button"
-            onClick={() => setIsMoreOpen((prev) => !prev)}
-            aria-label="Más"
-            aria-expanded={isMoreOpen}
-            aria-haspopup="dialog"
-            aria-current={isSecondaryActive ? "page" : undefined}
-            className={`group flex min-h-[var(--tap-min-height)] min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] px-1 py-1.5 text-[0.68rem] font-semibold leading-none transition-all duration-150 active-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-900)] ${
-              isSecondaryActive || isMoreOpen
-                ? "bg-white/14 text-white shadow-sm"
-                : "text-[var(--color-on-navy-tint)] hover:bg-white/8 hover:text-white"
-            }`}
-          >
-            <MoreHorizontal
-              className={`h-5 w-5 transition-transform duration-200 ease-out will-change-transform ${
-                isSecondaryActive || isMoreOpen ? "scale-110" : "group-hover:scale-110 group-active:scale-95"
+          {!isPatron ? (
+            <button
+              type="button"
+              onClick={() => setIsMoreOpen((prev) => !prev)}
+              aria-label="Más"
+              aria-expanded={isMoreOpen}
+              aria-haspopup="dialog"
+              aria-current={isSecondaryActive ? "page" : undefined}
+              className={`group flex min-h-[var(--tap-min-height)] min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] px-1 py-1.5 text-[0.68rem] font-semibold leading-none transition-all duration-150 active-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-900)] ${
+                isSecondaryActive || isMoreOpen
+                  ? "bg-white/14 text-white shadow-sm"
+                  : "text-[var(--color-on-navy-tint)] hover:bg-white/8 hover:text-white"
               }`}
-              aria-hidden="true"
-            />
-            <span className="whitespace-nowrap">Más</span>
-          </button>
+            >
+              <MoreHorizontal
+                className={`h-5 w-5 transition-transform duration-200 ease-out will-change-transform ${
+                  isSecondaryActive || isMoreOpen ? "scale-110" : "group-hover:scale-110 group-active:scale-95"
+                }`}
+                aria-hidden="true"
+              />
+              <span className="whitespace-nowrap">Más</span>
+            </button>
+          ) : null}
         </div>
       </nav>
     </div>

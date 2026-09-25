@@ -20,6 +20,7 @@ interface PayrollPeriodNavProps {
   hasData?: boolean;
   weekStatus?: PayrollPeriodStatus;
   onOpenSigningSheet?: () => void;
+  role?: string;
 }
 
 export function PayrollPeriodNav({
@@ -33,8 +34,10 @@ export function PayrollPeriodNav({
   hasData = true,
   weekStatus,
   onOpenSigningSheet,
+  role = "SUPER_ADMIN",
 }: PayrollPeriodNavProps) {
   const isCurrent = isCurrentPeriod ?? isCurrentWeek ?? false;
+  const isAdmin = role === "ADMIN";
 
   return (
     <Card data-testid="payroll-period-nav" className="min-w-0 max-w-full flex flex-col gap-3 p-4 shadow-sm sm:p-5">
@@ -50,19 +53,21 @@ export function PayrollPeriodNav({
           >
             <Link href={payrollHref({ mode: "weekly" })}>Semanal</Link>
           </Button>
-          <Button
-            variant={mode === "monthly" ? "secondary" : "ghost"}
-            size="sm"
-            asChild
-            className="h-8 text-xs px-3 font-medium"
-          >
-            <Link href={payrollHref({ mode: "monthly" })}>Mensual</Link>
-          </Button>
+          {!isAdmin && (
+            <Button
+              variant={mode === "monthly" ? "secondary" : "ghost"}
+              size="sm"
+              asChild
+              className="h-8 text-xs px-3 font-medium"
+            >
+              <Link href={payrollHref({ mode: "monthly" })}>Mensual</Link>
+            </Button>
+          )}
         </div>
 
         {/* Action Buttons: General PDF report (Disabled when no jobs) */}
         <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
-          {onOpenSigningSheet && (
+          {!isAdmin && onOpenSigningSheet && (
             <Button
               type="button"
               variant="outline"
@@ -91,7 +96,7 @@ export function PayrollPeriodNav({
                 {mode === "monthly" ? "Mes en curso" : "Semana en curso"}
               </Badge>
             )}
-            {mode === "weekly" && (
+            {mode === "weekly" && !isAdmin && (
               <PayrollWeekStatusControls
                 weekStart={anchor}
                 status={weekStatus}
