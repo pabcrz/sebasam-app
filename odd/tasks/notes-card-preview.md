@@ -52,8 +52,8 @@ Align the primary card interaction with the document-oriented task users expect 
   - Verification evidence: baseline focused test passed 14/14; RED failed 13/14 on the old width; GREEN and parent spot check `pnpm exec vitest run src/features/work-orders/components/work-order-completed-list.test.tsx` passed 14/14; `pnpm typecheck` passed; `pnpm lint` passed with 8 warnings and 0 errors; `git diff --check` passed.
   - Runtime harness: N/A — the dialog width is covered by the focused UI component test; mobile full-screen classes remain unchanged.
   - Rollback boundary: restore `sm:max-w-6xl` in `src/features/work-orders/components/nota-detail-dialog.tsx` and its prior focused expectation in `src/features/work-orders/components/work-order-completed-list.test.tsx`.
-  - Commit identity: pending.
-  - Receipt-driven assessment: pending commit assessment.
+  - Commit identity: `e80f7ed5f05ade896089b207a809543b4e490806` (`fix(notas): reduce payment dialog desktop width`).
+  - Receipt-driven assessment: medium; `under_budget` (175 changed lines across the current committed feature slice), no review is due.
   - Route: delegated direct; trigger: preparation and implementation span the dialog component and its tests.
 
 ## Progress and next step
@@ -62,5 +62,5 @@ Align the primary card interaction with the document-oriented task users expect 
 - NCP-2 implementation complete: every Notes card now has a primary `Gestionar pagos` button with the Quotes `ClipboardList` icon; the existing card body still opens preview and the payment item was removed from the overflow menu.
 - NCP-2 committed as `06a8bbe7cb5cce9c8591c3547e1ce3b3a8dca1fa`; receipt-driven assessment is medium / under_budget, so no review is due for the current slice.
 - NCP-3 implementation complete: payment dialog now uses `sm:max-w-2xl` on desktop while retaining full-screen mobile classes.
-- NCP-3 awaits its work-unit commit and post-commit assessment record.
+- NCP-3 committed as `e80f7ed5f05ade896089b207a809543b4e490806`; receipt-driven assessment is medium / under_budget, so no review is due for the current slice.
 - No push, PR, or merge has been performed; the feature branch remains local.
