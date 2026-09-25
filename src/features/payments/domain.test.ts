@@ -143,7 +143,10 @@ function createMockDb(initialState?: Partial<Store>) {
     quotes: new Map(initialState?.quotes ?? []),
     workOrders: new Map(initialState?.workOrders ?? []),
     payments: new Map(initialState?.payments ?? []),
-    applications: new Map(initialState?.applications ?? []),
+    applications: new Map(Array.from(initialState?.applications ?? []).map(([id, application]) => [
+      id,
+      { ...application, payableNoteId: application.payableNoteId ?? `payable-${application.workOrderId}` },
+    ])),
     ledgerEntries: [...(initialState?.ledgerEntries ?? [])],
     corrections: new Map(initialState?.corrections ?? []),
     correctionApplications: new Map(initialState?.correctionApplications ?? []),
@@ -206,6 +209,28 @@ function createMockDb(initialState?: Partial<Store>) {
           quote: store.quotes.get(wo.quoteId),
           paymentApplications: Array.from(store.applications.values()).filter((a) => a.workOrderId === wo.id),
         }));
+      }),
+    },
+    payableNote: {
+      findFirst: vi.fn().mockImplementation(async ({ where }) => ({ id: `payable-${where.workOrderId}` })),
+      findUnique: vi.fn().mockImplementation(async ({ where }) => {
+        const workOrderId = where.id.replace("payable-", "");
+        const workOrder = store.workOrders.get(workOrderId);
+        const quote = workOrder ? store.quotes.get(workOrder.quoteId) : null;
+        if (!workOrder || !quote) return null;
+        return {
+          id: where.id,
+          customerId: quote.customerId,
+          quoteId: quote.id,
+          workOrderId,
+          referenceNumber: workOrder.number ?? workOrderId,
+          title: "Test note",
+          totalCents: quote.totalCents,
+          status: "ISSUED",
+          issuedAt: null,
+          paymentDueDate: null,
+          quote,
+        };
       }),
     },
     paymentRequest: {
@@ -339,6 +364,7 @@ function createMockDb(initialState?: Partial<Store>) {
           const p = store.payments.get(a.paymentId);
           if (
             (!where.workOrderId || a.workOrderId === where.workOrderId) &&
+            (!where.payableNoteId || a.payableNoteId === where.payableNoteId) &&
             (!where.payment?.customerId || (p && p.customerId === where.payment.customerId)) &&
             (!where.payment?.status || (p && p.status === where.payment.status)) &&
             (where.payment?.reversedAt !== null || (p && p.reversedAt === null)) &&
@@ -550,6 +576,7 @@ describe("Domain: Financial Invariants and Operations (Issue #337)", () => {
     const app = Array.from(store.applications.values())[0];
     expect(app.amountCents).toBe(8000);
     expect(app.workOrderId).toBe("wo-1");
+    expect(app.payableNoteId).toBe("payable-wo-1");
 
     // Check ledger entries: 1 capture + 1 application
     expect(store.ledgerEntries.length).toBe(2);

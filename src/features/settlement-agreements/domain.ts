@@ -1,6 +1,7 @@
 import { PaymentRequestStatus, Prisma, QuoteStatus, SettlementAgreementStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
+import { calculateConfirmedQuoteTotals } from "@/features/quotes/lib/calculate";
 
 const ACTIVE_PAYMENT_REQUEST_STATUSES: PaymentRequestStatus[] = [
   PaymentRequestStatus.PENDING,
@@ -61,7 +62,7 @@ export function calculateSettlementTotals(
 }
 
 export function getEffectiveSettlementTotals(
-  quote: Pick<QuoteForSettlement, "subtotalCents" | "taxCents" | "totalCents">,
+  quote: Pick<QuoteForSettlement, "subtotalCents" | "taxCents" | "totalCents"> & { items?: unknown[]; taxEnabled?: boolean; discountCents?: number },
   agreement: { id: string; status: SettlementAgreementStatus; settlementBaseCents: number; settlementTaxCents: number; settlementTotalCents: number } | null | undefined,
 ): SettlementTotals {
   if (agreement?.status === SettlementAgreementStatus.ACTIVE) {
@@ -72,10 +73,17 @@ export function getEffectiveSettlementTotals(
       agreementId: agreement.id,
     };
   }
+  const calculated = quote.items && quote.items.length > 0 && quote.taxEnabled !== undefined
+    ? calculateConfirmedQuoteTotals(
+        quote.items as Array<{ quantity: number | string; unitPriceCents: number | null | undefined }>,
+        quote.taxEnabled,
+        quote.discountCents ?? 0,
+      )
+    : null;
   return {
-    subtotalCents: quote.subtotalCents ?? 0,
-    taxCents: quote.taxCents ?? 0,
-    totalCents: quote.totalCents ?? 0,
+    subtotalCents: calculated?.subtotalCents ?? quote.subtotalCents ?? 0,
+    taxCents: calculated?.taxCents ?? quote.taxCents ?? 0,
+    totalCents: calculated?.totalCents ?? quote.totalCents ?? 0,
     agreementId: null,
   };
 }

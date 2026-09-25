@@ -1,4 +1,4 @@
-import { calculateItemTotalCents, calculateQuoteTotals } from "./calculate";
+import { calculateConfirmedQuoteTotals } from "./calculate";
 
 type CommercialQuote = {
   customerId: string | null;
@@ -24,7 +24,7 @@ export class CommercialQuoteValidationError extends Error {
   }
 }
 
-export function assertCommercialQuote(quote: CommercialQuote) {
+export function assertCommercialQuote(quote: CommercialQuote, options?: { allowStaleTotals?: boolean }) {
   if (!quote.customerId) {
     throw new CommercialQuoteValidationError("Selecciona un cliente antes de preparar la cotización para compartir.");
   }
@@ -38,18 +38,16 @@ export function assertCommercialQuote(quote: CommercialQuote) {
 
   if (items.some((item) => {
     const quantity = Number(item.quantity);
-    return item.description.trim() === "" || !Number.isInteger(quantity) || quantity <= 0 || item.unitPriceCents === null || !Number.isInteger(item.unitPriceCents) || item.unitPriceCents < 0;
+    return item.description.trim() === "" || !Number.isInteger(quantity) || quantity <= 0 ||
+      (item.unitPriceCents !== null && (!Number.isInteger(item.unitPriceCents) || item.unitPriceCents < 0));
   })) {
-    throw new CommercialQuoteValidationError("Completa la descripción, cantidad y precio de todos los conceptos antes de compartir.");
+    throw new CommercialQuoteValidationError("Completa la descripción y cantidad, y revisa los precios confirmados de todos los conceptos antes de compartir.");
   }
 
-  const subtotalCents = items.reduce(
-    (total, item) => total + calculateItemTotalCents(Number(item.quantity), item.unitPriceCents!),
-    0,
-  );
-  const totals = calculateQuoteTotals(subtotalCents, quote.taxEnabled, quote.discountCents ?? 0);
+  const totals = calculateConfirmedQuoteTotals(items, quote.taxEnabled, quote.discountCents ?? 0);
 
-  if (quote.subtotalCents !== totals.subtotalCents || quote.taxCents !== totals.taxCents || quote.totalCents !== totals.totalCents) {
+  const hasPendingPrice = items.some((item) => item.unitPriceCents === null);
+  if (!options?.allowStaleTotals && !hasPendingPrice && (quote.subtotalCents !== totals.subtotalCents || quote.taxCents !== totals.taxCents || quote.totalCents !== totals.totalCents)) {
     throw new CommercialQuoteValidationError("Revisa los precios para actualizar los totales antes de compartir.");
   }
 

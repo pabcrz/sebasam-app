@@ -8,6 +8,7 @@ import {
 import type { PayableNoteStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { withHistoricalBalances, type NotePaymentHistoryItem } from "@/features/payments/lib/payment-register";
+import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
 
 export class PayableNoteError extends Error {
   constructor(message: string) {
@@ -72,6 +73,25 @@ export async function getPayableNoteReadModel(
       status: true,
       issuedAt: true,
       paymentDueDate: true,
+      quote: {
+        select: {
+          subtotalCents: true,
+          discountCents: true,
+          taxCents: true,
+          totalCents: true,
+          taxEnabled: true,
+          items: { select: { quantity: true, unitPriceCents: true } },
+          settlementAgreement: {
+            select: {
+              id: true,
+              status: true,
+              settlementBaseCents: true,
+              settlementTaxCents: true,
+              settlementTotalCents: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -87,10 +107,15 @@ export async function getPayableNoteReadModel(
   });
   const paidCents = applications._sum.amountCents ?? 0;
 
+  const totalCents = note.quote && note.workOrderId
+    ? getEffectiveSettlementTotals(note.quote, note.quote.settlementAgreement).totalCents
+    : note.totalCents;
+
   return {
     ...note,
+    totalCents,
     paidCents,
-    remainingCents: Math.max(0, note.totalCents - paidCents),
+    remainingCents: Math.max(0, totalCents - paidCents),
   };
 }
 
@@ -339,7 +364,7 @@ export async function correctPayableNotePayment(input: {
 
     let remainingCents = replacement.amountCents;
     for (const [index, application] of original.applications.entries()) {
-      const note = await getPayableNoteReadModel(tx, application.payableNoteId ?? application.workOrderId);
+      const note = await getPayableNoteReadModel(tx, application.payableNoteId);
       const replacementAmountCents = Math.min(application.amountCents, remainingCents, note.remainingCents);
       let replacementApplicationId: string | null = null;
       if (replacementAmountCents > 0) {

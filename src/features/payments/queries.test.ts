@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireOperationalRole } from "@/lib/auth/session";
+import { getPayableNotePaymentHistory } from "@/features/payable-notes/domain";
 import {
   getEligibleNotesForCreditApplication,
   getNotePaymentHistory,
@@ -14,7 +15,12 @@ vi.mock("@/lib/prisma", () => ({
     paymentApplication: { count: vi.fn() },
     workOrder: { findMany: vi.fn() },
     payment: { findMany: vi.fn() },
+    payableNote: { findMany: vi.fn() },
   },
+}));
+
+vi.mock("@/features/payable-notes/domain", () => ({
+  getPayableNotePaymentHistory: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/session", () => ({
@@ -136,6 +142,26 @@ describe("getNotePaymentHistory", () => {
     await expect(getNotePaymentHistory(["wo-1"])).rejects.toThrow("Unauthorized");
     expect(prisma.workOrder.findMany).not.toHaveBeenCalled();
     expect(prisma.payment.findMany).not.toHaveBeenCalled();
+  });
+
+  it("uses the actual PayableNote ID for history and keeps the legacy work-order map key", async () => {
+    (prisma.payableNote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "payable-note-actual", workOrderId: "wo-legacy-key" },
+    ]);
+    (getPayableNotePaymentHistory as ReturnType<typeof vi.fn>).mockResolvedValue({
+      note: { totalCents: 5000 },
+      payments: [{ id: "payment-1", paymentId: "payment-1", amountCents: 1000, appliedCents: 1000 }],
+    });
+
+    const history = await getNotePaymentHistory(["wo-legacy-key"]);
+
+    expect(prisma.payableNote.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { workOrderId: { in: ["wo-legacy-key"] } },
+    }));
+    expect(getPayableNotePaymentHistory).toHaveBeenCalledWith("payable-note-actual");
+    expect(history.get("wo-legacy-key")).toMatchObject({ totalCents: 5000 });
+    expect(history.has("payable-note-actual")).toBe(false);
+    (prisma.payableNote.findMany as ReturnType<typeof vi.fn>).mockReset();
   });
 
   it("includes a payment without an application without fabricating note allocation", async () => {
