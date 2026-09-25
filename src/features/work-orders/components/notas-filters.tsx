@@ -29,6 +29,7 @@ import {
   notasHref,
   type NotasAssignee,
   type NotasMode,
+  type NotasKind,
   type NotasOverdue,
   type NotasPayment,
 } from "../notas-period";
@@ -49,6 +50,7 @@ export interface NotasFiltersProps {
   assignee: NotasAssignee;
   customerId?: string;
   overdue?: NotasOverdue;
+  kind?: NotasKind;
   anchor: string;
   rangeLabel: string;
   isCurrentWeek: boolean;
@@ -66,6 +68,7 @@ export function NotasFilters({
   assignee,
   customerId,
   overdue = "all",
+  kind,
   anchor,
   rangeLabel,
   isCurrentWeek,
@@ -73,6 +76,7 @@ export function NotasFilters({
   selectedCustomer: initialSelectedCustomer,
   searchCustomersAction,
 }: NotasFiltersProps) {
+  const selectedKind = kind ?? "all";
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
@@ -151,6 +155,7 @@ export function NotasFilters({
       notasHref({
         mode,
         payment,
+        kind: selectedKind,
         anchor,
         assignee: draftAssignee,
         customerId: draftCustomerId,
@@ -171,6 +176,7 @@ export function NotasFilters({
       notasHref({
         mode,
         payment,
+        kind: selectedKind,
         anchor,
         assignee: "all",
         customerId: undefined,
@@ -224,12 +230,25 @@ export function NotasFilters({
 
       {/* 2. Estado de pago visible arriba + Botón de Filtros */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <label className="grid gap-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+          Tipo de nota
+          <select
+            aria-label="Tipo de nota"
+            value={selectedKind}
+            onChange={(event) => router.push(notasHref({ mode, payment, assignee, customerId, overdue, kind: event.currentTarget.value as NotasKind, anchor }))}
+            className="h-9 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm font-normal normal-case text-[var(--color-text-main)]"
+          >
+            <option value="all">Todas</option>
+            <option value="WORK">WORK</option>
+            <option value="SALE">SALE</option>
+          </select>
+        </label>
         <div className="grid min-w-0 flex-1 gap-2">
           <SectionLabel as="p">Estado de pago</SectionLabel>
           <StatusFilterNav
             label="Estado de pago"
             items={(["all", "pending", "paid"] as const).map((item) => ({
-              href: notasHref({ mode, anchor, payment: item, assignee, customerId, overdue }),
+              href: notasHref({ mode, anchor, payment: item, assignee, customerId, overdue, kind: selectedKind }),
               label: ({ all: "Todas", pending: "Pendientes", paid: "Pagadas" } as const)[item],
               current: payment === item,
             }))}
@@ -485,7 +504,7 @@ export function NotasFilters({
           <Button asChild variant="outline" size="sm" className="sm:w-auto">
             <Link
               aria-label="Periodo anterior"
-              href={notasHref({ mode, payment, assignee, customerId, overdue, anchor: shifted(-1) })}
+              href={notasHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(-1) })}
             >
               <ChevronLeft className="mr-1 h-4 w-4" aria-hidden="true" />
               Anterior
@@ -494,7 +513,7 @@ export function NotasFilters({
           <Button asChild variant="outline" size="sm" className="sm:w-auto">
             <Link
               aria-label="Periodo siguiente"
-              href={notasHref({ mode, payment, assignee, customerId, overdue, anchor: shifted(1) })}
+              href={notasHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(1) })}
             >
               Siguiente
               <ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" />
@@ -519,6 +538,7 @@ export function NotasFilters({
                   notasHref({
                     mode,
                     payment,
+                    kind: selectedKind,
                     assignee,
                     customerId,
                     overdue,
@@ -533,4 +553,3 @@ export function NotasFilters({
     </Card>
   );
 }
-

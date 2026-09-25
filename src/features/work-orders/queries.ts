@@ -112,6 +112,7 @@ export type ListCompletedWorkOrdersInput = {
   assignee: "all" | "workshop" | string;
   customerId?: string;
   overdue?: "all" | "overdue" | "current";
+  kind?: "all" | "WORK" | "SALE";
   page: number;
 };
 
@@ -225,7 +226,7 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
       ${customerFilter}
   `;
 
-  const eligible = await prisma.$queryRaw<Array<{
+  const eligible = input.kind === "SALE" ? [] : await prisma.$queryRaw<Array<{
     id: string;
     effectiveTotalCents: bigint;
     paidCents: bigint;
@@ -256,13 +257,13 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
     ${baseWhere}
     GROUP BY wo.id, wo."completedAt", wo."paymentDueDate", q."totalCents", sa."settlementTotalCents"
     ${havingClause}
-    ORDER BY wo."completedAt" DESC, wo.id DESC LIMIT ${pageSize + 1} OFFSET ${(input.page - 1) * pageSize}
+    ORDER BY wo."completedAt" DESC, wo.id DESC
   `);
 
   // SALE notes have no WorkOrder by design. Keep their financial predicate at
   // the payable-note boundary and merge them with completed work for the
   // existing Notes workspace.
-  const saleCandidate = input.assignee === "all"
+  const saleCandidate = input.kind !== "WORK" && input.assignee === "all"
     ? await prisma.payableNote.findFirst({ where: { kind: "SALE", status: "ISSUED" }, select: { id: true } })
     : null;
   const saleHavingConditions: Prisma.Sql[] = [];
@@ -314,7 +315,7 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
     : [
         ...eligible.map((row) => ({ ...row, kind: "WORK" as const, sortDate: row.completedAt })),
         ...saleEligible.map((row) => ({ ...row, kind: "SALE" as const, sortDate: row.issuedAt })),
-      ].sort((a, b) => (b.sortDate?.getTime() ?? 0) - (a.sortDate?.getTime() ?? 0) || (a.sortDate && b.sortDate ? b.id.localeCompare(a.id) : 0));
+      ].sort((a, b) => (b.sortDate?.getTime() ?? 0) - (a.sortDate?.getTime() ?? 0) || b.id.localeCompare(a.id) || a.kind.localeCompare(b.kind));
 
   const totals: CompletedWorkOrderTotals = {
     totalPaidCents: Number((eligible[0]?.totalPaidCents ?? BigInt(0)) + (saleEligible[0]?.totalPaidCents ?? BigInt(0))),
@@ -322,7 +323,8 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
     totalOverdueCents: Number((eligible[0]?.totalOverdueCents ?? BigInt(0)) + (saleEligible[0]?.totalOverdueCents ?? BigInt(0))),
   };
 
-  const pageRows = allEligible.slice(0, pageSize);
+  const offset = (input.page - 1) * pageSize;
+  const pageRows = allEligible.slice(offset, offset + pageSize);
   if (pageRows.length === 0) {
     return { page: input.page, hasNextPage: false, totals, workOrders: [] };
   }
@@ -343,7 +345,7 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
 
   return {
     page: input.page,
-    hasNextPage: allEligible.length > pageSize,
+    hasNextPage: allEligible.length > offset + pageSize,
     totals,
     workOrders: pageRows.flatMap<CompletedNoteItem>(({ id, kind, effectiveTotalCents, paidCents, activePaymentId, activePaymentMethod, activePaymentAmountCents }) => {
       if (kind === "SALE") {
