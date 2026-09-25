@@ -1,4 +1,4 @@
-import { calculateItemTotalCents, calculateQuoteTotals } from "./lib/calculate";
+import { calculateConfirmedQuoteTotals } from "./lib/calculate";
 import type { QuoteVehicleInput } from "./schemas";
 import type { VehicleInput } from "@/features/vehicles/schemas";
 
@@ -111,21 +111,9 @@ export function draftTotals(data: {
   taxEnabled: boolean;
   discountCents: number;
 }) {
-  const hasPendingPrice = data.sections.some((section) =>
-    section.items.some((item) => item.unitPriceCents === undefined),
+  return calculateConfirmedQuoteTotals(
+    data.sections.flatMap((section) => section.items),
+    data.taxEnabled,
+    data.discountCents,
   );
-  if (hasPendingPrice) {
-    return { subtotalCents: null, discountCents: data.discountCents, taxCents: null, totalCents: null };
-  }
-
-  const subtotalCents = data.sections.reduce(
-    (total, section) =>
-      total +
-      section.items.reduce(
-        (sectionTotal, item) => sectionTotal + calculateItemTotalCents(item.quantity, item.unitPriceCents!),
-        0,
-      ),
-    0,
-  );
-  return calculateQuoteTotals(subtotalCents, data.taxEnabled, data.discountCents);
 }

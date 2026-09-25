@@ -191,6 +191,7 @@ describe("Daily folios lifecycle integration", () => {
       workOrder: {
         create: vi.fn().mockResolvedValue({ id: "wo-direct", number: "T-0926-01", folio: "N-090926-01" }),
       },
+      payableNote: { create: vi.fn() },
       workAssignment: { create: vi.fn() },
     };
     prismaMock.$transaction.mockImplementation((cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx));
@@ -235,6 +236,7 @@ describe("Daily folios lifecycle integration", () => {
       workOrder: {
         create: vi.fn().mockResolvedValue({ id: "wo-assigned", number: "T-0926-01", folio: null }),
       },
+      payableNote: { create: vi.fn() },
       workAssignment: { create: vi.fn() },
     };
     prismaMock.$transaction.mockImplementation((cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx));
@@ -290,6 +292,7 @@ describe("Daily folios lifecycle integration", () => {
         update: vi.fn().mockResolvedValue({ id: "wo-1", folio: "N-090926-03" }),
         findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "wo-1", folio: "N-090926-03" }),
       },
+      payableNote: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       workAssignment: { updateMany: vi.fn() },
     };
     prismaMock.$transaction.mockImplementation((cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx));
@@ -343,6 +346,7 @@ describe("Daily folios lifecycle integration", () => {
           issuedAt: existingIssuedAt,
         }),
       },
+      payableNote: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       workAssignment: { updateMany: vi.fn() },
     };
     prismaMock.$transaction.mockImplementation((cb: (tx: typeof mockTx) => Promise<unknown>) => cb(mockTx));
@@ -387,6 +391,7 @@ describe("Daily folios lifecycle integration", () => {
       workOrder: {
         create: vi.fn().mockResolvedValue({ id: "wo-new", folio: "N-090926-07" }),
       },
+      payableNote: { create: vi.fn() },
       quoteLifecycleEvent: { create: vi.fn() },
       workAssignment: { create: vi.fn() },
     };

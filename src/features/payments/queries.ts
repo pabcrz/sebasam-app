@@ -19,16 +19,111 @@ export async function getNotePaymentHistory(workOrderIds: string[]): Promise<Map
   await requireOperationalRole();
   if (workOrderIds.length === 0) return new Map();
 
+  if (prisma.payableNote) {
+    const requestedIds = [...new Set(workOrderIds)];
+    const payableNotes = await prisma.payableNote.findMany({
+      where: { OR: [{ id: { in: requestedIds } }, { workOrderId: { in: requestedIds } }] },
+      select: {
+        id: true,
+        workOrderId: true,
+        totalCents: true,
+        quote: {
+          select: {
+            subtotalCents: true,
+            discountCents: true,
+            taxCents: true,
+            totalCents: true,
+            taxEnabled: true,
+            items: { select: { quantity: true, unitPriceCents: true } },
+            settlementAgreement: {
+              select: {
+                id: true,
+                status: true,
+                settlementBaseCents: true,
+                settlementTaxCents: true,
+                settlementTotalCents: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    const noteByRequestedId = new Map<string, (typeof payableNotes)[number]>();
+    for (const note of payableNotes) {
+      if (requestedIds.includes(note.id)) noteByRequestedId.set(note.id, note);
+      if (note.workOrderId && requestedIds.includes(note.workOrderId)) noteByRequestedId.set(note.workOrderId, note);
+    }
+    const notes = [...new Set(noteByRequestedId.values())];
+    if (notes.length === 0) return new Map();
+
+    const noteIds = notes.map((note) => note.id);
+    const payments = await prisma.payment.findMany({
+      where: { applications: { some: { payableNoteId: { in: noteIds } } } },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        amountCents: true,
+        createdAt: true,
+        method: true,
+        status: true,
+        reversedAt: true,
+        correctionsReplacement: { select: { id: true } },
+        applications: {
+          where: { payableNoteId: { in: noteIds } },
+          select: { payableNoteId: true, amountCents: true, reversedAt: true },
+        },
+      },
+    });
+    const paymentsByNote = new Map(noteIds.map((id) => [id, [] as NotePaymentHistoryItem[]]));
+    for (const payment of payments) {
+      const activeApplicationsByNote = new Map<string, number>();
+      for (const application of payment.applications) {
+        if (!paymentsByNote.has(application.payableNoteId)) continue;
+        const activeAmount = application.reversedAt === null ? application.amountCents : 0;
+        activeApplicationsByNote.set(application.payableNoteId, (activeApplicationsByNote.get(application.payableNoteId) ?? 0) + activeAmount);
+      }
+      for (const [noteId, activeAppliedCents] of activeApplicationsByNote) {
+        const history = paymentsByNote.get(noteId)!;
+        const isReversed = Boolean(payment.reversedAt);
+        history.push({
+          id: payment.id,
+          paymentId: payment.id,
+          date: payment.createdAt,
+          method: payment.method,
+          paymentStatus: payment.status,
+          amountCents: payment.amountCents,
+          appliedCents: isReversed || payment.status !== "PAID" ? 0 : activeAppliedCents,
+          paidCentsAtPayment: 0,
+          remainingCentsAtPayment: 0,
+          isReversed,
+          isCorrected: (payment.correctionsReplacement?.length ?? 0) > 0,
+        });
+      }
+    }
+    const histories = new Map<string, NotePaymentHistory>();
+    for (const [requestedId, note] of noteByRequestedId) {
+      const totalCents = note.workOrderId && note.quote
+        ? getEffectiveSettlementTotals(note.quote, note.quote.settlementAgreement).totalCents
+        : note.totalCents;
+      const history = paymentsByNote.get(note.id) ?? [];
+      histories.set(requestedId, { totalCents, payments: withHistoricalBalances(totalCents, history) });
+    }
+    return histories;
+  }
+  const requestedIds = [...new Set(workOrderIds)];
   const workOrders = await prisma.workOrder.findMany({
-    where: { id: { in: workOrderIds } },
+    where: { id: { in: requestedIds } },
     select: {
       id: true,
       quoteId: true,
       quote: {
         select: {
           subtotalCents: true,
+          discountCents: true,
           taxCents: true,
           totalCents: true,
+          taxEnabled: true,
+          items: { select: { quantity: true, unitPriceCents: true } },
           settlementAgreement: {
             select: {
               id: true,
@@ -55,8 +150,8 @@ export async function getNotePaymentHistory(workOrderIds: string[]): Promise<Map
       createdAt: true,
       method: true,
       status: true,
-       reversedAt: true,
-       correctionsReplacement: { select: { id: true } },
+      reversedAt: true,
+      correctionsReplacement: { select: { id: true } },
       applications: {
         where: { workOrderId: { in: workOrderIds } },
         select: { workOrderId: true, amountCents: true, reversedAt: true },
@@ -156,7 +251,17 @@ export async function getEligibleNotesForCreditApplication(customerId: string): 
       quote: { customerId },
     },
     include: {
-      quote: { select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true } },
+      quote: {
+        select: {
+          subtotalCents: true,
+          discountCents: true,
+          taxCents: true,
+          totalCents: true,
+          taxEnabled: true,
+          items: { select: { quantity: true, unitPriceCents: true } },
+          settlementAgreement: true,
+        },
+      },
       paymentApplications: {
         where: {
           reversedAt: null,

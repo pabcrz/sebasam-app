@@ -10,8 +10,8 @@ describe("resolveReturnTo", () => {
     ["/admin/quotes", "/admin/quotes"],
     ["/admin/notas", "/admin/notas"],
     ["/admin/work-orders", "/admin/work-orders"],
-    ["/admin/notas?mode=week&anchor=2026-08-12&payment=pending&assignee=all", "/admin/notas?mode=week&anchor=2026-08-12&payment=pending&assignee=all"],
-    ["/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=A0B1C2D3-1234-4ABC-8DEF-1234567890AB&page=2", "/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=a0b1c2d3-1234-4abc-8def-1234567890ab&page=2"],
+    ["/admin/notas?mode=week&anchor=2026-08-12&payment=pending&assignee=all", "/admin/notas?mode=week&anchor=2026-08-12&payment=pending&assignee=all&kind=all"],
+    ["/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=A0B1C2D3-1234-4ABC-8DEF-1234567890AB&page=2", "/admin/notas?mode=month&anchor=2026-08&payment=paid&assignee=a0b1c2d3-1234-4abc-8def-1234567890ab&kind=all&page=2"],
   ])("accepts %s", (raw, expected) => {
     expect(resolveReturnTo(raw)).toBe(expected);
   });

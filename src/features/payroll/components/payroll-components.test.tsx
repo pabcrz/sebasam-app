@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
-import { QuoteItemType, WorkerKind } from "@prisma/client";
+import { PayrollPeriodStatus, QuoteItemType, WorkerKind } from "@prisma/client";
 import { PayrollPeriodNav } from "./payroll-period-nav";
 import { PayrollMetrics } from "./payroll-metrics";
 import { PayrollUnassignedCard } from "./payroll-worker-card";
@@ -45,6 +45,7 @@ const sampleWorkers: WorkerPayrollSummary[] = [
         workOrderNumber: "OT-010",
         quoteId: "q-1",
         quoteNumber: "COT-010",
+        workTitle: "Reparación de chasis",
         clientName: "Flotillas SA",
         vehicleSummary: "Isuzu Forward (ABC-999)",
         completedAt: new Date("2026-08-20T10:00:00Z"),
@@ -106,6 +107,29 @@ describe("Payroll UI Components", () => {
     );
     expect(screen.getByTestId("payroll-period-nav")).toHaveClass("min-w-0", "max-w-full");
     expect(screen.getByTestId("payroll-period-nav").querySelector("div.flex.flex-wrap")).toBeInTheDocument();
+  });
+
+  it("keeps ADMIN payroll weekly and read-only", () => {
+    render(
+      <PayrollPeriodNav
+        role="ADMIN"
+        mode="weekly"
+        rangeLabel="17–22 de agosto de 2026"
+        anchor="2026-08-17"
+        prevAnchor="2026-08-10"
+        nextAnchor="2026-08-24"
+        weekStatus={PayrollPeriodStatus.OPEN}
+        onOpenSigningSheet={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: /semana anterior/i })).toHaveAttribute(
+      "href",
+      "/admin/nomina?anchor=2026-08-10",
+    );
+    expect(screen.queryByText("Mensual")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hoja de Firmas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Semana Abierta")).not.toBeInTheDocument();
   });
 
   it("renders metrics with formatted amounts", () => {
@@ -177,7 +201,8 @@ describe("Payroll UI Components", () => {
     );
 
     expect(screen.getByText("Mano de obra - Maestro Pedro")).toBeInTheDocument();
-    expect(screen.getByText("OT-010")).toBeInTheDocument();
+    expect(screen.getByText("Reparación de chasis")).toBeInTheDocument();
+    expect(screen.getByText("Folio OT-010 · COT-010")).toBeInTheDocument();
     expect(screen.queryByText("Soldadura chasis")).not.toBeInTheDocument();
     expect(screen.queryByText("Soldadura / Soplete")).not.toBeInTheDocument();
 

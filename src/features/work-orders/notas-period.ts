@@ -4,6 +4,7 @@ export type NotasMode = "week" | "month";
 export type NotasPayment = "all" | "pending" | "paid";
 export type NotasAssignee = "all" | "workshop" | string;
 export type NotasOverdue = "all" | "overdue" | "current";
+export type NotasKind = "all" | "WORK" | "SALE";
 
 function normalizeAssignee(value: string | string[] | undefined): NotasAssignee {
   if (value === "all" || value === "workshop") return value;
@@ -86,6 +87,7 @@ export function parseNotasParams(input: Record<string, string | string[] | undef
   const assignee = normalizeAssignee(input.assignee);
   const customerId = normalizeCustomerId(input.customerId);
   const overdue = normalizeOverdue(input.overdue);
+  const kind: NotasKind = input.kind === "WORK" || input.kind === "SALE" ? input.kind : "all";
   const page = /^\d+$/.test(String(input.page)) ? Math.max(1, Number(input.page)) : 1;
   const anchor = calendarDate(typeof input.anchor === "string" ? `${input.anchor}${mode === "month" && /^\d{4}-\d{2}$/.test(input.anchor) ? "-01" : ""}` : undefined, now);
   const weekday = new Date(Date.UTC(anchor.year, anchor.month - 1, anchor.day)).getUTCDay();
@@ -101,6 +103,7 @@ export function parseNotasParams(input: Record<string, string | string[] | undef
     assignee,
     customerId,
     overdue,
+    kind,
     page,
     anchor: value(anchor),
     rangeLabel: rangeLabel(mode, startDate, endDate),
@@ -117,6 +120,7 @@ export function notasHref(state: {
   anchor: string;
   customerId?: string;
   overdue?: NotasOverdue;
+  kind?: NotasKind;
   page?: number;
 }) {
   const params = new URLSearchParams({
@@ -131,6 +135,7 @@ export function notasHref(state: {
   if (state.overdue && state.overdue !== "all") {
     params.set("overdue", state.overdue);
   }
+  if (state.kind) params.set("kind", state.kind);
   if (state.page && state.page > 1) {
     params.set("page", String(state.page));
   }

@@ -10,6 +10,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
 import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
+import { getPayableNoteReadModel } from "@/features/payable-notes/domain";
 
 const CASH_PAYMENT_QUOTE_STATUSES: QuoteStatus[] = [QuoteStatus.APPROVED];
 
@@ -162,27 +163,23 @@ export async function getNoteFinancialSummary(
     throw new PaymentOperationError("La cotización no tiene cliente asignado.");
   }
 
-  assertCommercialQuote(workOrder.quote);
+  assertCommercialQuote(workOrder.quote, { allowStaleTotals: true });
 
-  const chargedCents = getEffectiveSettlementTotals(workOrder.quote, workOrder.quote.settlementAgreement).totalCents;
-
-  const applications = await tx.paymentApplication.aggregate({
-    where: {
-      workOrderId,
-      reversedAt: null,
-      payment: { status: PaymentStatus.PAID, reversedAt: null },
-    },
-    _sum: { amountCents: true },
+  const payableNote = await tx.payableNote.findFirst({
+    where: { workOrderId },
+    select: { id: true },
   });
-
-  const appliedCents = applications._sum.amountCents ?? 0;
-  const pendingBalanceCents = Math.max(0, chargedCents - appliedCents);
+  if (!payableNote) throw new PaymentOperationError("No se encontró la cuenta por cobrar de la nota.");
+  const noteBalance = await getPayableNoteReadModel(tx, payableNote.id);
+  const appliedCents = noteBalance.paidCents;
+  const effectiveChargedCents = noteBalance.totalCents;
+  const pendingBalanceCents = Math.max(0, effectiveChargedCents - appliedCents);
 
   return {
     workOrderId,
     quoteId: workOrder.quoteId,
     customerId: workOrder.quote.customerId,
-    chargedCents,
+    chargedCents: effectiveChargedCents,
     appliedCents,
     pendingBalanceCents,
     isSettled: pendingBalanceCents === 0,
@@ -233,7 +230,15 @@ export async function getCustomerBalanceSummary(
         status: QuoteStatus.APPROVED,
         workOrder: { status: WorkOrderStatus.COMPLETED },
       },
-      select: { subtotalCents: true, taxCents: true, totalCents: true, settlementAgreement: true },
+      select: {
+        subtotalCents: true,
+        discountCents: true,
+        taxCents: true,
+        totalCents: true,
+        taxEnabled: true,
+        items: { select: { quantity: true, unitPriceCents: true } },
+        settlementAgreement: true,
+      },
     }),
     client.payment.aggregate({
       where: {
@@ -313,7 +318,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
         if (firstApp) {
           appliedToNoteCents = firstApp.amountCents;
           paymentApplicationId = firstApp.id;
-          noteSummary = await getNoteFinancialSummary(tx, firstApp.workOrderId);
+          noteSummary = await getNoteFinancialSummary(tx, firstApp.workOrderId!);
         } else if (existingPayment.quoteId) {
           const wo = await tx.workOrder.findUnique({ where: { quoteId: existingPayment.quoteId } });
           if (wo) {
@@ -382,6 +387,24 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
         } else if (request.quoteId && !quoteId) {
           quoteId = request.quoteId;
         }
+
+        if (quoteId) {
+          const requestQuote = await tx.quote.findUnique({
+            where: { id: quoteId },
+            include: { items: true, sections: { include: { items: true } }, settlementAgreement: true },
+          });
+          if (!requestQuote) throw new PaymentOperationError("La cotización de la solicitud no existe.");
+          assertCommercialQuote(requestQuote, { allowStaleTotals: true });
+          const currentPayable = getEffectiveSettlementTotals(requestQuote, requestQuote.settlementAgreement);
+          if (
+            request.payableSubtotalCents !== currentPayable.subtotalCents ||
+            request.payableTaxCents !== currentPayable.taxCents ||
+            request.payableTotalCents !== currentPayable.totalCents ||
+            request.settlementAgreementId !== currentPayable.agreementId
+          ) {
+            throw new PaymentOperationError("El importe de esta solicitud cambió. Actualiza o vuelve a abrir el enlace de pago antes de cobrar.");
+          }
+        }
       }
 
       if (quoteId && !targetWorkOrder) {
@@ -407,6 +430,13 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
         throw new PaymentOperationError("No se pudo determinar el cliente para el pago.");
       }
 
+      const targetPayableNote = targetWorkOrder
+        ? await tx.payableNote.findFirst({ where: { workOrderId: targetWorkOrder.id }, select: { id: true } })
+        : null;
+      if (targetWorkOrder?.status === WorkOrderStatus.COMPLETED && !targetPayableNote) {
+        throw new PaymentOperationError("No se encontró la cuenta por cobrar de la nota.");
+      }
+
       await lockPaymentMutationScope(tx, { quoteIds: quoteId ? [quoteId] : [] });
 
       // Re-read the locked quote and enforce commercial validation after locking.
@@ -418,7 +448,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
         if (!quote) {
           throw new PaymentOperationError("La cotización no existe.");
         }
-        assertCommercialQuote(quote);
+        assertCommercialQuote(quote, { allowStaleTotals: true });
 
         if (!targetWorkOrder || targetWorkOrder.status !== WorkOrderStatus.COMPLETED) {
           if (!CASH_PAYMENT_QUOTE_STATUSES.includes(quote.status)) {
@@ -433,6 +463,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
           operationKey: input.operationKey,
           customerId,
           quoteId: quoteId ?? null,
+          payableNoteId: targetPayableNote?.id ?? null,
           paymentRequestId: input.paymentRequestId ?? null,
           method: input.method ?? PaymentMethod.CASH,
           amountCents: input.amountCents,
@@ -448,6 +479,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
           movementType: LedgerMovementType.PAYMENT_CAPTURE,
           amountCents: input.amountCents,
           paymentId: payment.id,
+          payableNoteId: targetPayableNote?.id ?? null,
           actorId: input.actorId ?? null,
         },
       });
@@ -468,6 +500,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
               operationKey: `${input.operationKey}:app`,
               paymentId: payment.id,
               workOrderId: targetWorkOrder.id,
+              payableNoteId: targetPayableNote!.id,
               amountCents: applyAmount,
               actorId: input.actorId ?? null,
             },
@@ -482,6 +515,7 @@ export async function recordPayment(input: RecordPaymentInput): Promise<Recorded
               paymentId: payment.id,
               paymentApplicationId: application.id,
               workOrderId: targetWorkOrder.id,
+              payableNoteId: targetPayableNote!.id,
               actorId: input.actorId ?? null,
             },
           });
@@ -553,7 +587,7 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
 
       if (existingApplication) {
         const [noteSummary, creditSummary] = await Promise.all([
-          getNoteFinancialSummary(tx, existingApplication.workOrderId),
+          getNoteFinancialSummary(tx, existingApplication.workOrderId!),
           getCustomerCreditSummary(tx, input.customerId),
         ]);
 
@@ -561,7 +595,7 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
           application: {
             id: existingApplication.id,
             amountCents: existingApplication.amountCents,
-            workOrderId: existingApplication.workOrderId,
+            workOrderId: existingApplication.workOrderId!,
             paymentId: existingApplication.paymentId,
           },
           notePendingBalanceCents: noteSummary.pendingBalanceCents,
@@ -654,12 +688,19 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
         throw new PaymentOperationError("El pago seleccionado ya no tiene saldo suficiente. Recarga e intenta de nuevo.");
       }
 
+      const payableNote = await tx.payableNote.findFirst({
+        where: { workOrderId: input.workOrderId },
+        select: { id: true },
+      });
+      if (!payableNote) throw new PaymentOperationError("No se encontró la cuenta por cobrar de la nota.");
+
       // 6. Create PaymentApplication
       const application = await tx.paymentApplication.create({
         data: {
           operationKey: input.operationKey,
           paymentId: backingPayment.id,
           workOrderId: input.workOrderId,
+          payableNoteId: payableNote.id,
           amountCents: input.amountCents,
           actorId: input.actorId ?? null,
         },
@@ -675,6 +716,7 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
           paymentId: backingPayment.id,
           paymentApplicationId: application.id,
           workOrderId: input.workOrderId,
+          payableNoteId: application.payableNoteId,
           actorId: input.actorId ?? null,
         },
       });
@@ -686,7 +728,7 @@ export async function applyCustomerCredit(input: ApplyCreditInput): Promise<{
         application: {
           id: application.id,
           amountCents: application.amountCents,
-          workOrderId: application.workOrderId,
+          workOrderId: application.workOrderId!,
           paymentId: application.paymentId,
         },
         notePendingBalanceCents: remainingNoteBalance,
@@ -806,7 +848,7 @@ async function buildCorrectPaymentResult(
     actorName: correction.actorName,
     createdAt: correction.createdAt,
     applications: mappings.map((m) => ({
-      workOrderId: m.workOrderId,
+      workOrderId: m.workOrderId!,
       originalAmountCents: m.originalAmountCents,
       replacementAmountCents: m.replacementAmountCents,
       shortfallCents: m.shortfallCents,
@@ -922,6 +964,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
             paymentId: original.id,
             paymentApplicationId: app.id,
             workOrderId: app.workOrderId,
+            payableNoteId: app.payableNoteId,
             actorId,
             reason,
             reversedMovementId: originalApplicationEntry?.id ?? null,
@@ -935,6 +978,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
           operationKey: `${input.operationKey}:payment`,
           customerId: original.customerId,
           quoteId: original.quoteId,
+          payableNoteId: original.payableNoteId,
           paymentRequestId: original.paymentRequestId,
           method: input.method,
           amountCents: input.amountCents,
@@ -949,6 +993,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
           movementType: LedgerMovementType.PAYMENT_CAPTURE,
           amountCents: input.amountCents,
           paymentId: replacement.id,
+          payableNoteId: replacement.payableNoteId,
           actorId,
           reason,
         },
@@ -973,7 +1018,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
 
       for (let index = 0; index < activeApplications.length; index++) {
         const app = activeApplications[index];
-        const noteSummary = await getNoteFinancialSummary(tx, app.workOrderId);
+        const noteSummary = await getNoteFinancialSummary(tx, app.workOrderId!);
         const applyAmount = Math.min(app.amountCents, remainingCents, noteSummary.pendingBalanceCents);
 
         let replacementApplicationId: string | null = null;
@@ -983,6 +1028,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
               operationKey: `${input.operationKey}:app:${index}`,
               paymentId: replacement.id,
               workOrderId: app.workOrderId,
+              payableNoteId: app.payableNoteId,
               amountCents: applyAmount,
               actorId,
             },
@@ -997,6 +1043,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
               paymentId: replacement.id,
               paymentApplicationId: replacementApplication.id,
               workOrderId: app.workOrderId,
+              payableNoteId: app.payableNoteId,
               actorId,
               reason,
             },
@@ -1011,7 +1058,7 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
         totalShortfallCents += shortfallCents;
 
         applications.push({
-          workOrderId: app.workOrderId,
+          workOrderId: app.workOrderId!,
           originalAmountCents: app.amountCents,
           replacementAmountCents: applyAmount,
           shortfallCents,
@@ -1022,7 +1069,8 @@ export async function correctPayment(input: CorrectPaymentInput): Promise<Correc
             paymentCorrectionId: correction.id,
             originalApplicationId: app.id,
             replacementApplicationId,
-            workOrderId: app.workOrderId,
+            workOrderId: app.workOrderId!,
+            payableNoteId: app.payableNoteId,
             originalAmountCents: app.amountCents,
             replacementAmountCents: applyAmount,
             shortfallCents,
@@ -1148,6 +1196,7 @@ export async function reversePaymentCapture(input: ReversePaymentInput): Promise
             paymentId: payment.id,
             paymentApplicationId: app.id,
             workOrderId: app.workOrderId,
+            payableNoteId: app.payableNoteId,
             actorId: input.actorId,
             reason,
           },

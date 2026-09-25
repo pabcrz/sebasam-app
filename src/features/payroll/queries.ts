@@ -215,6 +215,7 @@ export async function getWeeklyPayroll(
       quote: {
         id: wo.quote.id,
         number: wo.quote.number,
+        title: wo.quote.title,
         customer: wo.quote.customer ? { name: wo.quote.customer.name } : null,
         vehicle: wo.quote.vehicle
           ? {
@@ -222,6 +223,7 @@ export async function getWeeklyPayroll(
               model: wo.quote.vehicle.model,
               year: wo.quote.vehicle.year,
               plate: wo.quote.vehicle.plate,
+              economicNumber: wo.quote.vehicle.economicNumber,
             }
           : null,
         items: wo.quote.items.map(mapItem),
@@ -249,7 +251,7 @@ export async function getWeeklyPayroll(
       ? [wo.quote.vehicle.brand, wo.quote.vehicle.model].filter(Boolean).join(" ")
       : "";
     const vehicleSummary = wo.quote.vehicle
-      ? `${vehicleDesc || "Vehículo"}${wo.quote.vehicle.plate ? ` (${wo.quote.vehicle.plate})` : ""}`
+      ? `${vehicleDesc || "Vehículo"}${wo.quote.vehicle.economicNumber ? ` · Unidad ${wo.quote.vehicle.economicNumber}` : ""}${wo.quote.vehicle.plate ? ` (${wo.quote.vehicle.plate})` : ""}`
       : "Sin vehículo";
 
     return {
@@ -258,7 +260,7 @@ export async function getWeeklyPayroll(
       workOrderNumber: wo.number,
       quoteId: wo.quote.id,
       quoteNumber: wo.quote.number,
-      clientName: wo.quote.customer?.name ?? "Cliente General",
+      clientName: wo.quote.customer?.name ?? null,
       vehicleSummary,
       workerId: adv.workerId,
       workerDisplayName: adv.worker.displayName,

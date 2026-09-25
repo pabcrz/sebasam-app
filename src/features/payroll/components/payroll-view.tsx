@@ -17,9 +17,11 @@ import { PayrollWorkerEnvelopeModal } from "./payroll-worker-envelope";
 interface PayrollViewProps {
   report: WeeklyPayrollReport;
   period: ParsedPayrollParams;
+  role?: string;
 }
 
-export function PayrollView({ report, period }: PayrollViewProps) {
+export function PayrollView({ report, period, role = "SUPER_ADMIN" }: PayrollViewProps) {
+  const isAdmin = role === "ADMIN";
   const [selectedWorkerId, setSelectedWorkerId] = React.useState<string | null>(null);
   const [isSigningSheetOpen, setIsSigningSheetOpen] = React.useState(false);
   const [envelopeWorker, setEnvelopeWorker] = React.useState<WorkerPayrollSummary | null>(null);
@@ -46,6 +48,7 @@ export function PayrollView({ report, period }: PayrollViewProps) {
         hasData={hasPayrollEntries}
         weekStatus={report.weekStatus}
         onOpenSigningSheet={() => setIsSigningSheetOpen(true)}
+        role={role}
       />
 
       {/* Metrics Overview */}
@@ -73,14 +76,15 @@ export function PayrollView({ report, period }: PayrollViewProps) {
             />
           )}
 
-          <FixedPayHelperTable helpers={fixedPayHelpers} weekStart={period.anchor} />
+          <FixedPayHelperTable helpers={fixedPayHelpers} weekStart={period.anchor} readOnly={isAdmin} />
 
           {/* Level 2: Specific Detail per Selected Worker */}
           {report.workers.length > 0 && (
             <PayrollWorkerDetail
               workers={report.workers}
               selectedWorkerId={activeWorkerId}
-              onOpenEnvelope={(worker) => setEnvelopeWorker(worker)}
+              onOpenEnvelope={isAdmin ? undefined : (worker) => setEnvelopeWorker(worker)}
+              readOnly={isAdmin}
             />
           )}
         </div>
@@ -101,22 +105,26 @@ export function PayrollView({ report, period }: PayrollViewProps) {
       )}
 
       {/* Modal: Hoja de Firmas Confidencial */}
-      <PayrollSigningSheetModal
-        report={report}
-        period={period}
-        open={isSigningSheetOpen}
-        onOpenChange={setIsSigningSheetOpen}
-      />
+      {!isAdmin && (
+        <PayrollSigningSheetModal
+          report={report}
+          period={period}
+          open={isSigningSheetOpen}
+          onOpenChange={setIsSigningSheetOpen}
+        />
+      )}
 
       {/* Modal: Recibo de Nómina Individual */}
-      <PayrollWorkerEnvelopeModal
-        worker={envelopeWorker}
-        period={period}
-        open={envelopeWorker !== null}
-        onOpenChange={(open) => {
-          if (!open) setEnvelopeWorker(null);
-        }}
-      />
+      {!isAdmin && (
+        <PayrollWorkerEnvelopeModal
+          worker={envelopeWorker}
+          period={period}
+          open={envelopeWorker !== null}
+          onOpenChange={(open) => {
+            if (!open) setEnvelopeWorker(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -4,13 +4,15 @@ import { listCustomers } from "@/features/customers/queries";
 import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
 import { createQuoteFromWorkspace } from "@/features/quotes/actions";
 import { DashboardView } from "@/features/dashboard/components/dashboard-view";
+import { requireProfileForPage } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Panel",
 };
 
 export default async function AdminHomePage() {
-  const [snapshot, customers] = await Promise.all([
+  const [{ profile }, snapshot, customers] = await Promise.all([
+    requireProfileForPage(),
     getOperationalDashboardSnapshot(),
     listCustomers(),
   ]);
@@ -19,6 +21,7 @@ export default async function AdminHomePage() {
     <DashboardView
       snapshot={snapshot}
       customers={customers}
+      role={profile.role}
       createQuoteAction={createQuoteFromWorkspace}
       createCustomerForQuoteAction={createOrReuseCustomerForQuote}
       searchCustomersAction={searchCustomersForQuote}

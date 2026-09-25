@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { SVGProps } from "react";
 import { AdminShell } from "./admin-shell";
 
@@ -44,6 +44,43 @@ vi.mock("@/components/font-scale-toggle", () => ({
 describe("AdminShell", () => {
   beforeEach(() => {
     mockPathname = "/admin";
+  });
+
+  it("closes the profile menu when clicking outside it", () => {
+    render(
+      <AdminShell displayName="Admin User" role="admin">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const profileMenu = screen.getByText("Salir").closest("details");
+    expect(profileMenu).not.toBeNull();
+    fireEvent.click(profileMenu!.querySelector("summary")!);
+    expect(profileMenu).toHaveProperty("open", true);
+
+    fireEvent.click(screen.getByText("Content"));
+
+    expect(profileMenu).toHaveProperty("open", false);
+  });
+
+  it("keeps the profile menu open for inside clicks and preserves trigger toggling", () => {
+    render(
+      <AdminShell displayName="Admin User" role="admin">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const profileMenu = screen.getByText("Salir").closest("details");
+    const trigger = profileMenu!.querySelector("summary")!;
+
+    fireEvent.click(trigger);
+    expect(profileMenu).toHaveProperty("open", true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    expect(profileMenu).toHaveProperty("open", true);
+
+    fireEvent.click(trigger);
+    expect(profileMenu).toHaveProperty("open", false);
   });
 
   it("marks the Inicio mobile tab as current on the dashboard route", () => {
@@ -224,5 +261,45 @@ describe("AdminShell", () => {
     expect(screen.getByRole("banner")).toHaveClass("print:hidden");
     expect(screen.getByRole("navigation", { name: "Navegación móvil" })).toHaveClass("print:hidden");
   });
-});
 
+  it("limits ADMIN desktop and mobile navigation to patron destinations", () => {
+    render(
+      <AdminShell displayName="Patron User" role="ADMIN">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const desktopNav = screen.getByRole("navigation", { name: "Navegación principal" });
+    expect(within(desktopNav).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/admin",
+      "/admin/customers",
+      "/admin/quotes",
+      "/admin/work-orders",
+      "/admin/notas",
+      "/admin/nomina",
+    ]);
+
+    const mobileNav = screen.getByRole("navigation", { name: "Navegación móvil" });
+    expect(within(mobileNav).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/admin",
+      "/admin/customers",
+      "/admin/quotes",
+      "/admin/work-orders",
+      "/admin/notas",
+      "/admin/nomina",
+    ]);
+    expect(within(mobileNav).queryByRole("button", { name: "Más" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the complete navigation for SUPER_ADMIN", () => {
+    render(
+      <AdminShell displayName="Super Admin" role="SUPER_ADMIN">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const desktopNav = screen.getByRole("navigation", { name: "Navegación principal" });
+    expect(within(desktopNav).getByRole("link", { name: "Nómina" })).toBeInTheDocument();
+    expect(within(desktopNav).getByRole("link", { name: "Usuarios" })).toBeInTheDocument();
+  });
+});

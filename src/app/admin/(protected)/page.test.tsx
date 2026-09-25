@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 
 const getOperationalDashboardSnapshotMock = vi.hoisted(() => vi.fn());
 const listCustomersMock = vi.hoisted(() => vi.fn());
+const requireProfileForPageMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/dashboard/queries", () => ({
   getOperationalDashboardSnapshot: getOperationalDashboardSnapshotMock,
@@ -22,10 +23,15 @@ vi.mock("@/features/quotes/actions", () => ({
   createQuoteFromWorkspace: vi.fn(),
 }));
 
+vi.mock("@/lib/auth/session", () => ({
+  requireProfileForPage: requireProfileForPageMock,
+}));
+
 import AdminHomePage from "./page";
 
 describe("AdminHomePage", () => {
   it("fetches operational snapshot and renders dashboard overview", async () => {
+    requireProfileForPageMock.mockResolvedValue({ profile: { role: "SUPER_ADMIN" } });
     listCustomersMock.mockResolvedValue([]);
     getOperationalDashboardSnapshotMock.mockResolvedValue({
       generatedAt: new Date("2026-08-19T14:00:00.000Z"),

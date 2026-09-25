@@ -5,6 +5,25 @@ export function calculateItemTotalCents(quantity: number, unitPriceCents: number
   return Math.round(quantity * unitPriceCents);
 }
 
+export type ConfirmedQuoteItem = {
+  quantity: unknown;
+  unitPriceCents?: number | null;
+};
+
+export function calculateConfirmedQuoteTotals(
+  items: ConfirmedQuoteItem[],
+  taxEnabled: boolean,
+  discountCents = 0,
+) {
+  const subtotalCents = items.reduce(
+    (total, item) => item.unitPriceCents == null
+      ? total
+      : total + calculateItemTotalCents(Number(item.quantity), item.unitPriceCents),
+    0,
+  );
+  return calculateQuoteTotals(subtotalCents, taxEnabled, discountCents);
+}
+
 export function calculateQuoteTaxCents(
   subtotalCents: number,
   taxEnabled: boolean,

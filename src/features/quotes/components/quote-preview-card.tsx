@@ -82,7 +82,6 @@ export function QuotePreviewCard({
 
   const hasMultipleSections = sections.length > 1;
   const hasPendingPrice = sections.some((section) => section.items.some((item) => item.description.trim() && item.unitPrice.trim() === ""));
-
   const hasPartialApproval = Boolean(isApproved) && sections.some((s) => s.isAuthorized === true) && sections.some((s) => s.isAuthorized === false);
 
   // Calculate full totals across ALL sections
@@ -110,19 +109,19 @@ export function QuotePreviewCard({
   const authorizedTaxCents = hasTaxEnabled ? Math.round(authorizedTaxableCents * 0.16) : 0;
   const authorizedTotalCents = authorizedTaxableCents + authorizedTaxCents;
 
-  const fullSubtotalCents = hasPendingPrice ? null : (hasPartialApproval ? authorizedSectionsSubtotalCents : allSectionsSubtotalCents);
-  const fullTaxCents = hasPendingPrice ? null : (hasPartialApproval ? authorizedTaxCents : allTaxCents);
-  const fullTotalCents = hasPendingPrice ? null : (hasPartialApproval ? authorizedTotalCents : allTotalCents);
+  const fullSubtotalCents = hasPartialApproval ? authorizedSectionsSubtotalCents : allSectionsSubtotalCents;
+  const fullTaxCents = hasPartialApproval ? authorizedTaxCents : allTaxCents;
+  const fullTotalCents = hasPartialApproval ? authorizedTotalCents : allTotalCents;
 
   const displaySubtotalCents = isPrint || hasPartialApproval
     ? fullSubtotalCents
-    : (hasPendingPrice ? null : subtotalCents);
+    : (hasPendingPrice ? fullSubtotalCents : subtotalCents);
   const displayTaxCents = isPrint || hasPartialApproval
     ? fullTaxCents
-    : (hasPendingPrice ? null : taxCents);
+    : (hasPendingPrice ? fullTaxCents : taxCents);
   const displayTotalCents = isPrint || hasPartialApproval
     ? fullTotalCents
-    : (hasPendingPrice ? null : totalCents);
+    : (hasPendingPrice ? fullTotalCents : totalCents);
 
   const partialNotice = hasPartialApproval ? "Total correspondiente únicamente a los conceptos autorizados." : null;
   const visibleSections = sections.flatMap((section, sectionIndex) => {

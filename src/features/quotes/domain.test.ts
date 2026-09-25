@@ -379,7 +379,7 @@ describe("acceptSharedQuote", () => {
     await expect(acceptSharedQuote("token-revoked")).rejects.toThrow(SharedQuoteRevokedError);
   });
 
-  it("rejects an incomplete DRAFT quote without changing its status", async () => {
+  it("accepts a pending-price DRAFT quote with valid description and quantity", async () => {
     mockSharedQuote({ quote: {
       status: QuoteStatus.DRAFT,
       items: [{ description: "Repair", quantity: 1, unitPriceCents: null }],
@@ -390,10 +390,14 @@ describe("acceptSharedQuote", () => {
       items: [{ description: "Repair", quantity: 1, unitPriceCents: null }],
     });
 
-    await expect(acceptSharedQuote("token-valid")).rejects.toThrow(
-      "Completa la descripción, cantidad y precio de todos los conceptos antes de compartir.",
-    );
-    expect(tx.quote.updateMany).not.toHaveBeenCalled();
+    await expect(acceptSharedQuote("token-valid")).resolves.toMatchObject({
+      quoteId: "q-1",
+      status: QuoteStatus.APPROVED,
+      origin: QuoteDecisionOrigin.CUSTOMER,
+    });
+    expect(tx.quote.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "q-1", status: { in: [QuoteStatus.DRAFT, QuoteStatus.SENT] } },
+    }));
   });
 });
 

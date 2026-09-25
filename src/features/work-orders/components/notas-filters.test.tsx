@@ -12,6 +12,16 @@ describe("NotasFilters", () => {
   beforeEach(() => push.mockClear());
   const masters = [{ id: "a0b1c2d3-1234-4abc-8def-1234567890ab", displayName: "Ana Maestra" }];
 
+  it("selects All, WORK, or SALE note kinds", () => {
+    render(<NotasFilters mode="week" payment="all" assignee="all" kind="all" anchor="2026-08-05" rangeLabel="3–8 de agosto de 2026" isCurrentWeek={false} masters={masters} />);
+
+    const kindSelector = screen.getByLabelText("Tipo de nota");
+    expect(kindSelector).toHaveValue("all");
+    expect(kindSelector).toHaveDisplayValue("Todas");
+    fireEvent.change(kindSelector, { target: { value: "WORK" } });
+    expect(push).toHaveBeenCalledWith(expect.stringContaining("kind=WORK"));
+  });
+
   it("keeps payment when changing period or mode and resets pagination", () => {
     render(<NotasFilters mode="week" payment="paid" assignee="workshop" anchor="2026-08-05" rangeLabel="3–8 de agosto de 2026" isCurrentWeek masters={masters} />);
     expect(screen.getByRole("navigation", { name: "Estado de pago" })).toBeInTheDocument();
@@ -29,7 +39,7 @@ describe("NotasFilters", () => {
     expect(monthly).toHaveAttribute("href", expect.not.stringContaining("page="));
     expect(screen.getByLabelText("Semana")).toHaveAttribute("type", "date");
     fireEvent.change(screen.getByLabelText("Semana"), { target: { value: "2026-08-19" } });
-    expect(push).toHaveBeenCalledWith("/admin/notas?mode=week&anchor=2026-08-19&payment=paid&assignee=workshop");
+    expect(push).toHaveBeenCalledWith("/admin/notas?mode=week&anchor=2026-08-19&payment=paid&assignee=workshop&kind=all");
   });
 
   it("shows active filter badge count and opens modal with customer, assignee, and overdue filters", async () => {
@@ -97,7 +107,7 @@ describe("NotasFilters", () => {
     const clearBtn = screen.getByRole("button", { name: "Limpiar" });
     fireEvent.click(clearBtn);
 
-    expect(push).toHaveBeenCalledWith("/admin/notas?mode=week&anchor=2026-08-05&payment=all&assignee=all");
+    expect(push).toHaveBeenCalledWith("/admin/notas?mode=week&anchor=2026-08-05&payment=all&assignee=all&kind=all");
   });
 
   it("debounces remote customer search and allows selecting a customer", async () => {
@@ -141,7 +151,7 @@ describe("NotasFilters", () => {
     expect(screen.queryByText("Semana en curso")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Todas" })).toHaveAttribute("aria-current", "page");
     fireEvent.change(screen.getByLabelText("Mes y año"), { target: { value: "2026-09" } });
-    expect(push).toHaveBeenCalledWith("/admin/notas?mode=month&anchor=2026-09&payment=all&assignee=all");
+    expect(push).toHaveBeenCalledWith("/admin/notas?mode=month&anchor=2026-09&payment=all&assignee=all&kind=all");
   });
 
   it("does not label a non-current week", () => {

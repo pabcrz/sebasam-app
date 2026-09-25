@@ -69,7 +69,7 @@ export interface RawLaborAdvanceForPayroll {
   workOrderNumber: string;
   quoteId: string;
   quoteNumber: string;
-  clientName: string;
+  clientName: string | null;
   vehicleSummary: string;
   workerId: string;
   workerDisplayName: string;
@@ -88,7 +88,8 @@ export interface WorkOrderPayrollDetail {
   workOrderNumber: string;
   quoteId: string;
   quoteNumber: string;
-  clientName: string;
+  workTitle?: string | null;
+  clientName: string | null;
   vehicleSummary: string;
   completedAt: Date | string | null;
   isSpecial: boolean;
@@ -244,8 +245,9 @@ export interface RawWorkOrderForPayroll {
   quote: {
     id: string;
     number: string;
+    title?: string | null;
     customer: { name: string } | null;
-    vehicle: { brand?: string | null; model?: string | null; year?: number | null; plate?: string | null } | null;
+    vehicle: { brand?: string | null; model?: string | null; year?: number | null; plate?: string | null; economicNumber?: string | null } | null;
     items: PayrollItemInput[];
     sections?: Array<{ items: PayrollItemInput[] }>;
   };
@@ -343,7 +345,7 @@ export function buildWeeklyPayrollReport(
       ? [wo.quote.vehicle.brand, wo.quote.vehicle.model].filter(Boolean).join(" ")
       : "";
     const vehicleSummary = wo.quote.vehicle
-      ? `${vehicleDesc || "Vehículo"}${wo.quote.vehicle.plate ? ` (${wo.quote.vehicle.plate})` : ""}`
+      ? `${vehicleDesc || "Vehículo"}${wo.quote.vehicle.economicNumber ? ` · Unidad ${wo.quote.vehicle.economicNumber}` : ""}${wo.quote.vehicle.plate ? ` (${wo.quote.vehicle.plate})` : ""}`
       : "Sin vehículo";
 
     const detail: WorkOrderPayrollDetail = {
@@ -351,7 +353,8 @@ export function buildWeeklyPayrollReport(
       workOrderNumber: wo.number,
       quoteId: wo.quote.id,
       quoteNumber: wo.quote.number,
-      clientName: wo.quote.customer?.name ?? "Cliente General",
+      workTitle: wo.quote.title,
+      clientName: wo.quote.customer?.name ?? null,
       vehicleSummary,
       completedAt: wo.completedAt,
       isSpecial: wo.isSpecial,
@@ -442,6 +445,7 @@ export function buildWeeklyPayrollReport(
         workOrderNumber: adv.workOrderNumber,
         quoteId: adv.quoteId,
         quoteNumber: adv.quoteNumber,
+        workTitle: adv.conceptDescription,
         clientName: adv.clientName,
         vehicleSummary: adv.vehicleSummary,
         completedAt: null,

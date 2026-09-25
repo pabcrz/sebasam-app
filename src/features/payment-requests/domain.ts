@@ -101,6 +101,40 @@ const defaultInclude = {
   customerFiscalProfile: true,
 } as const;
 
+type PaymentRequestWithRelations = Prisma.PaymentRequestGetPayload<{ include: typeof defaultInclude }>;
+
+async function reconcilePaymentRequestTotals(request: PaymentRequestWithRelations) {
+  const quoteId = request.quoteId ?? (request.workOrderId
+    ? (await prisma.workOrder.findUnique({ where: { id: request.workOrderId }, select: { quoteId: true } }))?.quoteId
+    : null);
+  if (!quoteId) return request;
+
+  const quote = await prisma.quote.findUnique({
+    where: { id: quoteId },
+    include: { items: true, sections: { include: { items: true } }, settlementAgreement: true },
+  });
+  if (!quote) return request;
+
+  assertCommercialQuote(quote, { allowStaleTotals: true });
+  const payable = getEffectiveSettlementTotals(quote, quote.settlementAgreement);
+  const isCurrent = request.payableSubtotalCents === payable.subtotalCents &&
+    request.payableTaxCents === payable.taxCents &&
+    request.payableTotalCents === payable.totalCents &&
+    request.settlementAgreementId === payable.agreementId;
+  if (isCurrent) return request;
+
+  return prisma.paymentRequest.update({
+    where: { id: request.id },
+    data: {
+      payableSubtotalCents: payable.subtotalCents,
+      payableTaxCents: payable.taxCents,
+      payableTotalCents: payable.totalCents,
+      settlementAgreementId: payable.agreementId,
+    },
+    include: defaultInclude,
+  });
+}
+
 export async function getPaymentRequestByToken(token: string) {
   const request = await prisma.paymentRequest.findUnique({
     where: { token },
@@ -129,14 +163,15 @@ export async function getPaymentRequestByToken(token: string) {
   }
 
   if (request.status === PaymentRequestStatus.PENDING) {
-    return prisma.paymentRequest.update({
+    const viewed = await prisma.paymentRequest.update({
       where: { id: request.id },
       data: { status: PaymentRequestStatus.VIEWED, viewedAt: now },
       include: defaultInclude,
     });
+    return reconcilePaymentRequestTotals(viewed);
   }
 
-  return request;
+  return reconcilePaymentRequestTotals(request);
 }
 
 async function assertNoActiveRequest(
@@ -166,7 +201,7 @@ async function createPaymentRequestForQuoteInTransaction(
     throw new PaymentRequestOperationError("Quote not found.");
   }
 
-  assertCommercialQuote(quote);
+  assertCommercialQuote(quote, { allowStaleTotals: true });
 
   const requiresInvoice = quote.taxEnabled;
   const payable = getEffectiveSettlementTotals(quote, quote.settlementAgreement);
@@ -234,7 +269,7 @@ export async function createPaymentRequestForWorkOrder(workOrderId: string) {
       throw new PaymentRequestOperationError("Work order is not linked to a quote.");
     }
 
-    assertCommercialQuote(workOrder.quote);
+    assertCommercialQuote(workOrder.quote, { allowStaleTotals: true });
 
     await assertNoActiveRequest(tx, { workOrderId: workOrder.id });
 

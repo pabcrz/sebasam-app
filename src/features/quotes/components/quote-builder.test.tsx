@@ -47,6 +47,62 @@ function fillNotesStep(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("QuoteBuilder", () => {
+  it("keeps vehicle fields in default WORK mode and requires a master", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} masters={[{ id: "master-1", displayName: "Master One" }]} createAction={vi.fn()} mode="direct-note" />);
+
+    expect(screen.getByLabelText("Placas (opcional)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Maestro responsable *")).toBeInTheDocument();
+    expect(document.querySelector('input[name="operation"]')).toHaveValue("WORK");
+    expect(document.querySelector('input[name="masterId"]')).toHaveValue("");
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("El maestro responsable es obligatorio.");
+  });
+
+  it("hides vehicle and master fields for SALE and requires a customer", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} mode="direct-note" />);
+
+    await user.click(screen.getByRole("combobox", { name: "Tipo de operación" }));
+    await user.click(screen.getByRole("option", { name: "Venta de refacciones" }));
+
+    expect(screen.queryByLabelText("Placas (opcional)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Número económico / ECO (opcional)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Marca (opcional)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Modelo (opcional)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Año (opcional)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Maestro responsable *")).not.toBeInTheDocument();
+    expect(document.querySelector('input[name="masterId"]')).not.toBeInTheDocument();
+    expect(document.querySelector('input[name="operation"]')).toHaveValue("SALE");
+    expect(screen.getByRole("combobox", { name: /cliente/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Selecciona un cliente para la venta.");
+  });
+
+  it("uses a type-appropriate concept description placeholder", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} mode="direct-sale" />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    const description = screen.getByLabelText("Descripción", { selector: "input" });
+    expect(description).toHaveAttribute("placeholder", "Ej. Bajar dos muelles");
+
+    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
+    await user.click(screen.getByRole("option", { name: "Material" }));
+    expect(description).toHaveAttribute("placeholder", "Ej. Bujes o perchas");
+    expect(description).not.toHaveAttribute("placeholder", "Ej. Bajar dos muelles");
+
+    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
+    await user.click(screen.getByRole("option", { name: "Refacciones" }));
+    expect(description).toHaveAttribute("placeholder", "Ej. Tensores o balancines");
+    expect(description).not.toHaveAttribute("placeholder", "Ej. Bajar dos muelles");
+  });
+
   it("renders the four-step flow and starts on the client/vehicle step", () => {
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -207,6 +263,29 @@ describe("QuoteBuilder", () => {
     expect(listbox).toHaveStyle({ maxHeight: "164px", top: "8px" });
     expect(listbox).toHaveClass("overflow-y-auto", "overscroll-contain");
     vi.unstubAllGlobals();
+  });
+
+  it("keeps dropdown scrolling available and contains focused option rings", async () => {
+    const user = userEvent.setup();
+    const manyCustomers = Array.from({ length: 12 }, (_, index) => ({
+      id: `cust-${index}`,
+      name: `Customer ${index}`,
+    }));
+    render(<QuoteBuilder customers={manyCustomers} createAction={vi.fn()} />);
+
+    const search = screen.getByRole("combobox", { name: /cliente/i });
+    await user.click(search);
+    expect(search).toHaveClass("focus-visible:ring-inset");
+
+    const listbox = screen.getByRole("listbox", { name: /resultados de clientes/i });
+    const firstOption = screen.getByRole("option", { name: "Customer 0" });
+
+    expect(listbox).toHaveClass("overflow-y-auto", "overscroll-contain", "touch-pan-y");
+    expect(listbox).toHaveStyle({ maxHeight: "224px" });
+
+    firstOption.focus();
+    expect(firstOption).toHaveFocus();
+    expect(firstOption).toHaveClass("focus-visible:ring-inset");
   });
 
   it("requires a meaningful query and reuses identical cached searches", async () => {

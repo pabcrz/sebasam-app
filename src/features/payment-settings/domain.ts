@@ -220,6 +220,22 @@ export async function getPublicBankAccountByToken(token: string) {
   });
 }
 
+export async function getPublicBankNameByToken(token: string): Promise<string | null> {
+  const account = await prisma.bankAccount.findFirst({
+    where: {
+      publicToken: token,
+      paymentSettingsId: PAYMENT_SETTINGS_ID,
+      isPubliclyShareable: true,
+      accountHolder: { not: "" },
+      bankName: { not: "" },
+      OR: [{ accountNumber: { not: "" } }, { clabe: { not: "" } }],
+    },
+    select: { bankName: true },
+  });
+
+  return account?.bankName ?? null;
+}
+
 /**
  * Removes a bank account by ID. Only accounts belonging to paymentSettingsId=1
  * can be removed.

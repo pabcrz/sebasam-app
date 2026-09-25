@@ -44,7 +44,7 @@ describe("QuoteBuilder state core", () => {
     expect(existing.nextItemRowId).toBe(3);
     expect(empty).toMatchObject({
       customerId: "",
-      taxEnabled: false,
+      taxEnabled: true,
       discount: "",
       operationalDate: date,
       nextItemRowId: 1,

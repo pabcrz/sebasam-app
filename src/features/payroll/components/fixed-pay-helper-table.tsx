@@ -20,9 +20,10 @@ import type { FixedPayHelperPayrollSummary } from "../domain";
 interface FixedPayHelperTableProps {
   helpers: FixedPayHelperPayrollSummary[];
   weekStart: string;
+  readOnly?: boolean;
 }
 
-export function FixedPayHelperTable({ helpers, weekStart }: FixedPayHelperTableProps) {
+export function FixedPayHelperTable({ helpers, weekStart, readOnly = false }: FixedPayHelperTableProps) {
   if (helpers.length === 0) return null;
 
   return (
@@ -51,8 +52,8 @@ export function FixedPayHelperTable({ helpers, weekStart }: FixedPayHelperTableP
               </TableRow>
             </TableHeader>
             <TableBody>
-              {helpers.map((helper) => (
-                <FixedPayHelperRow key={helper.workerId} helper={helper} weekStart={weekStart} />
+                {helpers.map((helper) => (
+                  <FixedPayHelperRow key={helper.workerId} helper={helper} weekStart={weekStart} readOnly={readOnly} />
               ))}
             </TableBody>
           </Table>
@@ -65,9 +66,11 @@ export function FixedPayHelperTable({ helpers, weekStart }: FixedPayHelperTableP
 function FixedPayHelperRow({
   helper,
   weekStart,
+  readOnly,
 }: {
   helper: FixedPayHelperPayrollSummary;
   weekStart: string;
+  readOnly: boolean;
 }) {
   const [isPending, startTransition] = React.useTransition();
   const [absenceDaysValue, setAbsenceDaysValue] = React.useState(String(helper.absenceDays));
@@ -108,8 +111,8 @@ function FixedPayHelperRow({
       <TableCell className="font-medium">{helper.displayName}</TableCell>
       <TableCell className="text-right">{formatCents(helper.weeklyRateCents)}</TableCell>
       <TableCell className="text-right">{formatCents(helper.dailyRateCents)}</TableCell>
-      <TableCell className="text-center">
-        <Input
+        <TableCell className="text-center">
+        {readOnly ? helper.absenceDays : <Input
           aria-label={`Faltas de ${helper.displayName}`}
           type="number"
           min="0"
@@ -118,13 +121,13 @@ function FixedPayHelperRow({
           value={absenceDaysValue}
           onChange={(event) => setAbsenceDaysValue(event.target.value)}
           className="h-8 w-16 text-right"
-        />
+        />}
       </TableCell>
       <TableCell className="text-right text-red-600 dark:text-red-400">
         {formatCents(helper.absenceDeductionCents)}
       </TableCell>
       <TableCell className="text-right">
-        <Input
+        {readOnly ? formatCents(helper.manualCommissionCents) : <Input
           aria-label={`Comisión manual de ${helper.displayName}`}
           type="number"
           min="0"
@@ -132,16 +135,16 @@ function FixedPayHelperRow({
           value={manualCommissionValue}
           onChange={(event) => setManualCommissionValue(event.target.value)}
           className="ml-auto h-8 w-28 text-right"
-        />
+        />}
       </TableCell>
       <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
         {formatCents(helper.totalPayableCents)}
       </TableCell>
-      <TableCell>
+      {!readOnly && <TableCell>
         <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={handleSave}>
           {isPending ? "..." : "Guardar"}
         </Button>
-      </TableCell>
+      </TableCell>}
     </TableRow>
   );
 }
