@@ -61,6 +61,7 @@ const patronNavHrefs = new Set([
   "/admin/quotes",
   "/admin/work-orders",
   "/admin/notas",
+  "/admin/nomina",
 ]);
 
 /** Primary operational destinations shown directly in the 5-item mobile bottom nav bar. */
@@ -88,6 +89,7 @@ const patronMobileNavItems: NavItem[] = [
   primaryMobileNavItems[1],
   primaryMobileNavItems[2],
   primaryMobileNavItems[3],
+  secondaryMobileNavItems[1],
 ];
 
 function NavLink({
@@ -346,7 +348,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] text-white md:hidden print:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto grid w-full max-w-md grid-cols-5 gap-1 px-1 pt-2">
+        <div className={`mx-auto grid w-full max-w-md gap-1 px-1 pt-2 ${isPatron ? "grid-cols-6" : "grid-cols-5"}`}>
           {(isPatron ? patronMobileNavItems : primaryMobileNavItems).map((item) => (
             <NavLink key={item.href} {...item} mobile onNavStart={() => setGlobalPending(true)} />
           ))}

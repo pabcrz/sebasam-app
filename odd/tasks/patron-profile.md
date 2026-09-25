@@ -2,11 +2,11 @@
 
 ## Objective
 
-Provide the patron, using the existing `ADMIN` role, with a focused operational surface for Customers, Quotes, Work Orders, and Notes while preserving the complete existing commercial flows and detail previews.
+Provide the patron, using the existing `ADMIN` role, with a focused operational surface for Customers, Quotes, Work Orders, Notes, and a simplified weekly Payroll view while preserving the complete existing commercial flows and detail previews.
 
 ## Problem
 
-The current administrative shell exposes payroll, historical data, assistant, payment configuration, workers, and other internal modules alongside the patron's daily commercial work. The patron needs the normal Quote → WORK Note or SALE Note flow without the surrounding administrative complexity.
+The current administrative shell exposes payroll, historical data, assistant, payment configuration, workers, and other internal modules alongside the patron's daily commercial work. The patron needs the normal Quote → WORK Note or SALE Note flow and visibility into weekly master work without the surrounding administrative complexity.
 
 ## Why
 
@@ -35,7 +35,7 @@ Reduce navigation and first-glance cognitive load without introducing a duplicat
 
 ### T1 — Role-aware patron navigation
 
-- [x] Limit the `ADMIN` desktop and mobile navigation to Inicio, Clientes, Cotizaciones, Trabajos, and Notas.
+- [x] Limit the `ADMIN` desktop and mobile navigation to Inicio, Clientes, Cotizaciones, Trabajos, Notas, and Nómina.
 - [x] Keep the complete navigation for `SUPER_ADMIN`.
 - [x] Preserve existing route matching, profile menu, logout, and accessibility behavior.
 - [x] Add/update shell tests for ADMIN and SUPER_ADMIN navigation.
@@ -55,6 +55,20 @@ Reduce navigation and first-glance cognitive load without introducing a duplicat
 - Checks: focused dashboard/page tests passed; `pnpm typecheck` passed; `git diff --check` passed.
 - Commit: `9529e51` (`feat(admin): simplify patron dashboard`).
 
+### T4 — Simplified weekly payroll for the patron
+
+- [x] Add Nómina to the ADMIN desktop and mobile navigation without changing the SUPER_ADMIN navigation.
+- [x] Preserve weekly period navigation, including previous weeks, while hiding monthly mode and administrative period controls for ADMIN.
+- [x] Preserve the current SUPER_ADMIN organization by master and work order.
+- [x] For a selected master, avoid repeating the master's name in each work row; show it in the filter/context heading.
+- [x] Prioritize work title, then customer, then vehicle/unit fallback; keep folio as secondary traceability data.
+- [x] Hide payroll editing, fixed-pay configuration, advances, signing sheet, and receipt actions for ADMIN while retaining read-only amounts and work detail.
+- [x] Add focused payroll and navigation tests for ADMIN and SUPER_ADMIN.
+- Route: single authorized writer.
+- Checks: `pnpm test:ui src/components/layout/admin-shell.test.tsx 'src/app/admin/(protected)/nomina/page.test.tsx' src/features/payroll/components/payroll-components.test.tsx` — 3 files, 49 tests passed; `pnpm test:ui src/features/payroll/domain.test.ts src/features/payroll/period.test.ts` — 2 files, 36 tests passed; `pnpm typecheck` passed; `pnpm lint` passed; `pnpm build` passed; `git diff --check` passed.
+- Observed evidence: ADMIN receives six desktop/mobile destinations including `/admin/nomina`; the page resolves and passes the authenticated role into `PayrollView`, forcing ADMIN requests to weekly mode; ADMIN sees weekly previous/next navigation only, with monthly/status/signing/receipt/edit controls absent; SUPER_ADMIN retains the existing complete payroll controls; work rows render quote title, customer or vehicle/unit fallback, and folio metadata without repeating the selected master.
+- Commit: pending (parent will inspect and commit the work unit).
+
 ### T3 — Integration regression verification
 
 - [x] Verify that existing quote preview, edit, share, and conversion actions remain unchanged.
@@ -68,22 +82,24 @@ Reduce navigation and first-glance cognitive load without introducing a duplicat
 
 ## Acceptance criteria
 
-- An `ADMIN` sees only Inicio, Clientes, Cotizaciones, Trabajos, and Notas in the primary navigation.
+- An `ADMIN` sees only Inicio, Clientes, Cotizaciones, Trabajos, Notas, and Nómina in the primary navigation.
 - A `SUPER_ADMIN` retains the existing complete navigation.
 - The ADMIN first view does not expose payroll, historical, assistant, payment configuration, worker management, KPI, or account-statement complexity.
 - Cards and queue links open the existing full previews/details without duplicate “Ver” actions.
 - The patron can create, edit, and share quotes and continue them into WORK or SALE notes through existing flows.
 - Customers remains available for context and related operations.
+- ADMIN Nómina supports previous-week navigation and read-only master/work detail with title-first identity.
 - No business records or server-side permission boundaries are duplicated or weakened.
 
 ## Progress
 
-- Status: T1, T2, and T3 complete; full-suite unrelated failures remain documented.
+- Status: T1–T4 complete; full-suite unrelated failures remain documented.
 - Verification evidence: clean worktree created from `origin/develop`; CodeGraph initialized.
-- Next step: hand off the clean worktree and checks.
+- Next step: commit T4, run the final review assessment, and hand off the clean worktree; no runtime harness is configured.
 
 ## Work-unit evidence
 
 - T1 commit: `4937b88`.
 - T2 commit: `9529e51`.
 - T3 verification: `68236da`; all scoped checks passed.
+- T4 commit: pending; uncommitted by instruction.

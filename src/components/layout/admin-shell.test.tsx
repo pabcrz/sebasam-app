@@ -276,6 +276,7 @@ describe("AdminShell", () => {
       "/admin/quotes",
       "/admin/work-orders",
       "/admin/notas",
+      "/admin/nomina",
     ]);
 
     const mobileNav = screen.getByRole("navigation", { name: "Navegación móvil" });
@@ -285,6 +286,7 @@ describe("AdminShell", () => {
       "/admin/quotes",
       "/admin/work-orders",
       "/admin/notas",
+      "/admin/nomina",
     ]);
     expect(within(mobileNav).queryByRole("button", { name: "Más" })).not.toBeInTheDocument();
   });
