@@ -16,6 +16,7 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Reuse existing design tokens, limit the visual to one shadow, center the card, keep its width near 420px, and respect responsive safe-area insets.
 - Respect `prefers-reduced-motion` for the falling part.
 - Preserve all existing authentication and authorization flows.
+- Anchor the shared 404 presentation in SEBASAM’s existing identity with the official logo and navy/blue brand treatment.
 
 ## Constraints
 
@@ -62,6 +63,15 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - [x] Preserve differentiated expired/revoked headings while applying the shared quote-unavailable copy.
 - [x] Run focused tests, record exact results, and commit as a separate coherent work unit.
 
+### 404-3 — Reinforce SEBASAM brand identity
+
+**Route:** delegated direct because this visual refinement updates the shared component and its focused test; one writer owns both files.
+
+- [x] Add a focused failing assertion for the official SEBASAM logo/wordmark in the shared 404 experience.
+- [x] Add the existing white SEBASAM logo and wordmark in a compact navy/blue brand header, reusing current visual tokens and typography.
+- [x] Keep the page centered and responsive, with one shadow, no additional palette colors, and no changes to error messaging or route behavior.
+- [x] Run the focused test, record the exact result, and commit as one coherent work unit.
+
 ## Progress and Evidence
 
 - Issue #707 created, read back, and confirmed OPEN with `type:feature`; `status:approved` added after exact issue-bound user consent and successful readback.
@@ -91,7 +101,12 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Compliance correction commit: `2f63341` (`fix(errors): complete contextual 404 recovery states`). Rollback boundary: the shared presentation extraction, quote state-copy change, bare quote route-level not-found route, print-note presentation replacement, their associated tests, and the correction evidence in this task record.
 - The delegated correction assessment reported `risk=high`, `review_due=true`, `review_due_reason=high_risk`, reason `unassessable`, and suggested disabling the clone review switch. That command was not run because the switch is user-owned. Parent re-assessment with the exact committed-only base selectors returned `risk=medium`, `reason=executable_change`, `changed_paths=12`, `changed_lines=274`, `review_due=false`, `review_due_reason=under_budget`; therefore no review transition is due and the clone switch remains ON.
 - Parent spot check after the correction: focused Vitest command passed, 4 files / 7 tests. The writer also verified the additional `/cotizacion` page test (1 test); typecheck, lint, diff check, and production build passed.
+- 404-3 RED: `pnpm exec vitest run src/app/not-found.test.tsx` — FAIL before component changes, unable to find accessible image `Logo de SEBASAM`.
+- 404-3 GREEN: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test; the test confirms the official logo asset and visible SEBASAM wordmark alongside the existing 404 content.
+- 404-3 closure checks: `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS. `pnpm build` intentionally not run because the active local preview uses `.next`; the orchestrator will handle production build later.
+- 404-3 changes: `src/components/errors/not-found-experience.tsx` adds the logo/wordmark and compact token-based navy/blue identity header; `src/app/not-found.test.tsx` asserts the official logo and wordmark. No route logic, copy, animation, layout, palette, or shadow behavior changed.
+- 404-3 commit and native assessment are pending.
 
 ## Next Step
 
-Implementation is complete; no native review transition is due. No push or PR was requested.
+Complete the task 404-3 commit/assessment. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. No push or PR was requested.

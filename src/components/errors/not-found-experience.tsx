@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -13,6 +14,25 @@ export function NotFoundExperience({
   return (
     <main className="flex min-h-dvh w-full items-center justify-center bg-[var(--color-bg-soft)] pl-[max(var(--space-md),env(safe-area-inset-left))] pr-[max(var(--space-md),env(safe-area-inset-right))] pt-[max(var(--space-xl),env(safe-area-inset-top))] pb-[max(var(--space-xl),env(safe-area-inset-bottom))]">
       <Card className="w-full max-w-[420px] overflow-hidden p-0 text-center shadow-[var(--shadow-card)]">
+        <header className="bg-[image:var(--gradient-primary)] px-[var(--space-md)] py-[var(--space-md)] text-left">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo-white-short.png"
+              alt="Logo de SEBASAM"
+              width={40}
+              height={40}
+              className="h-10 w-10 shrink-0 object-contain"
+            />
+            <div className="min-w-0">
+              <h2 className="font-mono text-xl font-extrabold leading-none tracking-[-0.05em] text-white">
+                SEBASAM
+              </h2>
+              <p className="mt-2 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-on-navy-tint)]">
+                Servicio y Refacciones para Suspensiones de Aire y Muelles
+              </p>
+            </div>
+          </div>
+        </header>
         <CardContent className="flex flex-col items-center gap-[var(--space-md)] p-[var(--space-xl)]">
           <svg
             aria-label="Engranaje con un tornillo suelto"
