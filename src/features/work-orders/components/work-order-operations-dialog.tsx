@@ -120,7 +120,11 @@ export function WorkOrderOperationsDialog({
   const assignedWorkers = workOrder?.assignments ?? [];
 
   const runAction = React.useCallback(
-    (action: () => Promise<ActionResult>, kind: "assign" | "complete" | "rollback") => {
+    (
+      action: () => Promise<ActionResult>,
+      kind: "assign" | "complete" | "rollback",
+      onSuccess?: () => void,
+    ) => {
       setError(null);
       setPendingAction(kind);
       void (async () => {
@@ -131,7 +135,8 @@ export function WorkOrderOperationsDialog({
             return;
           }
           startTransition(() => {
-            router.refresh();
+            if (onSuccess) onSuccess();
+            else router.refresh();
           });
         } catch {
           setError("No se pudo completar la acción. Recarga e inténtalo de nuevo.");
@@ -151,7 +156,11 @@ export function WorkOrderOperationsDialog({
 
   const handleConvert = () => {
     if (!quoteId || !actions.convert) return;
-    runAction(() => actions.convert!({ quoteId, operation: conversionOperation }), "assign");
+    runAction(
+      () => actions.convert!({ quoteId, operation: conversionOperation }),
+      "assign",
+      conversionOperation === "SALE" ? () => router.push("/admin/notas") : undefined,
+    );
   };
 
   const handleAssign = () => {
@@ -312,7 +321,7 @@ export function WorkOrderOperationsDialog({
               <section className="grid gap-4">
                 <p className="text-sm text-[var(--color-text-muted)]">La venta solo admite conceptos de material o refacciones y no crea una orden de trabajo.</p>
                 <Button type="button" variant="primary" loading={pendingAction === "assign"} disabled={isAssignmentBusy} onClick={handleConvert}>
-                  {pendingAction === "assign" ? "Convirtiendo..." : "Convertir a venta"}
+                  {pendingAction === "assign" ? "Creando nota de venta..." : "Crear nota de venta"}
                 </Button>
               </section>
             ) : null}

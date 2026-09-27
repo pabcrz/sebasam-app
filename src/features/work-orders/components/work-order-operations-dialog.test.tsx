@@ -4,11 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 
 const refresh = vi.fn();
+const push = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     refresh,
-    push: vi.fn(),
+    push,
   }),
 }));
 
@@ -27,6 +28,7 @@ const workers = [
 describe("WorkOrderOperationsDialog", () => {
   beforeEach(() => {
     refresh.mockReset();
+    push.mockReset();
   });
 
   it("exposes the assignment dialog for an approved quote", async () => {
@@ -60,9 +62,12 @@ describe("WorkOrderOperationsDialog", () => {
     await user.click(screen.getByRole("option", { name: /venta/i }));
 
     expect(screen.queryByText(/maestro responsable/i)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /convertir a venta/i }));
+    expect(screen.getByRole("button", { name: /crear nota de venta/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /crear nota de venta/i }));
 
     await waitFor(() => expect(convert).toHaveBeenCalledWith({ quoteId: "quote-sale", operation: "SALE" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/notas"));
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it.each(["DRAFT", "SENT"] as const)("exposes internal work-order management for a %s quote", async (quoteStatus) => {

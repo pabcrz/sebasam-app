@@ -20,6 +20,7 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - [x] Convert an existing quotation to a `SALE` payable note without creating a `WorkOrder`.
 - [x] Preserve the existing `WORK` conversion behavior and quotation lifecycle/audit data.
 - [x] Expose the operation choice from the quotation UI with validation and clear state.
+- [x] Label the existing-quotation SALE action `Crear nota de venta` and navigate successful creation directly to `/admin/notas`.
 - [x] Add/update focused action and component tests.
 - [x] Run applicable checks and record evidence.
 - [x] Create a conventional work-unit commit on the feature branch.
@@ -31,6 +32,8 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - The resulting note retains the source quotation reference.
 - Direct sales without a quotation remain valid.
 - The workshop flow retains its master/`WorkOrder` rules.
+- After selecting SALE on an existing quotation, the action is presented as `Crear nota de venta`.
+- After successful SALE creation, the user is taken directly to `/admin/notas`; the quotation does not remain in WorkOrder management.
 
 ## Route and checks
 
@@ -48,6 +51,9 @@ The current direct-sale operation creates a new quotation, while the existing qu
 
 - `src/features/work-orders/actions.ts` now accepts `WORK`/`SALE`; SALE validates commercial material/refacciones-only concepts, prevents duplicate/unsafe conversions, creates an issued `PayableNote` with `kind: SALE` and `quoteId`, records decision/lifecycle audit rows, and never creates a `WorkOrder`.
 - `src/features/work-orders/components/work-order-operations-dialog.tsx` exposes the operation selector only for an unassigned quote with a conversion action; SALE bypasses master assignment while WORK retains the existing assignment path.
+- `src/features/work-orders/components/work-order-operations-dialog.tsx` labels SALE creation as `Crear nota de venta` and routes successful SALE conversion to `/admin/notas`; WORK continues to refresh its existing management state.
+- `src/features/work-orders/components/work-order-operations-dialog.test.tsx` verifies the SALE label, conversion payload, direct `/admin/notas` navigation, and absence of a refresh after successful SALE creation.
+- Clarification verification: focused Vitest `1 file, 24 passed` (`work-order-operations-dialog.test.tsx`); `git diff --check` passed.
 - Focused Vitest: `4 passed`, `106 passed` (`actions.test.ts`, work-order operations dialog, quote mobile card, quote list row).
 - `pnpm typecheck`: passed.
 - `pnpm lint`: passed.
