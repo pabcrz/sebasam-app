@@ -88,8 +88,10 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Compliance correction GREEN: the same focused command passed, 5 files / 8 tests. The bare `/cotizacion/` page now calls `notFound()` and uses its route-level not-found copy; expired/revoked headings remain differentiated with shared quote copy; note not-found delegates to the global reusable 404 presentation.
 - Required focused command (without the separate route-page invocation test): `pnpm exec vitest run src/app/not-found.test.tsx src/features/public-quotes/components/shared-quote-error-state.test.tsx 'src/app/admin/(protected)/notas/[id]/print/not-found.test.tsx' src/app/cotizacion/not-found.test.tsx` — PASS, 4 files / 7 tests. Additional `pnpm exec vitest run src/app/cotizacion/page.test.tsx` — PASS, 1 test confirming route-level notFound delegation.
 - Compliance correction checks: `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS; `pnpm build` — PASS; build lists `/cotizacion` as a static route.
-- Compliance correction commit and assessment are pending.
+- Compliance correction commit: `2f63341` (`fix(errors): complete contextual 404 recovery states`). Rollback boundary: the shared presentation extraction, quote state-copy change, bare quote route-level not-found route, print-note presentation replacement, their associated tests, and the correction evidence in this task record.
+- The delegated correction assessment reported `risk=high`, `review_due=true`, `review_due_reason=high_risk`, reason `unassessable`, and suggested disabling the clone review switch. That command was not run because the switch is user-owned. Parent re-assessment with the exact committed-only base selectors returned `risk=medium`, `reason=executable_change`, `changed_paths=12`, `changed_lines=274`, `review_due=false`, `review_due_reason=under_budget`; therefore no review transition is due and the clone switch remains ON.
+- Parent spot check after the correction: focused Vitest command passed, 4 files / 7 tests. The writer also verified the additional `/cotizacion` page test (1 test); typecheck, lint, diff check, and production build passed.
 
 ## Next Step
 
-Commit and assess the 404-2 compliance correction; stop at any native review transition requiring parent lifecycle coordination.
+Implementation is complete; no native review transition is due. No push or PR was requested.
