@@ -79,3 +79,6 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - `pnpm lint`: passed.
 - `git diff --check`: passed.
 - Work-unit commit: `2a71c90 fix(sales): clarify persisted sale conversion UI`.
+- SALE cards without a WorkOrder now display `Venta de refacciones` instead of `Sin orden de trabajo`.
+- Focused Vitest: `1 file, 19 passed` (`quote-mobile-card.test.tsx`).
+- `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.

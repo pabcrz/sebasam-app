@@ -170,6 +170,13 @@ describe("QuoteListCard", () => {
     expect(screen.queryByText("Asignación de personal")).not.toBeInTheDocument();
   });
 
+  it("labels a SALE quote without a work order as a parts sale", () => {
+    renderCard(createMockQuote({ operation: "SALE" }));
+
+    expect(screen.getByText("Venta de refacciones")).toBeInTheDocument();
+    expect(screen.queryByText("Sin orden de trabajo")).not.toBeInTheDocument();
+  });
+
   it("opens the preview dialog when the card is clicked", async () => {
     const user = userEvent.setup();
     renderCard(createMockQuote());

@@ -240,7 +240,7 @@ export function QuoteListCard({
             ) : (
               <span className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
                 <ClipboardList className="h-4 w-4" aria-hidden="true" />
-                Sin orden de trabajo
+                 {quote.operation === "SALE" ? "Venta de refacciones" : "Sin orden de trabajo"}
               </span>
             )}
           </div>
