@@ -112,6 +112,7 @@ export type DirectMaterialSaleFormInput = z.infer<typeof directMaterialSaleFormI
 
 export const convertQuoteToNoteInputSchema = z.object({
   quoteId: z.string().min(1),
+  operation: z.enum(["WORK", "SALE"]).default("WORK"),
   masterId: z.string().uuid("El maestro responsable es obligatorio.").optional(),
   paymentDueDate: z.preprocess((val) => (val ? new Date(String(val)) : undefined), z.date().optional()),
   reason: z.string().trim().optional(),

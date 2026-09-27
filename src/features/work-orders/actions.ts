@@ -1148,6 +1148,7 @@ export async function convertQuoteToNoteAction(input: unknown) {
         sections: { include: { items: true } },
         workOrder: { include: { assignments: true } },
         vehicle: true,
+        payableNote: true,
       },
     });
 
@@ -1156,6 +1157,80 @@ export async function convertQuoteToNoteAction(input: unknown) {
     }
     if (quote.isLocked) {
       throw new WorkOrderOperationError("El documento está bloqueado.");
+    }
+
+    if (data.operation === "SALE") {
+      assertOperationalQuote(quote.status);
+      if (quote.workOrder) {
+        throw new WorkOrderOperationError("La cotización ya tiene una orden de trabajo.");
+      }
+      if (quote.payableNote) {
+        throw new WorkOrderOperationError("La cotización ya tiene una nota pagable.");
+      }
+
+      assertCommercialQuote(quote);
+      const items = quote.sections.length > 0
+        ? quote.sections.flatMap((section) => section.items)
+        : quote.items;
+      if (items.some((item) => item.type !== "MATERIAL" && item.type !== "REFACCIONES")) {
+        throw new WorkOrderOperationError("Las ventas solo admiten conceptos de material o refacciones.");
+      }
+
+      const effectiveDate = new Date();
+      const paymentDueDate = data.paymentDueDate ?? quote.paymentDueDate ?? calculateDefaultPaymentDueDate(effectiveDate);
+      if (quote.status !== QuoteStatus.APPROVED || data.paymentDueDate) {
+        await tx.quote.update({
+          where: { id: quote.id },
+          data: {
+            status: QuoteStatus.APPROVED,
+            approvedAt: quote.approvedAt ?? effectiveDate,
+            paymentDueDate: data.paymentDueDate ?? quote.paymentDueDate,
+          },
+        });
+      }
+
+      const { folio, issuedAt } = await allocateDailyDocumentFolio(tx, "N", effectiveDate);
+      await ensureSharedQuoteInTransaction(tx, quote.id);
+      await tx.quoteDecision.create({
+        data: {
+          quoteId: quote.id,
+          status: QuoteStatus.APPROVED,
+          origin: QuoteDecisionOrigin.ADMIN,
+          actorId: profile.id,
+          note: data.reason?.trim() || "Venta creada desde cotización",
+          authorizedSectionIds: quote.sections.map((section) => section.id),
+          createdAt: effectiveDate,
+        },
+      });
+      await tx.quoteLifecycleEvent.create({
+        data: {
+          quoteId: quote.id,
+          previousState: quote.status,
+          nextState: QuoteStatus.APPROVED,
+          eventType: QuoteLifecycleEventType.CONVERT_TO_NOTE,
+          actorId: profile.id,
+          reason: data.reason?.trim() || "Venta creada desde cotización",
+          createdAt: effectiveDate,
+        },
+      });
+
+      const note = await tx.payableNote.create({
+        data: {
+          customerId: quote.customerId,
+          quoteId: quote.id,
+          referenceNumber: folio,
+          title: quote.title,
+          subtotalCents: quote.subtotalCents ?? 0,
+          taxCents: quote.taxCents ?? 0,
+          totalCents: quote.totalCents ?? 0,
+          status: "ISSUED",
+          kind: PayableNoteKind.SALE,
+          issuedAt,
+          paymentDueDate,
+        },
+      });
+
+      return { quote, note, workOrder: null };
     }
 
     assertOperationalClosureQuote(quote);
@@ -1334,6 +1409,15 @@ export async function convertQuoteToNoteAction(input: unknown) {
   revalidatePath(workOrdersPath);
   revalidatePath(notasPath);
   return result;
+}
+
+export async function convertQuoteToNoteOperationAction(input: unknown): Promise<ActionResult> {
+  try {
+    await convertQuoteToNoteAction(input);
+    return { success: true };
+  } catch (error) {
+    return toActionResult(error, "No se pudo convertir la cotización.");
+  }
 }
 
 export async function returnNoteToQuoteAction(input: unknown) {

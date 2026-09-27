@@ -52,6 +52,7 @@ type WorkOrder = {
 type ActionResult = { success: boolean; error?: string };
 
 export type WorkOrderActions = {
+  convert?: (input: unknown) => Promise<ActionResult>;
   assign?: (input: unknown) => Promise<ActionResult>;
   complete?: (input: unknown) => Promise<ActionResult>;
   rollback?: (input: unknown) => Promise<ActionResult>;
@@ -62,6 +63,8 @@ export type WorkOrderActions = {
 };
 
 type WorkOrderOperationsDialogProps = {
+  quoteId?: string;
+  hasPayableNote?: boolean;
   quoteNumber: string;
   quoteStatus: QuoteStatus;
   workOrder: WorkOrder | null;
@@ -78,6 +81,8 @@ const noopActions: WorkOrderActions = {
 };
 
 export function WorkOrderOperationsDialog({
+  quoteId,
+  hasPayableNote = false,
   quoteNumber,
   quoteStatus,
   workOrder,
@@ -92,6 +97,7 @@ export function WorkOrderOperationsDialog({
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [isPending, startTransition] = React.useTransition();
   const [pendingAction, setPendingAction] = React.useState<"assign" | "complete" | "rollback" | null>(null);
+  const [conversionOperation, setConversionOperation] = React.useState<"WORK" | "SALE">("WORK");
   const [error, setError] = React.useState<string | null>(null);
 
   // Form state for assignment
@@ -141,6 +147,11 @@ export function WorkOrderOperationsDialog({
   const toggleHelper = (id: string, checked: boolean | "indeterminate") => {
     if (checked === true) setHelperIds((current) => [...current, id]);
     if (checked === false) setHelperIds((current) => current.filter((helperId) => helperId !== id));
+  };
+
+  const handleConvert = () => {
+    if (!quoteId || !actions.convert) return;
+    runAction(() => actions.convert!({ quoteId, operation: conversionOperation }), "assign");
   };
 
   const handleAssign = () => {
@@ -206,6 +217,7 @@ export function WorkOrderOperationsDialog({
 
   const isAssigned = workOrder?.status === "ASSIGNED";
   const isCompleted = workOrder?.status === "COMPLETED";
+  if (hasPayableNote && !workOrder) return null;
   const canRollback = workOrder && ["PLANNED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"].includes(workOrder.status);
   const isAssignmentBusy = pendingAction !== null || isPending;
 
@@ -222,6 +234,7 @@ export function WorkOrderOperationsDialog({
           setError(null);
           setConfirmComplete(false);
           setShowRollback(false);
+          setConversionOperation("WORK");
           setOpen(true);
         }}
         aria-label={isAssignmentBusy ? "Asignando trabajo..." : workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : `Gestionar trabajo de cotización ${quoteNumber}`}
@@ -280,8 +293,32 @@ export function WorkOrderOperationsDialog({
               </Badge>
             </div>
 
+            {!workOrder && !hasPayableNote && quoteId && actions.convert ? (
+              <div className="grid gap-2">
+                <Label htmlFor="conversion-operation">Operación de conversión</Label>
+                <Select value={conversionOperation} onValueChange={(value) => setConversionOperation(value as "WORK" | "SALE")} disabled={isAssignmentBusy}>
+                  <SelectTrigger id="conversion-operation" disabled={isAssignmentBusy}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WORK">Trabajo</SelectItem>
+                    <SelectItem value="SALE">Venta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
+            {conversionOperation === "SALE" && !workOrder && !hasPayableNote && quoteId && actions.convert ? (
+              <section className="grid gap-4">
+                <p className="text-sm text-[var(--color-text-muted)]">La venta solo admite conceptos de material o refacciones y no crea una orden de trabajo.</p>
+                <Button type="button" variant="primary" loading={pendingAction === "assign"} disabled={isAssignmentBusy} onClick={handleConvert}>
+                  {pendingAction === "assign" ? "Convirtiendo..." : "Convertir a venta"}
+                </Button>
+              </section>
+            ) : null}
+
             {/* Section 1: Unassigned or Planned -> Assign form */}
-            {!workOrder || workOrder.status === "PLANNED" ? (
+            {(!workOrder || workOrder.status === "PLANNED") && conversionOperation === "WORK" ? (
               <section className="grid gap-4">
                 <h3 className="font-semibold text-[var(--color-text-main)]">Asignación de personal</h3>
 

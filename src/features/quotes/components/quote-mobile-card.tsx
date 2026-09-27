@@ -158,6 +158,8 @@ export function QuoteListCard({
       case "workOrder":
         return (
           <WorkOrderOperationsDialog
+            quoteId={quote.id}
+            hasPayableNote={Boolean(quote.payableNote)}
             quoteNumber={quote.number}
             quoteStatus={quote.status}
             workOrder={quote.workOrder}

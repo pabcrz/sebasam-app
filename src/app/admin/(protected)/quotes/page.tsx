@@ -38,6 +38,7 @@ import { filterPaymentRequestDialogBankAccounts } from "@/features/quotes/lib/pa
 import {
   createAndAssignWorkOrderAction,
   completeWorkOrderAction,
+  convertQuoteToNoteOperationAction,
   rollbackWorkOrderAction,
 } from "@/features/work-orders/actions";
 
@@ -140,6 +141,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 searchCustomersAction={searchCustomersForQuote}
                 workers={workers}
                 workOrderActions={{
+                  convert: convertQuoteToNoteOperationAction,
                   assign: createAndAssignWorkOrderAction.bind(null, quote.id),
                   complete: completeWorkOrderAction,
                   rollback: rollbackWorkOrderAction,

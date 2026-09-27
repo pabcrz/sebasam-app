@@ -1043,6 +1043,66 @@ describe("work order actions", () => {
       }));
     });
 
+    it("converts a material-only quote to an issued SALE note without a work order", async () => {
+      const tx = createTx();
+      const saleQuote = operationalQuote({
+        id: "quote-sale",
+        number: "0926-002",
+        status: QuoteStatus.SENT,
+        payableNote: null,
+        sections: [{ id: "sec-sale", items: [{ type: "MATERIAL", description: "Filtro", quantity: 1, unitPriceCents: 10_000 }] }],
+      });
+      tx.quote.findUnique.mockResolvedValue(saleQuote);
+
+      const result = await convertQuoteToNoteAction({ quoteId: "quote-sale", operation: "SALE", reason: "Venta desde cotización" });
+
+      expect(result.workOrder).toBeNull();
+      expect(tx.workOrder.create).not.toHaveBeenCalled();
+      expect(tx.workAssignment.create).not.toHaveBeenCalled();
+      expect(tx.payableNote.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          quoteId: "quote-sale",
+          kind: "SALE",
+          status: "ISSUED",
+        }),
+      });
+      expect(tx.payableNote.create.mock.calls[0]?.[0].data).not.toHaveProperty("workOrderId");
+      expect(tx.quoteDecision.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ note: "Venta desde cotización" }),
+      }));
+      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: QuoteLifecycleEventType.CONVERT_TO_NOTE,
+          reason: "Venta desde cotización",
+        }),
+      }));
+    });
+
+    it("rejects SALE conversion when a quote contains labor concepts", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        payableNote: null,
+        sections: [{ id: "sec-sale", items: [{ type: "LABOR", description: "Servicio", quantity: 1, unitPriceCents: 10_000 }] }],
+      }));
+
+      await expect(convertQuoteToNoteAction({ quoteId: "quote-1", operation: "SALE" }))
+        .rejects.toThrow(/material o refacciones/i);
+      expect(tx.payableNote.create).not.toHaveBeenCalled();
+      expect(tx.workOrder.create).not.toHaveBeenCalled();
+    });
+
+    it("prevents duplicate SALE conversion for a quote with an existing payable note", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        payableNote: { id: "note-1", kind: "SALE", status: "ISSUED" },
+        sections: [{ id: "sec-sale", items: [{ type: "MATERIAL", description: "Filtro", quantity: 1, unitPriceCents: 10_000 }] }],
+      }));
+
+      await expect(convertQuoteToNoteAction({ quoteId: "quote-1", operation: "SALE" }))
+        .rejects.toThrow(/ya tiene una nota/i);
+      expect(tx.payableNote.create).not.toHaveBeenCalled();
+    });
+
     it("issues the linked draft payable note when completing an existing work order", async () => {
       const tx = createTx();
       vi.mocked(requireOperationalRole).mockResolvedValue({ profile: { id: workerId } } as never);

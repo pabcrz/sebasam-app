@@ -189,6 +189,8 @@ export function QuoteListRow({
 
           {quote.status === "DRAFT" || quote.status === "SENT" || quote.status === "APPROVED" ? (
             <WorkOrderOperationsDialog
+              quoteId={quote.id}
+              hasPayableNote={Boolean(quote.payableNote)}
               quoteNumber={quote.number}
               quoteStatus={quote.status}
               workOrder={quote.workOrder}

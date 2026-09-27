@@ -41,6 +41,30 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
   });
 
+  it("offers SALE conversion for an unassigned quote and does not require a master", async () => {
+    const user = userEvent.setup();
+    const convert = vi.fn(() => Promise.resolve({ success: true }));
+    render(
+      <WorkOrderOperationsDialog
+        quoteId="quote-sale"
+        quoteNumber="C-001"
+        quoteStatus="APPROVED"
+        workOrder={null}
+        workers={workers}
+        actions={{ convert }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i }));
+    await user.click(screen.getByLabelText(/operación de conversión/i));
+    await user.click(screen.getByRole("option", { name: /venta/i }));
+
+    expect(screen.queryByText(/maestro responsable/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /convertir a venta/i }));
+
+    await waitFor(() => expect(convert).toHaveBeenCalledWith({ quoteId: "quote-sale", operation: "SALE" }));
+  });
+
   it.each(["DRAFT", "SENT"] as const)("exposes internal work-order management for a %s quote", async (quoteStatus) => {
     const user = userEvent.setup();
     render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus={quoteStatus} workOrder={null} actions={actions} />);

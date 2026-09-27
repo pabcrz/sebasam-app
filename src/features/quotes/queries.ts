@@ -175,6 +175,9 @@ const quoteListInclude = {
       fiscalSnapshot: true,
     },
   },
+  payableNote: {
+    select: { id: true, kind: true, status: true },
+  },
 } satisfies Prisma.QuoteInclude;
 
 async function findQuotes(where: Prisma.QuoteWhereInput | undefined, pagination?: { skip: number; take: number }) {

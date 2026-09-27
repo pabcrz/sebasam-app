@@ -108,6 +108,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
       },
     ],
     workOrder: null,
+    payableNote: null,
     paymentRequests: [],
     sharedQuotes: [],
     activeSharedQuote: null,
