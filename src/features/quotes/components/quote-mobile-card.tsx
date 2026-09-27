@@ -8,7 +8,6 @@ import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, OperationalCard } from "@/components/ui";
 import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
-import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteCancelForm } from "./quote-cancel-form";
 import { QuoteDuplicateForm } from "./quote-duplicate-form";
@@ -277,8 +276,8 @@ export function QuoteListCard({
             className="grid grid-cols-[repeat(3,minmax(0,1fr))_auto] items-center gap-2"
           >
             {actionPresentation.frequent.map((action) => {
-              const variant = action === "share" && quote.status === "DRAFT"
-                ? (isQuoteCommercialReady(quote) ? "primary" : "secondary")
+              const variant = action === "share" && actionPresentation.primary !== "share"
+                ? "secondary"
                 : "outline";
               return (
                 <div key={action} className="min-w-0">

@@ -265,7 +265,7 @@ describe("QuoteListCard", () => {
     expect(print.querySelector("svg")).toHaveClass("h-5", "w-5");
     expect(within(print).getByText("Imprimir")).toHaveClass("sr-only");
     expect(share).toHaveAttribute("aria-label", "Compartir cotización C-001");
-    expect(share).toHaveClass("bg-[image:var(--gradient-primary)]");
+     expect(share).toHaveClass("bg-[var(--color-blue-tint)]");
     expect(within(share).getByText("Compartir")).toHaveClass("sr-only");
     expect(more).toHaveClass("h-11", "w-11", "shrink-0", "px-0", "sm:h-9", "sm:w-9", "sm:px-0");
     expect(within(more).getByText("Más acciones")).toHaveClass("sr-only");
