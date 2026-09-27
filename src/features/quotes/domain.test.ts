@@ -27,6 +27,7 @@ describe("getSharedQuoteStatusByToken", () => {
     const sharedQuote = {
       expiresAt: new Date("2099-01-01T00:00:00.000Z"),
       revokedAt: null,
+      createdAt: new Date(),
       quote: {
         id: "quote-1",
         status: QuoteStatus.SENT,
@@ -47,17 +48,68 @@ describe("getSharedQuoteStatusByToken", () => {
       select: {
         expiresAt: true,
         revokedAt: true,
+        createdAt: true,
         quote: {
           select: {
             id: true,
             status: true,
             updatedAt: true,
             deletedAt: true,
-            workOrder: { select: { status: true } },
+            workOrder: { select: { id: true, status: true } },
           },
         },
       },
     });
+  });
+
+  it("rejects archived quote links but keeps completed archived Note links available", async () => {
+    const archivedQuote = {
+      expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+      revokedAt: null,
+      createdAt: new Date(),
+      quote: {
+        id: "quote-archived",
+        status: QuoteStatus.ARCHIVED,
+        updatedAt: new Date(),
+        deletedAt: null,
+        workOrder: null,
+      },
+    };
+    (prisma.sharedQuote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(archivedQuote);
+
+    await expect(getSharedQuoteStatusByToken("archived-quote")).rejects.toThrow(SharedQuoteNotFoundError);
+
+    (prisma.sharedQuote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...archivedQuote,
+      quote: { ...archivedQuote.quote, workOrder: { id: "wo-1", status: WorkOrderStatus.COMPLETED } },
+    });
+    await expect(getSharedQuoteStatusByToken("archived-note")).resolves.toMatchObject({
+      quoteStatus: QuoteStatus.ARCHIVED,
+      workOrderStatus: WorkOrderStatus.COMPLETED,
+    });
+  });
+
+  it("expires a token exactly 30 days after issuance even when stored expiry is later", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-01T00:00:00.000Z"));
+    (prisma.sharedQuote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+      revokedAt: null,
+      createdAt: new Date("2026-09-01T00:00:00.000Z"),
+      quote: {
+        id: "quote-1",
+        status: QuoteStatus.SENT,
+        updatedAt: new Date("2026-09-18T00:00:00.000Z"),
+        deletedAt: null,
+        workOrder: null,
+      },
+    });
+
+    try {
+      await expect(getSharedQuoteStatusByToken("expired-at-boundary")).rejects.toThrow(SharedQuoteExpiredError);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -124,6 +176,38 @@ describe("getOrCreateSharedQuoteForQuote canonical Note lifecycle", () => {
     }));
   });
 
+  it("revokes and renews an expired canonical Note link with a fresh 30-day expiry", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-01T00:00:00.000Z"));
+    const tx = mockTx();
+    tx.workOrder.findFirst.mockResolvedValue({ status: WorkOrderStatus.COMPLETED });
+    tx.sharedQuote.findFirst.mockResolvedValue({
+      id: "old-link",
+      quoteId: "q-1",
+      token: "old-token",
+      isCanonical: true,
+      revokedAt: null,
+      createdAt: new Date("2026-09-01T00:00:00.000Z"),
+      expiresAt: new Date("2099-12-31T23:59:59.000Z"),
+    });
+    tx.quote.findUnique.mockResolvedValue({ id: "q-1", number: "N-001" });
+
+    try {
+      const result = await getOrCreateSharedQuoteForQuote("q-1");
+
+      expect(tx.sharedQuote.update).toHaveBeenCalledWith({
+        where: { id: "old-link" },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(tx.sharedQuote.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ isCanonical: true, expiresAt: new Date("2026-10-31T00:00:00.000Z") }),
+      }));
+      expect(result.token).not.toBe("old-token");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("returns the concurrent canonical-link winner after a P2002 rollback", async () => {
     const tx = mockTx();
     tx.workOrder.findFirst.mockResolvedValue({ status: WorkOrderStatus.COMPLETED });
@@ -131,7 +215,13 @@ describe("getOrCreateSharedQuoteForQuote canonical Note lifecycle", () => {
     tx.sharedQuote.create.mockRejectedValue(new Prisma.PrismaClientKnownRequestError(
       "Unique constraint failed", { code: "P2002", clientVersion: "test" },
     ));
-    const winner = { id: "shared-winner", token: "n-001", isCanonical: true };
+    const winner = {
+      id: "shared-winner",
+      token: "n-001",
+      isCanonical: true,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + ONE_DAY_MS),
+    };
     (prisma.sharedQuote.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(winner);
 
     await expect(getOrCreateSharedQuoteForQuote("q-1")).resolves.toBe(winner);
@@ -199,6 +289,8 @@ function stubTxSharedQuote(tx: MockTransaction, overrides: Record<string, unknow
     id: "sq-1",
     token: "token-valid",
     quoteId: "q-1",
+    createdAt: new Date(),
+    expiresAt: new Date(Date.now() + ONE_DAY_MS),
     quote: {
       id: "q-1",
       status: QuoteStatus.SENT,
@@ -208,6 +300,8 @@ function stubTxSharedQuote(tx: MockTransaction, overrides: Record<string, unknow
       taxCents: 160,
       totalCents: 1160,
       taxEnabled: true,
+      deletedAt: null,
+      workOrder: null,
       items: [{ description: "Repair", quantity: 1, unitPriceCents: 1000 }],
       sections: undefined,
       ...overrides,
@@ -379,6 +473,14 @@ describe("acceptSharedQuote", () => {
     await expect(acceptSharedQuote("token-revoked")).rejects.toThrow(SharedQuoteRevokedError);
   });
 
+  it("cannot accept a link to an archived quote without a work order", async () => {
+    const tx = mockTx();
+    stubTxSharedQuote(tx, { status: QuoteStatus.ARCHIVED, workOrder: null });
+
+    await expect(acceptSharedQuote("token-valid")).rejects.toThrow(SharedQuoteNotFoundError);
+    expect(tx.quote.updateMany).not.toHaveBeenCalled();
+  });
+
   it("accepts a pending-price DRAFT quote with valid description and quantity", async () => {
     mockSharedQuote({ quote: {
       status: QuoteStatus.DRAFT,
@@ -473,6 +575,14 @@ describe("declineSharedQuote", () => {
     });
 
     await expect(declineSharedQuote("token-revoked")).rejects.toThrow(SharedQuoteRevokedError);
+  });
+
+  it("cannot decline a link to an archived quote without a work order", async () => {
+    const tx = mockTx();
+    stubTxSharedQuote(tx, { status: QuoteStatus.ARCHIVED, workOrder: null });
+
+    await expect(declineSharedQuote("token-valid")).rejects.toThrow(SharedQuoteNotFoundError);
+    expect(tx.quote.updateMany).not.toHaveBeenCalled();
   });
 });
 
