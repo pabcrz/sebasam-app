@@ -281,8 +281,7 @@ describe("QuoteListCard", () => {
     expect(screen.getByRole("button", { name: /editar cotización c-001/i })).toBeInTheDocument();
     const share = screen.getByRole("button", { name: /compartir cotización c-001/i });
     expect(share).toBeInTheDocument();
-    expect(share).toHaveClass("bg-[var(--color-blue-tint)]");
-    expect(share).not.toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(share).toHaveClass("bg-[image:var(--gradient-primary)]");
     expect(screen.queryByRole("button", { name: /cancelar cotización c-001/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));
     expect(within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();

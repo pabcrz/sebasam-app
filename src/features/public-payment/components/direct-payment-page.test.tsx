@@ -50,19 +50,19 @@ describe("DirectPaymentPage", () => {
     // Both Santander and BBVA accounts should be visible
     expect(screen.getByText("Santander")).toBeInTheDocument();
     expect(screen.getByText("BBVA")).toBeInTheDocument();
-    expect(screen.getByText("123456")).toBeInTheDocument();
+    expect(screen.getByText("1234 56")).toBeInTheDocument();
     expect(screen.getByText("4444 4444 4444 4444")).toBeInTheDocument();
-    expect(screen.getByText("789012")).toBeInTheDocument();
+    expect(screen.getByText("7890 12")).toBeInTheDocument();
     expect(screen.getByText("5555 5555 5555 5555")).toBeInTheDocument();
   });
 
-  it("renders account labels for multiple accounts", () => {
+  it("renders each bank account as a separate card", () => {
     render(
       <DirectPaymentPage business={mockBusiness} location={mockLocation} bankAccounts={mockBankAccounts} contact={mockContact} />,
     );
 
-    expect(screen.getByText("Cuenta 1")).toBeInTheDocument();
-    expect(screen.getByText("Cuenta 2")).toBeInTheDocument();
+    expect(screen.getAllByTestId("bank-account-card")).toHaveLength(2);
+    expect(screen.getAllByText("No. Cuenta")).toHaveLength(2);
   });
 
   it("renders WhatsApp CTA with link from contact props", () => {
@@ -112,7 +112,7 @@ const whatsappLink = screen.getByRole("link", { name: /Enviar WhatsApp/i });
     );
 
     expect(screen.getByText("No. Cuenta")).toBeInTheDocument();
-    expect(screen.getByText("123456")).toBeInTheDocument();
+    expect(screen.getByText("1234 56")).toBeInTheDocument();
     expect(screen.queryByText("CLABE")).not.toBeInTheDocument();
   });
 
@@ -138,7 +138,7 @@ const whatsappLink = screen.getByRole("link", { name: /Enviar WhatsApp/i });
     expect(screen.queryByText("No. Cuenta")).not.toBeInTheDocument();
   });
 
-  it("renders Titular and Banco labels always even when account number and CLABE are empty", () => {
+  it("renders the bank and account holder when account number and CLABE are empty", () => {
     render(
       <DirectPaymentPage
         business={mockBusiness}
@@ -155,8 +155,8 @@ const whatsappLink = screen.getByRole("link", { name: /Enviar WhatsApp/i });
       />,
     );
 
-    expect(screen.getByText("Titular")).toBeInTheDocument();
-    expect(screen.getByText("Banco")).toBeInTheDocument();
+    expect(screen.getByText("Santander")).toBeInTheDocument();
+    expect(screen.getByText("Titular: Federico Cruz")).toBeInTheDocument();
     expect(screen.queryByText("No. Cuenta")).not.toBeInTheDocument();
     expect(screen.queryByText("CLABE")).not.toBeInTheDocument();
   });
@@ -179,7 +179,7 @@ const whatsappLink = screen.getByRole("link", { name: /Enviar WhatsApp/i });
       />,
     );
 
-    expect(screen.getByText("Facturación")).toBeInTheDocument();
+    expect(screen.getByText("Facturación y transferencias")).toBeInTheDocument();
   });
 
   it("omits invoicing badge when isForInvoicing is false", () => {
