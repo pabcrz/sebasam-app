@@ -104,9 +104,11 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - 404-3 RED: `pnpm exec vitest run src/app/not-found.test.tsx` — FAIL before component changes, unable to find accessible image `Logo de SEBASAM`.
 - 404-3 GREEN: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test; the test confirms the official logo asset and visible SEBASAM wordmark alongside the existing 404 content.
 - 404-3 closure checks: `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS. `pnpm build` intentionally not run because the active local preview uses `.next`; the orchestrator will handle production build later.
+- Parent spot check: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test. Live preview at `http://127.0.0.1:3107/preview-404` returns HTTP 404 and includes the official logo, SEBASAM wordmark, tagline, and external CTA.
 - 404-3 changes: `src/components/errors/not-found-experience.tsx` adds the logo/wordmark and compact token-based navy/blue identity header; `src/app/not-found.test.tsx` asserts the official logo and wordmark. No route logic, copy, animation, layout, palette, or shadow behavior changed.
-- 404-3 commit and native assessment are pending.
+- 404-3 commit: `a86f2a2` (`feat(errors): add SEBASAM branding to shared 404`). Rollback boundary: the official-logo/wordmark header in `src/components/errors/not-found-experience.tsx`, the matching assertions in `src/app/not-found.test.tsx`, and task 404-3 evidence.
+- Native committed-only assessment against `33b18f4e2d382eb030f7a9ee6ab274aa39f7b27d`: `risk=medium`, reason `executable_change` (`src/app/admin/(protected)/notas/[id]/print/not-found.test.tsx`), `changed_paths=12`, `changed_lines=313`, `review_due=false`, `review_due_reason=under_budget`; no native review transition is due.
 
 ## Next Step
 
-Complete the task 404-3 commit/assessment. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. No push or PR was requested.
+Task 404-3 implementation and assessment are complete. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. Production build remains unrun to preserve the live preview's `.next` state. No push or PR was requested.
