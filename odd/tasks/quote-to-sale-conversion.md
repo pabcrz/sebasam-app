@@ -78,4 +78,4 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - `pnpm typecheck`: passed.
 - `pnpm lint`: passed.
 - `git diff --check`: passed.
-- Work-unit commit: `7b9dc87 fix(sales): clarify persisted sale conversion UI`.
+- Work-unit commit: `2a71c90 fix(sales): clarify persisted sale conversion UI`.
