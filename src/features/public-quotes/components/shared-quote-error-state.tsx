@@ -6,21 +6,23 @@ import { PublicBrandHeader } from "@/features/public-branding/public-brand-heade
 
 export type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 
+const quoteUnavailableMessage = "La cotización que buscas no está disponible, consulta al taller";
+
 const errorConfig: Record<SharedQuoteErrorType, { icon: React.ElementType; title: string; message: string }> = {
   "not-found": {
     icon: AlertCircle,
     title: "Cotización no disponible",
-    message: "La cotización que buscas no está disponible, consulta al taller",
+    message: quoteUnavailableMessage,
   },
   expired: {
     icon: Clock,
     title: "Link expirado",
-    message: "Este link ha expirado. Solicita una nueva cotización si aún te interesa el servicio.",
+    message: quoteUnavailableMessage,
   },
   revoked: {
     icon: Ban,
     title: "Cotización no disponible",
-    message: "Esta cotización ya no está disponible. Contacta al taller para más información.",
+    message: quoteUnavailableMessage,
   },
 };
 

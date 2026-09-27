@@ -11,12 +11,12 @@ const errorCases: Array<{ type: SharedQuoteErrorType; title: string; message: st
   {
     type: "expired",
     title: "Link expirado",
-    message: "Este link ha expirado. Solicita una nueva cotización si aún te interesa el servicio.",
+    message: "La cotización que buscas no está disponible, consulta al taller",
   },
   {
     type: "revoked",
     title: "Cotización no disponible",
-    message: "Esta cotización ya no está disponible. Contacta al taller para más información.",
+    message: "La cotización que buscas no está disponible, consulta al taller",
   },
 ];
 

@@ -56,9 +56,10 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 **Route:** delegated direct, continuing with the same writer where possible; route-specific Next.js not-found behavior and existing quote error states span multiple files.
 
 - [x] Add failing coverage for contextual quote/note copy before changing the relevant error boundaries.
-- [x] Ensure unavailable quote links and missing note records show the requested workshop-contact message appropriate to the resource.
+- [x] Ensure every unavailable quote-link state and the bare `/cotizacion/` route show quote-specific workshop-contact copy; keep expired/revoked headings distinct.
+- [x] Render the shared 404 experience with note-specific workshop-contact copy when a note record is missing.
 - [x] Keep existing authentication and authorization behavior unchanged.
-- [x] Preserve any differentiated error semantics (such as expired/revoked links) unless the focused acceptance tests require the shared unavailable wording.
+- [x] Preserve differentiated expired/revoked headings while applying the shared quote-unavailable copy.
 - [x] Run focused tests, record exact results, and commit as a separate coherent work unit.
 
 ## Progress and Evidence
@@ -75,12 +76,20 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - `pnpm build` — PASS (production build, type validation, and route generation succeeded).
 - Offline dependency setup: `pnpm install --offline --frozen-lockfile` succeeded from local cache; initial typecheck preceded Prisma client generation and failed due to unavailable generated Prisma types. The production build generated Prisma Client, after which `pnpm typecheck` passed.
 - 404-1 commit: `1285379` (`feat(errors): redesign global 404 recovery page`). Rollback boundary: `src/app/not-found.tsx`, `src/app/not-found.test.tsx`, and this task record’s 404-1 evidence.
-- Native assessment initially requested declaration for unrelated untracked 404-2 files; after `gentle-ai review status --cwd /Users/pabcrz/Dev/sebasam/sebasam-app-worktrees/issue-707-custom-404 --contract gentle-ai.review-integration/v2 --agent opencode --next-transition` identified the pending task-2 paths, assessment was rerun with untracked scope excluded and the returned inventory digest. Result: `risk=medium`, reason `executable_change` (`src/app/not-found.test.tsx`), `changed_paths=3`, `changed_lines=150`, `review_due=false`, `review_due_reason=under_budget`; next action: continue with 404-2 without starting native review.
+- Native assessment initially requested declaration for unrelated untracked 404-2 files; after a target-bound `gentle-ai review status` identified the pending task-2 paths, assessment was rerun with untracked scope excluded and the returned inventory digest. Result: `risk=medium`, reason `executable_change` (`src/app/not-found.test.tsx`), `changed_paths=3`, `changed_lines=150`, `review_due=false`, `review_due_reason=under_budget`; next action: continue with 404-2 without starting native review.
 - 404-2 RED: `pnpm exec vitest run src/features/public-quotes/components/shared-quote-error-state.test.tsx 'src/app/admin/(protected)/notas/[id]/print/not-found.test.tsx'` — failed as expected: quote not-found copy mismatched; note test could not resolve the not-yet-created route not-found view.
 - 404-2 GREEN and final focused check: `pnpm exec vitest run src/app/not-found.test.tsx src/features/public-quotes/components/shared-quote-error-state.test.tsx 'src/app/admin/(protected)/notas/[id]/print/not-found.test.tsx'` — PASS, 3 files / 6 tests.
 - Final closure checks after all implementation: `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS; `pnpm build` — PASS, Next.js 16.2.9 production compilation/typecheck/static page generation completed.
-- 404-2 commit identity and native review assessment are pending commit creation and assessment.
+- 404-2 commit: `f03778b` (`feat(errors): add contextual unavailable resource states`). Rollback boundary: `src/features/public-quotes/components/shared-quote-error-state.tsx`, its focused test, the new print-route `not-found.tsx` and test, plus this task record’s 404-2 evidence.
+- Native assessment against the unchanged last-reviewed boundary `33b18f4e2d382eb030f7a9ee6ab274aa39f7b27d`: `risk=medium`, reason `executable_change` (`src/app/admin/(protected)/notas/[id]/print/not-found.test.tsx`), `changed_paths=7`, `changed_lines=193`, `review_due=false`, `review_due_reason=under_budget`; next action: stop; no native review transition is due.
+- Parent spot check: the exact focused Vitest command above passed again (3 files, 6 tests). Parent assessment of the remaining task-document-only diff: passive, 1 path / 3 lines, no review due.
+- Follow-up compliance pass: the first implementation left expired/revoked quote body text and `/cotizacion/` contextualization unchanged, and used a simplified note-only page rather than the requested shared 404 layout. Correct these within 404-2 before considering the task complete.
+- Compliance correction RED: `pnpm exec vitest run src/app/not-found.test.tsx src/features/public-quotes/components/shared-quote-error-state.test.tsx 'src/app/admin/(protected)/notas/[id]/print/not-found.test.tsx' src/app/cotizacion/not-found.test.tsx src/app/cotizacion/page.test.tsx` — failed before production edits: missing quote route files, expired/revoked body copy mismatches, and note view lacked shared 404 presentation.
+- Compliance correction GREEN: the same focused command passed, 5 files / 8 tests. The bare `/cotizacion/` page now calls `notFound()` and uses its route-level not-found copy; expired/revoked headings remain differentiated with shared quote copy; note not-found delegates to the global reusable 404 presentation.
+- Required focused command (without the separate route-page invocation test): `pnpm exec vitest run src/app/not-found.test.tsx src/features/public-quotes/components/shared-quote-error-state.test.tsx 'src/app/admin/(protected)/notas/[id]/print/not-found.test.tsx' src/app/cotizacion/not-found.test.tsx` — PASS, 4 files / 7 tests. Additional `pnpm exec vitest run src/app/cotizacion/page.test.tsx` — PASS, 1 test confirming route-level notFound delegation.
+- Compliance correction checks: `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS; `pnpm build` — PASS; build lists `/cotizacion` as a static route.
+- Compliance correction commit and assessment are pending.
 
 ## Next Step
 
-After 404-2 commit/assessment, stop at any native review transition requiring parent lifecycle coordination.
+Commit and assess the 404-2 compliance correction; stop at any native review transition requiring parent lifecycle coordination.
