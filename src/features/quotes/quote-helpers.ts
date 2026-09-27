@@ -57,6 +57,7 @@ export function quoteFormDataToInput(formData: FormData) {
   }
 
   return {
+    ...(formData.get("operation") !== null ? { operation: formData.get("operation") } : {}),
     customerId: formData.get("customerId"),
     customerContactId: formData.get("customerContactId"),
     customerFiscalProfileId: formData.get("customerFiscalProfileId"),

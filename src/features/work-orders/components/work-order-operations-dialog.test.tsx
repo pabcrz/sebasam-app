@@ -70,6 +70,17 @@ describe("WorkOrderOperationsDialog", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  it("uses persisted SALE intent as the initial conversion operation", async () => {
+    const user = userEvent.setup();
+    const convert = vi.fn(() => Promise.resolve({ success: true }));
+    render(<WorkOrderOperationsDialog quoteId="quote-sale" quoteOperation="SALE" quoteNumber="C-001" quoteStatus="APPROVED" workOrder={null} actions={{ convert }} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i }));
+
+    expect(screen.getByLabelText(/operación de conversión/i)).toHaveTextContent("Venta");
+    expect(screen.getByRole("button", { name: /crear nota de venta/i })).toBeInTheDocument();
+  });
+
   it.each(["DRAFT", "SENT"] as const)("exposes internal work-order management for a %s quote", async (quoteStatus) => {
     const user = userEvent.setup();
     render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus={quoteStatus} workOrder={null} actions={actions} />);

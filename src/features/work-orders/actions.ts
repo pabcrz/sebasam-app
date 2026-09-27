@@ -1138,6 +1138,7 @@ export async function createDirectNoteFromWorkspace(
 
 export async function convertQuoteToNoteAction(input: unknown) {
   const { profile } = await requireOperationalRole();
+  const operationProvided = typeof input === "object" && input !== null && Object.prototype.hasOwnProperty.call(input, "operation");
   const data = convertQuoteToNoteInputSchema.parse(input);
 
   const result = await prisma.$transaction(async (tx) => {
@@ -1159,7 +1160,8 @@ export async function convertQuoteToNoteAction(input: unknown) {
       throw new WorkOrderOperationError("El documento está bloqueado.");
     }
 
-    if (data.operation === "SALE") {
+    const operation = operationProvided ? data.operation : quote.operation;
+    if (operation === "SALE") {
       assertOperationalQuote(quote.status);
       if (quote.workOrder) {
         throw new WorkOrderOperationError("La cotización ya tiene una orden de trabajo.");

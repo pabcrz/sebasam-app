@@ -211,6 +211,7 @@ describe("createQuote", () => {
     });
     expect(createData.id).toEqual(expect.any(String));
     expect(createData.status).toBe("DRAFT");
+    expect(createData.operation).toBe("WORK");
     expect(createData.operationalDate).toEqual(new Date("2026-07-14T00:00:00.000Z"));
     expect(createData).not.toHaveProperty("sharedQuotes");
     expect(createData.sections.create).toEqual([{
@@ -219,6 +220,18 @@ describe("createQuote", () => {
       sortOrder: 0,
     }]);
     expect(result.totalCents).toBe(197200);
+  });
+
+  it("persists a SALE operation on a material-only draft without issuing a note", async () => {
+    const tx = mockTx();
+    await createQuote({
+      ...validInput(),
+      operation: "SALE",
+      sections: [{ name: "General", items: [{ type: "MATERIAL" as const, description: "Filtro", quantity: 1, unitPriceCents: 85000 }] }],
+    });
+
+    expect(tx.quote.create.mock.calls[0]?.[0].data.operation).toBe("SALE");
+    expect(tx.payableNote.create).not.toHaveBeenCalled();
   });
 
   it("creates a draft quote with vehicle data but without a customer, storing snapshot without linking Vehicle", async () => {

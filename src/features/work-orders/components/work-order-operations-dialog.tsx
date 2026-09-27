@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CheckCircle2, ClipboardList, Coins, RotateCcw, UserCheck, X } from "lucide-react";
-import type { QuoteStatus, UserRole, WorkOrderStatus } from "@prisma/client";
+import type { QuoteOperationKind, QuoteStatus, UserRole, WorkOrderStatus } from "@prisma/client";
 import {
   Badge,
   Button,
@@ -64,6 +64,7 @@ export type WorkOrderActions = {
 
 type WorkOrderOperationsDialogProps = {
   quoteId?: string;
+  quoteOperation?: QuoteOperationKind;
   hasPayableNote?: boolean;
   quoteNumber: string;
   quoteStatus: QuoteStatus;
@@ -82,6 +83,7 @@ const noopActions: WorkOrderActions = {
 
 export function WorkOrderOperationsDialog({
   quoteId,
+  quoteOperation = "WORK",
   hasPayableNote = false,
   quoteNumber,
   quoteStatus,
@@ -243,7 +245,7 @@ export function WorkOrderOperationsDialog({
           setError(null);
           setConfirmComplete(false);
           setShowRollback(false);
-          setConversionOperation("WORK");
+          setConversionOperation(quoteOperation);
           setOpen(true);
         }}
         aria-label={isAssignmentBusy ? "Asignando trabajo..." : workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : `Gestionar trabajo de cotización ${quoteNumber}`}

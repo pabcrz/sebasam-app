@@ -64,6 +64,7 @@ function operationalQuote(overrides: Record<string, unknown> = {}) {
   return {
     id: "quote-1",
     status: QuoteStatus.APPROVED,
+    operation: "WORK",
     customerId: "customer-1",
     vehicle: null,
     vehicleSnapshot: null,
@@ -1076,6 +1077,23 @@ describe("work order actions", () => {
           reason: "Venta desde cotización",
         }),
       }));
+    });
+
+    it("uses the persisted SALE intent when conversion input omits an operation", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        id: "quote-sale",
+        status: QuoteStatus.SENT,
+        operation: "SALE",
+        payableNote: null,
+        sections: [{ id: "sec-sale", items: [{ type: "MATERIAL", description: "Filtro", quantity: 1, unitPriceCents: 10_000 }] }],
+      }));
+
+      const result = await convertQuoteToNoteAction({ quoteId: "quote-sale" });
+
+      expect(result.workOrder).toBeNull();
+      expect(tx.workOrder.create).not.toHaveBeenCalled();
+      expect(tx.payableNote.create.mock.calls[0]?.[0].data.kind).toBe("SALE");
     });
 
     it("rejects SALE conversion when a quote contains labor concepts", async () => {

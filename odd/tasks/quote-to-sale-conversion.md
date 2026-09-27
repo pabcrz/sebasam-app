@@ -21,9 +21,11 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - [x] Preserve the existing `WORK` conversion behavior and quotation lifecycle/audit data.
 - [x] Expose the operation choice from the quotation UI with validation and clear state.
 - [x] Label the existing-quotation SALE action `Crear nota de venta` and navigate successful creation directly to `/admin/notas`.
+- [x] Persist a `WORK`/`SALE` intent on draft quotations, defaulting existing and new quotations to `WORK`.
+- [x] Expose the intent choice from the create-quotation form without issuing a note.
 - [x] Add/update focused action and component tests.
 - [x] Run applicable checks and record evidence.
-- [x] Create a conventional work-unit commit on the feature branch.
+- [ ] Create a conventional work-unit commit on the feature branch (not requested for this handoff).
 
 ## Acceptance criteria
 
@@ -34,6 +36,7 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - The workshop flow retains its master/`WorkOrder` rules.
 - After selecting SALE on an existing quotation, the action is presented as `Crear nota de venta`.
 - After successful SALE creation, the user is taken directly to `/admin/notas`; the quotation does not remain in WorkOrder management.
+- The create-quotation form can start either a WORK or SALE-intent draft; conversion to a note remains a separate manual action.
 
 ## Route and checks
 
@@ -60,3 +63,8 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - `git diff --check`: passed.
 - Work-unit commit: `d3cc523 feat(sales): convert quotes to sale notes`.
 - Review receipt: medium-risk reliability review acknowledged with no findings.
+- `QuoteOperationKind` is persisted on `Quote` with a `WORK` default/backfill; SALE intent is validated server-side as material/refacciones-only and does not issue a note during draft creation.
+- Existing quote edit and conversion flows carry the persisted intent forward; conversion UI starts from that intent but still permits explicit supported-operation selection.
+- The create-quotation form now exposes `Trabajo`/`Venta`; selecting `Venta` keeps the document as a draft and does not create a note.
+- Focused Vitest: 8 files, 212 passed; `pnpm typecheck`, `pnpm lint`, `pnpm prisma validate`, and `git diff --check` passed.
+- The migration is present but was not applied to a database during this local implementation run.

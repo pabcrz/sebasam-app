@@ -43,6 +43,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     folio: folio ?? null,
     issuedAt: issuedAt ?? null,
     status: "DRAFT",
+    operation: "WORK",
     title: "Mantenimiento preventivo",
     description: null,
     vehicleSnapshot: null,

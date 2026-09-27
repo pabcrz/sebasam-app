@@ -64,13 +64,13 @@ export type StartWorkOrderInput = z.infer<typeof startWorkOrderInputSchema>;
 export type ExecutionRecordInput = z.infer<typeof executionRecordInputSchema>;
 export type WorkAssignmentInput = z.infer<typeof workAssignmentInputSchema>;
 
-export const directWorkOrderInputSchema = quoteDraftInputSchema.extend({
+export const directWorkOrderInputSchema = quoteDraftInputSchema.safeExtend({
   masterId: z.string("El maestro responsable es obligatorio.").uuid("El maestro responsable es obligatorio."),
   isCompleted: z.boolean().default(false),
   paymentDueDate: z.preprocess((val) => (val ? new Date(String(val)) : undefined), z.date().optional()),
 });
 
-export const directWorkOrderFormInputSchema = quoteDraftFormInputSchema.extend({
+export const directWorkOrderFormInputSchema = quoteDraftFormInputSchema.safeExtend({
   masterId: z.preprocess(
     (val) => (typeof val === "string" && val.trim() !== "" ? val : undefined),
     z.string("El maestro responsable es obligatorio.").uuid("El maestro responsable es obligatorio."),
@@ -79,7 +79,7 @@ export const directWorkOrderFormInputSchema = quoteDraftFormInputSchema.extend({
   paymentDueDate: z.preprocess((val) => (typeof val === "string" && val.trim() !== "" ? new Date(val) : undefined), z.date().optional()),
 });
 
-export const directMaterialSaleInputSchema = quoteDraftInputSchema.extend({
+export const directMaterialSaleInputSchema = quoteDraftInputSchema.safeExtend({
   paymentDueDate: z.preprocess((val) => (val ? new Date(String(val)) : undefined), z.date().optional()),
 }).superRefine((input, ctx) => {
   if (input.sections.some((section) => section.items.some((item) => item.type !== "MATERIAL" && item.type !== "REFACCIONES"))) {
@@ -87,7 +87,7 @@ export const directMaterialSaleInputSchema = quoteDraftInputSchema.extend({
   }
 });
 
-export const directMaterialSaleFormInputSchema = quoteDraftFormInputSchema.extend({
+export const directMaterialSaleFormInputSchema = quoteDraftFormInputSchema.safeExtend({
   paymentDueDate: z.preprocess((val) => (typeof val === "string" && val.trim() !== "" ? new Date(val) : undefined), z.date().optional()),
 }).superRefine((input, ctx) => {
   if (input.sections.some((section) => section.items.some((item) => item.type !== "MATERIAL" && item.type !== "REFACCIONES"))) {
@@ -96,13 +96,13 @@ export const directMaterialSaleFormInputSchema = quoteDraftFormInputSchema.exten
 });
 
 export const directOperationInputSchema = z.discriminatedUnion("operation", [
-  directWorkOrderInputSchema.extend({ operation: z.literal("WORK") }),
-  directMaterialSaleInputSchema.extend({ operation: z.literal("SALE") }),
+  directWorkOrderInputSchema.safeExtend({ operation: z.literal("WORK") }),
+  directMaterialSaleInputSchema.safeExtend({ operation: z.literal("SALE") }),
 ]);
 
 export const directOperationFormInputSchema = z.discriminatedUnion("operation", [
-  directWorkOrderFormInputSchema.extend({ operation: z.literal("WORK") }),
-  directMaterialSaleFormInputSchema.extend({ operation: z.literal("SALE") }),
+  directWorkOrderFormInputSchema.safeExtend({ operation: z.literal("WORK") }),
+  directMaterialSaleFormInputSchema.safeExtend({ operation: z.literal("SALE") }),
 ]);
 
 export type DirectWorkOrderInput = z.infer<typeof directWorkOrderInputSchema>;
