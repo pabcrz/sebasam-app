@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QuoteListCard } from "./quote-mobile-card";
 import type { listQuotes } from "@/features/quotes/queries";
 import type { PaymentRequest } from "@prisma/client";
+import type { WorkOrderActions } from "@/features/work-orders/components/work-order-operations-dialog";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -118,7 +119,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
   };
 }
 
-function renderCard(quote: QuoteListItem) {
+function renderCard(quote: QuoteListItem, workOrderActions?: WorkOrderActions) {
   return render(
     <QuoteListCard
       quote={quote}
@@ -143,6 +144,7 @@ function renderCard(quote: QuoteListItem) {
       customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
       saveAction={vi.fn()}
       searchCustomersAction={vi.fn()}
+      workOrderActions={workOrderActions}
     />,
   );
 }
@@ -152,6 +154,20 @@ describe("QuoteListCard", () => {
     const { container } = renderCard(createMockQuote());
 
     expect(container.firstElementChild).toHaveClass("min-w-0", "w-full");
+  });
+
+  it("forwards persisted SALE intent to the conversion dialog", async () => {
+    const user = userEvent.setup();
+    renderCard(createMockQuote({ status: "APPROVED", operation: "SALE" }), {
+      convert: vi.fn(() => Promise.resolve({ success: true })),
+    });
+
+    const trigger = screen.getByRole("button", { name: /crear nota de venta para cotización c-001/i });
+    await user.click(trigger);
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("Crear nota de venta");
+    expect(screen.getByRole("button", { name: /crear nota de venta/i })).toBeInTheDocument();
+    expect(screen.queryByText("Asignación de personal")).not.toBeInTheDocument();
   });
 
   it("opens the preview dialog when the card is clicked", async () => {

@@ -229,6 +229,7 @@ export function WorkOrderOperationsDialog({
   const isAssigned = workOrder?.status === "ASSIGNED";
   const isCompleted = workOrder?.status === "COMPLETED";
   if (hasPayableNote && !workOrder) return null;
+  const isSaleIntent = !workOrder && !hasPayableNote && quoteOperation === "SALE";
   const canRollback = workOrder && ["PLANNED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"].includes(workOrder.status);
   const isAssignmentBusy = pendingAction !== null || isPending;
 
@@ -248,13 +249,13 @@ export function WorkOrderOperationsDialog({
           setConversionOperation(quoteOperation);
           setOpen(true);
         }}
-        aria-label={isAssignmentBusy ? "Asignando trabajo..." : workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : `Gestionar trabajo de cotización ${quoteNumber}`}
-        title={workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : `Gestionar trabajo de cotización ${quoteNumber}`}
+        aria-label={isAssignmentBusy ? "Asignando trabajo..." : workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : isSaleIntent ? `Crear nota de venta para cotización ${quoteNumber}` : `Gestionar trabajo de cotización ${quoteNumber}`}
+        title={workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : isSaleIntent ? `Crear nota de venta para cotización ${quoteNumber}` : `Gestionar trabajo de cotización ${quoteNumber}`}
         disabled={isAssignmentBusy}
         loading={isAssignmentBusy}
       >
         {!isAssignmentBusy ? <ClipboardList className="h-5 w-5" aria-hidden="true" /> : null}
-        {!isAssignmentBusy ? <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{isCompleted ? "Gestionar orden" : isAssigned ? "Gestionar trabajo" : "Asignar trabajo"}</span> : null}
+        {!isAssignmentBusy ? <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{isCompleted ? "Gestionar orden" : isAssigned ? "Gestionar trabajo" : isSaleIntent ? "Crear nota de venta" : "Asignar trabajo"}</span> : null}
       </Button>
 
       <Dialog open={open} onOpenChange={(nextOpen) => { if (!isAssignmentBusy) setOpen(nextOpen); }}>
@@ -281,13 +282,15 @@ export function WorkOrderOperationsDialog({
           </DialogClose>
           <DialogHeader>
             <DialogTitle>
-              {workOrder ? `Orden de trabajo ${workOrder.number}` : `Asignar trabajo — Cotización ${quoteNumber}`}
+              {workOrder ? `Orden de trabajo ${workOrder.number}` : conversionOperation === "SALE" ? `Crear nota de venta — Cotización ${quoteNumber}` : `Asignar trabajo — Cotización ${quoteNumber}`}
             </DialogTitle>
             <DialogDescription>
               {isCompleted
                 ? `Orden finalizada para la cotización ${quoteNumber}. Los conceptos están congelados.`
                 : isAssigned
                 ? `Trabajo en proceso para la cotización ${quoteNumber}.`
+                : conversionOperation === "SALE"
+                ? "Crea una nota de venta con esta cotización. Esta operación no crea una orden de trabajo."
                 : `Asigna un maestro o registra un trabajo especial para iniciar.`}
             </DialogDescription>
           </DialogHeader>

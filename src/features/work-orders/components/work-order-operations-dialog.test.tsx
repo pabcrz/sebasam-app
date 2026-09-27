@@ -75,10 +75,12 @@ describe("WorkOrderOperationsDialog", () => {
     const convert = vi.fn(() => Promise.resolve({ success: true }));
     render(<WorkOrderOperationsDialog quoteId="quote-sale" quoteOperation="SALE" quoteNumber="C-001" quoteStatus="APPROVED" workOrder={null} actions={{ convert }} />);
 
-    await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i }));
+    await user.click(screen.getByRole("button", { name: /crear nota de venta para cotización c-001/i }));
 
     expect(screen.getByLabelText(/operación de conversión/i)).toHaveTextContent("Venta");
     expect(screen.getByRole("button", { name: /crear nota de venta/i })).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveTextContent("no crea una orden de trabajo");
+    expect(screen.queryByText("Asignación de personal")).not.toBeInTheDocument();
   });
 
   it.each(["DRAFT", "SENT"] as const)("exposes internal work-order management for a %s quote", async (quoteStatus) => {

@@ -25,7 +25,7 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - [x] Expose the intent choice from the create-quotation form without issuing a note.
 - [x] Add/update focused action and component tests.
 - [x] Run applicable checks and record evidence.
-- [ ] Create a conventional work-unit commit on the feature branch (not requested for this handoff).
+- [x] Create a conventional work-unit commit on the feature branch.
 
 ## Acceptance criteria
 
@@ -68,3 +68,14 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - The create-quotation form now exposes `Trabajo`/`Venta`; selecting `Venta` keeps the document as a draft and does not create a note.
 - Focused Vitest: 8 files, 212 passed; `pnpm typecheck`, `pnpm lint`, `pnpm prisma validate`, and `git diff --check` passed.
 - The migration is present but was not applied to a database during this local implementation run.
+
+## Issue #659 regression fix evidence
+
+- The mobile quote card now forwards `quote.operation` to `WorkOrderOperationsDialog`, matching the desktop quote row.
+- A persisted SALE quote without a WorkOrder or payable note now opens with `Crear nota de venta`, explains that no WorkOrder is created, and omits the WORK assignment section until the user explicitly switches to WORK.
+- WORK quotes retain the existing assignment/manage-work trigger and dialog behavior.
+- Focused Vitest: `2 files, 43 passed` (`quote-mobile-card.test.tsx`, `work-order-operations-dialog.test.tsx`).
+- `pnpm typecheck`: passed.
+- `pnpm lint`: passed.
+- `git diff --check`: passed.
+- Work-unit commit: `7b9dc87 fix(sales): clarify persisted sale conversion UI`.
