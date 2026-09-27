@@ -514,6 +514,11 @@ describe("Payroll UI Components", () => {
       expect(within(table).queryByText("Base")).not.toBeInTheDocument();
       expect(table.querySelectorAll("th")).toHaveLength(3);
     }
+    const envelopes = Array.from(document.querySelectorAll("#payroll-worker-envelope-document"));
+    expect(envelopes).toHaveLength(2);
+    for (const envelope of envelopes) {
+      expect(envelope).toHaveClass("print:w-[7.9cm]", "print:max-w-[7.9cm]", "print:mx-auto");
+    }
   });
 
   describe("Inline Payroll Base Adjustment", () => {
