@@ -64,7 +64,7 @@ export async function processQuoteRetention(now = new Date()): Promise<QuoteRete
           workOrder: { is: null },
           payableNote: { is: null },
         },
-        data: { status: QuoteStatus.ARCHIVED },
+        data: { status: QuoteStatus.ARCHIVED, retentionStartedAt: now },
       });
       if (archived.count !== 1) continue;
 
@@ -79,6 +79,7 @@ export async function processQuoteRetention(now = new Date()): Promise<QuoteRete
     const archivedQuotes = await tx.quote.findMany({
       where: {
         status: QuoteStatus.ARCHIVED,
+        retentionStartedAt: { not: null },
         deletedAt: null,
         validUntil: { lte: archiveDeadline },
         workOrder: { is: null },
@@ -95,6 +96,7 @@ export async function processQuoteRetention(now = new Date()): Promise<QuoteRete
         where: {
           id: quote.id,
           status: QuoteStatus.ARCHIVED,
+          retentionStartedAt: { not: null },
           deletedAt: null,
           validUntil: { lte: archiveDeadline },
           workOrder: { is: null },
@@ -109,6 +111,7 @@ export async function processQuoteRetention(now = new Date()): Promise<QuoteRete
     const trashedQuotes = await tx.quote.findMany({
       where: {
         status: QuoteStatus.ARCHIVED,
+        retentionStartedAt: { not: null },
         deletedAt: { not: null },
         validUntil: { lte: purgeDeadline },
       },

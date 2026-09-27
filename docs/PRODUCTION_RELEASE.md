@@ -6,6 +6,19 @@ deploy production from `main`.
 
 ## Manual configuration
 
+### Quote retention cron
+
+Vercel runs `/api/cron/quote-retention` daily at `0 0 * * *` (UTC), as declared
+in the repository's [`vercel.json`](../vercel.json). The route fails closed unless
+the request includes the Vercel cron authorization header matching `CRON_SECRET`.
+Add `CRON_SECRET` as a Vercel project environment variable for Production (and
+Preview only when scheduled processing is intentionally enabled there); use a
+high-entropy value and keep it out of source control, logs, and build output.
+Vercel supplies the cron authorization header from that configured value. After
+configuration, verify the cron is enabled for the intended deployment and monitor
+the route's success/failure logs. Do not manually invoke it against a production
+database as part of local development.
+
 ### GitHub Environment
 
 Create a GitHub Environment named `production` and configure it before enabling

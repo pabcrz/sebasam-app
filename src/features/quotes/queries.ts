@@ -266,4 +266,23 @@ export async function listPaginatedQuotes(input: unknown = {}, options: QuoteLis
   };
 }
 
+export async function listArchivedEligibleQuotes() {
+  await requireOperationalRole();
+  return serializeQuotes(await findQuotes({
+    status: QuoteStatus.ARCHIVED,
+    deletedAt: null,
+    retentionStartedAt: { not: null },
+  }));
+}
+
+export async function listRecoverableTrashedQuotes(now = new Date()) {
+  await requireOperationalRole();
+  const trashStartedAt = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  return serializeQuotes(await findQuotes({
+    status: QuoteStatus.ARCHIVED,
+    retentionStartedAt: { not: null },
+    deletedAt: { gte: trashStartedAt, lte: now },
+  }));
+}
+
 export type QuoteListSummary = Awaited<ReturnType<typeof listPaginatedQuotes>>["quotes"][number];

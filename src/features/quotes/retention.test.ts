@@ -68,12 +68,15 @@ describe("processQuoteRetention", () => {
     }));
     expect(tx.quote.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ id: "quote-expired", status: QuoteStatus.SENT, deletedAt: null }),
-      data: { status: QuoteStatus.ARCHIVED },
+      data: { status: QuoteStatus.ARCHIVED, retentionStartedAt: now },
     }));
     expect(tx.sharedQuote.updateMany).toHaveBeenCalledWith({
       where: { quoteId: "quote-expired", revokedAt: null },
       data: { revokedAt: now },
     });
+    expect(tx.quote.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: { status: QuoteStatus.ARCHIVED, retentionStartedAt: now },
+    }));
   });
 
   it("starts trash at validUntil plus 30 days even when the scheduled run is late", async () => {
@@ -97,6 +100,7 @@ describe("processQuoteRetention", () => {
       where: expect.objectContaining({ id: "quote-archived", status: QuoteStatus.ARCHIVED, deletedAt: null }),
       data: { deletedAt: new Date("2026-10-31T00:00:00.000Z") },
     }));
+    expect(tx.quote.findMany.mock.calls[1][0].where).toMatchObject({ retentionStartedAt: { not: null } });
   });
 
   it("hard-deletes trashed quotes only after validUntil plus 60 days and when no protected dependencies remain", async () => {
@@ -117,6 +121,17 @@ describe("processQuoteRetention", () => {
       }),
     }));
     expect(tx.quote.delete).toHaveBeenCalledWith({ where: { id: "quote-expired-trash" } });
+    expect(tx.quote.findMany.mock.calls[2][0].where).toMatchObject({ retentionStartedAt: { not: null } });
+  });
+
+  it("never trashes or purges a manually archived DRAFT, REJECTED, or CANCELLED quote", async () => {
+    const tx = mockTransaction();
+    const now = new Date("2026-12-01T00:00:00.000Z");
+
+    await processQuoteRetention(now);
+
+    expect(tx.quote.findMany.mock.calls[1][0].where).toMatchObject({ retentionStartedAt: { not: null } });
+    expect(tx.quote.findMany.mock.calls[2][0].where).toMatchObject({ retentionStartedAt: { not: null } });
   });
 
   it.each([
