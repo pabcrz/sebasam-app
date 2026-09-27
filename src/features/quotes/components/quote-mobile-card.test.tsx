@@ -158,7 +158,7 @@ describe("QuoteListCard", () => {
 
   it("forwards persisted SALE intent to the conversion dialog", async () => {
     const user = userEvent.setup();
-    renderCard(createMockQuote({ status: "APPROVED", operation: "SALE" }), {
+    renderCard(createMockQuote({ status: "APPROVED", operation: "SALE", activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"] }), {
       convert: vi.fn(() => Promise.resolve({ success: true })),
     });
 
@@ -219,7 +219,7 @@ describe("QuoteListCard", () => {
 
   it("uses one full-width primary action, a tile row, and a separated accessible overflow dialog", async () => {
     const user = userEvent.setup();
-    renderCard(createMockQuote({ status: "SENT" }));
+     renderCard(createMockQuote({ status: "SENT", activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"] }));
 
      const primary = screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" });
     expect(primary).toHaveClass("bg-[image:var(--gradient-primary)]");
@@ -243,7 +243,7 @@ describe("QuoteListCard", () => {
   });
 
   it("renders icon-only secondary actions in three flexible columns plus a fixed More column", () => {
-    renderCard(createMockQuote());
+     renderCard(createMockQuote({ activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"] }));
 
     const secondaryActions = screen.getByTestId("quote-secondary-actions");
     const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
@@ -293,6 +293,13 @@ describe("QuoteListCard", () => {
     expect(screen.getByRole("button", { name: "Más acciones de cotización C-001" })).not.toHaveClass("border");
   });
 
+  it("makes sharing the primary action before a quote is shared", () => {
+    renderCard(createMockQuote({ status: "SENT" }));
+
+    expect(screen.getByRole("button", { name: "Compartir cotización C-001" })).toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(screen.getByTestId("quote-primary-action")).toBeInTheDocument();
+  });
+
   it("renders a pending-price draft without payment actions", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote();
@@ -314,7 +321,7 @@ describe("QuoteListCard", () => {
     expect(within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
-  it("renders share button as secondary when draft is missing a customer", () => {
+  it("renders share button as primary when draft is missing a customer", () => {
     renderCard(createMockQuote({
       customer: null,
       customerId: null,
@@ -322,8 +329,7 @@ describe("QuoteListCard", () => {
 
     const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
     expect(share).toBeInTheDocument();
-    expect(share).toHaveClass("bg-[var(--color-blue-tint)]");
-    expect(share).not.toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(share).toHaveClass("bg-[image:var(--gradient-primary)]");
   });
 
   it("keeps payment links available through overflow for approved in-progress work", async () => {
@@ -331,6 +337,7 @@ describe("QuoteListCard", () => {
     renderCard(createMockQuote({
       status: "APPROVED",
       workOrder: { number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+      activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"],
     }));
 
     expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
@@ -345,6 +352,7 @@ describe("QuoteListCard", () => {
       subtotalCents: null,
       taxCents: null,
       totalCents: null,
+      activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"],
     }));
 
     expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
@@ -353,7 +361,7 @@ describe("QuoteListCard", () => {
 
    it("makes work-order conversion the sent quote primary action while retaining authorization in overflow", async () => {
     const user = userEvent.setup();
-    renderCard(createMockQuote({ status: "SENT" }));
+     renderCard(createMockQuote({ status: "SENT", activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"] }));
 
      expect(screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" })).toHaveClass("bg-[image:var(--gradient-primary)]");
     await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));

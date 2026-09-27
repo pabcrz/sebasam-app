@@ -91,6 +91,7 @@ export function QuoteListCard({
     editable,
     hasWorkOrder: Boolean(quote.workOrder),
     paymentAvailable: paymentRequestContext !== null,
+    hasSharedQuote: Boolean(quote.activeSharedQuote),
   });
 
   const renderAction = (

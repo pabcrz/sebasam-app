@@ -19,6 +19,7 @@ type QuoteActionPresentationInput = {
   editable: boolean;
   hasWorkOrder: boolean;
   paymentAvailable: boolean;
+  hasSharedQuote: boolean;
 };
 
 export type QuoteActionPresentation = {
@@ -51,6 +52,7 @@ export function resolveQuoteActionPresentation({
   editable,
   hasWorkOrder,
   paymentAvailable,
+  hasSharedQuote,
 }: QuoteActionPresentationInput): QuoteActionPresentation {
   const available = new Set<QuoteActionId>(["print", "duplicate"]);
 
@@ -77,7 +79,9 @@ export function resolveQuoteActionPresentation({
     CANCELLED: [],
     ARCHIVED: ["restore"],
   };
-  const primary = primaryCandidates[status].find((action) => available.has(action)) ?? null;
+  const primary = !hasSharedQuote && ["DRAFT", "SENT", "APPROVED"].includes(status) && available.has("share")
+    ? "share"
+    : primaryCandidates[status].find((action) => available.has(action)) ?? null;
   // Print is always available, so it is always a frequent action. The order
   // mirrors the card tiles: Edit, Print, then Share when it is available.
   const frequent: QuoteActionId[] = (["edit", "print", "share"] as const).filter(

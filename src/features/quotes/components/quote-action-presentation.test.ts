@@ -5,6 +5,7 @@ const base = {
   editable: true,
   hasWorkOrder: false,
   paymentAvailable: false,
+  hasSharedQuote: true,
 };
 
 describe("resolveQuoteActionPresentation", () => {
@@ -23,6 +24,13 @@ describe("resolveQuoteActionPresentation", () => {
       frequent: ["edit", "print", "share"],
       overflow: ["authorize", "duplicate", "cancel", "archive"],
       destructive: "delete",
+    });
+  });
+
+  it("prioritizes sharing before a quote has been shared", () => {
+    expect(resolveQuoteActionPresentation({ ...base, hasSharedQuote: false, status: "SENT" })).toMatchObject({
+      primary: "share",
+      overflow: ["authorize", "workOrder", "duplicate", "cancel", "archive"],
     });
   });
 
