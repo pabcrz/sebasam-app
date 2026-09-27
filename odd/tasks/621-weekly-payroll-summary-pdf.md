@@ -26,7 +26,7 @@ The existing payroll screen has per-worker totals and a separate signing sheet, 
 
 - Do not change persisted payroll values, commission logic, signing-sheet behavior, or unrelated routes.
 - Preserve existing local/untracked work, especially `odd/tasks/note-filters-query-efficiency.md`.
-- Work on the existing issue-specific branch. The branch name was observed as `bugfix/621-payroll-envelope-print-width` at session start and is now `fix/621-payroll-envelope-print-width` at the same HEAD; no branch restoration was performed.
+- Initial implementation is on the existing issue-specific branch. Because its worktree contains an unrelated untracked notes task and the native capture operation is unavailable, the user authorized transferring the PR candidate to a clean worktree; create `feat/621-weekly-payroll-summary-pdf` from latest `origin/develop` and cherry-pick only this issue's work-unit commit.
 - TDD mode: strict, explicitly selected by the user in this session. Test runner: Vitest via `pnpm exec vitest`; focused payroll command: `pnpm exec vitest run src/features/payroll/domain.test.ts src/features/payroll/components/payroll-components.test.tsx src/features/payroll/queries.test.ts`.
 - Delivery strategy: `ask-on-risk`; expected authored diff is below the 400-line advisory budget, subject to actual diff.
 
@@ -45,6 +45,7 @@ The existing payroll screen has per-worker totals and a separate signing sheet, 
 
 - Issue #621 is OPEN and labeled `status:approved` and `type:feature`.
 - The user explicitly authorized a PR to `pabcrz/sebasam-app` against `develop` using the current authenticated GitHub session, and chose issue #621 as the tracking issue. The issue was reopened with its existing approval/type labels preserved.
+- User authorized excluding the unrelated untracked notes task, or moving the PR work into a clean worktree. The native collection for untracked selection is unavailable in this session, so the clean-worktree route is selected; no other file will be copied or committed.
 - Existing payroll source exposes per-item rate/base/commission, work-order completion timestamps, worker summaries, and fixed-pay helpers separately. The query currently orders completed work newest first; the printable report must sort ascending. Advances lack completion timestamps and need explicit treatment during implementation without silently misordering them.
 - The fixed-pay helper table already exists in the app; the new PDF will include helpers in a separate closing section.
 - Current branch is `fix/621-payroll-envelope-print-width` at `b65e499` tracking `origin/fix/621-payroll-envelope-print-width`; reflog confirms it was renamed from `bugfix/621-payroll-envelope-print-width` at the same HEAD during this session. No restoration was performed. An unrelated untracked notes task exists and must not be included in the candidate/commit.
@@ -74,4 +75,4 @@ The existing payroll screen has per-worker totals and a separate signing sheet, 
 
 ## Next Step
 
-Run the required committed-only RDD assessment and follow its exact transition. Then commit/push the authorized work and open the #621 PR against `develop`; record the identities here. Preserve the unrelated untracked notes task.
+Commit this work unit, transfer only that commit to the clean feature worktree from latest `origin/develop`, run the required committed-only RDD assessment there and follow its exact transition, then push/open the #621 PR and record identities. Preserve the unrelated untracked notes task in the original worktree.
