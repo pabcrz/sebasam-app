@@ -22,7 +22,7 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - [x] Expose the operation choice from the quotation UI with validation and clear state.
 - [x] Add/update focused action and component tests.
 - [x] Run applicable checks and record evidence.
-- [ ] Create a conventional work-unit commit on the feature branch (not run per explicit user instruction).
+- [x] Create a conventional work-unit commit on the feature branch.
 
 ## Acceptance criteria
 
@@ -52,3 +52,5 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - `pnpm typecheck`: passed.
 - `pnpm lint`: passed.
 - `git diff --check`: passed.
+- Work-unit commit: `d3cc523 feat(sales): convert quotes to sale notes`.
+- Review receipt: medium-risk reliability review acknowledged with no findings.
