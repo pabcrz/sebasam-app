@@ -92,6 +92,19 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
   });
 
+  it("requires an acceptance decision before starting work from a draft", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn(() => Promise.resolve({ success: true }));
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="DRAFT" workOrder={null} actions={{ assign }} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i }));
+    await user.click(screen.getByLabelText(/trabajo especial/i));
+    await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Confirma si el cliente aceptó");
+    expect(assign).not.toHaveBeenCalled();
+  });
+
   it("keeps server validation feedback visible and leaves the draft dialog actionable", async () => {
     const user = userEvent.setup();
     const assign = vi.fn().mockResolvedValue({ success: false, error: "Selecciona un cliente o identifica la unidad." });
@@ -99,6 +112,7 @@ describe("WorkOrderOperationsDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i }));
     await user.click(screen.getByLabelText(/trabajo especial/i));
+    await user.click(screen.getByRole("button", { name: "Sí, aceptó" }));
     await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Selecciona un cliente o identifica la unidad.");

@@ -100,6 +100,8 @@ export function WorkOrderOperationsDialog({
   const [isPending, startTransition] = React.useTransition();
   const [pendingAction, setPendingAction] = React.useState<"assign" | "complete" | "rollback" | null>(null);
   const [conversionOperation, setConversionOperation] = React.useState<"WORK" | "SALE">("WORK");
+  const [customerAccepted, setCustomerAccepted] = React.useState<boolean | null>(null);
+  const [acceptanceReason, setAcceptanceReason] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
 
   // Form state for assignment
@@ -168,8 +170,20 @@ export function WorkOrderOperationsDialog({
   const handleAssign = () => {
     const assign = actions.assign;
     if (!assign) return;
+    const needsAcceptance = !workOrder && quoteStatus !== "APPROVED" && conversionOperation === "WORK";
+    if (needsAcceptance && customerAccepted === null) {
+      setError("Confirma si el cliente aceptó la cotización.");
+      return;
+    }
+    if (needsAcceptance && customerAccepted === false && acceptanceReason.trim().length < 3) {
+      setError("Indica el motivo para continuar sin aceptación formal.");
+      return;
+    }
+    const acceptanceInput = needsAcceptance
+      ? { customerAccepted: customerAccepted === true, acceptanceReason: acceptanceReason.trim() }
+      : {};
     if (isSpecial) {
-      runAction(() => assign({ isSpecial: true }), "assign");
+      runAction(() => assign({ isSpecial: true, ...acceptanceInput }), "assign");
     } else {
       if (!masterId) {
         setError("Selecciona un maestro para el trabajo.");
@@ -180,6 +194,7 @@ export function WorkOrderOperationsDialog({
           isSpecial: false,
           masterId,
           helperIds,
+          ...acceptanceInput,
         }), "assign",
       );
     }
@@ -247,6 +262,8 @@ export function WorkOrderOperationsDialog({
           setConfirmComplete(false);
           setShowRollback(false);
           setConversionOperation(quoteOperation);
+          setCustomerAccepted(null);
+          setAcceptanceReason("");
           setOpen(true);
         }}
         aria-label={isAssignmentBusy ? "Asignando trabajo..." : workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : isSaleIntent ? `Crear nota de venta para cotización ${quoteNumber}` : `Gestionar trabajo de cotización ${quoteNumber}`}
@@ -382,7 +399,19 @@ export function WorkOrderOperationsDialog({
                   </>
                 ) : null}
 
-                <p role="status" className="sr-only">{pendingAction === "assign" ? "Asignando..." : ""}</p>
+                 {!workOrder && quoteStatus !== "APPROVED" ? (
+                   <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+                     <p className="text-sm font-medium text-[var(--color-text-main)]">¿El cliente aceptó la cotización?</p>
+                     <div className="flex gap-2">
+                       <Button type="button" variant={customerAccepted === true ? "primary" : "outline"} onClick={() => { setCustomerAccepted(true); setAcceptanceReason(""); }} disabled={isAssignmentBusy}>Sí, aceptó</Button>
+                       <Button type="button" variant={customerAccepted === false ? "primary" : "outline"} onClick={() => setCustomerAccepted(false)} disabled={isAssignmentBusy}>No, fue una excepción</Button>
+                     </div>
+                     {customerAccepted === false ? (
+                       <Input aria-label="Motivo de aceptación excepcional" value={acceptanceReason} onChange={(event) => setAcceptanceReason(event.target.value)} placeholder="Motivo (por ejemplo, aceptación verbal)" disabled={isAssignmentBusy} />
+                     ) : null}
+                   </div>
+                 ) : null}
+                 <p role="status" className="sr-only">{pendingAction === "assign" ? "Asignando..." : ""}</p>
                 <Button type="button" variant="primary" loading={pendingAction === "assign"} disabled={!actions.assign || isAssignmentBusy} onClick={handleAssign}>
                   {pendingAction !== "assign" ? <UserCheck className="h-4 w-4" aria-hidden="true" /> : null}
                   {pendingAction === "assign" ? "Asignando..." : "Asignar e iniciar trabajo"}

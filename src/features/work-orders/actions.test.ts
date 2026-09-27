@@ -239,7 +239,7 @@ describe("work order actions", () => {
         sections: [{ items: [{ type: "LABOR", description: "Diagnosis", quantity: 1, unitPriceCents: null }] }],
       }));
 
-      await createAndAssignWorkOrder("quote-1", { isSpecial: true });
+       await createAndAssignWorkOrder("quote-1", { isSpecial: true, customerAccepted: true });
 
       expect(tx.workOrder.create).toHaveBeenCalled();
       expect(tx.workOrder.update).toHaveBeenCalledWith(expect.objectContaining({
@@ -258,6 +258,29 @@ describe("work order actions", () => {
       expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
     });
 
+    it("requires explicit acceptance or an exception reason for draft work orders", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({ status: QuoteStatus.DRAFT }));
+
+      await expect(createAndAssignWorkOrder("quote-1", { isSpecial: true })).rejects.toThrow(/confirma la aceptación/i);
+      expect(tx.quote.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("records the exceptional reason when a draft proceeds without formal acceptance", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({ status: QuoteStatus.DRAFT }));
+
+      await createAndAssignWorkOrder("quote-1", {
+        isSpecial: true,
+        customerAccepted: false,
+        acceptanceReason: "Aceptación verbal confirmada por teléfono",
+      });
+
+      expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ reason: "Aceptación verbal confirmada por teléfono" }),
+      }));
+    });
+
     it("rejects a draft without a customer or identifiable unit", async () => {
       const tx = createTx();
       tx.quote.findUnique.mockResolvedValue(operationalQuote({
@@ -266,7 +289,7 @@ describe("work order actions", () => {
         vehicleSnapshot: null,
       }));
 
-      await expect(createAndAssignWorkOrder("quote-1", { isSpecial: true })).rejects.toThrow(/cliente o identifica la unidad/i);
+       await expect(createAndAssignWorkOrder("quote-1", { isSpecial: true, customerAccepted: true })).rejects.toThrow(/cliente o identifica la unidad/i);
       expect(tx.workOrder.create).not.toHaveBeenCalled();
     });
 

@@ -8,20 +8,20 @@ const base = {
 };
 
 describe("resolveQuoteActionPresentation", () => {
-  it("keeps Edit, Print, and Share as frequent actions in a draft without a primary action", () => {
+  it("prioritizes work-order conversion for draft quotes", () => {
     expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT" })).toEqual({
-      primary: null,
+      primary: "workOrder",
       frequent: ["edit", "print", "share"],
-      overflow: ["workOrder", "duplicate", "cancel", "archive"],
+      overflow: ["duplicate", "cancel", "archive"],
       destructive: "delete",
     });
   });
 
-  it("prioritizes authorization for sent quotes while keeping Share available", () => {
+  it("prioritizes work-order conversion for sent quotes while keeping authorization available", () => {
     expect(resolveQuoteActionPresentation({ ...base, status: "SENT" })).toMatchObject({
-      primary: "authorize",
+      primary: "workOrder",
       frequent: ["edit", "print", "share"],
-      overflow: ["workOrder", "duplicate", "cancel", "archive"],
+      overflow: ["authorize", "duplicate", "cancel", "archive"],
       destructive: "delete",
     });
   });

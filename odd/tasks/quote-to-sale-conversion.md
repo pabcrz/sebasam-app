@@ -82,3 +82,8 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - SALE cards without a WorkOrder now display `Venta de refacciones` instead of `Sin orden de trabajo`.
 - Focused Vitest: `1 file, 19 passed` (`quote-mobile-card.test.tsx`).
 - `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
+- DRAFT/SENT WORK actions are primary and require explicit customer acceptance or a bounded exceptional reason; APPROVED WORK remains direct.
+- SALE actions remain direct and bypass acceptance/reason prompts; server-side WORK creation rejects SALE-intent quotes.
+- Acceptance decisions are recorded in the quote lifecycle audit when a DRAFT/SENT quote is promoted.
+- Focused Vitest: `4 files, 106 passed` (`quote-action-presentation`, `quote-mobile-card`, `work-order-operations-dialog`, `work-orders/actions`).
+- `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
