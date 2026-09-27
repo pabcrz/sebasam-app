@@ -26,7 +26,7 @@ The existing payroll screen has per-worker totals and a separate signing sheet, 
 
 - Do not change persisted payroll values, commission logic, signing-sheet behavior, or unrelated routes.
 - Preserve existing local/untracked work, especially `odd/tasks/note-filters-query-efficiency.md`.
-- Initial implementation is on the existing issue-specific branch. Because its worktree contains an unrelated untracked notes task and the native capture operation is unavailable, the user authorized transferring the PR candidate to a clean worktree; create `feat/621-weekly-payroll-summary-pdf` from latest `origin/develop` and cherry-pick only this issue's work-unit commit.
+- Initial implementation was on `fix/621-payroll-envelope-print-width`. Because that worktree contains an unrelated untracked notes task and the native selection capture was unavailable, the user authorized a clean PR worktree at `../sebasam-app-worktrees/issue-621-weekly-summary-pdf`, branch `feat/621-weekly-payroll-summary-pdf`, created from latest `origin/develop`; only this issue's commits were cherry-picked.
 - TDD mode: strict, explicitly selected by the user in this session. Test runner: Vitest via `pnpm exec vitest`; focused payroll command: `pnpm exec vitest run src/features/payroll/domain.test.ts src/features/payroll/components/payroll-components.test.tsx src/features/payroll/queries.test.ts`.
 - Delivery strategy: `ask-on-risk`; expected authored diff is below the 400-line advisory budget, subject to actual diff.
 
@@ -48,8 +48,9 @@ The existing payroll screen has per-worker totals and a separate signing sheet, 
 - User authorized excluding the unrelated untracked notes task, or moving the PR work into a clean worktree. The native collection for untracked selection is unavailable in this session, so the clean-worktree route is selected; no other file will be copied or committed.
 - Existing payroll source exposes per-item rate/base/commission, work-order completion timestamps, worker summaries, and fixed-pay helpers separately. The query currently orders completed work newest first; the printable report must sort ascending. Advances lack completion timestamps and need explicit treatment during implementation without silently misordering them.
 - The fixed-pay helper table already exists in the app; the new PDF will include helpers in a separate closing section.
-- Current branch is `fix/621-payroll-envelope-print-width` at `b65e499` tracking `origin/fix/621-payroll-envelope-print-width`; reflog confirms it was renamed from `bugfix/621-payroll-envelope-print-width` at the same HEAD during this session. No restoration was performed. An unrelated untracked notes task exists and must not be included in the candidate/commit.
-- RDD effective state observed as on (default). No review assessment has been made for this work unit yet.
+- Original branch is `fix/621-payroll-envelope-print-width` at `b65e499`, tracking `origin/fix/621-payroll-envelope-print-width`; reflog confirms it was renamed from `bugfix/621-payroll-envelope-print-width` at the same HEAD during this session. Its unrelated untracked notes task remains untouched and excluded.
+- PR worktree branch `feat/621-weekly-payroll-summary-pdf` is based on `origin/develop` at `33b18f4`. Cherry-picked work-unit commits: `da42545` (`feat(payroll): add weekly payroll summary PDF`) and `20cce61` (`docs(odd): prepare payroll PDF PR worktree`).
+- RDD effective state is on (default). Committed-only assessment against `origin/develop`: medium risk, 379 changed lines across 6 paths, `review_due=false`, `under_budget`; no reviewer transaction is due for this candidate.
 - Route/trigger: delegated direct because the report spans multiple non-trivial payroll files and the required read-to-write preparation covered 4+ files.
 - Implemented `buildWeeklyPayrollPresentation` with one chronological row per commissionable work concept, stable within-order item order, separate worker totals, and rounded half-totals. The report UI has the Normal/Ajustada selector immediately before one print/PDF action and a separate closing fixed-pay helper table; fixed pay is not percentage-adjusted. Existing signing-sheet/envelope components were not edited.
 - Strict TDD RED: focused Vitest command failed as expected at the new presentation test because `buildWeeklyPayrollPresentation` did not exist (1 failed, 52 passed).
@@ -57,7 +58,7 @@ The existing payroll screen has per-worker totals and a separate signing sheet, 
 - Correction RED: after adding a regression assertion for two commissionable items on one order (separate item rows and item-specific adjusted amounts), the same focused Vitest command failed at the expected row-count assertion (1 failed, 53 passed).
 - Correction GREEN: after changing the presentation to emit one row per item, the same focused Vitest command passed — 3 files, 54 tests. The test also confirms chronological order, preserved within-order item order, item-level 40% adjusted totals, and aggregate worker/payment totals.
 - Orders with no commissionable items produce no chronological rows because rows are derived from `order.items`; untimed advances remain excluded. No persisted payroll calculation/data or signing-sheet behavior was changed.
-- Focused Vitest suite passes (3 files, 56 tests). `pnpm typecheck`, `pnpm lint`, `pnpm build`, `git diff --check`, and native RDD review have not been run. No commit or PR yet. The branch name changed as noted above; no branch restoration was performed.
+- Focused Vitest suite passes (3 files, 56 tests). `pnpm typecheck`, `pnpm lint`, `pnpm build`, and `git diff --check` have not been run. The native RDD assessment is medium/under-budget, so no native review is due. No push or PR yet.
 - The user supplied three reference photos; fixed-pay helpers are displayed in a separate closing section using existing weekly-rate, absence, manual-commission, and payable fields.
 - New user refinement: hide the report contents from the page view, use subtle horizontal print separators like notes/quotes, and change the final row label from `Mitad del total` to `Pago`.
 - P621-03 strict-TDD RED: added a focused `WeeklyPayrollSummary` component test, then ran `pnpm exec vitest run src/features/payroll/domain.test.ts src/features/payroll/components/payroll-components.test.tsx src/features/payroll/queries.test.ts`. Expected failure: report article lacked `hidden print:block`; 1 failed, 54 passed across 3 files.
@@ -75,4 +76,4 @@ The existing payroll screen has per-worker totals and a separate signing sheet, 
 
 ## Next Step
 
-Commit this work unit, transfer only that commit to the clean feature worktree from latest `origin/develop`, run the required committed-only RDD assessment there and follow its exact transition, then push/open the #621 PR and record identities. Preserve the unrelated untracked notes task in the original worktree.
+Push `feat/621-weekly-payroll-summary-pdf` and open the #621 PR against `develop` with `Closes #621` and exactly one `type:feature` label; record PR identity here. Preserve the unrelated untracked notes task in the original worktree.
