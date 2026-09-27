@@ -46,7 +46,7 @@ export function PayrollWorkerEnvelopeDocument({
     <div className="flex flex-col items-center justify-start p-1 sm:p-4 print:p-0 print:m-0 print:block">
       <div
         id="payroll-worker-envelope-document"
-        className="w-[360px] max-w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-slate-900 shadow-sm space-y-4 print:box-border print:w-full print:max-w-none print:min-h-[237mm] print:space-y-5 print:rounded-none print:border-none print:px-[18mm] print:py-[14mm] print:m-0 print:shadow-none print:break-inside-avoid"
+        className="mx-auto w-[360px] max-w-full rounded-none bg-white px-4 py-3 text-slate-900 space-y-3 print:mx-auto print:w-[7.9cm] print:max-w-[7.9cm] print:min-h-[16.5cm] print:space-y-1 print:border-none print:p-0 print:shadow-none print:break-inside-avoid"
       >
         {/* Header with Inverted Logo */}
           <div className="border-b-2 border-slate-900 pb-3 print:pb-3 flex items-center justify-between gap-1.5">
@@ -83,7 +83,7 @@ export function PayrollWorkerEnvelopeDocument({
           </div>
         </div>
 
-        {/* Compact envelope table - In print: no thead, no lines, minimal vertical padding */}
+        {/* Compact envelope table - In print: no lines, minimal vertical padding */}
         <div className="border border-slate-200 rounded-md overflow-hidden print:break-inside-avoid">
           <table className="w-full table-fixed text-left border-collapse">
             <thead className="print:table-header-group">
