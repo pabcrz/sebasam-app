@@ -1179,6 +1179,11 @@ describe("quote lifecycle", () => {
 
   it("restores only an archived quote to draft and records a separate event", async () => {
     const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      status: QuoteStatus.ARCHIVED,
+      validUntil: new Date("2099-01-01T00:00:00.000Z"),
+    });
     tx.quote.updateMany.mockResolvedValue({ count: 1 });
 
     await restoreArchivedQuote("quote-1", "Customer requested a revised estimate.");
@@ -1187,6 +1192,22 @@ describe("quote lifecycle", () => {
     expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({ previousState: QuoteStatus.ARCHIVED, nextState: QuoteStatus.DRAFT }) });
     expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
     expect(tx.paymentRequest.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("does not restore an expired archived quote as an active draft", async () => {
+    const tx = mockTx(QuoteStatus.ARCHIVED);
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      status: QuoteStatus.ARCHIVED,
+      validUntil: new Date("2026-09-01T00:00:00.000Z"),
+    });
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(restoreArchivedQuote("quote-1", "Customer requested a revised estimate."))
+      .rejects.toThrow(/validity has ended/i);
+
+    expect(tx.quote.updateMany).not.toHaveBeenCalled();
+    expect(tx.quoteLifecycleEvent.create).not.toHaveBeenCalled();
   });
 });
 

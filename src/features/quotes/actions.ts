@@ -1018,6 +1018,15 @@ export async function restoreArchivedQuote(quoteId: string, reason: string) {
   if (!parsedReason.success) throw new Error("Restore reason is required.");
 
   await prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({
+      where: { id: quoteId },
+      select: { status: true, validUntil: true },
+    });
+    if (!quote || quote.status !== QuoteStatus.ARCHIVED) throw new Error("Only archived quotes can be restored.");
+    if (quote.validUntil <= new Date()) {
+      throw new Error("This quote's commercial validity has ended and it cannot be restored as a draft.");
+    }
+
     const restored = await tx.quote.updateMany({
       where: { id: quoteId, status: QuoteStatus.ARCHIVED },
       data: { status: QuoteStatus.DRAFT },
