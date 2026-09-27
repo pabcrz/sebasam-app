@@ -66,14 +66,14 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
         </div>
       </div>
 
-      <Card>
+      <Card className="min-w-0">
         <CardHeader>
           <CardTitle as="h2" className="flex items-center gap-2">
             <Search className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
             Buscar clientes
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0">
           <CustomerSearch />
 
           {customers.length === 0 ? (
