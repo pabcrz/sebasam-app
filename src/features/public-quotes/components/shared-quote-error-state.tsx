@@ -9,8 +9,8 @@ export type SharedQuoteErrorType = "not-found" | "expired" | "revoked";
 const errorConfig: Record<SharedQuoteErrorType, { icon: React.ElementType; title: string; message: string }> = {
   "not-found": {
     icon: AlertCircle,
-    title: "Link inválido",
-    message: "El link de cotización que abriste no existe o es incorrecto. Verifica la URL o contacta al taller.",
+    title: "Cotización no disponible",
+    message: "La cotización que buscas no está disponible, consulta al taller",
   },
   expired: {
     icon: Clock,

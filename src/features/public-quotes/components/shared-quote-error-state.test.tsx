@@ -5,8 +5,8 @@ import { SharedQuoteErrorState, type SharedQuoteErrorType } from "./shared-quote
 const errorCases: Array<{ type: SharedQuoteErrorType; title: string; message: string }> = [
   {
     type: "not-found",
-    title: "Link inválido",
-    message: "El link de cotización que abriste no existe o es incorrecto. Verifica la URL o contacta al taller.",
+    title: "Cotización no disponible",
+    message: "La cotización que buscas no está disponible, consulta al taller",
   },
   {
     type: "expired",
