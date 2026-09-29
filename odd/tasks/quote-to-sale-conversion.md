@@ -91,6 +91,14 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
 - Work-unit commit: `8ebb516 fix(quotes): keep one primary action`.
 - Mobile action priority now uses `activeSharedQuote`: unshared operational quotes prioritize `Compartir`; shared quotes prioritize WORK assignment or SALE note conversion.
+- Clarification: retain `Asignar trabajo` / `Crear nota de venta` as prominent, labeled primary buttons; only the primary identity toggles between that contextual action and `Compartir`. Keep Edit and Print compact, and keep the non-primary Share/WorkOrder action available among compact controls.
+- The mobile card now renders `actionPresentation.primary` as a full-width labeled primary above compact Edit/Print/Share/WorkOrder controls. The non-primary Share/WorkOrder control remains available in the compact row; Edit and Print remain icon-only. Share uses its normal button size when primary.
+- Focused Vitest: `2 files passed, 27 tests passed` (`quote-mobile-card.test.tsx`, `quote-action-presentation.test.ts`).
+- `pnpm typecheck`: passed (`tsc --noEmit`).
+- `pnpm lint`: passed (`eslint`).
+- `git diff --check`: passed.
+- Runtime harness: N/A; presentation-only component behavior is covered by the focused Vitest tests, with no independent runtime boundary for this change.
+- Rollback boundary: revert only the mobile quote card presentation and share-button sizing changes plus their component tests and this issue-task evidence; no quote business logic changes.
 - Focused Vitest: `2 files, 27 passed` (`quote-action-presentation`, `quote-mobile-card`).
 - `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
 - DRAFT/SENT WORK actions are primary and require explicit customer acceptance or a bounded exceptional reason; APPROVED WORK remains direct.

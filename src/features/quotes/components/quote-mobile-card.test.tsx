@@ -217,14 +217,15 @@ describe("QuoteListCard", () => {
     expect(preview).toHaveClass("w-full", "rounded-[var(--radius-sm)]", "focus-visible:ring-offset-2");
   });
 
-  it("keeps the flow action in the same compact row as the other frequent actions", async () => {
+  it("keeps the flow action prominent and labeled above compact frequent actions", async () => {
     const user = userEvent.setup();
     renderCard(createMockQuote({ status: "SENT", activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"] }));
 
     const primary = screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" });
     expect(primary).toHaveClass("bg-[image:var(--gradient-primary)]");
-    expect(primary).toHaveClass("h-11", "w-full", "min-w-0", "px-0", "sm:h-9", "sm:w-full", "sm:px-0");
-    expect(within(primary).getByText("Asignar trabajo")).toHaveClass("sr-only");
+    expect(primary).toHaveClass("w-full");
+    expect(within(primary).getByText("Asignar trabajo")).not.toHaveClass("sr-only");
+    expect(screen.getByTestId("quote-primary-action")).toHaveClass("w-full");
     expect(screen.getByRole("button", { name: "Editar cotización C-001" })).toBeInTheDocument();
     const print = screen.getByRole("button", { name: "Imprimir cotización C-001" });
     expect(print).toBeInTheDocument();
@@ -243,7 +244,7 @@ describe("QuoteListCard", () => {
     expect(remove.closest("div[class*='border-t']")).not.toBeNull();
   });
 
-  it("renders icon-only actions in four flexible columns plus a fixed More column", () => {
+  it("keeps edit, print, share, and the non-primary flow action in compact controls", () => {
     renderCard(createMockQuote({ activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"] }));
 
     const secondaryActions = screen.getByTestId("quote-secondary-actions");
@@ -251,11 +252,7 @@ describe("QuoteListCard", () => {
     const print = screen.getByRole("button", { name: "Imprimir cotización C-001" });
     const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
     const more = screen.getByRole("button", { name: "Más acciones de cotización C-001" });
-    expect(secondaryActions).toHaveClass(
-      "flex",
-      "gap-2",
-      "items-center",
-    );
+    expect(secondaryActions).toHaveClass("grid", "gap-2");
     expect(edit).toHaveClass("h-11", "w-full", "min-w-0", "px-0", "sm:h-9", "sm:w-full", "sm:px-0");
     expect(within(edit).getByText("Editar").previousElementSibling).toHaveClass("h-5", "w-5");
     expect(within(edit).getByText("Editar")).toHaveClass("sr-only");
@@ -271,21 +268,22 @@ describe("QuoteListCard", () => {
     expect(within(more).getByText("Más acciones")).toHaveClass("sr-only");
     expect(screen.getByTestId("quote-overflow-action")).toHaveClass("shrink-0");
     expect(screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" })).toBeInTheDocument();
+    expect(share).toBeInTheDocument();
   });
 
-  it("renders Sent frequent actions in the required Edit, Print, Share, More grid order", () => {
+  it("renders the prominent flow action and compact Edit, Print, Share, More actions", () => {
     renderCard(createMockQuote({
       status: "SENT",
       activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"],
     }));
 
     const secondaryActions = screen.getByTestId("quote-secondary-actions");
-    expect(secondaryActions).toHaveClass("flex", "items-center", "gap-2");
+    expect(secondaryActions).toHaveClass("grid", "gap-2");
     expect(Array.from(secondaryActions.querySelectorAll<HTMLElement>("[aria-label]")).map((element) => element.getAttribute("aria-label"))).toEqual([
+      "Gestionar trabajo de cotización C-001",
       "Editar cotización C-001",
       "Imprimir cotización C-001",
       "Compartir cotización C-001",
-      "Gestionar trabajo de cotización C-001",
       "Más acciones de cotización C-001",
     ]);
     const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
@@ -297,10 +295,15 @@ describe("QuoteListCard", () => {
   it("makes sharing the primary action before a quote is shared", () => {
     renderCard(createMockQuote({ status: "SENT" }));
 
-    expect(screen.getByRole("button", { name: "Compartir cotización C-001" })).toHaveClass("bg-[image:var(--gradient-primary)]");
+    const primary = screen.getByRole("button", { name: "Compartir cotización C-001" });
+    expect(primary).toHaveClass("bg-[image:var(--gradient-primary)]", "w-full");
+    expect(within(primary).getByText("Compartir")).not.toHaveClass("sr-only");
     expect(screen.getByTestId("quote-secondary-actions")).toContainElement(
-      screen.getByRole("button", { name: "Compartir cotización C-001" }),
+      primary,
     );
+    const compactWorkOrder = screen.getByRole("button", { name: "Gestionar trabajo de cotización C-001" });
+    expect(compactWorkOrder).toHaveClass("h-11", "w-full", "min-w-0", "px-0");
+    expect(within(compactWorkOrder).getByText("Asignar trabajo")).toHaveClass("sr-only");
   });
 
   it("renders a pending-price draft without payment actions", async () => {

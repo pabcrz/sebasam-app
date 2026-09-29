@@ -92,9 +92,10 @@ export function QuoteListCard({
     paymentAvailable: paymentRequestContext !== null,
     hasSharedQuote: Boolean(quote.activeSharedQuote),
   });
-  const visibleActions = actionPresentation.primary && !actionPresentation.frequent.includes(actionPresentation.primary)
-    ? [...actionPresentation.frequent, actionPresentation.primary]
-    : actionPresentation.frequent;
+  const compactActions = (["edit", "print", "share", "workOrder"] as const).filter((action) => {
+    if (action === actionPresentation.primary) return false;
+    return actionPresentation.frequent.includes(action) || actionPresentation.overflow.includes(action);
+  });
 
   const renderAction = (
     action: QuoteActionId,
@@ -141,6 +142,7 @@ export function QuoteListCard({
             action={shareAction}
             quoteNumber={quote.number}
             variant={variant}
+            size={presentation === "tile" ? "sm" : "default"}
             className={tileClassName}
             actionLabelClassName={presentation === "tile" ? "sr-only" : undefined}
           />
@@ -171,7 +173,7 @@ export function QuoteListCard({
             actions={workOrderActions}
             triggerVariant={variant}
             triggerIconOnlyMobile={presentation === "tile"}
-            triggerClassName={presentation === "tile" ? tileClassName : undefined}
+            triggerClassName={tileClassName}
           />
         );
       case "paymentLink":
@@ -273,27 +275,31 @@ export function QuoteListCard({
           <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
           <div
             data-testid="quote-secondary-actions"
-            className="flex items-center gap-2"
+            className="grid gap-2"
           >
-            {visibleActions.map((action) => {
-              const variant = action === actionPresentation.primary
-                ? "primary"
-                : action === "share" ? "secondary" : "outline";
-              return (
+            {actionPresentation.primary ? (
+              <div data-testid="quote-primary-action" className="w-full">
+                {renderAction(actionPresentation.primary, "primary")}
+              </div>
+            ) : null}
+            <div className="flex items-center gap-2">
+              {compactActions.map((action) => (
                 <div key={action} className="min-w-0 flex-1">
-                  {renderAction(action, variant, "tile")}
+                  {renderAction(action, action === "share" ? "secondary" : "outline", "tile")}
                 </div>
-              );
-            })}
-            <div data-testid="quote-overflow-action" className="shrink-0">
-              <QuoteActionsMenu
-                quoteNumber={quote.number}
-                destructive={actionPresentation.destructive ? renderAction(actionPresentation.destructive) : null}
-                triggerClassName="h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
-                triggerIconOnly
-              >
-                {actionPresentation.overflow.map((action) => <React.Fragment key={action}>{renderAction(action)}</React.Fragment>)}
-              </QuoteActionsMenu>
+              ))}
+              <div data-testid="quote-overflow-action" className="shrink-0">
+                <QuoteActionsMenu
+                  quoteNumber={quote.number}
+                  destructive={actionPresentation.destructive ? renderAction(actionPresentation.destructive) : null}
+                  triggerClassName="h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
+                  triggerIconOnly
+                >
+                  {actionPresentation.overflow
+                    .filter((action) => !compactActions.includes(action as typeof compactActions[number]))
+                    .map((action) => <React.Fragment key={action}>{renderAction(action)}</React.Fragment>)}
+                </QuoteActionsMenu>
+              </div>
             </div>
           </div>
         </>

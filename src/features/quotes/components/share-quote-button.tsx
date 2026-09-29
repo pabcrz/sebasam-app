@@ -12,6 +12,7 @@ export interface ShareQuoteButtonProps {
   quoteNumber: string;
   className?: string;
   variant?: ButtonVariant;
+  size?: "default" | "sm";
   iconOnly?: boolean;
   actionLabelClassName?: string;
 }
@@ -21,6 +22,7 @@ export function ShareQuoteButton({
   quoteNumber,
   className,
   variant = "outline",
+  size = "sm",
   iconOnly = false,
   actionLabelClassName,
 }: ShareQuoteButtonProps) {
@@ -75,7 +77,7 @@ export function ShareQuoteButton({
     <Button
       type="button"
       variant={variant}
-      size={iconOnly ? "icon" : "sm"}
+      size={iconOnly ? "icon" : size}
       aria-label={`${label} cotización ${quoteNumber}`}
       title={`${label} cotización ${quoteNumber}`}
       className={className}
