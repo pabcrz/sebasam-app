@@ -113,3 +113,4 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - Focused Vitest: 2 files, 29 tests passed (`quote-mobile-card`, `quote-action-presentation`); `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
 - Runtime harness: N/A; this is a mobile card presentation branch covered by the component regression test.
 - Rollback boundary: revert the mobile quote presentation selector and tests plus this evidence line; no business flow changes.
+- Work-unit commit: `f1dcf53 fix(quotes): promote share when work-order action is unavailable`.
