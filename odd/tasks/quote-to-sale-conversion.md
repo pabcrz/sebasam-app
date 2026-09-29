@@ -106,3 +106,6 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - Acceptance decisions are recorded in the quote lifecycle audit when a DRAFT/SENT quote is promoted.
 - Focused Vitest: `4 files, 106 passed` (`quote-action-presentation`, `quote-mobile-card`, `work-order-operations-dialog`, `work-orders/actions`).
 - `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
+- Review correction: quote conversion now falls back to the persisted operation when callers omit it; the schema no longer defaults omitted conversion operations to WORK.
+- Focused Vitest: 4 files, 86 tests passed (`work-orders/actions`, `work-orders/schemas`, `quote-mobile-card`, `quote-action-presentation`).
+- `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
