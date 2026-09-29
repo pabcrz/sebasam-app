@@ -92,6 +92,9 @@ export function QuoteListCard({
     paymentAvailable: paymentRequestContext !== null,
     hasSharedQuote: Boolean(quote.activeSharedQuote),
   });
+  const visibleActions = actionPresentation.primary && !actionPresentation.frequent.includes(actionPresentation.primary)
+    ? [...actionPresentation.frequent, actionPresentation.primary]
+    : actionPresentation.frequent;
 
   const renderAction = (
     action: QuoteActionId,
@@ -167,6 +170,8 @@ export function QuoteListCard({
             workers={workers}
             actions={workOrderActions}
             triggerVariant={variant}
+            triggerIconOnlyMobile={presentation === "tile"}
+            triggerClassName={presentation === "tile" ? tileClassName : undefined}
           />
         );
       case "paymentLink":
@@ -266,26 +271,21 @@ export function QuoteListCard({
       actions={
         <>
           <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
-          {actionPresentation.primary ? (
-            <div data-testid="quote-primary-action" className="w-full [&_a]:w-full [&_button]:w-full">
-              {renderAction(actionPresentation.primary, "primary")}
-            </div>
-          ) : null}
           <div
             data-testid="quote-secondary-actions"
-            className="grid grid-cols-[repeat(3,minmax(0,1fr))_auto] items-center gap-2"
+            className="flex items-center gap-2"
           >
-            {actionPresentation.frequent.map((action) => {
-              const variant = action === "share" && actionPresentation.primary !== "share"
-                ? "secondary"
-                : "outline";
+            {visibleActions.map((action) => {
+              const variant = action === actionPresentation.primary
+                ? "primary"
+                : action === "share" ? "secondary" : "outline";
               return (
-                <div key={action} className="min-w-0">
+                <div key={action} className="min-w-0 flex-1">
                   {renderAction(action, variant, "tile")}
                 </div>
               );
             })}
-            <div data-testid="quote-overflow-action" className="col-start-4 min-w-0">
+            <div data-testid="quote-overflow-action" className="shrink-0">
               <QuoteActionsMenu
                 quoteNumber={quote.number}
                 destructive={actionPresentation.destructive ? renderAction(actionPresentation.destructive) : null}

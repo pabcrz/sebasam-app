@@ -61,6 +61,9 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - `pnpm typecheck`: passed.
 - `pnpm lint`: passed.
 - `git diff --check`: passed.
+- The mobile card keeps Edit, Print, Share, and the WORK/SALE flow action in one compact flex row; only the flow action changes to the primary variant, preserving card height across states.
+- Focused Vitest: 2 files, 27 passed (`quote-action-presentation`, `quote-mobile-card`).
+- `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
 - Work-unit commit: `d3cc523 feat(sales): convert quotes to sale notes`.
 - Review receipt: medium-risk reliability review acknowledged with no findings.
 - `QuoteOperationKind` is persisted on `Quote` with a `WORK` default/backfill; SALE intent is validated server-side as material/refacciones-only and does not issue a note during draft creation.
@@ -82,6 +85,10 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - SALE cards without a WorkOrder now display `Venta de refacciones` instead of `Sin orden de trabajo`.
 - Focused Vitest: `1 file, 19 passed` (`quote-mobile-card.test.tsx`).
 - `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
+- Secondary `Compartir` no longer uses the primary visual variant when WORK assignment or SALE conversion is primary; each card now has one primary action visually and structurally.
+- Focused Vitest: `1 file, 20 passed` (`quote-mobile-card.test.tsx`).
+- `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
+- Work-unit commit: `8ebb516 fix(quotes): keep one primary action`.
 - Mobile action priority now uses `activeSharedQuote`: unshared operational quotes prioritize `Compartir`; shared quotes prioritize WORK assignment or SALE note conversion.
 - Focused Vitest: `2 files, 27 passed` (`quote-action-presentation`, `quote-mobile-card`).
 - `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
