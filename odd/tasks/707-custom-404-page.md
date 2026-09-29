@@ -18,6 +18,7 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Preserve all existing authentication and authorization flows.
 - Anchor the shared 404 presentation in SEBASAM’s existing identity with the official logo and navy/blue brand treatment.
 - Keep card/header padding balanced so the default Card inset does not stack with the 404 layout’s own spacing.
+- Use the shared 404 visual for public quote token errors as well as unmatched quote routes, while retaining status-specific titles.
 
 ## Constraints
 
@@ -82,6 +83,15 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - [x] Preserve all 404 copy, logo, animation, action, route, and authentication behavior.
 - [x] Run the focused test, record the result, and commit as one coherent work unit.
 
+### 404-5 — Unify public quote error presentation
+
+**Route:** delegated direct because the quote error component and its regression test must change together; one writer owns both files.
+
+- [x] Add failing assertions that invalid, expired, and revoked quote links use the shared branded 404 visual.
+- [x] Reuse `NotFoundExperience` for all public quote token errors while preserving the title for each error status and the contextual workshop-contact copy.
+- [x] Keep the external SEBASAM action, reduced-motion gear, 404 number, and absence of internal home navigation consistent with other 404 states.
+- [x] Run the focused quote-error test, record the result, and commit as one coherent work unit.
+
 ## Progress and Evidence
 
 - Issue #707 created, read back, and confirmed OPEN with `type:feature`; `status:approved` added after exact issue-bound user consent and successful readback.
@@ -126,7 +136,14 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - 404-4 commit: `66398aa` (`fix(errors): remove stacked padding from 404 card`). Rollback boundary: the opt-in `flush` prop in `src/components/ui/card.tsx`, its use and balanced header inset in `src/components/errors/not-found-experience.tsx`, the focused assertions in `src/app/not-found.test.tsx`, and task 404-4 evidence.
 - 404-4 native committed-only assessment against `33b18f4e2d382eb030f7a9ee6ab274aa39f7b27d`: `risk=medium`, reason `executable_change` (`src/app/admin/(protected)/notas/[id]/print/not-found.test.tsx`), `changed_paths=13`, `changed_lines=353`, `review_due=false`, `review_due_reason=under_budget`; no parent-coordinated review transition is due.
 - Parent spot check: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test. Live preview returns HTTP 404; rendered Card has no base padding class, and the brand header, wordmark, and CTA remain present.
+- User screenshot showed the dynamic quote token error still uses the older red-card layout; keep all status-specific messages but switch its error shell to the shared 404 visual.
+- Read the installed Next.js `Server and Client Components` guide: components default to Server Components and should only use Client Components when state, events, lifecycle, or browser APIs are needed. The static shared quote error wrapper has none of these needs.
+- 404-5 RED: `pnpm exec vitest run src/features/public-quotes/components/shared-quote-error-state.test.tsx` — FAIL before production changes: all three status tests lacked the shared `404` visual contract.
+- 404-5 GREEN: same focused command — PASS, 1 file / 4 tests. The first post-conversion run exposed one stale assertion tied to the old quote-header print classes; the test now asserts the shared 404 tagline's current token classes.
+- 404-5 behavior: `SharedQuoteErrorState` is now a Server Component delegating to `NotFoundExperience`, preserving each existing title and the exact quote-contact message. The caller's domain mapping and route behavior are unchanged.
+- 404-5 checks: `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS. `pnpm build` intentionally not run to preserve active preview `.next`.
+- 404-5 commit identity and assessment are pending.
 
 ## Next Step
 
-Task 404-4 implementation and assessment are complete. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. Production build remains unrun to preserve the live preview's `.next` state. No push or PR was requested.
+Complete task 404-5 commit/assessment. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. No push or PR was requested.
