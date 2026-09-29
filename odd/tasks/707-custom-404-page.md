@@ -19,6 +19,7 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Anchor the shared 404 presentation in SEBASAM’s existing identity with the official logo and navy/blue brand treatment.
 - Keep card/header padding balanced so the default Card inset does not stack with the 404 layout’s own spacing.
 - Use the shared 404 visual for public quote token errors as well as unmatched quote routes, while retaining status-specific titles.
+- On mobile, render the 404 without card chrome and use the available viewport; retain the framed card on desktop.
 
 ## Constraints
 
@@ -39,6 +40,7 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Follow RED → GREEN → REFACTOR for each task; record the failing regression test before implementation.
 - Applicable closure checks: focused Vitest tests, `pnpm typecheck`, `pnpm lint`, `git diff --check`; run `pnpm build` if the implementation changes production build/runtime behavior beyond the tested route components.
 - Receipt-driven development: **ON by default**, confirmed read-only with `gentle-ai review mode status` in the issue worktree. Assess each work-unit commit against the previous reviewed boundary and follow the returned native review transition if due.
+- Last acknowledged review boundary for the next work unit: `19e410769f8d0e3f4310cee225980cc322ba9528`.
 
 ## Authorized Scope and Acceptance Criteria
 
@@ -91,6 +93,20 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - [x] Reuse `NotFoundExperience` for all public quote token errors while preserving the title for each error status and the contextual workshop-contact copy.
 - [x] Keep the external SEBASAM action, reduced-motion gear, 404 number, and absence of internal home navigation consistent with other 404 states.
 - [x] Run the focused quote-error test, record the result, and commit as one coherent work unit.
+
+### 404-6 — Use a full-screen mobile 404 layout
+
+**Route:** delegated direct because the responsive component and focused test must change together; one writer owns both files.
+
+- [x] Add failing responsive assertions for an unframed, viewport-filling mobile layout while retaining the desktop card.
+- [x] Remove border, radius, background card surface, and shadow on narrow screens; keep safe-area padding and existing logo/content alignment.
+- [x] Preserve the desktop card framing and all error copy, actions, animation, and route behavior.
+- [x] Run focused tests and commit the responsive presentation as one coherent work unit.
+- RED: `pnpm exec vitest run src/app/not-found.test.tsx` failed before implementation because the responsive contract's mobile chrome and spacing classes were absent.
+- GREEN: the same focused command passed, 1 file / 1 test; it verifies unframed mobile surface, desktop card framing, aligned responsive header/content insets, and compact mobile spacing.
+- Closure: `pnpm typecheck`, `pnpm lint`, and `git diff --check` passed. `pnpm build` was not run because the active preview uses `.next`.
+- Implementation: the shared 404 uses a plain responsive wrapper, with border/radius/surface/shadow only at `md` and above, reduced mobile padding/gaps, and unchanged safe-area-aware viewport wrapper. No global Card API or shared styles changed.
+- Commit and assessment: pending.
 
 ## Progress and Evidence
 
@@ -146,4 +162,4 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 
 ## Next Step
 
-Complete task 404-5 commit/assessment. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. No push or PR was requested.
+Complete task 404-6 commit/assessment. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. No push or PR was requested.

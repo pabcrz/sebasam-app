@@ -20,7 +20,21 @@ describe("NotFound", () => {
     const content = card?.querySelector(":scope > div:nth-child(2)");
 
     expect(card).not.toHaveClass("p-[var(--space-md)]");
-    expect(header).toHaveClass("px-[var(--space-xl)]", "py-[var(--space-md)]");
-    expect(content).toHaveClass("p-[var(--space-xl)]");
+    expect(card).not.toHaveClass(
+      "border",
+      "rounded-[var(--radius-md)]",
+      "bg-[var(--color-surface)]",
+      "shadow-[var(--shadow-card)]",
+    );
+    expect(card).toHaveClass(
+      "md:border",
+      "md:rounded-[var(--radius-md)]",
+      "md:border-[var(--color-border-subtle)]",
+      "md:bg-[var(--color-surface)]",
+      "md:shadow-[var(--shadow-card)]",
+    );
+    expect(header).toHaveClass("px-[var(--space-md)]", "md:px-[var(--space-xl)]", "py-[var(--space-md)]");
+    expect(content).toHaveClass("p-[var(--space-md)]", "md:p-[var(--space-xl)]");
+    expect(content).toHaveClass("gap-[var(--space-sm)]", "md:gap-[var(--space-md)]");
   });
 });

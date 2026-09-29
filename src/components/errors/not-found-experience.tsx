@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
 interface NotFoundExperienceProps {
   message: string;
@@ -13,8 +12,8 @@ export function NotFoundExperience({
 }: NotFoundExperienceProps) {
   return (
     <main className="flex min-h-dvh w-full items-center justify-center bg-[var(--color-bg-soft)] pl-[max(var(--space-md),env(safe-area-inset-left))] pr-[max(var(--space-md),env(safe-area-inset-right))] pt-[max(var(--space-xl),env(safe-area-inset-top))] pb-[max(var(--space-xl),env(safe-area-inset-bottom))]">
-      <Card flush className="w-full max-w-[420px] overflow-hidden text-center shadow-[var(--shadow-card)]">
-        <header className="bg-[image:var(--gradient-primary)] px-[var(--space-xl)] py-[var(--space-md)] text-left">
+      <div className="w-full max-w-[420px] overflow-hidden text-center md:rounded-[var(--radius-md)] md:border md:border-[var(--color-border-subtle)] md:bg-[var(--color-surface)] md:shadow-[var(--shadow-card)]">
+        <header className="bg-[image:var(--gradient-primary)] px-[var(--space-md)] py-[var(--space-md)] text-left md:px-[var(--space-xl)]">
           <div className="flex items-center gap-3">
             <Image
               src="/logo-white-short.png"
@@ -33,10 +32,10 @@ export function NotFoundExperience({
             </div>
           </div>
         </header>
-        <CardContent className="flex flex-col items-center gap-[var(--space-md)] p-[var(--space-xl)]">
+        <div className="flex flex-col items-center gap-[var(--space-sm)] p-[var(--space-md)] md:gap-[var(--space-md)] md:p-[var(--space-xl)]">
           <svg
             aria-label="Engranaje con un tornillo suelto"
-            className="h-28 w-28 text-[var(--color-primary)]"
+            className="h-24 w-24 text-[var(--color-primary)] md:h-28 md:w-28"
             fill="none"
             role="img"
             viewBox="0 0 112 112"
@@ -67,8 +66,8 @@ export function NotFoundExperience({
               Visita SEBASAM
             </a>
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
       <style>{`
         @keyframes loose-fastener-drop {
           0%, 15% { transform: translate(0, 0) rotate(0); }
