@@ -64,6 +64,7 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - The mobile card keeps Edit, Print, Share, and the WORK/SALE flow action in one compact flex row; only the flow action changes to the primary variant, preserving card height across states.
 - Focused Vitest: 2 files, 27 passed (`quote-action-presentation`, `quote-mobile-card`).
 - `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
+- Work-unit commit: `159744c fix(quotes): unify mobile action row`.
 - Work-unit commit: `d3cc523 feat(sales): convert quotes to sale notes`.
 - Review receipt: medium-risk reliability review acknowledged with no findings.
 - `QuoteOperationKind` is persisted on `Quote` with a `WORK` default/backfill; SALE intent is validated server-side as material/refacciones-only and does not issue a note during draft creation.
