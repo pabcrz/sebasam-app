@@ -19,7 +19,7 @@ The supplied screenshot shows same-sized action buttons with icons at different 
 ## Constraints
 
 - GitHub issue: [#710](https://github.com/pabcrz/sebasam-app/issues/710).
-- Worktree: `/Users/pabcrz/Dev/sebasam/sebasam-app-worktrees/feature-710-icon-sizing`.
+- Worktree: `feature-710-icon-sizing` under the repository's sibling worktrees directory.
 - Branch: `feature/710-icon-sizing`, based on `origin/develop` at `ef452bd`.
 - Preserve the original checkout and its unrelated untracked task documents.
 - One delegated writer for the multi-file implementation; no parallel writers.
@@ -51,10 +51,13 @@ Only the issue #710 icon-size correction and its focused tests/task evidence are
 - GREEN: same focused Vitest command — 3 files passed, 42 tests passed.
 - Lint: `pnpm lint -- src/features/quotes/components/quote-builder-dialog.tsx src/features/quotes/components/quote-mobile-card.tsx src/features/work-orders/components/work-order-active-list.tsx src/features/work-orders/components/work-order-completed-list.tsx src/features/quotes/components/quote-mobile-card.test.tsx src/features/work-orders/components/work-order-active-list.test.tsx src/features/work-orders/components/work-order-completed-list.test.tsx` — passed.
 - Typecheck: `pnpm typecheck` — passed.
+- Parent spot check: the focused Vitest command passed again — 3 files and 42 tests passed.
+- RDD assessment: `medium`, `review_due: false`, `review_due_reason: under_budget`; no native review lifecycle was due for this slice.
 - Runtime harness: N/A — presentational CSS class sizing only.
 - Work-unit commit: `cb9c0163e9a5693297afc866f3ad3d005772e5ec` (`fix(ui): standardize operational action icon sizes`).
+- Task-evidence follow-up commit: `b2d7a3ef1010f14705b8d01f6a458b70eebebc41`.
 - Rollback boundary: revert the single issue #710 work-unit commit; it only contains the four icon sizing changes, their three focused regression suites, and this task evidence.
 
 ## Next Step
 
-Parent should mirror the final task evidence in Engram topic `odd/icon-sizing-consistency/tasks`.
+Implementation and verification are complete. Do not push or create a PR unless requested; delivery remains a separate user decision.
