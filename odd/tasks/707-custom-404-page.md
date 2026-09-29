@@ -119,12 +119,14 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - 404-3 commit: `a86f2a2` (`feat(errors): add SEBASAM branding to shared 404`). Rollback boundary: the official-logo/wordmark header in `src/components/errors/not-found-experience.tsx`, the matching assertions in `src/app/not-found.test.tsx`, and task 404-3 evidence.
 - Native committed-only assessment against `33b18f4e2d382eb030f7a9ee6ab274aa39f7b27d`: `risk=medium`, reason `executable_change` (`src/app/admin/(protected)/notas/[id]/print/not-found.test.tsx`), `changed_paths=12`, `changed_lines=313`, `review_due=false`, `review_due_reason=under_budget`; no native review transition is due.
 - User reported excess stacked padding in the preview and authorized a focused correction. The Card component’s built-in padding stacks with the 404’s own header/content spacing.
-- 404-4 RED: `pnpm exec vitest run src/app/not-found.test.tsx` — FAIL before implementation; the assertion found no reliable `!p-0` override and exposed the Card's base `p-[var(--space-md)]` class.
+- 404-4 RED: `pnpm exec vitest run src/app/not-found.test.tsx` — FAIL before implementation because the assertion found no zero-padding class and the Card still carried its base `p-[var(--space-md)]` class.
 - 404-4 GREEN: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test; verifies that the 404 Card omits default padding while header horizontal padding equals the content inset.
 - 404-4 checks: `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS. `pnpm build` intentionally not run because the active preview shares `.next`.
 - 404-4 implementation: introduced an opt-in `flush` prop on `Card` to omit its default padding; the shared 404 uses it and aligns header `px-[var(--space-xl)]` with content `p-[var(--space-xl)]`, retaining compact vertical header padding and existing safe-area handling.
-- 404-4 commit identity and assessment are pending.
+- 404-4 commit: `66398aa` (`fix(errors): remove stacked padding from 404 card`). Rollback boundary: the opt-in `flush` prop in `src/components/ui/card.tsx`, its use and balanced header inset in `src/components/errors/not-found-experience.tsx`, the focused assertions in `src/app/not-found.test.tsx`, and task 404-4 evidence.
+- 404-4 native committed-only assessment against `33b18f4e2d382eb030f7a9ee6ab274aa39f7b27d`: `risk=medium`, reason `executable_change` (`src/app/admin/(protected)/notas/[id]/print/not-found.test.tsx`), `changed_paths=13`, `changed_lines=353`, `review_due=false`, `review_due_reason=under_budget`; no parent-coordinated review transition is due.
+- Parent spot check: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test. Live preview returns HTTP 404; rendered Card has no base padding class, and the brand header, wordmark, and CTA remain present.
 
 ## Next Step
 
-Complete the task 404-4 commit and assessment. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. Production build remains unrun to preserve the live preview's `.next` state. No push or PR was requested.
+Task 404-4 implementation and assessment are complete. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. Production build remains unrun to preserve the live preview's `.next` state. No push or PR was requested.
