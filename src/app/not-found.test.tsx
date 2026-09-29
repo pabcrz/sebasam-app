@@ -4,7 +4,7 @@ import NotFound from "./not-found";
 
 describe("NotFound", () => {
   it("renders the branded 404 recovery content without internal navigation", () => {
-    render(<NotFound />);
+    const { container } = render(<NotFound />);
 
     expect(screen.getByRole("heading", { name: "A esta página se le zafó un tornillo" })).toBeInTheDocument();
     expect(screen.getByText("No encontramos lo que buscas. Puede que se haya movido o ya no exista.")).toBeInTheDocument();
@@ -14,5 +14,13 @@ describe("NotFound", () => {
     expect(screen.getByRole("link", { name: "Visita SEBASAM" })).toHaveAttribute("href", "https://sebasam.online");
     expect(screen.queryByRole("link", { name: /inicio|home/i })).not.toBeInTheDocument();
     expect(screen.getByRole("img", { name: /engranaje/i })).toBeInTheDocument();
+
+    const card = container.querySelector("main > div");
+    const header = card?.querySelector("header");
+    const content = card?.querySelector(":scope > div:nth-child(2)");
+
+    expect(card).not.toHaveClass("p-[var(--space-md)]");
+    expect(header).toHaveClass("px-[var(--space-xl)]", "py-[var(--space-md)]");
+    expect(content).toHaveClass("p-[var(--space-xl)]");
   });
 });

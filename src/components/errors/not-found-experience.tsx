@@ -13,8 +13,8 @@ export function NotFoundExperience({
 }: NotFoundExperienceProps) {
   return (
     <main className="flex min-h-dvh w-full items-center justify-center bg-[var(--color-bg-soft)] pl-[max(var(--space-md),env(safe-area-inset-left))] pr-[max(var(--space-md),env(safe-area-inset-right))] pt-[max(var(--space-xl),env(safe-area-inset-top))] pb-[max(var(--space-xl),env(safe-area-inset-bottom))]">
-      <Card className="w-full max-w-[420px] overflow-hidden p-0 text-center shadow-[var(--shadow-card)]">
-        <header className="bg-[image:var(--gradient-primary)] px-[var(--space-md)] py-[var(--space-md)] text-left">
+      <Card flush className="w-full max-w-[420px] overflow-hidden text-center shadow-[var(--shadow-card)]">
+        <header className="bg-[image:var(--gradient-primary)] px-[var(--space-xl)] py-[var(--space-md)] text-left">
           <div className="flex items-center gap-3">
             <Image
               src="/logo-white-short.png"
