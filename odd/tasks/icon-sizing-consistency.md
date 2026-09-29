@@ -52,9 +52,9 @@ Only the issue #710 icon-size correction and its focused tests/task evidence are
 - Lint: `pnpm lint -- src/features/quotes/components/quote-builder-dialog.tsx src/features/quotes/components/quote-mobile-card.tsx src/features/work-orders/components/work-order-active-list.tsx src/features/work-orders/components/work-order-completed-list.tsx src/features/quotes/components/quote-mobile-card.test.tsx src/features/work-orders/components/work-order-active-list.test.tsx src/features/work-orders/components/work-order-completed-list.test.tsx` — passed.
 - Typecheck: `pnpm typecheck` — passed.
 - Runtime harness: N/A — presentational CSS class sizing only.
-- Commit: pending.
+- Work-unit commit: `cb9c0163e9a5693297afc866f3ad3d005772e5ec` (`fix(ui): standardize operational action icon sizes`).
 - Rollback boundary: revert the single issue #710 work-unit commit; it only contains the four icon sizing changes, their three focused regression suites, and this task evidence.
 
 ## Next Step
 
-Create the single conventional work-unit commit, then record its final hash in this task document and report the exact updated text for the parent Engram mirror.
+Parent should mirror the final task evidence in Engram topic `odd/icon-sizing-consistency/tasks`.
