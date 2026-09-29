@@ -306,6 +306,20 @@ describe("QuoteListCard", () => {
     expect(within(compactWorkOrder).getByText("Asignar trabajo")).toHaveClass("sr-only");
   });
 
+  it("keeps Share prominent when a payable note has no work order", () => {
+    renderCard(createMockQuote({
+      status: "SENT",
+      payableNote: { id: "note-1" } as QuoteListItem["payableNote"],
+      activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"],
+    }));
+
+    const primary = screen.getByRole("button", { name: "Compartir cotización C-001" });
+    expect(primary).toHaveClass("bg-[image:var(--gradient-primary)]", "w-full");
+    expect(within(primary).getByText("Compartir")).not.toHaveClass("sr-only");
+    expect(screen.getByTestId("quote-primary-action")).toContainElement(primary);
+    expect(screen.queryByRole("button", { name: "Gestionar trabajo de cotización C-001" })).not.toBeInTheDocument();
+  });
+
   it("renders a pending-price draft without payment actions", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote();

@@ -109,3 +109,7 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - Review correction: quote conversion now falls back to the persisted operation when callers omit it; the schema no longer defaults omitted conversion operations to WORK.
 - Focused Vitest: 4 files, 86 tests passed (`work-orders/actions`, `work-orders/schemas`, `quote-mobile-card`, `quote-action-presentation`).
 - `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
+- Mobile action regression: when a shared quote has a payable note but no WorkOrder, the unavailable work-order control no longer occupies primary; Share is promoted to the large labeled primary. Existing work-order priority is preserved when a WorkOrder exists. `resolveQuoteActionPresentation` is only consumed by `QuoteListCard`, so desktop actions are unchanged.
+- Focused Vitest: 2 files, 29 tests passed (`quote-mobile-card`, `quote-action-presentation`); `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
+- Runtime harness: N/A; this is a mobile card presentation branch covered by the component regression test.
+- Rollback boundary: revert the mobile quote presentation selector and tests plus this evidence line; no business flow changes.

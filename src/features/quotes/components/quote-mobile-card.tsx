@@ -89,6 +89,7 @@ export function QuoteListCard({
     status: quote.status,
     editable,
     hasWorkOrder: Boolean(quote.workOrder),
+    hasPayableNote: Boolean(quote.payableNote),
     paymentAvailable: paymentRequestContext !== null,
     hasSharedQuote: Boolean(quote.activeSharedQuote),
   });

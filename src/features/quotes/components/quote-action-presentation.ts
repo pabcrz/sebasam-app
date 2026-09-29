@@ -18,6 +18,7 @@ type QuoteActionPresentationInput = {
   status: QuoteStatus;
   editable: boolean;
   hasWorkOrder: boolean;
+  hasPayableNote: boolean;
   paymentAvailable: boolean;
   hasSharedQuote: boolean;
 };
@@ -51,6 +52,7 @@ export function resolveQuoteActionPresentation({
   status,
   editable,
   hasWorkOrder,
+  hasPayableNote,
   paymentAvailable,
   hasSharedQuote,
 }: QuoteActionPresentationInput): QuoteActionPresentation {
@@ -79,7 +81,7 @@ export function resolveQuoteActionPresentation({
     CANCELLED: [],
     ARCHIVED: ["restore"],
   };
-  const primary = !hasSharedQuote && ["DRAFT", "SENT", "APPROVED"].includes(status) && available.has("share")
+  const primary = (!hasSharedQuote || (hasPayableNote && !hasWorkOrder)) && ["DRAFT", "SENT", "APPROVED"].includes(status) && available.has("share")
     ? "share"
     : primaryCandidates[status].find((action) => available.has(action)) ?? null;
   // Print is always available, so it is always a frequent action. The order

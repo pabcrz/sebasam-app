@@ -4,6 +4,7 @@ import { resolveQuoteActionPresentation } from "./quote-action-presentation";
 const base = {
   editable: true,
   hasWorkOrder: false,
+  hasPayableNote: false,
   paymentAvailable: false,
   hasSharedQuote: true,
 };
@@ -34,6 +35,14 @@ describe("resolveQuoteActionPresentation", () => {
     });
   });
 
+  it("promotes sharing when a payable note makes work-order actions unavailable", () => {
+    expect(resolveQuoteActionPresentation({ ...base, hasPayableNote: true, status: "SENT" })).toMatchObject({
+      primary: "share",
+      frequent: ["edit", "print"],
+      overflow: ["authorize", "workOrder", "duplicate", "cancel", "archive"],
+    });
+  });
+
   it("prioritizes work-order management for approved quotes and keeps payment links to eligible work", () => {
     expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED" })).toEqual({
       primary: "workOrder",
@@ -46,6 +55,9 @@ describe("resolveQuoteActionPresentation", () => {
       frequent: ["edit", "print", "share"],
       overflow: ["paymentLink", "duplicate"],
       destructive: null,
+    });
+    expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED", hasPayableNote: true, hasWorkOrder: true })).toMatchObject({
+      primary: "workOrder",
     });
     expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED", editable: false, hasWorkOrder: true, paymentAvailable: false })).toEqual({
       primary: "workOrder",
