@@ -10,7 +10,6 @@ import { assertCommercialQuote, CommercialQuoteValidationError } from "./lib/com
 import { getNoteFinancialSummary } from "@/features/payments/domain";
 
 const SHARED_QUOTE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const CANONICAL_LINK_EXPIRES_AT = new Date("2099-12-31T23:59:59Z");
 
 export class SharedQuoteError extends Error {
   constructor(message: string) {
@@ -68,6 +67,41 @@ export function createSharedQuoteExpirationDate(reference = new Date()): Date {
   return new Date(reference.getTime() + SHARED_QUOTE_TOKEN_TTL_MS);
 }
 
+function getSharedQuoteExpirationDate(sharedQuote: { createdAt: Date; expiresAt: Date }): Date {
+  const issuanceLimit = createSharedQuoteExpirationDate(sharedQuote.createdAt);
+  return sharedQuote.expiresAt < issuanceLimit ? sharedQuote.expiresAt : issuanceLimit;
+}
+
+function isEligibleArchivedQuote(quote: {
+  status: QuoteStatus;
+  workOrder: { id?: string; status: WorkOrderStatus } | null;
+}): boolean {
+  return quote.status === QuoteStatus.ARCHIVED && quote.workOrder === null;
+}
+
+function assertSharedQuoteAvailable(sharedQuote: {
+  createdAt: Date;
+  expiresAt: Date;
+  revokedAt: Date | null;
+  quote: {
+    status: QuoteStatus;
+    deletedAt: Date | null;
+    workOrder: { id?: string; status: WorkOrderStatus } | null;
+  } | null;
+}): void {
+  if (!sharedQuote.quote || sharedQuote.quote.deletedAt != null || isEligibleArchivedQuote(sharedQuote.quote)) {
+    throw new SharedQuoteNotFoundError();
+  }
+
+  if (sharedQuote.revokedAt) {
+    throw new SharedQuoteRevokedError();
+  }
+
+  if (getSharedQuoteExpirationDate(sharedQuote).getTime() <= Date.now()) {
+    throw new SharedQuoteExpiredError();
+  }
+}
+
 const sharedQuoteInclude = {
   quote: {
     include: {
@@ -91,17 +125,11 @@ export async function getSharedQuoteByToken(token: string) {
     include: sharedQuoteInclude,
   });
 
-  if (!sharedQuote || !sharedQuote.quote || sharedQuote.quote.deletedAt !== null) {
+  if (!sharedQuote) {
     throw new SharedQuoteNotFoundError();
   }
 
-  if (sharedQuote.revokedAt) {
-    throw new SharedQuoteRevokedError();
-  }
-
-  if (sharedQuote.expiresAt < new Date()) {
-    throw new SharedQuoteExpiredError();
-  }
+  assertSharedQuoteAvailable(sharedQuote);
 
   return sharedQuote;
 }
@@ -143,29 +171,24 @@ export async function getSharedQuoteStatusByToken(token: string): Promise<Shared
     select: {
       expiresAt: true,
       revokedAt: true,
+      createdAt: true,
       quote: {
         select: {
           id: true,
           status: true,
           updatedAt: true,
           deletedAt: true,
-          workOrder: { select: { status: true } },
+          workOrder: { select: { id: true, status: true } },
         },
       },
     },
   });
 
-  if (!sharedQuote || !sharedQuote.quote || sharedQuote.quote.deletedAt !== null) {
+  if (!sharedQuote) {
     throw new SharedQuoteNotFoundError();
   }
 
-  if (sharedQuote.revokedAt) {
-    throw new SharedQuoteRevokedError();
-  }
-
-  if (sharedQuote.expiresAt < new Date()) {
-    throw new SharedQuoteExpiredError();
-  }
+  assertSharedQuoteAvailable(sharedQuote);
 
   return {
     revision: getSharedQuoteStatusRevision(sharedQuote),
@@ -265,7 +288,13 @@ async function ensureCanonicalNoteSharedQuote(tx: TransactionClient, quoteId: st
     where: { quoteId, isCanonical: true, revokedAt: null },
     orderBy: { createdAt: "asc" },
   });
-  if (existing) return existing;
+  if (existing && getSharedQuoteExpirationDate(existing).getTime() > Date.now()) return existing;
+  if (existing) {
+    await tx.sharedQuote.update({
+      where: { id: existing.id },
+      data: { revokedAt: new Date() },
+    });
+  }
 
   const quote = await tx.quote.findUnique({
     where: { id: quoteId },
@@ -290,7 +319,7 @@ async function ensureCanonicalNoteSharedQuote(tx: TransactionClient, quoteId: st
         token,
         quoteId: quote.id,
         isCanonical: true,
-        expiresAt: CANONICAL_LINK_EXPIRES_AT,
+        expiresAt: createSharedQuoteExpirationDate(),
       },
     });
   } catch (error) {
@@ -465,6 +494,7 @@ export async function acceptSharedQuote(token: string, authorizedSectionIds?: st
       if (existing.revokedAt) throw new SharedQuoteRevokedError();
       throw new SharedQuoteExpiredError();
     }
+    assertSharedQuoteAvailable(sharedQuote);
 
     if (sharedQuote.quote.isLocked) {
       throw new QuoteDecisionError("Este documento está bloqueado.");
@@ -531,6 +561,7 @@ export async function declineSharedQuote(token: string) {
       if (existing.revokedAt) throw new SharedQuoteRevokedError();
       throw new SharedQuoteExpiredError();
     }
+    assertSharedQuoteAvailable(sharedQuote);
 
     if (sharedQuote.quote.isLocked) {
       throw new QuoteDecisionError("Este documento está bloqueado.");
