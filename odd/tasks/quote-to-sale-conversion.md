@@ -156,3 +156,34 @@ This authorized follow-up is limited to correcting the rejected-quote UI and har
 - Runtime harness: N/A; quote action and card layout behavior is exercised by focused component and page tests, with no separate runtime boundary for this UI-only change.
 - Rollback boundary: revert the DRAFT authorization presentation and quote-card layout/style changes in `quote-list-row.tsx`, `quote-action-presentation.ts`, `quote-mobile-card.tsx`, `page.tsx`, and `operational-card.tsx`, the directly related tests in those components and page, and this follow-up evidence. No server actions, data model, database, or lifecycle logic is included.
 - Work-unit commit: `ce4fd06 fix(quotes): restore DRAFT actions and align card layout`.
+
+## DRAFT authorization and sharing follow-up
+
+This user-approved follow-up is limited to DRAFT quote action priority and sharing. Preserve existing commercial validation and lifecycle behavior; do not introduce a new lifecycle path.
+
+### Completed tasks
+
+- [x] **QTSC-DRAFT-AUTH-003 — Make `Authorize` the large primary DRAFT action.** DRAFT quotes without a WorkOrder use `Authorize` as the large mobile primary; eligible WORK assignment and SALE conversion remain available from `More`. Desktop DRAFT rows continue to expose `QuoteAuthorizeForm`.
+- [x] **QTSC-DRAFT-SHARE-004 — Share complete DRAFT quotes through the existing `publishSharedQuote` path.** DRAFT Share is enabled only when commercially ready, and QuotesPage routes it through `publishSharedQuote`; non-DRAFT shareable quotes retain `getOrCreateSharedQuoteAction`. Existing action validation and DRAFT-to-SENT-before-link sequence remain authoritative.
+- [x] **QTSC-DRAFT-AUTH-005 — Clarify assignment-dialog operation and acceptance defaults.** `WorkOrderOperationsDialog` derives WORK/SALE solely from persisted `quoteOperation`, with no conversion selector. DRAFT/SENT WORK assignment keeps the acceptance question and defaults to `customerAccepted=true`, while allowing the exceptional-reason path. APPROVED assignment is direct; SALE skips WORK acceptance.
+
+### Effective requirements
+
+- `strict_tdd: true`
+- `runner: pnpm exec vitest run`
+- Add focused regression coverage for all three pending tasks before implementation.
+- Preserve existing commercial eligibility/validation and lifecycle rules; sharing uses only the existing DRAFT-to-SENT transition before public-link creation.
+- Add focused assignment-dialog regression coverage for QTSC-DRAFT-AUTH-005 before implementation; retain its persisted quote-operation behavior and status-specific acceptance behavior.
+
+### Completion evidence
+
+- Strict TDD RED command: `pnpm exec vitest run src/features/quotes/actions.test.ts src/features/quotes/domain.test.ts src/features/quotes/components/quote-mobile-card.test.tsx src/features/quotes/components/quote-action-presentation.test.ts src/features/quotes/components/quote-list-row.test.tsx src/features/work-orders/components/work-order-operations-dialog.test.tsx 'src/app/admin/(protected)/quotes/page.test.tsx'` — 7 files, 12 failed, 205 passed. The failures captured the missing DRAFT primary/share behavior and assignment-dialog expectations. The first RED run also exposed an isolation issue in the new page test fixture; it was corrected before implementation verification.
+- Strict TDD GREEN, same command: 7 files passed, 217 tests passed (including existing `publishSharedQuote` validation/transition tests).
+- `pnpm typecheck`: passed (`tsc --noEmit`).
+- `pnpm lint`: passed (`eslint`).
+- `git diff --check`: passed.
+- DRAFT sharing is routed to the pre-existing `publishSharedQuote`; tests verify quote update to SENT is invoked before shared-link creation, while incomplete DRAFT validation leaves it unchanged. No new lifecycle/data/domain path was added.
+- Desktop DRAFT authorization was already rendered by `QuoteListRow`; its existing regression test verifies the `QuoteAuthorizeForm` trigger. No desktop layout redesign was made.
+- Runtime harness: N/A; the changes are page action routing and component interaction behavior covered by focused Vitest tests, with no independent runtime boundary.
+- Rollback boundary: revert the DRAFT action presentation and sharing route in `src/features/quotes/components/quote-action-presentation.ts`, `src/features/quotes/components/quote-mobile-card.tsx`, and `src/app/admin/(protected)/quotes/page.tsx`; the operation/acceptance UI in `src/features/work-orders/components/work-order-operations-dialog.tsx`; their focused tests and this completion evidence. No server action implementation, domain/data model, database, or lifecycle logic was changed.
+- Work-unit commit: recorded after implementation commit creation.
