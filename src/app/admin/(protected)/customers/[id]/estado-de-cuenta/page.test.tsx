@@ -101,13 +101,13 @@ describe("CustomerStatementView", () => {
   it("renders statement header, customer info, and pending notes", () => {
     render(<CustomerStatementView statement={mockStatement} />);
 
-    expect(screen.getByText("Transportes del Norte S.A.")).toBeInTheDocument();
-    expect(screen.getByText(/Razón social: Transportes del Norte S.A. de C.V./)).toBeInTheDocument();
+    expect(screen.getAllByText("Transportes del Norte S.A.")).toHaveLength(2);
+    expect(screen.getAllByText(/Razón social: Transportes del Norte S.A. de C.V./)).toHaveLength(2);
     expect(screen.getByText("RFC: TDN900101XYZ")).toBeInTheDocument();
 
     // Notes table
     expect(screen.getByText("OT-001")).toBeInTheDocument();
-    expect(screen.getByText("Cambiar muelles · Alinear eje")).toBeInTheDocument();
+    expect(screen.getAllByText("Cambiar muelles · Alinear eje")).toHaveLength(2);
     expect(screen.getByText(/ECO: 101 · Kenworth T680/)).toBeInTheDocument();
     const noteRow = screen.getByTestId("statement-note-OT-001");
     expect(within(noteRow).getByText("$1,500.00")).toBeInTheDocument(); // total

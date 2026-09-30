@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
@@ -94,10 +94,10 @@ describe("CustomerStatementView", () => {
   it("renders customer details, financial cards, and table of notes", () => {
     render(<CustomerStatementView statement={baseStatement} />);
 
-    expect(screen.getByRole("heading", { name: "Transportes del Norte S.A." })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: "Transportes del Norte S.A." })).toHaveLength(2);
     expect(screen.getByText(/RFC: TDN010101ABC/i)).toBeInTheDocument();
     expect(screen.getByText("OT-001")).toBeInTheDocument();
-    expect(screen.getByText("Servicio mayor de frenos")).toBeInTheDocument();
+    expect(screen.getAllByText("Servicio mayor de frenos")).toHaveLength(2);
     expect(screen.getByText("Kenworth T680")).toBeInTheDocument();
   });
 
@@ -156,8 +156,8 @@ describe("CustomerStatementView", () => {
     expect(within(printProjection).getByText("Pendiente")).toBeInTheDocument();
     expect(within(printProjection).getByText("Abono")).toBeInTheDocument();
     expect(within(printProjection).getByText("Total")).toBeInTheDocument();
-    expect(within(printProjection).getByText("$0.00")).toBeInTheDocument();
-    expect(within(printProjection).getAllByText("$200.00")).toHaveLength(2);
+    expect(within(printProjection).getAllByText("$0.00")).toHaveLength(2);
+    expect(within(printProjection).getAllByText("$200.00")).toHaveLength(3);
     expect(within(printProjection).getByText("Total de notas")).toBeInTheDocument();
     expect(within(printProjection).getByText("Abonado al 15 de agosto de 2026")).toBeInTheDocument();
     expect(within(printProjection).getByText("Saldo restante")).toBeInTheDocument();
