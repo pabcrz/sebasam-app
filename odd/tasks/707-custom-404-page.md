@@ -10,7 +10,7 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 
 ## Scope
 
-- Issue #707: redesign the root App Router 404 with the specified gear/loose-part SVG, subtle drop motion, large `404` with a blue central zero, Spanish title and generic support copy, and external “Visita SEBASAM” action.
+- Issue #707: redesign the root App Router 404 with SEBASAM branding, landing-inspired 404 artwork, Spanish title and generic support copy, and a single external information/contact action.
 - Remove internal homepage navigation from the 404 experience.
 - Show contextual quote/note unavailable copy at their applicable not-found/error boundaries.
 - Reuse existing design tokens, limit the visual to one shadow, center the card, keep its width near 420px, and respect responsive safe-area insets.
@@ -22,6 +22,7 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - On mobile, render the 404 without card chrome and use the available viewport; retain the framed card on desktop.
 - On mobile, keep the SEBASAM header at the top, center the 404 content in the remaining space, and place the CTA about 24px above the bottom safe area.
 - Replace the gear with a single flat vector hex bolt, two subtle motion marks, and a reduced-motion-aware animation; add no other illustration elements.
+- Replace the bolt artwork with a landing-inspired 404 treatment, and keep only the public “Ver información y contacto” action to `https://sebasam.online/info`.
 
 ## Constraints
 
@@ -31,7 +32,7 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Preserve unrelated uncommitted note-filter task document in the original checkout.
 - Do not replace existing protected-route authentication behavior with 404 responses.
 - No internal “ir/volver al inicio” action on the 404 screen.
-- External CTA target: `https://sebasam.online`.
+- Current external CTA target: `https://sebasam.online/info` (“Ver información y contacto”); task 404-9 supersedes the earlier CTA design.
 - Estimated authored diff: approximately 250 lines, excluding generated output; advisory only. Delivery strategy: `ask-on-risk`; no chain strategy selected unless accumulated work exceeds the existing review budget.
 
 ## TDD and Verification
@@ -149,6 +150,21 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Committed-only assessment against `19e410769f8d0e3f4310cee225980cc322ba9528`: `risk=medium`, reason `executable_change` (`src/app/not-found.test.tsx`), `changed_paths=3`, `changed_lines=196`, `review_due=false`, `review_due_reason=under_budget`.
 - Parent spot-check: `pnpm exec vitest run src/app/not-found.test.tsx` passed (1 file/1 test). Live preview returns 404 with the bolt, both motion marks, external CTA, and no gear.
 
+### 404-9 — Replace bolt with landing-inspired 404
+
+**Route:** delegated direct because the shared 404 visual and regression test change together; one writer owns both files.
+
+- [x] Add failing assertions for the landing-inspired 404 artwork and the single information/contact action.
+- [x] Remove the bolt and its motion marks/animation; render the landing-inspired 404 with a slashed zero while preserving responsive layout and shared contextual states.
+- [x] Keep the only CTA as “Ver información y contacto” to `https://sebasam.online/info`; do not add internal navigation or unrelated actions.
+- [x] Preserve quote/note copy, accessibility, safe-area behavior, route semantics, and authentication/access behavior.
+- [x] Run focused tests, record observed checks, and close as one coherent work-unit commit.
+- RED: `pnpm exec vitest run src/app/not-found.test.tsx` — FAIL before production edits because the information/contact CTA was absent (the rendered CTA was still “Visita SEBASAM” to the root URL).
+- GREEN: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test; verifies the accessible 404 with decorative slash, absence of bolt/motion artwork, exactly one external info/contact link, and the existing responsive/safe-area structure.
+- Checks: `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS. `pnpm build` intentionally not run to preserve the active `.next` preview; preview process and files were not touched.
+- Implementation: removed the bolt SVG and its reduced-motion animation, styled the central zero with a decorative navy slash in the existing brand palette, and changed the sole CTA to “Ver información y contacto” at `https://sebasam.online/info`. Existing header, copy, mobile/desktop layout, safe areas, route boundaries, and auth/access code were unchanged.
+- Work-unit commit message: `feat(errors): use landing-inspired 404 artwork`. Rollback boundary: shared 404 artwork and CTA in `src/components/errors/not-found-experience.tsx`, corresponding focused assertions in `src/app/not-found.test.tsx`, and this 404-9 task evidence.
+
 ## Progress and Evidence
 
 - Issue #707 created, read back, and confirmed OPEN with `type:feature`; `status:approved` added after exact issue-bound user consent and successful readback.
@@ -216,4 +232,4 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 
 ## Next Step
 
-PR #713 is open; merge remains a separate user decision. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process.
+PR #713 is open; merge remains a separate user decision. Task 404-9 is complete. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process.

@@ -11,9 +11,11 @@ describe("NotFound", () => {
     expect(screen.getByLabelText("404")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Logo de SEBASAM" })).toHaveAttribute("src", expect.stringContaining("logo-white-short.png"));
     expect(screen.getByRole("heading", { name: "SEBASAM", level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Visita SEBASAM" })).toHaveAttribute("href", "https://sebasam.online");
+    expect(screen.getByRole("link", { name: "Ver información y contacto" })).toHaveAttribute("href", "https://sebasam.online/info");
+    expect(screen.getAllByRole("link")).toHaveLength(1);
     expect(screen.queryByRole("link", { name: /inicio|home/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Tornillo de cabeza hexagonal" })).toBeInTheDocument();
+    expect(container.querySelector(".not-found-zero-slash")).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Tornillo de cabeza hexagonal" })).not.toBeInTheDocument();
     expect(screen.queryByRole("img", { name: /engranaje|gear/i })).not.toBeInTheDocument();
 
     const card = container.querySelector("main > div");
@@ -67,7 +69,7 @@ describe("NotFound", () => {
       "pt-[var(--space-md)]",
     );
     expect(footer).toHaveClass("pb-[max(24px,env(safe-area-inset-bottom))]", "md:pb-[var(--space-xl)]");
-    expect(footer).toContainElement(screen.getByRole("link", { name: "Visita SEBASAM" }));
+    expect(footer).toContainElement(screen.getByRole("link", { name: "Ver información y contacto" }));
     expect(main).toHaveClass("px-0", "pt-0");
     expect(main).toHaveClass(
       "md:pl-[max(var(--space-md),env(safe-area-inset-left))]",
@@ -87,10 +89,6 @@ describe("NotFound", () => {
       "pl-[max(var(--space-md),env(safe-area-inset-left))]",
       "pr-[max(var(--space-md),env(safe-area-inset-right))]",
     );
-    expect(container.querySelectorAll(".bolt-head")).toHaveLength(1);
-    expect(container.querySelectorAll(".bolt-shaft")).toHaveLength(1);
-    expect(container.querySelectorAll(".motion-line")).toHaveLength(2);
-    expect(container.querySelector(".motion-line-one")).toBeInTheDocument();
-    expect(container.querySelector(".motion-line-two")).toBeInTheDocument();
+    expect(container.querySelector(".bolt-head, .bolt-shaft, .motion-line, .bolt-illustration")).not.toBeInTheDocument();
   });
 });
