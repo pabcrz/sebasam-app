@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { listPaginatedQuotes, listQuotes, listQuotesByIds } from "./queries";
+import { listArchivedEligibleQuotes, listPaginatedQuotes, listQuotes, listQuotesByIds, listRecoverableTrashedQuotes } from "./queries";
 import { getQuotePaidTotals } from "@/features/payments/queries";
 
 vi.mock("@/lib/prisma", () => ({
@@ -26,6 +26,27 @@ describe("listQuotes filters", () => {
     vi.clearAllMocks();
     (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     (getQuotePaidTotals as ReturnType<typeof vi.fn>).mockResolvedValue(new Map());
+  });
+
+  it("lists eligible archived quotes behind operational-role authorization", async () => {
+    const { requireOperationalRole } = await import("@/lib/auth/session");
+    await listArchivedEligibleQuotes();
+    expect(requireOperationalRole).toHaveBeenCalled();
+    expect(getFindManyCall().where).toEqual({
+      status: "ARCHIVED",
+      deletedAt: null,
+      retentionStartedAt: { not: null },
+    });
+  });
+
+  it("limits the trash list to the recoverable 30-day retention window", async () => {
+    const now = new Date("2026-10-31T12:00:00.000Z");
+    await listRecoverableTrashedQuotes(now);
+    expect(getFindManyCall().where).toEqual({
+      status: "ARCHIVED",
+      retentionStartedAt: { not: null },
+      deletedAt: { gte: new Date("2026-10-01T12:00:00.000Z"), lte: now },
+    });
   });
 
   it("returns quotes without cancelled or archived when no filters are provided", async () => {

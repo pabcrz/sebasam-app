@@ -104,6 +104,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
         <div className="hidden sm:block">
           <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
         </div>
+        <Link href="/admin/quotes/retention" className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">Archivo y papelera</Link>
       </div>
       <QuotePageToasts />
 

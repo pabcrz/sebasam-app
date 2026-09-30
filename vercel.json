@@ -6,5 +6,11 @@
       "develop": true,
       "main": false
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/quote-retention",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }
