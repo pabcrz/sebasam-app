@@ -213,5 +213,6 @@ describe("WorkOrderActiveList", () => {
       "/admin/quotes/quote-1/print?returnTo=/admin/work-orders",
     );
     expect(print).toHaveClass("min-h-11", "min-w-11");
+    expect(print.querySelector("svg")).toHaveClass("h-5", "w-5");
   });
 });

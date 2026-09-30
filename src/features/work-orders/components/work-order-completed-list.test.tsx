@@ -100,6 +100,7 @@ describe("WorkOrderCompletedList", () => {
 
     const print = screen.getByRole("button", { name: "Imprimir nota de remisión COT-001" });
     expect(print).toHaveAttribute("title", "Imprimir nota de remisión COT-001");
+    expect(print.querySelector("svg")).toHaveClass("h-5", "w-5");
     expect(print).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas");
     expect(screen.getAllByRole("button", { name: /Compartir cotización/ })).toHaveLength(4);
     expect(screen.queryByText("Historial de pagos")).not.toBeInTheDocument();
@@ -146,6 +147,7 @@ describe("WorkOrderCompletedList", () => {
     );
 
     expect(screen.getByRole("button", { name: "Corregir nota" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Corregir nota" }).querySelector("svg")).toHaveClass("h-5", "w-5");
   });
 
   it("renders N folio and quote folio on the card, while keeping the internal reference in detail", () => {
