@@ -136,6 +136,79 @@ describe("CustomerStatementView", () => {
     expect(screen.getByRole("heading", { name: /cotización cot-001/i })).toBeInTheDocument();
   });
 
+  it("filters selected notes by mutually exclusive status and shows matching counts", async () => {
+    const user = userEvent.setup();
+    const baseNote = baseStatement.notes[0];
+    const statusStatement: CustomerDetailedStatement = {
+      ...baseStatement,
+      view: "history",
+      notes: [
+        {
+          ...baseNote,
+          id: "wo-paid",
+          number: "OT-PAID",
+          totalCents: 10000,
+          paidCents: 10000,
+          paidCentsAtCutoff: 10000,
+          remainingCents: 0,
+          paymentState: { label: "Pagada", balanceCents: 0, variant: "success" },
+        },
+        {
+          ...baseNote,
+          id: "wo-partial",
+          number: "OT-PARTIAL",
+          totalCents: 20000,
+          paidCents: 5000,
+          paidCentsAtCutoff: 5000,
+          remainingCents: 15000,
+          paymentState: { label: "Pago parcial", balanceCents: 15000, variant: "warning" },
+        },
+        {
+          ...baseNote,
+          id: "wo-overdue",
+          number: "OT-OVERDUE",
+          totalCents: 30000,
+          paidCents: 10000,
+          paidCentsAtCutoff: 10000,
+          remainingCents: 20000,
+          paymentState: { label: "Vencida", balanceCents: 20000, variant: "danger" },
+        },
+        {
+          ...baseNote,
+          id: "wo-unpaid",
+          number: "OT-UNPAID",
+          totalCents: 40000,
+          paidCents: 0,
+          paidCentsAtCutoff: 0,
+          remainingCents: 40000,
+          paymentState: { label: "Sin pago", balanceCents: 40000, variant: "warning" },
+        },
+      ],
+    };
+
+    render(<CustomerStatementView statement={statusStatement} />);
+
+    const filterGroup = screen.getByRole("group", { name: "Filtrar notas por estado" });
+    expect(within(filterGroup).getByRole("button", { name: "Todas (4)" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(filterGroup).getByRole("button", { name: "Pendientes (2)" })).toBeInTheDocument();
+    expect(within(filterGroup).getByRole("button", { name: "Vencidas (1)" })).toBeInTheDocument();
+    expect(within(filterGroup).getByRole("button", { name: "Pagadas (1)" })).toBeInTheDocument();
+
+    await user.click(within(filterGroup).getByRole("button", { name: "Pendientes (2)" }));
+    expect(screen.getByTestId("statement-note-OT-PARTIAL")).toBeInTheDocument();
+    expect(screen.getByTestId("statement-note-OT-UNPAID")).toBeInTheDocument();
+    expect(screen.queryByTestId("statement-note-OT-OVERDUE")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("statement-note-OT-PAID")).not.toBeInTheDocument();
+
+    await user.click(within(filterGroup).getByRole("button", { name: "Vencidas (1)" }));
+    expect(screen.getByTestId("statement-note-OT-OVERDUE")).toBeInTheDocument();
+    expect(screen.queryByTestId("statement-note-OT-PARTIAL")).not.toBeInTheDocument();
+
+    await user.click(within(filterGroup).getByRole("button", { name: "Pagadas (1)" }));
+    expect(screen.getByTestId("statement-note-OT-PAID")).toBeInTheDocument();
+    expect(screen.queryByTestId("statement-note-OT-UNPAID")).not.toBeInTheDocument();
+  });
+
   it("does not render WhatsApp copy button and keeps Imprimir / PDF button accessible", () => {
     render(<CustomerStatementView statement={baseStatement} />);
 

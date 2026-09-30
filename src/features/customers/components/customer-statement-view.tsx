@@ -19,8 +19,41 @@ type CustomerStatementViewProps = {
   statement: CustomerDetailedStatement;
 };
 
+type StatementNoteFilter = "all" | "pending" | "overdue" | "paid";
+
+const statementNoteFilters: Array<{ key: StatementNoteFilter; label: string }> = [
+  { key: "all", label: "Todas" },
+  { key: "pending", label: "Pendientes" },
+  { key: "overdue", label: "Vencidas" },
+  { key: "paid", label: "Pagadas" },
+];
+
+function getStatementNoteFilter(note: CustomerDetailedStatement["notes"][number]): Exclude<StatementNoteFilter, "all"> {
+  if (note.remainingCents <= 0) return "paid";
+  if (note.paymentState.label === "Vencida") return "overdue";
+  return "pending";
+}
+
+function getStatementNoteCounts(notes: CustomerDetailedStatement["notes"]) {
+  return notes.reduce(
+    (counts, note) => {
+      counts[getStatementNoteFilter(note)] += 1;
+      return counts;
+    },
+    { all: notes.length, pending: 0, overdue: 0, paid: 0 },
+  );
+}
+
+function filterStatementNotes(
+  notes: CustomerDetailedStatement["notes"],
+  filter: StatementNoteFilter,
+) {
+  return filter === "all" ? notes : notes.filter((note) => getStatementNoteFilter(note) === filter);
+}
+
 export function CustomerStatementView({ statement }: CustomerStatementViewProps) {
   const [selectedQuote, setSelectedQuote] = React.useState<QuotePreviewSummary | null>(null);
+  const [noteFilter, setNoteFilter] = React.useState<StatementNoteFilter>("all");
 
   const {
     customer,
@@ -46,6 +79,8 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
     ? customer.legalName || customer.name
     : customer.legalName || undefined;
   const statementHref = customerStatementHref(customer.id, { view, period, anchor });
+  const noteCounts = getStatementNoteCounts(notes);
+  const visibleNotes = filterStatementNotes(notes, noteFilter);
 
   const handlePrint = () => {
     window.print();
@@ -315,6 +350,21 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
         </div>
       ) : null}
 
+      <div role="group" aria-label="Filtrar notas por estado" className="flex flex-wrap gap-2">
+        {statementNoteFilters.map((filter) => (
+          <Button
+            key={filter.key}
+            type="button"
+            variant={noteFilter === filter.key ? "primary" : "outline"}
+            size="sm"
+            aria-pressed={noteFilter === filter.key}
+            onClick={() => setNoteFilter(filter.key)}
+          >
+            {filter.label} ({noteCounts[filter.key]})
+          </Button>
+        ))}
+      </div>
+
       {/* Notes Table */}
       <Card className="overflow-hidden print:overflow-visible print:border-none print:shadow-none">
         <CardHeader className="flex flex-row items-center justify-between border-b border-[var(--color-border-light)] py-3 print:py-2">
@@ -322,15 +372,17 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
             {view === "pending" ? "Notas con saldo pendiente de pago" : `Detalle de notas (${rangeLabel})`}
           </CardTitle>
           <span className="text-xs text-[var(--color-text-muted)]">
-            {notes.length} nota{notes.length === 1 ? "" : "s"}
+            {visibleNotes.length} nota{visibleNotes.length === 1 ? "" : "s"}
           </span>
         </CardHeader>
         <CardContent className="p-0">
-          {notes.length === 0 ? (
+          {visibleNotes.length === 0 ? (
             <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
-              {view === "pending"
-                ? "Este cliente no tiene notas con saldo pendiente. La cuenta está al corriente."
-                : "No se encontraron notas completadas en el período seleccionado."}
+              {notes.length > 0
+                ? "No hay notas en esta clasificación."
+                : view === "pending"
+                  ? "Este cliente no tiene notas con saldo pendiente. La cuenta está al corriente."
+                  : "No se encontraron notas completadas en el período seleccionado."}
             </div>
           ) : (
             <div className="overflow-x-auto print:overflow-visible">
@@ -362,7 +414,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border-light)]">
-                  {notes.map((note) => (
+                  {visibleNotes.map((note) => (
                     <tr
                       key={note.id}
                       onClick={() => setSelectedQuote(note.previewQuote)}
