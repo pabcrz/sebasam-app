@@ -116,7 +116,12 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Correction RED: `pnpm exec vitest run src/app/not-found.test.tsx` failed before source changes because mobile main still had outer top/side padding.
 - Correction GREEN: same command passed, 1 file / 1 test; verifies full-bleed band, safe-area-protected content, top-header/content/footer order, bottom clearance, and desktop-frame classes.
 - Correction checks: `pnpm typecheck`, `pnpm lint`, and `git diff --check` all passed; build intentionally skipped for the live preview.
-- Correction commit and assessment pending.
+- Task 404-7 initial commit: `f019e93` (`fix(errors): anchor mobile 404 content and action`); assessment against `19e410769f8d0e3f4310cee225980cc322ba9528` was medium risk, 3 paths / 78 lines, `review_due=false`.
+- User clarified to remove only the mobile outer top/side inset; keep notch-safe inner padding and existing desktop layout.
+- Full-bleed correction commit: `4635ec0` (`fix(errors): make mobile 404 header full bleed`). Parent committed-only assessment against `19e410769f8d0e3f4310cee225980cc322ba9528`: medium risk, 3 paths / 132 lines, `review_due=false`, under budget.
+- Parent spot-check: focused Vitest passed 1/1. Live preview returns 404 and confirms full-bleed header, centered content before the CTA, 24px + safe-area bottom spacing, and desktop card styling.
+- Correction commit: `4635ec0` (`fix(errors): make mobile 404 header full bleed`). Mobile main has no outer top/side inset; the gradient header reaches viewport edges with notch-safe inner padding, and content/footer retain safe-area side insets.
+- Correction assessment against `19e410769f8d0e3f4310cee225980cc322ba9528`: `risk=medium`, reason `executable_change` (`src/app/not-found.test.tsx`), `changed_paths=3`, `changed_lines=132`, `review_due=false`, `review_due_reason=under_budget`.
 - RED: `pnpm exec vitest run src/app/not-found.test.tsx` failed before implementation because the mobile composition contract was missing.
 - GREEN: the same command passed, 1 file / 1 test; verifies the top header, centered content, 24px+safe-area CTA footer, and retained desktop card classes.
 - Closure: `pnpm typecheck`, `pnpm lint`, and `git diff --check` passed. Build was not run to preserve the live `.next` preview.
