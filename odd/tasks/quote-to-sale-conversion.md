@@ -187,3 +187,51 @@ This user-approved follow-up is limited to DRAFT quote action priority and shari
 - Runtime harness: N/A; the changes are page action routing and component interaction behavior covered by focused Vitest tests, with no independent runtime boundary.
 - Rollback boundary: revert the DRAFT action presentation and sharing route in `src/features/quotes/components/quote-action-presentation.ts`, `src/features/quotes/components/quote-mobile-card.tsx`, and `src/app/admin/(protected)/quotes/page.tsx`; the operation/acceptance UI in `src/features/work-orders/components/work-order-operations-dialog.tsx`; their focused tests and this completion evidence. No server action implementation, domain/data model, database, or lifecycle logic was changed.
 - Work-unit commit: `feba966 fix(quotes): align draft sharing and assignment actions`.
+
+## Develop database test-data cleanup and flow coverage follow-up
+
+This follow-up completed database-only cleanup and fixture setup in the user-authorized develop database configured by this worktree's `.env`. No source, domain, or test files were changed. Cleanup was limited to positively marked test quotes/notes with no payment, payment-application, ledger, settlement, correction, payment-request, or ambiguous dependency activity. Financially active and operationally linked rows, all master data, and unrelated historical data were preserved.
+
+### Initial read-only inventory — 2026-09-30
+
+The develop database was queried read-only through Prisma before this planning-only stage. Initial totals: **124 Quotes, 49 PayableNotes, 43 WorkOrders, 21 Payments, and 28 LedgerEntries**. Preliminary relation checks identify **109 Quotes and 36 PayableNotes without linked financial activity**, and **15 Quotes / 13 PayableNotes with linked financial activity or settlement/correction records**. These are preliminary inventory and candidate-screening counts only, not final deletion counts or authorization to delete all such rows. The user has confirmed the narrowly defined cleanup scope above. The quote screening includes linked payments, payment requests, commercial corrections, settlements, and linked payable-note activity; the note screening includes payments, applications, ledger entries, payment requests, and correction links.
+
+Cleanup used positive test markers from the actual inventory: `Q-TEST` quote numbers/folios; `DEMO-NQ686` / `DEMO-NQ687` / `LOCAL` titles/descriptions; and clearly test-named titles/folios. A customer marker only corroborated a test record; a customer name alone was never sufficient. The candidate set and all dependent WorkOrders, PayableNotes, payments, applications, ledger entries, payment requests, settlements, corrections, and other known foreign-key dependencies were reselected and inspected inside the serializable cleanup transaction. Candidates with financial/payment activity or non-empty/ambiguous dependencies were skipped. No rows were deleted based only on status, date, customer, or lack of financial links; non-test historical data and all master data were preserved. The actual affected counts and retained duplicate-prevention fixture are recorded below. Future cleanup must repeat these safeguards against its own transactional recheck rather than treating this inventory or these counts as deletion targets.
+
+### Planned data tasks
+
+- [x] **QTSC-DATA-009 — Safely identify and clean only unlinked test fixtures.** Transactionally reselected and checked all marked quotes, notes, and dependent financial/operational rows. Deleted only eligible records; preserved financial and ambiguous dependencies, unrelated history, and master data.
+- [x] **QTSC-SEED-010 — Create a multi-concept WORK quote for the existing `Test Payment Customer`.** Seeded distinct material and labor concepts inspired by `bujes RB 117`.
+- [x] **QTSC-SEED-011 — Keep a WORK DRAFT with pending price.** Seeded a complete labor description with a null unit price and total.
+- [x] **QTSC-SEED-012 — Share a complete WORK DRAFT.** Seeded a commercially complete DRAFT for the existing DRAFT-to-SENT sharing path.
+- [x] **QTSC-SEED-013 — Prepare a material/refacciones-only SALE DRAFT.** Seeded MATERIAL and REFACCIONES concepts only; no payable note was created.
+- [x] **QTSC-SEED-014 — Prepare a SENT WORK assignment-confirmation case.** Seeded an eligible WORK quote with an active shared link.
+- [x] **QTSC-SEED-015 — Prepare an APPROVED WORK direct-assignment case.** Seeded an eligible APPROVED WORK quote.
+- [x] **QTSC-SEED-016 — Prepare a REJECTED quote for correction back to DRAFT.** Seeded an eligible REJECTED WORK quote with its rejection decision; it remains REJECTED until manually corrected.
+- [x] **QTSC-SEED-017 — Provide a marked issued SALE note for duplicate prevention.** Reused the existing safe issued SALE fixture `0926-007` / `N-240926-02`; no second note was issued.
+- [x] **QTSC-SEED-018 — Prepare an incomplete quote with disabled controls.** Seeded a WORK DRAFT with no customer, an empty description, zero quantity, and no price.
+
+### Completion evidence — 2026-09-30
+
+- The transaction preflight matched **84** positively marked quote candidates. It deleted **81 Quotes, 10 PayableNotes, and 5 WorkOrders**; it also removed **80 QuoteSections, 17 QuoteItems, 3 SharedQuotes, 2 QuoteDecisions, and 2 QuoteLifecycleEvents**. The five deleted WorkOrders had no assignments, executions, payment applications/requests, ledger entries, corrections, advances, or completed-work knowledge dependencies. No broad delete, TRUNCATE, or cascade sweep was used.
+- **Two marked candidates were skipped and preserved:** quote `0926-002` / note `T-0926-04` has 2 payments, 2 applications, and 3 note ledger entries (6 ledger entries across its linked payments); quote `Q-TEST-1789017914112-74sn` retains its WorkOrder assignment and issued WORK note because that operational dependency is non-empty. One other safe existing issued SALE fixture, `0926-007` / `N-240926-02`, was intentionally retained for duplicate-prevention coverage; its payment, application, ledger, payment-request, and correction counts are all zero.
+- Final develop totals: **51 Quotes, 39 PayableNotes, 38 WorkOrders, 21 Payments, 21 PaymentApplications, and 28 LedgerEntries**. Payment/payment-application/ledger totals and all 3 quote-commercial corrections and 3 payment corrections were unchanged. PaymentRequests and SettlementAgreements remain 0.
+- New marked fixtures (all have no WorkOrder or PayableNote; no payments were created):
+  - `C-300926-01` (`0926-019`) — **DRAFT / WORK** — MATERIAL: 4 × Bujes RB 117; LABOR: 1 × desmontaje e instalación.
+  - `C-300926-02` (`0926-020`) — **DRAFT / WORK** — LABOR: 1 × cambio de bujes de barra estabilizadora; unit price and totals pending.
+  - `C-300926-03` (`0926-021`) — **DRAFT / WORK** — MATERIAL: 2 × bujes de horquilla; LABOR: revisión y montaje.
+  - `C-300926-04` (`0926-022`) — **DRAFT / SALE** — REFACCIONES: 4 × kit de bujes RB 117; MATERIAL: juego de tornillería. No note was issued.
+  - `C-300926-05` (`0926-023`) — **SENT / WORK** — MATERIAL: placa de refuerzo; LABOR: reparación y soldadura. An active shared link exists.
+  - `C-300926-06` (`0926-024`) — **APPROVED / WORK** — MATERIAL: 2 × perchas reforzadas; LABOR: reemplazo y revisión de balancines.
+  - `C-300926-07` (`0926-025`) — **REJECTED / WORK** — MATERIAL: 2 × tensores; LABOR: ajuste y alineación. Rejection decision recorded.
+  - `C-300926-08` (`0926-026`) — **DRAFT / WORK** — incomplete LABOR concept; no customer, description, quantity, price, or totals.
+- Master counts were unchanged: **56 Customers, 26 Vehicles, 7 UserProfiles, 1 PaymentSettings row, and 2 BankAccounts**. No master rows were created, deleted, or updated.
+- Verification was data-only: final Prisma reads confirmed the counts, folios, statuses, operations, item mixes, the active SENT link, absence of notes/work orders for new fixtures, preservation of financial links, and unchanged master counts. UI-path readiness follows from those stored states; no manual UI session or application TDD was claimed. `strict_tdd: true`; runner remains exactly `pnpm exec vitest run` for future code changes.
+
+### Effective requirements and verification boundary
+
+- `strict_tdd: true`; runner remains exactly `pnpm exec vitest run` for any later application/source implementation. TDD remains required for code changes; the authorized work described here is database-only data cleanup/seeding and is not application TDD.
+- This follow-up is data setup and flow verification, not application implementation. The completed work verified seed/cleanup invariants directly against the develop database and verified UI-path readiness from the stored states; it did not run a manual UI session or application TDD.
+- Reuse existing develop customers and master data; create no customers or other master records. Give each new fixture a stable, uniquely searchable `QTSC-659` marker in its title or description and retain its resulting folio/identifiers for cleanup and reverification.
+- No source, domain, or test changes are planned for these seed scenarios. Any discovered need for application changes is out of scope and requires a separate authorized task.
+- Verification must record (1) actual deleted quote/note/WorkOrder and dependent-record counts; (2) that all financially active, settlement/correction-linked, ambiguous, or unknown-dependency records were preserved; (3) each seeded case's folio, status, WORK/SALE operation, and item mix; and (4) that no customers, vehicles, users, payment/bank settings, or other master data were created, deleted, or changed. Cleanup and fixture lifecycle must not erase or mutate unrelated historical data.
