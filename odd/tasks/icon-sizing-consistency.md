@@ -20,7 +20,7 @@ The supplied screenshot shows same-sized action buttons with icons at different 
 
 - GitHub issue: [#710](https://github.com/pabcrz/sebasam-app/issues/710).
 - Worktree: `feature-710-icon-sizing` under the repository's sibling worktrees directory.
-- Branch: `feature/710-icon-sizing`, based on `origin/develop` at `ef452bd`.
+- Branch: `bugfix/710-icon-sizing`, based on `origin/develop` at `ef452bd`.
 - Preserve the original checkout and its unrelated untracked task documents.
 - One delegated writer for the multi-file implementation; no parallel writers.
 - TDD mode: strict, from the active project testing-capabilities record (`sdd/sebasam-app/testing-capabilities`, Engram observation #2374); runner: `pnpm test:ui` (Vitest).
@@ -44,7 +44,7 @@ Only the issue #710 icon-size correction and its focused tests/task evidence are
 ## Progress and Evidence
 
 - Issue #710 created and verified OPEN with `type:bug`.
-- Clean worktree is based at `ef452bd35495fe701d1c380806f60294b8cf4464`, matching `origin/develop`; branch: `feature/710-icon-sizing`.
+- Clean worktree is based at `ef452bd35495fe701d1c380806f60294b8cf4464`, matching `origin/develop`; branch: `bugfix/710-icon-sizing`.
 - CodeGraph mapping confirmed icon-only edit/correction used `h-6 w-6`, compact-card print used `h-4 w-4`, and share/overflow already used `h-5 w-5`.
 - TDD mode: strict; source: active testing-capabilities record `sdd/sebasam-app/testing-capabilities` (Engram observation #2374); runner: Vitest 4.
 - RED: `pnpm exec vitest run src/features/quotes/components/quote-mobile-card.test.tsx src/features/work-orders/components/work-order-active-list.test.tsx src/features/work-orders/components/work-order-completed-list.test.tsx` — after local offline install and `pnpm exec prisma generate`, 4 expected icon-sizing assertions failed (38 passed); observed old `h-6 w-6` edit/correction and `h-4 w-4` print classes.
@@ -60,4 +60,4 @@ Only the issue #710 icon-size correction and its focused tests/task evidence are
 
 ## Next Step
 
-Implementation and verification are complete. Do not push or create a PR unless requested; delivery remains a separate user decision.
+Implementation and verification are complete. The user authorized pushing `bugfix/710-icon-sizing` and opening a PR containing the three commits listed above.
