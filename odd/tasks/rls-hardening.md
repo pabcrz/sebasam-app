@@ -37,7 +37,7 @@ The global `public`-table privilege revocation migration predates six operationa
 
 ## Tasks
 
-- [ ] **RLS-1 — Protect uncovered tables and prevent recurrence** (implemented and locally verified; work-unit commit remains pending). Forecast: approximately 150 authored changed lines, excluding generated artifacts. Delivery strategy: `ask-on-risk`.
+- [x] **RLS-1 — Protect uncovered tables and prevent recurrence**. Forecast: 118 authored changed lines. Delivery strategy: `ask-on-risk`. Work-unit commit: `7bc63fe` (`fix(security): enable RLS on uncovered operational tables`).
 
 ## Progress and verification evidence
 
@@ -59,9 +59,9 @@ The global `public`-table privilege revocation migration predates six operationa
   - `DATABASE_URL=postgresql://user:password@127.0.0.1:5432/sebasam DIRECT_URL=postgresql://user:password@127.0.0.1:5432/sebasam pnpm exec prisma validate --schema prisma/schema.prisma` — passed; schema valid. The placeholder URLs were for validation only; Prisma did not connect.
   - Migration-evidence CI (`.github/workflows/prisma-migration-evidence.yml`) — unavailable locally by scope: its script uses PostgreSQL/`psql`, creates and drops fixture databases, and runs migrations. It was not run; no database connection was opened and no remote CI was triggered.
   - No policy, `FORCE ROW LEVEL SECURITY`, grant, role, schema-model, or application-authorization changes were made; historical migrations were not edited. No migration was applied to a database.
-- Work-unit commit: pending; the delegated writer was instructed not to commit so the parent can perform the native RDD flow. RLS-1 remains unchecked until the parent creates the work-unit commit and completes the applicable review transition.
-- RDD: enabled by default; assess the committed work unit and follow native review consent/transitions.
+- Work-unit commit: `7bc63fe` (`fix(security): enable RLS on uncovered operational tables`).
+- RDD: enabled by default. Parent assessment: risk `medium`, `review_due=false`, `review_due_reason=under_budget`; no native review transaction was due for this commit.
 
 ## Next step
 
-Run the parent spot-check, create the Conventional Commit work unit, then perform the native RDD risk assessment/review. Do not run the database-backed migration-evidence workflow without explicit database authorization.
+No further RLS-1 work is pending. Reassess future commits against the same branch boundary; do not run the database-backed migration-evidence workflow without explicit database authorization.
