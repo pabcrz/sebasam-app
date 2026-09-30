@@ -106,7 +106,8 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - GREEN: the same focused command passed, 1 file / 1 test; it verifies unframed mobile surface, desktop card framing, aligned responsive header/content insets, and compact mobile spacing.
 - Closure: `pnpm typecheck`, `pnpm lint`, and `git diff --check` passed. `pnpm build` was not run because the active preview uses `.next`.
 - Implementation: the shared 404 uses a plain responsive wrapper, with border/radius/surface/shadow only at `md` and above, reduced mobile padding/gaps, and unchanged safe-area-aware viewport wrapper. No global Card API or shared styles changed.
-- Commit and assessment: pending.
+- Commit: `249f6ed` (`fix(errors): use frameless mobile 404 layout`). Rollback boundary: responsive visual wrapper and compact mobile layout in `src/components/errors/not-found-experience.tsx`, its responsive assertions in `src/app/not-found.test.tsx`, and task 404-6 evidence.
+- Assessment against `19e410769f8d0e3f4310cee225980cc322ba9528`: `risk=medium`, reason `executable_change` (`src/app/not-found.test.tsx`), `changed_paths=3`, `changed_lines=49`, `review_due=false`, `review_due_reason=under_budget`; no review transition due.
 
 ## Progress and Evidence
 
@@ -158,8 +159,14 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - 404-5 GREEN: same focused command — PASS, 1 file / 4 tests. The first post-conversion run exposed one stale assertion tied to the old quote-header print classes; the test now asserts the shared 404 tagline's current token classes.
 - 404-5 behavior: `SharedQuoteErrorState` is now a Server Component delegating to `NotFoundExperience`, preserving each existing title and the exact quote-contact message. The caller's domain mapping and route behavior are unchanged.
 - 404-5 checks: `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS. `pnpm build` intentionally not run to preserve active preview `.next`.
-- 404-5 commit identity and assessment are pending.
+- 404-5 commit: `19e4107` (`fix(quotes): use shared 404 error presentation`). Rollback boundary: `SharedQuoteErrorState` mapping/presentation and its focused regression test, plus the task 404-5 evidence.
+- 404-5 committed-only assessment against `33b18f4e2d382eb030f7a9ee6ab274aa39f7b27d`: `risk=medium`, reason `executable_change`, `changed_paths=13`, `changed_lines=437`, `review_due=true`, `review_due_reason=slice_budget_reached`.
+- Native review: consented for this exact candidate; one `review-reliability` lens completed with no findings. Final capture was approved and exact acknowledgement burned authority: lineage `review-ae7edbffd2a0450d`, target `sha256:47e220e69f4f6627ff12986603a9d7d5f9480f143ccd854a0366a1203eb82f0a`, consumed revision `sha256:c9020275c5a412fd8feb10cced5272b39d4bc2494954b734efb1f82c5e9877d9`.
+- User requested a mobile layout without a visible card frame, scaled to the available viewport, while retaining desktop card styling.
+- Mobile layout acceptance: preserve safe-area insets; remove card chrome only below the desktop breakpoint; keep desktop card border/radius/surface/shadow and brand header/content alignment.
+- 404-6 commit: `249f6ed` (`fix(errors): use frameless mobile 404 layout`). Assessment against the last acknowledged boundary `19e410769f8d0e3f4310cee225980cc322ba9528`: `risk=medium`, 3 paths/49 lines, `review_due=false`, `under_budget`.
+- Parent spot check: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file/1 test. Live preview returns HTTP 404; rendered surface has no mobile card chrome and restores the framed card at `md`.
 
 ## Next Step
 
-Complete task 404-6 commit/assessment. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. No push or PR was requested.
+Task 404-6 implementation and assessment are complete. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. Production build remains unrun to preserve `.next`; no push or PR was requested.
