@@ -14,7 +14,8 @@ describe("NotFound", () => {
     expect(screen.getByRole("link", { name: "Ver información y contacto" })).toHaveAttribute("href", "https://sebasam.online/info");
     expect(screen.getAllByRole("link")).toHaveLength(1);
     expect(screen.queryByRole("link", { name: /inicio|home/i })).not.toBeInTheDocument();
-    expect(container.querySelector(".not-found-zero-slash")).toBeInTheDocument();
+    expect(container.querySelector(".not-found-zero-slash")).not.toBeInTheDocument();
+    expect(container.querySelector('[aria-label="404"] > span')).toHaveClass("text-[var(--color-primary)]");
     expect(screen.queryByRole("img", { name: "Tornillo de cabeza hexagonal" })).not.toBeInTheDocument();
     expect(screen.queryByRole("img", { name: /engranaje|gear/i })).not.toBeInTheDocument();
 

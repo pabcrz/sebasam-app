@@ -38,10 +38,7 @@ export function NotFoundExperience({
             className="font-mono text-[clamp(4.5rem,18vw,6.5rem)] font-extrabold leading-none tracking-tight text-[var(--color-text-main)]"
           >
             4
-            <span aria-hidden="true" className="relative inline-block text-[var(--color-primary)]">
-              0
-              <span className="not-found-zero-slash absolute left-1/2 top-1/2 h-[0.08em] w-[1.08em] -translate-x-1/2 -translate-y-1/2 rotate-[-45deg] bg-[var(--color-navy-700)]" />
-            </span>
+            <span aria-hidden="true" className="text-[var(--color-primary)]">0</span>
             4
           </p>
           <h1 className="text-2xl font-bold leading-tight text-[var(--color-text-main)]">{title}</h1>

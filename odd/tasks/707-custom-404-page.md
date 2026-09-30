@@ -22,7 +22,7 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - On mobile, render the 404 without card chrome and use the available viewport; retain the framed card on desktop.
 - On mobile, keep the SEBASAM header at the top, center the 404 content in the remaining space, and place the CTA about 24px above the bottom safe area.
 - Replace the gear with a single flat vector hex bolt, two subtle motion marks, and a reduced-motion-aware animation; add no other illustration elements.
-- Replace the bolt artwork with a landing-inspired 404 treatment, and keep only the public “Ver información y contacto” action to `https://sebasam.online/info`.
+- Replace the bolt artwork with a landing-inspired 404 treatment, keep the blue zero clean and unstruck, and retain only the public “Ver información y contacto” action to `https://sebasam.online/info`.
 
 ## Constraints
 
@@ -155,17 +155,23 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 **Route:** delegated direct because the shared 404 visual and regression test change together; one writer owns both files.
 
 - [x] Add failing assertions for the landing-inspired 404 artwork and the single information/contact action.
-- [x] Remove the bolt and its motion marks/animation; render the landing-inspired 404 with a slashed zero while preserving responsive layout and shared contextual states.
+- [x] Remove the bolt and its motion marks/animation; render the landing-inspired 404 while preserving responsive layout and shared contextual states.
+- [x] Remove the slash crossing the blue zero; keep the zero solid blue. Reopened after the user rejected the slash shown in the preview screenshot.
 - [x] Keep the only CTA as “Ver información y contacto” to `https://sebasam.online/info`; do not add internal navigation or unrelated actions.
 - [x] Preserve quote/note copy, accessibility, safe-area behavior, route semantics, and authentication/access behavior.
 - [x] Run focused tests, record observed checks, and close as one coherent work-unit commit.
 - RED: `pnpm exec vitest run src/app/not-found.test.tsx` — FAIL before production edits because the information/contact CTA was absent (the rendered CTA was still “Visita SEBASAM” to the root URL).
-- GREEN: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test; verifies the accessible 404 with decorative slash, absence of bolt/motion artwork, exactly one external info/contact link, and the existing responsive/safe-area structure.
+- Initial GREEN (before the follow-up correction): `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test; at that revision it verified the accessible 404 with its then-present decorative slash, absence of bolt/motion artwork, exactly one external info/contact link, and the existing responsive/safe-area structure.
 - Checks: `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS. `pnpm build` intentionally not run to preserve the active `.next` preview; preview process and files were not touched.
-- Implementation: removed the bolt SVG and its reduced-motion animation, styled the central zero with a decorative navy slash in the existing brand palette, and changed the sole CTA to “Ver información y contacto” at `https://sebasam.online/info`. Existing header, copy, mobile/desktop layout, safe areas, route boundaries, and auth/access code were unchanged.
+- Initial implementation (commit `f2f9536`): removed the bolt SVG and its reduced-motion animation, styled the central zero with a decorative navy slash in the existing brand palette, and changed the sole CTA to “Ver información y contacto” at `https://sebasam.online/info`. The slash was subsequently removed in the user-approved correction; existing header, copy, mobile/desktop layout, safe areas, route boundaries, and auth/access code remain unchanged.
 - Work-unit commit: `f2f9536` (`feat(errors): use landing-inspired 404 artwork`). Rollback boundary: shared 404 artwork and CTA in `src/components/errors/not-found-experience.tsx`, corresponding focused assertions in `src/app/not-found.test.tsx`, and this 404-9 task evidence.
 - Parent spot-check: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test; `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS.
 - Committed-only native assessment against `19e410769f8d0e3f4310cee225980cc322ba9528`: `risk=medium`, 3 paths / 227 changed lines, `review_due=false`, `review_due_reason=under_budget`; no review transition is due.
+- Slash-removal RED: `pnpm exec vitest run src/app/not-found.test.tsx` — FAIL, 1 file / 1 test, because `.not-found-zero-slash` was still rendered.
+- Slash-removal GREEN: same command — PASS, 1 file / 1 test; asserts the slash is absent and the zero retains the primary blue text class.
+- Slash-removal checks: `pnpm typecheck`, `pnpm lint`, and `git diff --check` — PASS. Build intentionally not run to preserve the active preview.
+- Slash-removal implementation: removed only the slash element and its now-unneeded positioning wrapper. The blue zero, composition, copy, sole information/contact CTA, responsive/safe-area layout, routes, and auth/access behavior are unchanged.
+- Slash-removal work-unit commit: included with the component, regression test, and this task evidence. Rollback boundary: slash-only artwork removal in `src/components/errors/not-found-experience.tsx`, its assertions in `src/app/not-found.test.tsx`, and this 404-9 evidence.
 
 ## Progress and Evidence
 
