@@ -186,4 +186,4 @@ This user-approved follow-up is limited to DRAFT quote action priority and shari
 - Desktop DRAFT authorization was already rendered by `QuoteListRow`; its existing regression test verifies the `QuoteAuthorizeForm` trigger. No desktop layout redesign was made.
 - Runtime harness: N/A; the changes are page action routing and component interaction behavior covered by focused Vitest tests, with no independent runtime boundary.
 - Rollback boundary: revert the DRAFT action presentation and sharing route in `src/features/quotes/components/quote-action-presentation.ts`, `src/features/quotes/components/quote-mobile-card.tsx`, and `src/app/admin/(protected)/quotes/page.tsx`; the operation/acceptance UI in `src/features/work-orders/components/work-order-operations-dialog.tsx`; their focused tests and this completion evidence. No server action implementation, domain/data model, database, or lifecycle logic was changed.
-- Work-unit commit: recorded after implementation commit creation.
+- Work-unit commit: `feba966 fix(quotes): align draft sharing and assignment actions`.
