@@ -35,12 +35,21 @@ describe("NotFound", () => {
       "md:bg-[var(--color-surface)]",
       "md:shadow-[var(--shadow-card)]",
     );
-    expect(header).toHaveClass("px-[var(--space-md)]", "md:px-[var(--space-xl)]", "py-[var(--space-md)]");
+    expect(header).toHaveClass(
+      "bg-[image:var(--gradient-primary)]",
+      "pl-[max(var(--space-md),env(safe-area-inset-left))]",
+      "pr-[max(var(--space-md),env(safe-area-inset-right))]",
+      "pt-[max(var(--space-md),env(safe-area-inset-top))]",
+      "pb-[var(--space-md)]",
+      "md:px-[var(--space-xl)]",
+      "md:py-[var(--space-md)]",
+    );
     expect(card).toHaveClass("flex-1", "md:flex-initial");
     expect(content).toHaveClass(
       "flex-1",
       "justify-center",
-      "px-[var(--space-md)]",
+      "pl-[max(var(--space-md),env(safe-area-inset-left))]",
+      "pr-[max(var(--space-md),env(safe-area-inset-right))]",
       "md:px-[var(--space-xl)]",
       "pt-[var(--space-md)]",
       "md:pt-[var(--space-xl)]",
@@ -49,8 +58,33 @@ describe("NotFound", () => {
     expect(main).toHaveClass("min-h-dvh", "flex-col");
     expect(card?.firstElementChild).toBe(header);
     expect(content?.nextElementSibling).toBe(footer);
-    expect(footer).toHaveClass("mt-auto", "px-[var(--space-md)]", "md:px-[var(--space-xl)]", "pt-[var(--space-md)]");
+    expect(footer).toHaveClass(
+      "mt-auto",
+      "pl-[max(var(--space-md),env(safe-area-inset-left))]",
+      "pr-[max(var(--space-md),env(safe-area-inset-right))]",
+      "md:px-[var(--space-xl)]",
+      "pt-[var(--space-md)]",
+    );
     expect(footer).toHaveClass("pb-[max(24px,env(safe-area-inset-bottom))]", "md:pb-[var(--space-xl)]");
     expect(footer).toContainElement(screen.getByRole("link", { name: "Visita SEBASAM" }));
+    expect(main).toHaveClass("px-0", "pt-0");
+    expect(main).toHaveClass(
+      "md:pl-[max(var(--space-md),env(safe-area-inset-left))]",
+      "md:pr-[max(var(--space-md),env(safe-area-inset-right))]",
+    );
+    expect(card).toHaveClass("w-full", "md:max-w-[420px]");
+    expect(header).toHaveClass(
+      "pt-[max(var(--space-md),env(safe-area-inset-top))]",
+      "pl-[max(var(--space-md),env(safe-area-inset-left))]",
+      "pr-[max(var(--space-md),env(safe-area-inset-right))]",
+    );
+    expect(content).toHaveClass(
+      "pl-[max(var(--space-md),env(safe-area-inset-left))]",
+      "pr-[max(var(--space-md),env(safe-area-inset-right))]",
+    );
+    expect(footer).toHaveClass(
+      "pl-[max(var(--space-md),env(safe-area-inset-left))]",
+      "pr-[max(var(--space-md),env(safe-area-inset-right))]",
+    );
   });
 });

@@ -112,6 +112,11 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - [x] Use a mobile flex-column layout with safe-area-aware bottom spacing; preserve the existing desktop card composition.
 - [x] Keep copy, quote/note contextual messages, logo, animation, CTA destination, and route/access behavior unchanged.
 - [x] Run focused tests, record the result, and commit as one coherent work unit.
+- [x] Extend the mobile brand band edge-to-edge while keeping header, content, and CTA inside the safe-area insets.
+- Correction RED: `pnpm exec vitest run src/app/not-found.test.tsx` failed before source changes because mobile main still had outer top/side padding.
+- Correction GREEN: same command passed, 1 file / 1 test; verifies full-bleed band, safe-area-protected content, top-header/content/footer order, bottom clearance, and desktop-frame classes.
+- Correction checks: `pnpm typecheck`, `pnpm lint`, and `git diff --check` all passed; build intentionally skipped for the live preview.
+- Correction commit and assessment pending.
 - RED: `pnpm exec vitest run src/app/not-found.test.tsx` failed before implementation because the mobile composition contract was missing.
 - GREEN: the same command passed, 1 file / 1 test; verifies the top header, centered content, 24px+safe-area CTA footer, and retained desktop card classes.
 - Closure: `pnpm typecheck`, `pnpm lint`, and `git diff --check` passed. Build was not run to preserve the live `.next` preview.
