@@ -163,7 +163,9 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - GREEN: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test; verifies the accessible 404 with decorative slash, absence of bolt/motion artwork, exactly one external info/contact link, and the existing responsive/safe-area structure.
 - Checks: `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS. `pnpm build` intentionally not run to preserve the active `.next` preview; preview process and files were not touched.
 - Implementation: removed the bolt SVG and its reduced-motion animation, styled the central zero with a decorative navy slash in the existing brand palette, and changed the sole CTA to “Ver información y contacto” at `https://sebasam.online/info`. Existing header, copy, mobile/desktop layout, safe areas, route boundaries, and auth/access code were unchanged.
-- Work-unit commit message: `feat(errors): use landing-inspired 404 artwork`. Rollback boundary: shared 404 artwork and CTA in `src/components/errors/not-found-experience.tsx`, corresponding focused assertions in `src/app/not-found.test.tsx`, and this 404-9 task evidence.
+- Work-unit commit: `f2f9536` (`feat(errors): use landing-inspired 404 artwork`). Rollback boundary: shared 404 artwork and CTA in `src/components/errors/not-found-experience.tsx`, corresponding focused assertions in `src/app/not-found.test.tsx`, and this 404-9 task evidence.
+- Parent spot-check: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test; `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS.
+- Committed-only native assessment against `19e410769f8d0e3f4310cee225980cc322ba9528`: `risk=medium`, 3 paths / 227 changed lines, `review_due=false`, `review_due_reason=under_budget`; no review transition is due.
 
 ## Progress and Evidence
 
@@ -232,4 +234,4 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 
 ## Next Step
 
-PR #713 is open; merge remains a separate user decision. Task 404-9 is complete. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process.
+Task 404-9 is complete in local commit `f2f9536`; do not push while the preview is active. After the preview no longer depends on this worktree’s `.next`, publish the branch update to PR #713; merging remains a separate user decision. Preserve `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process.
