@@ -171,7 +171,8 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Slash-removal GREEN: same command — PASS, 1 file / 1 test; asserts the slash is absent and the zero retains the primary blue text class.
 - Slash-removal checks: `pnpm typecheck`, `pnpm lint`, and `git diff --check` — PASS. Build intentionally not run to preserve the active preview.
 - Slash-removal implementation: removed only the slash element and its now-unneeded positioning wrapper. The blue zero, composition, copy, sole information/contact CTA, responsive/safe-area layout, routes, and auth/access behavior are unchanged.
-- Slash-removal work-unit commit: included with the component, regression test, and this task evidence. Rollback boundary: slash-only artwork removal in `src/components/errors/not-found-experience.tsx`, its assertions in `src/app/not-found.test.tsx`, and this 404-9 evidence.
+- Slash-removal work-unit commit: `bdc5606` (`fix(errors): remove slash from 404 zero`), including component, regression test, and task evidence. Rollback boundary: slash-only artwork removal in `src/components/errors/not-found-experience.tsx`, its assertions in `src/app/not-found.test.tsx`, and this 404-9 evidence.
+- Parent spot-check: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file / 1 test. Committed-only assessment against `19e410769f8d0e3f4310cee225980cc322ba9528`: `risk=medium`, 3 paths / 233 changed lines, `review_due=false`, `review_due_reason=under_budget`; no review transition is due.
 
 ## Progress and Evidence
 
@@ -240,4 +241,4 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 
 ## Next Step
 
-Task 404-9 is complete in local commit `f2f9536`; do not push while the preview is active. After the preview no longer depends on this worktree’s `.next`, publish the branch update to PR #713; merging remains a separate user decision. Preserve `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process.
+PR #713 was updated through code commit `bdc5606`; merge remains a separate user decision. Preserve `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process.
