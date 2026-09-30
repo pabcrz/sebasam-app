@@ -74,6 +74,9 @@ type WorkOrderOperationsDialogProps = {
   triggerIconOnlyMobile?: boolean;
   triggerVariant?: ButtonVariant;
   triggerClassName?: string;
+  alwaysRenderTrigger?: boolean;
+  triggerDisabled?: boolean;
+  triggerFlowLabel?: string;
 };
 
 const noopActions: WorkOrderActions = {
@@ -93,6 +96,9 @@ export function WorkOrderOperationsDialog({
   triggerIconOnlyMobile = false,
   triggerVariant = "outline",
   triggerClassName,
+  alwaysRenderTrigger = false,
+  triggerDisabled = false,
+  triggerFlowLabel,
 }: WorkOrderOperationsDialogProps) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -239,11 +245,11 @@ export function WorkOrderOperationsDialog({
     }), "rollback");
   };
 
-  if (!(["DRAFT", "SENT", "APPROVED"] as QuoteStatus[]).includes(quoteStatus)) return null;
+  if (!alwaysRenderTrigger && !(["DRAFT", "SENT", "APPROVED"] as QuoteStatus[]).includes(quoteStatus)) return null;
 
   const isAssigned = workOrder?.status === "ASSIGNED";
   const isCompleted = workOrder?.status === "COMPLETED";
-  if (hasPayableNote && !workOrder) return null;
+  if (!alwaysRenderTrigger && hasPayableNote && !workOrder) return null;
   const isSaleIntent = !workOrder && !hasPayableNote && quoteOperation === "SALE";
   const canRollback = workOrder && ["PLANNED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"].includes(workOrder.status);
   const isAssignmentBusy = pendingAction !== null || isPending;
@@ -266,13 +272,13 @@ export function WorkOrderOperationsDialog({
           setAcceptanceReason("");
           setOpen(true);
         }}
-        aria-label={isAssignmentBusy ? "Asignando trabajo..." : workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : isSaleIntent ? `Crear nota de venta para cotización ${quoteNumber}` : `Gestionar trabajo de cotización ${quoteNumber}`}
-        title={workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : isSaleIntent ? `Crear nota de venta para cotización ${quoteNumber}` : `Gestionar trabajo de cotización ${quoteNumber}`}
-        disabled={isAssignmentBusy}
+        aria-label={isAssignmentBusy ? "Asignando trabajo..." : triggerFlowLabel ? `${triggerFlowLabel} para cotización ${quoteNumber}` : workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : isSaleIntent ? `Crear nota de venta para cotización ${quoteNumber}` : `Gestionar trabajo de cotización ${quoteNumber}`}
+        title={triggerFlowLabel ? `${triggerFlowLabel} para cotización ${quoteNumber}` : workOrder ? `Gestionar orden de trabajo ${workOrder.number}` : isSaleIntent ? `Crear nota de venta para cotización ${quoteNumber}` : `Gestionar trabajo de cotización ${quoteNumber}`}
+        disabled={triggerDisabled || isAssignmentBusy}
         loading={isAssignmentBusy}
       >
         {!isAssignmentBusy ? <ClipboardList className="h-5 w-5" aria-hidden="true" /> : null}
-        {!isAssignmentBusy ? <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{isCompleted ? "Gestionar orden" : isAssigned ? "Gestionar trabajo" : isSaleIntent ? "Crear nota de venta" : "Asignar trabajo"}</span> : null}
+        {!isAssignmentBusy ? <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{triggerFlowLabel ?? (isCompleted ? "Gestionar orden" : isAssigned ? "Gestionar trabajo" : isSaleIntent ? "Crear nota de venta" : "Asignar trabajo")}</span> : null}
       </Button>
 
       <Dialog open={open} onOpenChange={(nextOpen) => { if (!isAssignmentBusy) setOpen(nextOpen); }}>

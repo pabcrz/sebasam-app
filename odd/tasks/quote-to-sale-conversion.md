@@ -114,3 +114,17 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - Runtime harness: N/A; this is a mobile card presentation branch covered by the component regression test.
 - Rollback boundary: revert the mobile quote presentation selector and tests plus this evidence line; no business flow changes.
 - Work-unit commit: `f1dcf53 fix(quotes): promote share when work-order action is unavailable`.
+
+## Final mobile quote action UX follow-up
+
+- [x] Keep the labeled WORK/SALE flow action full-width and all Edit/Share/Print actions visible at fixed sizes on every mobile quote card; only flow/Share color variants toggle with `activeSharedQuote`.
+- [x] Keep ineligible or incomplete actions visible but disabled, preserve WORK acceptance and SALE/Share validation rules, and do not change desktop quote actions or server logic.
+- [x] Add regression coverage for size/color invariants, unsupported statuses, duplicate SALE notes, and DRAFT/SENT WORK with pending prices and the existing acceptance prompt.
+- Focused Vitest: `3 files, 60 passed` (`quote-mobile-card`, `quote-action-presentation`, `work-order-operations-dialog`).
+- Desktop regression check: `quote-list-row.test.tsx`, `1 file, 13 passed`.
+- `pnpm typecheck`: passed (`tsc --noEmit`).
+- `pnpm lint`: passed (`eslint`).
+- `git diff --check`: passed.
+- Runtime harness: N/A; mobile action behavior is covered by focused component tests, and no separate runtime boundary exists.
+- Rollback boundary: revert this final mobile action presentation, optional disabled-trigger props, focused tests, and this follow-up evidence; no server or desktop quote behavior changes.
+- Work-unit commit: prepared as `fix(quotes): stabilize mobile quote actions`; commit identity will be recorded in the final delivery report.

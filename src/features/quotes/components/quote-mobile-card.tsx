@@ -3,7 +3,7 @@
 import * as React from "react";
 import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
 import { PrintActionButton } from "./print-action-button";
-import type { PaymentRequest, QuoteStatus } from "@prisma/client";
+import { QuoteItemType, type PaymentRequest, type QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, OperationalCard } from "@/components/ui";
 import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
@@ -26,6 +26,7 @@ import { WorkOrderOperationsDialog } from "@/features/work-orders/components/wor
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 import { QuoteActionsMenu } from "./quote-actions-menu";
 import { resolveQuoteActionPresentation, type QuoteActionId } from "./quote-action-presentation";
+import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
 
 type QuoteListItem = QuoteListSummary;
 
@@ -89,14 +90,32 @@ export function QuoteListCard({
     status: quote.status,
     editable,
     hasWorkOrder: Boolean(quote.workOrder),
-    hasPayableNote: Boolean(quote.payableNote),
     paymentAvailable: paymentRequestContext !== null,
     hasSharedQuote: Boolean(quote.activeSharedQuote),
   });
-  const compactActions = (["edit", "print", "share", "workOrder"] as const).filter((action) => {
-    if (action === actionPresentation.primary) return false;
-    return actionPresentation.frequent.includes(action) || actionPresentation.overflow.includes(action);
+  const quoteAllowsOperations = ["DRAFT", "SENT", "APPROVED"].includes(quote.status);
+  const workItems = quote.sections.length > 0
+    ? quote.sections.flatMap((section) => section.items)
+    : quote.items;
+  const snapshot = quote.vehicleSnapshot && typeof quote.vehicleSnapshot === "object" && !Array.isArray(quote.vehicleSnapshot)
+    ? quote.vehicleSnapshot as Record<string, unknown>
+    : {};
+  const hasIdentifiableUnit = Boolean(
+    quote.vehicle?.plate?.trim() || (snapshot.plate && String(snapshot.plate).trim()) ||
+    ((quote.vehicle?.brand?.trim() || (snapshot.brand && String(snapshot.brand).trim())) &&
+      (quote.vehicle?.model?.trim() || (snapshot.model && String(snapshot.model).trim()))),
+  );
+  const workStartReady = (Boolean(quote.customerId) || hasIdentifiableUnit) && workItems.length > 0 && workItems.every((item) => {
+    const quantity = Number(item.quantity);
+    return Object.values(QuoteItemType).includes(item.type) && item.description.trim() !== "" && Number.isInteger(quantity) && quantity > 0;
   });
+  const commercialReady = isQuoteCommercialReady(quote);
+  const saleItemsReady = workItems.every((item) => item.type === "MATERIAL" || item.type === "REFACCIONES");
+  const shareDisabled = !["SENT", "APPROVED"].includes(quote.status) || !commercialReady;
+  const flowDisabled = !quoteAllowsOperations || (Boolean(quote.payableNote) && !quote.workOrder) ||
+    (!quote.workOrder && (quote.operation === "SALE"
+      ? !commercialReady || !saleItemsReady || !workOrderActions?.convert
+      : !workStartReady || !workOrderActions?.assign));
 
   const renderAction = (
     action: QuoteActionId,
@@ -104,7 +123,7 @@ export function QuoteListCard({
     presentation: "default" | "tile" = "default",
   ) => {
     const tileClassName = presentation === "tile"
-      ? "h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
+      ? "h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
       : "w-full";
 
     switch (action) {
@@ -135,6 +154,7 @@ export function QuoteListCard({
             triggerVariant={variant}
             triggerClassName={tileClassName}
             triggerIconOnly={presentation === "tile"}
+            triggerDisabled={!editable}
           />
         );
       case "share":
@@ -146,6 +166,7 @@ export function QuoteListCard({
             size={presentation === "tile" ? "sm" : "default"}
             className={tileClassName}
             actionLabelClassName={presentation === "tile" ? "sr-only" : undefined}
+            disabled={shareDisabled}
           />
         );
       case "authorize":
@@ -173,8 +194,11 @@ export function QuoteListCard({
             workers={workers}
             actions={workOrderActions}
             triggerVariant={variant}
-            triggerIconOnlyMobile={presentation === "tile"}
+            triggerIconOnlyMobile={false}
             triggerClassName={tileClassName}
+            alwaysRenderTrigger
+            triggerDisabled={flowDisabled}
+            triggerFlowLabel={quote.operation === "SALE" ? "Crear nota de venta" : "Asignar trabajo"}
           />
         );
       case "paymentLink":
@@ -278,15 +302,13 @@ export function QuoteListCard({
             data-testid="quote-secondary-actions"
             className="grid gap-2"
           >
-            {actionPresentation.primary ? (
-              <div data-testid="quote-primary-action" className="w-full">
-                {renderAction(actionPresentation.primary, "primary")}
-              </div>
-            ) : null}
+            <div data-testid="quote-primary-action" className="w-full">
+              {renderAction("workOrder", actionPresentation.sharePrimary ? "secondary" : "primary")}
+            </div>
             <div className="flex items-center gap-2">
-              {compactActions.map((action) => (
-                <div key={action} className="min-w-0 flex-1">
-                  {renderAction(action, action === "share" ? "secondary" : "outline", "tile")}
+              {(["edit", "share", "print"] as const).map((action) => (
+                <div key={action} className="shrink-0">
+                  {renderAction(action, action === "share" ? (actionPresentation.sharePrimary ? "primary" : "secondary") : "outline", "tile")}
                 </div>
               ))}
               <div data-testid="quote-overflow-action" className="shrink-0">
@@ -297,7 +319,7 @@ export function QuoteListCard({
                   triggerIconOnly
                 >
                   {actionPresentation.overflow
-                    .filter((action) => !compactActions.includes(action as typeof compactActions[number]))
+                    .filter((action) => action !== "edit" && action !== "share" && action !== "print" && action !== "workOrder")
                     .map((action) => <React.Fragment key={action}>{renderAction(action)}</React.Fragment>)}
                 </QuoteActionsMenu>
               </div>

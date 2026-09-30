@@ -18,13 +18,13 @@ type QuoteActionPresentationInput = {
   status: QuoteStatus;
   editable: boolean;
   hasWorkOrder: boolean;
-  hasPayableNote: boolean;
   paymentAvailable: boolean;
   hasSharedQuote: boolean;
 };
 
 export type QuoteActionPresentation = {
   primary: QuoteActionId | null;
+  sharePrimary: boolean;
   frequent: QuoteActionId[];
   overflow: QuoteActionId[];
   destructive: QuoteActionId | null;
@@ -52,7 +52,6 @@ export function resolveQuoteActionPresentation({
   status,
   editable,
   hasWorkOrder,
-  hasPayableNote,
   paymentAvailable,
   hasSharedQuote,
 }: QuoteActionPresentationInput): QuoteActionPresentation {
@@ -73,28 +72,17 @@ export function resolveQuoteActionPresentation({
   }
   if (status !== "APPROVED") available.add("delete");
 
-  const primaryCandidates: Record<QuoteStatus, QuoteActionId[]> = {
-    DRAFT: ["workOrder"],
-    SENT: ["workOrder", "authorize"],
-    APPROVED: ["workOrder"],
-    REJECTED: ["correctDecision"],
-    CANCELLED: [],
-    ARCHIVED: ["restore"],
-  };
-  const primary = (!hasSharedQuote || (hasPayableNote && !hasWorkOrder)) && ["DRAFT", "SENT", "APPROVED"].includes(status) && available.has("share")
-    ? "share"
-    : primaryCandidates[status].find((action) => available.has(action)) ?? null;
-  // Print is always available, so it is always a frequent action. The order
-  // mirrors the card tiles: Edit, Print, then Share when it is available.
-  const frequent: QuoteActionId[] = (["edit", "print", "share"] as const).filter(
-    (action) => available.has(action) && action !== primary,
-  );
+  // The mobile card always keeps the flow, Edit, Share, and Print in the same
+  // slots. `hasSharedQuote` only selects the flow/Share color treatment.
+  const primary: QuoteActionId = "workOrder";
+  const frequent: QuoteActionId[] = ["edit", "share", "print"];
   const overflow = actionOrder.filter(
     (action) => available.has(action) && action !== primary && !frequent.includes(action),
   );
 
   return {
     primary,
+    sharePrimary: !hasSharedQuote,
     frequent,
     overflow,
     destructive: available.has("delete") ? "delete" : null,

@@ -43,6 +43,26 @@ describe("WorkOrderOperationsDialog", () => {
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
   });
 
+  it("can keep an unsupported-status flow trigger visible but disabled without opening the dialog", async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkOrderOperationsDialog
+        quoteNumber="C-001"
+        quoteStatus="REJECTED"
+        workOrder={null}
+        alwaysRenderTrigger
+        triggerDisabled
+        triggerFlowLabel="Asignar trabajo"
+      />,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Asignar trabajo para cotización C-001" });
+    expect(trigger).toBeVisible();
+    expect(trigger).toBeDisabled();
+    await user.click(trigger);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("offers SALE conversion for an unassigned quote and does not require a master", async () => {
     const user = userEvent.setup();
     const convert = vi.fn(() => Promise.resolve({ success: true }));
