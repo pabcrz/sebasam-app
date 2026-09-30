@@ -38,4 +38,14 @@ describe("QuotesPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Cotizaciones" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Cotizaciones recientes" })).toBeInTheDocument();
   });
+
+  it("uses equal-height quote cards in a two-column grid", async () => {
+    render(await QuotesPage({ searchParams: Promise.resolve({}) }));
+
+    expect(screen.getByText("No se encontraron cotizaciones.").parentElement?.parentElement).toHaveClass(
+      "grid",
+      "auto-rows-fr",
+      "lg:grid-cols-[repeat(2,minmax(0,1fr))]",
+    );
+  });
 });

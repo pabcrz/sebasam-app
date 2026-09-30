@@ -173,11 +173,12 @@ describe("QuoteListRow", () => {
     expect(screen.getByText("Mantenimiento preventivo")).toBeInTheDocument();
   });
 
-  it("renders cancellation but not commercial authorization for draft quotes", () => {
+  it("renders commercial authorization and cancellation for draft quotes", () => {
     renderRow(createMockQuote());
 
-    expect(screen.queryByRole("button", { name: /autorizar cotización c-001/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /autorizar cotización c-001/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /gestionar trabajo/i })).toBeInTheDocument();
   });
 
   it("renders a pending-price draft without payment actions", () => {

@@ -11,31 +11,32 @@ describe("resolveQuoteActionPresentation", () => {
   it.each(["DRAFT", "SENT", "APPROVED", "REJECTED", "CANCELLED", "ARCHIVED"] as const)(
     "keeps the four mobile action slots stable for %s quotes",
     (status) => {
-      const presentation = resolveQuoteActionPresentation({ ...base, status, hasSharedQuote: true });
+      const presentation = resolveQuoteActionPresentation({ ...base, status });
 
       expect(presentation).toMatchObject({
         primary: "workOrder",
-        sharePrimary: false,
-        frequent: ["edit", "share", "print"],
+        frequent: ["edit", "print", "share"],
       });
       expect(presentation.frequent).not.toContain("workOrder");
       expect(presentation.overflow).not.toContain("print");
     },
   );
 
-  it("toggles only the flow and Share color decision with shared state", () => {
-    const unshared = resolveQuoteActionPresentation({ ...base, status: "SENT", hasSharedQuote: false });
-    const shared = resolveQuoteActionPresentation({ ...base, status: "SENT", hasSharedQuote: true });
+  it("uses the requested fixed compact action order", () => {
+    const presentation = resolveQuoteActionPresentation({ ...base, status: "SENT" });
 
-    expect(unshared).toMatchObject({ primary: "workOrder", sharePrimary: true, frequent: ["edit", "share", "print"] });
-    expect(shared).toMatchObject({ primary: "workOrder", sharePrimary: false, frequent: ["edit", "share", "print"] });
+    expect(presentation.frequent).toEqual(["edit", "print", "share"]);
+  });
+
+  it("keeps authorization available for corrected DRAFT quotes", () => {
+    expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT" }).overflow).toContain("authorize");
   });
 
   it("keeps quote-specific actions in overflow without altering the fixed mobile controls", () => {
-    expect(resolveQuoteActionPresentation({ ...base, status: "SENT", hasSharedQuote: true })).toMatchObject({
+    expect(resolveQuoteActionPresentation({ ...base, status: "SENT" })).toMatchObject({
       overflow: ["authorize", "duplicate", "cancel", "archive"],
     });
-    expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED", hasSharedQuote: true, paymentAvailable: true })).toMatchObject({
+    expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED", paymentAvailable: true })).toMatchObject({
       overflow: ["paymentLink", "correctDecision", "duplicate"],
     });
   });

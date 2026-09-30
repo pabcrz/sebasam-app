@@ -118,7 +118,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
             <QuoteFilters filters={filters} customers={customers} />
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
+          <div className="grid auto-rows-fr gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
             {quotes.map((quote) => (
               <QuoteListCard
                 key={quote.id}

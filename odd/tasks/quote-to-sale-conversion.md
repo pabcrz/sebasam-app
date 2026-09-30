@@ -127,4 +127,32 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - `git diff --check`: passed.
 - Runtime harness: N/A; mobile action behavior is covered by focused component tests, and no separate runtime boundary exists.
 - Rollback boundary: revert this final mobile action presentation, optional disabled-trigger props, focused tests, and this follow-up evidence; no server or desktop quote behavior changes.
-- Work-unit commit: prepared as `fix(quotes): stabilize mobile quote actions`; commit identity will be recorded in the final delivery report.
+- Work-unit commit: `49065ea fix(quotes): stabilize mobile quote actions`.
+
+## REJECTED-to-DRAFT and quote-card layout follow-up
+
+This authorized follow-up is limited to correcting the rejected-quote UI and harmonizing quote-card layout. Preserve existing backend eligibility, pending-price handling, and acceptance behavior; make no backend, data, or lifecycle changes unless implementation proves one is required.
+
+### Completed tasks
+
+- [x] **QTSC-UI-001 — Restore DRAFT actions after rejection.** DRAFT quotes now expose authorization in desktop rows and mobile overflow while retaining eligible WORK/SALE flow actions and the WORK acceptance prompt.
+- [x] **QTSC-CARD-002 — Harmonize quote-card layout.** Added equal-height two-column card tracks; full-height flex cards with anchored action footers; two-line titled quote names; a stable three-row date region; fixed Edit, Print, Share, More order and Share styling; uniform disabled styling; and no incidental quote-card body hover fill.
+
+### Effective requirements
+
+- `strict_tdd: true`
+- `runner: pnpm exec vitest run`
+- Add focused regression coverage for both pending tasks before implementation.
+- Keep the work limited to the UI behavior/layout described above and preserve all existing acceptance and pending-price behavior.
+
+### Completion evidence
+
+- Strict TDD RED: focused quote row/card, action presentation, and quotes page tests failed before implementation (`4 files`, `11 failed`, `40 passed`); failures showed missing DRAFT authorization and layout/action style requirements. A dialog-close selector in the mobile regression test needed a follow-up correction during implementation; source work began only after the intended RED failures were observed.
+- Focused GREEN: `pnpm exec vitest run src/features/quotes/components/quote-list-row.test.tsx src/features/quotes/components/quote-mobile-card.test.tsx src/features/quotes/components/quote-action-presentation.test.ts src/features/work-orders/components/work-order-operations-dialog.test.tsx src/components/ui/operational-card.test.tsx 'src/app/admin/(protected)/quotes/page.test.tsx'` — 6 files, 82 tests passed.
+- `pnpm typecheck`: passed (`tsc --noEmit`).
+- `pnpm lint`: passed (`eslint`).
+- `git diff --check`: passed.
+- Readiness check: the existing mobile `workStartReady` rule requires a customer or identifiable vehicle and complete item descriptions/positive quantities; SALE additionally requires existing commercial readiness and material/refacciones items. The valid fixture enables the WORK/SALE action; no server eligibility or lifecycle behavior was changed.
+- Runtime harness: N/A; quote action and card layout behavior is exercised by focused component and page tests, with no separate runtime boundary for this UI-only change.
+- Rollback boundary: revert the DRAFT authorization presentation and quote-card layout/style changes in `quote-list-row.tsx`, `quote-action-presentation.ts`, `quote-mobile-card.tsx`, `page.tsx`, and `operational-card.tsx`, the directly related tests in those components and page, and this follow-up evidence. No server actions, data model, database, or lifecycle logic is included.
+- Work-unit commit: `fix(quotes): restore DRAFT actions and align quote card layout` (commit identity recorded after commit).

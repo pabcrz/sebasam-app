@@ -166,7 +166,7 @@ export function QuoteListRow({
             />
           ) : null}
 
-          {quote.status === "SENT" ? (
+          {quote.status === "DRAFT" || quote.status === "SENT" ? (
             <QuoteAuthorizeForm
               action={authorizeAction}
               quoteNumber={quote.number}

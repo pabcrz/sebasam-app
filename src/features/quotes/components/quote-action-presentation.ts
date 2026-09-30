@@ -19,12 +19,10 @@ type QuoteActionPresentationInput = {
   editable: boolean;
   hasWorkOrder: boolean;
   paymentAvailable: boolean;
-  hasSharedQuote: boolean;
 };
 
 export type QuoteActionPresentation = {
   primary: QuoteActionId | null;
-  sharePrimary: boolean;
   frequent: QuoteActionId[];
   overflow: QuoteActionId[];
   destructive: QuoteActionId | null;
@@ -53,7 +51,6 @@ export function resolveQuoteActionPresentation({
   editable,
   hasWorkOrder,
   paymentAvailable,
-  hasSharedQuote,
 }: QuoteActionPresentationInput): QuoteActionPresentation {
   const available = new Set<QuoteActionId>(["print", "duplicate"]);
 
@@ -61,7 +58,7 @@ export function resolveQuoteActionPresentation({
   if (status !== "CANCELLED") {
     available.add("share");
   }
-  if (status === "SENT") available.add("authorize");
+  if (status === "DRAFT" || status === "SENT") available.add("authorize");
   if ((status === "APPROVED" || status === "REJECTED") && !hasWorkOrder) available.add("correctDecision");
   if (status === "DRAFT" || status === "SENT" || status === "APPROVED") available.add("workOrder");
   if (paymentAvailable) available.add("paymentLink");
@@ -72,17 +69,15 @@ export function resolveQuoteActionPresentation({
   }
   if (status !== "APPROVED") available.add("delete");
 
-  // The mobile card always keeps the flow, Edit, Share, and Print in the same
-  // slots. `hasSharedQuote` only selects the flow/Share color treatment.
+  // Keep the primary flow action and compact action slots stable on every card.
   const primary: QuoteActionId = "workOrder";
-  const frequent: QuoteActionId[] = ["edit", "share", "print"];
+  const frequent: QuoteActionId[] = ["edit", "print", "share"];
   const overflow = actionOrder.filter(
     (action) => available.has(action) && action !== primary && !frequent.includes(action),
   );
 
   return {
     primary,
-    sharePrimary: !hasSharedQuote,
     frequent,
     overflow,
     destructive: available.has("delete") ? "delete" : null,
