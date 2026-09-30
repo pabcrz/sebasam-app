@@ -11,9 +11,9 @@ export function NotFoundExperience({
   title = "A esta página se le zafó un tornillo",
 }: NotFoundExperienceProps) {
   return (
-    <main className="flex min-h-dvh w-full items-center justify-center bg-[var(--color-bg-soft)] pl-[max(var(--space-md),env(safe-area-inset-left))] pr-[max(var(--space-md),env(safe-area-inset-right))] pt-[max(var(--space-xl),env(safe-area-inset-top))] pb-[max(var(--space-xl),env(safe-area-inset-bottom))]">
-      <div className="w-full max-w-[420px] overflow-hidden text-center md:rounded-[var(--radius-md)] md:border md:border-[var(--color-border-subtle)] md:bg-[var(--color-surface)] md:shadow-[var(--shadow-card)]">
-        <header className="bg-[image:var(--gradient-primary)] px-[var(--space-md)] py-[var(--space-md)] text-left md:px-[var(--space-xl)]">
+    <main className="flex min-h-dvh w-full flex-col items-center bg-[var(--color-bg-soft)] pl-[max(var(--space-md),env(safe-area-inset-left))] pr-[max(var(--space-md),env(safe-area-inset-right))] pt-[max(var(--space-xl),env(safe-area-inset-top))] md:justify-center md:pb-[max(var(--space-xl),env(safe-area-inset-bottom))]">
+      <div className="flex w-full max-w-[420px] flex-1 flex-col overflow-hidden text-center md:flex-initial md:rounded-[var(--radius-md)] md:border md:border-[var(--color-border-subtle)] md:bg-[var(--color-surface)] md:shadow-[var(--shadow-card)]">
+        <header className="shrink-0 bg-[image:var(--gradient-primary)] px-[var(--space-md)] py-[var(--space-md)] text-left md:px-[var(--space-xl)]">
           <div className="flex items-center gap-3">
             <Image
               src="/logo-white-short.png"
@@ -32,7 +32,7 @@ export function NotFoundExperience({
             </div>
           </div>
         </header>
-        <div className="flex flex-col items-center gap-[var(--space-sm)] p-[var(--space-md)] md:gap-[var(--space-md)] md:p-[var(--space-xl)]">
+        <div className="flex flex-1 flex-col items-center justify-center gap-[var(--space-sm)] px-[var(--space-md)] pt-[var(--space-md)] md:gap-[var(--space-md)] md:px-[var(--space-xl)] md:pt-[var(--space-xl)]">
           <svg
             aria-label="Engranaje con un tornillo suelto"
             className="h-24 w-24 text-[var(--color-primary)] md:h-28 md:w-28"
@@ -61,12 +61,14 @@ export function NotFoundExperience({
           </p>
           <h1 className="text-2xl font-bold leading-tight text-[var(--color-text-main)]">{title}</h1>
           <p className="text-[var(--color-text-muted)]">{message}</p>
+        </div>
+        <footer className="mt-auto w-full px-[var(--space-md)] pb-[max(24px,env(safe-area-inset-bottom))] pt-[var(--space-md)] md:px-[var(--space-xl)] md:pb-[var(--space-xl)]">
           <Button asChild className="w-full shadow-none">
             <a href="https://sebasam.online" rel="noreferrer" target="_blank">
               Visita SEBASAM
             </a>
           </Button>
-        </div>
+        </footer>
       </div>
       <style>{`
         @keyframes loose-fastener-drop {

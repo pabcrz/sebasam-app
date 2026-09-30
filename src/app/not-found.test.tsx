@@ -16,8 +16,10 @@ describe("NotFound", () => {
     expect(screen.getByRole("img", { name: /engranaje/i })).toBeInTheDocument();
 
     const card = container.querySelector("main > div");
+    const main = screen.getByRole("main");
     const header = card?.querySelector("header");
     const content = card?.querySelector(":scope > div:nth-child(2)");
+    const footer = card?.querySelector(":scope > footer");
 
     expect(card).not.toHaveClass("p-[var(--space-md)]");
     expect(card).not.toHaveClass(
@@ -34,7 +36,21 @@ describe("NotFound", () => {
       "md:shadow-[var(--shadow-card)]",
     );
     expect(header).toHaveClass("px-[var(--space-md)]", "md:px-[var(--space-xl)]", "py-[var(--space-md)]");
-    expect(content).toHaveClass("p-[var(--space-md)]", "md:p-[var(--space-xl)]");
+    expect(card).toHaveClass("flex-1", "md:flex-initial");
+    expect(content).toHaveClass(
+      "flex-1",
+      "justify-center",
+      "px-[var(--space-md)]",
+      "md:px-[var(--space-xl)]",
+      "pt-[var(--space-md)]",
+      "md:pt-[var(--space-xl)]",
+    );
     expect(content).toHaveClass("gap-[var(--space-sm)]", "md:gap-[var(--space-md)]");
+    expect(main).toHaveClass("min-h-dvh", "flex-col");
+    expect(card?.firstElementChild).toBe(header);
+    expect(content?.nextElementSibling).toBe(footer);
+    expect(footer).toHaveClass("mt-auto", "px-[var(--space-md)]", "md:px-[var(--space-xl)]", "pt-[var(--space-md)]");
+    expect(footer).toHaveClass("pb-[max(24px,env(safe-area-inset-bottom))]", "md:pb-[var(--space-xl)]");
+    expect(footer).toContainElement(screen.getByRole("link", { name: "Visita SEBASAM" }));
   });
 });
