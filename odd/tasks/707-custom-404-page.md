@@ -20,6 +20,7 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Keep card/header padding balanced so the default Card inset does not stack with the 404 layout’s own spacing.
 - Use the shared 404 visual for public quote token errors as well as unmatched quote routes, while retaining status-specific titles.
 - On mobile, render the 404 without card chrome and use the available viewport; retain the framed card on desktop.
+- On mobile, keep the SEBASAM header at the top, center the 404 content in the remaining space, and place the CTA about 24px above the bottom safe area.
 
 ## Constraints
 
@@ -102,12 +103,22 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - [x] Remove border, radius, background card surface, and shadow on narrow screens; keep safe-area padding and existing logo/content alignment.
 - [x] Preserve the desktop card framing and all error copy, actions, animation, and route behavior.
 - [x] Run focused tests and commit the responsive presentation as one coherent work unit.
-- RED: `pnpm exec vitest run src/app/not-found.test.tsx` failed before implementation because the responsive contract's mobile chrome and spacing classes were absent.
-- GREEN: the same focused command passed, 1 file / 1 test; it verifies unframed mobile surface, desktop card framing, aligned responsive header/content insets, and compact mobile spacing.
-- Closure: `pnpm typecheck`, `pnpm lint`, and `git diff --check` passed. `pnpm build` was not run because the active preview uses `.next`.
-- Implementation: the shared 404 uses a plain responsive wrapper, with border/radius/surface/shadow only at `md` and above, reduced mobile padding/gaps, and unchanged safe-area-aware viewport wrapper. No global Card API or shared styles changed.
-- Commit: `249f6ed` (`fix(errors): use frameless mobile 404 layout`). Rollback boundary: responsive visual wrapper and compact mobile layout in `src/components/errors/not-found-experience.tsx`, its responsive assertions in `src/app/not-found.test.tsx`, and task 404-6 evidence.
-- Assessment against `19e410769f8d0e3f4310cee225980cc322ba9528`: `risk=medium`, reason `executable_change` (`src/app/not-found.test.tsx`), `changed_paths=3`, `changed_lines=49`, `review_due=false`, `review_due_reason=under_budget`; no review transition due.
+
+### 404-7 — Anchor mobile header, center content, and bottom CTA
+
+**Route:** delegated direct because the shared responsive layout and its regression test change together; one writer owns both files.
+
+- [x] Add failing assertions for the mobile order and layout: brand header top, 404 content centered in the remaining viewport, CTA at the bottom with 24px clearance.
+- [x] Use a mobile flex-column layout with safe-area-aware bottom spacing; preserve the existing desktop card composition.
+- [x] Keep copy, quote/note contextual messages, logo, animation, CTA destination, and route/access behavior unchanged.
+- [x] Run focused tests, record the result, and commit as one coherent work unit.
+- RED: `pnpm exec vitest run src/app/not-found.test.tsx` failed before implementation because the mobile composition contract was missing.
+- GREEN: the same command passed, 1 file / 1 test; verifies the top header, centered content, 24px+safe-area CTA footer, and retained desktop card classes.
+- Closure: `pnpm typecheck`, `pnpm lint`, and `git diff --check` passed. Build was not run to preserve the live `.next` preview.
+- Implementation: mobile uses a full-height flex column: brand header first, central error group flexes/centers, and CTA sits in the bottom footer with `pb-[max(24px,env(safe-area-inset-bottom))]`; desktop remains card-framed.
+- Commit: `f019e93` (`fix(errors): anchor mobile 404 content and action`). Rollback boundary: responsive header/content/footer placement in `src/components/errors/not-found-experience.tsx`, responsive assertions in `src/app/not-found.test.tsx`, and task 404-7 evidence.
+- Assessment against last reviewed boundary `19e410769f8d0e3f4310cee225980cc322ba9528`: medium risk, 3 paths / 78 lines, `review_due=false`, `under_budget`.
+- Parent spot-check: focused test passed, 1 file / 1 test. Live preview response returned 404 and confirms header precedes content, content precedes CTA, and bottom safe-area padding is present.
 
 ## Progress and Evidence
 
@@ -117,6 +128,9 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Read-only mapping: root `src/app/not-found.tsx` currently links to `/`; quote unavailable states render `SharedQuoteErrorState`; missing note print records call `notFound()`; existing tokens live in `src/app/globals.css`.
 - Original checkout’s unrelated payroll changes were committed before this task; an untracked `odd/tasks/note-filters-query-efficiency.md` remains there and must not be touched.
 - Current task worktree is based on `origin/develop` SHA `33b18f4e2d382eb030f7a9ee6ab274aa39f7b27d`; it has no CodeGraph index. Repository-specific instructions prohibit initializing one in this workflow, so use targeted direct reads in this worktree.
+- 404-6 RED/GREEN: `pnpm exec vitest run src/app/not-found.test.tsx` failed before implementation and passed afterward, 1 file/1 test; verifies an unframed mobile surface, desktop card frame, aligned header/content insets, and compact mobile spacing.
+- 404-6 closure: typecheck, lint, and diff-check passed; build intentionally skipped to preserve the active `.next` preview. The shared 404 uses a plain responsive wrapper, with desktop chrome only at `md` and above and existing safe-area behavior intact.
+- 404-6 commit: `249f6ed` (`fix(errors): use frameless mobile 404 layout`). Assessment against last reviewed boundary `19e410769f8d0e3f4310cee225980cc322ba9528`: medium risk, 3 paths/49 lines, `review_due=false`, under budget. Parent spot-check passed the focused test and confirmed the live preview returns HTTP 404 with mobile-unframed/desktop-framed classes.
 - 404-1 RED: `pnpm exec vitest run src/app/not-found.test.tsx` failed on the missing new title before implementation.
 - 404-1 GREEN: `pnpm exec vitest run src/app/not-found.test.tsx` passed after implementation (included in the complete focused command below).
 - 404-1 focused/closure checks: `pnpm exec vitest run src/app/not-found.test.tsx src/features/public-quotes/components/shared-quote-error-state.test.tsx 'src/app/admin/(protected)/notas/[id]/print/not-found.test.tsx'` — PASS, 3 files / 6 tests; `pnpm typecheck` — PASS; `pnpm lint` — PASS; `git diff --check` — PASS.
@@ -166,7 +180,8 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Mobile layout acceptance: preserve safe-area insets; remove card chrome only below the desktop breakpoint; keep desktop card border/radius/surface/shadow and brand header/content alignment.
 - 404-6 commit: `249f6ed` (`fix(errors): use frameless mobile 404 layout`). Assessment against the last acknowledged boundary `19e410769f8d0e3f4310cee225980cc322ba9528`: `risk=medium`, 3 paths/49 lines, `review_due=false`, `under_budget`.
 - Parent spot check: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file/1 test. Live preview returns HTTP 404; rendered surface has no mobile card chrome and restores the framed card at `md`.
+- User refined the mobile composition: SEBASAM header at top, 404 content centered in the remaining height, and CTA near the bottom with 24px clearance above the safe area.
 
 ## Next Step
 
-Task 404-6 implementation and assessment are complete. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. Production build remains unrun to preserve `.next`; no push or PR was requested.
+Task 404-7 implementation and assessment are complete. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. Production build remains unrun to preserve `.next`; no push or PR was requested.
