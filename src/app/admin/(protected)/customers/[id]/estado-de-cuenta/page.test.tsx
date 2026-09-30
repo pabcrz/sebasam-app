@@ -56,6 +56,7 @@ describe("CustomerStatementView", () => {
         vehicleLabel: "ECO: 101 · Kenworth T680 · Placas: 12-AA-3B",
         totalCents: 150000,
         paidCents: 50000,
+        paidCentsAtCutoff: 50000,
         remainingCents: 100000,
         paymentState: {
           label: "Vencida",
@@ -81,15 +82,6 @@ describe("CustomerStatementView", () => {
           items: [],
           sections: [],
         },
-      },
-    ],
-    bankAccounts: [
-      {
-        id: 1,
-        bankName: "BBVA",
-        accountHolder: "SEBASAM",
-        accountNumber: "1234567890",
-        clabe: "012180000000000000",
       },
     ],
     business: {
@@ -123,9 +115,8 @@ describe("CustomerStatementView", () => {
     expect(within(noteRow).getByText("$1,000.00")).toBeInTheDocument(); // remaining
     expect(screen.getByText("Vencida")).toBeInTheDocument();
 
-    // Bank transfer details
-    expect(screen.getByText("BBVA")).toBeInTheDocument();
-    expect(screen.getByText(/CLABE: 012180000000000000/)).toBeInTheDocument();
+    expect(screen.queryByText("BBVA")).not.toBeInTheDocument();
+    expect(screen.queryByText(/012180000000000000|1234567890/)).not.toBeInTheDocument();
   });
 
   it("opens QuotePreviewDialog when clicking note row", () => {

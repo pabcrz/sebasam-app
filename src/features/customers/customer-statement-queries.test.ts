@@ -104,6 +104,12 @@ describe("getCustomerDetailedStatement", () => {
           createdAt: new Date("2026-08-05T18:00:00Z"),
           payment: { status: "PAID", reversedAt: null },
         },
+        {
+          id: "pa-future",
+          amountCents: 10000,
+          createdAt: new Date("2026-08-16T18:00:00Z"),
+          payment: { status: "PAID", reversedAt: null },
+        },
       ],
     };
 
@@ -144,17 +150,18 @@ describe("getCustomerDetailedStatement", () => {
     expect(result?.notes).toHaveLength(1);
     expect(result?.notes[0].number).toBe("OT-001");
     expect(result?.notes[0].totalCents).toBe(100000);
-    expect(result?.notes[0].paidCents).toBe(40000);
-    expect(result?.notes[0].remainingCents).toBe(60000);
+    expect(result?.notes[0].paidCents).toBe(50000);
+    expect(result?.notes[0].paidCentsAtCutoff).toBe(40000);
+    expect(result?.notes[0].remainingCents).toBe(50000);
     expect(result?.notes[0].concepts).toBe("Cambiar muelles");
     expect(result?.notes[0].vehicleLabel).toContain("ECO: ECO-10");
     expect(result?.notes[0].paymentState.label).toBe("Vencida"); // 2026-08-08 < 2026-08-15
 
-    expect(result?.summary.finalBalanceCents).toBe(60000);
-    expect(result?.summary.overdueBalanceCents).toBe(60000);
-    expect(result?.summary.periodPaymentsCents).toBe(40000);
+    expect(result?.summary.finalBalanceCents).toBe(50000);
+    expect(result?.summary.overdueBalanceCents).toBe(50000);
+    expect(result?.summary.periodPaymentsCents).toBe(50000);
     expect(result?.customer.rfc).toBe("TDN010101ABC");
-    expect(result?.bankAccounts).toHaveLength(1);
+    expect(result).not.toHaveProperty("bankAccounts");
   });
 
   it("calculates initial balance, period movements, and final balance in monthly history view", async () => {

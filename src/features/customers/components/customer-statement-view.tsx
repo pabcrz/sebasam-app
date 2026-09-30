@@ -32,9 +32,14 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
     availableCreditCents,
     summary,
     notes,
-    bankAccounts,
     business,
   } = statement;
+  const printTotalCents = notes.reduce((total, note) => total + note.totalCents, 0);
+  const printPaidCents = notes.reduce((total, note) => total + note.paidCentsAtCutoff, 0);
+  const printRemainingCents = notes.reduce(
+    (total, note) => total + Math.max(0, note.totalCents - note.paidCentsAtCutoff),
+    0,
+  );
 
   const displayName = customer.commercialName || customer.name;
   const legalSubtitle = customer.commercialName
@@ -47,7 +52,8 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
   };
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-6 md:px-6 md:py-8 print:p-0 print:m-0 print:max-w-none print:w-full print:px-[15mm] print:py-[12mm] print:gap-4">
+    <div className="mx-auto w-full print:w-full">
+      <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-6 md:px-6 md:py-8 print:hidden">
       {/* Screen navigation & header */}
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Button asChild variant="ghost" size="sm" className="w-fit min-h-[44px] px-3.5">
@@ -425,33 +431,6 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
         </CardContent>
       </Card>
 
-      {/* Bank transfer info (Printed and screen reference) */}
-      {bankAccounts.length > 0 ? (
-        <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4 text-xs print:break-inside-avoid">
-          <p className="font-bold uppercase tracking-wider text-[var(--color-text-main)] mb-2">
-            Cuentas bancarias autorizadas para transferencias o depósitos:
-          </p>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {bankAccounts.map((acc) => (
-              <div
-                key={acc.id}
-                className="rounded border border-[var(--color-border-light)] bg-[var(--color-surface)] p-2.5"
-              >
-                <p className="font-bold text-[var(--color-text-main)]">{acc.bankName}</p>
-                <p className="text-[var(--color-text-muted)]">Beneficiario: {acc.accountHolder}</p>
-                <p className="font-mono text-[var(--color-text-main)] font-semibold mt-1">CLABE: {acc.clabe}</p>
-                {acc.accountNumber ? (
-                  <p className="font-mono text-[var(--color-text-muted)]">Cuenta: {acc.accountNumber}</p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-[10px] text-[var(--color-text-muted)]">
-            Favor de enviar su comprobante de pago vía WhatsApp al {business.contactWhatsapp} indicando el folio de la nota.
-          </p>
-        </div>
-      ) : null}
-
       {/* Interactive Note Preview Modal */}
       {selectedQuote ? (
         <QuotePreviewDialog
@@ -463,6 +442,56 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
           showTrigger={false}
         />
       ) : null}
+      </div>
+
+      <section
+        data-testid="customer-statement-print"
+        className="mx-auto hidden w-full max-w-5xl space-y-5 px-[15mm] py-[12mm] print:block print:max-w-none print:break-inside-avoid"
+      >
+        <header className="flex items-start justify-between gap-6 border-b border-gray-400 pb-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest">{business.name} · Estado de cuenta</p>
+            <h1 className="mt-1 text-xl font-bold">{displayName}</h1>
+            {legalSubtitle ? <p className="text-sm">Razón social: {legalSubtitle}</p> : null}
+          </div>
+          <div className="text-right text-sm">
+            <p className="font-semibold">Fecha de emisión</p>
+            <p>{formatDate(emissionDate)}</p>
+          </div>
+        </header>
+
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-gray-400 text-left">
+              <th className="py-2 pr-3">Concepto</th>
+              <th className="py-2 pr-3">Estado</th>
+              <th className="py-2 pr-3 text-right">Abono</th>
+              <th className="py-2 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {notes.map((note) => (
+              <tr key={note.id} className="border-b border-gray-200">
+                <td className="py-2 pr-3">{note.concepts}</td>
+                <td className="py-2 pr-3">
+                  {note.paidCentsAtCutoff >= note.totalCents ? "Pagada" : "Pendiente"}
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums">{formatCents(note.paidCentsAtCutoff)}</td>
+                <td className="py-2 text-right tabular-nums">{formatCents(note.totalCents)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <dl className="ml-auto grid w-fit grid-cols-[auto_auto] gap-x-8 gap-y-1 text-right text-sm">
+          <dt>Total de notas</dt>
+          <dd className="font-semibold tabular-nums">{formatCents(printTotalCents)}</dd>
+          <dt>Abonado al {formatDate(emissionDate)}</dt>
+          <dd className="font-semibold tabular-nums">{formatCents(printPaidCents)}</dd>
+          <dt className="font-bold">Saldo restante</dt>
+          <dd className="font-bold tabular-nums">{formatCents(printRemainingCents)}</dd>
+        </dl>
+      </section>
     </div>
   );
 }

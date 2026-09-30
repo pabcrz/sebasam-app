@@ -49,6 +49,7 @@ describe("CustomerStatementView", () => {
         vehicleLabel: "Kenworth T680",
         totalCents: 20000,
         paidCents: 0,
+        paidCentsAtCutoff: 0,
         remainingCents: 20000,
         paymentState: {
           label: "Vencida",
@@ -75,15 +76,6 @@ describe("CustomerStatementView", () => {
           items: [],
           sections: [],
         },
-      },
-    ],
-    bankAccounts: [
-      {
-        id: 1,
-        bankName: "BBVA",
-        accountHolder: "SEBASAM",
-        accountNumber: "1234567890",
-        clabe: "012180000000000000",
       },
     ],
     business: {
@@ -153,6 +145,61 @@ describe("CustomerStatementView", () => {
     const printButton = screen.getByRole("button", { name: /imprimir estado de cuenta/i });
     expect(printButton).toBeInTheDocument();
     expect(printButton).toHaveClass("min-h-[44px]");
+  });
+
+  it("renders a concise print projection with pending status and reconciled note amounts", () => {
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    const printProjection = screen.getByTestId("customer-statement-print");
+    expect(printProjection).toHaveClass("hidden", "print:block");
+    expect(within(printProjection).getByText("Servicio mayor de frenos")).toBeInTheDocument();
+    expect(within(printProjection).getByText("Pendiente")).toBeInTheDocument();
+    expect(within(printProjection).getByText("Abono")).toBeInTheDocument();
+    expect(within(printProjection).getByText("Total")).toBeInTheDocument();
+    expect(within(printProjection).getByText("$0.00")).toBeInTheDocument();
+    expect(within(printProjection).getAllByText("$200.00")).toHaveLength(2);
+    expect(within(printProjection).getByText("Total de notas")).toBeInTheDocument();
+    expect(within(printProjection).getByText("Abonado al 15 de agosto de 2026")).toBeInTheDocument();
+    expect(within(printProjection).getByText("Saldo restante")).toBeInTheDocument();
+    expect(within(printProjection).queryByText(/Folio|Vehículo|Acciones|Vencida/)).not.toBeInTheDocument();
+  });
+
+  it("keeps partial and overdue notes pending in the customer-facing print projection", () => {
+    const partiallyPaidStatement: CustomerDetailedStatement = {
+      ...baseStatement,
+      notes: [
+        {
+          ...baseStatement.notes[0],
+          paidCents: 5000,
+          paidCentsAtCutoff: 5000,
+          remainingCents: 15000,
+          paymentState: { label: "Vencida", balanceCents: 15000, variant: "danger" },
+        },
+        {
+          ...baseStatement.notes[0],
+          id: "wo-paid",
+          number: "OT-002",
+          concepts: "Servicio pagado",
+          totalCents: 30000,
+          paidCents: 30000,
+          paidCentsAtCutoff: 30000,
+          remainingCents: 0,
+          paymentState: { label: "Pagada", balanceCents: 0, variant: "success" },
+        },
+      ],
+    };
+
+    render(<CustomerStatementView statement={partiallyPaidStatement} />);
+
+    const printProjection = screen.getByTestId("customer-statement-print");
+    expect(within(printProjection).getByText("Pendiente")).toBeInTheDocument();
+    expect(within(printProjection).getByText("Pagada")).toBeInTheDocument();
+    expect(within(printProjection).queryByText("Vencida")).not.toBeInTheDocument();
+    expect(within(printProjection).getByText("$50.00")).toBeInTheDocument();
+    expect(within(printProjection).getByText("$200.00")).toBeInTheDocument();
+    expect(within(printProjection).getByText("$500.00")).toBeInTheDocument();
+    expect(within(printProjection).getByText("$350.00")).toBeInTheDocument();
+    expect(within(printProjection).getByText("$150.00")).toBeInTheDocument();
   });
 
   it("renders table with colgroup summing to 100%, repeating header group, and mobile scroll with print-overflow-visible", () => {

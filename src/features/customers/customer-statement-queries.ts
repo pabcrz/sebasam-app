@@ -19,6 +19,7 @@ export type StatementNoteItem = {
   vehicleLabel: string;
   totalCents: number;
   paidCents: number;
+  paidCentsAtCutoff: number;
   remainingCents: number;
   paymentState: PaymentState;
   previewQuote: QuotePreviewSummary;
@@ -51,13 +52,6 @@ export type CustomerDetailedStatement = {
   availableCreditCents: number;
   summary: CustomerStatementSummary;
   notes: StatementNoteItem[];
-  bankAccounts: Array<{
-    id: number;
-    bankName: string;
-    accountHolder: string;
-    accountNumber: string;
-    clabe: string;
-  }>;
   business: {
     name: string;
     fullName: string;
@@ -219,6 +213,9 @@ export async function getCustomerDetailedStatement(
   allCompletedOrders.forEach((wo) => {
     const totalCents = getEffectiveSettlementTotals(wo.quote, wo.quote.settlementAgreement).totalCents;
     const paidCents = wo.paymentApplications.reduce((sum, pa) => sum + pa.amountCents, 0);
+    const paidCentsAtCutoff = wo.paymentApplications
+      .filter((pa) => pa.createdAt <= now)
+      .reduce((sum, pa) => sum + pa.amountCents, 0);
     const remainingCents = Math.max(0, totalCents - paidCents);
     const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
 
@@ -291,6 +288,7 @@ export async function getCustomerDetailedStatement(
       vehicleLabel,
       totalCents,
       paidCents,
+      paidCentsAtCutoff,
       remainingCents,
       paymentState,
       previewQuote,
@@ -367,13 +365,6 @@ export async function getCustomerDetailedStatement(
       overdueBalanceCents,
     },
     notes: statementNotes,
-    bankAccounts: paymentSettings.bankAccounts.map((acc) => ({
-      id: acc.id,
-      bankName: acc.bankName,
-      accountHolder: acc.accountHolder,
-      accountNumber: acc.accountNumber,
-      clabe: acc.clabe,
-    })),
     business: {
       name: paymentSettings.name,
       fullName: paymentSettings.fullName,
