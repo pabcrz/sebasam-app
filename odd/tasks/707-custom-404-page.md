@@ -21,6 +21,7 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Use the shared 404 visual for public quote token errors as well as unmatched quote routes, while retaining status-specific titles.
 - On mobile, render the 404 without card chrome and use the available viewport; retain the framed card on desktop.
 - On mobile, keep the SEBASAM header at the top, center the 404 content in the remaining space, and place the CTA about 24px above the bottom safe area.
+- Replace the gear with a single flat vector hex bolt, two subtle motion marks, and a reduced-motion-aware animation; add no other illustration elements.
 
 ## Constraints
 
@@ -112,6 +113,7 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - [x] Use a mobile flex-column layout with safe-area-aware bottom spacing; preserve the existing desktop card composition.
 - [x] Keep copy, quote/note contextual messages, logo, animation, CTA destination, and route/access behavior unchanged.
 - [x] Run focused tests, record the result, and commit as one coherent work unit.
+
 - [x] Extend the mobile brand band edge-to-edge while keeping header, content, and CTA inside the safe-area insets.
 - Correction RED: `pnpm exec vitest run src/app/not-found.test.tsx` failed before source changes because mobile main still had outer top/side padding.
 - Correction GREEN: same command passed, 1 file / 1 test; verifies full-bleed band, safe-area-protected content, top-header/content/footer order, bottom clearance, and desktop-frame classes.
@@ -129,6 +131,23 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Commit: `f019e93` (`fix(errors): anchor mobile 404 content and action`). Rollback boundary: responsive header/content/footer placement in `src/components/errors/not-found-experience.tsx`, responsive assertions in `src/app/not-found.test.tsx`, and task 404-7 evidence.
 - Assessment against last reviewed boundary `19e410769f8d0e3f4310cee225980cc322ba9528`: medium risk, 3 paths / 78 lines, `review_due=false`, `under_budget`.
 - Parent spot-check: focused test passed, 1 file / 1 test. Live preview response returned 404 and confirms header precedes content, content precedes CTA, and bottom safe-area padding is present.
+
+### 404-8 — Replace the gear with a loose hex bolt
+
+**Route:** delegated direct because the shared SVG/animation and focused test change together; one writer owns both files.
+
+- [x] Add failing assertions for one hex-head bolt, exactly two curved motion marks, and absence of gear artwork.
+- [x] Draw a lightweight flat bolt SVG with existing navy/blue tokens at the current illustration footprint.
+- [x] Add restrained -6° to 6° rotation and 3–5px vertical motion over about two seconds; disable movement for `prefers-reduced-motion`.
+- [x] Preserve all copy, the selected external CTA, and existing mobile/desktop/error behavior.
+- [x] Run focused tests and commit as one coherent work unit.
+- RED: `pnpm exec vitest run src/app/not-found.test.tsx` failed before production edits because the accessible hex bolt illustration was absent.
+- GREEN: same command passed, 1 file / 1 test; confirms a single hex-head bolt/shaft, exactly two separately classed motion paths, no gear artwork, and retained shared 404 content/CTA.
+- Checks: `pnpm typecheck`, `pnpm lint`, and `git diff --check` passed. `pnpm build` intentionally skipped for the active preview.
+- Implementation: replaced the gear with a 24x24 SVG bolt using existing navy/primary/subtle blue-gray tokens; bolt animates -6° to +6° and 4px vertically over 2.2 seconds and is static for reduced motion.
+- Commit: `abf22b2` (`feat(errors): replace 404 gear with hex bolt`). Rollback boundary: the shared SVG/animation and focused bolt-art regression assertions.
+- Committed-only assessment against `19e410769f8d0e3f4310cee225980cc322ba9528`: `risk=medium`, reason `executable_change` (`src/app/not-found.test.tsx`), `changed_paths=3`, `changed_lines=196`, `review_due=false`, `review_due_reason=under_budget`.
+- Parent spot-check: `pnpm exec vitest run src/app/not-found.test.tsx` passed (1 file/1 test). Live preview returns 404 with the bolt, both motion marks, external CTA, and no gear.
 
 ## Progress and Evidence
 
@@ -191,7 +210,8 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - 404-6 commit: `249f6ed` (`fix(errors): use frameless mobile 404 layout`). Assessment against the last acknowledged boundary `19e410769f8d0e3f4310cee225980cc322ba9528`: `risk=medium`, 3 paths/49 lines, `review_due=false`, `under_budget`.
 - Parent spot check: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file/1 test. Live preview returns HTTP 404; rendered surface has no mobile card chrome and restores the framed card at `md`.
 - User refined the mobile composition: SEBASAM header at top, 404 content centered in the remaining height, and CTA near the bottom with 24px clearance above the safe area.
+- User requested a single flat hex bolt with two motion marks instead of a gear, and confirmed the 404 should keep only the external “Visita SEBASAM” action.
 
 ## Next Step
 
-Task 404-7 implementation and assessment are complete. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. Production build remains unrun to preserve `.next`; no push or PR was requested.
+Task 404-8 implementation and assessment are complete. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. No push or PR was requested.
