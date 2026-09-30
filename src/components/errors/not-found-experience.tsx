@@ -34,24 +34,40 @@ export function NotFoundExperience({
         </header>
         <div className="flex flex-1 flex-col items-center justify-center gap-[var(--space-sm)] pl-[max(var(--space-md),env(safe-area-inset-left))] pr-[max(var(--space-md),env(safe-area-inset-right))] pt-[var(--space-md)] md:gap-[var(--space-md)] md:px-[var(--space-xl)] md:pt-[var(--space-xl)]">
           <svg
-            aria-label="Engranaje con un tornillo suelto"
+            aria-label="Tornillo de cabeza hexagonal"
             className="h-24 w-24 text-[var(--color-primary)] md:h-28 md:w-28"
-            fill="none"
             role="img"
-            viewBox="0 0 112 112"
+            viewBox="0 0 24 24"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <path
-              d="M47 9h18l3 10a31 31 0 0 1 7 3l9-5 13 13-5 9a31 31 0 0 1 3 7l10 3v18l-10 3a31 31 0 0 1-3 7l5 9-13 13-9-5a31 31 0 0 1-7 3l-3 10H47l-3-10a31 31 0 0 1-7-3l-9 5-13-13 5-9a31 31 0 0 1-3-7l-10-3V47l10-3a31 31 0 0 1 3-7l-5-9 13-13 9 5a31 31 0 0 1 7-3l3-10Z"
-              fill="currentColor"
-              transform="translate(-3 -3) scale(.91)"
-            />
-            <circle cx="56" cy="56" r="17" fill="var(--color-surface)" />
-            <g className="loose-fastener" fill="var(--color-text-main)">
-              <path d="m83 83 5-5 10 10-5 5z" />
-              <circle cx="99" cy="96" r="5" />
-              <path d="m96 96 6-2" stroke="var(--color-surface)" strokeWidth="2" />
+            <g className="bolt-illustration">
+              <polygon
+                className="bolt-head"
+                points="12,2.5 16.5,5 16.5,10 12,12.5 7.5,10 7.5,5"
+                fill="var(--color-primary)"
+              />
+              <path
+                className="bolt-shaft"
+                d="M10 12h4v2h1.5v1.5H14V17h1.5v1.5H14V21h-4v-2.5H8.5V17H10v-1.5H8.5V14H10z"
+                fill="var(--color-navy-700)"
+              />
             </g>
+            <path
+              className="motion-line motion-line-one"
+              d="M3 5.5c.7-1.1 1.7-1.8 2.8-2.2"
+              fill="none"
+              stroke="var(--color-text-muted)"
+              strokeLinecap="round"
+              strokeWidth="1.2"
+            />
+            <path
+              className="motion-line motion-line-two"
+              d="M2.5 9c.8-.8 1.6-1.2 2.5-1.4"
+              fill="none"
+              stroke="var(--color-text-muted)"
+              strokeLinecap="round"
+              strokeWidth="1.2"
+            />
           </svg>
           <p
             aria-label="404"
@@ -71,13 +87,12 @@ export function NotFoundExperience({
         </footer>
       </div>
       <style>{`
-        @keyframes loose-fastener-drop {
-          0%, 15% { transform: translate(0, 0) rotate(0); }
-          55% { transform: translate(2px, 9px) rotate(35deg); }
-          70%, 100% { transform: translate(0, 0) rotate(0); }
+        @keyframes bolt-drop {
+          0%, 100% { transform: translateY(0) rotate(-6deg); }
+          50% { transform: translateY(4px) rotate(6deg); }
         }
-        .loose-fastener { transform-origin: 94px 89px; animation: loose-fastener-drop 2.8s ease-in-out infinite; }
-        @media (prefers-reduced-motion: reduce) { .loose-fastener { animation: none; } }
+        .bolt-illustration { transform-origin: 12px 12px; animation: bolt-drop 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+        @media (prefers-reduced-motion: reduce) { .bolt-illustration { animation: none; } }
       `}</style>
     </main>
   );

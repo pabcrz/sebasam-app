@@ -13,7 +13,8 @@ describe("NotFound", () => {
     expect(screen.getByRole("heading", { name: "SEBASAM", level: 2 })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Visita SEBASAM" })).toHaveAttribute("href", "https://sebasam.online");
     expect(screen.queryByRole("link", { name: /inicio|home/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /engranaje/i })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Tornillo de cabeza hexagonal" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /engranaje|gear/i })).not.toBeInTheDocument();
 
     const card = container.querySelector("main > div");
     const main = screen.getByRole("main");
@@ -86,5 +87,10 @@ describe("NotFound", () => {
       "pl-[max(var(--space-md),env(safe-area-inset-left))]",
       "pr-[max(var(--space-md),env(safe-area-inset-right))]",
     );
+    expect(container.querySelectorAll(".bolt-head")).toHaveLength(1);
+    expect(container.querySelectorAll(".bolt-shaft")).toHaveLength(1);
+    expect(container.querySelectorAll(".motion-line")).toHaveLength(2);
+    expect(container.querySelector(".motion-line-one")).toBeInTheDocument();
+    expect(container.querySelector(".motion-line-two")).toBeInTheDocument();
   });
 });
