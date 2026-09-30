@@ -211,7 +211,9 @@ The current global 404 page offers an internal “Volver al inicio” link even 
 - Parent spot check: `pnpm exec vitest run src/app/not-found.test.tsx` — PASS, 1 file/1 test. Live preview returns HTTP 404; rendered surface has no mobile card chrome and restores the framed card at `md`.
 - User refined the mobile composition: SEBASAM header at top, 404 content centered in the remaining height, and CTA near the bottom with 24px clearance above the safe area.
 - User requested a single flat hex bolt with two motion marks instead of a gear, and confirmed the 404 should keep only the external “Visita SEBASAM” action.
+- Final production build passed in a disposable offline worktree; `/cotizacion` and `/_not-found` were generated. The temporary worktree was removed and the live preview remained running.
+- PR #713 opened at https://github.com/pabcrz/sebasam-app/pull/713 to `develop`, `Closes #707`, labels `type:feature` and `size:exception`. The 591-line size exception was explicitly approved; Vercel and Vercel Preview Comments passed.
 
 ## Next Step
 
-Task 404-8 implementation and assessment are complete. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process. No push or PR was requested.
+PR #713 is open; merge remains a separate user decision. Preserve the running `http://127.0.0.1:3107/preview-404`; do not stop or mutate its process.
