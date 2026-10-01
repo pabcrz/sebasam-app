@@ -10,6 +10,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     customer: { findUnique: vi.fn() },
     workOrder: { findMany: vi.fn() },
+    payment: { findMany: vi.fn() },
   },
 }));
 
@@ -66,6 +67,7 @@ describe("getCustomerDetailedStatement", () => {
       totalAppliedCents: 15000,
       availableCreditCents: 15000,
     });
+    (prisma.payment.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
   });
 
   it("returns null if customer does not exist", async () => {
@@ -347,5 +349,89 @@ describe("getCustomerDetailedStatement", () => {
       name: "Chofer Snapshot",
       role: "DRIVER",
     });
+  });
+
+  it("builds cutoff-dated application and residual-credit activity without double-counting captures", async () => {
+    (prisma.customer.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(mockCustomer);
+
+    const workOrder = (id: string, number: string, totalCents: number, applications: Array<{ amountCents: number; createdAt: Date }>) => ({
+      id,
+      number,
+      status: "COMPLETED",
+      completedAt: new Date("2026-08-01T18:00:00Z"),
+      paymentDueDate: new Date("2026-08-30T18:00:00Z"),
+      quote: {
+        id: `q-${id}`,
+        number: `C-${number}`,
+        title: `Servicio ${number}`,
+        totalCents,
+        subtotalCents: totalCents,
+        discountCents: null,
+        taxCents: null,
+        vehicle: null,
+        items: [],
+        sections: [],
+      },
+      paymentApplications: applications.map((application) => ({
+        ...application,
+        payment: { status: "PAID", reversedAt: null },
+      })),
+    });
+
+    const firstAllocationDate = new Date("2026-08-05T18:00:00Z");
+    const laterAllocationDate = new Date("2026-08-10T18:00:00Z");
+    const afterCutoffDate = new Date("2026-08-16T18:00:00Z");
+    (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      workOrder("wo-1", "OT-001", 100000, [
+        { amountCents: 40000, createdAt: firstAllocationDate },
+        { amountCents: 5000, createdAt: afterCutoffDate },
+      ]),
+      workOrder("wo-2", "OT-002", 80000, [
+        { amountCents: 20000, createdAt: laterAllocationDate },
+        { amountCents: 10000, createdAt: afterCutoffDate },
+      ]),
+    ]);
+    (prisma.payment.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        amountCents: 100000,
+        createdAt: new Date("2026-08-05T17:00:00Z"),
+        applications: [
+          { amountCents: 40000, createdAt: firstAllocationDate, reversedAt: null, workOrderId: "wo-1", workOrder: { number: "OT-001" } },
+          { amountCents: 20000, createdAt: laterAllocationDate, reversedAt: null, workOrderId: "wo-2", workOrder: { number: "OT-002" } },
+          { amountCents: 5000, createdAt: afterCutoffDate, reversedAt: null, workOrderId: "wo-1", workOrder: { number: "OT-001" } },
+        ],
+      },
+      {
+        amountCents: 30000,
+        createdAt: new Date("2026-08-14T10:00:00Z"),
+        applications: [
+          { amountCents: 10000, createdAt: afterCutoffDate, reversedAt: null, workOrderId: "wo-2", workOrder: { number: "OT-002" } },
+        ],
+      },
+      {
+        amountCents: 7000,
+        createdAt: afterCutoffDate,
+        applications: [],
+      },
+    ]);
+
+    const params = parseCustomerStatementParams({}, fakeNow);
+    const result = await getCustomerDetailedStatement("cust-1", params, fakeNow);
+
+    expect(result?.paymentActivity).toEqual([
+      { type: "credit", date: new Date("2026-08-05T17:00:00Z"), availableCents: 40000 },
+      { type: "application", date: firstAllocationDate, amountCents: 40000, noteNumber: "OT-001" },
+      { type: "application", date: laterAllocationDate, amountCents: 20000, noteNumber: "OT-002" },
+      { type: "credit", date: new Date("2026-08-14T10:00:00Z"), availableCents: 30000 },
+    ]);
+    expect(result?.availableCreditAtCutoffCents).toBe(70000);
+    expect(prisma.payment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        customerId: "cust-1",
+        status: "PAID",
+        reversedAt: null,
+        createdAt: { lte: fakeNow },
+      }),
+    }));
   });
 });

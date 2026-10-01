@@ -65,8 +65,10 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
     anchor,
     rangeLabel,
     availableCreditCents,
+    availableCreditAtCutoffCents,
     summary,
     notes,
+    paymentActivity,
     business,
   } = statement;
   const printTotalCents = notes.reduce((total, note) => total + note.totalCents, 0);
@@ -540,6 +542,47 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
           <dt className="font-bold">Saldo restante</dt>
           <dd className="font-bold tabular-nums">{formatCents(printRemainingCents)}</dd>
         </dl>
+
+        <section
+          aria-labelledby="customer-statement-payment-history-title"
+          data-testid="customer-statement-payment-history"
+          className="space-y-2 border-t border-gray-300 pt-4"
+        >
+          <h2 id="customer-statement-payment-history-title" className="text-sm font-bold">
+            Historial de abonos y saldo a favor
+          </h2>
+          {paymentActivity.length > 0 ? (
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-gray-300 text-left">
+                  <th className="py-1.5 pr-3">Fecha</th>
+                  <th className="py-1.5 pr-3">Movimiento</th>
+                  <th className="py-1.5 text-right">Importe</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentActivity.map((activity, index) => (
+                  <tr key={`${activity.type}-${activity.date.toISOString()}-${index}`} data-testid="customer-statement-payment-event">
+                    <td className="py-1.5 pr-3">{formatDate(activity.date)}</td>
+                    <td className="py-1.5 pr-3">
+                      {activity.type === "application"
+                        ? `Abono aplicado · Nota ${activity.noteNumber}`
+                        : "Saldo a favor generado"}
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums">
+                      {formatCents(activity.type === "application" ? activity.amountCents : activity.availableCents)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-xs text-gray-600">No hay abonos ni saldo a favor disponible a la fecha de emisión.</p>
+          )}
+          <p className="text-right text-sm font-semibold">
+            Saldo a favor disponible al {formatDate(emissionDate)}: {formatCents(availableCreditAtCutoffCents)}
+          </p>
+        </section>
       </section>
     </div>
   );
