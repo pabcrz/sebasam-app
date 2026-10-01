@@ -65,11 +65,15 @@ function buildStatementPaymentActivity(
       (application) => application.reversedAt === null && application.createdAt <= cutoff,
     );
     const appliedCents = activeApplications.reduce((total, application) => total + application.amountCents, 0);
-    const availableCents = Math.max(0, payment.amountCents - appliedCents);
-    availableCreditAtCutoffCents += availableCents;
+    availableCreditAtCutoffCents += Math.max(0, payment.amountCents - appliedCents);
 
-    if (availableCents > 0) {
-      paymentActivity.push({ type: "credit", date: payment.createdAt, availableCents });
+    const appliedAtCaptureCents = activeApplications
+      .filter((application) => application.createdAt <= payment.createdAt)
+      .reduce((total, application) => total + application.amountCents, 0);
+    const generatedCreditCents = Math.max(0, payment.amountCents - appliedAtCaptureCents);
+
+    if (generatedCreditCents > 0) {
+      paymentActivity.push({ type: "credit", date: payment.createdAt, availableCents: generatedCreditCents });
     }
 
     activeApplications.forEach((application) => {
