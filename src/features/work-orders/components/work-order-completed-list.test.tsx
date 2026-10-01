@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { WorkOrderCompletedList } from "./work-order-completed-list";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
@@ -227,6 +227,7 @@ describe("WorkOrderCompletedList", () => {
         paymentHistories={[{ workOrderId: workOrder.id, totalCents: 12_500, payments: longPaymentHistory }]}
       />,
     );
+    const cardPrintAction = screen.getByRole("button", { name: "Imprimir nota de remisión COT-001" });
 
     fireEvent.click(screen.getByRole("button", { name: /Compartir cotización/ }));
     expect(screen.queryByTestId("nota-detail-dialog")).not.toBeInTheDocument();
@@ -242,12 +243,15 @@ describe("WorkOrderCompletedList", () => {
     expect(screen.getByTestId("nota-detail-dialog")).toBeInTheDocument();
     expect(screen.getByText("Historial de pagos")).toBeInTheDocument();
     expect(screen.getByTestId("nota-payment-history")).toBeInTheDocument();
+    const detailDialog = screen.getByTestId("nota-detail-dialog");
+    expect(within(detailDialog).queryByRole("button", { name: "Imprimir nota de remisión COT-001" })).not.toBeInTheDocument();
+    expect(cardPrintAction).toBeInTheDocument();
+    expect(cardPrintAction).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas");
     expect(screen.getAllByRole("listitem")).toHaveLength(longPaymentHistory.length);
     expect(screen.getByTestId("quote-payment-balance-indicator")).toHaveTextContent(/Saldo pendiente\s*\$125\.00/);
     expect(screen.getByTestId("note-due-date")).toHaveTextContent(/Fecha de vencimiento de pago: 21 de agosto de 2026\./);
     expect(screen.queryByTestId("quote-validity")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Registrar pago para COT-001" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Imprimir nota de remisión COT-001/ })).toBeInTheDocument();
     expect(screen.getByTestId("nota-detail-actions").querySelector('[aria-label="Compartir cotización COT-001"]')).not.toBeNull();
     expect(screen.getByTestId("nota-detail-summary")).toHaveTextContent("Cliente de prueba");
     expect(screen.getByTestId("nota-detail-summary")).toHaveTextContent("Referencia interna: OT-001");
