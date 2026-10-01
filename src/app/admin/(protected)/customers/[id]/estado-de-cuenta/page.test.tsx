@@ -108,14 +108,14 @@ describe("CustomerStatementView", () => {
     expect(screen.getByText("RFC: TDN900101XYZ")).toBeInTheDocument();
 
     // Notes table
-    expect(screen.getByText("OT-001")).toBeInTheDocument();
-    expect(screen.getAllByText("Cambiar muelles · Alinear eje")).toHaveLength(2);
-    expect(screen.getByText(/ECO: 101 · Kenworth T680/)).toBeInTheDocument();
+    expect(screen.getAllByText("OT-001")).toHaveLength(2);
+    expect(screen.getAllByText("Cambiar muelles · Alinear eje")).toHaveLength(3);
+    expect(screen.getAllByText(/ECO: 101 · Kenworth T680/)).toHaveLength(2);
     const noteRow = screen.getByTestId("statement-note-OT-001");
     expect(within(noteRow).getByText("$1,500.00")).toBeInTheDocument(); // total
     expect(within(noteRow).getByText("$500.00")).toBeInTheDocument(); // paid
     expect(within(noteRow).getByText("$1,000.00")).toBeInTheDocument(); // remaining
-    expect(screen.getByText("Vencida")).toBeInTheDocument();
+    expect(screen.getAllByText("Vencida")).toHaveLength(2);
 
     expect(screen.queryByText("BBVA")).not.toBeInTheDocument();
     expect(screen.queryByText(/012180000000000000|1234567890/)).not.toBeInTheDocument();
