@@ -2,8 +2,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { CustomerStatementView } from "@/features/customers/components/customer-statement-view";
 import type { CustomerDetailedStatement } from "@/features/customers/customer-statement-queries";
+import CustomerStatementPage from "./page";
 
-const { printDocumentUrl } = vi.hoisted(() => ({ printDocumentUrl: vi.fn() }));
+const { printDocumentUrl, requireOperationalRoleMock, getCustomerDetailedStatementMock } = vi.hoisted(() => ({
+  printDocumentUrl: vi.fn(),
+  requireOperationalRoleMock: vi.fn(),
+  getCustomerDetailedStatementMock: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/session", () => ({
+  requireOperationalRole: requireOperationalRoleMock,
+  isAdminRole: (role: string | null | undefined) => role === "ADMIN" || role === "SUPER_ADMIN",
+}));
+
+vi.mock("@/features/customers/customer-statement-queries", () => ({
+  getCustomerDetailedStatement: getCustomerDetailedStatementMock,
+}));
+
+vi.mock("@/features/payments/actions", () => ({
+  applyCustomerCreditAction: vi.fn(),
+  recordPaymentAction: vi.fn(),
+}));
 
 vi.mock("react-hot-toast", () => ({
   default: {
@@ -130,6 +149,34 @@ describe("CustomerStatementView", () => {
     fireEvent.click(noteRow);
 
     expect(screen.getByTestId("quote-preview-dialog")).toBeInTheDocument();
+  });
+
+  it.each(["ADMIN", "SUPER_ADMIN"])("passes the payment action for the %s role", async (role) => {
+    requireOperationalRoleMock.mockResolvedValue({ profile: { role } });
+    getCustomerDetailedStatementMock.mockResolvedValue(mockStatement);
+
+    render(
+      await CustomerStatementPage({
+        params: Promise.resolve({ id: "cust-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(screen.getAllByRole("button", { name: /registrar abono para ot-001/i })).toHaveLength(2);
+  });
+
+  it("does not pass the payment action to operational-only ADMIN_ASSISTANT", async () => {
+    requireOperationalRoleMock.mockResolvedValue({ profile: { role: "ADMIN_ASSISTANT" } });
+    getCustomerDetailedStatementMock.mockResolvedValue(mockStatement);
+
+    render(
+      await CustomerStatementPage({
+        params: Promise.resolve({ id: "cust-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(screen.queryByRole("button", { name: /registrar abono/i })).not.toBeInTheDocument();
   });
 
   it("prints a note without opening its row preview or rendering a view action", async () => {

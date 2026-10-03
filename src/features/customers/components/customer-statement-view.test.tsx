@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
@@ -138,6 +138,53 @@ describe("CustomerStatementView", () => {
     expect(screen.getByRole("heading", { name: /cotización cot-001/i })).toBeInTheDocument();
   });
 
+  it("offers direct payment registration for an overdue note and keeps the action separate from credit", () => {
+    render(<CustomerStatementView statement={baseStatement} recordPaymentAction={vi.fn()} />);
+
+    expect(screen.getAllByRole("button", { name: /registrar abono para ot-001/i })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /aplicar saldo a favor a nota ot-001/i })).toHaveLength(2);
+  });
+
+  it("hides direct payment registration for settled notes or without an authorized action", () => {
+    const paidStatement: CustomerDetailedStatement = {
+      ...baseStatement,
+      notes: [
+        {
+          ...baseStatement.notes[0],
+          number: "OT-PAID",
+          remainingCents: 0,
+          paymentState: { label: "Pagada", balanceCents: 0, variant: "success" },
+        },
+      ],
+    };
+
+    const { rerender } = render(<CustomerStatementView statement={baseStatement} />);
+    expect(screen.queryByRole("button", { name: /registrar abono/i })).not.toBeInTheDocument();
+
+    rerender(<CustomerStatementView statement={paidStatement} recordPaymentAction={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /registrar abono/i })).not.toBeInTheDocument();
+  });
+
+  it("submits a direct abono for its work order without opening the row preview", async () => {
+    const user = userEvent.setup();
+    const recordPaymentAction = vi.fn().mockResolvedValue({
+      payment: { amountCents: 1250 },
+      paidCents: 1250,
+      remainingCents: 18750,
+    });
+    render(<CustomerStatementView statement={baseStatement} recordPaymentAction={recordPaymentAction} />);
+
+    await user.click(screen.getAllByRole("button", { name: /registrar abono para ot-001/i })[0]);
+    expect(screen.queryByRole("heading", { name: /cotización cot-001/i })).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByRole("combobox", { name: "Tipo de pago" }), "TRANSFER");
+    await user.type(screen.getByRole("textbox", { name: /monto recibido/i }), "12.50");
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+
+    await waitFor(() =>
+      expect(recordPaymentAction).toHaveBeenCalledWith("wo-1", "12.50", expect.any(String), "TRANSFER"),
+    );
+  });
+
   it("filters selected notes by mutually exclusive status and shows matching counts", async () => {
     const user = userEvent.setup();
     const baseNote = baseStatement.notes[0];
@@ -218,6 +265,37 @@ describe("CustomerStatementView", () => {
     expect(firstCell).not.toBeNull();
     expect(within(firstCell).getByText("OT-001")).toBeInTheDocument();
     expect(within(firstCell).getByText("Vencida")).toBeInTheDocument();
+  });
+
+  it("bounds long folios and wraps long status badges inside the first cell", () => {
+    const longFolio = `OT-${"1234567890".repeat(5)}`;
+    const longStatus =
+      "Vencida con una descripción de estado excepcionalmente extensa" as CustomerDetailedStatement["notes"][number]["paymentState"]["label"];
+    const longStatement: CustomerDetailedStatement = {
+      ...baseStatement,
+      notes: [
+        {
+          ...baseStatement.notes[0],
+          number: longFolio,
+          paymentState: { label: longStatus, balanceCents: 20000, variant: "danger" },
+        },
+      ],
+    };
+    render(<CustomerStatementView statement={longStatement} />);
+
+    const row = screen.getByTestId("statement-note-primary").closest('[role="row"]') as HTMLElement;
+    const firstCell = within(row).getByTestId("statement-note-primary");
+    expect(within(firstCell).getByText(longFolio)).toHaveClass("truncate");
+    expect(within(firstCell).getByText(longFolio)).toHaveAttribute("title", longFolio);
+    expect(within(firstCell).getByText(longStatus)).toHaveClass("whitespace-normal");
+    expect(firstCell).toHaveClass("min-w-0");
+  });
+
+  it("uses a concise readable payment-summary heading without losing its arithmetic labels", () => {
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    const headings = screen.getAllByRole("columnheader");
+    expect(headings.map((heading) => heading.textContent?.trim())).toContain("Total − Abonado = Saldo");
   });
 
   it("groups issue and due dates together with an arrow in the next cell", () => {

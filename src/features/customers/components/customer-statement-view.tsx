@@ -8,6 +8,7 @@ import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog, type QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import { ApplyCreditDialog } from "@/features/payments/components/apply-credit-dialog";
+import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
 import {
   customerStatementHref,
@@ -17,6 +18,12 @@ import {
 
 type CustomerStatementViewProps = {
   statement: CustomerDetailedStatement;
+  recordPaymentAction?: (
+    workOrderId: string,
+    amount: string,
+    operationKey: string,
+    method: string,
+  ) => Promise<{ payment: { amountCents: number; createdAt?: Date }; paidCents: number; remainingCents: number }>;
 };
 
 type StatementNoteFilter = "all" | "pending" | "overdue" | "paid";
@@ -53,7 +60,7 @@ function filterStatementNotes(
   return filter === "all" ? notes : notes.filter((note) => getStatementNoteFilter(note) === filter);
 }
 
-export function CustomerStatementView({ statement }: CustomerStatementViewProps) {
+export function CustomerStatementView({ statement, recordPaymentAction }: CustomerStatementViewProps) {
   const [selectedQuote, setSelectedQuote] = React.useState<QuotePreviewSummary | null>(null);
   const [noteFilter, setNoteFilter] = React.useState<StatementNoteFilter>("all");
 
@@ -85,6 +92,30 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
   const statementHref = customerStatementHref(customer.id, { view, period, anchor });
   const noteCounts = getStatementNoteCounts(notes);
   const visibleNotes = filterStatementNotes(notes, noteFilter);
+
+  function renderDirectPaymentAction(note: CustomerDetailedStatement["notes"][number]) {
+    if (!recordPaymentAction || note.remainingCents <= 0) return null;
+
+    return (
+      <CashPaymentDialog
+        action={(amount, operationKey, method) =>
+          recordPaymentAction(note.workOrderId, amount, operationKey, method)
+        }
+        quoteNumber={note.number}
+        documentTitle={note.concepts}
+        documentFolio={note.number}
+        customerName={displayName}
+        totalCents={note.totalCents}
+        paidCents={note.paidCents}
+        remainingCents={note.remainingCents}
+        receiptEnabled
+        allowedMethods={["CASH", "TRANSFER"]}
+        triggerOnly
+        triggerLabel="Registrar abono"
+        triggerClassName="min-h-[44px]"
+      />
+    );
+  }
 
   const handlePrint = () => {
     window.print();
@@ -438,7 +469,10 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                         <dd className="whitespace-nowrap font-bold text-[var(--color-total-emphasis)]">{formatCents(note.remainingCents)}</dd>
                       </div>
                     </dl>
-                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <div
+                      className="flex flex-wrap items-center justify-end gap-1.5"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       {view === "pending" && note.remainingCents > 0 && availableCreditCents > 0 ? (
                         <ApplyCreditDialog
                           customerId={customer.id}
@@ -448,6 +482,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                           availableCreditCents={availableCreditCents}
                         />
                       ) : null}
+                      {renderDirectPaymentAction(note)}
                       <PrintActionButton
                         url={`/admin/notas/${note.workOrderId}/print?returnTo=${encodeURIComponent(statementHref)}`}
                         variant="ghost"
@@ -471,7 +506,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                       <div role="columnheader">Nota</div>
                       <div role="columnheader">Fechas</div>
                       <div role="columnheader">Conceptos</div>
-                      <div role="columnheader">Importe − Abonado = Saldo</div>
+                      <div role="columnheader">Total − Abonado = Saldo</div>
                       <div role="columnheader">Acciones</div>
                     </div>
                   </div>
@@ -484,9 +519,17 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                         className={`grid min-w-[64rem] cursor-pointer gap-3 border-b border-[var(--color-border-light)] p-3 transition-colors hover:bg-[var(--color-bg-soft)] ${statementNoteGridColumns} items-center`}
                         data-testid={`statement-note-${note.number}`}
                       >
-                        <div role="cell" data-testid="statement-note-primary" className="flex min-w-0 items-center justify-between gap-2">
-                          <span className="whitespace-nowrap font-mono font-bold text-[var(--color-text-main)]">{note.number}</span>
-                          <Badge variant={note.paymentState.variant} className="shrink-0 text-[10px]">
+                        <div role="cell" data-testid="statement-note-primary" className="flex min-w-0 flex-col items-start gap-1">
+                          <span
+                            title={note.number}
+                            className="max-w-full truncate font-mono font-bold text-[var(--color-text-main)]"
+                          >
+                            {note.number}
+                          </span>
+                          <Badge
+                            variant={note.paymentState.variant}
+                            className="max-w-full whitespace-normal break-words text-center text-[10px]"
+                          >
                             {note.paymentState.label}
                           </Badge>
                         </div>
@@ -514,7 +557,12 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                             {formatCents(note.remainingCents)}
                           </div>
                         </div>
-                        <div role="cell" aria-label={`Acciones para nota ${note.number}`} className="flex items-center justify-end gap-1.5">
+                        <div
+                          role="cell"
+                          aria-label={`Acciones para nota ${note.number}`}
+                          className="flex items-center justify-end gap-1.5"
+                          onClick={(event) => event.stopPropagation()}
+                        >
                           {view === "pending" && note.remainingCents > 0 && availableCreditCents > 0 ? (
                             <ApplyCreditDialog
                               customerId={customer.id}
@@ -524,6 +572,7 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                               availableCreditCents={availableCreditCents}
                             />
                           ) : null}
+                          {renderDirectPaymentAction(note)}
                           <PrintActionButton
                             url={`/admin/notas/${note.workOrderId}/print?returnTo=${encodeURIComponent(statementHref)}`}
                             variant="ghost"

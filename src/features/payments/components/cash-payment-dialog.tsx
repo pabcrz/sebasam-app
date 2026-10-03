@@ -80,6 +80,7 @@ export interface CashPaymentDialogProps {
   triggerOnly?: boolean;
   triggerVariant?: ButtonVariant;
   triggerClassName?: string;
+  triggerLabel?: string;
   triggerIconOnlyMobile?: boolean;
   documentTitle?: string;
   documentFolio?: string;
@@ -114,6 +115,7 @@ export function CashPaymentDialog({
   triggerOnly = false,
   triggerVariant = "outline",
   triggerClassName,
+  triggerLabel = "Registrar pago",
   triggerIconOnlyMobile = false,
   documentTitle = "Nota",
   documentFolio = quoteNumber,
@@ -225,12 +227,12 @@ export function CashPaymentDialog({
       size="sm"
       ref={triggerRef}
       onClick={handleOpen}
-      aria-label={`Registrar pago para ${quoteNumber}`}
-      title={`Registrar pago para ${quoteNumber}`}
+      aria-label={`${triggerLabel} para ${quoteNumber}`}
+      title={`${triggerLabel} para ${quoteNumber}`}
       className={triggerClassName ?? (triggerIconOnlyMobile ? "h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" : "w-full")}
     >
       <CreditCard className="h-5 w-5" aria-hidden="true" />
-      <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>Registrar pago</span>
+      <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{triggerLabel}</span>
     </Button>
   );
 
