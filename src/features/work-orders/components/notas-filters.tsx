@@ -21,9 +21,7 @@ import {
   DialogTrigger,
   Input,
   Label,
-  SectionLabel,
   Spinner,
-  StatusFilterNav,
 } from "@/components/ui";
 import {
   notasHref,
@@ -61,6 +59,21 @@ export interface NotasFiltersProps {
 
 const customerSearchDebounceMs = 500;
 const minimumCustomerQueryLength = 2;
+
+function getMexicoCityToday() {
+  const dateParts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Mexico_City",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(new Date())
+      .map(({ type, value }) => [type, value]),
+  );
+
+  return `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
+}
 
 export function NotasFilters({
   mode,
@@ -148,6 +161,8 @@ export function NotasFilters({
     (assignee !== "all" ? 1 : 0) +
     (customerId ? 1 : 0) +
     (overdue !== "all" ? 1 : 0);
+  const today = getMexicoCityToday();
+  const isCurrentPeriod = mode === "week" ? isCurrentWeek : anchor.slice(0, 7) === today.slice(0, 7);
 
   const handleApply = () => {
     setIsDialogOpen(false);
@@ -191,364 +206,324 @@ export function NotasFilters({
     setCustomerQuery("");
   };
 
-  const assigneeName =
-    assignee === "all"
-      ? null
-      : assignee === "workshop"
-        ? "Taller"
-        : masters.find((m) => m.id === assignee)?.displayName ?? null;
-
   return (
-    <Card aria-label="Filtros de notas" className="grid gap-4 p-4 shadow-sm sm:p-5">
-      {/* 1. Período y selector de vista */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <SectionLabel as="p">Periodo seleccionado</SectionLabel>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <p className="text-base font-semibold capitalize text-[var(--color-text-main)] sm:text-lg">
-              {rangeLabel}
-            </p>
-            {isCurrentWeek ? <Badge variant="info">Semana en curso</Badge> : null}
-          </div>
+    <Card aria-label="Filtros de notas" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-none md:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="icon" className="h-10 w-10">
+            <Link
+              aria-label={mode === "week" ? "Semana anterior" : "Mes anterior"}
+              href={notasHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(-1) })}
+            >
+              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+            </Link>
+          </Button>
+          <p className="min-w-0 text-base font-semibold text-slate-900 sm:text-lg">
+            {rangeLabel.replace(/\s*–\s*/u, " – ")}
+          </p>
+          <Button asChild variant="outline" size="icon" className="h-10 w-10">
+            <Link
+              aria-label={mode === "week" ? "Semana siguiente" : "Mes siguiente"}
+              href={notasHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(1) })}
+            >
+              <ChevronRight className="h-5 w-5" aria-hidden="true" />
+            </Link>
+          </Button>
+          {mode === "week" && isCurrentWeek ? <Badge variant="info">Semana en curso</Badge> : null}
         </div>
-        <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
-          <Link
-            href={notasHref({
-              mode: mode === "week" ? "month" : "week",
-              payment,
-              assignee,
-              customerId,
-              overdue,
-              anchor,
-            })}
-          >
-            <CalendarDays className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            {mode === "week" ? "Vista mensual" : "Vista semanal"}
-          </Link>
-        </Button>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant={isCurrentPeriod ? "secondary" : "outline"} size="sm" className="h-10">
+            <Link
+              href={notasHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: today })}
+            >
+              Hoy
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="h-10">
+            <Link
+              href={notasHref({
+                mode: mode === "week" ? "month" : "week",
+                payment,
+                assignee,
+                customerId,
+                overdue,
+                kind: selectedKind,
+                anchor,
+              })}
+            >
+              <CalendarDays className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              {mode === "week" ? "Vista mensual" : "Vista semanal"}
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      {/* 2. Estado de pago visible arriba + Botón de Filtros */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <label className="grid gap-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+      <div className="mt-4 flex flex-wrap items-end gap-4">
+        <label className="flex flex-col gap-1.5 text-xs uppercase tracking-wide text-slate-500">
           Tipo de nota
           <select
             aria-label="Tipo de nota"
             value={selectedKind}
             onChange={(event) => router.push(notasHref({ mode, payment, assignee, customerId, overdue, kind: event.currentTarget.value as NotasKind, anchor }))}
-            className="h-9 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm font-normal normal-case text-[var(--color-text-main)]"
+            className="h-10 min-w-32 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal normal-case text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
           >
             <option value="all">Todas</option>
             <option value="WORK">WORK</option>
             <option value="SALE">SALE</option>
           </select>
         </label>
-        <div className="grid min-w-0 flex-1 gap-2">
-          <SectionLabel as="p">Estado de pago</SectionLabel>
-          <StatusFilterNav
-            label="Estado de pago"
-            items={(["all", "pending", "paid"] as const).map((item) => ({
-              href: notasHref({ mode, anchor, payment: item, assignee, customerId, overdue, kind: selectedKind }),
-              label: ({ all: "Todas", pending: "Pendientes", paid: "Pagadas" } as const)[item],
-              current: payment === item,
-            }))}
-          />
-        </div>
 
-        <div className="flex items-center gap-2">
-          <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label="Abrir filtros de cartera"
-                className="relative inline-flex h-9 items-center gap-1.5 px-3"
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="text-xs uppercase tracking-wide text-slate-500">Estado de pago</legend>
+          <div className="inline-flex h-10 w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-1 py-[3px] md:w-auto">
+            {(["all", "pending", "paid"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={payment === item}
+                onClick={() => router.push(notasHref({ mode, anchor, payment: item, assignee, customerId, overdue, kind: selectedKind }))}
+                className={`inline-flex h-8 items-center justify-center whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${
+                  payment === item
+                    ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
+                    : "text-slate-600 hover:bg-white hover:text-slate-900"
+                }`}
               >
-                <Filter className="h-4 w-4" aria-hidden="true" />
-                <span>Filtros</span>
-                {activeFilterCount > 0 ? (
-                  <Badge variant="info" className="ml-1 h-5 min-w-5 px-1.5 text-xs font-semibold">
-                    {activeFilterCount}
-                  </Badge>
-                ) : null}
-              </Button>
-            </DialogTrigger>
-            <DialogPortal>
-              <DialogOverlay />
-              <DialogMobileContent className="sm:max-w-lg">
-                <DialogMobileHeader>
-                  <DialogTitle>Filtros de cartera</DialogTitle>
-                  <DialogDescription className="sr-only">
-                    Filtrar notas completadas por cliente, maestro responsable y condición de morosidad.
-                  </DialogDescription>
-                  <DialogMobileClose />
-                </DialogMobileHeader>
-                <DialogMobileBody className="grid gap-5">
-                  {/* Selector remoto de cliente */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="customer-remote-search" className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                      Cliente
-                    </Label>
-                    {draftSelectedCustomer ? (
-                      <div className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] px-3 py-2 text-sm">
-                        <div className="min-w-0">
-                          <p className="font-medium text-[var(--color-text-main)] truncate">
-                            {draftSelectedCustomer.commercialName || draftSelectedCustomer.name}
-                          </p>
-                          {draftSelectedCustomer.commercialName ? (
-                            <p className="text-xs text-[var(--color-text-muted)] truncate">
-                              {draftSelectedCustomer.name}
-                            </p>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={clearCustomerFilter}
-                          aria-label="Quitar filtro de cliente"
-                          className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-main)] transition-colors"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-text-muted)]" />
-                          <Input
-                            id="customer-remote-search"
-                            type="search"
-                            value={customerQuery}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setCustomerQuery(val);
-                              if (val.trim().length < minimumCustomerQueryLength) {
-                                setCustomerOptions([]);
-                                setIsSearchingCustomers(false);
-                              }
-                            }}
-                            placeholder="Buscar por cliente, chofer o teléfono..."
-                            className="pl-9 pr-8 text-sm"
-                            aria-label="Buscar cliente"
-                          />
-                          {isSearchingCustomers ? (
-                            <div className="absolute right-3 top-2.5">
-                              <Spinner className="h-4 w-4 text-[var(--color-text-muted)]" />
-                            </div>
-                          ) : customerQuery ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCustomerQuery("");
-                                setCustomerOptions([]);
-                                setIsSearchingCustomers(false);
-                              }}
-                              aria-label="Limpiar búsqueda de cliente"
-                              className="absolute right-2.5 top-2.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          ) : null}
-                        </div>
+                {({ all: "Todas", pending: "Pendientes", paid: "Pagadas" } as const)[item]}
+              </button>
+            ))}
+          </div>
+        </fieldset>
 
-                        {customerOptions.length > 0 ? (
-                          <ul
-                            role="listbox"
-                            aria-label="Resultados de clientes"
-                            className="mt-1.5 max-h-48 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] py-1 shadow-md"
-                          >
-                            {customerOptions.map((opt) => (
-                              <li
-                                key={opt.id}
-                                role="option"
-                                aria-selected={draftCustomerId === opt.id}
-                                onClick={() => {
-                                  setDraftCustomerId(opt.id);
-                                  setDraftSelectedCustomer(opt);
-                                  setCustomerQuery("");
-                                  setCustomerOptions([]);
-                                }}
-                                className="cursor-pointer px-3 py-2 text-sm transition-colors hover:bg-[var(--color-bg-soft)]"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="min-w-0">
-                                    <p className="font-medium text-[var(--color-text-main)] truncate">
-                                      {opt.commercialName || opt.name}
-                                    </p>
-                                    {opt.commercialName && opt.name !== opt.commercialName ? (
-                                      <p className="text-xs text-[var(--color-text-muted)] truncate">{opt.name}</p>
-                                    ) : null}
-                                  </div>
-                                  {opt.phone ? (
-                                    <span className="text-xs text-[var(--color-text-muted)] shrink-0 ml-2 font-mono">
-                                      {opt.phone}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : customerQuery.trim().length >= minimumCustomerQueryLength && !isSearchingCustomers ? (
-                          <p className="mt-1.5 px-2 text-xs text-[var(--color-text-muted)]">
-                            No se encontraron clientes con &quot;{customerQuery}&quot;.
+        {customerId ? (
+          <Button asChild variant="outline" size="sm" className="h-10">
+            <Link href={`/admin/customers/${customerId}/estado-de-cuenta`}>
+              <FileText className="mr-1 h-4 w-4" aria-hidden="true" />
+              Estado de cuenta
+            </Link>
+          </Button>
+        ) : null}
+
+        <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Abrir filtros de cartera"
+              className="relative ml-auto inline-flex h-10 items-center gap-1.5 px-3"
+            >
+              <Filter className="h-4 w-4" aria-hidden="true" />
+              <span>Filtros</span>
+              {activeFilterCount > 0 ? (
+                <Badge variant="info" className="ml-1 h-5 min-w-5 px-1.5 text-xs font-semibold">
+                  {activeFilterCount}
+                </Badge>
+              ) : null}
+            </Button>
+          </DialogTrigger>
+          <DialogPortal>
+            <DialogOverlay />
+            <DialogMobileContent className="sm:max-w-lg">
+              <DialogMobileHeader>
+                <DialogTitle>Filtros de cartera</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Filtrar notas completadas por periodo, cliente, maestro responsable y condición de morosidad.
+                </DialogDescription>
+                <DialogMobileClose />
+              </DialogMobileHeader>
+              <DialogMobileBody className="grid gap-5">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="notas-anchor" className="text-xs uppercase tracking-wide text-slate-500">
+                    {mode === "week" ? "Ir a la semana" : "Ir al mes"}
+                  </Label>
+                  <Input
+                    id="notas-anchor"
+                    className="h-10 text-sm"
+                    aria-label={mode === "week" ? "Semana" : "Mes y año"}
+                    type={mode === "week" ? "date" : "month"}
+                    name="anchor"
+                    defaultValue={mode === "week" ? anchor : anchor.slice(0, 7)}
+                    onChange={(event) => {
+                      if (event.currentTarget.value) {
+                        router.push(
+                          notasHref({
+                            mode,
+                            payment,
+                            kind: selectedKind,
+                            assignee,
+                            customerId,
+                            overdue,
+                            anchor: event.currentTarget.value,
+                          }),
+                        );
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Selector remoto de cliente */}
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="customer-remote-search" className="text-xs uppercase tracking-wide text-slate-500">
+                    Cliente
+                  </Label>
+                  {draftSelectedCustomer ? (
+                    <div className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-[var(--color-text-main)]">
+                          {draftSelectedCustomer.commercialName || draftSelectedCustomer.name}
+                        </p>
+                        {draftSelectedCustomer.commercialName ? (
+                          <p className="truncate text-xs text-[var(--color-text-muted)]">
+                            {draftSelectedCustomer.name}
                           </p>
                         ) : null}
                       </div>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={clearCustomerFilter}
+                        aria-label="Quitar filtro de cliente"
+                        className="rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden="true" />
+                        <Input
+                          id="customer-remote-search"
+                          type="search"
+                          value={customerQuery}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCustomerQuery(val);
+                            if (val.trim().length < minimumCustomerQueryLength) {
+                              setCustomerOptions([]);
+                              setIsSearchingCustomers(false);
+                            }
+                          }}
+                          placeholder="Buscar por cliente, chofer o teléfono..."
+                          className="h-10 pl-9 pr-8 text-sm"
+                          aria-label="Buscar cliente"
+                        />
+                        {isSearchingCustomers ? (
+                          <div className="absolute right-3 top-3">
+                            <Spinner className="h-4 w-4 text-[var(--color-text-muted)]" />
+                          </div>
+                        ) : customerQuery ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomerQuery("");
+                              setCustomerOptions([]);
+                              setIsSearchingCustomers(false);
+                            }}
+                            aria-label="Limpiar búsqueda de cliente"
+                            className="absolute right-2.5 top-3 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
+                          >
+                            <X className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        ) : null}
+                      </div>
 
-                  {/* Selector de responsable */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="dialog-notas-assignee" className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                      Responsable
-                    </Label>
-                    <select
-                      id="dialog-notas-assignee"
-                      aria-label="Responsable"
-                      value={draftAssignee}
-                      onChange={(e) => setDraftAssignee(e.currentTarget.value as NotasAssignee)}
-                      className="h-9 w-full cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-main)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
-                    >
-                      <option value="all">Todos los responsables</option>
-                      <option value="workshop">Taller</option>
-                      {masters.map((master) => (
-                        <option key={master.id} value={master.id}>
-                          {master.displayName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      {customerOptions.length > 0 ? (
+                        <ul
+                          role="listbox"
+                          aria-label="Resultados de clientes"
+                          className="mt-1.5 max-h-48 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] py-1 shadow-md"
+                        >
+                          {customerOptions.map((opt) => (
+                            <li
+                              key={opt.id}
+                              role="option"
+                              aria-selected={draftCustomerId === opt.id}
+                              onClick={() => {
+                                setDraftCustomerId(opt.id);
+                                setDraftSelectedCustomer(opt);
+                                setCustomerQuery("");
+                                setCustomerOptions([]);
+                              }}
+                              className="cursor-pointer px-3 py-2 text-sm transition-colors hover:bg-[var(--color-bg-soft)]"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium text-[var(--color-text-main)]">
+                                    {opt.commercialName || opt.name}
+                                  </p>
+                                  {opt.commercialName && opt.name !== opt.commercialName ? (
+                                    <p className="truncate text-xs text-[var(--color-text-muted)]">{opt.name}</p>
+                                  ) : null}
+                                </div>
+                                {opt.phone ? (
+                                  <span className="ml-2 shrink-0 font-mono text-xs text-[var(--color-text-muted)]">
+                                    {opt.phone}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : customerQuery.trim().length >= minimumCustomerQueryLength && !isSearchingCustomers ? (
+                        <p className="mt-1.5 px-2 text-xs text-[var(--color-text-muted)]">
+                          No se encontraron clientes con &quot;{customerQuery}&quot;.
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
 
-                  {/* Selector de morosidad */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="dialog-notas-overdue" className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                      Morosidad
-                    </Label>
-                    <select
-                      id="dialog-notas-overdue"
-                      aria-label="Morosidad"
-                      value={draftOverdue}
-                      onChange={(e) => setDraftOverdue(e.currentTarget.value as NotasOverdue)}
-                      className="h-9 w-full cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-main)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
-                    >
-                      <option value="all">Todas las notas</option>
-                      <option value="overdue">Sólo vencidas</option>
-                      <option value="current">Al corriente / vigentes</option>
-                    </select>
-                  </div>
-                </DialogMobileBody>
-                <DialogFooter className="flex flex-row items-center justify-between border-t border-[var(--color-border-light)] p-4 sm:justify-between">
-                  <Button type="button" variant="ghost" size="sm" onClick={handleClear}>
-                    Limpiar filtros
-                  </Button>
-                  <Button type="button" variant="primary" size="sm" onClick={handleApply}>
-                    Aplicar filtros
-                  </Button>
-                </DialogFooter>
-              </DialogMobileContent>
-            </DialogPortal>
-          </Dialog>
+                {/* Selector de responsable */}
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="dialog-notas-assignee" className="text-xs uppercase tracking-wide text-slate-500">
+                    Responsable
+                  </Label>
+                  <select
+                    id="dialog-notas-assignee"
+                    aria-label="Responsable"
+                    value={draftAssignee}
+                    onChange={(e) => setDraftAssignee(e.currentTarget.value as NotasAssignee)}
+                    className="h-10 w-full cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-main)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+                  >
+                    <option value="all">Todos los responsables</option>
+                    <option value="workshop">Taller</option>
+                    {masters.map((master) => (
+                      <option key={master.id} value={master.id}>
+                        {master.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          {activeFilterCount > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleClear}
-              className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
-            >
-              Limpiar
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Chips de filtros activos si existen */}
-      {activeFilterCount > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-[var(--color-text-muted)]">Filtros aplicados:</span>
-            {draftSelectedCustomer ? (
-              <Badge variant="default" className="flex items-center gap-1 text-xs">
-                <span>Cliente: {draftSelectedCustomer.commercialName || draftSelectedCustomer.name}</span>
-              </Badge>
-            ) : null}
-            {assigneeName ? (
-              <Badge variant="default" className="flex items-center gap-1 text-xs">
-                <span>Responsable: {assigneeName}</span>
-              </Badge>
-            ) : null}
-            {overdue === "overdue" ? (
-              <Badge variant="danger" className="text-xs">
-                Sólo vencidas
-              </Badge>
-            ) : overdue === "current" ? (
-              <Badge variant="info" className="text-xs">
-                Al corriente
-              </Badge>
-            ) : null}
-          </div>
-          {customerId ? (
-            <Button asChild variant="outline" size="sm" className="h-7 text-xs font-medium">
-              <Link href={`/admin/customers/${customerId}/estado-de-cuenta`}>
-                <FileText className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                Estado de cuenta
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* 3. Navegación por fechas/semana */}
-      <div className="flex flex-col gap-3 border-t border-[var(--color-border-light)] pt-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" size="sm" className="sm:w-auto">
-            <Link
-              aria-label="Periodo anterior"
-              href={notasHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(-1) })}
-            >
-              <ChevronLeft className="mr-1 h-4 w-4" aria-hidden="true" />
-              Anterior
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="sm:w-auto">
-            <Link
-              aria-label="Periodo siguiente"
-              href={notasHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(1) })}
-            >
-              Siguiente
-              <ChevronRight className="ml-1 h-4 w-4" aria-hidden="true" />
-            </Link>
-          </Button>
-        </div>
-        <Label
-          htmlFor="notas-anchor"
-          className="grid min-w-0 flex-1 gap-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] sm:max-w-xs"
-        >
-          {mode === "week" ? "Ir a la semana" : "Ir al mes"}
-          <Input
-            id="notas-anchor"
-            className="h-9 text-sm"
-            aria-label={mode === "week" ? "Semana" : "Mes y año"}
-            type={mode === "week" ? "date" : "month"}
-            name="anchor"
-            defaultValue={mode === "week" ? anchor : anchor.slice(0, 7)}
-            onChange={(event) => {
-              if (event.currentTarget.value) {
-                router.push(
-                  notasHref({
-                    mode,
-                    payment,
-                    kind: selectedKind,
-                    assignee,
-                    customerId,
-                    overdue,
-                    anchor: event.currentTarget.value,
-                  }),
-                );
-              }
-            }}
-          />
-        </Label>
+                {/* Selector de morosidad */}
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="dialog-notas-overdue" className="text-xs uppercase tracking-wide text-slate-500">
+                    Morosidad
+                  </Label>
+                  <select
+                    id="dialog-notas-overdue"
+                    aria-label="Morosidad"
+                    value={draftOverdue}
+                    onChange={(e) => setDraftOverdue(e.currentTarget.value as NotasOverdue)}
+                    className="h-10 w-full cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-main)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+                  >
+                    <option value="all">Todas las notas</option>
+                    <option value="overdue">Sólo vencidas</option>
+                    <option value="current">Al corriente / vigentes</option>
+                  </select>
+                </div>
+              </DialogMobileBody>
+              <DialogFooter className="flex flex-row items-center justify-between border-t border-[var(--color-border-light)] p-4 sm:justify-between">
+                <Button type="button" variant="ghost" size="sm" className="h-10" onClick={handleClear}>
+                  Limpiar filtros
+                </Button>
+                <Button type="button" variant="primary" size="sm" className="h-10" onClick={handleApply}>
+                  Aplicar filtros
+                </Button>
+              </DialogFooter>
+            </DialogMobileContent>
+          </DialogPortal>
+        </Dialog>
       </div>
     </Card>
   );
