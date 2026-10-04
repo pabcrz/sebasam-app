@@ -9,6 +9,7 @@ import { PayrollWorkerDetail } from "./payroll-worker-detail";
 import { PayrollView } from "./payroll-view";
 import { PayrollWorkerEnvelopeDocument } from "./payroll-worker-envelope-document";
 import { PayrollWorkerEnvelopeModal } from "./payroll-worker-envelope";
+import { WeeklyPayrollSummary } from "./weekly-payroll-summary";
 import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 import toast from "react-hot-toast";
@@ -384,8 +385,112 @@ describe("Payroll UI Components", () => {
     render(<PayrollView report={report} period={period} />);
 
     expect(screen.getByText("Ayudantes generales")).toBeInTheDocument();
-    expect(screen.getByText("Helper One")).toBeInTheDocument();
+    expect(screen.getAllByText("Helper One")).toHaveLength(2);
     expect(screen.queryByText("Mano de obra - Helper One")).not.toBeInTheDocument();
+  });
+
+  it("prints one weekly summary and switches only its presentation amounts", () => {
+    const period: ParsedPayrollParams = {
+      mode: "weekly", anchor: "2026-08-17", prevAnchor: "2026-08-10", nextAnchor: "2026-08-24",
+      rangeLabel: "17 al 22 de agosto de 2026", isCurrentWeek: true, isCurrentPeriod: true,
+      start: new Date("2026-08-17T06:00:00Z"), end: new Date("2026-08-23T06:00:00Z"),
+    };
+    const report: WeeklyPayrollReport = {
+      startDate: period.start, endDate: period.end, rangeLabel: period.rangeLabel, isCurrentWeek: true,
+      totalWorkers: 2, totalCompletedOrders: 1, totalClientLaborCents: 100000,
+      totalPayrollBaseCents: 100000, totalCommissionCents: 40000,
+      workers: [
+        sampleWorkers[0],
+        {
+          ...sampleWorkers[1],
+          workOrders: [
+            {
+              ...sampleWorkers[0].workOrders[0],
+              workOrderId: "wo-50",
+              workOrderNumber: "OT-050",
+              items: [
+                {
+                  ...sampleWorkers[0].workOrders[0].items[0],
+                  id: "item-50",
+                  description: "Trabajo general",
+                  category: "GENERAL",
+                  ratePercent: 50,
+                  commissionCents: 50000,
+                },
+              ],
+              totalCommissionCents: 50000,
+            },
+          ],
+        },
+      ],
+      unassignedOrders: [],
+    };
+
+    render(<PayrollView report={report} period={period} />);
+
+    const modeSelect = screen.getByLabelText("Presentación");
+    expect(modeSelect).toHaveValue("normal");
+    expect(screen.getAllByRole("button", { name: "Imprimir resumen semanal de nómina" })).toHaveLength(1);
+    const reportDocument = document.getElementById("weekly-payroll-summary-document")!;
+    const paymentCells = () => Array.from(within(reportDocument).getByText("Pago").closest("tr")!.querySelectorAll("td"));
+    expect(paymentCells().slice(1).map((cell) => cell.textContent)).toEqual(["$400.00", "$500.00"]);
+    fireEvent.change(modeSelect, { target: { value: "adjusted" } });
+    expect(screen.getByText("17 al 22 de agosto de 2026 · Ajustada", { selector: "p" })).toBeInTheDocument();
+    expect(within(reportDocument).getAllByText("$800.00").length).toBeGreaterThan(0);
+    expect(paymentCells().slice(1).map((cell) => cell.textContent)).toEqual(["$400.00", "$500.00"]);
+  });
+
+  it("keeps weekly report content print-only with restrained row separators", () => {
+    const report: WeeklyPayrollReport = {
+      startDate: new Date("2026-08-17T06:00:00Z"),
+      endDate: new Date("2026-08-23T06:00:00Z"),
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      totalWorkers: 2,
+      totalCompletedOrders: 1,
+      totalClientLaborCents: 100000,
+      totalPayrollBaseCents: 100000,
+      totalCommissionCents: 40000,
+      workers: sampleWorkers,
+      unassignedOrders: [],
+    };
+
+    render(<WeeklyPayrollSummary report={report} />);
+
+    expect(screen.getByLabelText("Presentación")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Imprimir resumen semanal de nómina" })).toBeInTheDocument();
+    const reportDocument = document.getElementById("weekly-payroll-summary-document")!;
+    expect(reportDocument).toHaveClass("hidden", "print:block");
+    expect(within(reportDocument).getByText("Pago")).toBeInTheDocument();
+    expect(within(reportDocument).getByRole("table").querySelector("tbody")).toHaveClass("divide-y");
+    expect(reportDocument.querySelector("th")).not.toHaveClass("border");
+    expect(reportDocument.querySelector("td")).not.toHaveClass("border");
+  });
+
+  it("includes the SEBASAM logo beside the title in the printable report header", () => {
+    const report: WeeklyPayrollReport = {
+      startDate: new Date("2026-08-17T06:00:00Z"),
+      endDate: new Date("2026-08-23T06:00:00Z"),
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      totalWorkers: 2,
+      totalCompletedOrders: 1,
+      totalClientLaborCents: 100000,
+      totalPayrollBaseCents: 100000,
+      totalCommissionCents: 40000,
+      workers: sampleWorkers,
+      unassignedOrders: [],
+    };
+
+    render(<WeeklyPayrollSummary report={report} />);
+
+    const reportDocument = document.getElementById("weekly-payroll-summary-document")!;
+    const logo = within(reportDocument).getByAltText("Logo de SEBASAM");
+    expect(logo.getAttribute("src")).toContain(encodeURIComponent("/logo-white-short.png"));
+    expect(logo).toHaveAttribute("width", "32");
+    expect(logo).toHaveAttribute("height", "32");
+    expect(logo).toHaveClass("object-contain", "invert");
+    expect(logo.closest("header")?.textContent).toContain("Resumen semanal de nómina");
   });
 
   it("opens the confidential signing sheet modal when clicking Hoja de Firmas", () => {
@@ -422,7 +527,7 @@ describe("Payroll UI Components", () => {
     fireEvent.click(signingSheetBtn);
 
     expect(screen.getAllByText(/Hoja de Firma de Nómina/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByAltText("Logo de SEBASAM")).toBeInTheDocument();
+    expect(screen.getAllByAltText("Logo de SEBASAM").some((logo) => logo.getAttribute("width") === "44")).toBe(true);
     expect(screen.getByText("Personalizar lista de trabajadores:")).toBeInTheDocument();
     // Confirms worker names appear
     expect(screen.getAllByText("Maestro Pedro").length).toBeGreaterThanOrEqual(1);

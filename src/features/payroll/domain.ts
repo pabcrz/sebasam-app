@@ -182,6 +182,55 @@ export interface WeeklyPayrollReport {
   laborAdvances?: RawLaborAdvanceForPayroll[];
 }
 
+export interface WeeklyPayrollPresentationRow {
+  workOrderNumber: string;
+  completedAt: Date | string;
+  description: string;
+  amountCents: number;
+  workerAmountsCents: Record<string, number>;
+}
+
+export interface WeeklyPayrollPresentation {
+  rows: WeeklyPayrollPresentationRow[];
+  workerTotalsCents: Record<string, number>;
+  workerPaymentCents: Record<string, number>;
+}
+
+export function buildWeeklyPayrollPresentation(
+  report: WeeklyPayrollReport,
+  mode: "normal" | "adjusted",
+): WeeklyPayrollPresentation {
+  const workerTotalsCents: Record<string, number> = {};
+  const workerPaymentCents: Record<string, number> = {};
+  const rows = report.workers.flatMap((worker) =>
+    worker.workOrders
+      .filter((order) => !order.isAdvance && order.completedAt !== null)
+      .flatMap((order) =>
+        order.items.map((item) => {
+          const amountCents = mode === "adjusted" && item.ratePercent === 40
+            ? Math.round(item.payrollBaseCents * 0.8)
+            : item.payrollBaseCents;
+          workerTotalsCents[worker.workerId] = (workerTotalsCents[worker.workerId] ?? 0) + amountCents;
+          workerPaymentCents[worker.workerId] =
+            (workerPaymentCents[worker.workerId] ?? 0) + item.commissionCents;
+          return {
+          workOrderNumber: order.workOrderNumber,
+          completedAt: order.completedAt!,
+          description: item.description,
+          amountCents,
+          workerAmountsCents: { [worker.workerId]: amountCents },
+          };
+        }),
+      ),
+  ).sort((a, b) => new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime());
+
+  return {
+    rows,
+    workerTotalsCents,
+    workerPaymentCents,
+  };
+}
+
 export type PayrollReport = WeeklyPayrollReport;
 
 /**

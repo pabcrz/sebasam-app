@@ -8,6 +8,7 @@ import {
   DEFAULT_WELDING_LABOR_RATE,
   detectLaborCategory,
   evaluatePayrollItem,
+  buildWeeklyPayrollPresentation,
   getDefaultLaborRate,
   type RawWorkOrderForPayroll,
 } from "./domain";
@@ -447,6 +448,60 @@ describe("Payroll Domain - Report Builder", () => {
     expect(special).toBeDefined();
     expect(special?.completedOrderCount).toBe(1);
     expect(special?.totalCommissionCents).toBe(30000);
+  });
+
+  it("prepares a chronological presentation with display-only adjusted amounts", () => {
+    const ordersWithMultipleItems = [...sampleOrders].reverse().map((order) =>
+      order.id === "wo-1"
+        ? {
+            ...order,
+            quote: {
+              ...order.quote,
+              items: [
+                ...order.quote.items,
+                {
+                  id: "qi-welding",
+                  type: QuoteItemType.LABOR,
+                  description: "Soldadura adicional",
+                  quantity: 1,
+                  unitPriceCents: 50000,
+                  totalCents: 50000,
+                },
+              ],
+            },
+          }
+        : order,
+    );
+    const report = buildWeeklyPayrollReport(ordersWithMultipleItems, {
+      startDate: new Date("2026-08-17T00:00:00Z"),
+      endDate: new Date("2026-08-24T00:00:00Z"),
+      rangeLabel: "17 al 23 de agosto de 2026",
+      isCurrentWeek: true,
+    });
+
+    const normalPresentation = buildWeeklyPayrollPresentation(report, "normal");
+    const presentation = buildWeeklyPayrollPresentation(report, "adjusted");
+
+    expect(presentation.rows.map((row) => row.workOrderNumber)).toEqual(["OT-001", "OT-001", "OT-002", "OT-003"]);
+    expect(presentation.rows.map((row) => row.description)).toEqual([
+      "Ajuste de frenos de aire",
+      "Soldadura adicional",
+      "Soldadura de soporte de tanque",
+      "Rectificación de discos",
+    ]);
+    expect(presentation.rows.map((row) => row.amountCents)).toEqual([100000, 40000, 120000, 60000]);
+    expect(presentation.rows.map((row) => row.workerAmountsCents)).toEqual([
+      { "worker-1": 100000 },
+      { "worker-1": 40000 },
+      { "worker-1": 120000 },
+      { "special-Taller Externo": 60000 },
+    ]);
+    expect(presentation.workerTotalsCents["worker-1"]).toBe(260000);
+    expect(normalPresentation.workerTotalsCents["worker-1"]).toBe(300000);
+    expect(normalPresentation.workerPaymentCents["worker-1"]).toBe(130000);
+    expect(presentation.workerPaymentCents["worker-1"]).toBe(130000);
+    expect(normalPresentation.workerPaymentCents["special-Taller Externo"]).toBe(30000);
+    expect(report.totalPayrollBaseCents).toBe(360000);
   });
 });
 
