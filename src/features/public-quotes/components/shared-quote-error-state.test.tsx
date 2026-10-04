@@ -5,18 +5,18 @@ import { SharedQuoteErrorState, type SharedQuoteErrorType } from "./shared-quote
 const errorCases: Array<{ type: SharedQuoteErrorType; title: string; message: string }> = [
   {
     type: "not-found",
-    title: "Link inválido",
-    message: "El link de cotización que abriste no existe o es incorrecto. Verifica la URL o contacta al taller.",
+    title: "Cotización no disponible",
+    message: "La cotización que buscas no está disponible, consulta al taller",
   },
   {
     type: "expired",
     title: "Link expirado",
-    message: "Este link ha expirado. Solicita una nueva cotización si aún te interesa el servicio.",
+    message: "La cotización que buscas no está disponible, consulta al taller",
   },
   {
     type: "revoked",
     title: "Cotización no disponible",
-    message: "Esta cotización ya no está disponible. Contacta al taller para más información.",
+    message: "La cotización que buscas no está disponible, consulta al taller",
   },
 ];
 
@@ -28,7 +28,12 @@ describe("SharedQuoteErrorState", () => {
 
     expect(logo).toHaveAttribute("src", expect.stringContaining("logo-white-short.png"));
     expect(screen.getByRole("heading", { name: "SEBASAM" })).toBeInTheDocument();
-    expect(screen.getByText("Servicio y Refacciones para Suspensiones de Aire y Muelles")).toHaveClass("font-mono", "print:text-[10px]");
+    expect(screen.getByText("Servicio y Refacciones para Suspensiones de Aire y Muelles")).toHaveClass(
+      "font-mono",
+      "text-[10px]",
+      "uppercase",
+      "text-[var(--color-on-navy-tint)]",
+    );
   });
 
   it.each(errorCases)("renders the $type error message", ({ type, title, message }) => {
@@ -36,5 +41,10 @@ describe("SharedQuoteErrorState", () => {
 
     expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
     expect(screen.getByText(message)).toBeInTheDocument();
+    expect(screen.getByLabelText("404")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Logo de SEBASAM" })).toHaveAttribute("src", expect.stringContaining("logo-white-short.png"));
+    expect(screen.getByRole("heading", { name: "SEBASAM" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Visita SEBASAM" })).toHaveAttribute("href", "https://sebasam.online");
+    expect(screen.queryByRole("link", { name: /inicio|home/i })).not.toBeInTheDocument();
   });
 });
