@@ -430,8 +430,16 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
                     className="grid min-w-0 cursor-pointer gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3 shadow-sm transition-colors hover:bg-[var(--color-bg-soft)]"
                   >
                     <div className="flex min-w-0 items-start justify-between gap-3">
-                      <span className="whitespace-nowrap font-mono font-bold text-[var(--color-text-main)]">{note.number}</span>
-                      <Badge variant={note.paymentState.variant} className="shrink-0 text-[10px]">
+                      <span
+                        title={note.number}
+                        className="min-w-0 max-w-full flex-1 truncate font-mono font-bold text-[var(--color-text-main)]"
+                      >
+                        {note.number}
+                      </span>
+                      <Badge
+                        variant={note.paymentState.variant}
+                        className="max-w-full whitespace-normal break-words text-center text-[10px]"
+                      >
                         {note.paymentState.label}
                       </Badge>
                     </div>

@@ -291,6 +291,31 @@ describe("CustomerStatementView", () => {
     expect(firstCell).toHaveClass("min-w-0");
   });
 
+  it("bounds long folios and wraps long status badges inside mobile note cards", () => {
+    const longFolio = `OT-${"1234567890".repeat(5)}`;
+    const longStatus =
+      "Vencida con una descripción de estado excepcionalmente extensa" as CustomerDetailedStatement["notes"][number]["paymentState"]["label"];
+    const longStatement: CustomerDetailedStatement = {
+      ...baseStatement,
+      notes: [
+        {
+          ...baseStatement.notes[0],
+          number: longFolio,
+          paymentState: { label: longStatus, balanceCents: 20000, variant: "danger" },
+        },
+      ],
+    };
+    render(<CustomerStatementView statement={longStatement} />);
+
+    const mobileCard = screen.getByTestId(`statement-note-mobile-${longFolio}`);
+    const folio = within(mobileCard).getByText(longFolio);
+    expect(folio).toHaveClass("min-w-0", "truncate");
+    expect(folio).toHaveAttribute("title", longFolio);
+
+    const status = within(mobileCard).getByText(longStatus);
+    expect(status).toHaveClass("max-w-full", "whitespace-normal", "break-words");
+  });
+
   it("uses a concise readable payment-summary heading without losing its arithmetic labels", () => {
     render(<CustomerStatementView statement={baseStatement} />);
 
@@ -433,7 +458,8 @@ describe("CustomerStatementView", () => {
     const mobileCard = container.querySelector('[data-testid="statement-note-mobile-OT-001"]');
     expect(mobileCard).toHaveClass("rounded-[var(--radius-sm)]");
     const mobile = within(mobileCard as HTMLElement);
-    expect(mobile.getByText("OT-001")).toHaveClass("whitespace-nowrap");
+    expect(mobile.getByText("OT-001")).toHaveClass("truncate");
+    expect(mobile.getByText("OT-001")).toHaveAttribute("title", "OT-001");
     expect(mobile.getByText("Vencida")).toBeInTheDocument();
     expect(mobile.getByText("Emitida")).toBeInTheDocument();
     expect(mobile.getByText("1 de agosto de 2026")).toBeInTheDocument();
