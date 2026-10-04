@@ -15,7 +15,6 @@ import { CashPaymentDialog, PaymentBalanceSummary } from "@/features/payments/co
 import { NotePaymentHistory } from "@/features/payments/components/note-payment-history";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
-import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import { formatDate } from "@/features/quotes/lib/format";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
@@ -98,15 +97,6 @@ export function NotaDetailDialog({
             </div>
             <div className="flex flex-wrap gap-2">
               <ShareQuoteButton action={shareAction} quoteNumber={noteFolio} />
-              <PrintActionButton
-                url={`/admin/notas/${workOrderId}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}
-                variant="outline"
-                size="sm"
-                aria-label={`Imprimir nota de remisión ${noteFolio}`}
-                title={`Imprimir nota de remisión ${noteFolio}`}
-              >
-                Imprimir / descargar
-              </PrintActionButton>
                 {paymentAction && remainingCents > 0 ? (
                   <CashPaymentDialog
                     action={paymentAction}
