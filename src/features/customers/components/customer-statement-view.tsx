@@ -438,7 +438,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
                       </span>
                       <Badge
                         variant={note.paymentState.variant}
-                        className="max-w-full whitespace-normal break-words text-center text-[10px]"
+                        className="max-w-[60%] whitespace-normal break-words text-center text-[10px]"
                       >
                         {note.paymentState.label}
                       </Badge>

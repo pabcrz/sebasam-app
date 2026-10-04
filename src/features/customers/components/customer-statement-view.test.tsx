@@ -313,7 +313,7 @@ describe("CustomerStatementView", () => {
     expect(folio).toHaveAttribute("title", longFolio);
 
     const status = within(mobileCard).getByText(longStatus);
-    expect(status).toHaveClass("max-w-full", "whitespace-normal", "break-words");
+    expect(status).toHaveClass("max-w-[60%]", "whitespace-normal", "break-words");
   });
 
   it("uses a concise readable payment-summary heading without losing its arithmetic labels", () => {
