@@ -122,7 +122,7 @@ export function QuoteBuilderDialog({
             title={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : effectiveButtonLabel) : undefined)}
             aria-label={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : effectiveButtonLabel) : undefined)}
           >
-            {isEdit ? <Pencil className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" /> : <Plus className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />}
+            {isEdit ? <Pencil className={triggerIconOnly ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" /> : <Plus className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />}
             <span className={triggerIconOnly ? "sr-only" : triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{effectiveButtonLabel}</span>
           </Button>
         }
