@@ -56,6 +56,7 @@ describe("CustomerStatementView", () => {
         vehicleLabel: "ECO: 101 · Kenworth T680 · Placas: 12-AA-3B",
         totalCents: 150000,
         paidCents: 50000,
+        paidCentsAtCutoff: 50000,
         remainingCents: 100000,
         paymentState: {
           label: "Vencida",
@@ -83,15 +84,6 @@ describe("CustomerStatementView", () => {
         },
       },
     ],
-    bankAccounts: [
-      {
-        id: 1,
-        bankName: "BBVA",
-        accountHolder: "SEBASAM",
-        accountNumber: "1234567890",
-        clabe: "012180000000000000",
-      },
-    ],
     business: {
       name: "SEBASAM",
       fullName: "Servicio Básico a Suspensiones y Aire y Muelles",
@@ -109,13 +101,13 @@ describe("CustomerStatementView", () => {
   it("renders statement header, customer info, and pending notes", () => {
     render(<CustomerStatementView statement={mockStatement} />);
 
-    expect(screen.getByText("Transportes del Norte S.A.")).toBeInTheDocument();
-    expect(screen.getByText(/Razón social: Transportes del Norte S.A. de C.V./)).toBeInTheDocument();
+    expect(screen.getAllByText("Transportes del Norte S.A.")).toHaveLength(2);
+    expect(screen.getAllByText(/Razón social: Transportes del Norte S.A. de C.V./)).toHaveLength(2);
     expect(screen.getByText("RFC: TDN900101XYZ")).toBeInTheDocument();
 
     // Notes table
     expect(screen.getByText("OT-001")).toBeInTheDocument();
-    expect(screen.getByText("Cambiar muelles · Alinear eje")).toBeInTheDocument();
+    expect(screen.getAllByText("Cambiar muelles · Alinear eje")).toHaveLength(2);
     expect(screen.getByText(/ECO: 101 · Kenworth T680/)).toBeInTheDocument();
     const noteRow = screen.getByTestId("statement-note-OT-001");
     expect(within(noteRow).getByText("$1,500.00")).toBeInTheDocument(); // total
@@ -123,9 +115,8 @@ describe("CustomerStatementView", () => {
     expect(within(noteRow).getByText("$1,000.00")).toBeInTheDocument(); // remaining
     expect(screen.getByText("Vencida")).toBeInTheDocument();
 
-    // Bank transfer details
-    expect(screen.getByText("BBVA")).toBeInTheDocument();
-    expect(screen.getByText(/CLABE: 012180000000000000/)).toBeInTheDocument();
+    expect(screen.queryByText("BBVA")).not.toBeInTheDocument();
+    expect(screen.queryByText(/012180000000000000|1234567890/)).not.toBeInTheDocument();
   });
 
   it("opens QuotePreviewDialog when clicking note row", () => {
