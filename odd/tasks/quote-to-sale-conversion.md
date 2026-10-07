@@ -235,3 +235,26 @@ Cleanup used positive test markers from the actual inventory: `Q-TEST` quote num
 - Reuse existing develop customers and master data; create no customers or other master records. Give each new fixture a stable, uniquely searchable `QTSC-659` marker in its title or description and retain its resulting folio/identifiers for cleanup and reverification.
 - No source, domain, or test changes are planned for these seed scenarios. Any discovered need for application changes is out of scope and requires a separate authorized task.
 - Verification must record (1) actual deleted quote/note/WorkOrder and dependent-record counts; (2) that all financially active, settlement/correction-linked, ambiguous, or unknown-dependency records were preserved; (3) each seeded case's folio, status, WORK/SALE operation, and item mix; and (4) that no customers, vehicles, users, payment/bank settings, or other master data were created, deleted, or changed. Cleanup and fixture lifecycle must not erase or mutate unrelated historical data.
+
+## Integration-readiness follow-up (2026-10-06)
+
+The user authorized correcting the readiness blockers after reviewing the rebased branch. Issue #659 was labeled `status:approved` before implementation.
+
+### Scope
+
+- Treat the persisted `Quote.operation` as the conversion authority; reject a caller-supplied operation that contradicts it.
+- Align desktop SALE conversion eligibility with the mobile card while keeping server-side validation authoritative.
+- Add a Playwright browser contract test through the existing Vite harness with mocked server actions. This verifies browser-visible UI and navigation only; server persistence remains covered by focused action tests, not by a shared database browser run.
+- Install locked dependencies with a frozen lockfile for verification only. Do not migrate, seed, or mutate any shared database.
+- Do not create a PR, merge, or publish from this follow-up.
+
+### Planned tasks and acceptance
+
+- [ ] **QTSC-INT-001 — Enforce persisted operation.** Add a regression test proving a WORK quote cannot be converted to SALE by request override; preserve SALE conversion when the stored quote operation is SALE.
+  - Strict TDD RED observed: `pnpm exec vitest run src/features/work-orders/actions.test.ts` — 1 file failed, 1 test failed, 55 passed. The new override test failed because the action returned a SALE note instead of rejecting.
+  - Strict TDD GREEN observed after enforcing the stored operation: `pnpm exec vitest run src/features/work-orders/actions.test.ts` — 1 file passed, 56 tests passed. Both the mismatch rejection and stored-SALE conversion passed. Keep the successful SALE path free of a WorkOrder.
+- [ ] **QTSC-INT-002 — Align desktop eligibility.** Apply the same customer/commercial readiness, supported-item, and duplicate-note constraints used by mobile; cover ineligible SALE quotes in the desktop row test.
+- [ ] **QTSC-INT-003 — Verify browser-visible SALE flow.** Add a Playwright test in the existing Vite harness using a mock conversion action; assert the SALE label, no WORK master/acceptance UI, exact conversion payload, and navigation to `/admin/notas`.
+- [ ] **QTSC-INT-004 — Verify and reconcile.** Run focused Vitest, Playwright, typecheck, lint, Prisma validation, and `git diff --check`; refresh commit identities after any work-unit commits and report remaining review-size/PR gates.
+
+Non-goals: testing against the shared develop database, applying migrations, preparing PR chains, or changing persisted business data. Browser verification must be described as a mocked UI contract, not proof of database persistence.
