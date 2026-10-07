@@ -250,7 +250,7 @@ The user authorized correcting the readiness blockers after reviewing the rebase
 
 ### Planned tasks and acceptance
 
-- [ ] **QTSC-INT-001 — Enforce persisted operation.** Add a regression test proving a WORK quote cannot be converted to SALE by request override; preserve SALE conversion when the stored quote operation is SALE.
+- [x] **QTSC-INT-001 — Enforce persisted operation.** Add a regression test proving a WORK quote cannot be converted to SALE by request override; preserve SALE conversion when the stored quote operation is SALE.
   - Strict TDD RED observed: `pnpm exec vitest run src/features/work-orders/actions.test.ts` — 1 file failed, 1 test failed, 55 passed. The new override test failed because the action returned a SALE note instead of rejecting.
   - Strict TDD GREEN observed after enforcing the stored operation: `pnpm exec vitest run src/features/work-orders/actions.test.ts` — 1 file passed, 56 tests passed. Both the mismatch rejection and stored-SALE conversion passed.
   - Work-unit commit: `998cf0f fix(sales): enforce persisted quote operation`. Keep the successful SALE path free of a WorkOrder.
