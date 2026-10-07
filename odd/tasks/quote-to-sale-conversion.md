@@ -280,7 +280,7 @@ The user explicitly chose to allow pending prices for SALE conversion. Concepts 
 
 ## Stacked delivery plan (2026-10-06)
 
-The local commit ranges below form a single stack. Each changed-line total is `additions + deletions` measured with `git diff --numstat` for the exact range; all current measurements are below 400. The final slice count must be recomputed after committing this plan. Branch refs are not yet created.
+The local commit ranges below form a single stack. Each changed-line total is `additions + deletions` measured with `git diff --numstat` for the exact range; all current measurements are below 400. Plan work-unit commit: `444851a docs(odd): plan stacked quote conversion slices`. Branch refs will be created locally after rechecking the final slice budget; no remote PR/push/merge is authorized.
 
 | Slice | Planned local branch | Base | Commit range end | Lines |
 |---|---|---|---|---:|
@@ -291,7 +291,7 @@ The local commit ranges below form a single stack. Each changed-line total is `a
 | 5 | `feature/659-05-mobile-action-stability` | slice 4 | `88a728b` | 360 |
 | 6 | `feature/659-06-draft-card-layout` | slice 5 | `2a4e222` | 193 |
 | 7 | `feature/659-07-sharing-operation-guard` | slice 6 | `f6ac226` | 339 |
-| 8 | `feature/659-quote-sale-conversion` | slice 7 | current integration tip (`5bf41e3` at planning) | 363 |
+| 8 | `feature/659-quote-sale-conversion` | slice 7 | current integration tip (`444851a`) | 380 |
 
 No remote PR, push, branch retargeting, or merge is part of this preparation.
 
