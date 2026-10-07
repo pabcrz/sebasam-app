@@ -11,6 +11,7 @@ export default defineConfig({
     alias: [
       { find: /^next\/link$/, replacement: localFile("./shims/next-link.tsx") },
       { find: /^next\/navigation$/, replacement: localFile("./shims/next-navigation.ts") },
+      { find: "./work-order-advance-dialog", replacement: localFile("./shims/work-order-advance-dialog.tsx") },
       { find: "@/components/ui", replacement: localFile("./shims/ui.ts") },
     ],
   },
