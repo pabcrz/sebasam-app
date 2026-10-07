@@ -64,8 +64,8 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - The mobile card keeps Edit, Print, Share, and the WORK/SALE flow action in one compact flex row; only the flow action changes to the primary variant, preserving card height across states.
 - Focused Vitest: 2 files, 27 passed (`quote-action-presentation`, `quote-mobile-card`).
 - `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
-- Work-unit commit: `159744c fix(quotes): unify mobile action row`.
-- Work-unit commit: `d3cc523 feat(sales): convert quotes to sale notes`.
+- Work-unit commit: `c6bcf53 fix(quotes): unify mobile action row`.
+- Work-unit commit: `a3562fb feat(sales): convert quotes to sale notes`.
 - Review receipt: medium-risk reliability review acknowledged with no findings.
 - `QuoteOperationKind` is persisted on `Quote` with a `WORK` default/backfill; SALE intent is validated server-side as material/refacciones-only and does not issue a note during draft creation.
 - Existing quote edit and conversion flows carry the persisted intent forward; conversion UI starts from that intent but still permits explicit supported-operation selection.
@@ -82,14 +82,14 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - `pnpm typecheck`: passed.
 - `pnpm lint`: passed.
 - `git diff --check`: passed.
-- Work-unit commit: `2a71c90 fix(sales): clarify persisted sale conversion UI`.
+- Work-unit commit: `fbed2f1 fix(sales): clarify persisted sale conversion UI`.
 - SALE cards without a WorkOrder now display `Venta de refacciones` instead of `Sin orden de trabajo`.
 - Focused Vitest: `1 file, 19 passed` (`quote-mobile-card.test.tsx`).
 - `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
 - Secondary `Compartir` no longer uses the primary visual variant when WORK assignment or SALE conversion is primary; each card now has one primary action visually and structurally.
 - Focused Vitest: `1 file, 20 passed` (`quote-mobile-card.test.tsx`).
 - `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
-- Work-unit commit: `8ebb516 fix(quotes): keep one primary action`.
+- Work-unit commit: `b0307c7 fix(quotes): keep one primary action`.
 - Mobile action priority now uses `activeSharedQuote`: unshared operational quotes prioritize `Compartir`; shared quotes prioritize WORK assignment or SALE note conversion.
 - Clarification: retain `Asignar trabajo` / `Crear nota de venta` as prominent, labeled primary buttons; only the primary identity toggles between that contextual action and `Compartir`. Keep Edit and Print compact, and keep the non-primary Share/WorkOrder action available among compact controls.
 - The mobile card now renders `actionPresentation.primary` as a full-width labeled primary above compact Edit/Print/Share/WorkOrder controls. The non-primary Share/WorkOrder control remains available in the compact row; Edit and Print remain icon-only. Share uses its normal button size when primary.
@@ -113,7 +113,7 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - Focused Vitest: 2 files, 29 tests passed (`quote-mobile-card`, `quote-action-presentation`); `pnpm typecheck`, `pnpm lint`, and `git diff --check`: passed.
 - Runtime harness: N/A; this is a mobile card presentation branch covered by the component regression test.
 - Rollback boundary: revert the mobile quote presentation selector and tests plus this evidence line; no business flow changes.
-- Work-unit commit: `f1dcf53 fix(quotes): promote share when work-order action is unavailable`.
+- Work-unit commit: `56052a0 fix(quotes): promote share when work-order action is unavailable`.
 
 ## Final mobile quote action UX follow-up
 
@@ -127,7 +127,7 @@ The current direct-sale operation creates a new quotation, while the existing qu
 - `git diff --check`: passed.
 - Runtime harness: N/A; mobile action behavior is covered by focused component tests, and no separate runtime boundary exists.
 - Rollback boundary: revert this final mobile action presentation, optional disabled-trigger props, focused tests, and this follow-up evidence; no server or desktop quote behavior changes.
-- Work-unit commit: `49065ea fix(quotes): stabilize mobile quote actions`.
+- Work-unit commit: `88a728b fix(quotes): stabilize mobile quote actions`.
 
 ## REJECTED-to-DRAFT and quote-card layout follow-up
 
@@ -155,7 +155,7 @@ This authorized follow-up is limited to correcting the rejected-quote UI and har
 - Readiness check: the existing mobile `workStartReady` rule requires a customer or identifiable vehicle and complete item descriptions/positive quantities; SALE additionally requires existing commercial readiness and material/refacciones items. The valid fixture enables the WORK/SALE action; no server eligibility or lifecycle behavior was changed.
 - Runtime harness: N/A; quote action and card layout behavior is exercised by focused component and page tests, with no separate runtime boundary for this UI-only change.
 - Rollback boundary: revert the DRAFT authorization presentation and quote-card layout/style changes in `quote-list-row.tsx`, `quote-action-presentation.ts`, `quote-mobile-card.tsx`, `page.tsx`, and `operational-card.tsx`, the directly related tests in those components and page, and this follow-up evidence. No server actions, data model, database, or lifecycle logic is included.
-- Work-unit commit: `ce4fd06 fix(quotes): restore DRAFT actions and align card layout`.
+- Work-unit commit: `2a4e222 fix(quotes): restore DRAFT actions and align card layout`.
 
 ## DRAFT authorization and sharing follow-up
 
@@ -186,7 +186,7 @@ This user-approved follow-up is limited to DRAFT quote action priority and shari
 - Desktop DRAFT authorization was already rendered by `QuoteListRow`; its existing regression test verifies the `QuoteAuthorizeForm` trigger. No desktop layout redesign was made.
 - Runtime harness: N/A; the changes are page action routing and component interaction behavior covered by focused Vitest tests, with no independent runtime boundary.
 - Rollback boundary: revert the DRAFT action presentation and sharing route in `src/features/quotes/components/quote-action-presentation.ts`, `src/features/quotes/components/quote-mobile-card.tsx`, and `src/app/admin/(protected)/quotes/page.tsx`; the operation/acceptance UI in `src/features/work-orders/components/work-order-operations-dialog.tsx`; their focused tests and this completion evidence. No server action implementation, domain/data model, database, or lifecycle logic was changed.
-- Work-unit commit: `feba966 fix(quotes): align draft sharing and assignment actions`.
+- Work-unit commit: `aa32e57 fix(quotes): align draft sharing and assignment actions`.
 
 ## Develop database test-data cleanup and flow coverage follow-up
 
@@ -267,6 +267,14 @@ The user explicitly chose to allow pending prices for SALE conversion. Concepts 
   - Strict TDD GREEN observed: `pnpm exec playwright test tests/playwright/sale-quote-conversion.spec.ts` — browser launched and 1 test passed. It verifies the persisted SALE UI contract, mock payload, absence of WORK controls, and `/admin/notas` navigation; it does not exercise database persistence.
   - Work-unit commit: `b8980e7 test(sales): cover sale quote conversion in browser`.
   - Delegation recovery: the initial fixture-writer attempts errored before editing; post-failure status confirmed no partial fixture/shim changes. The documented `subagent_continue` recovery completed the fixture wiring.
-- [ ] **QTSC-INT-004 — Verify and reconcile.** Run focused Vitest, Playwright, typecheck, lint, Prisma validation, and `git diff --check`; refresh commit identities after any work-unit commits and report remaining review-size/PR gates.
+- [x] **QTSC-INT-004 — Verify and reconcile.** Run focused Vitest, Playwright, typecheck, lint, Prisma validation, and `git diff --check`; refresh commit identities after any work-unit commits and report remaining review-size/PR gates.
+  - `pnpm install --frozen-lockfile`: passed; lockfile up to date, Playwright 1.63.0 and Vite 8.0.16 installed in this worktree; no package/lock changes.
+  - Focused Vitest: 5 files, 143 tests passed (`quote-list-row`, `quote-mobile-card`, `quote-action-presentation`, `work-order-operations-dialog`, `work-orders/actions`).
+  - Playwright: `pnpm exec playwright test tests/playwright/sale-quote-conversion.spec.ts` — 1 passed; Vite fixture mocks server conversion and does not test DB persistence.
+  - `pnpm typecheck`: passed after dependency install and final shim cleanup.
+  - `pnpm lint`: passed with 2 existing warnings in `src/features/work-orders/components/nota-detail-dialog.tsx` (`workOrderId`, `noteReturnTo`); the new shim warning was removed.
+  - `pnpm exec prisma validate`: passed. `git diff --check`: passed.
+  - Reconciled all eight pre-rebase work-unit hashes using Git reflog/subjects; no unmatched recorded IDs remain. New code/test work-unit commits: `998cf0f`, `d6ef1f4`, `b8980e7`.
+  - Final integration gate: branch `feature/659-quote-sale-conversion` is based on `origin/develop` `752ca67`, clean except this task-document update, and 29 commits ahead. Its full diff is 36 files, 1,499 insertions and 214 deletions, exceeding the repository 400-line review budget. No PR was created; the change needs chained PR slices or a maintainer-approved size exception. Issue #659 is OPEN with `status:approved`; no PR is open.
 
 Non-goals: testing against the shared develop database, applying migrations, preparing PR chains, or changing persisted business data. Browser verification must be described as a mocked UI contract, not proof of database persistence.
