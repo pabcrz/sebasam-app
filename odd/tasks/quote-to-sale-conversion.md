@@ -275,7 +275,24 @@ The user explicitly chose to allow pending prices for SALE conversion. Concepts 
   - `pnpm lint`: passed with 2 existing warnings in `src/features/work-orders/components/nota-detail-dialog.tsx` (`workOrderId`, `noteReturnTo`); the new shim warning was removed.
   - `pnpm exec prisma validate`: passed. `git diff --check`: passed.
   - Reconciled all eight pre-rebase work-unit hashes using Git reflog/subjects; no unmatched recorded IDs remain. New code/test work-unit commits: `998cf0f`, `d6ef1f4`, `b8980e7`.
-  - Final integration gate: branch `feature/659-quote-sale-conversion` is based on `origin/develop` `752ca67` and is clean after the evidence commits. Its full diff is 36 files, more than 1,500 insertions and 214 deletions, exceeding the repository 400-line review budget. No PR was created; the change needs chained PR slices or a maintainer-approved size exception. Issue #659 is OPEN with `status:approved`; no PR is open.
+  - Final integration gate: branch `feature/659-quote-sale-conversion` is based on `origin/develop` `752ca67`; its full diff is 36 files, more than 1,500 insertions and 214 deletions, exceeding the repository 400-line review budget. Issue #659 is OPEN with `status:approved`; no PR is open. The user selected `stacked-to-main` targeting the verified default branch `develop`; no PR, push, or merge was authorized or performed.
   - Evidence commit: `1e1888f docs(odd): reconcile quote conversion readiness`.
+
+## Stacked delivery plan (2026-10-06)
+
+The local commit ranges below form a single stack. Each changed-line total is `additions + deletions` measured with `git diff --numstat` for the exact range; all current measurements are below 400. The final slice count must be recomputed after committing this plan. Branch refs are not yet created.
+
+| Slice | Planned local branch | Base | Commit range end | Lines |
+|---|---|---|---|---:|
+| 1 | `feature/659-01-sale-note-conversion` | `develop` | `0cd1b5e` | 275 |
+| 2 | `feature/659-02-sale-intent` | slice 1 | `f0e3c07` | 223 |
+| 3 | `feature/659-03-sale-action-flow` | slice 2 | `c6bcf53` | 290 |
+| 4 | `feature/659-04-mobile-action-row` | slice 3 | `56052a0` | 137 |
+| 5 | `feature/659-05-mobile-action-stability` | slice 4 | `88a728b` | 360 |
+| 6 | `feature/659-06-draft-card-layout` | slice 5 | `2a4e222` | 193 |
+| 7 | `feature/659-07-sharing-operation-guard` | slice 6 | `f6ac226` | 339 |
+| 8 | `feature/659-quote-sale-conversion` | slice 7 | current integration tip (`5bf41e3` at planning) | 363 |
+
+No remote PR, push, branch retargeting, or merge is part of this preparation.
 
 Non-goals: testing against the shared develop database, applying migrations, preparing PR chains, or changing persisted business data. Browser verification must be described as a mocked UI contract, not proof of database persistence.
