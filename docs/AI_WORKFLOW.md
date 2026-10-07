@@ -2,13 +2,26 @@
 
 This is the canonical workflow for AI assistants working in this private repository. Tool-specific instruction files should point here instead of duplicating these rules.
 
+## Workflow selection
+
+ODD is the default execution and issue-tracking workflow for this repository. SDD is a complementary requirements-and-design workflow, not a replacement for the repository's issue, Gitflow, or ODD execution rules.
+
+| Situation | Workflow |
+|-----------|----------|
+| Routine issue-backed implementation | **ODD**: track the issue and implement in scoped work units. |
+| The user explicitly requests SDD, or requirements and architecture need agreement through artifacts before implementation | Add the relevant **SDD** proposal/spec/design artifacts, then execute and verify the issue under ODD. |
+| It is unclear whether requirements or architecture need those artifacts and the choice would materially change the work | Ask one focused question before creating the SDD artifacts. |
+
+Keep the GitHub issue as the execution tracker. Use SDD artifacts to clarify requirements and design; use ODD task tracking to manage implementation when the work is substantial. Avoid copying the same decisions or task detail into both: keep one execution checklist and link the relevant SDD artifacts from it. An explicit SDD request does not disable ODD, issue-first, or Gitflow requirements.
+
 ## Quick path
 
 1. Read the issue or task first.
-2. Follow the Gitflow rules in `docs/GITFLOW.md`.
-3. Branch from `develop` for feature and non-production bugfix work.
-4. Keep the branch, commits, and PR scoped to one issue or one clearly reviewable slice.
-5. Run the checks that match the scope before marking work done.
+2. Use ODD for issue-based execution; add SDD artifacts only when requested or needed to settle requirements and design.
+3. Follow the Gitflow rules in `docs/GITFLOW.md`.
+4. Branch from `develop` for feature and non-production bugfix work.
+5. Keep the branch, commits, and PR scoped to one issue or one clearly reviewable slice.
+6. Run the checks that match the scope before marking work done.
 
 ## Branch and PR rules
 
@@ -80,6 +93,17 @@ Run checks according to the size and risk of the change:
 | Prisma schema/migrations | Prisma generate/migration commands appropriate to the task, plus app checks. |
 
 If a check is not run, say why in the handoff.
+
+### Shared test and verification contract
+
+Testing is verification evidence shared by ODD and SDD, not a third planning workflow or an artificial phase that every change must add.
+
+1. For each implementation task, identify a relevant runnable deterministic test and its expected outcome before changing behavior.
+2. When such a test exists, observe RED before the fix, reach GREEN, and refactor while the test remains green. Do not claim RED or GREEN without observing it.
+3. If no meaningful test or runner applies, or the change is passive documentation, state why and run proportionate structural or functional checks instead of inventing a test.
+4. At handoff, list each exact check command and its observed result; explain every planned check that was skipped or unavailable. ODD closes a task only after its applicable proof is recorded. SDD retains its final Verify phase, using task-level evidence rather than replacing it with a vague testing phase.
+
+If a required delegated result is empty, malformed, or incomplete, mark the work blocked and preserve its progress. Report the missing result; do not fabricate evidence, silently switch workflows, or repeat the delegation without a documented supported recovery.
 
 ## Repository architecture rules
 
