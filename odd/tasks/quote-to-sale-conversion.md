@@ -276,5 +276,6 @@ The user explicitly chose to allow pending prices for SALE conversion. Concepts 
   - `pnpm exec prisma validate`: passed. `git diff --check`: passed.
   - Reconciled all eight pre-rebase work-unit hashes using Git reflog/subjects; no unmatched recorded IDs remain. New code/test work-unit commits: `998cf0f`, `d6ef1f4`, `b8980e7`.
   - Final integration gate: branch `feature/659-quote-sale-conversion` is based on `origin/develop` `752ca67`, clean except this task-document update, and 29 commits ahead. Its full diff is 36 files, 1,499 insertions and 214 deletions, exceeding the repository 400-line review budget. No PR was created; the change needs chained PR slices or a maintainer-approved size exception. Issue #659 is OPEN with `status:approved`; no PR is open.
+  - Evidence commit: `1e1888f docs(odd): reconcile quote conversion readiness`.
 
 Non-goals: testing against the shared develop database, applying migrations, preparing PR chains, or changing persisted business data. Browser verification must be described as a mocked UI contract, not proof of database persistence.
