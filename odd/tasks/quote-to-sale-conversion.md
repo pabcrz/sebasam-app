@@ -248,6 +248,10 @@ The user authorized correcting the readiness blockers after reviewing the rebase
 - Install locked dependencies with a frozen lockfile for verification only. Do not migrate, seed, or mutate any shared database.
 - Do not create a PR, merge, or publish from this follow-up.
 
+### Product decision (2026-10-06)
+
+The user explicitly chose to allow pending prices for SALE conversion. Concepts with missing prices remain excluded from the confirmed total; conversion issues the note using the stored confirmed total, which can be zero. Do not add a new price-completion gate in the UI or server action.
+
 ### Planned tasks and acceptance
 
 - [x] **QTSC-INT-001 — Enforce persisted operation.** Add a regression test proving a WORK quote cannot be converted to SALE by request override; preserve SALE conversion when the stored quote operation is SALE.
@@ -255,6 +259,8 @@ The user authorized correcting the readiness blockers after reviewing the rebase
   - Strict TDD GREEN observed after enforcing the stored operation: `pnpm exec vitest run src/features/work-orders/actions.test.ts` — 1 file passed, 56 tests passed. Both the mismatch rejection and stored-SALE conversion passed.
   - Work-unit commit: `998cf0f fix(sales): enforce persisted quote operation`. Keep the successful SALE path free of a WorkOrder.
 - [ ] **QTSC-INT-002 — Align desktop eligibility.** Apply the same customer/commercial readiness, supported-item, and duplicate-note constraints used by mobile; cover ineligible SALE quotes in the desktop row test.
+  - Strict TDD RED observed: `pnpm exec vitest run src/features/quotes/components/quote-list-row.test.tsx` — 1 file failed, 2 tests failed, 14 passed. Both new tests showed an incomplete or unsupported SALE quote still exposed an enabled desktop action.
+  - Strict TDD GREEN observed after sharing SALE readiness: `pnpm exec vitest run src/features/quotes/components/quote-list-row.test.tsx src/features/quotes/components/quote-mobile-card.test.tsx src/features/quotes/components/quote-action-presentation.test.ts src/features/work-orders/components/work-order-operations-dialog.test.tsx src/features/work-orders/actions.test.ts` — 5 files passed, 142 tests passed. Desktop ineligible/eligible, mobile, dialog, and action behavior passed.
 - [ ] **QTSC-INT-003 — Verify browser-visible SALE flow.** Add a Playwright test in the existing Vite harness using a mock conversion action; assert the SALE label, no WORK master/acceptance UI, exact conversion payload, and navigation to `/admin/notas`.
 - [ ] **QTSC-INT-004 — Verify and reconcile.** Run focused Vitest, Playwright, typecheck, lint, Prisma validation, and `git diff --check`; refresh commit identities after any work-unit commits and report remaining review-size/PR gates.
 
