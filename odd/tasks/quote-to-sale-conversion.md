@@ -278,9 +278,9 @@ The user explicitly chose to allow pending prices for SALE conversion. Concepts 
   - Final integration gate: branch `feature/659-quote-sale-conversion` is based on `origin/develop` `752ca67`; its full diff is 36 files, more than 1,500 insertions and 214 deletions, exceeding the repository 400-line review budget. Issue #659 is OPEN with `status:approved`; no PR is open. The user selected `stacked-to-main` targeting the verified default branch `develop`; no PR, push, or merge was authorized or performed.
   - Evidence commit: `1e1888f docs(odd): reconcile quote conversion readiness`.
 
-## Stacked delivery plan (2026-10-06)
+## Stacked delivery plan
 
-The local commit ranges below form a single stack. Each changed-line total is `additions + deletions` measured with `git diff --numstat` for the exact range; all current measurements are below 400. Plan work-unit commit: `444851a docs(odd): plan stacked quote conversion slices`. Branch refs will be created locally after rechecking the final slice budget; no remote PR/push/merge is authorized.
+The local commit ranges below form a single stack. Each changed-line total is `additions + deletions` measured with `git diff --numstat` for the exact range; all current measurements are below 400. Plan work-unit commit: `444851a docs(odd): plan stacked quote conversion slices`. The seven local slice refs were created at the listed boundaries and verified; the existing `feature/659-quote-sale-conversion` branch is slice 8. No PR, push, or merge was performed.
 
 | Slice | Planned local branch | Base | Commit range end | Lines |
 |---|---|---|---|---:|
@@ -291,7 +291,7 @@ The local commit ranges below form a single stack. Each changed-line total is `a
 | 5 | `feature/659-05-mobile-action-stability` | slice 4 | `88a728b` | 360 |
 | 6 | `feature/659-06-draft-card-layout` | slice 5 | `2a4e222` | 193 |
 | 7 | `feature/659-07-sharing-operation-guard` | slice 6 | `f6ac226` | 339 |
-| 8 | `feature/659-quote-sale-conversion` | slice 7 | current integration tip (`444851a`) | 380 |
+| 8 | `feature/659-quote-sale-conversion` | slice 7 | current integration tip | 380 |
 
 No remote PR, push, branch retargeting, or merge is part of this preparation.
 
