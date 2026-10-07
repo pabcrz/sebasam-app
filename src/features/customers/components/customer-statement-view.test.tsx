@@ -98,9 +98,9 @@ describe("CustomerStatementView", () => {
 
     expect(screen.getAllByRole("heading", { name: "Transportes del Norte S.A." })).toHaveLength(2);
     expect(screen.getByText(/RFC: TDN010101ABC/i)).toBeInTheDocument();
-    expect(screen.getByText("OT-001")).toBeInTheDocument();
-    expect(screen.getAllByText("Servicio mayor de frenos")).toHaveLength(2);
-    expect(screen.getByText("Kenworth T680")).toBeInTheDocument();
+    expect(screen.getAllByText("OT-001")).toHaveLength(2);
+    expect(screen.getAllByText("Servicio mayor de frenos")).toHaveLength(3);
+    expect(screen.getAllByText("Kenworth T680")).toHaveLength(2);
   });
 
   it("renders available credit banner and apply credit button when credit is available", () => {
@@ -112,8 +112,8 @@ describe("CustomerStatementView", () => {
     expect(banner).toHaveTextContent("$150.00");
 
     // "Aplicar saldo" button is rendered for the pending note
-    const applyButton = screen.getByRole("button", { name: /aplicar saldo a favor a nota ot-001/i });
-    expect(applyButton).toBeInTheDocument();
+    const applyButtons = screen.getAllByRole("button", { name: /aplicar saldo a favor a nota ot-001/i });
+    expect(applyButtons).toHaveLength(2);
   });
 
   it("does not render credit banner or apply credit button when availableCreditCents is 0", () => {
@@ -347,14 +347,36 @@ describe("CustomerStatementView", () => {
     expect(within(printProjection).queryByText(/payment-id|application-id/i)).not.toBeInTheDocument();
   });
 
-  it("renders compact responsive note rows with semantic grouped cells", () => {
+  it("renders mobile note cards with labelled amounts and a horizontally scrollable desktop row", () => {
     const { container } = render(<CustomerStatementView statement={baseStatement} />);
 
+    const mobileList = container.querySelector('[data-testid="statement-note-mobile-list"]');
+    expect(mobileList).toHaveClass("md:hidden");
+    const mobileCard = container.querySelector('[data-testid="statement-note-mobile-OT-001"]');
+    expect(mobileCard).toHaveClass("rounded-[var(--radius-sm)]");
+    const mobile = within(mobileCard as HTMLElement);
+    expect(mobile.getByText("OT-001")).toHaveClass("whitespace-nowrap");
+    expect(mobile.getByText("Vencida")).toBeInTheDocument();
+    expect(mobile.getByText("Emitida")).toBeInTheDocument();
+    expect(mobile.getByText("1 de agosto de 2026")).toBeInTheDocument();
+    expect(mobile.getByText("Vence")).toBeInTheDocument();
+    expect(mobile.getByText("20 de agosto de 2026")).toBeInTheDocument();
+    expect(mobile.getByText("Conceptos")).toBeInTheDocument();
+    expect(mobile.getByText("Vehículo")).toBeInTheDocument();
+    expect(mobile.getByText("Total")).toBeInTheDocument();
+    expect(mobile.getByText("Abonado")).toBeInTheDocument();
+    expect(mobile.getByText("Saldo")).toBeInTheDocument();
+    expect(mobileCard).toHaveTextContent("$200.00");
+    expect(mobileCard).toHaveTextContent("$0.00");
+    expect(mobileCard?.textContent).not.toMatch(/Importe.*−.*Abonado.*=/);
+    expect(mobile.getByRole("button", { name: /aplicar saldo a favor a nota ot-001/i })).toBeInTheDocument();
+    expect(mobile.getByRole("button", { name: "Imprimir nota OT-001" })).toBeInTheDocument();
+
+    const desktopList = container.querySelector('[data-testid="statement-note-desktop-list"]');
+    expect(desktopList).toHaveClass("hidden", "overflow-x-auto", "md:block");
+    expect(desktopList?.querySelector('[role="table"]')).toHaveClass("min-w-[64rem]");
     const row = container.querySelector('[data-testid="statement-note-OT-001"]');
-    expect(row).toHaveClass("grid-cols-1", "sm:grid-cols-2");
-    expect(row).toHaveClass(
-      "lg:grid-cols-[minmax(7rem,0.9fr)_minmax(11rem,1.3fr)_minmax(13rem,2fr)_minmax(16rem,1.8fr)_auto]",
-    );
+    expect(row).toHaveClass("min-w-[64rem]");
     expect(row?.querySelectorAll('[role="cell"]')).toHaveLength(5);
   });
 });

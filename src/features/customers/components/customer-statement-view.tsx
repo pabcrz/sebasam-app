@@ -28,7 +28,7 @@ const statementNoteFilters: Array<{ key: StatementNoteFilter; label: string }> =
   { key: "paid", label: "Pagadas" },
 ];
 const statementNoteGridColumns =
-  "lg:grid-cols-[minmax(7rem,0.9fr)_minmax(11rem,1.3fr)_minmax(13rem,2fr)_minmax(16rem,1.8fr)_auto]";
+  "md:grid-cols-[minmax(7rem,0.9fr)_minmax(11rem,1.3fr)_minmax(13rem,2fr)_minmax(16rem,1.8fr)_auto]";
 
 function getStatementNoteFilter(note: CustomerDetailedStatement["notes"][number]): Exclude<StatementNoteFilter, "all"> {
   if (note.remainingCents <= 0) return "paid";
@@ -389,70 +389,56 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                   : "No se encontraron notas completadas en el período seleccionado."}
             </div>
           ) : (
-            <div role="table" aria-label="Notas del estado de cuenta" className="w-full text-left text-sm">
-              <div role="rowgroup" className="hidden border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)] text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] lg:block">
-                <div role="row" className={`grid ${statementNoteGridColumns} gap-3 px-3 py-2.5`}>
-                  <div role="columnheader">Nota</div>
-                  <div role="columnheader">Fechas</div>
-                  <div role="columnheader">Conceptos</div>
-                  <div role="columnheader">Importe − Abonado = Saldo</div>
-                  <div role="columnheader">Acciones</div>
-                </div>
-              </div>
-              <div role="rowgroup" className="divide-y divide-[var(--color-border-light)]">
+            <>
+              <div data-testid="statement-note-mobile-list" className="grid gap-3 p-3 md:hidden">
                 {visibleNotes.map((note) => (
-                  <div
+                  <article
                     key={note.id}
-                    role="row"
+                    data-testid={`statement-note-mobile-${note.number}`}
                     onClick={() => setSelectedQuote(note.previewQuote)}
-                    className={`grid cursor-pointer grid-cols-1 gap-3 border-b border-[var(--color-border-light)] p-3 transition-colors hover:bg-[var(--color-bg-soft)] sm:grid-cols-2 ${statementNoteGridColumns} lg:items-center`}
-                    data-testid={`statement-note-${note.number}`}
+                    className="grid min-w-0 cursor-pointer gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3 shadow-sm transition-colors hover:bg-[var(--color-bg-soft)]"
                   >
-                    <div
-                      role="cell"
-                      data-testid="statement-note-primary"
-                      className="flex min-w-0 items-center justify-between gap-2"
-                    >
-                      <span className="font-mono font-bold text-[var(--color-text-main)]">{note.number}</span>
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <span className="whitespace-nowrap font-mono font-bold text-[var(--color-text-main)]">{note.number}</span>
                       <Badge variant={note.paymentState.variant} className="shrink-0 text-[10px]">
                         {note.paymentState.label}
                       </Badge>
                     </div>
-                    <div
-                      role="cell"
-                      data-testid="statement-note-dates"
-                      className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-[var(--color-text-muted)]"
-                    >
-                      <span className="sr-only">Emitida:</span>
-                      <span>{note.completedAt ? formatDate(note.completedAt) : "—"}</span>
-                      <span aria-hidden="true">→</span>
-                      <span className="sr-only">Vence:</span>
-                      <span>{note.paymentDueDate ? formatDate(note.paymentDueDate) : "—"}</span>
-                    </div>
-                    <div role="cell" className="min-w-0 font-medium text-[var(--color-text-main)] lg:py-1">
-                      <span className="sr-only">Conceptos: </span>
-                      <span className="break-words">{note.concepts}</span>
-                      <span className="mt-1 block text-xs font-normal text-[var(--color-text-muted)]">
-                        {note.vehicleLabel}
-                      </span>
-                    </div>
-                    <div
-                      role="cell"
-                      data-testid="statement-note-amounts"
-                      className="grid min-w-0 gap-1 sm:col-span-2 lg:col-span-1"
-                    >
-                      <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs tabular-nums">
-                        <span><span className="text-[var(--color-text-muted)]">Importe</span> {formatCents(note.totalCents)}</span>
-                        <span aria-hidden="true">−</span>
-                        <span><span className="text-[var(--color-text-muted)]">Abonado</span> {formatCents(note.paidCents)}</span>
-                        <span aria-hidden="true">=</span>
+                    <dl aria-label={`Fechas de nota ${note.number}`} className="grid min-w-0 grid-cols-2 gap-3 text-xs">
+                      <div className="min-w-0">
+                        <dt className="text-[var(--color-text-muted)]">Emitida</dt>
+                        <dd className="break-words font-medium text-[var(--color-text-main)]">
+                          {note.completedAt ? formatDate(note.completedAt) : "—"}
+                        </dd>
                       </div>
-                      <div className="text-right font-semibold tabular-nums text-[var(--color-total-emphasis)]">
-                        <span className="text-xs font-medium text-[var(--color-text-muted)]">Saldo </span>
-                        {formatCents(note.remainingCents)}
+                      <div className="min-w-0">
+                        <dt className="text-[var(--color-text-muted)]">Vence</dt>
+                        <dd className="break-words font-medium text-[var(--color-text-main)]">
+                          {note.paymentDueDate ? formatDate(note.paymentDueDate) : "—"}
+                        </dd>
                       </div>
+                    </dl>
+                    <div className="min-w-0 break-words">
+                      <p className="text-xs text-[var(--color-text-muted)]">Conceptos</p>
+                      <p className="font-medium text-[var(--color-text-main)]">{note.concepts}</p>
+                      <p className="mt-1 text-xs text-[var(--color-text-muted)]">Vehículo</p>
+                      <p className="break-words text-sm text-[var(--color-text-main)]">{note.vehicleLabel}</p>
                     </div>
-                    <div role="cell" aria-label={`Acciones para nota ${note.number}`} className="flex items-center justify-end gap-1.5 sm:col-span-2 lg:col-span-1">
+                    <dl aria-label={`Importes de nota ${note.number}`} className="grid gap-1.5 border-t border-[var(--color-border-light)] pt-2 text-sm tabular-nums">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <dt className="text-[var(--color-text-muted)]">Total</dt>
+                        <dd className="whitespace-nowrap font-medium text-[var(--color-text-main)]">{formatCents(note.totalCents)}</dd>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <dt className="text-[var(--color-text-muted)]">Abonado</dt>
+                        <dd className="whitespace-nowrap font-medium text-[var(--color-text-main)]">{formatCents(note.paidCents)}</dd>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <dt className="font-semibold text-[var(--color-text-main)]">Saldo</dt>
+                        <dd className="whitespace-nowrap font-bold text-[var(--color-total-emphasis)]">{formatCents(note.remainingCents)}</dd>
+                      </div>
+                    </dl>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
                       {view === "pending" && note.remainingCents > 0 && availableCreditCents > 0 ? (
                         <ApplyCreditDialog
                           customerId={customer.id}
@@ -474,10 +460,88 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                         <span className="sr-only">Imprimir nota</span>
                       </PrintActionButton>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
-            </div>
+
+              <div data-testid="statement-note-desktop-list" className="hidden overflow-x-auto md:block">
+                <div role="table" aria-label="Notas del estado de cuenta" className="min-w-[64rem] w-full text-left text-sm">
+                  <div role="rowgroup" className="border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)] text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                    <div role="row" className={`grid ${statementNoteGridColumns} gap-3 px-3 py-2.5`}>
+                      <div role="columnheader">Nota</div>
+                      <div role="columnheader">Fechas</div>
+                      <div role="columnheader">Conceptos</div>
+                      <div role="columnheader">Importe − Abonado = Saldo</div>
+                      <div role="columnheader">Acciones</div>
+                    </div>
+                  </div>
+                  <div role="rowgroup" className="divide-y divide-[var(--color-border-light)]">
+                    {visibleNotes.map((note) => (
+                      <div
+                        key={note.id}
+                        role="row"
+                        onClick={() => setSelectedQuote(note.previewQuote)}
+                        className={`grid min-w-[64rem] cursor-pointer gap-3 border-b border-[var(--color-border-light)] p-3 transition-colors hover:bg-[var(--color-bg-soft)] ${statementNoteGridColumns} items-center`}
+                        data-testid={`statement-note-${note.number}`}
+                      >
+                        <div role="cell" data-testid="statement-note-primary" className="flex min-w-0 items-center justify-between gap-2">
+                          <span className="whitespace-nowrap font-mono font-bold text-[var(--color-text-main)]">{note.number}</span>
+                          <Badge variant={note.paymentState.variant} className="shrink-0 text-[10px]">
+                            {note.paymentState.label}
+                          </Badge>
+                        </div>
+                        <div role="cell" data-testid="statement-note-dates" className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-[var(--color-text-muted)]">
+                          <span className="sr-only">Emitida:</span>
+                          <span>{note.completedAt ? formatDate(note.completedAt) : "—"}</span>
+                          <span aria-hidden="true">→</span>
+                          <span className="sr-only">Vence:</span>
+                          <span>{note.paymentDueDate ? formatDate(note.paymentDueDate) : "—"}</span>
+                        </div>
+                        <div role="cell" className="min-w-0 font-medium text-[var(--color-text-main)] lg:py-1">
+                          <span className="sr-only">Conceptos: </span>
+                          <span className="break-words">{note.concepts}</span>
+                          <span className="mt-1 block text-xs font-normal text-[var(--color-text-muted)]">{note.vehicleLabel}</span>
+                        </div>
+                        <div role="cell" data-testid="statement-note-amounts" className="grid min-w-0 gap-1">
+                          <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs tabular-nums">
+                            <span><span className="text-[var(--color-text-muted)]">Importe</span> {formatCents(note.totalCents)}</span>
+                            <span aria-hidden="true">−</span>
+                            <span><span className="text-[var(--color-text-muted)]">Abonado</span> {formatCents(note.paidCents)}</span>
+                            <span aria-hidden="true">=</span>
+                          </div>
+                          <div className="text-right font-semibold tabular-nums text-[var(--color-total-emphasis)]">
+                            <span className="text-xs font-medium text-[var(--color-text-muted)]">Saldo </span>
+                            {formatCents(note.remainingCents)}
+                          </div>
+                        </div>
+                        <div role="cell" aria-label={`Acciones para nota ${note.number}`} className="flex items-center justify-end gap-1.5">
+                          {view === "pending" && note.remainingCents > 0 && availableCreditCents > 0 ? (
+                            <ApplyCreditDialog
+                              customerId={customer.id}
+                              workOrderId={note.workOrderId}
+                              noteNumber={note.number}
+                              remainingCents={note.remainingCents}
+                              availableCreditCents={availableCreditCents}
+                            />
+                          ) : null}
+                          <PrintActionButton
+                            url={`/admin/notas/${note.workOrderId}/print?returnTo=${encodeURIComponent(statementHref)}`}
+                            variant="ghost"
+                            size="sm"
+                            className="min-h-[44px] min-w-[44px] p-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] flex items-center justify-center"
+                            aria-label={`Imprimir nota ${note.number}`}
+                            title={`Imprimir nota ${note.number}`}
+                          >
+                            <Printer className="h-4 w-4" aria-hidden="true" />
+                            <span className="sr-only">Imprimir nota</span>
+                          </PrintActionButton>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
