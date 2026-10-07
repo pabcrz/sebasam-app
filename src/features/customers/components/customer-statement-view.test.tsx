@@ -30,6 +30,8 @@ describe("CustomerStatementView", () => {
     anchor: "2026-08",
     rangeLabel: "Cartera pendiente",
     availableCreditCents: 15000, // $150.00
+    availableCreditAtCutoffCents: 15000,
+    paymentActivity: [],
     summary: {
       initialBalanceCents: 0,
       periodChargesCents: 20000,
@@ -313,6 +315,36 @@ describe("CustomerStatementView", () => {
     expect(within(printProjection).getByText("$500.00")).toBeInTheDocument();
     expect(within(printProjection).getByText("$350.00")).toBeInTheDocument();
     expect(within(printProjection).getByText("$150.00")).toBeInTheDocument();
+  });
+
+  it("prints dated abono activity and available credit separately from note balances", () => {
+    const statementWithActivity: CustomerDetailedStatement = {
+      ...baseStatement,
+      availableCreditAtCutoffCents: 70000,
+      paymentActivity: [
+        { type: "credit", date: new Date("2026-08-05T17:00:00Z"), availableCents: 40000 },
+        { type: "application", date: new Date("2026-08-05T18:00:00Z"), amountCents: 40000, noteNumber: "OT-001" },
+        { type: "application", date: new Date("2026-08-10T18:00:00Z"), amountCents: 20000, noteNumber: "OT-002" },
+        { type: "credit", date: new Date("2026-08-14T10:00:00Z"), availableCents: 30000 },
+      ],
+    };
+
+    render(<CustomerStatementView statement={statementWithActivity} />);
+
+    const printProjection = screen.getByTestId("customer-statement-print");
+    const history = within(printProjection).getByTestId("customer-statement-payment-history");
+    const entries = Array.from(history.querySelectorAll("[data-testid='customer-statement-payment-event']"));
+    expect(entries).toHaveLength(4);
+    expect(entries[0]).toHaveTextContent("5 de agosto de 2026");
+    expect(entries[0]).toHaveTextContent("Saldo a favor generado");
+    expect(entries[0]).toHaveTextContent("$400.00");
+    expect(entries[1]).toHaveTextContent("Abono aplicado · Nota OT-001");
+    expect(entries[1]).toHaveTextContent("$400.00");
+    expect(entries[2]).toHaveTextContent("Abono aplicado · Nota OT-002");
+    expect(entries[3]).toHaveTextContent("Saldo a favor generado");
+    expect(within(printProjection).getByText(/Saldo a favor disponible al 15 de agosto de 2026:/)).toBeInTheDocument();
+    expect(within(printProjection).getByText(/: \$700\.00/)).toBeInTheDocument();
+    expect(within(printProjection).queryByText(/payment-id|application-id/i)).not.toBeInTheDocument();
   });
 
   it("renders compact responsive note rows with semantic grouped cells", () => {

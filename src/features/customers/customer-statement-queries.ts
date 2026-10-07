@@ -33,6 +33,61 @@ export type CustomerStatementSummary = {
   overdueBalanceCents: number;
 };
 
+export type CustomerStatementPaymentActivity =
+  | { type: "application"; date: Date; amountCents: number; noteNumber: string }
+  | { type: "credit"; date: Date; availableCents: number };
+
+type CustomerStatementPaymentCapture = {
+  amountCents: number;
+  createdAt: Date;
+  applications: Array<{
+    amountCents: number;
+    createdAt: Date;
+    reversedAt: Date | null;
+    workOrderId: string | null;
+    workOrder: { number: string } | null;
+  }>;
+};
+
+function buildStatementPaymentActivity(
+  payments: CustomerStatementPaymentCapture[],
+  notes: StatementNoteItem[],
+  cutoff: Date,
+): { paymentActivity: CustomerStatementPaymentActivity[]; availableCreditAtCutoffCents: number } {
+  const selectedNoteNumbers = new Map(notes.map((note) => [note.workOrderId, note.number]));
+  const paymentActivity: CustomerStatementPaymentActivity[] = [];
+  let availableCreditAtCutoffCents = 0;
+
+  payments.forEach((payment) => {
+    if (payment.createdAt > cutoff) return;
+
+    const activeApplications = payment.applications.filter(
+      (application) => application.reversedAt === null && application.createdAt <= cutoff,
+    );
+    const appliedCents = activeApplications.reduce((total, application) => total + application.amountCents, 0);
+    const availableCents = Math.max(0, payment.amountCents - appliedCents);
+    availableCreditAtCutoffCents += availableCents;
+
+    if (availableCents > 0) {
+      paymentActivity.push({ type: "credit", date: payment.createdAt, availableCents });
+    }
+
+    activeApplications.forEach((application) => {
+      const noteNumber = selectedNoteNumbers.get(application.workOrderId ?? "");
+      if (!noteNumber) return;
+      paymentActivity.push({
+        type: "application",
+        date: application.createdAt,
+        amountCents: application.amountCents,
+        noteNumber: application.workOrder?.number ?? noteNumber,
+      });
+    });
+  });
+
+  paymentActivity.sort((first, second) => first.date.getTime() - second.date.getTime());
+  return { paymentActivity, availableCreditAtCutoffCents };
+}
+
 export type CustomerDetailedStatement = {
   customer: {
     id: string;
@@ -50,8 +105,10 @@ export type CustomerDetailedStatement = {
   anchor: string;
   rangeLabel: string;
   availableCreditCents: number;
+  availableCreditAtCutoffCents: number;
   summary: CustomerStatementSummary;
   notes: StatementNoteItem[];
+  paymentActivity: CustomerStatementPaymentActivity[];
   business: {
     name: string;
     fullName: string;
@@ -130,7 +187,7 @@ export async function getCustomerDetailedStatement(
   }
 
   // Fetch all completed work orders for this customer and customer credit summary in parallel
-  const [allCompletedOrders, creditSummary] = await Promise.all([
+  const [allCompletedOrders, creditSummary, customerPayments] = await Promise.all([
     prisma.workOrder.findMany({
       where: {
         status: WorkOrderStatus.COMPLETED,
@@ -163,9 +220,34 @@ export async function getCustomerDetailedStatement(
       },
     },
     orderBy: [{ completedAt: "asc" }, { id: "asc" }],
-  }),
-  getCustomerCreditSummary(prisma, customerId),
-]);
+    }),
+    getCustomerCreditSummary(prisma, customerId),
+    prisma.payment.findMany({
+      where: {
+        customerId,
+        status: PaymentStatus.PAID,
+        reversedAt: null,
+        createdAt: { lte: now },
+        correctionsOriginal: { none: {} },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: {
+        amountCents: true,
+        createdAt: true,
+        applications: {
+          where: { reversedAt: null, createdAt: { lte: now } },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          select: {
+            amountCents: true,
+            createdAt: true,
+            reversedAt: true,
+            workOrderId: true,
+            workOrder: { select: { number: true } },
+          },
+        },
+      },
+    }),
+  ]);
 
   const { view, period, anchor, rangeLabel, start, end } = periodParams;
 
@@ -313,6 +395,12 @@ export async function getCustomerDetailedStatement(
     }
   });
 
+  const { paymentActivity, availableCreditAtCutoffCents } = buildStatementPaymentActivity(
+    customerPayments,
+    statementNotes,
+    now,
+  );
+
   // Calculate final totals based on view
   let finalBalanceCents = 0;
   let overdueBalanceCents = 0;
@@ -357,6 +445,7 @@ export async function getCustomerDetailedStatement(
     anchor,
     rangeLabel,
     availableCreditCents: creditSummary.availableCreditCents,
+    availableCreditAtCutoffCents,
     summary: {
       initialBalanceCents,
       periodChargesCents,
@@ -365,6 +454,7 @@ export async function getCustomerDetailedStatement(
       overdueBalanceCents,
     },
     notes: statementNotes,
+    paymentActivity,
     business: {
       name: paymentSettings.name,
       fullName: paymentSettings.fullName,
