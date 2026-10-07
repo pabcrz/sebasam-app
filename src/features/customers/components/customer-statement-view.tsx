@@ -27,6 +27,8 @@ const statementNoteFilters: Array<{ key: StatementNoteFilter; label: string }> =
   { key: "overdue", label: "Vencidas" },
   { key: "paid", label: "Pagadas" },
 ];
+const statementNoteGridColumns =
+  "lg:grid-cols-[minmax(7rem,0.9fr)_minmax(11rem,1.3fr)_minmax(13rem,2fr)_minmax(16rem,1.8fr)_auto]";
 
 function getStatementNoteFilter(note: CustomerDetailedStatement["notes"][number]): Exclude<StatementNoteFilter, "all"> {
   if (note.remainingCents <= 0) return "paid";
@@ -385,99 +387,94 @@ export function CustomerStatementView({ statement }: CustomerStatementViewProps)
                   : "No se encontraron notas completadas en el período seleccionado."}
             </div>
           ) : (
-            <div className="overflow-x-auto print:overflow-visible">
-              <table className="w-full text-left text-xs print:table-fixed print:w-full print:text-[10px]">
-                {/* Fixed printable columns summing to exactly 100%: 8+9+9+22+15+9+9+9+10 = 100% */}
-                <colgroup className="hidden print:table-column-group">
-                  <col className="w-[8%]" />
-                  <col className="w-[9%]" />
-                  <col className="w-[9%]" />
-                  <col className="w-[22%]" />
-                  <col className="w-[15%]" />
-                  <col className="w-[9%]" />
-                  <col className="w-[9%]" />
-                  <col className="w-[9%]" />
-                  <col className="w-[10%]" />
-                </colgroup>
-                <thead className="border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold print:table-header-group">
-                  <tr>
-                    <th className="py-2.5 px-3 print:py-1.5 print:px-2">Folio</th>
-                    <th className="py-2.5 px-3 print:py-1.5 print:px-2">Fecha</th>
-                    <th className="py-2.5 px-3 print:py-1.5 print:px-2">Vencimiento</th>
-                    <th className="py-2.5 px-3 print:py-1.5 print:px-2">Trabajos / Conceptos</th>
-                    <th className="py-2.5 px-3 print:py-1.5 print:px-2">Vehículo</th>
-                    <th className="py-2.5 px-3 text-right print:py-1.5 print:px-2">Importe</th>
-                    <th className="py-2.5 px-3 text-right print:py-1.5 print:px-2">Abonado</th>
-                    <th className="py-2.5 px-3 text-right print:py-1.5 print:px-2">Saldo</th>
-                    <th className="py-2.5 px-3 text-center print:py-1.5 print:px-2">Estado</th>
-                    <th className="py-2.5 px-3 text-right print:hidden">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--color-border-light)]">
-                  {visibleNotes.map((note) => (
-                    <tr
-                      key={note.id}
-                      onClick={() => setSelectedQuote(note.previewQuote)}
-                      className="cursor-pointer transition-colors hover:bg-[var(--color-bg-soft)] print:cursor-default print:break-inside-avoid"
-                      data-testid={`statement-note-${note.number}`}
+            <div role="table" aria-label="Notas del estado de cuenta" className="w-full text-left text-sm">
+              <div role="rowgroup" className="hidden border-b border-[var(--color-border-light)] bg-[var(--color-bg-soft)] text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] lg:block">
+                <div role="row" className={`grid ${statementNoteGridColumns} gap-3 px-3 py-2.5`}>
+                  <div role="columnheader">Nota</div>
+                  <div role="columnheader">Fechas</div>
+                  <div role="columnheader">Conceptos</div>
+                  <div role="columnheader">Importe − Abonado = Saldo</div>
+                  <div role="columnheader">Acciones</div>
+                </div>
+              </div>
+              <div role="rowgroup" className="divide-y divide-[var(--color-border-light)]">
+                {visibleNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    role="row"
+                    onClick={() => setSelectedQuote(note.previewQuote)}
+                    className={`grid cursor-pointer grid-cols-1 gap-3 border-b border-[var(--color-border-light)] p-3 transition-colors hover:bg-[var(--color-bg-soft)] sm:grid-cols-2 ${statementNoteGridColumns} lg:items-center`}
+                    data-testid={`statement-note-${note.number}`}
+                  >
+                    <div
+                      role="cell"
+                      data-testid="statement-note-primary"
+                      className="flex min-w-0 items-center justify-between gap-2"
                     >
-                      <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-text-main)] print:py-1.5 print:px-2 print:break-all print:text-[9px]">
-                        {note.number}
-                      </td>
-                      <td className="py-2.5 px-3 whitespace-nowrap text-[var(--color-text-muted)] print:py-1.5 print:px-2 print:whitespace-normal">
-                        {note.completedAt ? formatDate(note.completedAt) : "—"}
-                      </td>
-                      <td className="py-2.5 px-3 whitespace-nowrap text-[var(--color-text-muted)] print:py-1.5 print:px-2 print:whitespace-normal">
-                        {note.paymentDueDate ? formatDate(note.paymentDueDate) : "—"}
-                      </td>
-                      <td className="py-2.5 px-3 font-medium text-[var(--color-text-main)] max-w-xs truncate print:py-1.5 print:px-2 print:max-w-none print:whitespace-normal print:break-words">
-                        {note.concepts}
-                      </td>
-                      <td className="py-2.5 px-3 text-[var(--color-text-muted)] whitespace-nowrap print:py-1.5 print:px-2 print:whitespace-normal print:break-words">
+                      <span className="font-mono font-bold text-[var(--color-text-main)]">{note.number}</span>
+                      <Badge variant={note.paymentState.variant} className="shrink-0 text-[10px]">
+                        {note.paymentState.label}
+                      </Badge>
+                    </div>
+                    <div
+                      role="cell"
+                      data-testid="statement-note-dates"
+                      className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-[var(--color-text-muted)]"
+                    >
+                      <span className="sr-only">Emitida:</span>
+                      <span>{note.completedAt ? formatDate(note.completedAt) : "—"}</span>
+                      <span aria-hidden="true">→</span>
+                      <span className="sr-only">Vence:</span>
+                      <span>{note.paymentDueDate ? formatDate(note.paymentDueDate) : "—"}</span>
+                    </div>
+                    <div role="cell" className="min-w-0 font-medium text-[var(--color-text-main)] lg:py-1">
+                      <span className="sr-only">Conceptos: </span>
+                      <span className="break-words">{note.concepts}</span>
+                      <span className="mt-1 block text-xs font-normal text-[var(--color-text-muted)]">
                         {note.vehicleLabel}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[var(--color-text-main)] print:py-1.5 print:px-2">
-                        {formatCents(note.totalCents)}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[var(--color-status-success-fg)] print:py-1.5 print:px-2">
-                        {formatCents(note.paidCents)}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold tabular-nums text-[var(--color-total-emphasis)] print:py-1.5 print:px-2">
+                      </span>
+                    </div>
+                    <div
+                      role="cell"
+                      data-testid="statement-note-amounts"
+                      className="grid min-w-0 gap-1 sm:col-span-2 lg:col-span-1"
+                    >
+                      <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs tabular-nums">
+                        <span><span className="text-[var(--color-text-muted)]">Importe</span> {formatCents(note.totalCents)}</span>
+                        <span aria-hidden="true">−</span>
+                        <span><span className="text-[var(--color-text-muted)]">Abonado</span> {formatCents(note.paidCents)}</span>
+                        <span aria-hidden="true">=</span>
+                      </div>
+                      <div className="text-right font-semibold tabular-nums text-[var(--color-total-emphasis)]">
+                        <span className="text-xs font-medium text-[var(--color-text-muted)]">Saldo </span>
                         {formatCents(note.remainingCents)}
-                      </td>
-                      <td className="py-2.5 px-3 text-center print:py-1.5 print:px-2">
-                        <Badge variant={note.paymentState.variant} className="text-[10px] py-0 px-2 print:text-[9px] print:border print:px-1.5">
-                          {note.paymentState.label}
-                        </Badge>
-                      </td>
-                      <td className="py-2.5 px-3 text-right print:hidden">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {view === "pending" && note.remainingCents > 0 && availableCreditCents > 0 ? (
-                            <ApplyCreditDialog
-                              customerId={customer.id}
-                              workOrderId={note.workOrderId}
-                              noteNumber={note.number}
-                              remainingCents={note.remainingCents}
-                              availableCreditCents={availableCreditCents}
-                            />
-                          ) : null}
-                          <PrintActionButton
-                            url={`/admin/notas/${note.workOrderId}/print?returnTo=${encodeURIComponent(statementHref)}`}
-                            variant="ghost"
-                            size="sm"
-                            className="min-h-[44px] min-w-[44px] p-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] flex items-center justify-center"
-                            aria-label={`Imprimir nota ${note.number}`}
-                            title={`Imprimir nota ${note.number}`}
-                          >
-                            <Printer className="h-4 w-4" aria-hidden="true" />
-                            <span className="sr-only">Imprimir nota</span>
-                          </PrintActionButton>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+                    <div role="cell" aria-label={`Acciones para nota ${note.number}`} className="flex items-center justify-end gap-1.5 sm:col-span-2 lg:col-span-1">
+                      {view === "pending" && note.remainingCents > 0 && availableCreditCents > 0 ? (
+                        <ApplyCreditDialog
+                          customerId={customer.id}
+                          workOrderId={note.workOrderId}
+                          noteNumber={note.number}
+                          remainingCents={note.remainingCents}
+                          availableCreditCents={availableCreditCents}
+                        />
+                      ) : null}
+                      <PrintActionButton
+                        url={`/admin/notas/${note.workOrderId}/print?returnTo=${encodeURIComponent(statementHref)}`}
+                        variant="ghost"
+                        size="sm"
+                        className="min-h-[44px] min-w-[44px] p-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] flex items-center justify-center"
+                        aria-label={`Imprimir nota ${note.number}`}
+                        title={`Imprimir nota ${note.number}`}
+                      >
+                        <Printer className="h-4 w-4" aria-hidden="true" />
+                        <span className="sr-only">Imprimir nota</span>
+                      </PrintActionButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

@@ -209,6 +209,46 @@ describe("CustomerStatementView", () => {
     expect(screen.queryByTestId("statement-note-OT-UNPAID")).not.toBeInTheDocument();
   });
 
+  it("places each note folio and its status badge in the same first cell", () => {
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    const firstCell = within(screen.getByTestId("statement-note-OT-001")).getByTestId("statement-note-primary");
+    expect(firstCell).not.toBeNull();
+    expect(within(firstCell).getByText("OT-001")).toBeInTheDocument();
+    expect(within(firstCell).getByText("Vencida")).toBeInTheDocument();
+  });
+
+  it("groups issue and due dates together with an arrow in the next cell", () => {
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    const row = screen.getByTestId("statement-note-OT-001");
+    const dateCell = within(row).getByTestId("statement-note-dates");
+    expect(dateCell).toHaveAttribute("data-testid", "statement-note-dates");
+    expect(dateCell).toHaveTextContent("1 de agosto de 2026");
+    expect(dateCell).toHaveTextContent("→");
+    expect(dateCell).toHaveTextContent("20 de agosto de 2026");
+  });
+
+  it("groups total, paid, and emphasized balance as an arithmetic block", () => {
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    const row = screen.getByTestId("statement-note-OT-001");
+    const amounts = within(row).getByTestId("statement-note-amounts");
+    expect(amounts.textContent).toMatch(/Importe.*−.*Abonado.*=.*Saldo/);
+    expect(amounts).toHaveTextContent("$200.00");
+    expect(amounts).toHaveTextContent("$0.00");
+    expect(amounts.lastElementChild).toHaveClass("text-right");
+  });
+
+  it("does not render a separate status column", () => {
+    const { container } = render(<CustomerStatementView statement={baseStatement} />);
+
+    const table = container.querySelector('[role="table"][aria-label="Notas del estado de cuenta"]');
+    expect(table).not.toBeNull();
+    const headers = Array.from(table!.querySelectorAll('[role="columnheader"]'), (header) => header.textContent?.trim());
+    expect(headers).not.toContain("Estado");
+  });
+
   it("does not render WhatsApp copy button and keeps Imprimir / PDF button accessible", () => {
     render(<CustomerStatementView statement={baseStatement} />);
 
@@ -275,36 +315,14 @@ describe("CustomerStatementView", () => {
     expect(within(printProjection).getByText("$150.00")).toBeInTheDocument();
   });
 
-  it("renders table with colgroup summing to 100%, repeating header group, and mobile scroll with print-overflow-visible", () => {
+  it("renders compact responsive note rows with semantic grouped cells", () => {
     const { container } = render(<CustomerStatementView statement={baseStatement} />);
 
-    // Table container maintains overflow-x-auto and adds print:overflow-visible
-    const tableScrollWrapper = container.querySelector(".overflow-x-auto");
-    expect(tableScrollWrapper).toBeInTheDocument();
-    expect(tableScrollWrapper).toHaveClass("print:overflow-visible");
-
-    // Table has fixed layout on print
-    const table = container.querySelector("table");
-    expect(table).toHaveClass("print:table-fixed");
-
-    // Thead has print:table-header-group
-    const thead = container.querySelector("thead");
-    expect(thead).toHaveClass("print:table-header-group");
-
-    // Colgroup has 9 columns summing to exactly 100%
-    const cols = container.querySelectorAll("colgroup col");
-    expect(cols).toHaveLength(9);
-    const widths = Array.from(cols).map((col) => col.className);
-    expect(widths).toEqual([
-      "w-[8%]",
-      "w-[9%]",
-      "w-[9%]",
-      "w-[22%]",
-      "w-[15%]",
-      "w-[9%]",
-      "w-[9%]",
-      "w-[9%]",
-      "w-[10%]",
-    ]);
+    const row = container.querySelector('[data-testid="statement-note-OT-001"]');
+    expect(row).toHaveClass("grid-cols-1", "sm:grid-cols-2");
+    expect(row).toHaveClass(
+      "lg:grid-cols-[minmax(7rem,0.9fr)_minmax(11rem,1.3fr)_minmax(13rem,2fr)_minmax(16rem,1.8fr)_auto]",
+    );
+    expect(row?.querySelectorAll('[role="cell"]')).toHaveLength(5);
   });
 });
