@@ -280,7 +280,7 @@ The user explicitly chose to allow pending prices for SALE conversion. Concepts 
 
 ## Stacked delivery plan
 
-The local commit ranges below form a single stack. Each changed-line total is `additions + deletions` measured with `git diff --numstat` for the exact range; all current measurements are below 400. Plan work-unit commit: `444851a docs(odd): plan stacked quote conversion slices`. The seven local slice refs were created at the listed boundaries and verified; the existing `feature/659-quote-sale-conversion` branch is slice 8. No PR, push, or merge was performed.
+The local commit ranges below form a single stack. Each changed-line total is `additions + deletions` measured with `git diff --numstat` for the exact range; all current measurements are below 400. Plan work-unit commit: `444851a docs(odd): plan stacked quote conversion slices`. Branch-ref work-unit commit: `f892dd3 docs(odd): record local stacked branches`. The seven local slice refs were created at the listed boundaries and verified; the existing `feature/659-quote-sale-conversion` branch is slice 8. No PR, push, or merge was performed.
 
 | Slice | Planned local branch | Base | Commit range end | Lines |
 |---|---|---|---|---:|
