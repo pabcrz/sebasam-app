@@ -394,7 +394,7 @@ describe("getCustomerDetailedStatement", () => {
     (prisma.payment.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
       {
         amountCents: 100000,
-        createdAt: new Date("2026-08-05T17:00:00Z"),
+        createdAt: firstAllocationDate,
         applications: [
           { amountCents: 40000, createdAt: firstAllocationDate, reversedAt: null, workOrderId: "wo-1", workOrder: { number: "OT-001" } },
           { amountCents: 20000, createdAt: laterAllocationDate, reversedAt: null, workOrderId: "wo-2", workOrder: { number: "OT-002" } },
@@ -419,7 +419,7 @@ describe("getCustomerDetailedStatement", () => {
     const result = await getCustomerDetailedStatement("cust-1", params, fakeNow);
 
     expect(result?.paymentActivity).toEqual([
-      { type: "credit", date: new Date("2026-08-05T17:00:00Z"), availableCents: 40000 },
+      { type: "credit", date: firstAllocationDate, availableCents: 60000 },
       { type: "application", date: firstAllocationDate, amountCents: 40000, noteNumber: "OT-001" },
       { type: "application", date: laterAllocationDate, amountCents: 20000, noteNumber: "OT-002" },
       { type: "credit", date: new Date("2026-08-14T10:00:00Z"), availableCents: 30000 },
