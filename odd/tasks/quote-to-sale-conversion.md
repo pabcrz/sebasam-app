@@ -342,7 +342,7 @@ No remote PR, push, branch retargeting, or merge is part of this preparation.
   - PR #742: duplicate-note UI fix, `feature/659-09-duplicate-note` → `feature/659-quote-sale-conversion`, `type:bug`.
   - PR #743: SALE browser contract, `feature/659-10-sale-browser-flow` → #742, `type:chore`.
   - PR #744: WORK browser contract, `feature/659-11-work-browser-flow` → #743, `type:chore`.
-- [ ] **QTSC-DEL-002 — Wait for CI and human reviews.** Check every PR in the 11-slice chain; no merge before required checks and human approval. Initial status: #742/#743 checks green; #744 Vercel pending; no review decision recorded on the three new PRs.
+- [ ] **QTSC-DEL-002 — Wait for CI and human reviews.** Check every PR in the 11-slice chain; no merge before required checks and human approval. Current status: Vercel and Preview Comments are green on #734–#744; no human reviews/approvals are recorded on the chain.
 - [ ] **QTSC-DEL-003 — Merge the stack to `develop`.** Merge in dependency order, retarget/rebase each child after its parent lands, and verify slice-only diffs.
 - [ ] **QTSC-DEL-004 — Prepare production promotion separately.** After `develop` is complete, prepare the release path; production deployment requires a separate explicit authorization.
 
