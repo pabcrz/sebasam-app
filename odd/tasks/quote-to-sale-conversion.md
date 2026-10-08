@@ -310,10 +310,11 @@ No remote PR, push, branch retargeting, or merge is part of this preparation.
   - Work-unit commit: `dc2b200 fix(quotes): align duplicate note action across devices`.
 - [x] **QTSC-UI-006A — Implement the desktop/mobile SALE browser slice.** Mount the actual desktop quote row and mobile quote card through the Vite fixture with mocked callbacks. Assert the `convert({ quoteId, operation: "SALE" })` payload, absence of WORK controls, and navigation to `/admin/notas`. Do not claim browser-side proof of database persistence.
   - `pnpm exec playwright test tests/playwright/sale-quote-conversion.spec.ts`: 3 passed (fixture SALE dialog, desktop row conversion, mobile card conversion); typecheck passed; lint passed with 2 existing warnings; diff-check passed. Work-unit commit: `3be94d9 test(quotes): cover SALE conversion browser entry points`.
-- [ ] **QTSC-UI-006B — Implement the desktop/mobile WORK browser slice.** Cover assignment and assigned-WorkOrder completion through their WORK callbacks, not SALE's conversion callback. Keep actions mocked and avoid database access.
+- [x] **QTSC-UI-006B — Implement the desktop/mobile WORK browser slice.** Cover assignment and assigned-WorkOrder completion through their WORK callbacks, not SALE's conversion callback. Keep actions mocked and avoid database access.
+  - Verification: Playwright 7/7; focused Vitest 144/144; typecheck passed; lint passed with 2 existing warnings; diff-check passed. Slice delta from `e5294d7`: 179 changed lines. Work-unit commit: `c7c6b9b test(quotes): cover WORK quote browser flows`.
 - [ ] **QTSC-UI-007 — Verify and record bounded slices.** Re-run focused component/action tests, browser tests, typecheck, lint, and `git diff --check`; measure each local slice against the 400-line review budget and record its work-unit commit. No push or PR without fresh authorization.
   - Earlier combined-contract evidence: the missing `/quote-flow` route produced 6 expected RED failures; the combined browser spec later passed 7/7, focused Vitest passed 144/144, and typecheck passed.
-  - SALE-only diff from `fee93c9` is 399 changed lines including untracked shims (under 400); the unsplit follow-up measured 574. No remote action is authorized.
+  - SALE-only diff from `fee93c9` is exactly 400 changed lines including untracked shims (at the cap); the unsplit follow-up measured 574. No remote action is authorized.
 
 ### Allowed edit surfaces
 
