@@ -307,6 +307,7 @@ No remote PR, push, branch retargeting, or merge is part of this preparation.
   - RED: `pnpm exec vitest run src/features/quotes/components/quote-list-row.test.tsx` — 1 regression failed as expected because the desktop trigger was absent (17 passed, 1 failed).
   - GREEN: `pnpm exec vitest run src/features/quotes/components/quote-list-row.test.tsx src/features/quotes/components/quote-mobile-card.test.tsx` — 2 files, 48 tests passed.
   - `git diff --check`: passed. The duplicate conversion remains blocked; this aligns only the disabled UI affordance.
+  - Work-unit commit: `dc2b200 fix(quotes): align duplicate note action across devices`.
 - [ ] **QTSC-UI-006 — Cover desktop/mobile WORK and SALE browser flows.** Mount the real desktop quote row and mobile quote card through the existing Vite fixture. Mock conversion actions; verify operation payload and expected UI success behavior for WORK and SALE. Browser coverage remains a UI contract, not proof of database persistence.
 - [ ] **QTSC-UI-007 — Verify and record.** Run focused component/action tests, the browser spec, typecheck, lint, and `git diff --check`; ensure the new PR slice stays within the 400-line review budget and record its work-unit commit.
 
