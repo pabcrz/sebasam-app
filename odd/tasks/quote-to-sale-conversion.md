@@ -313,7 +313,7 @@ No remote PR, push, branch retargeting, or merge is part of this preparation.
 - [x] **QTSC-UI-006B — Implement the desktop/mobile WORK browser slice.** Cover assignment and assigned-WorkOrder completion through their WORK callbacks, not SALE's conversion callback. Keep actions mocked and avoid database access.
   - Verification: Playwright 7/7; focused Vitest 144/144; typecheck passed; lint passed with 2 existing warnings; diff-check passed. Slice delta from `e5294d7`: 179 changed lines. Work-unit commit: `c7c6b9b test(quotes): cover WORK quote browser flows`.
 - [x] **QTSC-UI-007 — Verify and record bounded slices.** Re-ran focused component/action tests, browser tests, typecheck, lint, and `git diff --check`; measured each local slice against the 400-line review budget and recorded work-unit commits. No push or PR without fresh authorization.
-  - Local stacked refs: `feature/659-09-duplicate-note` = 46 changed lines; `feature/659-10-sale-browser-flow` = 400; `feature/659-11-work-browser-flow` = 208. The original combined follow-up was 574 changed lines and was split at the SALE/WORK boundary.
+  - Local stacked refs: `feature/659-09-duplicate-note` = 46 changed lines; `feature/659-10-sale-browser-flow` = 400; `feature/659-11-work-browser-flow` = 211. The original combined follow-up was 574 changed lines and was split at the SALE/WORK boundary.
   - Final checks: focused Vitest 144/144; Playwright 7/7; typecheck and diff-check passed; lint passed with 2 existing warnings in `nota-detail-dialog.tsx`.
   - Native review inspect stopped at `rdd_disabled` (no lineage); ASSESS of the WORK slice reported medium risk, `reviewDue=false` (`under_budget`), `writerSelfVerification=true`, and no separate verifier required. Independent checks ran anyway. All refs remain local; no push, PR, merge, DB write, migration, or seed occurred.
 
@@ -338,8 +338,11 @@ No remote PR, push, branch retargeting, or merge is part of this preparation.
 
 ### Follow-up delivery tasks
 
-- [ ] **QTSC-DEL-001 — Publish follow-up slices #09–#11.** Push the authorized local heads and create stacked PRs with their exact bases, required issue reference, template, Chain Context, and one type label.
-- [ ] **QTSC-DEL-002 — Wait for CI and human reviews.** Check every PR in the 11-slice chain; no merge before required checks and human approval.
+- [x] **QTSC-DEL-001 — Publish follow-up slices #09–#11.** Pushed the authorized local heads and created stacked PRs with their exact bases, issue reference, repository template, Chain Context, and one type label.
+  - PR #742: duplicate-note UI fix, `feature/659-09-duplicate-note` → `feature/659-quote-sale-conversion`, `type:bug`.
+  - PR #743: SALE browser contract, `feature/659-10-sale-browser-flow` → #742, `type:chore`.
+  - PR #744: WORK browser contract, `feature/659-11-work-browser-flow` → #743, `type:chore`.
+- [ ] **QTSC-DEL-002 — Wait for CI and human reviews.** Check every PR in the 11-slice chain; no merge before required checks and human approval. Initial status: #742/#743 checks green; #744 Vercel pending; no review decision recorded on the three new PRs.
 - [ ] **QTSC-DEL-003 — Merge the stack to `develop`.** Merge in dependency order, retarget/rebase each child after its parent lands, and verify slice-only diffs.
 - [ ] **QTSC-DEL-004 — Prepare production promotion separately.** After `develop` is complete, prepare the release path; production deployment requires a separate explicit authorization.
 
