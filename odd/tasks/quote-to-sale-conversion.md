@@ -308,8 +308,12 @@ No remote PR, push, branch retargeting, or merge is part of this preparation.
   - GREEN: `pnpm exec vitest run src/features/quotes/components/quote-list-row.test.tsx src/features/quotes/components/quote-mobile-card.test.tsx` — 2 files, 48 tests passed.
   - `git diff --check`: passed. The duplicate conversion remains blocked; this aligns only the disabled UI affordance.
   - Work-unit commit: `dc2b200 fix(quotes): align duplicate note action across devices`.
-- [ ] **QTSC-UI-006 — Cover desktop/mobile WORK and SALE browser flows.** Mount the real desktop quote row and mobile quote card through the existing Vite fixture. Mock conversion actions; verify operation payload and expected UI success behavior for WORK and SALE. Browser coverage remains a UI contract, not proof of database persistence.
-- [ ] **QTSC-UI-007 — Verify and record.** Run focused component/action tests, the browser spec, typecheck, lint, and `git diff --check`; ensure the new PR slice stays within the 400-line review budget and record its work-unit commit.
+- [x] **QTSC-UI-006A — Implement the desktop/mobile SALE browser slice.** Mount the actual desktop quote row and mobile quote card through the Vite fixture with mocked callbacks. Assert the `convert({ quoteId, operation: "SALE" })` payload, absence of WORK controls, and navigation to `/admin/notas`. Do not claim browser-side proof of database persistence.
+  - `pnpm exec playwright test tests/playwright/sale-quote-conversion.spec.ts`: 3 passed (fixture SALE dialog, desktop row conversion, mobile card conversion); typecheck passed; lint passed with 2 existing warnings; diff-check passed.
+- [ ] **QTSC-UI-006B — Implement the desktop/mobile WORK browser slice.** Cover assignment and assigned-WorkOrder completion through their WORK callbacks, not SALE's conversion callback. Keep actions mocked and avoid database access.
+- [ ] **QTSC-UI-007 — Verify and record bounded slices.** Re-run focused component/action tests, browser tests, typecheck, lint, and `git diff --check`; measure each local slice against the 400-line review budget and record its work-unit commit. No push or PR without fresh authorization.
+  - Earlier combined-contract evidence: the missing `/quote-flow` route produced 6 expected RED failures; the combined browser spec later passed 7/7, focused Vitest passed 144/144, and typecheck passed.
+  - SALE-only diff from `fee93c9` is 399 changed lines including untracked shims (under 400); the unsplit follow-up measured 574. No remote action is authorized.
 
 ### Allowed edit surfaces
 
