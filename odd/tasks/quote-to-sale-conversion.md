@@ -327,9 +327,20 @@ No remote PR, push, branch retargeting, or merge is part of this preparation.
 - `tests/playwright/shims/ui.ts`
 - `tests/playwright/shims/*.tsx` (only when an import shim is required)
 
-### Scope limits
+### Authorized delivery plan
 
-- No database migration, seed, or shared-database access.
-- No remote push, PR creation/edit, or merge; request fresh delivery authorization after local verification.
+- User authorized publishing local follow-up slices #09–#11 as stacked PRs and merging the approved chain to `develop`. Production deployment remains separately unauthorized.
+- Follow-up PR bases: #09 (`feature/659-09-duplicate-note`) on `feature/659-quote-sale-conversion`; #10 (`feature/659-10-sale-browser-flow`) on #09; #11 (`feature/659-11-work-browser-flow`) on #10.
+- PR titles/types: #09 `fix(quotes): align duplicate note action across devices` / `type:bug`; #10 `test(quotes): cover SALE conversion browser entry points` / `type:chore`; #11 `test(quotes): cover WORK quote browser flows` / `type:chore`. Use the repository template, `Closes #659`, exactly one `type:*`, and Chain Context.
+- Existing PRs #734–#741 are open with green checks but no human reviews recorded. Do not merge any slice until required CI is green and human review/approval is present; do not bypass review.
+- Merge in dependency order (#734–#741, then #09–#11). After each parent lands, retarget/rebase the next child to `develop` and verify it still shows only its slice before merge.
+- No DB writes, migrations, seeds, or shared-database access. Browser verification is a mocked UI contract, not proof of persistence.
 
-Non-goals: testing against the shared develop database, applying migrations, preparing PR chains, or changing persisted business data. Browser verification must be described as a mocked UI contract, not proof of database persistence.
+### Follow-up delivery tasks
+
+- [ ] **QTSC-DEL-001 — Publish follow-up slices #09–#11.** Push the authorized local heads and create stacked PRs with their exact bases, required issue reference, template, Chain Context, and one type label.
+- [ ] **QTSC-DEL-002 — Wait for CI and human reviews.** Check every PR in the 11-slice chain; no merge before required checks and human approval.
+- [ ] **QTSC-DEL-003 — Merge the stack to `develop`.** Merge in dependency order, retarget/rebase each child after its parent lands, and verify slice-only diffs.
+- [ ] **QTSC-DEL-004 — Prepare production promotion separately.** After `develop` is complete, prepare the release path; production deployment requires a separate explicit authorization.
+
+Non-goals: production deployment, applying migrations, seeding, or changing shared/persisted business data. Browser verification must not be presented as proof of database persistence.
