@@ -264,6 +264,18 @@ describe("QuoteListRow", () => {
     expect(screen.getByRole("button", { name: /crear nota de venta para cotización c-001/i })).toBeEnabled();
   });
 
+  it("keeps the desktop sale conversion trigger visible but disabled when a SALE payable note already exists", () => {
+    renderRow(
+      createReadySaleQuote({
+        payableNote: { id: "note-1" } as QuoteListItem["payableNote"],
+        workOrder: null,
+      }),
+      { workOrderActions: createSaleConversionActions() },
+    );
+
+    expect(screen.getByRole("button", { name: /crear nota de venta para cotización c-001/i })).toBeDisabled();
+  });
+
   it("keeps QTSC-INT-002 SALE conversion actionable when a confirmed quote has pending-price items", () => {
     const [pricedItem] = createMockQuote().items;
 

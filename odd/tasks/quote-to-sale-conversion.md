@@ -295,4 +295,34 @@ The local commit ranges below form a single stack. Each changed-line total is `a
 
 No remote PR, push, branch retargeting, or merge is part of this preparation.
 
+## Post-review follow-up: mobile/desktop quote-to-note flow
+
+- User authorized a follow-up after reviewing #734–#741 and chose to show the duplicate-note conversion action disabled on both desktop and mobile.
+- Keep existing SALE pending-price behavior unchanged: pending lines are excluded from confirmed totals and a zero confirmed total remains allowed.
+- New work stays on local branch `feature/659-09-mobile-desktop-flow`, based on the current slice-8 tip `bf57767`. No push or PR creation is authorized for this follow-up yet.
+
+### Follow-up tasks
+
+- [x] **QTSC-UI-005 — Align duplicate-note presentation.** Make the desktop SALE trigger remain visible and disabled with the same explanation/presentation as mobile when a payable note already exists and there is no WorkOrder. Preserve server-side duplicate protection and shared readiness rules.
+  - RED: `pnpm exec vitest run src/features/quotes/components/quote-list-row.test.tsx` — 1 regression failed as expected because the desktop trigger was absent (17 passed, 1 failed).
+  - GREEN: `pnpm exec vitest run src/features/quotes/components/quote-list-row.test.tsx src/features/quotes/components/quote-mobile-card.test.tsx` — 2 files, 48 tests passed.
+  - `git diff --check`: passed. The duplicate conversion remains blocked; this aligns only the disabled UI affordance.
+- [ ] **QTSC-UI-006 — Cover desktop/mobile WORK and SALE browser flows.** Mount the real desktop quote row and mobile quote card through the existing Vite fixture. Mock conversion actions; verify operation payload and expected UI success behavior for WORK and SALE. Browser coverage remains a UI contract, not proof of database persistence.
+- [ ] **QTSC-UI-007 — Verify and record.** Run focused component/action tests, the browser spec, typecheck, lint, and `git diff --check`; ensure the new PR slice stays within the 400-line review budget and record its work-unit commit.
+
+### Allowed edit surfaces
+
+- `src/features/quotes/components/quote-list-row.tsx`
+- `src/features/quotes/components/quote-list-row.test.tsx`
+- `tests/playwright/fixture.tsx`
+- `tests/playwright/sale-quote-conversion.spec.ts`
+- `tests/playwright/vite.config.ts`
+- `tests/playwright/shims/ui.ts`
+- `tests/playwright/shims/*.tsx` (only when an import shim is required)
+
+### Scope limits
+
+- No database migration, seed, or shared-database access.
+- No remote push, PR creation/edit, or merge; request fresh delivery authorization after local verification.
+
 Non-goals: testing against the shared develop database, applying migrations, preparing PR chains, or changing persisted business data. Browser verification must be described as a mocked UI contract, not proof of database persistence.
