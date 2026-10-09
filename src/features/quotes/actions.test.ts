@@ -1557,7 +1557,12 @@ describe("publishSharedQuote", () => {
 
     await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: true, token: "tok-123" });
 
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "quote-1", status: QuoteStatus.DRAFT },
+      data: { status: QuoteStatus.SENT },
+    });
     expect(getOrCreateSharedQuoteForQuote).toHaveBeenCalledWith("quote-1");
+    expect(tx.quote.updateMany.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(getOrCreateSharedQuoteForQuote).mock.invocationCallOrder[0]);
     expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
   });
 

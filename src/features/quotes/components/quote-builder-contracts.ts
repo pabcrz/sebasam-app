@@ -92,6 +92,7 @@ export type QuoteBuilderDialogProps = {
   triggerVariant?: ButtonVariant;
   triggerIconOnlyMobile?: boolean;
   triggerIconOnly?: boolean;
+  triggerDisabled?: boolean;
   triggerLabel?: string;
   createCustomerAction?: QuoteBuilderProps["createCustomerAction"];
   searchCustomersAction?: QuoteBuilderProps["searchCustomersAction"];

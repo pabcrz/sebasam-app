@@ -3,7 +3,7 @@
 import * as React from "react";
 import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
 import { PrintActionButton } from "./print-action-button";
-import type { PaymentRequest, QuoteStatus } from "@prisma/client";
+import { QuoteItemType, type PaymentRequest, type QuoteStatus } from "@prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, OperationalCard } from "@/components/ui";
 import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
@@ -26,6 +26,8 @@ import { WorkOrderOperationsDialog } from "@/features/work-orders/components/wor
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 import { QuoteActionsMenu } from "./quote-actions-menu";
 import { resolveQuoteActionPresentation, type QuoteActionId } from "./quote-action-presentation";
+import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
+import { isQuoteSaleConversionActionDisabled } from "./quote-sale-conversion-readiness";
 
 type QuoteListItem = QuoteListSummary;
 
@@ -90,20 +92,42 @@ export function QuoteListCard({
     editable,
     hasWorkOrder: Boolean(quote.workOrder),
     paymentAvailable: paymentRequestContext !== null,
-    hasSharedQuote: Boolean(quote.activeSharedQuote),
   });
-  const visibleActions = actionPresentation.primary && !actionPresentation.frequent.includes(actionPresentation.primary)
-    ? [...actionPresentation.frequent, actionPresentation.primary]
-    : actionPresentation.frequent;
+  const quoteAllowsOperations = ["DRAFT", "SENT", "APPROVED"].includes(quote.status);
+  const workItems = quote.sections.length > 0
+    ? quote.sections.flatMap((section) => section.items)
+    : quote.items;
+  const snapshot = quote.vehicleSnapshot && typeof quote.vehicleSnapshot === "object" && !Array.isArray(quote.vehicleSnapshot)
+    ? quote.vehicleSnapshot as Record<string, unknown>
+    : {};
+  const hasIdentifiableUnit = Boolean(
+    quote.vehicle?.plate?.trim() || (snapshot.plate && String(snapshot.plate).trim()) ||
+    ((quote.vehicle?.brand?.trim() || (snapshot.brand && String(snapshot.brand).trim())) &&
+      (quote.vehicle?.model?.trim() || (snapshot.model && String(snapshot.model).trim()))),
+  );
+  const workStartReady = (Boolean(quote.customerId) || hasIdentifiableUnit) && workItems.length > 0 && workItems.every((item) => {
+    const quantity = Number(item.quantity);
+    return Object.values(QuoteItemType).includes(item.type) && item.description.trim() !== "" && Number.isInteger(quantity) && quantity > 0;
+  });
+  const commercialReady = isQuoteCommercialReady(quote);
+  const saleConversionDisabled = isQuoteSaleConversionActionDisabled(quote, {
+    hasConvertAction: Boolean(workOrderActions?.convert),
+  });
+  const shareDisabled = !["DRAFT", "SENT", "APPROVED"].includes(quote.status) || !commercialReady;
+  const flowDisabled = quote.operation === "SALE"
+    ? saleConversionDisabled
+    : !quoteAllowsOperations || (Boolean(quote.payableNote) && !quote.workOrder) ||
+      (!quote.workOrder && (!workStartReady || !workOrderActions?.assign));
 
   const renderAction = (
     action: QuoteActionId,
     variant: "primary" | "secondary" | "outline" | "danger" = "outline",
     presentation: "default" | "tile" = "default",
   ) => {
+    const disabledActionClassName = "disabled:bg-[var(--color-surface-muted)] disabled:text-[var(--color-text-muted)] disabled:shadow-none disabled:hover:bg-[var(--color-surface-muted)] disabled:hover:text-[var(--color-text-muted)]";
     const tileClassName = presentation === "tile"
-      ? "h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
-      : "w-full";
+      ? `h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0 ${disabledActionClassName}`
+      : `w-full ${disabledActionClassName}`;
 
     switch (action) {
       case "print":
@@ -133,6 +157,7 @@ export function QuoteListCard({
             triggerVariant={variant}
             triggerClassName={tileClassName}
             triggerIconOnly={presentation === "tile"}
+            triggerDisabled={!editable}
           />
         );
       case "share":
@@ -140,9 +165,11 @@ export function QuoteListCard({
           <ShareQuoteButton
             action={shareAction}
             quoteNumber={quote.number}
-            variant={variant}
+            variant="outline"
+            size={presentation === "tile" ? "sm" : "default"}
             className={tileClassName}
             actionLabelClassName={presentation === "tile" ? "sr-only" : undefined}
+            disabled={shareDisabled}
           />
         );
       case "authorize":
@@ -170,8 +197,11 @@ export function QuoteListCard({
             workers={workers}
             actions={workOrderActions}
             triggerVariant={variant}
-            triggerIconOnlyMobile={presentation === "tile"}
-            triggerClassName={presentation === "tile" ? tileClassName : undefined}
+            triggerIconOnlyMobile={false}
+            triggerClassName={tileClassName}
+            alwaysRenderTrigger
+            triggerDisabled={flowDisabled}
+            triggerFlowLabel={quote.operation === "SALE" ? "Crear nota de venta" : "Asignar trabajo"}
           />
         );
       case "paymentLink":
@@ -193,15 +223,17 @@ export function QuoteListCard({
 
   return (
     <OperationalCard
-      className="w-full min-w-0"
+      className="flex h-full w-full min-w-0 flex-col"
+      bodyClassName="flex-1"
+      bodyHover={false}
       onOpen={openPreview}
       openLabel={`Abrir vista previa de ${displayFolio}`}
-      actionsClassName="grid gap-3"
+      actionsClassName="mt-auto grid gap-3"
       body={
         <>
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <h3 className="text-lg font-semibold leading-6 text-[var(--color-text-main)]">
+              <h3 title={quote.title || "Sin título"} className="line-clamp-2 min-h-12 text-lg font-semibold leading-6 text-[var(--color-text-main)]">
                 {quote.title || "Sin título"}
               </h3>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
@@ -250,7 +282,7 @@ export function QuoteListCard({
             )}
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--color-border-subtle)] pt-3 text-xs text-[var(--color-text-muted)]">
+          <div data-testid="quote-dates" className="mt-3 flex min-h-12 flex-wrap gap-x-4 gap-y-1 border-t border-[var(--color-border-subtle)] pt-3 text-xs text-[var(--color-text-muted)]">
             <p className="flex items-center gap-1.5">
               <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Fecha de cotización: {formatOperationalDate(quote.operationalDate)}</span>
@@ -259,12 +291,10 @@ export function QuoteListCard({
               <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}</span>
             </p>
-            {quote.paymentDueDate ? (
-              <p className="flex items-center gap-1.5">
-                <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Vencimiento pago: {formatDate(quote.paymentDueDate)}</span>
-              </p>
-            ) : null}
+            <p className="flex items-center gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Vencimiento pago: {quote.paymentDueDate ? formatDate(quote.paymentDueDate) : "—"}</span>
+            </p>
           </div>
         </>
       }
@@ -273,27 +303,29 @@ export function QuoteListCard({
           <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
           <div
             data-testid="quote-secondary-actions"
-            className="flex items-center gap-2"
+            className="grid gap-2"
           >
-            {visibleActions.map((action) => {
-              const variant = action === actionPresentation.primary
-                ? "primary"
-                : action === "share" ? "secondary" : "outline";
-              return (
-                <div key={action} className="min-w-0 flex-1">
-                  {renderAction(action, variant, "tile")}
+            <div data-testid="quote-primary-action" className="w-full">
+              {renderAction(actionPresentation.primary ?? "workOrder", "primary")}
+            </div>
+            <div className="flex items-center gap-2">
+              {(["edit", "print", "share"] as const).map((action) => (
+                <div key={action} className="shrink-0">
+                  {renderAction(action, "outline", "tile")}
                 </div>
-              );
-            })}
-            <div data-testid="quote-overflow-action" className="shrink-0">
-              <QuoteActionsMenu
-                quoteNumber={quote.number}
-                destructive={actionPresentation.destructive ? renderAction(actionPresentation.destructive) : null}
-                triggerClassName="h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
-                triggerIconOnly
-              >
-                {actionPresentation.overflow.map((action) => <React.Fragment key={action}>{renderAction(action)}</React.Fragment>)}
-              </QuoteActionsMenu>
+              ))}
+              <div data-testid="quote-overflow-action" className="shrink-0">
+                <QuoteActionsMenu
+                  quoteNumber={quote.number}
+                  destructive={actionPresentation.destructive ? renderAction(actionPresentation.destructive) : null}
+                  triggerClassName="h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
+                  triggerIconOnly
+                >
+                  {actionPresentation.overflow
+                    .filter((action) => action !== "edit" && action !== "share" && action !== "print")
+                    .map((action) => <React.Fragment key={action}>{renderAction(action)}</React.Fragment>)}
+                </QuoteActionsMenu>
+              </div>
             </div>
           </div>
         </>

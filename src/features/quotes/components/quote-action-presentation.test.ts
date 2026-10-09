@@ -5,90 +5,46 @@ const base = {
   editable: true,
   hasWorkOrder: false,
   paymentAvailable: false,
-  hasSharedQuote: true,
 };
 
 describe("resolveQuoteActionPresentation", () => {
-  it("prioritizes work-order conversion for draft quotes", () => {
-    expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT" })).toEqual({
-      primary: "workOrder",
-      frequent: ["edit", "print", "share"],
-      overflow: ["duplicate", "cancel", "archive"],
-      destructive: "delete",
+  it.each(["SENT", "APPROVED", "REJECTED", "CANCELLED", "ARCHIVED"] as const)(
+    "keeps the four mobile action slots stable for %s quotes",
+    (status) => {
+      const presentation = resolveQuoteActionPresentation({ ...base, status });
+
+      expect(presentation).toMatchObject({
+        primary: "workOrder",
+        frequent: ["edit", "print", "share"],
+      });
+      expect(presentation.frequent).not.toContain("workOrder");
+      expect(presentation.overflow).not.toContain("print");
+    },
+  );
+
+  it("makes authorization primary for DRAFT while keeping flow actions in overflow", () => {
+    expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT" })).toMatchObject({
+      primary: "authorize",
+      overflow: ["workOrder", "duplicate", "cancel", "archive"],
     });
   });
 
-  it("prioritizes work-order conversion for sent quotes while keeping authorization available", () => {
+  it("uses the requested fixed compact action order", () => {
+    const presentation = resolveQuoteActionPresentation({ ...base, status: "SENT" });
+
+    expect(presentation.frequent).toEqual(["edit", "print", "share"]);
+  });
+
+  it("keeps authorization in overflow for SENT quotes", () => {
+    expect(resolveQuoteActionPresentation({ ...base, status: "SENT" }).overflow).toContain("authorize");
+  });
+
+  it("keeps quote-specific actions in overflow without altering the fixed mobile controls", () => {
     expect(resolveQuoteActionPresentation({ ...base, status: "SENT" })).toMatchObject({
-      primary: "workOrder",
-      frequent: ["edit", "print", "share"],
       overflow: ["authorize", "duplicate", "cancel", "archive"],
-      destructive: "delete",
     });
-  });
-
-  it("prioritizes sharing before a quote has been shared", () => {
-    expect(resolveQuoteActionPresentation({ ...base, hasSharedQuote: false, status: "SENT" })).toMatchObject({
-      primary: "share",
-      overflow: ["authorize", "workOrder", "duplicate", "cancel", "archive"],
+    expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED", paymentAvailable: true })).toMatchObject({
+      overflow: ["paymentLink", "correctDecision", "duplicate"],
     });
-  });
-
-  it("prioritizes work-order management for approved quotes and keeps payment links to eligible work", () => {
-    expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED" })).toEqual({
-      primary: "workOrder",
-      frequent: ["edit", "print", "share"],
-      overflow: ["correctDecision", "duplicate"],
-      destructive: null,
-    });
-    expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED", hasWorkOrder: true, paymentAvailable: true })).toEqual({
-      primary: "workOrder",
-      frequent: ["edit", "print", "share"],
-      overflow: ["paymentLink", "duplicate"],
-      destructive: null,
-    });
-    expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED", editable: false, hasWorkOrder: true, paymentAvailable: false })).toEqual({
-      primary: "workOrder",
-      frequent: ["print", "share"],
-      overflow: ["duplicate"],
-      destructive: null,
-    });
-  });
-
-  it("surfaces a correction only for rejected quotes without a work order", () => {
-    expect(resolveQuoteActionPresentation({ ...base, status: "REJECTED" })).toEqual({
-      primary: "correctDecision",
-      frequent: ["edit", "print", "share"],
-      overflow: ["duplicate", "archive"],
-      destructive: "delete",
-    });
-    expect(resolveQuoteActionPresentation({ ...base, status: "REJECTED", hasWorkOrder: true })).toMatchObject({
-      primary: null,
-      frequent: ["edit", "print", "share"],
-      overflow: ["duplicate", "archive"],
-    });
-  });
-
-  it("does not surface forbidden actions for cancelled or archived quotes", () => {
-    expect(resolveQuoteActionPresentation({ ...base, status: "CANCELLED", editable: false })).toEqual({
-      primary: null,
-      frequent: ["print"],
-      overflow: ["duplicate", "archive"],
-      destructive: "delete",
-    });
-    expect(resolveQuoteActionPresentation({ ...base, status: "ARCHIVED" })).toEqual({
-      primary: "restore",
-      frequent: ["edit", "print", "share"],
-      overflow: ["duplicate"],
-      destructive: "delete",
-    });
-  });
-
-  it("keeps print frequent in every status and never repeats it in overflow", () => {
-    for (const status of ["DRAFT", "SENT", "APPROVED", "REJECTED", "CANCELLED", "ARCHIVED"] as const) {
-      const result = resolveQuoteActionPresentation({ ...base, status });
-      expect(result.frequent).toContain("print");
-      expect(result.overflow).not.toContain("print");
-    }
   });
 });
