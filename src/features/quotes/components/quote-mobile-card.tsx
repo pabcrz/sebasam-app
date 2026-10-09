@@ -27,6 +27,7 @@ import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/comp
 import { QuoteActionsMenu } from "./quote-actions-menu";
 import { resolveQuoteActionPresentation, type QuoteActionId } from "./quote-action-presentation";
 import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
+import { isQuoteSaleConversionActionDisabled } from "./quote-sale-conversion-readiness";
 
 type QuoteListItem = QuoteListSummary;
 
@@ -109,12 +110,14 @@ export function QuoteListCard({
     return Object.values(QuoteItemType).includes(item.type) && item.description.trim() !== "" && Number.isInteger(quantity) && quantity > 0;
   });
   const commercialReady = isQuoteCommercialReady(quote);
-  const saleItemsReady = workItems.every((item) => item.type === "MATERIAL" || item.type === "REFACCIONES");
-  const shareDisabled = !["SENT", "APPROVED"].includes(quote.status) || !commercialReady;
-  const flowDisabled = !quoteAllowsOperations || (Boolean(quote.payableNote) && !quote.workOrder) ||
-    (!quote.workOrder && (quote.operation === "SALE"
-      ? !commercialReady || !saleItemsReady || !workOrderActions?.convert
-      : !workStartReady || !workOrderActions?.assign));
+  const saleConversionDisabled = isQuoteSaleConversionActionDisabled(quote, {
+    hasConvertAction: Boolean(workOrderActions?.convert),
+  });
+  const shareDisabled = !["DRAFT", "SENT", "APPROVED"].includes(quote.status) || !commercialReady;
+  const flowDisabled = quote.operation === "SALE"
+    ? saleConversionDisabled
+    : !quoteAllowsOperations || (Boolean(quote.payableNote) && !quote.workOrder) ||
+      (!quote.workOrder && (!workStartReady || !workOrderActions?.assign));
 
   const renderAction = (
     action: QuoteActionId,
@@ -303,7 +306,7 @@ export function QuoteListCard({
             className="grid gap-2"
           >
             <div data-testid="quote-primary-action" className="w-full">
-              {renderAction("workOrder", "primary")}
+              {renderAction(actionPresentation.primary ?? "workOrder", "primary")}
             </div>
             <div className="flex items-center gap-2">
               {(["edit", "print", "share"] as const).map((action) => (
@@ -319,7 +322,7 @@ export function QuoteListCard({
                   triggerIconOnly
                 >
                   {actionPresentation.overflow
-                    .filter((action) => action !== "edit" && action !== "share" && action !== "print" && action !== "workOrder")
+                    .filter((action) => action !== "edit" && action !== "share" && action !== "print")
                     .map((action) => <React.Fragment key={action}>{renderAction(action)}</React.Fragment>)}
                 </QuoteActionsMenu>
               </div>

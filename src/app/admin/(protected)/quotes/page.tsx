@@ -4,6 +4,7 @@ import {
   approveQuoteAndCreateWorkOrderFromForm,
   cancelQuoteFromForm,
   getOrCreateSharedQuoteAction,
+  publishSharedQuote,
   authorizeQuoteAction,
   correctQuoteDecisionAction,
   duplicateQuoteFromForm,
@@ -127,7 +128,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 quoteStatusBadgeVariant={quoteStatusBadgeVariant}
                 approveAction={approveQuoteAndCreateWorkOrderFromForm}
                 cancelAction={cancelQuoteFromForm}
-                shareAction={getOrCreateSharedQuoteAction.bind(null, quote.id)}
+                shareAction={(quote.status === "DRAFT" ? publishSharedQuote : getOrCreateSharedQuoteAction).bind(null, quote.id)}
                 authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
                 correctDecisionAction={correctQuoteDecisionAction}
                 paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}

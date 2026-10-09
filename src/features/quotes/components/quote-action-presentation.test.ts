@@ -8,7 +8,7 @@ const base = {
 };
 
 describe("resolveQuoteActionPresentation", () => {
-  it.each(["DRAFT", "SENT", "APPROVED", "REJECTED", "CANCELLED", "ARCHIVED"] as const)(
+  it.each(["SENT", "APPROVED", "REJECTED", "CANCELLED", "ARCHIVED"] as const)(
     "keeps the four mobile action slots stable for %s quotes",
     (status) => {
       const presentation = resolveQuoteActionPresentation({ ...base, status });
@@ -22,14 +22,21 @@ describe("resolveQuoteActionPresentation", () => {
     },
   );
 
+  it("makes authorization primary for DRAFT while keeping flow actions in overflow", () => {
+    expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT" })).toMatchObject({
+      primary: "authorize",
+      overflow: ["workOrder", "duplicate", "cancel", "archive"],
+    });
+  });
+
   it("uses the requested fixed compact action order", () => {
     const presentation = resolveQuoteActionPresentation({ ...base, status: "SENT" });
 
     expect(presentation.frequent).toEqual(["edit", "print", "share"]);
   });
 
-  it("keeps authorization available for corrected DRAFT quotes", () => {
-    expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT" }).overflow).toContain("authorize");
+  it("keeps authorization in overflow for SENT quotes", () => {
+    expect(resolveQuoteActionPresentation({ ...base, status: "SENT" }).overflow).toContain("authorize");
   });
 
   it("keeps quote-specific actions in overflow without altering the fixed mobile controls", () => {

@@ -1073,6 +1073,7 @@ describe("work order actions", () => {
         id: "quote-sale",
         number: "0926-002",
         status: QuoteStatus.SENT,
+        operation: "SALE",
         payableNote: null,
         sections: [{ id: "sec-sale", items: [{ type: "MATERIAL", description: "Filtro", quantity: 1, unitPriceCents: 10_000 }] }],
       });
@@ -1102,6 +1103,23 @@ describe("work order actions", () => {
       }));
     });
 
+    it("rejects a SALE request override when the stored quote operation is WORK", async () => {
+      const tx = createTx();
+      tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        id: "quote-work",
+        status: QuoteStatus.SENT,
+        operation: "WORK",
+        payableNote: null,
+        sections: [{ id: "sec-work", items: [{ type: "MATERIAL", description: "Filtro", quantity: 1, unitPriceCents: 10_000 }] }],
+      }));
+
+      await expect(convertQuoteToNoteAction({ quoteId: "quote-work", operation: "SALE" }))
+        .rejects.toThrow(/operación/i);
+      expect(tx.quoteLifecycleEvent.create).not.toHaveBeenCalled();
+      expect(tx.payableNote.create).not.toHaveBeenCalled();
+      expect(tx.workOrder.create).not.toHaveBeenCalled();
+    });
+
     it("uses the persisted SALE intent when conversion input omits an operation", async () => {
       const tx = createTx();
       tx.quote.findUnique.mockResolvedValue(operationalQuote({
@@ -1122,6 +1140,7 @@ describe("work order actions", () => {
     it("rejects SALE conversion when a quote contains labor concepts", async () => {
       const tx = createTx();
       tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        operation: "SALE",
         payableNote: null,
         sections: [{ id: "sec-sale", items: [{ type: "LABOR", description: "Servicio", quantity: 1, unitPriceCents: 10_000 }] }],
       }));
@@ -1135,6 +1154,7 @@ describe("work order actions", () => {
     it("prevents duplicate SALE conversion for a quote with an existing payable note", async () => {
       const tx = createTx();
       tx.quote.findUnique.mockResolvedValue(operationalQuote({
+        operation: "SALE",
         payableNote: { id: "note-1", kind: "SALE", status: "ISSUED" },
         sections: [{ id: "sec-sale", items: [{ type: "MATERIAL", description: "Filtro", quantity: 1, unitPriceCents: 10_000 }] }],
       }));

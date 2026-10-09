@@ -105,8 +105,7 @@ export function WorkOrderOperationsDialog({
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [isPending, startTransition] = React.useTransition();
   const [pendingAction, setPendingAction] = React.useState<"assign" | "complete" | "rollback" | null>(null);
-  const [conversionOperation, setConversionOperation] = React.useState<"WORK" | "SALE">("WORK");
-  const [customerAccepted, setCustomerAccepted] = React.useState<boolean | null>(null);
+  const [customerAccepted, setCustomerAccepted] = React.useState(true);
   const [acceptanceReason, setAcceptanceReason] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
 
@@ -167,26 +166,22 @@ export function WorkOrderOperationsDialog({
   const handleConvert = () => {
     if (!quoteId || !actions.convert) return;
     runAction(
-      () => actions.convert!({ quoteId, operation: conversionOperation }),
+      () => actions.convert!({ quoteId, operation: quoteOperation }),
       "assign",
-      conversionOperation === "SALE" ? () => router.push("/admin/notas") : undefined,
+      quoteOperation === "SALE" ? () => router.push("/admin/notas") : undefined,
     );
   };
 
   const handleAssign = () => {
     const assign = actions.assign;
     if (!assign) return;
-    const needsAcceptance = !workOrder && quoteStatus !== "APPROVED" && conversionOperation === "WORK";
-    if (needsAcceptance && customerAccepted === null) {
-      setError("Confirma si el cliente aceptó la cotización.");
-      return;
-    }
+    const needsAcceptance = !workOrder && quoteStatus !== "APPROVED" && quoteOperation === "WORK";
     if (needsAcceptance && customerAccepted === false && acceptanceReason.trim().length < 3) {
       setError("Indica el motivo para continuar sin aceptación formal.");
       return;
     }
     const acceptanceInput = needsAcceptance
-      ? { customerAccepted: customerAccepted === true, acceptanceReason: acceptanceReason.trim() }
+      ? { customerAccepted, acceptanceReason: acceptanceReason.trim() }
       : {};
     if (isSpecial) {
       runAction(() => assign({ isSpecial: true, ...acceptanceInput }), "assign");
@@ -267,8 +262,7 @@ export function WorkOrderOperationsDialog({
           setError(null);
           setConfirmComplete(false);
           setShowRollback(false);
-          setConversionOperation(quoteOperation);
-          setCustomerAccepted(null);
+          setCustomerAccepted(true);
           setAcceptanceReason("");
           setOpen(true);
         }}
@@ -305,14 +299,14 @@ export function WorkOrderOperationsDialog({
           </DialogClose>
           <DialogHeader>
             <DialogTitle>
-              {workOrder ? `Orden de trabajo ${workOrder.number}` : conversionOperation === "SALE" ? `Crear nota de venta — Cotización ${quoteNumber}` : `Asignar trabajo — Cotización ${quoteNumber}`}
+              {workOrder ? `Orden de trabajo ${workOrder.number}` : quoteOperation === "SALE" ? `Crear nota de venta — Cotización ${quoteNumber}` : `Asignar trabajo — Cotización ${quoteNumber}`}
             </DialogTitle>
             <DialogDescription>
               {isCompleted
                 ? `Orden finalizada para la cotización ${quoteNumber}. Los conceptos están congelados.`
                 : isAssigned
                 ? `Trabajo en proceso para la cotización ${quoteNumber}.`
-                : conversionOperation === "SALE"
+                : quoteOperation === "SALE"
                 ? "Crea una nota de venta con esta cotización. Esta operación no crea una orden de trabajo."
                 : `Asigna un maestro o registra un trabajo especial para iniciar.`}
             </DialogDescription>
@@ -330,22 +324,7 @@ export function WorkOrderOperationsDialog({
               </Badge>
             </div>
 
-            {!workOrder && !hasPayableNote && quoteId && actions.convert ? (
-              <div className="grid gap-2">
-                <Label htmlFor="conversion-operation">Operación de conversión</Label>
-                <Select value={conversionOperation} onValueChange={(value) => setConversionOperation(value as "WORK" | "SALE")} disabled={isAssignmentBusy}>
-                  <SelectTrigger id="conversion-operation" disabled={isAssignmentBusy}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="WORK">Trabajo</SelectItem>
-                    <SelectItem value="SALE">Venta</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
-
-            {conversionOperation === "SALE" && !workOrder && !hasPayableNote && quoteId && actions.convert ? (
+            {quoteOperation === "SALE" && !workOrder && !hasPayableNote && quoteId && actions.convert ? (
               <section className="grid gap-4">
                 <p className="text-sm text-[var(--color-text-muted)]">La venta solo admite conceptos de material o refacciones y no crea una orden de trabajo.</p>
                 <Button type="button" variant="primary" loading={pendingAction === "assign"} disabled={isAssignmentBusy} onClick={handleConvert}>
@@ -355,7 +334,7 @@ export function WorkOrderOperationsDialog({
             ) : null}
 
             {/* Section 1: Unassigned or Planned -> Assign form */}
-            {(!workOrder || workOrder.status === "PLANNED") && conversionOperation === "WORK" ? (
+            {(!workOrder || workOrder.status === "PLANNED") && quoteOperation === "WORK" ? (
               <section className="grid gap-4">
                 <h3 className="font-semibold text-[var(--color-text-main)]">Asignación de personal</h3>
 
@@ -405,7 +384,7 @@ export function WorkOrderOperationsDialog({
                   </>
                 ) : null}
 
-                 {!workOrder && quoteStatus !== "APPROVED" ? (
+                {!workOrder && quoteStatus !== "APPROVED" && quoteOperation === "WORK" ? (
                    <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
                      <p className="text-sm font-medium text-[var(--color-text-main)]">¿El cliente aceptó la cotización?</p>
                      <div className="flex gap-2">

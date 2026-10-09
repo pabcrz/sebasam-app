@@ -69,8 +69,8 @@ export function resolveQuoteActionPresentation({
   }
   if (status !== "APPROVED") available.add("delete");
 
-  // Keep the primary flow action and compact action slots stable on every card.
-  const primary: QuoteActionId = "workOrder";
+  // Keep the primary quote action and compact action slots stable on every card.
+  const primary: QuoteActionId = status === "DRAFT" && !hasWorkOrder ? "authorize" : "workOrder";
   const frequent: QuoteActionId[] = ["edit", "print", "share"];
   const overflow = actionOrder.filter(
     (action) => available.has(action) && action !== primary && !frequent.includes(action),
