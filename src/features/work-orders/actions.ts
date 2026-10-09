@@ -47,6 +47,7 @@ import {
   returnNoteToQuoteInputSchema,
   rollbackWorkOrderInputSchema,
   workAssignmentInputSchema,
+  workOrderAcceptanceInputSchema,
   workOrderInputSchema,
   type WorkOrderInput,
 } from "./schemas";
@@ -157,6 +158,10 @@ async function ensureWorkOrderPlanned(
       throw new WorkOrderOperationError("Cotización no encontrada.");
     }
 
+    if (quote.operation === "SALE") {
+      throw new WorkOrderOperationError("Las cotizaciones de venta deben convertirse en una nota de venta.");
+    }
+
     assertOperationalQuote(quote.status);
     assertOperationalStartQuote(quote);
 
@@ -194,6 +199,7 @@ async function promoteQuoteForWorkOrder(
   tx: Prisma.TransactionClient,
   quote: { id: string; status: QuoteStatus },
   actorId: string,
+  reason = "Orden de trabajo creada",
 ) {
   if (quote.status === QuoteStatus.APPROVED) return;
 
@@ -212,7 +218,7 @@ async function promoteQuoteForWorkOrder(
       nextState: QuoteStatus.APPROVED,
       eventType: QuoteLifecycleEventType.STATUS_CHANGE,
       actorId,
-      reason: "Orden de trabajo creada",
+       reason,
     },
   });
 }
@@ -323,6 +329,10 @@ export async function assignWorkOrder(input: unknown) {
  */
 export async function createAndAssignWorkOrder(quoteId: string, assignInput: unknown) {
   const { profile } = await requireOperationalRole();
+  const rawInput = typeof assignInput === "object" && assignInput !== null
+    ? { ...(assignInput as Record<string, unknown>) }
+    : {};
+  const acceptance = workOrderAcceptanceInputSchema.parse(rawInput);
 
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { vehicle: true, workOrder: true, items: true, sections: { include: { items: true } } } });
@@ -331,9 +341,21 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
       throw new WorkOrderOperationError("Cotización no encontrada.");
     }
 
+    if (quote.operation === "SALE") {
+      throw new WorkOrderOperationError("Las cotizaciones de venta deben convertirse en una nota de venta.");
+    }
+
     assertOperationalQuote(quote.status);
     assertOperationalStartQuote(quote);
-    await promoteQuoteForWorkOrder(tx, quote, profile.id);
+    if (quote.status !== QuoteStatus.APPROVED) {
+      const reason = acceptance.customerAccepted === true
+        ? "Cliente aceptó la cotización"
+        : acceptance.acceptanceReason?.trim();
+      if (!reason) {
+        throw new WorkOrderOperationError("Confirma la aceptación del cliente o indica el motivo para continuar sin aceptación formal.");
+      }
+      await promoteQuoteForWorkOrder(tx, quote, profile.id, reason);
+    }
 
     let workOrderId: string;
 
@@ -360,6 +382,8 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
     // Now assign using the parsed input
     const assignObj = typeof assignInput === "object" && assignInput !== null ? { ...assignInput } : {};
     delete (assignObj as Record<string, unknown>).workOrderId;
+    delete (assignObj as Record<string, unknown>).customerAccepted;
+    delete (assignObj as Record<string, unknown>).acceptanceReason;
     const data = assignWorkOrderInputSchema.parse({ ...assignObj, workOrderId });
     const inputWithId = data;
 
@@ -1148,6 +1172,7 @@ export async function convertQuoteToNoteAction(input: unknown) {
         sections: { include: { items: true } },
         workOrder: { include: { assignments: true } },
         vehicle: true,
+        payableNote: true,
       },
     });
 
@@ -1156,6 +1181,85 @@ export async function convertQuoteToNoteAction(input: unknown) {
     }
     if (quote.isLocked) {
       throw new WorkOrderOperationError("El documento está bloqueado.");
+    }
+
+    if (data.operation && data.operation !== quote.operation) {
+      throw new WorkOrderOperationError("La operación de la cotización no coincide con la operación solicitada.");
+    }
+
+    const operation = quote.operation;
+    if (operation === "SALE") {
+      assertOperationalQuote(quote.status);
+      if (quote.workOrder) {
+        throw new WorkOrderOperationError("La cotización ya tiene una orden de trabajo.");
+      }
+      if (quote.payableNote) {
+        throw new WorkOrderOperationError("La cotización ya tiene una nota pagable.");
+      }
+
+      assertCommercialQuote(quote);
+      const items = quote.sections.length > 0
+        ? quote.sections.flatMap((section) => section.items)
+        : quote.items;
+      if (items.some((item) => item.type !== "MATERIAL" && item.type !== "REFACCIONES")) {
+        throw new WorkOrderOperationError("Las ventas solo admiten conceptos de material o refacciones.");
+      }
+
+      const effectiveDate = new Date();
+      const paymentDueDate = data.paymentDueDate ?? quote.paymentDueDate ?? calculateDefaultPaymentDueDate(effectiveDate);
+      if (quote.status !== QuoteStatus.APPROVED || data.paymentDueDate) {
+        await tx.quote.update({
+          where: { id: quote.id },
+          data: {
+            status: QuoteStatus.APPROVED,
+            approvedAt: quote.approvedAt ?? effectiveDate,
+            paymentDueDate: data.paymentDueDate ?? quote.paymentDueDate,
+          },
+        });
+      }
+
+      const { folio, issuedAt } = await allocateDailyDocumentFolio(tx, "N", effectiveDate);
+      await ensureSharedQuoteInTransaction(tx, quote.id);
+      await tx.quoteDecision.create({
+        data: {
+          quoteId: quote.id,
+          status: QuoteStatus.APPROVED,
+          origin: QuoteDecisionOrigin.ADMIN,
+          actorId: profile.id,
+          note: data.reason?.trim() || "Venta creada desde cotización",
+          authorizedSectionIds: quote.sections.map((section) => section.id),
+          createdAt: effectiveDate,
+        },
+      });
+      await tx.quoteLifecycleEvent.create({
+        data: {
+          quoteId: quote.id,
+          previousState: quote.status,
+          nextState: QuoteStatus.APPROVED,
+          eventType: QuoteLifecycleEventType.CONVERT_TO_NOTE,
+          actorId: profile.id,
+          reason: data.reason?.trim() || "Venta creada desde cotización",
+          createdAt: effectiveDate,
+        },
+      });
+
+      const note = await tx.payableNote.create({
+        data: {
+          customerId: quote.customerId,
+          quoteId: quote.id,
+          referenceNumber: folio,
+          title: quote.title,
+          subtotalCents: quote.subtotalCents ?? 0,
+          taxCents: quote.taxCents ?? 0,
+          totalCents: quote.totalCents ?? 0,
+          status: "ISSUED",
+          kind: PayableNoteKind.SALE,
+          issuedAt,
+          paymentDueDate,
+        },
+      });
+
+      return { quote, note, workOrder: null };
     }
 
     assertOperationalClosureQuote(quote);
@@ -1334,6 +1438,15 @@ export async function convertQuoteToNoteAction(input: unknown) {
   revalidatePath(workOrdersPath);
   revalidatePath(notasPath);
   return result;
+}
+
+export async function convertQuoteToNoteOperationAction(input: unknown): Promise<ActionResult> {
+  try {
+    await convertQuoteToNoteAction(input);
+    return { success: true };
+  } catch (error) {
+    return toActionResult(error, "No se pudo convertir la cotización.");
+  }
 }
 
 export async function returnNoteToQuoteAction(input: unknown) {

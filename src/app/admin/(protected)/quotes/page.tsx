@@ -4,6 +4,7 @@ import {
   approveQuoteAndCreateWorkOrderFromForm,
   cancelQuoteFromForm,
   getOrCreateSharedQuoteAction,
+  publishSharedQuote,
   authorizeQuoteAction,
   correctQuoteDecisionAction,
   duplicateQuoteFromForm,
@@ -38,6 +39,7 @@ import { filterPaymentRequestDialogBankAccounts } from "@/features/quotes/lib/pa
 import {
   createAndAssignWorkOrderAction,
   completeWorkOrderAction,
+  convertQuoteToNoteOperationAction,
   rollbackWorkOrderAction,
 } from "@/features/work-orders/actions";
 
@@ -117,7 +119,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
             <QuoteFilters filters={filters} customers={customers} />
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
+          <div className="grid auto-rows-fr gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
             {quotes.map((quote) => (
               <QuoteListCard
                 key={quote.id}
@@ -126,7 +128,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 quoteStatusBadgeVariant={quoteStatusBadgeVariant}
                 approveAction={approveQuoteAndCreateWorkOrderFromForm}
                 cancelAction={cancelQuoteFromForm}
-                shareAction={getOrCreateSharedQuoteAction.bind(null, quote.id)}
+                shareAction={(quote.status === "DRAFT" ? publishSharedQuote : getOrCreateSharedQuoteAction).bind(null, quote.id)}
                 authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
                 correctDecisionAction={correctQuoteDecisionAction}
                 paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
@@ -140,6 +142,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
                 searchCustomersAction={searchCustomersForQuote}
                 workers={workers}
                 workOrderActions={{
+                  convert: convertQuoteToNoteOperationAction,
                   assign: createAndAssignWorkOrderAction.bind(null, quote.id),
                   complete: completeWorkOrderAction,
                   rollback: rollbackWorkOrderAction,

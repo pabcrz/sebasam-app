@@ -27,6 +27,17 @@ describe("NewQuoteForm", () => {
     expect(screen.getByRole("heading", { name: "Crear cotización" })).toBeInTheDocument();
     expect(screen.getByTestId("quote-builder-form")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cerrar" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Tipo de operación")).toBeInTheDocument();
+  });
+
+  it("lets a quotation choose SALE without changing the note creation action", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByLabelText("Tipo de operación"));
+    await user.click(screen.getByRole("option", { name: /Venta de refacciones/ }));
+
+    expect(screen.getByRole("button", { name: "Siguiente" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Crear nota" })).not.toBeInTheDocument();
   });
 
   it("asks for confirmation before leaving", async () => {
