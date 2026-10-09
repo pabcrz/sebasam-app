@@ -9,6 +9,7 @@ import { Badge, TableCell, TableRow } from "@/components/ui";
 import { formatCents, formatDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { isQuoteCommercialReady } from "@/features/quotes/lib/commercial-validation";
+import { isQuoteSaleConversionActionDisabled } from "./quote-sale-conversion-readiness";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteCancelForm } from "./quote-cancel-form";
 import { QuoteDuplicateForm } from "./quote-duplicate-form";
@@ -70,6 +71,10 @@ export function QuoteListRow({
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const editable = isQuoteEditable(quote);
   const canUsePaymentActions = quote.status === "APPROVED" && quote.workOrder?.status === "IN_PROGRESS";
+  const saleConversionDisabled = isQuoteSaleConversionActionDisabled(quote, {
+    hasConvertAction: Boolean(workOrderActions?.convert),
+  });
+  const saleConversionFlow = quote.operation === "SALE" && !quote.workOrder;
   const paymentRequestContext = canUsePaymentActions && quote.customer &&
     quote.subtotalCents !== null && quote.taxCents !== null && quote.totalCents !== null
     ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts)
@@ -166,7 +171,7 @@ export function QuoteListRow({
             />
           ) : null}
 
-          {quote.status === "SENT" ? (
+          {quote.status === "DRAFT" || quote.status === "SENT" ? (
             <QuoteAuthorizeForm
               action={authorizeAction}
               quoteNumber={quote.number}
@@ -197,6 +202,9 @@ export function QuoteListRow({
               workOrder={quote.workOrder}
               workers={workers}
               actions={workOrderActions}
+              alwaysRenderTrigger={saleConversionFlow}
+              triggerDisabled={quote.operation === "SALE" ? saleConversionDisabled : false}
+              triggerFlowLabel={saleConversionFlow ? "Crear nota de venta" : undefined}
             />
           ) : null}
 

@@ -26,6 +26,7 @@ export function QuoteBuilderDialog({
   triggerVariant,
   triggerIconOnlyMobile = false,
   triggerIconOnly = false,
+  triggerDisabled = false,
   triggerLabel,
   createCustomerAction,
   searchCustomersAction,
@@ -121,6 +122,7 @@ export function QuoteBuilderDialog({
             className={triggerIconOnlyMobile ? `h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3 ${triggerClassName ?? ""}` : (triggerClassName ?? "w-full sm:w-fit")}
             title={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : effectiveButtonLabel) : undefined)}
             aria-label={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : effectiveButtonLabel) : undefined)}
+            disabled={triggerDisabled}
           >
             {isEdit ? <Pencil className={triggerIconOnly ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" /> : <Plus className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />}
             <span className={triggerIconOnly ? "sr-only" : triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{effectiveButtonLabel}</span>

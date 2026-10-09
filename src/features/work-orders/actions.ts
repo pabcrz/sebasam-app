@@ -1183,7 +1183,11 @@ export async function convertQuoteToNoteAction(input: unknown) {
       throw new WorkOrderOperationError("El documento está bloqueado.");
     }
 
-    const operation = data.operation ?? quote.operation;
+    if (data.operation && data.operation !== quote.operation) {
+      throw new WorkOrderOperationError("La operación de la cotización no coincide con la operación solicitada.");
+    }
+
+    const operation = quote.operation;
     if (operation === "SALE") {
       assertOperationalQuote(quote.status);
       if (quote.workOrder) {

@@ -15,6 +15,7 @@ export interface ShareQuoteButtonProps {
   size?: "default" | "sm";
   iconOnly?: boolean;
   actionLabelClassName?: string;
+  disabled?: boolean;
 }
 
 export function ShareQuoteButton({
@@ -25,6 +26,7 @@ export function ShareQuoteButton({
   size = "sm",
   iconOnly = false,
   actionLabelClassName,
+  disabled = false,
 }: ShareQuoteButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
@@ -82,7 +84,7 @@ export function ShareQuoteButton({
       title={`${label} cotización ${quoteNumber}`}
       className={className}
       loading={isPending}
-      disabled={isPending}
+      disabled={disabled || isPending}
       onClick={handleShare}
     >
       {!isPending ? <Share2 className="h-5 w-5" aria-hidden="true" /> : null}
