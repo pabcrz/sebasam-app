@@ -308,8 +308,14 @@ No remote PR, push, branch retargeting, or merge is part of this preparation.
   - GREEN: `pnpm exec vitest run src/features/quotes/components/quote-list-row.test.tsx src/features/quotes/components/quote-mobile-card.test.tsx` — 2 files, 48 tests passed.
   - `git diff --check`: passed. The duplicate conversion remains blocked; this aligns only the disabled UI affordance.
   - Work-unit commit: `dc2b200 fix(quotes): align duplicate note action across devices`.
-- [ ] **QTSC-UI-006 — Cover desktop/mobile WORK and SALE browser flows.** Mount the real desktop quote row and mobile quote card through the existing Vite fixture. Mock conversion actions; verify operation payload and expected UI success behavior for WORK and SALE. Browser coverage remains a UI contract, not proof of database persistence.
-- [ ] **QTSC-UI-007 — Verify and record.** Run focused component/action tests, the browser spec, typecheck, lint, and `git diff --check`; ensure the new PR slice stays within the 400-line review budget and record its work-unit commit.
+- [x] **QTSC-UI-006A — Implement the desktop/mobile SALE browser slice.** Mount the actual desktop quote row and mobile quote card through the Vite fixture with mocked callbacks. Assert the `convert({ quoteId, operation: "SALE" })` payload, absence of WORK controls, and navigation to `/admin/notas`. Do not claim browser-side proof of database persistence.
+  - `pnpm exec playwright test tests/playwright/sale-quote-conversion.spec.ts`: 3 passed (fixture SALE dialog, desktop row conversion, mobile card conversion); typecheck passed; lint passed with 2 existing warnings; diff-check passed. Work-unit commit: `3be94d9 test(quotes): cover SALE conversion browser entry points`.
+- [x] **QTSC-UI-006B — Implement the desktop/mobile WORK browser slice.** Cover assignment and assigned-WorkOrder completion through their WORK callbacks, not SALE's conversion callback. Keep actions mocked and avoid database access.
+  - Verification: Playwright 7/7; focused Vitest 144/144; typecheck passed; lint passed with 2 existing warnings; diff-check passed. Slice delta from `e5294d7`: 179 changed lines. Work-unit commit: `c7c6b9b test(quotes): cover WORK quote browser flows`.
+- [x] **QTSC-UI-007 — Verify and record bounded slices.** Re-ran focused component/action tests, browser tests, typecheck, lint, and `git diff --check`; measured each local slice against the 400-line review budget and recorded work-unit commits. No push or PR without fresh authorization.
+  - Local stacked refs: `feature/659-09-duplicate-note` = 46 changed lines; `feature/659-10-sale-browser-flow` = 400; `feature/659-11-work-browser-flow` = 211. The original combined follow-up was 574 changed lines and was split at the SALE/WORK boundary.
+  - Final checks: focused Vitest 144/144; Playwright 7/7; typecheck and diff-check passed; lint passed with 2 existing warnings in `nota-detail-dialog.tsx`.
+  - Native review inspect stopped at `rdd_disabled` (no lineage); ASSESS of the WORK slice reported medium risk, `reviewDue=false` (`under_budget`), `writerSelfVerification=true`, and no separate verifier required. Independent checks ran anyway. All refs remain local; no push, PR, merge, DB write, migration, or seed occurred.
 
 ### Allowed edit surfaces
 
@@ -321,9 +327,23 @@ No remote PR, push, branch retargeting, or merge is part of this preparation.
 - `tests/playwright/shims/ui.ts`
 - `tests/playwright/shims/*.tsx` (only when an import shim is required)
 
-### Scope limits
+### Authorized delivery plan
 
-- No database migration, seed, or shared-database access.
-- No remote push, PR creation/edit, or merge; request fresh delivery authorization after local verification.
+- User authorized publishing local follow-up slices #09–#11 as stacked PRs and merging the approved chain to `develop`. Production deployment remains separately unauthorized.
+- Follow-up PR bases: #09 (`feature/659-09-duplicate-note`) on `feature/659-quote-sale-conversion`; #10 (`feature/659-10-sale-browser-flow`) on #09; #11 (`feature/659-11-work-browser-flow`) on #10.
+- PR titles/types: #09 `fix(quotes): align duplicate note action across devices` / `type:bug`; #10 `test(quotes): cover SALE conversion browser entry points` / `type:chore`; #11 `test(quotes): cover WORK quote browser flows` / `type:chore`. Use the repository template, `Closes #659`, exactly one `type:*`, and Chain Context.
+- Existing PRs #734–#741 are open with green checks but no human reviews recorded. Do not merge any slice until required CI is green and human review/approval is present; do not bypass review.
+- Merge in dependency order (#734–#741, then #09–#11). After each parent lands, retarget/rebase the next child to `develop` and verify it still shows only its slice before merge.
+- No DB writes, migrations, seeds, or shared-database access. Browser verification is a mocked UI contract, not proof of persistence.
 
-Non-goals: testing against the shared develop database, applying migrations, preparing PR chains, or changing persisted business data. Browser verification must be described as a mocked UI contract, not proof of database persistence.
+### Follow-up delivery tasks
+
+- [x] **QTSC-DEL-001 — Publish follow-up slices #09–#11.** Pushed the authorized local heads and created stacked PRs with their exact bases, issue reference, repository template, Chain Context, and one type label.
+  - PR #742: duplicate-note UI fix, `feature/659-09-duplicate-note` → `feature/659-quote-sale-conversion`, `type:bug`.
+  - PR #743: SALE browser contract, `feature/659-10-sale-browser-flow` → #742, `type:chore`.
+  - PR #744: WORK browser contract, `feature/659-11-work-browser-flow` → #743, `type:chore`.
+- [ ] **QTSC-DEL-002 — Wait for CI and human reviews.** Check every PR in the 11-slice chain; no merge before required checks and human approval. Current status: Vercel and Preview Comments are green on #734–#744; no human reviews/approvals are recorded on the chain.
+- [ ] **QTSC-DEL-003 — Merge the stack to `develop`.** Merge in dependency order, retarget/rebase each child after its parent lands, and verify slice-only diffs.
+- [ ] **QTSC-DEL-004 — Prepare production promotion separately.** After `develop` is complete, prepare the release path; production deployment requires a separate explicit authorization.
+
+Non-goals: production deployment, applying migrations, seeding, or changing shared/persisted business data. Browser verification must not be presented as proof of database persistence.
