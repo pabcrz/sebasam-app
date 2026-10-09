@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QuoteListRow } from "./quote-list-row";
 import type { listQuotes } from "@/features/quotes/queries";
+import type { WorkOrderActions } from "@/features/work-orders/components/work-order-operations-dialog";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -129,7 +130,30 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
   };
 }
 
-function renderRow(quote: QuoteListItem) {
+function createReadySaleQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem {
+  const [item] = createMockQuote().items;
+
+  return createMockQuote({
+    operation: "SALE",
+    status: "APPROVED",
+    items: [
+      {
+        ...item,
+        type: "MATERIAL",
+        description: "Filtro de aceite",
+      },
+    ],
+    ...overrides,
+  });
+}
+
+function createSaleConversionActions(): WorkOrderActions {
+  return {
+    convert: vi.fn().mockResolvedValue({ success: true }),
+  };
+}
+
+function renderRow(quote: QuoteListItem, options: { workOrderActions?: WorkOrderActions } = {}) {
   return render(
     <table>
       <tbody>
@@ -154,6 +178,7 @@ function renderRow(quote: QuoteListItem) {
           customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
           saveAction={vi.fn()}
           searchCustomersAction={vi.fn()}
+          workOrderActions={options.workOrderActions}
         />
       </tbody>
     </table>,
@@ -173,11 +198,12 @@ describe("QuoteListRow", () => {
     expect(screen.getByText("Mantenimiento preventivo")).toBeInTheDocument();
   });
 
-  it("renders cancellation but not commercial authorization for draft quotes", () => {
+  it("renders commercial authorization and cancellation for draft quotes", () => {
     renderRow(createMockQuote());
 
-    expect(screen.queryByRole("button", { name: /autorizar cotización c-001/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /autorizar cotización c-001/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /gestionar trabajo/i })).toBeInTheDocument();
   });
 
   it("renders a pending-price draft without payment actions", () => {
@@ -206,6 +232,77 @@ describe("QuoteListRow", () => {
     renderRow(createMockQuote({ status }));
 
     expect(screen.getByRole("button", { name: /gestionar trabajo/i })).toBeInTheDocument();
+  });
+
+  it("disables the desktop sale conversion trigger when a stored SALE quote is commercially incomplete", () => {
+    renderRow(
+      createReadySaleQuote({
+        subtotalCents: null,
+        taxCents: null,
+        totalCents: null,
+      }),
+      { workOrderActions: createSaleConversionActions() },
+    );
+
+    expect(screen.getByRole("button", { name: /crear nota de venta para cotización c-001/i })).toBeDisabled();
+  });
+
+  it("disables the desktop sale conversion trigger when a stored SALE quote has unsupported items", () => {
+    const [unsupportedItem] = createMockQuote().items;
+
+    renderRow(
+      createReadySaleQuote({ items: [{ ...unsupportedItem, type: "LABOR" }] }),
+      { workOrderActions: createSaleConversionActions() },
+    );
+
+    expect(screen.getByRole("button", { name: /crear nota de venta para cotización c-001/i })).toBeDisabled();
+  });
+
+  it("keeps eligible stored SALE quotes actionable from the desktop row", () => {
+    renderRow(createReadySaleQuote(), { workOrderActions: createSaleConversionActions() });
+
+    expect(screen.getByRole("button", { name: /crear nota de venta para cotización c-001/i })).toBeEnabled();
+  });
+
+  it("keeps the desktop sale conversion trigger visible but disabled when a SALE payable note already exists", () => {
+    renderRow(
+      createReadySaleQuote({
+        payableNote: { id: "note-1" } as QuoteListItem["payableNote"],
+        workOrder: null,
+      }),
+      { workOrderActions: createSaleConversionActions() },
+    );
+
+    expect(screen.getByRole("button", { name: /crear nota de venta para cotización c-001/i })).toBeDisabled();
+  });
+
+  it("keeps QTSC-INT-002 SALE conversion actionable when a confirmed quote has pending-price items", () => {
+    const [pricedItem] = createMockQuote().items;
+
+    renderRow(
+      createReadySaleQuote({
+        subtotalCents: 10000,
+        taxCents: 1600,
+        totalCents: 11600,
+        items: [
+          { ...pricedItem, type: "MATERIAL", description: "Filtro de aceite" },
+          {
+            ...pricedItem,
+            id: "item-pending-price",
+            type: "MATERIAL",
+            description: "Aditivo pendiente de precio",
+            quantity: 2,
+            unitPriceCents: null,
+            totalCents: null,
+            sortOrder: 1,
+          },
+        ],
+      }),
+      { workOrderActions: createSaleConversionActions() },
+    );
+
+    expect(screen.getByText("$116.00")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /crear nota de venta para cotización c-001/i })).toBeEnabled();
   });
 
   it("preserves payment actions for approved quotes with work in progress", () => {

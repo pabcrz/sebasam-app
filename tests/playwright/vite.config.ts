@@ -10,8 +10,12 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: /^next\/link$/, replacement: localFile("./shims/next-link.tsx") },
-      { find: /^next\/navigation$/, replacement: localFile("./shims/next-navigation.ts") },
-      { find: "@/components/ui", replacement: localFile("./shims/ui.ts") },
+      { find: /^next\/navigation$/, replacement: localFile("./shims/next-navigation.tsx") },
+      { find: /^@prisma\/client$/, replacement: localFile("./shims/prisma-client.tsx") },
+      { find: "./work-order-advance-dialog", replacement: localFile("./shims/work-order-advance-dialog.tsx") },
+      { find: "./quote-builder-dialog", replacement: localFile("./shims/quote-builder-dialog.tsx") },
+      { find: /^@\/components\/ui$/, replacement: localFile("./shims/ui.ts") },
+      { find: /^@\/(.*)$/, replacement: fileURLToPath(new URL("../../src/$1", import.meta.url)) },
     ],
   },
   server: {
