@@ -74,6 +74,7 @@ export function QuoteListRow({
   const saleConversionDisabled = isQuoteSaleConversionActionDisabled(quote, {
     hasConvertAction: Boolean(workOrderActions?.convert),
   });
+  const saleConversionFlow = quote.operation === "SALE" && !quote.workOrder;
   const paymentRequestContext = canUsePaymentActions && quote.customer &&
     quote.subtotalCents !== null && quote.taxCents !== null && quote.totalCents !== null
     ? createPaymentRequestDialogContext({ ...quote, customer: quote.customer }, paymentRequestBankAccounts)
@@ -201,7 +202,9 @@ export function QuoteListRow({
               workOrder={quote.workOrder}
               workers={workers}
               actions={workOrderActions}
+              alwaysRenderTrigger={saleConversionFlow}
               triggerDisabled={quote.operation === "SALE" ? saleConversionDisabled : false}
+              triggerFlowLabel={saleConversionFlow ? "Crear nota de venta" : undefined}
             />
           ) : null}
 
