@@ -26,6 +26,11 @@ export const assignWorkOrderInputSchema = z
     }),
   ]);
 
+export const workOrderAcceptanceInputSchema = z.object({
+  customerAccepted: z.boolean().optional(),
+  acceptanceReason: z.string().trim().min(3, "El motivo debe incluir al menos 3 caracteres.").max(500).optional(),
+});
+
 export const completeWorkOrderInputSchema = z.object({
   workOrderId: z.string().min(1),
 });
@@ -58,6 +63,7 @@ export const workAssignmentInputSchema = z.object({
 
 export type WorkOrderInput = z.infer<typeof workOrderInputSchema>;
 export type AssignWorkOrderInput = z.infer<typeof assignWorkOrderInputSchema>;
+export type WorkOrderAcceptanceInput = z.infer<typeof workOrderAcceptanceInputSchema>;
 export type CompleteWorkOrderInput = z.infer<typeof completeWorkOrderInputSchema>;
 export type RollbackWorkOrderInput = z.infer<typeof rollbackWorkOrderInputSchema>;
 export type StartWorkOrderInput = z.infer<typeof startWorkOrderInputSchema>;
@@ -112,7 +118,7 @@ export type DirectMaterialSaleFormInput = z.infer<typeof directMaterialSaleFormI
 
 export const convertQuoteToNoteInputSchema = z.object({
   quoteId: z.string().min(1),
-  operation: z.enum(["WORK", "SALE"]).default("WORK"),
+  operation: z.enum(["WORK", "SALE"]).optional(),
   masterId: z.string().uuid("El maestro responsable es obligatorio.").optional(),
   paymentDueDate: z.preprocess((val) => (val ? new Date(String(val)) : undefined), z.date().optional()),
   reason: z.string().trim().optional(),
