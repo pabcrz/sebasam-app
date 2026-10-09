@@ -6,11 +6,21 @@ import { QuoteListRow } from "../../src/features/quotes/components/quote-list-ro
 import { QuoteListCard } from "../../src/features/quotes/components/quote-mobile-card";
 import "../../src/app/globals.css";
 
-type ConversionOperation = "SALE";
+type ConversionOperation = "SALE" | "WORK";
 
 type ConversionRequest = {
   quoteId: string;
   operation: ConversionOperation;
+};
+
+type WorkAssignmentRequest = {
+  isSpecial: boolean;
+  masterId?: string;
+  helperIds?: string[];
+};
+
+type WorkCompletionRequest = {
+  workOrderId: string;
 };
 
 type SaleQuoteFixtureData = {
@@ -29,7 +39,11 @@ declare global {
     };
     __quoteFlowContract?: {
       convertCalls: ConversionRequest[];
+      assignCalls: WorkAssignmentRequest[];
+      completeCalls: WorkCompletionRequest[];
       convert: (request: ConversionRequest) => Promise<{ success: true }>;
+      assign: (request: WorkAssignmentRequest) => Promise<{ success: true }>;
+      complete: (request: WorkCompletionRequest) => Promise<{ success: true }>;
     };
   }
 }
@@ -43,7 +57,14 @@ const rangeLabel = new Intl.DateTimeFormat("es-MX", {
 
 const quoteFlowFixture = {
   saleQuoteId: "quote-flow-sale",
+  workQuoteId: "quote-flow-work",
+  workOrderId: "work-order-assigned",
   saleQuoteNumber: "C-SALE-001",
+  workQuoteNumber: "C-WORK-001",
+  masterId: "worker-master-1",
+  masterName: "Maestro principal",
+  helperId: "worker-helper-1",
+  helperName: "Ayudante principal",
 } as const;
 
 const quoteStatusLabels = {
@@ -68,6 +89,23 @@ type QuoteFlowProps = React.ComponentProps<typeof QuoteListRow> & React.Componen
 
 type QuoteFlowQuote = QuoteFlowProps["quote"];
 
+type QuoteFlowWorker = NonNullable<QuoteFlowProps["workers"]>[number];
+
+const workers: QuoteFlowWorker[] = [
+  {
+    id: quoteFlowFixture.masterId,
+    displayName: quoteFlowFixture.masterName,
+    role: "WORKER",
+    workerKind: "MASTER",
+  },
+  {
+    id: quoteFlowFixture.helperId,
+    displayName: quoteFlowFixture.helperName,
+    role: "WORKER",
+    workerKind: "HELPER",
+  },
+];
+
 const baseItem = {
   id: "quote-flow-item-1",
   sectionId: null,
@@ -80,16 +118,35 @@ const baseItem = {
   totalCents: 10000,
 } as const;
 
-function createSaleQuote(): QuoteFlowQuote {
+function createQuote(operation: ConversionOperation, stage?: "unassigned" | "assigned"): QuoteFlowQuote {
+  const isSale = operation === "SALE";
+  const quoteNumber = isSale ? quoteFlowFixture.saleQuoteNumber : quoteFlowFixture.workQuoteNumber;
+  const workOrder = !isSale && stage === "assigned"
+    ? {
+        id: quoteFlowFixture.workOrderId,
+        number: "OT-WORK-001",
+        status: "ASSIGNED",
+        isSpecial: false,
+        assignments: [
+          {
+            id: "assignment-master-1",
+            workerId: quoteFlowFixture.masterId,
+            status: "ACTIVE",
+            worker: { displayName: quoteFlowFixture.masterName, workerKind: "MASTER" },
+          },
+        ],
+      }
+    : null;
+
   const quote = {
-    id: quoteFlowFixture.saleQuoteId,
-    number: quoteFlowFixture.saleQuoteNumber,
-    folio: quoteFlowFixture.saleQuoteNumber,
-    title: "Venta mostrador fixture",
+    id: isSale ? quoteFlowFixture.saleQuoteId : quoteFlowFixture.workQuoteId,
+    number: quoteNumber,
+    folio: quoteNumber,
+    title: isSale ? "Venta mostrador fixture" : "Servicio mecánico fixture",
     description: "Fixture browser contract quote",
     administrative: false,
     status: "APPROVED",
-    operation: "SALE",
+    operation,
     customerId: "customer-quote-flow",
     customer: {
       id: "customer-quote-flow",
@@ -130,7 +187,7 @@ function createSaleQuote(): QuoteFlowQuote {
     paymentDueDate: null,
     submissionKey: null,
     isLocked: false,
-    workOrder: null,
+    workOrder,
     payableNote: null,
   };
 
@@ -143,7 +200,7 @@ const noopFormAction = async () => undefined;
 const noopQuoteStateAction: QuoteFlowProps["saveAction"] = async (state) => state;
 const noopBooleanAction = async () => ({ success: true });
 const noopPaymentRequestAction: QuoteFlowProps["paymentRequestAction"] = async () => {
-  // Payment actions are unreachable in this SALE fixture; keep a typed,
+  // Payment actions are unreachable in this quote-flow fixture; keep a typed,
   // database-free sentinel for the required component prop.
   return { id: "unused-payment-request" } as unknown as Awaited<ReturnType<QuoteFlowProps["paymentRequestAction"]>>;
 };
@@ -202,15 +259,19 @@ function SaleQuoteFixture() {
 function QuoteFlowFixture() {
   const params = new URLSearchParams(window.location.search);
   const device = params.get("device") === "mobile" ? "mobile" : "desktop";
+  const operation = params.get("operation") === "WORK" ? "WORK" : "SALE";
+  const stage = params.get("stage") === "assigned" ? "assigned" : "unassigned";
   const contract = window.__quoteFlowContract;
 
   if (!contract) {
     throw new Error("The quote-flow fixture requires window.__quoteFlowContract.");
   }
 
-  const quote = createSaleQuote();
+  const quote = createQuote(operation, stage);
   const workOrderActions = {
     convert: async (input: unknown) => contract.convert(input as ConversionRequest),
+    assign: async (input: unknown) => contract.assign(input as WorkAssignmentRequest),
+    complete: async (input: unknown) => contract.complete(input as WorkCompletionRequest),
   };
   const commonProps = {
     quote,
@@ -230,7 +291,7 @@ function QuoteFlowFixture() {
     customers: [],
     saveAction: noopQuoteStateAction,
     searchCustomersAction: async () => [],
-    workers: [],
+    workers,
     workOrderActions,
   } as unknown as QuoteFlowProps;
 
