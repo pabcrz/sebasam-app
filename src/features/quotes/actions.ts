@@ -122,6 +122,7 @@ async function createQuoteAuthorized(input: unknown) {
         folio: quoteFolio,
         issuedAt: quoteIssuedAt,
         status: QuoteStatus.DRAFT,
+        operation: data.operation,
         approvedAt: null,
         title: data.title,
         description: nullableOptional(data.description),
@@ -216,6 +217,7 @@ export async function createQuoteFromForm(
 export async function updateDraftQuote(quoteId: string, input: unknown) {
   await requireOperationalRole();
 
+  const operationProvided = typeof input === "object" && input !== null && Object.prototype.hasOwnProperty.call(input, "operation");
   const data = quoteDraftInputSchema.parse(input);
   const requestedOperationalDate = data.operationalDate === undefined
     ? undefined
@@ -299,7 +301,8 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
         taxCents: totals.taxCents,
         totalCents: totals.totalCents,
 ...(quote.status === QuoteStatus.DRAFT && requestedOperationalDate ? { operationalDate: requestedOperationalDate } : {}),
-        status: QuoteStatus.DRAFT,
+         status: QuoteStatus.DRAFT,
+         operation: operationProvided ? data.operation : quote.operation,
         approvedAt: null,
         sections: { create: sectionData },
       },
@@ -1554,6 +1557,7 @@ async function duplicateQuoteAuthorized(quoteId: string) {
         folio: duplicatedFolio,
         issuedAt: duplicatedIssuedAt,
         status: "DRAFT",
+        operation: original.operation,
         title: original.title,
         description: original.description,
         administrative: original.administrative,

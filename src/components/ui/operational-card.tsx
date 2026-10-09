@@ -10,6 +10,7 @@ type OperationalCardProps = {
   openLabel?: string;
   className?: string;
   bodyClassName?: string;
+  bodyHover?: boolean;
   actionsClassName?: string;
 };
 
@@ -26,7 +27,7 @@ export function OperationalActionRow({ children }: React.PropsWithChildren) {
   );
 }
 
-export function OperationalCard({ body, actions, onOpen, openLabel, className, bodyClassName, actionsClassName }: OperationalCardProps) {
+export function OperationalCard({ body, actions, onOpen, openLabel, className, bodyClassName, bodyHover = true, actionsClassName }: OperationalCardProps) {
   const contentClassName = clsx("w-full rounded-[var(--radius-sm)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2", bodyClassName);
 
   return (
@@ -36,14 +37,14 @@ export function OperationalCard({ body, actions, onOpen, openLabel, className, b
           type="button"
           onClick={onOpen}
           aria-label={openLabel}
-          className={clsx(contentClassName, "active-press-subtle cursor-pointer hover:bg-[var(--color-surface-muted)]")}
+          className={clsx(contentClassName, "active-press-subtle cursor-pointer", bodyHover && "hover:bg-[var(--color-surface-muted)]")}
         >
           {body}
         </button>
       ) : (
         <div className={contentClassName}>{body}</div>
       )}
-      {actions != null ? <div className={clsx("mt-4", actionsClassName)}>{actions}</div> : null}
+      {actions != null ? <div className={clsx(actionsClassName == null && "mt-4", actionsClassName)}>{actions}</div> : null}
     </div>
   );
 }

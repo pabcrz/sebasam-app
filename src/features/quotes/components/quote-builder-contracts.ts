@@ -1,4 +1,5 @@
 import type { QuoteFormActionState } from "../actions";
+import type { QuoteOperationKind } from "@prisma/client";
 import type { QuoteListSummary } from "../queries";
 import type { ButtonVariant } from "@/components/ui";
 import type { ItemFormValue } from "./quote-builder-shared";
@@ -31,6 +32,7 @@ export type CustomerOption = {
 };
 
 export type QuoteBuilderInitialData = {
+  operation?: QuoteOperationKind;
   customerId: string | null;
   customerContactId?: string | null;
   customerFiscalProfileId?: string | null;
@@ -90,6 +92,7 @@ export type QuoteBuilderDialogProps = {
   triggerVariant?: ButtonVariant;
   triggerIconOnlyMobile?: boolean;
   triggerIconOnly?: boolean;
+  triggerDisabled?: boolean;
   triggerLabel?: string;
   createCustomerAction?: QuoteBuilderProps["createCustomerAction"];
   searchCustomersAction?: QuoteBuilderProps["searchCustomersAction"];

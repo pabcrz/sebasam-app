@@ -47,6 +47,7 @@ import {
   returnNoteToQuoteInputSchema,
   rollbackWorkOrderInputSchema,
   workAssignmentInputSchema,
+  workOrderAcceptanceInputSchema,
   workOrderInputSchema,
   type WorkOrderInput,
 } from "./schemas";
@@ -157,6 +158,10 @@ async function ensureWorkOrderPlanned(
       throw new WorkOrderOperationError("Cotización no encontrada.");
     }
 
+    if (quote.operation === "SALE") {
+      throw new WorkOrderOperationError("Las cotizaciones de venta deben convertirse en una nota de venta.");
+    }
+
     assertOperationalQuote(quote.status);
     assertOperationalStartQuote(quote);
 
@@ -194,6 +199,7 @@ async function promoteQuoteForWorkOrder(
   tx: Prisma.TransactionClient,
   quote: { id: string; status: QuoteStatus },
   actorId: string,
+  reason = "Orden de trabajo creada",
 ) {
   if (quote.status === QuoteStatus.APPROVED) return;
 
@@ -212,7 +218,7 @@ async function promoteQuoteForWorkOrder(
       nextState: QuoteStatus.APPROVED,
       eventType: QuoteLifecycleEventType.STATUS_CHANGE,
       actorId,
-      reason: "Orden de trabajo creada",
+       reason,
     },
   });
 }
@@ -323,6 +329,10 @@ export async function assignWorkOrder(input: unknown) {
  */
 export async function createAndAssignWorkOrder(quoteId: string, assignInput: unknown) {
   const { profile } = await requireOperationalRole();
+  const rawInput = typeof assignInput === "object" && assignInput !== null
+    ? { ...(assignInput as Record<string, unknown>) }
+    : {};
+  const acceptance = workOrderAcceptanceInputSchema.parse(rawInput);
 
   return prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: { vehicle: true, workOrder: true, items: true, sections: { include: { items: true } } } });
@@ -331,9 +341,21 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
       throw new WorkOrderOperationError("Cotización no encontrada.");
     }
 
+    if (quote.operation === "SALE") {
+      throw new WorkOrderOperationError("Las cotizaciones de venta deben convertirse en una nota de venta.");
+    }
+
     assertOperationalQuote(quote.status);
     assertOperationalStartQuote(quote);
-    await promoteQuoteForWorkOrder(tx, quote, profile.id);
+    if (quote.status !== QuoteStatus.APPROVED) {
+      const reason = acceptance.customerAccepted === true
+        ? "Cliente aceptó la cotización"
+        : acceptance.acceptanceReason?.trim();
+      if (!reason) {
+        throw new WorkOrderOperationError("Confirma la aceptación del cliente o indica el motivo para continuar sin aceptación formal.");
+      }
+      await promoteQuoteForWorkOrder(tx, quote, profile.id, reason);
+    }
 
     let workOrderId: string;
 
@@ -360,6 +382,8 @@ export async function createAndAssignWorkOrder(quoteId: string, assignInput: unk
     // Now assign using the parsed input
     const assignObj = typeof assignInput === "object" && assignInput !== null ? { ...assignInput } : {};
     delete (assignObj as Record<string, unknown>).workOrderId;
+    delete (assignObj as Record<string, unknown>).customerAccepted;
+    delete (assignObj as Record<string, unknown>).acceptanceReason;
     const data = assignWorkOrderInputSchema.parse({ ...assignObj, workOrderId });
     const inputWithId = data;
 
@@ -1159,7 +1183,12 @@ export async function convertQuoteToNoteAction(input: unknown) {
       throw new WorkOrderOperationError("El documento está bloqueado.");
     }
 
-    if (data.operation === "SALE") {
+    if (data.operation && data.operation !== quote.operation) {
+      throw new WorkOrderOperationError("La operación de la cotización no coincide con la operación solicitada.");
+    }
+
+    const operation = quote.operation;
+    if (operation === "SALE") {
       assertOperationalQuote(quote.status);
       if (quote.workOrder) {
         throw new WorkOrderOperationError("La cotización ya tiene una orden de trabajo.");

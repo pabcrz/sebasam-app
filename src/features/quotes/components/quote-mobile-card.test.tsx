@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QuoteListCard } from "./quote-mobile-card";
 import type { listQuotes } from "@/features/quotes/queries";
 import type { PaymentRequest } from "@prisma/client";
+import type { WorkOrderActions } from "@/features/work-orders/components/work-order-operations-dialog";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -44,6 +45,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     folio: folio ?? null,
     issuedAt: issuedAt ?? null,
     status: "DRAFT",
+    operation: "WORK",
     title: "Servicio general",
     description: null,
     vehicleSnapshot: null,
@@ -117,7 +119,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
   };
 }
 
-function renderCard(quote: QuoteListItem) {
+function renderCard(quote: QuoteListItem, workOrderActions: WorkOrderActions = { assign: vi.fn(), convert: vi.fn() }) {
   return render(
     <QuoteListCard
       quote={quote}
@@ -142,6 +144,7 @@ function renderCard(quote: QuoteListItem) {
       customers={[{ id: "cust-1", name: "Constructora del Norte" }]}
       saveAction={vi.fn()}
       searchCustomersAction={vi.fn()}
+      workOrderActions={workOrderActions}
     />,
   );
 }
@@ -151,6 +154,28 @@ describe("QuoteListCard", () => {
     const { container } = renderCard(createMockQuote());
 
     expect(container.firstElementChild).toHaveClass("min-w-0", "w-full");
+  });
+
+  it("forwards persisted SALE intent to the conversion dialog", async () => {
+    const user = userEvent.setup();
+    const quote = createMockQuote();
+    renderCard(createMockQuote({ status: "APPROVED", operation: "SALE", items: quote.items.map((item) => ({ ...item, type: "MATERIAL" })), activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"] }), {
+      convert: vi.fn(() => Promise.resolve({ success: true })),
+    });
+
+    const trigger = screen.getByRole("button", { name: /crear nota de venta para cotización c-001/i });
+    await user.click(trigger);
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("Crear nota de venta");
+    expect(screen.getByRole("button", { name: /crear nota de venta/i })).toBeInTheDocument();
+    expect(screen.queryByText("Asignación de personal")).not.toBeInTheDocument();
+  });
+
+  it("labels a SALE quote without a work order as a parts sale", () => {
+    renderCard(createMockQuote({ operation: "SALE" }));
+
+    expect(screen.getByText("Venta de refacciones")).toBeInTheDocument();
+    expect(screen.queryByText("Sin orden de trabajo")).not.toBeInTheDocument();
   });
 
   it("opens the preview dialog when the card is clicked", async () => {
@@ -191,19 +216,40 @@ describe("QuoteListCard", () => {
     const preview = screen.getByRole("button", { name: /abrir vista previa de c-001/i });
     expect(preview.parentElement).toHaveClass("p-4");
     expect(preview).toHaveClass("w-full", "rounded-[var(--radius-sm)]", "focus-visible:ring-offset-2");
+    expect(preview).not.toHaveClass("hover:bg-[var(--color-surface-muted)]");
+    expect(preview).toHaveClass("focus-visible:ring-2");
+    expect(preview.parentElement).toHaveClass("flex", "h-full", "flex-col");
+    expect(preview).toHaveClass("flex-1");
+    expect(screen.getByTestId("quote-secondary-actions").parentElement).toHaveClass("mt-auto");
   });
 
-  it("uses one full-width primary action, a tile row, and a separated accessible overflow dialog", async () => {
-    const user = userEvent.setup();
-    renderCard(createMockQuote({ status: "SENT" }));
+  it("keeps the title and date area at stable heights and exposes the full title", () => {
+    const fullTitle = "A long title that should be clamped after two lines while preserving its full accessible title";
+    renderCard(createMockQuote({ title: fullTitle, paymentDueDate: null }));
 
-    const primary = screen.getByRole("button", { name: "Autorizar cotización C-001" });
+    const title = screen.getByRole("heading", { level: 3 });
+    expect(title).toHaveAttribute("title", fullTitle);
+    expect(title).toHaveClass("line-clamp-2", "min-h-12");
+    expect(screen.getByTestId("quote-dates")).toHaveClass("min-h-12");
+    expect(screen.getByText(/vencimiento pago: —/i)).toBeInTheDocument();
+  });
+
+  it("keeps the flow action labeled and full-width above compact actions", async () => {
+    const user = userEvent.setup();
+    renderCard(createMockQuote({ status: "SENT", activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"] }));
+
+    const primary = screen.getByRole("button", { name: "Asignar trabajo para cotización C-001" });
     expect(primary).toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(primary).toHaveClass("h-9", "w-full");
+    expect(within(primary).getByText("Asignar trabajo")).not.toHaveClass("sr-only");
     expect(screen.getByTestId("quote-primary-action")).toHaveClass("w-full");
-    expect(screen.getByRole("button", { name: "Editar cotización C-001" })).toBeInTheDocument();
+    const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
+    expect(edit).toBeInTheDocument();
     const print = screen.getByRole("button", { name: "Imprimir cotización C-001" });
     expect(print).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Imprimir cotización C-001" })).toHaveLength(1);
+    const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
+    expect(share).toHaveClass("border", "h-11", "w-11");
     expect(screen.queryByRole("button", { name: "Duplicar cotización" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));
@@ -211,62 +257,96 @@ describe("QuoteListCard", () => {
     const overflow = screen.getByRole("dialog", { name: "Acciones de cotización" });
     expect(within(overflow).queryByRole("button", { name: "Imprimir cotización C-001" })).not.toBeInTheDocument();
     expect(within(overflow).getByRole("button", { name: "Duplicar cotización" })).toBeInTheDocument();
-    expect(within(overflow).getByRole("button", { name: "Gestionar trabajo de cotización C-001" })).toBeInTheDocument();
+     expect(within(overflow).getByRole("button", { name: "Autorizar cotización C-001" })).toBeInTheDocument();
     expect(within(overflow).getByRole("button", { name: "Cancelar cotización C-001" })).toBeInTheDocument();
     expect(within(overflow).getByRole("button", { name: "Archivar cotización C-001" })).toBeInTheDocument();
     const remove = within(overflow).getByRole("button", { name: "Eliminar cotización C-001" });
     expect(remove.closest("div[class*='border-t']")).not.toBeNull();
   });
 
-  it("renders icon-only secondary actions in three flexible columns plus a fixed More column", () => {
+  it("makes draft authorization primary and keeps eligible conversion in More actions", async () => {
+    const user = userEvent.setup();
     renderCard(createMockQuote());
+
+    expect(screen.getByRole("button", { name: "Autorizar cotización C-001" })).toHaveClass("bg-[image:var(--gradient-primary)]", "w-full");
+    await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));
+    expect(within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: "Asignar trabajo para cotización C-001" })).toBeEnabled();
+  });
+
+  it("keeps Edit, Share, and Print icon-only at fixed compact dimensions", async () => {
+    const user = userEvent.setup();
+    renderCard(createMockQuote({ activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"] }));
 
     const secondaryActions = screen.getByTestId("quote-secondary-actions");
     const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
     const print = screen.getByRole("button", { name: "Imprimir cotización C-001" });
     const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
     const more = screen.getByRole("button", { name: "Más acciones de cotización C-001" });
-    expect(secondaryActions).toHaveClass(
-      "grid",
-      "grid-cols-[repeat(3,minmax(0,1fr))_auto]",
-      "gap-2",
-      "items-center",
-    );
-    expect(edit).toHaveClass("h-11", "w-full", "min-w-0", "px-0", "sm:h-9", "sm:w-full", "sm:px-0");
-    expect(within(edit).getByText("Editar").previousElementSibling).toHaveClass("h-5", "w-5");
+    expect(secondaryActions).toHaveClass("grid", "gap-2");
+    expect(edit).toHaveClass("h-11", "w-11", "shrink-0", "px-0", "sm:h-9", "sm:w-9");
     expect(within(edit).getByText("Editar")).toHaveClass("sr-only");
+    expect(within(edit).getByText("Editar").previousElementSibling).toHaveClass("h-5", "w-5");
     expect(print).toHaveAttribute("aria-label", "Imprimir cotización C-001");
     expect(print).toHaveAttribute("title", "Imprimir cotización C-001");
-    expect(print).toHaveClass("h-11", "w-full", "min-w-0", "px-0", "sm:h-9", "sm:w-full", "sm:px-0");
+    expect(print).toHaveClass("h-11", "w-11", "shrink-0", "px-0", "sm:h-9", "sm:w-9");
     expect(print.querySelector("svg")).toHaveClass("h-5", "w-5");
     expect(within(print).getByText("Imprimir")).toHaveClass("sr-only");
     expect(share).toHaveAttribute("aria-label", "Compartir cotización C-001");
-    expect(share).toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(share).toHaveClass("border");
     expect(within(share).getByText("Compartir")).toHaveClass("sr-only");
     expect(more).toHaveClass("h-11", "w-11", "shrink-0", "px-0", "sm:h-9", "sm:w-9", "sm:px-0");
     expect(within(more).getByText("Más acciones")).toHaveClass("sr-only");
-    expect(screen.getByTestId("quote-overflow-action")).toHaveClass("col-start-4", "min-w-0");
-    expect(screen.queryByTestId("quote-primary-action")).not.toBeInTheDocument();
+    expect(screen.getByTestId("quote-overflow-action")).toHaveClass("shrink-0");
+    await user.click(more);
+    expect(within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: "Asignar trabajo para cotización C-001" })).toBeInTheDocument();
+    expect(share).toBeInTheDocument();
   });
 
-  it("renders Sent frequent actions in the required Edit, Print, Share, More grid order", () => {
+  it("renders the four quote actions in fixed order with an extra-actions menu", () => {
     renderCard(createMockQuote({
       status: "SENT",
       activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"],
     }));
 
     const secondaryActions = screen.getByTestId("quote-secondary-actions");
-    expect(secondaryActions).toHaveClass("grid", "grid-cols-[repeat(3,minmax(0,1fr))_auto]");
+    expect(secondaryActions).toHaveClass("grid", "gap-2");
     expect(Array.from(secondaryActions.querySelectorAll<HTMLElement>("[aria-label]")).map((element) => element.getAttribute("aria-label"))).toEqual([
+      "Asignar trabajo para cotización C-001",
       "Editar cotización C-001",
       "Imprimir cotización C-001",
       "Compartir cotización C-001",
       "Más acciones de cotización C-001",
     ]);
     const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
-    expect(share).toHaveClass("h-11", "w-full", "min-w-0", "px-0", "sm:h-9", "sm:w-full", "sm:px-0");
+    expect(share).toHaveClass("h-11", "w-11", "shrink-0", "px-0", "sm:h-9", "sm:w-9");
     expect(within(share).getByText("Compartir")).toHaveClass("sr-only");
     expect(screen.getByRole("button", { name: "Más acciones de cotización C-001" })).not.toHaveClass("border");
+  });
+
+  it("keeps Share consistently styled on an unshared quote", () => {
+    renderCard(createMockQuote({ status: "SENT" }));
+
+    const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
+    const flow = screen.getByRole("button", { name: "Asignar trabajo para cotización C-001" });
+    expect(share).toHaveClass("border", "h-11", "w-11");
+    expect(share).not.toHaveClass("bg-[image:var(--gradient-primary)]", "bg-[var(--color-blue-tint)]");
+    expect(flow).toHaveClass("bg-[image:var(--gradient-primary)]", "h-9", "w-full");
+    expect(within(share).getByText("Compartir")).toHaveClass("sr-only");
+  });
+
+  it("keeps the flow visible but disabled for a duplicate SALE note", () => {
+    renderCard(createMockQuote({
+      status: "SENT",
+      operation: "SALE",
+      items: createMockQuote().items.map((item) => ({ ...item, type: "MATERIAL" })),
+      payableNote: { id: "note-1" } as QuoteListItem["payableNote"],
+      activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"],
+    }));
+
+    const flow = screen.getByRole("button", { name: "Crear nota de venta para cotización C-001" });
+    expect(flow).toBeDisabled();
+    expect(flow).toHaveClass("w-full", "disabled:opacity-50", "disabled:bg-[var(--color-surface-muted)]", "disabled:text-[var(--color-text-muted)]");
+    expect(screen.getByRole("button", { name: "Compartir cotización C-001" })).toHaveClass("h-11", "w-11");
   });
 
   it("renders a pending-price draft without payment actions", async () => {
@@ -284,13 +364,13 @@ describe("QuoteListCard", () => {
     expect(screen.getByRole("button", { name: /editar cotización c-001/i })).toBeInTheDocument();
     const share = screen.getByRole("button", { name: /compartir cotización c-001/i });
     expect(share).toBeInTheDocument();
-    expect(share).toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(share).toHaveClass("border");
     expect(screen.queryByRole("button", { name: /cancelar cotización c-001/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));
     expect(within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: /cancelar cotización c-001/i })).toBeInTheDocument();
   });
 
-  it("renders share button as secondary when draft is missing a customer", () => {
+  it("keeps Share consistently styled when a draft is missing a customer", () => {
     renderCard(createMockQuote({
       customer: null,
       customerId: null,
@@ -298,8 +378,15 @@ describe("QuoteListCard", () => {
 
     const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
     expect(share).toBeInTheDocument();
-    expect(share).toHaveClass("bg-[var(--color-blue-tint)]");
-    expect(share).not.toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(share).toHaveClass("border");
+    expect(share).not.toHaveClass("bg-[image:var(--gradient-primary)]", "bg-[var(--color-blue-tint)]");
+    expect(share).toBeDisabled();
+  });
+
+  it("enables sharing a commercially ready draft", () => {
+    renderCard(createMockQuote());
+
+    expect(screen.getByRole("button", { name: "Compartir cotización C-001" })).toBeEnabled();
   });
 
   it("keeps payment links available through overflow for approved in-progress work", async () => {
@@ -307,6 +394,7 @@ describe("QuoteListCard", () => {
     renderCard(createMockQuote({
       status: "APPROVED",
       workOrder: { number: "OT-001", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+      activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"],
     }));
 
     expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
@@ -321,33 +409,93 @@ describe("QuoteListCard", () => {
       subtotalCents: null,
       taxCents: null,
       totalCents: null,
+      activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"],
     }));
 
     expect(screen.queryByRole("button", { name: /link de pago/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /gestionar orden de trabajo ot-001/i })).toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(screen.getByRole("button", { name: "Asignar trabajo para cotización C-001" })).toHaveClass("bg-[image:var(--gradient-primary)]");
   });
 
-  it("makes authorization the sent quote primary action while retaining work-order management in overflow", async () => {
+  it("makes work-order conversion the sent quote primary action while retaining authorization in overflow", async () => {
     const user = userEvent.setup();
-    renderCard(createMockQuote({ status: "SENT" }));
+     renderCard(createMockQuote({ status: "SENT", activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"] }));
 
-    expect(screen.getByRole("button", { name: "Autorizar cotización C-001" })).toHaveClass("bg-[image:var(--gradient-primary)]");
-    expect(screen.queryByRole("button", { name: "Gestionar trabajo de cotización C-001" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Asignar trabajo para cotización C-001" })).toHaveClass("bg-[image:var(--gradient-primary)]");
     await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));
-    expect(within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: "Gestionar trabajo de cotización C-001" })).toBeInTheDocument();
+     expect(within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: "Autorizar cotización C-001" })).toBeInTheDocument();
   });
 
-  it("does not render cancel action for cancelled quotes", () => {
-    renderCard(createMockQuote({ status: "CANCELLED" }));
+  it("keeps eligible DRAFT WORK assignment accessible under More and preserves acceptance", async () => {
+    const user = userEvent.setup();
+    renderCard(createMockQuote({ status: "DRAFT", activeSharedQuote: { token: "shared-quote-token" } as QuoteListItem["activeSharedQuote"] }));
 
+    await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));
+    const flow = within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: "Asignar trabajo para cotización C-001" });
+    expect(flow).toBeEnabled();
+    await user.click(flow);
+    expect(screen.getByText("¿El cliente aceptó la cotización?")).toBeInTheDocument();
+  });
+
+  it("keeps an eligible DRAFT SALE conversion action available without a WORK acceptance prompt", async () => {
+    const user = userEvent.setup();
+    const quote = createMockQuote();
+    renderCard(createMockQuote({
+      status: "DRAFT",
+      operation: "SALE",
+      items: quote.items.map((item) => ({ ...item, type: "MATERIAL" })),
+    }));
+
+    await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));
+    const flow = within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: "Crear nota de venta para cotización C-001" });
+    expect(flow).toBeEnabled();
+    await user.click(flow);
+    expect(screen.getByRole("dialog")).toHaveTextContent("Crear nota de venta");
+    expect(screen.queryByText("¿El cliente aceptó la cotización?")).not.toBeInTheDocument();
+  });
+
+  it.each(["REJECTED", "CANCELLED", "ARCHIVED"] as const)("keeps all four actions visible and disables ineligible flow/share for %s", (status) => {
+    renderCard(createMockQuote({ status }));
+
+    const flow = screen.getByRole("button", { name: "Asignar trabajo para cotización C-001" });
+    const share = screen.getByRole("button", { name: "Compartir cotización C-001" });
+    const edit = screen.getByRole("button", { name: "Editar cotización C-001" });
+    const print = screen.getByRole("button", { name: "Imprimir cotización C-001" });
+    expect(flow).toBeDisabled();
+    expect(share).toBeDisabled();
+    expect(edit).toBeInTheDocument();
+    if (status === "CANCELLED") expect(edit).toBeDisabled();
+    expect(print).toBeEnabled();
     expect(screen.queryByRole("button", { name: /cancelar cotización/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /autorizar cotización/i })).not.toBeInTheDocument();
   });
 
-  it("renders the restore control for archived quotes", () => {
+  it("keeps restore available in overflow for archived quotes", async () => {
+    const user = userEvent.setup();
     renderCard(createMockQuote({ status: "ARCHIVED" }));
 
-    expect(screen.getByRole("button", { name: /restaurar cotización c-001/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));
+    expect(within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: /restaurar cotización c-001/i })).toBeInTheDocument();
+  });
+
+  it.each(["DRAFT", "SENT"] as const)("keeps WORK start enabled with pending prices for %s and retains acceptance prompt", async (status) => {
+    const user = userEvent.setup();
+    const quote = createMockQuote();
+    renderCard(createMockQuote({
+      status,
+      subtotalCents: null,
+      taxCents: null,
+      totalCents: null,
+      items: quote.items.map((item) => ({ ...item, unitPriceCents: null, totalCents: null })),
+    }));
+
+    if (status === "DRAFT") await user.click(screen.getByRole("button", { name: "Más acciones de cotización C-001" }));
+    const flow = status === "DRAFT"
+      ? within(screen.getByRole("dialog", { name: "Acciones de cotización" })).getByRole("button", { name: "Asignar trabajo para cotización C-001" })
+      : screen.getByRole("button", { name: "Asignar trabajo para cotización C-001" });
+    expect(flow).toBeEnabled();
+    await user.click(flow);
+    expect(screen.getByText("¿El cliente aceptó la cotización?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
   });
 
   it("keeps active quote printing inline on the quote route", () => {

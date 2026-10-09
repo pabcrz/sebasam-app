@@ -41,6 +41,11 @@ enum QuoteStatus {
   ARCHIVED
 }
 
+enum QuoteOperationKind {
+  WORK
+  SALE
+}
+
 enum QuoteItemType {
   LABOR
   MATERIAL
@@ -278,6 +283,7 @@ model Quote {
   folio                   String?     @unique
   issuedAt                DateTime?
   status                  QuoteStatus @default(DRAFT)
+  operation               QuoteOperationKind @default(WORK)
   title                   String
   description             String?
   vehicleSnapshot         Json?

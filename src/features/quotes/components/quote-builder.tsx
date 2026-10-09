@@ -109,10 +109,10 @@ export function QuoteBuilder({
   const [activeCustomerIndex, setActiveCustomerIndex] = React.useState(-1);
   const isDirect = mode === "direct" || mode === "direct-work-order" || mode === "direct-note" || mode === "direct-sale";
   const isUnifiedDirect = isDirect;
-  const [operation, setOperation] = React.useState<"WORK" | "SALE">(
-    mode === "direct-sale" ? "SALE" : "WORK",
-  );
-  const isSale = isUnifiedDirect && operation === "SALE";
+  const initialOperation = initialData?.operation ?? (mode === "direct-sale" ? "SALE" : "WORK");
+  const [operation, setOperation] = React.useState<"WORK" | "SALE">(initialOperation);
+  const isSale = operation === "SALE";
+  const isSaleNote = isUnifiedDirect && isSale;
   const isWorkshopDirect = isUnifiedDirect && operation === "WORK";
   const [masterId, setMasterId] = React.useState("");
   const [isCompleted, setIsCompleted] = React.useState(mode === "direct-note");
@@ -187,9 +187,9 @@ export function QuoteBuilder({
 
   React.useEffect(() => {
     const current = serializeQuoteBuilderSnapshot(builderState, customerSearch, [newCustomerName, newCustomerEmail, newCustomerPhone]);
-    const isDirectDirty = isUnifiedDirect ? Boolean(masterId || paymentDueDate || operation !== "WORK") : false;
-    onDirtyChange?.(current !== initialFormState || isDirectDirty);
-  }, [builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, isUnifiedDirect, masterId, operation, paymentDueDate]);
+    const isDirectDirty = isUnifiedDirect ? Boolean(masterId || paymentDueDate) : false;
+    onDirtyChange?.(current !== initialFormState || isDirectDirty || operation !== initialOperation);
+  }, [builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, initialOperation, isUnifiedDirect, masterId, operation, paymentDueDate]);
 
   function changeOperation(next: "WORK" | "SALE") {
     if (next === operation) return;
@@ -664,7 +664,7 @@ export function QuoteBuilder({
             ? (isEdit ? "Guardando..." : "Creando...")
             : isEdit
               ? "Guardar cambios"
-            : isSale || mode === "direct-note"
+            : isSaleNote || mode === "direct-note"
                 ? "Crear nota"
             : mode === "direct-work-order" || mode === "direct"
                   ? "Crear trabajo"
@@ -727,7 +727,7 @@ export function QuoteBuilder({
             } : undefined}
           >
             <div className="grid content-start gap-6">
-          {isUnifiedDirect ? (
+          {isUnifiedDirect || mode === "quote" ? (
             <>
               <input type="hidden" name="operation" value={operation} />
               {isWorkshopDirect ? <input type="hidden" name="masterId" value={masterId} /> : null}
@@ -755,7 +755,7 @@ export function QuoteBuilder({
             <h2 className="sr-only" tabIndex={-1} data-step-heading="client">
               Cliente y unidad
             </h2>
-            {isUnifiedDirect ? (
+            {isUnifiedDirect || mode === "quote" ? (
               <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
                 <Label htmlFor="direct-operation">Tipo de operación</Label>
                 <Select value={operation} onValueChange={(value) => changeOperation(value as "WORK" | "SALE")}>
@@ -1065,7 +1065,7 @@ export function QuoteBuilder({
               </div>
             ) : null}
 
-            {!isSale ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
+            {!isSaleNote ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
               <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
@@ -1180,7 +1180,7 @@ export function QuoteBuilder({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="operationalDate">
-                {isSale || mode === "direct-note" ? "Fecha de la nota" : mode === "direct-work-order" || mode === "direct" ? "Fecha del trabajo" : "Fecha de cotización"}
+                {isSaleNote || mode === "direct-note" ? "Fecha de la nota" : mode === "direct-work-order" || mode === "direct" ? "Fecha del trabajo" : "Fecha de cotización"}
               </Label>
               <Input
                 id="operationalDate"
@@ -1198,7 +1198,7 @@ export function QuoteBuilder({
                 </p>
               )}
             </div>
-            {isSale || mode === "direct-note" ? (
+            {isSaleNote || mode === "direct-note" ? (
               <div className="grid gap-2">
                 <Label htmlFor="paymentDueDate">Fecha de vencimiento de pago (opcional)</Label>
                 <Input
@@ -1217,7 +1217,7 @@ export function QuoteBuilder({
                 rows={4}
                 value={description}
                 onChange={(event) => dispatch({ type: "setDescription", description: event.target.value })}
-                placeholder={isSale || mode === "direct-note" ? "Detalles adicionales de la nota..." : mode === "direct-work-order" || mode === "direct" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
+                placeholder={isSaleNote || mode === "direct-note" ? "Detalles adicionales de la nota..." : mode === "direct-work-order" || mode === "direct" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
               />
             </div>
             <Checkbox
@@ -1231,7 +1231,7 @@ export function QuoteBuilder({
           {/* Step 4: Review and submit */}
           <section hidden={step !== "preview"} className="grid gap-4">
             <h2 className="sr-only" tabIndex={-1} data-step-heading="preview">
-              {isSale || mode === "direct-note" ? "Revisar y confirmar nota" : mode === "direct-work-order" || mode === "direct" ? "Revisar y confirmar trabajo" : "Revisar y enviar cotización"}
+              {isSaleNote || mode === "direct-note" ? "Revisar y confirmar nota" : mode === "direct-work-order" || mode === "direct" ? "Revisar y confirmar trabajo" : "Revisar y enviar cotización"}
             </h2>
             {(() => {
               const selectedContact = selectedCustomer?.contacts?.find((c) => c.id === customerContactId);

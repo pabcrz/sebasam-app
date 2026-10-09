@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { quoteFormInputSchema, quoteLifecycleReasonSchema } from "./schemas";
+import { quoteDraftInputSchema, quoteFormInputSchema, quoteLifecycleReasonSchema } from "./schemas";
 
 describe("quoteLifecycleReasonSchema", () => {
   it("requires a meaningful, bounded lifecycle reason", () => {
@@ -29,5 +29,26 @@ describe("quote meaningful text validation", () => {
 
   it.each(["xyz", "..."])("rejects placeholder %s in titles", (title) => {
     expect(quoteFormInputSchema.safeParse({ ...validQuote, title }).success).toBe(false);
+  });
+});
+
+describe("quote operation intent", () => {
+  const validDraft = {
+    customerId: "customer-1",
+    vehicle: {},
+    title: "Venta de refacciones",
+    sections: [{ name: "General", items: [{ type: "MATERIAL", description: "Filtro", quantity: 1, unitPriceCents: 100 }] }],
+  };
+
+  it("defaults drafts to WORK", () => {
+    expect(quoteDraftInputSchema.parse(validDraft).operation).toBe("WORK");
+  });
+
+  it("rejects SALE drafts containing non-material concepts", () => {
+    expect(quoteDraftInputSchema.safeParse({
+      ...validDraft,
+      operation: "SALE",
+      sections: [{ name: "General", items: [{ type: "LABOR", description: "Instalación", quantity: 1, unitPriceCents: 100 }] }],
+    }).success).toBe(false);
   });
 });
