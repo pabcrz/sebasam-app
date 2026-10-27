@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Banknote, Check, Copy, ExternalLink, FileText, LinkIcon } from "lucide-react";
-import type { PaymentRequest, PaymentRequestStatus } from "@prisma/client";
+import type { PaymentRequest, PaymentRequestStatus } from "@/generated/prisma/client";
 import {
   Badge,
   Button,

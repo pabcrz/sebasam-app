@@ -1,4 +1,5 @@
-import { Prisma, QuoteStatus } from "@prisma/client";
+import { Prisma } from "@/generated/prisma/client";
+import { QuoteStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;

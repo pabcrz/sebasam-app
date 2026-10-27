@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteListCard } from "./quote-mobile-card";
 import type { listQuotes } from "@/features/quotes/queries";
-import type { PaymentRequest } from "@prisma/client";
+import type { PaymentRequest } from "@/generated/prisma/client";
 import type { WorkOrderActions } from "@/features/work-orders/components/work-order-operations-dialog";
 
 vi.mock("next/navigation", () => ({

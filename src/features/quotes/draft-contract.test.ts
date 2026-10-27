@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/client";
 import { quoteDraftFormInputSchema, quoteFormInputSchema } from "./schemas";
 
 const draft = {

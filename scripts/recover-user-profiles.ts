@@ -1,4 +1,5 @@
-import { Prisma, PrismaClient, type UserRole } from "@prisma/client";
+import { Prisma, type PrismaClient, type UserRole } from "@/generated/prisma/client";
+import { createPrismaClient } from "@/lib/prisma-client";
 
 type AuthIdentity = {
   id: string;
@@ -102,7 +103,7 @@ export async function recoverUserProfiles(prisma: RecoveryDatabase): Promise<Rec
 }
 
 async function main() {
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
 
   try {
     const results = await recoverUserProfiles(prisma);

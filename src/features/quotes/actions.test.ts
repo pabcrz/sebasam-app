@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
-import { PaymentStatus, Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { PaymentStatus, Prisma, QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import {
   cancelQuote,
   archiveQuote,

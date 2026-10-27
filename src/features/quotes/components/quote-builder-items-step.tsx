@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/enums";
 import { ChevronDown, ChevronUp, Copy, Minus, Plus, PlusCircle, Trash2 } from "lucide-react";
 import {
   Badge,

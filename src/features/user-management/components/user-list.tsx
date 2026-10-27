@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { UserProfile } from "@prisma/client";
+import type { UserProfile } from "@/generated/prisma/client";
 import toast from "react-hot-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

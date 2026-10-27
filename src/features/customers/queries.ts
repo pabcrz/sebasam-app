@@ -1,4 +1,4 @@
-import { LedgerEntryType, LedgerMovementType, PaymentMethod, type Prisma } from "@prisma/client";
+import { LedgerEntryType, LedgerMovementType, PaymentMethod, type Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { getCustomerBalanceSummary } from "@/features/payments/domain";

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/client";
 import type { HistoricalMatchSource } from "@/features/historical/repository";
 import type { CompletedWorkMatchSource } from "@/features/completed-work-knowledge/repository";
 import { AssistantChat } from "./assistant-chat";

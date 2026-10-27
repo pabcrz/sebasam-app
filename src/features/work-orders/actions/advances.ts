@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { AssignmentStatus, QuoteItemType, WorkerKind, WorkOrderStatus } from "@prisma/client";
+import { AssignmentStatus, QuoteItemType, WorkerKind, WorkOrderStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { formatCents } from "@/features/quotes/lib/format";

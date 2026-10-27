@@ -1,4 +1,4 @@
-import { PaymentStatus, WorkOrderStatus } from "@prisma/client";
+import { PaymentStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getPaymentSettings } from "@/features/payment-settings/domain";

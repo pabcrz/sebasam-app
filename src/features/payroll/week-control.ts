@@ -1,4 +1,4 @@
-import { PayrollPeriodStatus, type Prisma } from "@prisma/client";
+import { PayrollPeriodStatus, type Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { normalizeWeekStart, PayrollWeekError } from "./period";

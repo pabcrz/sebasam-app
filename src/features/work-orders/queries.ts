@@ -1,4 +1,4 @@
-import { AssignmentStatus, PaymentStatus, Prisma, SettlementAgreementStatus, WorkerKind, WorkOrderStatus } from "@prisma/client";
+import { AssignmentStatus, PaymentStatus, Prisma, SettlementAgreementStatus, WorkerKind, WorkOrderStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { assertOperationalClosureQuote } from "./operational-validation";

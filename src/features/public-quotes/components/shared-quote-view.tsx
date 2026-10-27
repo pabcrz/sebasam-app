@@ -8,7 +8,7 @@ import { Button } from "@/components/ui";
 import { QuotePreviewCard } from "@/features/quotes/components/quote-preview-card";
 import { formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
-import type { QuoteItemType, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import type { QuoteItemType, QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { BankDataCard, type BankAccountData } from "@/features/public-payment/components/bank-data-card";
 
 type SerializableQuoteItem = {

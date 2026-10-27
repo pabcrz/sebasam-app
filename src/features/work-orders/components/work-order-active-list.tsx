@@ -12,7 +12,7 @@ import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-d
 import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-dialog";
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
 import { QuoteDuplicateForm } from "@/features/quotes/components/quote-duplicate-form";
-import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshot-display";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder";

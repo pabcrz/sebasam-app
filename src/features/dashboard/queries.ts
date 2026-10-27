@@ -1,4 +1,4 @@
-import { AssignmentStatus, PaymentStatus, QuoteItemType, QuoteStatus, SettlementAgreementStatus, WorkOrderStatus } from "@prisma/client";
+import { AssignmentStatus, PaymentStatus, QuoteItemType, QuoteStatus, SettlementAgreementStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { buildWeeklyPayrollReport, type PayrollItemInput, type RawWorkOrderForPayroll } from "@/features/payroll/domain";

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { Prisma } from "@prisma/client";
-import type { QuoteItemType } from "@prisma/client";
+import { Prisma } from "@/generated/prisma/client";
+import type { QuoteItemType } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { NormalizedHistoricalItem, NormalizedHistoricalWork } from "./types";
 

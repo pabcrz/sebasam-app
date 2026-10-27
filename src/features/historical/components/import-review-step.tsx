@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/enums";
 import { ITEM_TYPE_LABELS } from "../types";
 import { hasQuantityConcept, isPayrollConcept } from "../domain";
 import {

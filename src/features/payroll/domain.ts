@@ -1,4 +1,4 @@
-import { PayrollPeriodStatus, QuoteItemType, WorkerKind } from "@prisma/client";
+import { PayrollPeriodStatus, QuoteItemType, WorkerKind } from "@/generated/prisma/enums";
 
 export const DEFAULT_GENERAL_LABOR_RATE = 50; // 50%
 export const DEFAULT_WELDING_LABOR_RATE = 40; // 40%

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition, useState } from "react";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "@/generated/prisma/enums";
 import toast from "react-hot-toast";
 import {
   Button,

@@ -12,7 +12,7 @@ import {
   UserRole,
   WorkOrderStatus,
   WorkerKind,
-} from "@prisma/client";
+} from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";

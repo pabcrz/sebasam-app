@@ -1,6 +1,7 @@
-import { PrismaClient, QuoteStatus } from "@prisma/client";
+import { QuoteStatus } from "@/generated/prisma/client";
+import { createPrismaClient } from "@/lib/prisma-client";
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function resetOperationalData() {
   console.log("Starting operational data reset...");

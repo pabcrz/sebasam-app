@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { PaymentRequest, QuoteStatus } from "@prisma/client";
+import type { PaymentRequest, QuoteStatus } from "@/generated/prisma/client";
 import { Printer } from "lucide-react";
 import { PrintActionButton } from "./print-action-button";
 import type { QuoteListSummary } from "@/features/quotes/queries";

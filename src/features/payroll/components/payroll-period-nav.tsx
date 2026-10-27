@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, FileSignature } from "lucide-react";
-import { PayrollPeriodStatus } from "@prisma/client";
+import { PayrollPeriodStatus } from "@/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";

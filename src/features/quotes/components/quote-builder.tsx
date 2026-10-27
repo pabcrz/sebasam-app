@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/enums";
 import { getMeaningfulTextError } from "@/lib/meaningful-text";
 import { createPortal } from "react-dom";
 import {
@@ -22,7 +22,7 @@ import {
   isSundayOperationalDate,
   mexicoCityCalendarDate,
 } from "@/features/quotes/lib/operational-date";
-import { formatQuoteContactRole } from "@/features/quotes/lib/quote-snapshots";
+import { formatQuoteContactRole } from "@/features/quotes/lib/quote-snapshot-display";
 import {
   getStepError,
   normalizeSections,

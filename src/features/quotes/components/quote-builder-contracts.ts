@@ -1,5 +1,5 @@
 import type { QuoteFormActionState } from "../actions";
-import type { QuoteOperationKind } from "@prisma/client";
+import type { QuoteOperationKind } from "@/generated/prisma/enums";
 import type { QuoteListSummary } from "../queries";
 import type { ButtonVariant } from "@/components/ui";
 import type { ItemFormValue } from "./quote-builder-shared";

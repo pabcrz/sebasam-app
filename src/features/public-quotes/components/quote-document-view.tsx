@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { Prisma, WorkOrderStatus } from "@prisma/client";
+import type { Prisma, WorkOrderStatus } from "@/generated/prisma/client";
 import type { PaymentSettingsData } from "@/features/payment-settings/domain";
 import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
@@ -7,7 +7,7 @@ import {
   SharedQuoteView,
   type SharedQuoteViewQuote,
 } from "@/features/public-quotes/components/shared-quote-view";
-import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshot-display";
 import {
   resolveDocumentFolio,
   resolveDocumentPresentation,

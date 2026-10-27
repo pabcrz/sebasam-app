@@ -1,6 +1,7 @@
-import { PrismaClient, QuoteItemType, QuoteStatus, UserRole, WorkerKind, WorkOrderStatus, AssignmentStatus } from "@prisma/client";
+import { QuoteItemType, QuoteStatus, UserRole, WorkerKind, WorkOrderStatus, AssignmentStatus } from "@/generated/prisma/client";
+import { createPrismaClient } from "@/lib/prisma-client";
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function main() {
   console.log("🌱 Iniciando simulación de datos de nómina para la semana del 24 al 29 de agosto de 2026 con 10 trabajos...");

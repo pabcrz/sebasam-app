@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { UserProfile } from "@prisma/client";
+import type { UserProfile } from "@/generated/prisma/client";
 import { UserList } from "./user-list";
 import { resetUserPassword } from "../actions";
 

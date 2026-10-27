@@ -1,5 +1,6 @@
 import type { HistoricalProvider } from "./provider";
-import { finalizeHistoricalItem, normalizeHistoricalItem } from "./domain";
+import { normalizeHistoricalItem } from "./domain";
+import { finalizeHistoricalItem } from "./finalize-item";
 import { insertWorkWithItems, listExistingRefs } from "./repository";
 import { formatZodIssues, historicalBatchSchema, historicalWorkSchema } from "./schemas";
 

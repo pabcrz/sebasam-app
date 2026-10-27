@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AssignmentStatus, PaymentStatus, QuoteItemType, SettlementAgreementStatus, WorkerKind, WorkOrderStatus } from "@prisma/client";
+import { AssignmentStatus, PaymentStatus, QuoteItemType, SettlementAgreementStatus, WorkerKind, WorkOrderStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { aggregateReceivablesByCustomer, getOperationalDashboardSnapshot } from "./queries";

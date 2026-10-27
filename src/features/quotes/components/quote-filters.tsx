@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Filter, X } from "lucide-react";
-import type { QuoteStatus } from "@prisma/client";
+import type { QuoteStatus } from "@/generated/prisma/client";
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusFilterNav } from "@/components/ui";
 import type { QuoteFilterInput } from "@/features/quotes/schemas";
 
