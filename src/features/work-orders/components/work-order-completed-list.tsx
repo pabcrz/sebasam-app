@@ -136,7 +136,7 @@ export function WorkOrderCompletedList({
                title={`Imprimir nota de remisión ${noteFolio}`}
                aria-label={`Imprimir nota de remisión ${noteFolio}`}
             >
-              <Printer className="h-4 w-4" aria-hidden="true" />
+              <Printer className="h-5 w-5" aria-hidden="true" />
               <span className="sr-only">Imprimir</span>
             </PrintActionButton>
             {correctWorkOrderAction ? (

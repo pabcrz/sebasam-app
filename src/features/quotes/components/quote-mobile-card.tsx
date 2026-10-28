@@ -113,7 +113,7 @@ export function QuoteListCard({
             aria-label={`Imprimir cotización ${quote.number}`}
             title={`Imprimir cotización ${quote.number}`}
           >
-            <Printer className="h-4 w-4" aria-hidden="true" />
+            <Printer className="h-5 w-5" aria-hidden="true" />
             <span className="sr-only">Imprimir</span>
           </PrintActionButton>
         );
