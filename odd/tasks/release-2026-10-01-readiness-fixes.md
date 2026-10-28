@@ -30,7 +30,10 @@ Track seven local readiness fixes separately from the existing five-child releas
 - Issue #748 is open and approved with `type:bug` and `status:approved`.
 - Created local child branch `fix/748-release-readiness` from PR #731 head `85f8d4016e75d42340998d7b04586202d1a6d21d`; readiness changes remain separate from #731.
 - Independent verifier rerun: focused Vitest across 4 files / 122 tests passed; `pnpm typecheck` passed; `pnpm lint` passed with two existing unused-variable warnings in `src/features/work-orders/components/nota-detail-dialog.tsx`; `git diff --check` passed.
-- Next: stage the seven intended source/test/docs files plus this task record, make a Conventional Commit, push the issue branch, and create a draft child PR using `.github/pull_request_template.md` with the issue and chain dependency.
+- Work-unit commit: `fa612bf9287a93e3467be838cbe57656934e44a4` (`fix(release): close selected-candidate readiness gaps`).
+- Independent checks on the exact candidate: focused Vitest 4 files / 122 tests passed; `pnpm typecheck` passed; `pnpm lint` passed with two existing unused-variable warnings in `nota-detail-dialog.tsx`; `git diff --check` passed.
+- Native ASSESS on the commit against #731 head reported medium risk, 170 changed lines, RDD on, `reviewDue: false` (`under_budget`); plan records writer self-verification and no independent verifier. No review lineage was started.
+- Next: push the issue branch and create a draft child PR using `.github/pull_request_template.md` with `Closes #748` and the chain dependency.
 
 ### RC-03 — Validate and integrate the existing release chain
 - Status: pending.
@@ -46,6 +49,7 @@ Track seven local readiness fixes separately from the existing five-child releas
 - After code integration, inspect production migration status/configuration; promote only through documented GitHub `Production Release` workflow from `main`.
 
 ## Verification evidence
+- Work-unit commit: `fa612bf9287a93e3467be838cbe57656934e44a4` (`fix(release): close selected-candidate readiness gaps`).
 - Focused combined candidate tests: 4 files / 122 tests passed.
 - User-reported full UI suite: 202 files passed, 3 skipped; 1,666 tests passed, 30 skipped.
 - User-reported lint: 0 errors, 2 warnings in `nota-detail-dialog.tsx`; typecheck emitted no diagnostics; production build exited 0.
@@ -56,6 +60,6 @@ Track seven local readiness fixes separately from the existing five-child releas
 ## Current repository state
 - Parent PR #731 head/base: `85f8d4016e75d42340998d7b04586202d1a6d21d` / `feat/release-2026-10-01-04-rls`.
 - Current branch: `fix/748-release-readiness`, based on #731 head.
-- Seven tracked readiness files modified; this ODD task document is untracked and sanitized of machine/home paths.
-- No commit, push, PR creation/update, merge, or deployment has occurred for these readiness fixes.
+- Work-unit commit `fa612bf9287a93e3467be838cbe57656934e44a4` contains the seven readiness code/test/docs files and this sanitized ODD task record.
+- No push, PR creation/update, merge, or deployment has occurred for these readiness fixes.
 - Empty partial directory from failed PostgreSQL 16 attempt remains at the user-selected Drive backup destination as `sebasam-public-2026-10-28T08-24-40-673Z`; preserve it.
