@@ -26,17 +26,16 @@ Track seven local readiness fixes separately from the existing five-child releas
 - Created and read back [issue #748](https://github.com/pabcrz/sebasam-app/issues/748), `bug: close release readiness gaps in selected 2026-10-01 candidate`, with labels `type:bug` and, after exact user authorization, `status:approved`.
 
 ### RC-02 — Prepare a dedicated issue-backed child PR
-- Status: in progress.
+- Status: done.
 - Issue #748 is open and approved with `type:bug` and `status:approved`.
-- Created local child branch `fix/748-release-readiness` from PR #731 head `85f8d4016e75d42340998d7b04586202d1a6d21d`; readiness changes remain separate from #731.
-- Independent verifier rerun: focused Vitest across 4 files / 122 tests passed; `pnpm typecheck` passed; `pnpm lint` passed with two existing unused-variable warnings in `src/features/work-orders/components/nota-detail-dialog.tsx`; `git diff --check` passed.
-- Work-unit commit: `fa612bf9287a93e3467be838cbe57656934e44a4` (`fix(release): close selected-candidate readiness gaps`).
-- Independent checks on the exact candidate: focused Vitest 4 files / 122 tests passed; `pnpm typecheck` passed; `pnpm lint` passed with two existing unused-variable warnings in `nota-detail-dialog.tsx`; `git diff --check` passed.
-- Native ASSESS on the commit against #731 head reported medium risk, 170 changed lines, RDD on, `reviewDue: false` (`under_budget`); plan records writer self-verification and no independent verifier. No review lineage was started.
-- Next: push the issue branch and create a draft child PR using `.github/pull_request_template.md` with `Closes #748` and the chain dependency.
+- Created child branch `fix/748-release-readiness` from PR #731 head `85f8d4016e75d42340998d7b04586202d1a6d21d`; pushed to origin.
+- Work-unit commit: `fa612bf9287a93e3467be838cbe57656934e44a4` (`fix(release): close selected-candidate readiness gaps`). Task evidence recorded in follow-up docs commit `45032f2`.
+- Independent checks: focused Vitest 4 files / 122 tests passed; `pnpm typecheck` passed; `pnpm lint` passed with two unused-variable warnings in `src/features/work-orders/components/nota-detail-dialog.tsx`; `git diff --check` passed.
+- Native ASSESS on the code commit against #731 head reported medium risk, 170 changed lines, RDD on, `reviewDue: false` (`under_budget`); plan records writer self-verification, no independent verifier. No review lineage was started.
+- Created and read back draft PR #749: https://github.com/pabcrz/sebasam-app/pull/749, `Closes #748`, base PR #731, exactly one `type:bug` label.
 
 ### RC-03 — Validate and integrate the existing release chain
-- Status: pending.
+- Status: in progress; checks and review gates not yet confirmed.
 - Known order: #719 → #728 → #729 → #730 → #731, with #719 based on `release/2026-10-01`.
 - At last read, these PRs were open drafts; #731 had no review decision and visible checks showed only Vercel Preview Comments success. Do not merge drafts or bypass required review/check gates.
 - #719's chain context says the tracker PR to `main` has not been opened; verify current state and only create/update it under user's delivery authorization and repository policy.
@@ -61,5 +60,6 @@ Track seven local readiness fixes separately from the existing five-child releas
 - Parent PR #731 head/base: `85f8d4016e75d42340998d7b04586202d1a6d21d` / `feat/release-2026-10-01-04-rls`.
 - Current branch: `fix/748-release-readiness`, based on #731 head.
 - Work-unit commit `fa612bf9287a93e3467be838cbe57656934e44a4` contains the seven readiness code/test/docs files and this sanitized ODD task record.
-- No push, PR creation/update, merge, or deployment has occurred for these readiness fixes.
+- Commits `fa612bf9287a93e3467be838cbe57656934e44a4` and `45032f2` are pushed on `fix/748-release-readiness`; draft PR #749 is open against #731.
+- No merge or deployment has occurred.
 - Empty partial directory from failed PostgreSQL 16 attempt remains at the user-selected Drive backup destination as `sebasam-public-2026-10-28T08-24-40-673Z`; preserve it.
