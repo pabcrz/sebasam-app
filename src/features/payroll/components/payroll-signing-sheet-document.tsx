@@ -24,6 +24,10 @@ export function PayrollSigningSheetDocument({
       id: w.workerId,
       name: w.displayName,
     })),
+    ...(report.fixedPayHelpers ?? []).map((helper) => ({
+      id: helper.workerId,
+      name: helper.displayName,
+    })),
     ...customWorkers.map((r) => ({
       id: r.id,
       name: r.name,

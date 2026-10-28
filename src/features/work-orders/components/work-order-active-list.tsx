@@ -115,7 +115,7 @@ export function WorkOrderActiveList({
                         title={`Imprimir orden ${wo.number}`}
                         aria-label={`Imprimir orden ${wo.number}`}
                       >
-                        <Printer className="h-4 w-4" aria-hidden="true" />
+                        <Printer className="h-5 w-5" aria-hidden="true" />
                         <span className="sr-only">Imprimir orden</span>
                       </PrintActionButton>
 
