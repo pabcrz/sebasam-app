@@ -950,7 +950,7 @@ export async function archiveQuote(quoteId: string, reason: string) {
   revalidatePath(quotesPath);
 }
 
-/** Archives a completed Note without revoking its canonical link or payments. */
+/** Archives a completed Note, revoking public links only for standalone SALE Notes. */
 export async function archiveCompletedNote(quoteId: string, reason: string) {
   const { profile } = await requireAdmin();
   const parsedReason = quoteLifecycleReasonSchema.safeParse(reason);
@@ -975,6 +975,14 @@ export async function archiveCompletedNote(quoteId: string, reason: string) {
       data: { status: QuoteStatus.ARCHIVED, retentionStartedAt: null },
     });
     if (archived.count !== 1) throw new Error("Note archive state changed. Reload and try again.");
+
+    if (!quote.workOrder && quote.payableNote?.kind === "SALE") {
+      await tx.sharedQuote.updateMany({
+        where: { quoteId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+
     await tx.quoteLifecycleEvent.create({
       data: {
         quoteId,
