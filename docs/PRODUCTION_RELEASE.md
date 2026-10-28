@@ -42,8 +42,8 @@ secrets for them and do not expose them to pull-request workflows.
    to create deployments and read their status for that project; never print or
    store its value outside the Environment secret.
 4. Do not change Git deployment settings in the Vercel dashboard. The repository
-   [`vercel.json`](../vercel.json) disables automatic Git deployments only for
-   `main`; preview deployments from other branches remain enabled.
+   [`vercel.json`](../vercel.json) disables automatic Git deployments for all
+   branches except `develop`; `main` is explicitly disabled.
 
 This policy is mandatory: automatic Vercel deployment from `main` and GitHub
 Actions can otherwise race, allowing application code to reach production before
@@ -81,7 +81,7 @@ Concurrent releases are serialized. An in-progress release is never cancelled.
   workflow from `main`.
 - [ ] `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, and `VERCEL_TEAM_ID` are configured
   only in the `production` Environment.
-- [ ] `vercel.json` disables automatic Git deployment only for `main`.
+- [ ] `vercel.json` disables automatic Git deployments for every branch except `develop`; `main` is explicitly disabled.
 
 See [`DATABASE_SAFETY.md`](./DATABASE_SAFETY.md) for the supported backup command
 and its coverage boundary.
