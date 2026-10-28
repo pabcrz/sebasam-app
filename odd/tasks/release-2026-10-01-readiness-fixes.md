@@ -36,9 +36,10 @@ Track seven local readiness fixes separately from the existing five-child releas
 
 ### RC-03 — Validate and integrate the existing release chain
 - Status: in progress.
-- Chain order: #719 → #728 → #729 → #730 → #731 → #749. PR #749 was merged into #731 head; #731 was then marked ready, its checks passed, and it was merged into #730 head.
-- Current step: #730 is still draft/open; after the #731 merge, its Vercel and Vercel Preview Comments checks passed. Next integrate #730 into #729, then #729 into #728, #728 into #719, and finally #719 into the release tracker branch.
-- At last protection check, chain-base branches were unprotected, `main` required zero approvals and no status checks, and each listed PR had successful Vercel/Preview Comments checks. Still verify each updated parent PR's checks after every child merge; never bypass a failed/pending status.
+- Chain order: #719 → #728 → #729 → #730 → #731 → #749. PR #749 was merged into #731 head; #731 was marked ready and merged into #730 head; #730 was marked ready and merged into #729 head.
+- Completed merge commits: #749 `1d7e0afdee46bb666561071091a6c35a7105d651`; #731 `f1be34987691b1435d35194f1ab82af75eb98e61`; #730 `3b0b4ecfb1e57031ec98e3e27b5997273ebfb84a`.
+- Current step: #729 is open/draft; its checks after the #730 merge need verification. If green, mark ready and integrate #729 into #728, then #728 into #719, and finally #719 into the release tracker branch.
+- At last protection check, chain-base branches were unprotected, `main` required zero approvals and no status checks, and PRs through #730 had successful Vercel/Preview Comments checks. Verify each updated parent PR's checks after every child merge; never bypass a failed/pending status.
 - `release/2026-10-01` and `main` both pointed to `c67722a67f815ccdef4838d8fc1e7646a3804a8c`; no tracker PR exists and an empty tracker PR cannot yet be created. Create the release-to-main tracker PR after the child chain updates the release branch.
 
 ### RC-04 — Complete production release gate
@@ -61,6 +62,6 @@ Track seven local readiness fixes separately from the existing five-child releas
 - Parent PR #731 head/base: `85f8d4016e75d42340998d7b04586202d1a6d21d` / `feat/release-2026-10-01-04-rls`.
 - Readiness work-unit commit `fa612bf9287a93e3467be838cbe57656934e44a4` is in PR #749; task evidence doc commit `45032f2` and follow-up `d6e3051` are on the child branch.
 - PR #749 was merged into #731's head as `1d7e0afdee46bb666561071091a6c35a7105d651`; PR #731 was merged into #730's head as `f1be34987691b1435d35194f1ab82af75eb98e61`.
-- Current local branch is `feat/release-2026-10-01-04-rls` at PR #730 head `f1be34987691b1435d35194f1ab82af75eb98e61`.
+- Current local branch is `feat/release-2026-10-01-03-payroll` at PR #729 head `3b0b4ecfb1e57031ec98e3e27b5997273ebfb84a`.
 - The task record is modified locally for RC-03 progress; it is not yet committed/pushed. No production release dispatch has occurred.
 - Empty partial directory from failed PostgreSQL 16 attempt remains at the user-selected Drive backup destination as `sebasam-public-2026-10-28T08-24-40-673Z`; preserve it.
