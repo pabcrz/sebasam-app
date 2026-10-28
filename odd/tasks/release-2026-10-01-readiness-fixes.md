@@ -35,17 +35,18 @@ Track seven local readiness fixes separately from the existing five-child releas
 - Created and read back draft PR #749: https://github.com/pabcrz/sebasam-app/pull/749, `Closes #748`, base PR #731, exactly one `type:bug` label.
 
 ### RC-03 — Validate and integrate the existing release chain
-- Status: in progress; checks and review gates not yet confirmed.
-- Known order: #719 → #728 → #729 → #730 → #731, with #719 based on `release/2026-10-01`.
-- At last read, these PRs were open drafts; #731 had no review decision and visible checks showed only Vercel Preview Comments success. Do not merge drafts or bypass required review/check gates.
-- #719's chain context says the tracker PR to `main` has not been opened; verify current state and only create/update it under user's delivery authorization and repository policy.
+- Status: in progress.
+- Chain order: #719 → #728 → #729 → #730 → #731 → #749. PR #749 was merged into #731 head; #731 was then marked ready, its checks passed, and it was merged into #730 head.
+- Current step: #730 is still draft/open; after the #731 merge, its Vercel and Vercel Preview Comments checks passed. Next integrate #730 into #729, then #729 into #728, #728 into #719, and finally #719 into the release tracker branch.
+- At last protection check, chain-base branches were unprotected, `main` required zero approvals and no status checks, and each listed PR had successful Vercel/Preview Comments checks. Still verify each updated parent PR's checks after every child merge; never bypass a failed/pending status.
+- `release/2026-10-01` and `main` both pointed to `c67722a67f815ccdef4838d8fc1e7646a3804a8c`; no tracker PR exists and an empty tracker PR cannot yet be created. Create the release-to-main tracker PR after the child chain updates the release branch.
 
 ### RC-04 — Complete production release gate
 - Status: pending.
 - Vercel Production Supabase ref `hulvyebgganhuraszpjb`; Preview ref `ytcpqwqcqnvkqbpddevt`. Each environment's `DATABASE_URL` and `DIRECT_URL` refs match its `NEXT_PUBLIC_SUPABASE_URL`.
 - Production public schema/data backup created from Production `DIRECT_URL` via PostgreSQL 17.11 `pg_dump` at the user-selected Drive backup destination in `sebasam-public-2026-10-28T08-25-43-964Z`. Independent verification confirmed nonempty SQL files, both SHA256 checksums, and exactly four expected files. No restore test or Google Drive remote-sync confirmation; Auth and Storage excluded.
 - Playwright CLI 0.1.22 installed globally for this macOS user, skill in `~/.agents/skills/playwright-cli`. Production `/admin/login` rendered at 375×812 with no console errors/warnings; no authenticated routes tested.
-- After code integration, inspect production migration status/configuration; promote only through documented GitHub `Production Release` workflow from `main`.
+- After the chain is integrated and the tracker PR is merged to `main`, inspect production migration status/configuration and promote only through the documented GitHub `Production Release` workflow from `main`. User authorized completing this release flow; no workflow dispatch has occurred.
 
 ## Verification evidence
 - Work-unit commit: `fa612bf9287a93e3467be838cbe57656934e44a4` (`fix(release): close selected-candidate readiness gaps`).
@@ -58,8 +59,8 @@ Track seven local readiness fixes separately from the existing five-child releas
 
 ## Current repository state
 - Parent PR #731 head/base: `85f8d4016e75d42340998d7b04586202d1a6d21d` / `feat/release-2026-10-01-04-rls`.
-- Current branch: `fix/748-release-readiness`, based on #731 head.
-- Work-unit commit `fa612bf9287a93e3467be838cbe57656934e44a4` contains the seven readiness code/test/docs files and this sanitized ODD task record.
-- Commits `fa612bf9287a93e3467be838cbe57656934e44a4` and `45032f2` are pushed on `fix/748-release-readiness`; draft PR #749 is open against #731.
-- No merge or deployment has occurred.
+- Readiness work-unit commit `fa612bf9287a93e3467be838cbe57656934e44a4` is in PR #749; task evidence doc commit `45032f2` and follow-up `d6e3051` are on the child branch.
+- PR #749 was merged into #731's head as `1d7e0afdee46bb666561071091a6c35a7105d651`; PR #731 was merged into #730's head as `f1be34987691b1435d35194f1ab82af75eb98e61`.
+- Current local branch is `feat/release-2026-10-01-04-rls` at PR #730 head `f1be34987691b1435d35194f1ab82af75eb98e61`.
+- The task record is modified locally for RC-03 progress; it is not yet committed/pushed. No production release dispatch has occurred.
 - Empty partial directory from failed PostgreSQL 16 attempt remains at the user-selected Drive backup destination as `sebasam-public-2026-10-28T08-24-40-673Z`; preserve it.
