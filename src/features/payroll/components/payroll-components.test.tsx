@@ -9,6 +9,7 @@ import { PayrollWorkerDetail } from "./payroll-worker-detail";
 import { PayrollView } from "./payroll-view";
 import { PayrollWorkerEnvelopeDocument } from "./payroll-worker-envelope-document";
 import { PayrollWorkerEnvelopeModal } from "./payroll-worker-envelope";
+import { PayrollSigningSheetDocument } from "./payroll-signing-sheet-document";
 import { WeeklyPayrollSummary } from "./weekly-payroll-summary";
 import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
@@ -387,6 +388,52 @@ describe("Payroll UI Components", () => {
     expect(screen.getByText("Ayudantes generales")).toBeInTheDocument();
     expect(screen.getAllByText("Helper One")).toHaveLength(2);
     expect(screen.queryByText("Mano de obra - Helper One")).not.toBeInTheDocument();
+  });
+
+  it("includes fixed-pay helpers in the dedicated signing sheet document", () => {
+    const period: ParsedPayrollParams = {
+      mode: "weekly",
+      anchor: "2026-08-17",
+      prevAnchor: "2026-08-10",
+      nextAnchor: "2026-08-24",
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      isCurrentPeriod: true,
+      start: new Date("2026-08-17T06:00:00Z"),
+      end: new Date("2026-08-23T06:00:00Z"),
+    };
+    const report: WeeklyPayrollReport = {
+      startDate: period.start,
+      endDate: period.end,
+      rangeLabel: period.rangeLabel,
+      isCurrentWeek: true,
+      totalWorkers: 1,
+      totalCompletedOrders: 0,
+      totalClientLaborCents: 0,
+      totalPayrollBaseCents: 0,
+      totalCommissionCents: 0,
+      totalFixedWeeklyPayCents: 600000,
+      totalPayableCents: 600000,
+      workers: [],
+      fixedPayHelpers: [
+        {
+          workerId: "helper-1",
+          displayName: "Helper Only",
+          weeklyRateCents: 600000,
+          dailyRateCents: 100000,
+          absenceDays: 0,
+          absenceDeductionCents: 0,
+          manualCommissionCents: 0,
+          totalPayableCents: 600000,
+        },
+      ],
+      unassignedOrders: [],
+    };
+
+    render(<PayrollSigningSheetDocument report={report} period={period} />);
+
+    expect(screen.getByText("Helper Only")).toBeInTheDocument();
+    expect(screen.queryByText(/No hay trabajadores con trabajos registrados/i)).not.toBeInTheDocument();
   });
 
   it("prints one weekly summary and switches only its presentation amounts", () => {
