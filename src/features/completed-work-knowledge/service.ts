@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { KnowledgeIndexState, Prisma, WorkerKind, WorkOrderStatus } from "@prisma/client";
+import { KnowledgeIndexState, Prisma, WorkerKind, WorkOrderStatus } from "@/generated/prisma/client";
 import { createGeminiProvider, type HistoricalProvider } from "@/features/historical/provider";
 import { mexicoCityCalendarDate } from "@/features/quotes/lib/operational-date";
 import { prisma } from "@/lib/prisma";

@@ -1,4 +1,4 @@
-import { AssignmentStatus, Prisma, QuoteDecisionOrigin, QuoteLifecycleEventType, QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
+import { AssignmentStatus, Prisma, QuoteDecisionOrigin, QuoteLifecycleEventType, QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@/generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireOperationalRole } from "@/lib/auth/session";

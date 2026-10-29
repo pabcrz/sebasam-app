@@ -6,7 +6,7 @@ import {
   Prisma,
   QuoteStatus,
   WorkOrderStatus,
-} from "@prisma/client";
+} from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
 import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";

@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { CheckCircle2, ClipboardList, Coins, RotateCcw, UserCheck, X } from "lucide-react";
-import type { QuoteOperationKind, QuoteStatus, UserRole, WorkOrderStatus } from "@prisma/client";
+import type { QuoteOperationKind } from "@/generated/prisma/enums";
+import type { QuoteStatus, UserRole, WorkOrderStatus } from "@/generated/prisma/client";
 import {
   Badge,
   Button,

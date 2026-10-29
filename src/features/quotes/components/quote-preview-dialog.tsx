@@ -15,7 +15,7 @@ import { QuotePreviewCard, type QuotePreviewCardProps } from "./quote-preview-ca
 import {
   resolveQuotePreviewContact,
   resolveQuotePreviewCustomer,
-} from "@/features/quotes/lib/quote-snapshots";
+} from "@/features/quotes/lib/quote-snapshot-display";
 
 export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & {
   customer: (Pick<NonNullable<QuoteListSummary["customer"]>, "name"> & {

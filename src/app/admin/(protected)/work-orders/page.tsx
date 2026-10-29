@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { WorkerKind } from "@prisma/client";
+import { WorkerKind } from "@/generated/prisma/client";
 import { listActiveWorkOrders, listActiveWorkers } from "@/features/work-orders/queries";
 import {
   Card,

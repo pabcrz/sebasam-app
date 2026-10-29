@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { Prisma, QuoteDecisionOrigin, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { Prisma, QuoteDecisionOrigin, QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   DOCUMENT_SLUG_SUFFIX_LENGTH,

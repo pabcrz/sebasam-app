@@ -1,4 +1,4 @@
-import type { Prisma, Vehicle } from "@prisma/client";
+import type { Prisma, Vehicle } from "@/generated/prisma/client";
 import { normalizeVehiclePlate, vehicleInputSchema, type VehicleInput } from "./schemas";
 
 type VehicleTransactionClient = Pick<Prisma.TransactionClient, "vehicle">;

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Plus, Phone, Edit2, Trash2, UserCheck, UserX, Users } from "lucide-react";
 import toast from "react-hot-toast";
-import type { CustomerContactRole } from "@prisma/client";
+import type { CustomerContactRole } from "@/generated/prisma/client";
 import {
   Badge,
   Button,

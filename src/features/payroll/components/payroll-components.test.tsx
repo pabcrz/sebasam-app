@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
-import { PayrollPeriodStatus, QuoteItemType, WorkerKind } from "@prisma/client";
+import { PayrollPeriodStatus, QuoteItemType, WorkerKind } from "@/generated/prisma/client";
 import { PayrollPeriodNav } from "./payroll-period-nav";
 import { PayrollMetrics } from "./payroll-metrics";
 import { PayrollUnassignedCard } from "./payroll-worker-card";

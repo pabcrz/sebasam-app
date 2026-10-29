@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { QuoteItemType, WorkerKind } from "@prisma/client";
+import { QuoteItemType, WorkerKind } from "@/generated/prisma/client";
 import {
   buildWeeklyPayrollReport,
   computeCommissionCents,

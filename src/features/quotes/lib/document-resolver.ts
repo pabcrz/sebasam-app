@@ -1,4 +1,4 @@
-import { WorkOrderStatus } from "@prisma/client";
+import { WorkOrderStatus } from "@/generated/prisma/enums";
 
 export type ResolvableQuote = {
   number: string;

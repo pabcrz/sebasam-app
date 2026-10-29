@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PersonType } from "@prisma/client";
+import { PersonType } from "@/generated/prisma/client";
 
 const optionalTrimmedString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),

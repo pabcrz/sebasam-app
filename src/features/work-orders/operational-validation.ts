@@ -1,4 +1,4 @@
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/client";
 import { calculateItemTotalCents, calculateQuoteTotals } from "@/features/quotes/lib/calculate";
 import { WorkOrderOperationError } from "./domain";
 

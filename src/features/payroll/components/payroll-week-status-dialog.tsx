@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Lock, Unlock, AlertTriangle, Loader2 } from "lucide-react";
-import { PayrollPeriodStatus } from "@prisma/client";
+import { PayrollPeriodStatus } from "@/generated/prisma/enums";
 import toast from "react-hot-toast";
 import {
   Button,

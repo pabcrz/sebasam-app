@@ -1,4 +1,4 @@
-import { PaymentRequestStatus, Prisma, QuoteStatus, SettlementAgreementStatus } from "@prisma/client";
+import { PaymentRequestStatus, Prisma, QuoteStatus, SettlementAgreementStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
 import { calculateConfirmedQuoteTotals } from "@/features/quotes/lib/calculate";

@@ -1,4 +1,4 @@
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/enums";
 import { getMeaningfulTextError, isMeaningfulText } from "@/lib/meaningful-text";
 
 export type Step = "client" | "items" | "notes" | "preview";

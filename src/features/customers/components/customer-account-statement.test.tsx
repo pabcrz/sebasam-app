@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { LedgerEntryType, LedgerMovementType, PaymentMethod } from "@prisma/client";
+import { LedgerEntryType, LedgerMovementType, PaymentMethod } from "@/generated/prisma/client";
 import { CustomerAccountStatement } from "./customer-account-statement";
 import type { CustomerAccountStatement as CustomerAccountStatementType } from "../queries";
 

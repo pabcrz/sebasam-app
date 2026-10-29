@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import { mexicoCityCalendarDate } from "./operational-date";
 
 export type DailyDocumentType = "C" | "N";

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/client";
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 

@@ -1,4 +1,4 @@
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/enums";
 import { z } from "zod";
 
 export const historicalSourceSchema = z.enum(["voice", "text", "excel"]);

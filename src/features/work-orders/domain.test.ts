@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
+import { QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@/generated/prisma/client";
 import {
   assertActiveWorker,
   assertApprovedQuote,

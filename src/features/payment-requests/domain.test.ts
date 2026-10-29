@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import crypto from "node:crypto";
-import { PaymentRequestStatus } from "@prisma/client";
+import { PaymentRequestStatus } from "@/generated/prisma/client";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {

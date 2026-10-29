@@ -1,4 +1,4 @@
-import { Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { Prisma, QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";

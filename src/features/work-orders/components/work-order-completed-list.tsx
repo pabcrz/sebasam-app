@@ -13,7 +13,7 @@ import { formatCents } from "@/features/quotes/lib/format";
 import { derivePaymentState } from "@/features/work-orders/payment-state";
 import { NotaDetailDialog } from "./nota-detail-dialog";
 import { NotaCard } from "./nota-card";
-import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshot-display";
 import { resolveDocumentFolio, resolveAntecedentQuoteFolio } from "@/features/quotes/lib/document-resolver";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";

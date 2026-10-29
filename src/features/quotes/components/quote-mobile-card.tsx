@@ -3,7 +3,8 @@
 import * as React from "react";
 import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
 import { PrintActionButton } from "./print-action-button";
-import { QuoteItemType, type PaymentRequest, type QuoteStatus } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/enums";
+import type { PaymentRequest, QuoteStatus } from "@/generated/prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, OperationalCard } from "@/components/ui";
 import { formatCents, formatDate, formatOperationalDate, formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";

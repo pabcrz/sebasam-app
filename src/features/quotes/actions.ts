@@ -12,7 +12,7 @@ import {
   QuoteStatus,
   SettlementAgreementStatus,
   WorkOrderStatus,
-} from "@prisma/client";
+} from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole, requireAdmin } from "@/lib/auth/session";
 import { measureServerTiming, recordServerTiming } from "@/lib/server-timing";

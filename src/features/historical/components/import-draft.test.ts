@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/client";
 import { draftToPayload, payloadToDraft, resolveMasterId, validateDraftWork } from "./import-draft";
 
 const payload = {

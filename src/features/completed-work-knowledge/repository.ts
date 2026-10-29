@@ -1,4 +1,4 @@
-import { KnowledgeIndexState, Prisma, QuoteItemType, WorkOrderStatus, WorkerKind } from "@prisma/client";
+import { KnowledgeIndexState, Prisma, QuoteItemType, WorkOrderStatus, WorkerKind } from "@/generated/prisma/client";
 import { evaluatePayrollItem } from "@/features/payroll/domain";
 import { mexicoCityCalendarDate } from "@/features/quotes/lib/operational-date";
 import { prisma } from "@/lib/prisma";

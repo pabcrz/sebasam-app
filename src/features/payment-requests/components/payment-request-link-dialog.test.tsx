@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { PaymentRequest } from "@prisma/client";
+import type { PaymentRequest } from "@/generated/prisma/client";
 import {
   PaymentRequestLinkDialog,
   type PaymentRequestDialogContext,

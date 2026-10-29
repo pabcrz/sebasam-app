@@ -1,4 +1,4 @@
-import { UserRole, WorkerKind } from "@prisma/client";
+import { UserRole, WorkerKind } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { workerSearchSchema } from "./schemas";

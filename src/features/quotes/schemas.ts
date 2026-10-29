@@ -1,4 +1,4 @@
-import { QuoteItemType, QuoteOperationKind } from "@prisma/client";
+import { QuoteItemType, QuoteOperationKind } from "@/generated/prisma/enums";
 import { z } from "zod";
 import { isMeaningfulText } from "@/lib/meaningful-text";
 import { normalizeOperationalDate } from "./lib/operational-date";
