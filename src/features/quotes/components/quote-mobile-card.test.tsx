@@ -59,7 +59,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     lockedById: null,
     lockedReason: null,
     approvedAt: null,
-    administrative: false, deletedAt: null,
+    administrative: false, deletedAt: null, retentionStartedAt: null,
     operationalDate: new Date("2026-06-15T00:00:00.000Z"),
     createdAt: new Date("2026-07-01"),
     updatedAt: new Date("2026-07-01"),
@@ -232,10 +232,12 @@ describe("QuoteListCard", () => {
       "items-center",
     );
     expect(edit).toHaveClass("h-11", "w-full", "min-w-0", "px-0", "sm:h-9", "sm:w-full", "sm:px-0");
+    expect(within(edit).getByText("Editar").previousElementSibling).toHaveClass("h-5", "w-5");
     expect(within(edit).getByText("Editar")).toHaveClass("sr-only");
     expect(print).toHaveAttribute("aria-label", "Imprimir cotización C-001");
     expect(print).toHaveAttribute("title", "Imprimir cotización C-001");
     expect(print).toHaveClass("h-11", "w-full", "min-w-0", "px-0", "sm:h-9", "sm:w-full", "sm:px-0");
+    expect(print.querySelector("svg")).toHaveClass("h-5", "w-5");
     expect(within(print).getByText("Imprimir")).toHaveClass("sr-only");
     expect(share).toHaveAttribute("aria-label", "Compartir cotización C-001");
     expect(share).toHaveClass("bg-[image:var(--gradient-primary)]");

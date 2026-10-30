@@ -933,7 +933,7 @@ export async function archiveQuote(quoteId: string, reason: string) {
 
     const archived = await tx.quote.updateMany({
       where: { id: quoteId, status: quote.status },
-      data: { status: QuoteStatus.ARCHIVED },
+      data: { status: QuoteStatus.ARCHIVED, retentionStartedAt: null },
     });
     if (archived.count !== 1) throw new Error("Quote archive state changed. Reload and try again.");
 
@@ -950,7 +950,7 @@ export async function archiveQuote(quoteId: string, reason: string) {
   revalidatePath(quotesPath);
 }
 
-/** Archives a completed Note without revoking its canonical link or payments. */
+/** Archives a completed Note, revoking public links only for standalone SALE Notes. */
 export async function archiveCompletedNote(quoteId: string, reason: string) {
   const { profile } = await requireAdmin();
   const parsedReason = quoteLifecycleReasonSchema.safeParse(reason);
@@ -972,9 +972,17 @@ export async function archiveCompletedNote(quoteId: string, reason: string) {
 
     const archived = await tx.quote.updateMany({
       where: { id: quoteId, status: quote.status },
-      data: { status: QuoteStatus.ARCHIVED },
+      data: { status: QuoteStatus.ARCHIVED, retentionStartedAt: null },
     });
     if (archived.count !== 1) throw new Error("Note archive state changed. Reload and try again.");
+
+    if (!quote.workOrder && quote.payableNote?.kind === "SALE") {
+      await tx.sharedQuote.updateMany({
+        where: { quoteId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+
     await tx.quoteLifecycleEvent.create({
       data: {
         quoteId,
@@ -1018,9 +1026,18 @@ export async function restoreArchivedQuote(quoteId: string, reason: string) {
   if (!parsedReason.success) throw new Error("Restore reason is required.");
 
   await prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({
+      where: { id: quoteId },
+      select: { status: true, validUntil: true },
+    });
+    if (!quote || quote.status !== QuoteStatus.ARCHIVED) throw new Error("Only archived quotes can be restored.");
+    if (quote.validUntil <= new Date()) {
+      throw new Error("This quote's commercial validity has ended and it cannot be restored as a draft.");
+    }
+
     const restored = await tx.quote.updateMany({
       where: { id: quoteId, status: QuoteStatus.ARCHIVED },
-      data: { status: QuoteStatus.DRAFT },
+      data: { status: QuoteStatus.DRAFT, retentionStartedAt: null },
     });
     if (restored.count !== 1) throw new Error("Only archived quotes can be restored.");
     await tx.quoteLifecycleEvent.create({
@@ -1028,6 +1045,43 @@ export async function restoreArchivedQuote(quoteId: string, reason: string) {
     });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   revalidatePath(quotesPath);
+}
+
+export async function restoreTrashedQuote(quoteId: string, reason: string) {
+  const { profile } = await requireOperationalRole();
+  const parsedReason = quoteLifecycleReasonSchema.safeParse(reason);
+  if (!parsedReason.success) throw new Error("Restore reason is required.");
+  const now = new Date();
+  const trashStartedAt = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  await prisma.$transaction(async (tx) => {
+    const quote = await tx.quote.findUnique({
+      where: { id: quoteId },
+      select: { status: true, deletedAt: true, retentionStartedAt: true },
+    });
+    if (
+      !quote || quote.status !== QuoteStatus.ARCHIVED || !quote.retentionStartedAt || !quote.deletedAt ||
+      quote.deletedAt < trashStartedAt || quote.deletedAt > now
+    ) throw new Error("Only quotes in recoverable retention trash can be restored.");
+
+    const restored = await tx.quote.updateMany({
+      where: { id: quoteId, status: QuoteStatus.ARCHIVED, deletedAt: quote.deletedAt, retentionStartedAt: { not: null } },
+      data: { deletedAt: null, retentionStartedAt: null },
+    });
+    if (restored.count !== 1) throw new Error("Quote restore state changed. Reload and try again.");
+    await tx.quoteLifecycleEvent.create({
+      data: { quoteId, previousState: QuoteStatus.ARCHIVED, nextState: QuoteStatus.ARCHIVED, actorId: profile.id, reason: parsedReason.data },
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  revalidatePath(quotesPath);
+  revalidatePath(`${quotesPath}/retention`);
+}
+
+export async function restoreTrashedQuoteFromForm(formData: FormData) {
+  const quoteId = formData.get("quoteId");
+  const reason = formData.get("reason");
+  if (typeof quoteId !== "string" || typeof reason !== "string") throw new Error("Quote restore details are required.");
+  await restoreTrashedQuote(quoteId, reason);
 }
 
 async function deleteQuoteAuthorized(quoteId: string) {

@@ -6,6 +6,19 @@ deploy production from `main`.
 
 ## Manual configuration
 
+### Quote retention cron
+
+Vercel runs `/api/cron/quote-retention` daily at `0 0 * * *` (UTC), as declared
+in the repository's [`vercel.json`](../vercel.json). The route fails closed unless
+the request includes the Vercel cron authorization header matching `CRON_SECRET`.
+Add `CRON_SECRET` as a Vercel project environment variable for Production (and
+Preview only when scheduled processing is intentionally enabled there); use a
+high-entropy value and keep it out of source control, logs, and build output.
+Vercel supplies the cron authorization header from that configured value. After
+configuration, verify the cron is enabled for the intended deployment and monitor
+the route's success/failure logs. Do not manually invoke it against a production
+database as part of local development.
+
 ### GitHub Environment
 
 Create a GitHub Environment named `production` and configure it before enabling
@@ -29,8 +42,8 @@ secrets for them and do not expose them to pull-request workflows.
    to create deployments and read their status for that project; never print or
    store its value outside the Environment secret.
 4. Do not change Git deployment settings in the Vercel dashboard. The repository
-   [`vercel.json`](../vercel.json) disables automatic Git deployments only for
-   `main`; preview deployments from other branches remain enabled.
+   [`vercel.json`](../vercel.json) disables automatic Git deployments for all
+   branches except `develop`; `main` is explicitly disabled.
 
 This policy is mandatory: automatic Vercel deployment from `main` and GitHub
 Actions can otherwise race, allowing application code to reach production before
@@ -68,7 +81,7 @@ Concurrent releases are serialized. An in-progress release is never cancelled.
   workflow from `main`.
 - [ ] `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, and `VERCEL_TEAM_ID` are configured
   only in the `production` Environment.
-- [ ] `vercel.json` disables automatic Git deployment only for `main`.
+- [ ] `vercel.json` disables automatic Git deployments for every branch except `develop`; `main` is explicitly disabled.
 
 See [`DATABASE_SAFETY.md`](./DATABASE_SAFETY.md) for the supported backup command
 and its coverage boundary.

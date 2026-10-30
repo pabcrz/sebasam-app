@@ -152,7 +152,7 @@ export function PayrollWorkerEnvelopeModal({
         <div className="flex min-w-0 max-w-full justify-center py-1">
           <div
             id="payroll-worker-envelope-document"
-            className="w-[360px] max-w-full rounded-xl border border-slate-200 bg-white p-4 text-slate-900 shadow-sm space-y-4 print:box-border print:w-full print:max-w-none print:min-h-[237mm] print:space-y-5 print:rounded-none print:border-none print:p-[14mm_18mm] print:m-0 print:shadow-none print:break-inside-avoid"
+            className="mx-auto w-[360px] max-w-full rounded-none bg-white p-3 text-slate-900 space-y-3 print:mx-auto print:w-[7.9cm] print:max-w-[7.9cm] print:min-h-[16.5cm] print:space-y-1 print:border-none print:p-0 print:shadow-none print:break-inside-avoid"
           >
             {/* Header with Clean Inverted Logo */}
             <div className="border-b-2 border-slate-900 pb-3 print:pb-3 flex items-center justify-between gap-1.5">
@@ -189,7 +189,7 @@ export function PayrollWorkerEnvelopeModal({
               </div>
             </div>
 
-            {/* Compact envelope table - In print: no thead, no lines, minimal vertical padding */}
+            {/* Compact envelope table - In print: no lines, minimal vertical padding */}
             <div className="border border-slate-200 rounded-md overflow-hidden print:break-inside-avoid">
               <table className="w-full table-fixed border-collapse text-left">
                 <thead className="print:table-header-group">

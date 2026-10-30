@@ -11,6 +11,7 @@ import { PayrollUnassignedCard } from "./payroll-worker-card";
 import { PayrollOverviewTable } from "./payroll-overview-table";
 import { FixedPayHelperTable } from "./fixed-pay-helper-table";
 import { PayrollWorkerDetail } from "./payroll-worker-detail";
+import { WeeklyPayrollSummary } from "./weekly-payroll-summary";
 import { PayrollSigningSheetModal } from "./payroll-signing-sheet";
 import { PayrollWorkerEnvelopeModal } from "./payroll-worker-envelope";
 
@@ -63,6 +64,8 @@ export function PayrollView({ report, period, role = "SUPER_ADMIN" }: PayrollVie
 
       {/* Unassigned orders alert if any */}
       <PayrollUnassignedCard orders={report.unassignedOrders} />
+
+      {period.mode === "weekly" && hasPayrollEntries && <WeeklyPayrollSummary report={report} />}
 
       {/* Content: Summary Table + Focused Worker Detail */}
       {hasPayrollEntries ? (

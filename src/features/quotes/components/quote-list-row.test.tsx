@@ -58,7 +58,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     lockedById: null,
     lockedReason: null,
     approvedAt: null,
-    administrative: false, deletedAt: null,
+    administrative: false, deletedAt: null, retentionStartedAt: null,
     operationalDate: new Date("2026-06-15T00:00:00.000Z"),
     createdAt: new Date("2026-06-15"),
     updatedAt: new Date("2026-06-15"),
