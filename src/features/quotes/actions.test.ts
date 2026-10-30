@@ -20,6 +20,7 @@ import {
   publishSharedQuote,
   revokeNoteCanonicalLinkAction,
   restoreArchivedQuote,
+  restoreTrashedQuote,
   unlockQuoteAction,
   updateDraftQuote,
   updateDraftQuoteFromForm,
@@ -1160,7 +1161,7 @@ describe("quote lifecycle", () => {
 
     await archiveQuote("quote-1", "Reference quote retained for future pricing.");
 
-    expect(tx.quote.updateMany).toHaveBeenCalledWith({ where: { id: "quote-1", status: QuoteStatus.DRAFT }, data: { status: QuoteStatus.ARCHIVED } });
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({ where: { id: "quote-1", status: QuoteStatus.DRAFT }, data: { status: QuoteStatus.ARCHIVED, retentionStartedAt: null } });
     expect(tx.sharedQuote.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { revokedAt: expect.any(Date) } }));
     expect(tx.paymentRequest.updateMany).toHaveBeenCalledWith({
       where: { quoteId: "quote-1", status: { notIn: ["CANCELLED", "EXPIRED"] } },
@@ -1179,14 +1180,60 @@ describe("quote lifecycle", () => {
 
   it("restores only an archived quote to draft and records a separate event", async () => {
     const tx = mockTx();
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      status: QuoteStatus.ARCHIVED,
+      validUntil: new Date("2099-01-01T00:00:00.000Z"),
+    });
     tx.quote.updateMany.mockResolvedValue({ count: 1 });
 
     await restoreArchivedQuote("quote-1", "Customer requested a revised estimate.");
 
-    expect(tx.quote.updateMany).toHaveBeenCalledWith({ where: { id: "quote-1", status: QuoteStatus.ARCHIVED }, data: { status: QuoteStatus.DRAFT } });
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({ where: { id: "quote-1", status: QuoteStatus.ARCHIVED }, data: { status: QuoteStatus.DRAFT, retentionStartedAt: null } });
     expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({ previousState: QuoteStatus.ARCHIVED, nextState: QuoteStatus.DRAFT }) });
     expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
     expect(tx.paymentRequest.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("does not restore an expired archived quote as an active draft", async () => {
+    const tx = mockTx(QuoteStatus.ARCHIVED);
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      status: QuoteStatus.ARCHIVED,
+      validUntil: new Date("2026-09-01T00:00:00.000Z"),
+    });
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(restoreArchivedQuote("quote-1", "Customer requested a revised estimate."))
+      .rejects.toThrow(/validity has ended/i);
+
+    expect(tx.quote.updateMany).not.toHaveBeenCalled();
+    expect(tx.quoteLifecycleEvent.create).not.toHaveBeenCalled();
+  });
+
+  it("restores a trashed quote as archived without reviving its public link", async () => {
+    const tx = mockTx(QuoteStatus.ARCHIVED);
+    const deletedAt = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.ARCHIVED, deletedAt, retentionStartedAt: new Date("2026-09-01T00:00:00Z") });
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+
+    await restoreTrashedQuote("quote-1", "Requested by administrator");
+
+    expect(requireOperationalRole).toHaveBeenCalled();
+    expect(tx.quote.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: QuoteStatus.ARCHIVED, deletedAt, retentionStartedAt: { not: null } }),
+      data: { deletedAt: null, retentionStartedAt: null },
+    }));
+    expect(tx.quoteLifecycleEvent.create).toHaveBeenCalledWith({ data: expect.objectContaining({ previousState: QuoteStatus.ARCHIVED, nextState: QuoteStatus.ARCHIVED }) });
+    expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects trashed quotes outside the recovery window", async () => {
+    const tx = mockTx(QuoteStatus.ARCHIVED);
+    tx.quote.findUnique.mockResolvedValue({ status: QuoteStatus.ARCHIVED, deletedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000), retentionStartedAt: new Date() });
+
+    await expect(restoreTrashedQuote("quote-1", "Requested by administrator")).rejects.toThrow(/recoverable retention trash/i);
+    expect(tx.quote.updateMany).not.toHaveBeenCalled();
   });
 });
 
@@ -1633,7 +1680,7 @@ describe("getOrCreateSharedQuoteAction", () => {
 describe("completed Note archive and revocation", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("archives a completed Note without revoking its canonical link or payment requests", async () => {
+  it("archives a completed WORK Note without revoking its canonical link or payment requests", async () => {
     const tx = mockTx();
     vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: "admin-1" } } as never);
     tx.quote.findUnique.mockResolvedValue({
@@ -1641,6 +1688,7 @@ describe("completed Note archive and revocation", () => {
       isLocked: false,
       status: QuoteStatus.APPROVED,
       workOrder: { id: "work-order-1", status: WorkOrderStatus.COMPLETED },
+      payableNote: { id: "work-note-1", kind: "WORK", status: "ISSUED" },
     } as never);
     tx.quote.updateMany.mockResolvedValue({ count: 1 });
 
@@ -1648,10 +1696,37 @@ describe("completed Note archive and revocation", () => {
 
     expect(tx.quote.updateMany).toHaveBeenCalledWith({
       where: { id: "quote-1", status: QuoteStatus.APPROVED },
-      data: { status: QuoteStatus.ARCHIVED },
+      data: { status: QuoteStatus.ARCHIVED, retentionStartedAt: null },
     });
     expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
     expect(tx.paymentRequest.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("archives an issued SALE Note without work order by revoking active public links and preserving payment records", async () => {
+    const tx = mockTx();
+    vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: "admin-1" } } as never);
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      isLocked: false,
+      status: QuoteStatus.SENT,
+      workOrder: null,
+      payableNote: { id: "sale-note-1", kind: "SALE", status: "ISSUED" },
+    } as never);
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+
+    await archiveCompletedNote("quote-1", "Archivo administrativo");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "quote-1", status: QuoteStatus.SENT },
+      data: { status: QuoteStatus.ARCHIVED, retentionStartedAt: null },
+    });
+    expect(tx.sharedQuote.updateMany).toHaveBeenCalledWith({
+      where: { quoteId: "quote-1", revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(tx.paymentRequest.updateMany).not.toHaveBeenCalled();
+    expect(tx.paymentApplication.update).not.toHaveBeenCalled();
+    expect(tx.paymentApplication.create).not.toHaveBeenCalled();
   });
 
   it("passes the admin and reason to the canonical link revocation audit", async () => {

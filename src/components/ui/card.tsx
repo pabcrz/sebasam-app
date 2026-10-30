@@ -3,13 +3,19 @@
 import * as React from "react";
 import { clsx } from "clsx";
 
-export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => {
+type CardProps = React.HTMLAttributes<HTMLDivElement> & {
+  flush?: boolean;
+};
+
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, flush = false, ...props }, ref) => {
     return (
       <div
         ref={ref}
         className={clsx(
-          "w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-[var(--space-md)] shadow-[var(--shadow-card)]",
+          "w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)]",
+          !flush && "p-[var(--space-md)]",
+          "shadow-[var(--shadow-card)]",
           className,
         )}
         {...props}

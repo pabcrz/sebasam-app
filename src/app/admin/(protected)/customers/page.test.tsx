@@ -12,6 +12,8 @@ describe("CustomersPage", () => {
     render(await CustomersPage({ searchParams: Promise.resolve({}) }));
     expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Buscar clientes" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Buscar clientes" }).closest("[class~='min-w-0']")).toBeInTheDocument();
+    expect(screen.getByText("No se encontraron clientes.").closest("[class~='min-w-0']")).toBeInTheDocument();
     expect(screen.getByText("No se encontraron clientes.")).toBeInTheDocument();
   });
 });
