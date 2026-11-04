@@ -1,5 +1,5 @@
 import type React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { QuoteFilterInput } from "@/features/quotes/schemas";
@@ -38,6 +38,71 @@ function renderFilters(filters: Partial<QuoteFilterInput> = {}) {
 }
 
 describe("QuoteFilters", () => {
+  beforeEach(() => push.mockClear());
+
+  it.each([
+    [{ showCancelled: true }, "Canceladas"],
+    [{ showArchived: true }, "Archivadas"],
+    [{ showCancelled: true, showArchived: true }, "Todas"],
+    [{ status: "DRAFT", showArchived: true }, "Borrador"],
+  ] as const)("preserves active status selection for %j", (filters, label) => {
+    renderFilters(filters);
+    expect(screen.getByRole("link", { name: label })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("preserves status URLs, false order filters and dates while dropping visibility flags and pagination", () => {
+    renderFilters({
+      customerId: "cust-1", number: "C 001", plate: "ABC-123", hasWorkOrder: false,
+      dateFrom: new Date("2026-01-01T00:00:00Z"), dateTo: new Date("2026-01-31T00:00:00Z"),
+      showCancelled: true, showArchived: true,
+    });
+
+    const query = "customerId=cust-1&number=C+001&plate=ABC-123&dateFrom=2026-01-01&dateTo=2026-01-31&hasWorkOrder=false";
+    expect(screen.getByRole("link", { name: "Enviadas" })).toHaveAttribute("href", `/admin/quotes?status=SENT&${query}`);
+    expect(screen.getByRole("link", { name: "Todas" })).toHaveAttribute("href", `/admin/quotes?${query}`);
+    expect(screen.getByText("8 filtros activos")).toBeInTheDocument();
+    for (const summary of ["Cliente: Constructora del Norte", "Folio: C 001", "Placas: ABC-123", "Desde: 2026-01-01", "Hasta: 2026-01-31", "Sin Orden", "Mostrar canceladas", "Mostrar archivadas"]) {
+      expect(screen.getByText(summary)).toBeInTheDocument();
+    }
+  });
+
+  it("preserves the base all-status URL and unknown customer summary", () => {
+    renderFilters({ customerId: "missing-customer" });
+    expect(screen.getByText("Cliente: missing-customer")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Todas" })).toHaveAttribute("href", "/admin/quotes?customerId=missing-customer");
+  });
+
+  it("submits trimmed fields, false order and dates without pagination", async () => {
+    const user = userEvent.setup();
+    renderFilters({ hasWorkOrder: false, dateFrom: new Date("2026-01-01T00:00:00Z"), dateTo: new Date("2026-01-31T00:00:00Z") });
+    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
+    await user.type(screen.getByLabelText("Folio"), " C-001 ");
+    await user.type(screen.getByLabelText("Placas"), "   ");
+    await user.click(screen.getByRole("button", { name: /filtrar/i }));
+    expect(push).toHaveBeenCalledExactlyOnceWith("/admin/quotes?hasWorkOrder=false&number=C-001&dateFrom=2026-01-01&dateTo=2026-01-31");
+  });
+
+  it("preserves the trailing query marker when submitting an empty form", async () => {
+    const user = userEvent.setup();
+    renderFilters();
+    await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
+    await user.click(screen.getByRole("button", { name: /filtrar/i }));
+    expect(push).toHaveBeenCalledExactlyOnceWith("/admin/quotes?");
+  });
+
+  it("allows keyboard expansion and collapses without navigation", async () => {
+    const user = userEvent.setup();
+    renderFilters();
+    const toggle = screen.getByRole("button", { name: /mostrar filtros/i });
+    toggle.focus();
+    await user.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await user.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: "Todas" })).toHaveAttribute("href", "/admin/quotes");
+  });
+
   it("keeps filter fields collapsed by default", () => {
     renderFilters();
 
