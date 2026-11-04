@@ -30,6 +30,7 @@ import {
   steps,
   validateItemValue,
 } from "./quote-builder-shared";
+import { useQuoteCustomerSearch } from "./use-quote-customer-search";
 import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderStepper } from "./quote-builder-stepper";
 import { QuotePreviewCard } from "./quote-preview-card";
@@ -69,17 +70,9 @@ export type {
  */
 export const QuoteBuilderChromeContext = React.createContext<QuoteBuilderChromeHosts | null>(null);
 
-const customerSearchDelay = 500;
-const minimumCustomerQueryLength = 2;
 const customerListGap = 4;
 const customerListViewportMargin = 8;
 const customerListMaxHeight = 224;
-
-function filterCustomers(customers: CustomerOption[], query: string) {
-  const normalizedQuery = query.trim().toLocaleLowerCase("es-MX");
-  if (!normalizedQuery) return customers;
-  return customers.filter((customer) => customer.name.toLocaleLowerCase("es-MX").includes(normalizedQuery));
-}
 
 export function QuoteBuilder({
   customers,
@@ -101,10 +94,6 @@ export function QuoteBuilder({
     {},
   );
   const initialSelectedCustomer = customers.find((customer) => customer.id === initialData?.customerId);
-  const [customerOptions, setCustomerOptions] = React.useState<CustomerOption[]>(customers);
-  const [customerSearch, setCustomerSearch] = React.useState(initialSelectedCustomer?.name ?? "");
-  const [customerSearchError, setCustomerSearchError] = React.useState<string | null>(null);
-  const [isSearchingCustomers, setIsSearchingCustomers] = React.useState(false);
   const [isCustomerListOpen, setIsCustomerListOpen] = React.useState(false);
   const [activeCustomerIndex, setActiveCustomerIndex] = React.useState(-1);
   const isDirect = mode === "direct" || mode === "direct-work-order" || mode === "direct-note" || mode === "direct-sale";
@@ -117,15 +106,11 @@ export function QuoteBuilder({
   const [masterId, setMasterId] = React.useState("");
   const [isCompleted, setIsCompleted] = React.useState(mode === "direct-note");
   const [paymentDueDate, setPaymentDueDate] = React.useState("");
-  const customerSearchRequest = React.useRef(0);
-  const selectedCustomerRef = React.useRef<CustomerOption | undefined>(initialSelectedCustomer);
   const customerInputRef = React.useRef<HTMLInputElement>(null);
   const customerListRef = React.useRef<HTMLDivElement>(null);
   const formRef = React.useRef<HTMLFormElement>(null);
   const submitButtonRef = React.useRef<HTMLButtonElement>(null);
   const hasExplicitSubmitRequest = React.useRef(false);
-  const knownCustomersRef = React.useRef(new Map(customers.map((customer) => [customer.id, customer])));
-  const customerQueryCache = React.useRef(new Map<string, CustomerOption[]>());
   const [customerListPosition, setCustomerListPosition] = React.useState<React.CSSProperties>({});
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const hasChangedStep = React.useRef(false);
@@ -159,6 +144,24 @@ export function QuoteBuilder({
     operationalDate,
     sections,
   } = builderState;
+  const onCustomerSearchResults = React.useCallback((results: CustomerOption[]) => {
+    setActiveCustomerIndex(results.length ? 0 : -1);
+  }, []);
+  const {
+    customerOptions,
+    customerSearch,
+    customerSearchError,
+    isSearchingCustomers,
+    updateCustomerSearch,
+    selectSearchCustomer,
+    clearCustomerSearchCache,
+  } = useQuoteCustomerSearch({
+    customers,
+    initialSelectedCustomer,
+    customerId,
+    searchCustomersAction,
+    onResults: onCustomerSearchResults,
+  });
   const isOperationalDateEditable = initialData?.isOperationalDateEditable ?? true;
   const [expandedItemRowId, setExpandedItemRowId] = React.useState<string | null>(
     builderState.sections[0]?.rowIds[0] ?? null,
@@ -291,59 +294,13 @@ export function QuoteBuilder({
     };
   }, [isCustomerListOpen]);
 
-  React.useEffect(() => {
-    const query = customerSearch.trim().toLocaleLowerCase("es-MX");
-    if (!searchCustomersAction || customerSearch === selectedCustomer?.name || query.length < minimumCustomerQueryLength) {
-      return;
-    }
-
-    if (customerQueryCache.current.has(query)) return;
-
-    const requestId = ++customerSearchRequest.current;
-    const timeout = window.setTimeout(async () => {
-      setIsSearchingCustomers(true);
-      setCustomerSearchError(null);
-
-      try {
-        const results = await searchCustomersAction({ query: customerSearch });
-        if (requestId === customerSearchRequest.current) {
-          results.forEach((customer) => knownCustomersRef.current.set(customer.id, customer));
-          customerQueryCache.current.set(query, results);
-          const selected = selectedCustomerRef.current;
-          setCustomerOptions(
-            selected && !results.some((customer) => customer.id === selected.id)
-              ? [selected, ...results]
-              : results,
-          );
-          setActiveCustomerIndex(results.length ? 0 : -1);
-        }
-      } catch {
-        if (requestId === customerSearchRequest.current) {
-          setCustomerSearchError("No se pudo buscar clientes. Intenta de nuevo.");
-        }
-      } finally {
-        if (requestId === customerSearchRequest.current) setIsSearchingCustomers(false);
-      }
-    }, customerSearchDelay);
-
-    return () => window.clearTimeout(timeout);
-  }, [customerSearch, searchCustomersAction, selectedCustomer?.name]);
-
   function selectCustomer(customer: CustomerOption) {
-    customerSearchRequest.current += 1;
-    selectedCustomerRef.current = customer;
-    knownCustomersRef.current.set(customer.id, customer);
-    setCustomerOptions((current) =>
-      current.some((option) => option.id === customer.id) ? current : [customer, ...current],
-    );
+    selectSearchCustomer(customer);
     dispatch({ type: "setCustomerId", customerId: customer.id });
     const defaultFp = customer.fiscalProfiles?.find((fp) => fp.isDefault);
     if (defaultFp) {
       dispatch({ type: "setCustomerFiscalProfileId", customerFiscalProfileId: defaultFp.id });
     }
-    setCustomerSearch(customer.name);
-    setCustomerSearchError(null);
-    setIsSearchingCustomers(false);
     setIsCustomerListOpen(false);
     setActiveCustomerIndex(-1);
     setStepError(null);
@@ -436,7 +393,7 @@ export function QuoteBuilder({
       }
     }
 
-    customerQueryCache.current.clear();
+    clearCustomerSearchCache();
     selectCustomer(createdCustomer);
     setNewCustomerName("");
     setNewCustomerLegalName("");
@@ -789,15 +746,8 @@ export function QuoteBuilder({
                 value={customerSearch}
                 onChange={(event) => {
                   const nextSearch = event.target.value;
-                  customerSearchRequest.current += 1;
-                  setCustomerSearch(nextSearch);
+                  const nextOptions = updateCustomerSearch(nextSearch);
                   dispatch({ type: "setCustomerId", customerId: "" });
-                  selectedCustomerRef.current = undefined;
-                  setCustomerSearchError(null);
-                  setIsSearchingCustomers(false);
-                  const cached = customerQueryCache.current.get(nextSearch.trim().toLocaleLowerCase("es-MX"));
-                  const nextOptions = cached ?? filterCustomers([...knownCustomersRef.current.values()], nextSearch);
-                  setCustomerOptions(nextOptions);
                   setIsCustomerListOpen(true);
                   setActiveCustomerIndex(nextOptions.length ? 0 : -1);
                 }}
