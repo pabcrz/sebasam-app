@@ -1,6 +1,6 @@
 # Documentation cleanup — issue #759
 Objective: distinguish current documentation, proposals and history without changing application behavior. Branch: `feature/759-docs-cleanup`.
-Delivery: auto-chain / feature-branch-chain (human selected); forecast 900–1,200 authored changed lines across four reviewable work units; no push or PR authorized. Checks: Markdown references, evidence readback, `git diff --check`; no runtime RED applies to passive documentation.
+Delivery: auto-chain / feature-branch-chain (human selected); four local reviewable slices, tracker branch unchanged; actual boundaries below; no push or PR authorized. Checks: Markdown references, evidence readback, `git diff --check`; no runtime RED applies to passive documentation.
 
 ## Specs
 
@@ -14,8 +14,8 @@ Delivery: auto-chain / feature-branch-chain (human selected); forecast 900–1,2
 
 - T1 [S1,S2,S4] inline; done; README entry point plus verbatim R1–R18 domain reference and history indexes; commit: `569ff9c` (`feature/759-01-doc-entrypoints`, 360 authored lines).
 - T2 [S1,S2,S4] inline; done; current architecture reconciled; MVP bodies preserved with historical banners; SQL-security description corrected; commit: `9444529` (`feature/759-02-current-architecture`, 186 authored lines).
-- T3 [S1,S2,S4] inline; done; deduplicated agent/design guidance; retained issue-first, Next.js warning and all contribution policies; commit: this slice (`feature/759-03-documentation-rules`), hash recorded next slice.
-- T4 [S1,S2,S4] inline; pending; explain OpenSpec/history ownership, correct stale tooling claims, verify references and final scope; commit: pending.
+- T3 [S1,S2,S4] inline; done; deduplicated agent/design guidance; retained issue-first, Next.js warning and all contribution policies; commit: `e5acd00` (`feature/759-03-documentation-rules`, 111 authored lines).
+- T4 [S1,S2,S4] inline; done; OpenSpec inventory/config reconciled, closed #497 archived byte-for-byte, final references and scope verified; commit: terminal slice ref `feature/759-04-spec-history` (exact hash mirrored in Engram after commit).
 
 ## Log
 
@@ -39,3 +39,9 @@ L7 — T1 checks: Python local Markdown destination check and exact preservation
 L8 — T2 checks: Python changed-Markdown destinations, actual page-route table, four exact schema enum tables, unchanged original MVP bodies and SQL-revocation source checks PASS; `git diff --check` PASS. Native assessment passive, `reviewDue: false`; runtime tests not applicable. Slice 2 starts at `569ff9c` and targets slice 1.
 
 L9 — T3 checks: Python Markdown destinations/anchors, exact Next.js warning preservation, retained process-policy assertions and unchanged design-token block PASS. `git diff --check` initially failed on an extra EOF blank line in AGENTS; corrected and rerun PASS. Native assessment medium, `reviewDue: false`, under budget. Slice 3 starts at `9444529` and targets slice 2; no source/runtime changes or app-test claim.
+
+L10 — T4: GitHub #497 was read as CLOSED, closedAt `2026-09-08T06:57:17Z`; its historical PASS report and six files were preserved byte-for-byte under the archive. Canonical specs and prior archive unchanged. YAML RED: `ruby -ryaml -e 'YAML.load_file("openspec/config.yaml")'` exited 1, Psych::SyntaxError (line 52 column 5); GREEN: Ruby YAML parse plus schema/TDD, string-array rule shape and tooling assertions exited 0. Metadata now distinguishes Playwright fixtures from authenticated app E2E, ESLint from formatting, and undeclared coverage tooling. OpenSpec CLI compatibility was not executed or claimed.
+
+L11 — Final structural verification: inline Python script passed 82 local Markdown destinations/anchors, exact retention of R1–R18 and historical MVP bodies, all six archived file byte comparisons, unchanged canonical specs/prior archive and docs/config-only scope. `git diff --check` and cached equivalent PASS. App source, schema/migrations, dependencies, workflows and tests unchanged; no app tests/build/browser checks run because the change is passive docs plus YAML syntax/tooling metadata. Original checkout still shows the same six untracked entries; no files copied or edited there. Native assessments for all completed units returned `reviewDue: false`; no review transaction or independent verifier was required.
+
+L12 — Local delivery chain: `feature/759-docs-cleanup` @ `f02d0c0` ← slice 1 `feature/759-01-doc-entrypoints` @ `569ff9c` (360 lines) ← slice 2 `feature/759-02-current-architecture` @ `9444529` (186 lines) ← slice 3 `feature/759-03-documentation-rules` @ `e5acd00` (111 lines) ← slice 4 `feature/759-04-spec-history` (final commit). Counts use additions+deletions with rename detection; unchanged archived moves add no authored lines. Review each slice against its immediate parent, not against develop. No tracker/child PRs or pushes exist; issue remains open for PR-based closure.
