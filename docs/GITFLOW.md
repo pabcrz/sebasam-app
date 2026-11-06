@@ -9,7 +9,7 @@ This repository uses a pragmatic Gitflow model for a small MVP team. The goal is
 | `main` | Production-ready code only | No direct commits. Changes arrive through PRs from release or hotfix branches. |
 | `develop` | Integration branch for MVP development | Feature and bugfix PRs merge here first. |
 | `feature/<issue-number>-short-name` | Tracked feature work | Branch from `develop` when a tracker number exists. |
-| `feature/<short-name>` | Untracked feature work | Branch from `develop` when there is no tracker number yet. |
+| `feature/<short-name>` | Historical unnumbered branches | Existing naming only; new work requires an approved issue per [AI_WORKFLOW](./AI_WORKFLOW.md#issue-lifecycle). |
 | `bugfix/<short-name>` | Non-production bug fixes | Branch from `develop`. |
 | `release/<version-or-date>` | Deploy preparation | Branch from `develop`, then PR to `main`; merge back to `develop` after release fixes. |
 | `hotfix/<short-name>` | Urgent production fixes | Branch from `main`, then PR to `main` and back to `develop`. |

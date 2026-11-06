@@ -95,5 +95,5 @@ La autorización por secciones ya aparece en `acceptSharedQuote` y `authorizeQuo
 
 - [Diseño](../DESIGN.md): tokens, composición y componentes; Figma es referencia visual, no prueba de cobertura.
 - [Runbooks](../README.md#documentación-una-entrada-por-propósito): configuración y operaciones con datos/release.
-- [MVP histórico](./MVP_STATUS.md) y [backlog original](./MVP_ISSUES.md): contexto anterior, no pendientes actuales.
+- GitHub Issues: tracker de ejecución; el historial de Git conserva los primeros snapshots del MVP, no pendientes actuales.
 - Instalabilidad PWA, seguridad efectiva de la base, credenciales y despliegue requieren verificación en su entorno; no se deducen de este inventario estático.

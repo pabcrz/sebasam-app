@@ -73,7 +73,7 @@ El subtotal general incluye refacciones, mano de obra y servicios. El efectivo n
 
 `PaymentRequest` es una solicitud tokenizada de instrucciones para transferencia. No es un registro de pago, un movimiento de ledger ni una prueba de liquidación; el comprobante recibido tampoco aplica el pago por sí solo.
 
-Los siguientes ejemplos pertenecen al dominio financiero objetivo y permanecen planificados mientras no existan sus entidades y persistencia:
+Los siguientes ejemplos conservan el vocabulario financiero objetivo. No implican que todas las entidades estén pendientes: `Payment` y `LedgerEntry` ya existen, mientras que los nombres persistidos y las diferencias con estos labels se consultan en [arquitectura](./ARCHITECTURE.md#modelo-y-estados-no-confundir-producto-con-enums):
 
 | Concepto | Ejemplos objetivo |
 |---|---|
@@ -87,4 +87,4 @@ Los siguientes ejemplos pertenecen al dominio financiero objetivo y permanecen p
 
 El MVP original excluía el portal tokenizado de clientes. Esa exclusión describe el alcance inicial, no el estado actual: hoy existe `/cotizacion/[token]`. El self-service de trabajadores sigue siendo una propuesta distinta de los registros administrados internamente; no se habilita acceso por el solo hecho de existir `UserRole.WORKER`.
 
-El [backlog original](./MVP_ISSUES.md) y la [evaluación histórica del MVP](./MVP_STATUS.md) conservan contexto de aquellas decisiones. Las especificaciones detalladas de correcciones y clientes están en [OpenSpec](../openspec/README.md).
+El historial de Git conserva los primeros snapshots del MVP; GitHub Issues es el tracker de ejecución vigente. Las especificaciones detalladas de correcciones y clientes están en [OpenSpec](../openspec/README.md).
