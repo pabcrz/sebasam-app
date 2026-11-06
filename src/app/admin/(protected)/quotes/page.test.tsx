@@ -66,6 +66,17 @@ describe("QuotesPage", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Cotizaciones recientes" })).toBeInTheDocument();
   });
 
+  it("groups the list accessibly without an outer card or decorated filter panel", async () => {
+    render(await QuotesPage({ searchParams: Promise.resolve({}) }));
+
+    const region = screen.getByRole("region", { name: "Cotizaciones recientes" });
+    expect(screen.getByRole("heading", { level: 2, name: "Cotizaciones recientes" })).toHaveClass("sr-only");
+    expect([...region.querySelectorAll("div")].some((element) =>
+      element.classList.contains("bg-[var(--color-bg-soft)]") ||
+      element.classList.contains("shadow-[var(--shadow-card)]"),
+    )).toBe(false);
+  });
+
   it("uses equal-height quote cards in a two-column grid", async () => {
     render(await QuotesPage({ searchParams: Promise.resolve({}) }));
 
