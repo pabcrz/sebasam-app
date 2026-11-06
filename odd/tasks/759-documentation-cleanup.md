@@ -1,6 +1,6 @@
 # Documentation cleanup — issue #759
 Objective: distinguish current documentation, proposals and history without changing application behavior. Branch: `feature/759-docs-cleanup`.
-Delivery: auto-chain / feature-branch-chain (human selected); four local reviewable slices, tracker branch unchanged; actual boundaries below; no push or PR authorized. Checks: Markdown references, evidence readback, `git diff --check`; no runtime RED applies to passive documentation.
+Delivery: auto-chain / feature-branch-chain (human selected); four local reviewable slices, tracker branch unchanged; actual boundaries below; publication authorized by S5; merge not authorized. Checks: Markdown references, evidence readback, `git diff --check`; no runtime RED applies to passive documentation.
 
 ## Specs
 
@@ -8,7 +8,8 @@ Delivery: auto-chain / feature-branch-chain (human selected); four local reviewa
 - S2 — "bien, lo hacemos en un worktree limpio para no chocar con otras cosas"
 - S3 — "si hazlo" — approval of the proposed isolated worktree and GitHub issue discovery/creation in the existing session.
 - S4 — "autorizo" — approval of #759 scope and applying `status:approved` before implementation.
-- Assumptions/scope accepted through #759: documentation only; preserve useful specifications and history; do not silently change contribution policies; preserve original checkout and local drafts; no push, PR or merge.
+- S5 — "Abre la P R. Por favor" — publication of the previously selected feature-branch PR chain; no merge authorization.
+- Assumptions/scope accepted through #759: documentation only; preserve useful specifications and history; do not silently change contribution policies; preserve original checkout and local drafts. S5 supersedes the earlier publication restriction; merge remains excluded.
 
 ## Tasks
 
@@ -16,6 +17,8 @@ Delivery: auto-chain / feature-branch-chain (human selected); four local reviewa
 - T2 [S1,S2,S4] inline; done; current architecture reconciled; MVP bodies preserved with historical banners; SQL-security description corrected; commit: `9444529` (`feature/759-02-current-architecture`, 186 authored lines).
 - T3 [S1,S2,S4] inline; done; deduplicated agent/design guidance; retained issue-first, Next.js warning and all contribution policies; commit: `e5acd00` (`feature/759-03-documentation-rules`, 111 authored lines).
 - T4 [S1,S2,S4] inline; done; OpenSpec inventory/config reconciled, closed #497 archived byte-for-byte, final references and scope verified; commit: terminal slice ref `feature/759-04-spec-history` (exact hash mirrored in Engram after commit).
+
+- T5 [S5] inline; in_progress; publish the selected feature-branch PR chain and verify issue/type/base/diff/checks; evidence: pending.
 
 ## Log
 
@@ -45,3 +48,5 @@ L10 — T4: GitHub #497 was read as CLOSED, closedAt `2026-09-08T06:57:17Z`; its
 L11 — Final structural verification: inline Python script passed 82 local Markdown destinations/anchors, exact retention of R1–R18 and historical MVP bodies, all six archived file byte comparisons, unchanged canonical specs/prior archive and docs/config-only scope. `git diff --check` and cached equivalent PASS. App source, schema/migrations, dependencies, workflows and tests unchanged; no app tests/build/browser checks run because the change is passive docs plus YAML syntax/tooling metadata. Original checkout still shows the same six untracked entries; no files copied or edited there. Native assessments for all completed units returned `reviewDue: false`; no review transaction or independent verifier was required.
 
 L12 — Local delivery chain: `feature/759-docs-cleanup` @ `f02d0c0` ← slice 1 `feature/759-01-doc-entrypoints` @ `569ff9c` (360 lines) ← slice 2 `feature/759-02-current-architecture` @ `9444529` (186 lines) ← slice 3 `feature/759-03-documentation-rules` @ `e5acd00` (111 lines) ← slice 4 `feature/759-04-spec-history` (final commit). Counts use additions+deletions with rename detection; unchanged archived moves add no authored lines. Review each slice against its immediate parent, not against develop. No tracker/child PRs or pushes exist; issue remains open for PR-based closure.
+
+L13 — User: "Abre la P R. Por favor". Publish the selected feature-branch chain to github.com/pabcrz/sebasam-app using the same authorized gh session, retaining approved #759 and type:docs. Tracker currently equals develop, so first add the existing slice-1 task document to give it a real documentation diff, then merge that tracker ancestry forward through the local slices without rewriting history. No application content changes; this avoids an empty tracker PR and keeps child diffs isolated.
