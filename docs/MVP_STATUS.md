@@ -1,6 +1,8 @@
-# Estado del MVP en `sebasam-app`
+# Evaluación histórica del MVP en `sebasam-app`
 
-Resumen del estado actual del proyecto y las brechas que faltan cerrar antes del release de producción.
+> **Histórico, no estado actual.** Se conserva la evaluación original como contexto. El porcentaje, los pendientes y las evidencias de abajo corresponden a una etapa anterior: no afirman qué falta hoy. Pagos, ledger, vista pública, nómina y otras funciones ya tienen implementación versionada. Consultá [arquitectura actual](./ARCHITECTURE.md) y los issues vigentes para evaluar brechas; no marcar casillas automáticamente sin verificar sus criterios originales.
+
+Evaluación original del MVP y de las brechas identificadas en aquella revisión:
 
 ## Veredicto general
 

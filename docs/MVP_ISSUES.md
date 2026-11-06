@@ -1,6 +1,8 @@
-# Borrador de backlog del MVP
+# Backlog histórico del MVP
 
-Este documento es un borrador revisable de planificación. Todavía no reemplaza a los issues del tracker. Usalo para acordar alcance, orden de trabajo y criterios de aceptación antes de abrir o implementar cada issue.
+> **Referencia histórica; no es el backlog vigente.** Se conservan la ruta, los criterios y las notas originales. Los números locales no deben confundirse con números de GitHub. Algunas exclusiones y tareas de abajo ya fueron superadas por implementación posterior. GitHub Issues es el tracker; el trabajo futuro se cierra por PR, no editando este archivo. Consultá [arquitectura](./ARCHITECTURE.md) para el inventario actual.
+
+El texto siguiente corresponde al borrador de planificación original:
 
 ## Fuera del MVP
 

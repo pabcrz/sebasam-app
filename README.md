@@ -120,8 +120,9 @@ The bootstrap script does not create Supabase Auth users and does not need a ser
 It only upserts `UserProfile` for an existing Auth user id. `BOOTSTRAP_ROLE` accepts `ADMIN`
 or `ADMIN_ASSISTANT`.
 
-Future admin password management can become an app screen, but it must use Radix primitives and
-Tailwind wrappers derived from the Figma design system instead of invented visual styling.
+La gestión interna de usuarios ya tiene una pantalla en `/admin/users`, reservada a Super Admin.
+Los scripts anteriores siguen siendo herramientas administrativas. Los componentes deben respetar
+los wrappers y las referencias visuales de `DESIGN.md`.
 
 ## Production release
 

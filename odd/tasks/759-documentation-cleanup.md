@@ -12,8 +12,8 @@ Delivery: auto-chain / feature-branch-chain (human selected); forecast 900–1,2
 
 ## Tasks
 
-- T1 [S1,S2,S4] inline; done; README entry point plus verbatim R1–R18 domain reference and history indexes; commit: this slice (`feature/759-01-doc-entrypoints`), hash recorded next slice.
-- T2 [S1,S2,S4] inline; pending; reconcile architecture and status against versioned implementation; commit: pending.
+- T1 [S1,S2,S4] inline; done; README entry point plus verbatim R1–R18 domain reference and history indexes; commit: `569ff9c` (`feature/759-01-doc-entrypoints`, 360 authored lines).
+- T2 [S1,S2,S4] inline; done; current architecture reconciled; MVP bodies preserved with historical banners; SQL-security description corrected; commit: this slice (`feature/759-02-current-architecture`), hash recorded next slice.
 - T3 [S1,S2,S4] inline; pending; consolidate duplicated agent/design guidance without changing contribution policies; commit: pending.
 - T4 [S1,S2,S4] inline; pending; explain OpenSpec/history ownership, correct stale tooling claims, verify references and final scope; commit: pending.
 
@@ -33,5 +33,7 @@ L4 — User: "autorizo". Approval applied and read back: `status:approved`, `typ
 L5 — Human selected `feature-branch-chain`; tracker branch `feature/759-docs-cleanup` remains at the develop base. Slice branches will retain cumulative parentage without push or PR. Remote default branch verified as `develop`.
 
 L6 — Route: parent inline, one coherent documentation cleanup rather than independent behavior units; audit already mapped the relevant surfaces. Existing untracked `docs/product-guide/` and other local artifacts belong to separate work and are not copied. Preserve historical requirements rather than deleting whole directories.
+
+L8 — T2 checks: Python changed-Markdown destinations, actual page-route table, four exact schema enum tables, unchanged original MVP bodies and SQL-revocation source checks PASS; `git diff --check` PASS. Native assessment passive, `reviewDue: false`; runtime tests not applicable. Slice 2 starts at `569ff9c` and targets slice 1.
 
 L7 — T1 checks: Python local Markdown destination check and exact preservation of all 18 original domain-rule rows PASS; `git diff --check` PASS. Passive documentation has no meaningful runtime RED; no app tests/build executed. Native assessment: medium, `reviewDue: false`, `under_budget`, no independent verifier required. Slice 1 starts at `f02d0c0` and targets tracker branch `feature/759-docs-cleanup`; subsequent branches target the immediately preceding slice. No PRs created.
