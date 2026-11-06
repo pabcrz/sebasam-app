@@ -298,7 +298,7 @@ Criterios de diseño por audiencia, no checklist de implementación. Para rutas 
 - Reportar ejecución y evidencia.
 - Ver solo estado operativo y lo que impacta su nómina.
 - **No ve** caja, pagos, saldos, métodos de pago, factura ni ledger.
-- **Fuera del MVP inmediato** según `docs/MVP_ISSUES.md` y GitHub #65; en el MVP el admin captura asignación y ejecución.
+- **Fuera del MVP inmediato** según GitHub #65; en el MVP el admin captura asignación y ejecución.
 
 ## Documento público de cotización
 

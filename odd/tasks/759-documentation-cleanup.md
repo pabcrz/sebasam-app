@@ -9,16 +9,19 @@ Delivery: auto-chain / feature-branch-chain (human selected); four local reviewa
 - S3 — "si hazlo" — approval of the proposed isolated worktree and GitHub issue discovery/creation in the existing session.
 - S4 — "autorizo" — approval of #759 scope and applying `status:approved` before implementation.
 - S5 — "Abre la P R. Por favor" — publication of the previously selected feature-branch PR chain; no merge authorization.
+- S6 — "Creo que @docs/MVP_ISSUES.md  y @docs/MVP_STATUS.md  agrega un ruido que no queremos,  porque se quedó en los premios Issues y los primeros pasos, y de ahí ha sido un salto gigantes con más de 700 Issues y demás. Entonces no le hallo mucho sentido conservar eso cuando todo lo demás que está en medio que incluso muchas cosas cambiaron"; confirmation: "Sí, hazlo". Remove both files without creating an archive copy and update their documentation references in the published chain.
 - Assumptions/scope accepted through #759: documentation only; preserve useful specifications and history; do not silently change contribution policies; preserve original checkout and local drafts. S5 supersedes the earlier publication restriction; merge remains excluded.
 
 ## Tasks
 
 - T1 [S1,S2,S4] inline; done; README entry point plus verbatim R1–R18 domain reference and history indexes; commit: `569ff9c` (`feature/759-01-doc-entrypoints`, 360 authored lines).
-- T2 [S1,S2,S4] inline; done; current architecture reconciled; MVP bodies preserved with historical banners; SQL-security description corrected; commit: `9444529` (`feature/759-02-current-architecture`, 186 authored lines).
+- T2 [S1,S2,S4] inline; done; architecture/security reconciled; initial MVP retention is superseded by S6/T6; commit: `9444529` (`feature/759-02-current-architecture`, 186 authored lines).
 - T3 [S1,S2,S4] inline; done; deduplicated agent/design guidance; retained issue-first, Next.js warning and all contribution policies; commit: `e5acd00` (`feature/759-03-documentation-rules`, 111 authored lines).
 - T4 [S1,S2,S4] inline; done; OpenSpec inventory/config reconciled, closed #497 archived byte-for-byte, final references and scope verified; commit: terminal slice ref `feature/759-04-spec-history` (exact hash mirrored in Engram after commit).
 
 - T5 [S5] inline; done; published tracker #761 (draft) and children #762–#765; exact bodies, SHAs, bases and type:docs read back; all diffs under 400 lines, no auto-merge. Vercel previews may remain pending; merge not authorized.
+
+- T6 [S6] delegated references (runtime context backstop) + inline exact deletions (worker capability limit); in_progress; remove obsolete MVP files and live references; two additive tail slices, no history rewrite or merge; commit: pending.
 
 ## Log
 
@@ -52,3 +55,7 @@ L12 — Local delivery chain: `feature/759-docs-cleanup` @ `f02d0c0` ← slice 1
 L13 — User: "Abre la P R. Por favor". Publish the selected feature-branch chain to github.com/pabcrz/sebasam-app using the same authorized gh session, retaining approved #759 and type:docs. Tracker currently equals develop, so first add the existing slice-1 task document to give it a real documentation diff, then merge that tracker ancestry forward through the local slices without rewriting history. No application content changes; this avoids an empty tracker PR and keeps child diffs isolated.
 
 L14 — Publication confirmed: tracker https://github.com/pabcrz/sebasam-app/pull/761 → develop (draft, 37 lines); #762 → tracker (323); #763 → #762 branch (186); #764 → #763 branch (111); #765 → #764 branch (61 before this evidence-only update). All OPEN, exactly one type:docs, approved #759, body/title/base/head/SHA verified; autoMergeRequest null. No required checks configured in observed rulesets/develop protection. Vercel Preview Comments succeeded for all; Vercel was pending for #761–#764 and succeeded for #765 at the observed head `78d0ffa`. This final metadata-only commit can trigger another preview; pending previews are not represented as green or merge authorization. No merge performed; issue remains open.
+
+L15 — User correction (verbatim): "Creo que @docs/MVP_ISSUES.md  y @docs/MVP_STATUS.md  agrega un ruido que no queremos,  porque se quedó en los premios Issues y los primeros pasos, y de ahí ha sido un salto gigantes con más de 700 Issues y demás. Entonces no le hallo mucho sentido conservar eso cuando todo lo demás que está en medio que incluso muchas cosas cambiaron". User confirmation: "Sí, hazlo". This supersedes historical retention, not domain-rule preservation. Git history is sufficient; no replacement archive is wanted. Removal totals 570 file lines, so extend the selected chain in two bounded tail units: retire status snapshot/current references, then delete the unlinked initial backlog. New tail PRs preserve existing published branch history; no merge authorization.
+
+L16 — Worker updated five live guides but reported deletion forbidden by its tool-safety layer; its deletion assertion exited 1 (both files still present). No worker retry or full-success claim: parent performed the two explicit S6-authorized file deletions. Parent Python verification PASS: both absent, no live references, 55 local destinations/anchors valid, 18 domain rules intact, scope confined to seven requested docs plus this tracker. Worker and parent `git diff --check` PASS; no runtime RED/app tests/build apply to passive documentation. Historical task quotes may mention removed filenames; no live link does. Publish tail slice 5 against #765, then tail slice 6 against slice 5.

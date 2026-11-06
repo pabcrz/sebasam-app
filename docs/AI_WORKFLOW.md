@@ -116,5 +116,5 @@ Follow the data boundaries and auth contracts in [ARCHITECTURE](./ARCHITECTURE.m
 
 - `docs/GITFLOW.md` — branch, PR, release, and hotfix flow.
 - [DOMAIN_RULES](./DOMAIN_RULES.md) — product rules and objectives, not a current execution checklist.
-- [MVP_ISSUES](./MVP_ISSUES.md) — historical MVP criteria; not the current backlog.
+- GitHub Issues — current execution tracker; Git history retains early MVP snapshots.
 - [README](../README.md) — setup, commands and documentation entry points.
