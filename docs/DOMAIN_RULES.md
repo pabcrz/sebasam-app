@@ -87,4 +87,4 @@ Los siguientes ejemplos conservan el vocabulario financiero objetivo. No implica
 
 El MVP original excluía el portal tokenizado de clientes. Esa exclusión describe el alcance inicial, no el estado actual: hoy existe `/cotizacion/[token]`. El self-service de trabajadores sigue siendo una propuesta distinta de los registros administrados internamente; no se habilita acceso por el solo hecho de existir `UserRole.WORKER`.
 
-El [backlog original](./MVP_ISSUES.md) y la [evaluación histórica del MVP](./MVP_STATUS.md) conservan contexto de aquellas decisiones. Las especificaciones detalladas de correcciones y clientes están en [OpenSpec](../openspec/README.md).
+El historial de Git conserva los primeros snapshots del MVP; GitHub Issues es el tracker de ejecución vigente. Las especificaciones detalladas de correcciones y clientes están en [OpenSpec](../openspec/README.md).
