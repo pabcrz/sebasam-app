@@ -1,7 +1,7 @@
 # SEBASAM — Sistema de diseño (Figma)
 
 > Referencia visual: Figma `b3TlGONh5fTCNUilSHf75b`.
-> Este documento traduce la línea visual de Figma a un contrato actionable para implementación en Next.js + Tailwind + Radix.
+> Este documento conserva contratos visuales y criterios de diseño, no un inventario de funcionalidades ni una certificación de fidelidad a Figma. Los flujos de negocio viven en [DOMAIN_RULES](./docs/DOMAIN_RULES.md) y el estado implementado en [ARCHITECTURE](./docs/ARCHITECTURE.md).
 
 ## Resumen
 
@@ -112,7 +112,7 @@ Regla de badges: fondo pastel con alpha bajo + borde con alpha medio + texto/dot
 |---|---|---|
 | `AdminPageHeader` | `src/components/admin-page-header.tsx` | `icon: LucideIcon`, `title: string`, `description?: ReactNode`, `actions?: ReactNode`, `children?: ReactNode`, `variant?: "compact" | "expanded"`. Compact (default) conserva Card, icono 40px, gap 12px, padding 16px y título 18px. Expanded presenta Card con padding 24px, icono 48px, gap 16px, separación de composición 24px y título 20px; descripción, acciones y children mantienen una jerarquía explícita. La variante es solo visual. |
 
-**Ownership exacto:** `AdminPageHeader` se usa únicamente en las 15 superficies completas mapeadas: `/admin`, `/admin/customers`, `/admin/customers/[id]`, `/admin/customers/[id]/edit`, `/admin/workers`, `/admin/workers/[id]/edit`, `/admin/quotes`, `/admin/quotes/nueva`, `/admin/quotes/[id]/edit`, `/admin/work-orders`, `/admin/work-orders/[id]`, `/admin/notas`, `/admin/nomina`, `/admin/configuracion-pago` y `/admin/users`. Los diálogos, modales, previews, workspaces y páginas de impresión conservan sus headers propios; nunca renderizan este componente. En Configuración de pago, el botón `Guardar configuración` vive en `actions` y se relaciona externamente con `#payment-settings-form`, preservando la semántica y el flujo del formulario.
+**Contrato de uso:** `AdminPageHeader` se reserva para superficies completas del panel, no para diálogos, modales, previews, workspaces ni impresión, que conservan sus headers propios. La implementación actual se consulta en los usos del componente, no en una lista fija de rutas de esta guía. En Configuración de pago, preservar la relación externa entre `Guardar configuración` en `actions` y `#payment-settings-form`.
 
 ### Base UI
 
@@ -221,33 +221,17 @@ La dirección y `mapsUrl` permanecen como datos de ubicación del shell público
 
 ## Flujo de cotización y estados
 
-Diagrama del flujo operativo objetivo, desde el login hasta el impacto en ledger y nómina. Varias transiciones siguen pendientes de implementación y están detalladas en `docs/MVP_ISSUES.md`.
-
-```mermaid
-flowchart LR
-    A[Login] --> B[Cotización<br>BORRADOR]
-    B --> C[Armar ítems + vehículo<br>+ evidencia inicial opcional]
-    C --> D[Compartir:<br>ENVIADA]
-    D --> E{Cliente responde<br>todo/nada}
-    E -->|Acepta| F[ACEPTADA]
-    E -->|Declina| G[DECLINADA]
-    F --> H[WorkOrder<br>ESPERA]
-    H --> I[Confirmar espacio + maestro<br>EN_PROCESO]
-    I --> J[Asignar maestro/ayudantes<br>desde admin]
-    J --> K[Admin registra ejecución<br>+ extras controlados]
-    K --> L[Trabajo terminado]
-    L --> M[Registrar cobros<br>ajustes, adeudo]
-    M --> N[Ledger cliente]
-    M --> O[Nómina semanal]
-```
+El flujo y las reglas de autorización se mantienen únicamente en [DOMAIN_RULES](./docs/DOMAIN_RULES.md). La autorización puede ser parcial por secciones; no asumir un contrato «todo/nada». Consultá [arquitectura](./docs/ARCHITECTURE.md#modelo-y-estados-no-confundir-producto-con-enums) para nombres persistidos y diferencias con el vocabulario de producto.
 
 ### Estados operativos
+
+Vocabulario visual objetivo conservado para diseño; no es una lista de enums implementados ni una afirmación de pendientes actuales.
 
 | Estado | Significado | Quién lo dispara |
 |---|---|---|
 | `BORRADOR` | Cotización en construcción | Admin / asistente |
 | `ENVIADA` | Cotización compartida al cliente | Admin al generar link/PDF |
-| `ACEPTADA` | Cliente aceptó todo, o admin autorizó una aceptación externa | Objetivo: cliente vía link con token, o Admin con nota obligatoria |
+| `ACEPTADA` | Cliente autorizó alcance total o parcial, o admin registró autorización externa | Cliente vía link con token, o Admin con nota obligatoria según reglas de dominio |
 | `DECLINADA` | Cliente declinó todo | Cliente vía link con token |
 | `CANCELADA` | Admin cancela antes o después de enviar | Admin |
 | `ESPERA` | Cotización/orden aceptada, a la espera de espacio del taller y disponibilidad de maestro | Objetivo pendiente: sistema al aceptar o autorizar |
@@ -256,17 +240,7 @@ flowchart LR
 
 ### Reglas de diseño por estado
 
-- `ENVIADA` se dispara al compartir URL pública o PDF.
-- El cliente acepta o declina **todo/nada** mediante link con token expirable.
-- Objetivo pendiente: si el cliente aceptó por fuera del link (p. ej. teléfono), el admin puede marcar la cotización como autorizada con una nota obligatoria de canal/motivo; usa el mismo registro de cotización/alcance.
-- Objetivo pendiente: tras `ACEPTADA`, la orden entra en `ESPERA` hasta que el admin confirme espacio del taller y disponibilidad de maestro.
-- La transición de `ESPERA` a `EN_PROCESO` ocurre al confirmar espacio y maestro; en ese punto el admin asigna empleados y registra ejecución.
-- `FACTURADA` no implica pagada; siempre se muestra el estado financiero aparte.
-- `QuoteStatus` nunca representa pago, factura ni saldo pendiente.
-- Los estados financieros objetivo se reconocen por grupos separados: pago (`PENDING`, `PARTIAL`, `PAID`), factura (`NOT_REQUESTED`, `DATA_MISSING`, `READY`, `ISSUED`) y saldo pendiente.
-- En el MVP inmediato el empleado **no tiene login/app propio**; el admin gestiona asignación y ejecución. El self-service del trabajador (`/mis-trabajos`, `/mi-nomina`) es post-MVP. Ver GitHub #65.
-
-Las reglas de negocio completas viven en [`README.md`](./README.md#reglas-de-negocio-).
+Separar el indicador operativo de los financieros: `FACTURADA` no implica pagada y `QuoteStatus` no representa cobro ni adeudo. El self-service del trabajador es una propuesta aparte del registro administrativo (GitHub #65). Las transiciones y responsabilidades de negocio se consultan en [DOMAIN_RULES](./docs/DOMAIN_RULES.md), sin mantener otra copia aquí.
 
 ### Indicadores separados
 
@@ -284,7 +258,7 @@ El indicador de saldo pendiente es financiero y se muestra junto con el monto; n
 5. Para todo abono parcial, mostrar saldo restante, impacto en la cuenta del cliente e indicador financiero en la cotización.
 6. Si cambia la preferencia de factura hasta la liquidación final, presentar el recálculo de IVA y total, solicitar confirmación y advertir que se actualizarán las instrucciones de pago.
 
-Los registros `Payment`, el cobro parcial en efectivo, el ledger y estos estados financieros son componentes objetivo.
+`Payment`, aplicaciones y ledger ya tienen implementación. Estos puntos son criterios de presentación; no prueban que todos los estados de producto sean enums ni que cada interacción esté cubierta. Ver [arquitectura](./docs/ARCHITECTURE.md).
 
 ### Página pública de transferencia
 
@@ -297,6 +271,8 @@ Los registros `Payment`, el cobro parcial en efectivo, el ledger y estos estados
 
 ## Pantallas por rol
 
+Criterios de diseño por audiencia, no checklist de implementación. Para rutas y guards existentes, consultar [arquitectura](./docs/ARCHITECTURE.md#hosting-y-modelo-de-rutas).
+
 ### Admin
 
 - Dashboard con resumen operativo.
@@ -306,7 +282,7 @@ Los registros `Payment`, el cobro parcial en efectivo, el ledger y estos estados
 - Órdenes de trabajo: asignación, ejecución, cierre.
 - Clientes: alta, búsqueda, edición, historial.
 - Trabajadores: alta, asignación a órdenes, registro de ejecución, nómina (admin-led en el MVP inmediato).
-- Pagos / ledger / caja (post-MVP inmediato).
+- Pagos y ledger; «caja» como módulo completo no se deduce de su existencia.
 
 ### Cliente (portal público tokenizado)
 
@@ -314,7 +290,7 @@ Los registros `Payment`, el cobro parcial en efectivo, el ledger y estos estados
 - Aceptar o declinar cotización.
 - Ver evidencia (fotos/diagnóstico) con URLs firmadas.
 - Ver instrucciones de transferencia cuando recibe un link contextual.
-- **Fuera del MVP inmediato** según `docs/MVP_ISSUES.md`.
+- Excluido del alcance inicial del MVP, pero ya existe `/cotizacion/[token]`. No confundir esa vista implementada con la cobertura de todos los criterios de portal de esta sección.
 
 ### Empleado (post-MVP inmediato)
 
@@ -322,7 +298,7 @@ Los registros `Payment`, el cobro parcial en efectivo, el ledger y estos estados
 - Reportar ejecución y evidencia.
 - Ver solo estado operativo y lo que impacta su nómina.
 - **No ve** caja, pagos, saldos, métodos de pago, factura ni ledger.
-- **Fuera del MVP inmediato** según `docs/MVP_ISSUES.md` y GitHub #65; en el MVP el admin captura asignación y ejecución.
+- **Fuera del MVP inmediato** según GitHub #65; en el MVP el admin captura asignación y ejecución.
 
 ## Documento público de cotización
 
@@ -348,8 +324,8 @@ Los registros `Payment`, el cobro parcial en efectivo, el ledger y estos estados
 
 ## Notas de implementación
 
-1. Instalar Radix primitives y Sonner como dependencias cuando se empiece la capa visual real.
-2. Crear `components/ui` con wrappers tokenizados antes de tocar pantallas.
+1. Revisar las dependencias de `package.json` antes de proponer instalaciones: Radix ya está incorporado y las notificaciones usan `react-hot-toast`, no Sonner.
+2. Reutilizar los wrappers tokenizados existentes en `src/components/ui`; no crear una segunda capa UI.
 3. Usar `QuoteOperationalBadge` y `QuoteFinancialBadges` desde el primer listado de cotizaciones.
 4. El schema actual en `prisma/schema.prisma` usa estados en inglés y separa `Quote`/`WorkOrder`; al implementar la UI, alinear los labels visuales con los estados de negocio documentados aquí.
 5. El idioma operativo visible debe ser español de México; los identificadores técnicos permanecen en inglés.

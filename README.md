@@ -32,8 +32,8 @@ La tabla R1–R18, el flujo objetivo y el contrato de cobro se conservan en [DOM
 
 ## Propuestas e historial
 
-- [Backlog original del MVP](./docs/MVP_ISSUES.md): referencia histórica, no lista actual de pendientes; se conserva su ruta.
-- [Evaluación histórica del MVP](./docs/MVP_STATUS.md): contiene conclusiones anteriores a funcionalidades hoy implementadas.
+Los primeros snapshots del MVP se consultan en el historial de Git; para el trabajo vigente, usar GitHub Issues y la documentación actual.
+
 - [Checklist worker](./docs/worker-execution-checklist.md): propuesta no aprobada; no habilita login de trabajadores.
 - [OpenSpec](./openspec/README.md): especificaciones y expedientes de cambios, sin dependencia del runtime.
 - [Registros ODD](./odd/README.md): alcance y evidencia por trabajo; no reemplazan el tracker ni el manual del producto.
@@ -120,8 +120,9 @@ The bootstrap script does not create Supabase Auth users and does not need a ser
 It only upserts `UserProfile` for an existing Auth user id. `BOOTSTRAP_ROLE` accepts `ADMIN`
 or `ADMIN_ASSISTANT`.
 
-Future admin password management can become an app screen, but it must use Radix primitives and
-Tailwind wrappers derived from the Figma design system instead of invented visual styling.
+La gestión interna de usuarios ya tiene una pantalla en `/admin/users`, reservada a Super Admin.
+Los scripts anteriores siguen siendo herramientas administrativas. Los componentes deben respetar
+los wrappers y las referencias visuales de `DESIGN.md`.
 
 ## Production release
 
