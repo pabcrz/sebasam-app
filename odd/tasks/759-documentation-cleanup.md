@@ -18,7 +18,7 @@ Delivery: auto-chain / feature-branch-chain (human selected); four local reviewa
 - T3 [S1,S2,S4] inline; done; deduplicated agent/design guidance; retained issue-first, Next.js warning and all contribution policies; commit: `e5acd00` (`feature/759-03-documentation-rules`, 111 authored lines).
 - T4 [S1,S2,S4] inline; done; OpenSpec inventory/config reconciled, closed #497 archived byte-for-byte, final references and scope verified; commit: terminal slice ref `feature/759-04-spec-history` (exact hash mirrored in Engram after commit).
 
-- T5 [S5] inline; in_progress; publish the selected feature-branch PR chain and verify issue/type/base/diff/checks; evidence: pending.
+- T5 [S5] inline; done; published tracker #761 (draft) and children #762–#765; exact bodies, SHAs, bases and type:docs read back; all diffs under 400 lines, no auto-merge. Vercel previews may remain pending; merge not authorized.
 
 ## Log
 
@@ -50,3 +50,5 @@ L11 — Final structural verification: inline Python script passed 82 local Mark
 L12 — Local delivery chain: `feature/759-docs-cleanup` @ `f02d0c0` ← slice 1 `feature/759-01-doc-entrypoints` @ `569ff9c` (360 lines) ← slice 2 `feature/759-02-current-architecture` @ `9444529` (186 lines) ← slice 3 `feature/759-03-documentation-rules` @ `e5acd00` (111 lines) ← slice 4 `feature/759-04-spec-history` (final commit). Counts use additions+deletions with rename detection; unchanged archived moves add no authored lines. Review each slice against its immediate parent, not against develop. No tracker/child PRs or pushes exist; issue remains open for PR-based closure.
 
 L13 — User: "Abre la P R. Por favor". Publish the selected feature-branch chain to github.com/pabcrz/sebasam-app using the same authorized gh session, retaining approved #759 and type:docs. Tracker currently equals develop, so first add the existing slice-1 task document to give it a real documentation diff, then merge that tracker ancestry forward through the local slices without rewriting history. No application content changes; this avoids an empty tracker PR and keeps child diffs isolated.
+
+L14 — Publication confirmed: tracker https://github.com/pabcrz/sebasam-app/pull/761 → develop (draft, 37 lines); #762 → tracker (323); #763 → #762 branch (186); #764 → #763 branch (111); #765 → #764 branch (61 before this evidence-only update). All OPEN, exactly one type:docs, approved #759, body/title/base/head/SHA verified; autoMergeRequest null. No required checks configured in observed rulesets/develop protection. Vercel Preview Comments succeeded for all; Vercel was pending for #761–#764 and succeeded for #765 at the observed head `78d0ffa`. This final metadata-only commit can trigger another preview; pending previews are not represented as green or merge authorization. No merge performed; issue remains open.
