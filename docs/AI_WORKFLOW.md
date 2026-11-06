@@ -14,9 +14,20 @@ ODD is the default execution and issue-tracking workflow for this repository. SD
 
 Keep the GitHub issue as the execution tracker. Use SDD artifacts to clarify requirements and design; use ODD task tracking to manage implementation when the work is substantial. Avoid copying the same decisions or task detail into both: keep one execution checklist and link the relevant SDD artifacts from it. An explicit SDD request does not disable ODD, issue-first, or Gitflow requirements.
 
+## Issue lifecycle
+
+GitHub Issues are the execution tracker for SEBASAM work.
+
+- Before implementation or PR work, use an approved GitHub issue.
+- For new planned work, create, search, or link a GitHub issue first.
+- Completed historical local MVP items are represented as closed GitHub issues grouped in milestone `MVP histórico completado`.
+- Future work must close issues through PR merge, not by editing local backlog only.
+
+These existing issue-first requirements also apply to the branch naming examples in GITFLOW; an old unnumbered branch is not permission to start new untracked work.
+
 ## Quick path
 
-1. Read the issue or task first.
+1. Read the approved issue or task first.
 2. Use ODD for issue-based execution; add SDD artifacts only when requested or needed to settle requirements and design.
 3. Follow the Gitflow rules in `docs/GITFLOW.md`.
 4. Branch from `develop` for feature and non-production bugfix work.
@@ -38,15 +49,7 @@ Keep the GitHub issue as the execution tracker. Use SDD artifacts to clarify req
 
 ### PR description standards
 
-Every PR description must follow `.github/pull_request_template.md`:
-
-1. **Issue linkage**: First line must state `Closes #<number>`.
-2. **`## PR Type`**: Single-select checkbox indicating the change category (`type:*`).
-3. **`## Summary`**: Bulleted explanation of why the change was made and what it accomplishes.
-4. **`## Changes`**: Markdown table mapping affected areas/layers to specific changes.
-5. **`## Test Plan`**: Checklist of executed checks (`prisma generate`, `typecheck`, `lint`, `test:ui`, `pnpm build`, etc.).
-6. **`## Warnings`**: Document approved scope extensions, size exceptions (>400 lines), or migration cautions.
-7. **`## Contributor Checklist`**: Verifies linkage, label, conventional commits, zero AI attribution, and secrets safety.
+Use the [PR template](../.github/pull_request_template.md) as the single source for description sections and the contributor checklist. The first line must state `Closes #<number>`; select one PR type, summarize intent, map changes, record observed checks, and disclose approved scope/size exceptions or migration cautions. Its checklist retains the existing conventional-commit, no-AI-attribution and secrets-safety requirements.
 
 ## Change discipline
 
@@ -107,15 +110,11 @@ If a required delegated result is empty, malformed, or incomplete, mark the work
 
 ## Repository architecture rules
 
-| Topic | Rule |
-|-------|------|
-| Operational data | Use Prisma for operational business data. |
-| Supabase | Use Supabase for Auth and Storage infrastructure. |
-| Data boundary | Do not query Prisma-owned business tables through Supabase client helpers. |
-| Auth profiles | Store app roles and operational profile data in `UserProfile`. |
+Follow the data boundaries and auth contracts in [ARCHITECTURE](./ARCHITECTURE.md#límites-de-datos-y-ejecución). That is the canonical architecture reference; this workflow does not maintain another copy.
 
 ## References
 
 - `docs/GITFLOW.md` — branch, PR, release, and hotfix flow.
-- `docs/MVP_ISSUES.md` — MVP backlog and acceptance criteria.
-- `README.md` — project setup, commands, architecture rules, and deployment notes.
+- [DOMAIN_RULES](./DOMAIN_RULES.md) — product rules and objectives, not a current execution checklist.
+- GitHub Issues — current execution tracker; Git history retains early MVP snapshots.
+- [README](../README.md) — setup, commands and documentation entry points.
