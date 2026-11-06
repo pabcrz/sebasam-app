@@ -114,7 +114,8 @@ const sharedQuoteInclude = {
         include: { items: { orderBy: { sortOrder: "asc" } } },
         orderBy: { sortOrder: "asc" } 
       },
-      workOrder: { select: { id: true, status: true, folio: true } },
+      workOrder: { select: { id: true, status: true, folio: true, paymentDueDate: true } },
+      payableNote: { select: { kind: true, status: true, paymentDueDate: true } },
     },
   },
 } as const;

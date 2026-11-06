@@ -106,6 +106,27 @@ const baseQuote = {
 };
 
 describe("QuoteDocumentView", () => {
+  it.each(["ASSIGNED", "IN_PROGRESS"] as const)("does not turn a service-note label into an issued payment deadline (%s)", (status) => {
+    render(<QuoteDocumentView quote={{ ...baseQuote,
+      paymentDueDate: new Date("2026-09-30T12:00:00Z"), workOrder: { status },
+    }} paymentSettings={mockPaymentSettings} />);
+    expect(screen.queryByTestId("note-due-date")).not.toBeInTheDocument();
+  });
+
+  it("uses the issued work deadline in the public/print document", () => {
+    render(<QuoteDocumentView quote={{ ...baseQuote, paymentDueDate: null,
+      workOrder: { status: "COMPLETED", paymentDueDate: new Date("2026-09-30T12:00:00Z") },
+    }} paymentSettings={mockPaymentSettings} isPrint />);
+    expect(screen.getByTestId("note-due-date")).toHaveTextContent("30 de septiembre");
+  });
+
+  it("recognizes an issued sale and its deadline without an OT", () => {
+    render(<QuoteDocumentView quote={{ ...baseQuote, paymentDueDate: null,
+      payableNote: { kind: "SALE", status: "ISSUED", paymentDueDate: new Date("2026-09-30T12:00:00Z") },
+    }} paymentSettings={mockPaymentSettings} />);
+    expect(screen.getByTestId("note-due-date")).toHaveTextContent("30 de septiembre");
+  });
+
   it("renders public quote with token, customer and document number", () => {
     render(
       <QuoteDocumentView

@@ -15,6 +15,8 @@ Aplicación operativa limpia para SEBASAM: cotizaciones, órdenes de trabajo, as
 | Modelo operativo objetivo | `Quote` y `WorkOrder` separados; el flujo pendiente debe soportar aceptación/autorización, autorización parcial por secciones, flujo de pago independiente, `ESPERA` antes de `EN_PROCESO` y trabajo urgente mediante autorización administrativa auditada. |
 | Estado actual | Issues 1–7, 5.1 y 5.2 de [`docs/MVP_ISSUES.md`](./docs/MVP_ISSUES.md) completados; Issues 8–12 y el Issue GitHub #37 pendientes. Ver [`docs/MVP_STATUS.md`](./docs/MVP_STATUS.md). |
 
+> **Referencia actual del ciclo documental:** [Cotizaciones, OT, notas WORK y ventas SALE](./docs/DOCUMENT_LIFECYCLE.md). Distingue emisión financiera, vencimiento de pago, vigencia comercial y caducidad de enlaces; los objetivos históricos de abajo no deben confundirse con el comportamiento implementado.
+
 ## Flujo operativo 🔄
 
 Flujo operativo objetivo del MVP. La cotización se agrupa en secciones; el cliente puede autorizar una o más secciones sin autorizar la cotización completa. Si el cliente acepta por fuera del link (p. ej. teléfono), el admin debe poder autorizar la cotización con una nota obligatoria; la evidencia inicial es opcional. La aceptación o autorización no debe iniciar el trabajo inmediatamente: la orden debe pasar a `ESPERA` hasta confirmar espacio del taller y disponibilidad de maestro. La cobranza es un flujo financiero independiente: el personal define la preferencia de factura, captura o reutiliza los datos fiscales y elige el medio de cobro apropiado.

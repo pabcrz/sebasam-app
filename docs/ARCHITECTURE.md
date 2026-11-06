@@ -2,6 +2,8 @@
 
 Esta app es el núcleo operativo limpio de SEBASAM: clientes, cotizaciones, órdenes de trabajo, asignaciones y registros de ejecución.
 
+> **Ciclo documental implementado:** [Cotizaciones, OT y notas emitidas](./DOCUMENT_LIFECYCLE.md) describe los modelos y las reglas actuales de emisión y vencimiento. Las secciones de objetivos de este documento conservan contexto histórico; no son evidencia de implementación.
+
 ## Reglas de arquitectura
 
 | Área | Regla |

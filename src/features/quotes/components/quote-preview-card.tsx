@@ -33,6 +33,8 @@ export interface QuotePreviewCardProps {
   isApproved?: boolean;
   compactHeader?: boolean;
   borderlessDocument?: boolean;
+  /** Removes redundant customer/observation frames in the internal dialog only. */
+  minimalPreview?: boolean;
   /** Renders accessible item cards below the table breakpoint. */
   compactItems?: boolean;
   /** When provided, sections become selectable (partial authorization). */
@@ -66,6 +68,7 @@ export function QuotePreviewCard({
   isApproved,
   compactHeader,
   borderlessDocument = false,
+  minimalPreview = false,
   compactItems,
   selectableSectionIds,
   onSectionToggle,
@@ -157,7 +160,7 @@ export function QuotePreviewCard({
     <div className={`overflow-hidden rounded-[var(--radius-md)] ${borderlessDocument ? "" : "border border-[var(--color-border-subtle)] shadow-[var(--shadow-card)]"} bg-[var(--color-surface)] print:border-none print:shadow-none print:bg-white print:rounded-none flex-1 flex flex-col print:w-full print:overflow-visible`}>
       <div className="flex-1 flex flex-col gap-3.5 sm:gap-5 md:gap-6 p-3 sm:p-5 md:p-6 print:gap-3 print:p-0 print:pt-2 print:overflow-visible">
         {!compactHeader && (
-          <div className="flex flex-col rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-muted)] p-2.5 sm:p-3 print:border-gray-200 print:bg-gray-50">
+          <section aria-label="Cliente y unidad" className={`flex flex-col ${minimalPreview ? "border-b border-[var(--color-border-subtle)] pb-3" : "rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-muted)] p-2.5 sm:p-3"} print:border-gray-200 print:bg-gray-50`}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-4 print:grid-cols-2">
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-0.5 sm:mb-1">
@@ -186,11 +189,11 @@ export function QuotePreviewCard({
                 </p>
               </div>
             </div>
-          </div>
+          </section>
         )}
         {administrative ? <Badge variant="info">{isNote ? "Nota" : "Cotización"} administrativa</Badge> : null}
 
-        <div className="grid gap-2 print:gap-1.5">
+        <section aria-label="Conceptos" className="grid gap-2 print:gap-1.5">
           {title && (
             <h2 className="text-sm font-bold text-[var(--color-text-main)] print:text-black">
               {title}
@@ -341,17 +344,17 @@ export function QuotePreviewCard({
               </div>
             </>
           )}
-        </div>
+        </section>
 
         <div className="mt-auto flex flex-col gap-2.5 sm:gap-4 print:mt-auto print:gap-2 print:break-inside-avoid print:overflow-visible">
           {description ? (
-            <div className={`rounded-[var(--radius-sm)] ${borderlessDocument ? "" : "border border-[var(--color-border-subtle)]"} bg-[var(--color-surface-muted)] p-2.5 sm:p-3 print:border-gray-200 print:bg-white text-xs sm:text-sm text-[var(--color-text-muted)] print:text-gray-600 print:break-inside-avoid`}>
+            <div className={`${minimalPreview ? "py-1" : `rounded-[var(--radius-sm)] ${borderlessDocument ? "" : "border border-[var(--color-border-subtle)]"} bg-[var(--color-surface-muted)] p-2.5 sm:p-3`} print:border-gray-200 print:bg-white text-xs sm:text-sm text-[var(--color-text-muted)] print:text-gray-600 print:break-inside-avoid`}>
               <p className="font-semibold text-[10px] uppercase tracking-wider mb-0.5 sm:mb-1">Notas / Observaciones</p>
               <p className="whitespace-pre-wrap" data-testid="preview-notes-text">{description}</p>
             </div>
           ) : null}
 
-          <div data-testid="quote-totals-block" className="print:break-inside-avoid print:overflow-visible">
+          <section aria-label="Totales" data-testid="quote-totals-block" className="print:break-inside-avoid print:overflow-visible">
             <QuoteTotalsCard
               subtotalCents={displaySubtotalCents}
               discountCents={discountCents}
@@ -363,7 +366,7 @@ export function QuotePreviewCard({
               partialNotice={partialNotice}
               borderlessDocument={borderlessDocument}
             />
-          </div>
+          </section>
           <QuotePaymentBalanceIndicator paidCents={paidCents} remainingCents={remainingCents} showOutstanding={showPaymentStatus} />
 
           {!isNote ? (

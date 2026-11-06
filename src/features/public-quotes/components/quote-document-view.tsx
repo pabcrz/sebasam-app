@@ -1,4 +1,5 @@
 import * as React from "react";
+import { resolveDocumentDates } from "@/features/quotes/lib/document-dates";
 import type { Prisma, WorkOrderStatus } from "@/generated/prisma/client";
 import type { PaymentSettingsData } from "@/features/payment-settings/domain";
 import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
@@ -45,7 +46,7 @@ type QuoteDocumentQuote = Omit<
   totalCents: number | bigint | null;
   items: QuoteDocumentItem[];
   sections: QuoteDocumentSection[];
-  workOrder?: { status: WorkOrderStatus; folio?: string | null } | null;
+  workOrder?: SharedQuoteViewQuote["workOrder"];
   folio?: string | null;
 };
 
@@ -59,7 +60,7 @@ function normalizeItem(item: QuoteDocumentItem) {
 
 export function serializeQuoteForDocument(
   quote: QuoteDocumentQuote,
-  workOrderOverride?: { status: WorkOrderStatus; folio?: string | null } | null,
+  workOrderOverride?: SharedQuoteViewQuote["workOrder"],
 ): SharedQuoteViewQuote {
   return {
     ...quote,
@@ -82,7 +83,7 @@ export function serializeQuoteForDocument(
       workOrderOverride !== undefined
         ? workOrderOverride
         : quote.workOrder
-          ? { status: quote.workOrder.status, folio: quote.workOrder.folio }
+          ? { status: quote.workOrder.status, folio: quote.workOrder.folio, paymentDueDate: quote.workOrder.paymentDueDate }
           : null,
   } as SharedQuoteViewQuote;
 }
@@ -102,21 +103,19 @@ export function QuoteDocumentView({
   const resolvedWorkOrder =
     workOrderStatus !== undefined
       ? workOrderStatus
-        ? { status: workOrderStatus, folio: quote.workOrder?.folio }
+        ? { ...quote.workOrder, status: workOrderStatus }
         : null
-      : quote.workOrder
-        ? { status: quote.workOrder.status, folio: quote.workOrder.folio }
-        : null;
+      : quote.workOrder ?? null;
 
   const viewQuote = serializeQuoteForDocument(quote, resolvedWorkOrder);
 
   const resolvedDocumentType =
     documentType ??
-    resolveDocumentPresentation({
+    (resolveDocumentDates(viewQuote).isIssuedNote ? "Nota" : resolveDocumentPresentation({
       number: quote.number,
       folio: quote.folio,
       workOrder: resolvedWorkOrder,
-    }).documentType;
+    }).documentType);
 
   const resolvedDocumentNumber =
     resolvedDocumentType === "Cotización"

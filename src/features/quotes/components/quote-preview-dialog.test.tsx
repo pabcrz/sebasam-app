@@ -58,6 +58,40 @@ function createMockQuote(overrides: MockQuoteInput = {}): QuoteListSummary {
 }
 
 describe("QuotePreviewDialog", () => {
+  it("keeps three distinct content groups without nesting another framed document", () => {
+    const { container } = render(<QuotePreviewDialog quote={createMockQuote()} open />);
+    expect(screen.getByRole("region", { name: "Cliente y unidad" })).toHaveTextContent("Constructora del Norte");
+    expect(screen.getByRole("region", { name: "Conceptos" })).toHaveTextContent("Cambio de aceite");
+    expect(screen.getByRole("region", { name: "Totales" })).toHaveTextContent("Subtotal");
+    expect(screen.getByRole("region", { name: "Totales" })).toHaveTextContent("IVA (16%)");
+    expect(screen.getByRole("region", { name: "Totales" })).toHaveTextContent("$116.00");
+    const customerGroup = screen.getByRole("region", { name: "Cliente y unidad" });
+    expect(customerGroup.parentElement?.parentElement).not.toHaveClass("shadow-[var(--shadow-card)]");
+    expect(customerGroup).not.toHaveClass("rounded-[var(--radius-sm)]");
+    expect(container).toBeInTheDocument();
+  });
+
+  it("resolves the completed work deadline without changing its stored quotation date", () => {
+    const stored = new Date("2026-09-20T12:00:00Z");
+    const issued = new Date("2026-09-30T12:00:00Z");
+    const quote = createMockQuote({ paymentDueDate: stored,
+      workOrder: { id: "wo-1", status: "COMPLETED", paymentDueDate: issued } as QuoteListSummary["workOrder"],
+    });
+    const preview = toQuotePreviewCardProps(quote);
+    expect(preview.isNote).toBe(true);
+    expect(preview.paymentDueDate).toBe(issued);
+    expect(quote.paymentDueDate).toBe(stored);
+  });
+
+  it("resolves an issued sale without manufacturing a work order", () => {
+    const due = new Date("2026-09-30T12:00:00Z");
+    const preview = toQuotePreviewCardProps(createMockQuote({
+      payableNote: { id: "pn-1", kind: "SALE", status: "ISSUED", paymentDueDate: due },
+    }));
+    expect(preview.isNote).toBe(true);
+    expect(preview.paymentDueDate).toBe(due);
+  });
+
   it("renders the supplied quote content immediately when opened", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote();
