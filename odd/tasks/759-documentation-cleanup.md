@@ -21,7 +21,7 @@ Delivery: auto-chain / feature-branch-chain (human selected); four local reviewa
 
 - T5 [S5] inline; done; published tracker #761 (draft) and children #762–#765; exact bodies, SHAs, bases and type:docs read back; all diffs under 400 lines, no auto-merge. Vercel previews may remain pending; merge not authorized.
 
-- T6 [S6] delegated references (runtime context backstop) + inline exact deletions (worker capability limit); in_progress; remove obsolete MVP files and live references; two additive tail slices, no history rewrite or merge; commit: pending.
+- T6 [S6] delegated references + inline exact deletions; in_progress; removal and references verified, publishing pending; commits: `496d17a` plus `feature/759-06-remove-mvp-backlog` (terminal removal slice).
 
 ## Log
 
@@ -59,3 +59,5 @@ L14 — Publication confirmed: tracker https://github.com/pabcrz/sebasam-app/pul
 L15 — User correction (verbatim): "Creo que @docs/MVP_ISSUES.md  y @docs/MVP_STATUS.md  agrega un ruido que no queremos,  porque se quedó en los premios Issues y los primeros pasos, y de ahí ha sido un salto gigantes con más de 700 Issues y demás. Entonces no le hallo mucho sentido conservar eso cuando todo lo demás que está en medio que incluso muchas cosas cambiaron". User confirmation: "Sí, hazlo". This supersedes historical retention, not domain-rule preservation. Git history is sufficient; no replacement archive is wanted. Removal totals 570 file lines, so extend the selected chain in two bounded tail units: retire status snapshot/current references, then delete the unlinked initial backlog. New tail PRs preserve existing published branch history; no merge authorization.
 
 L16 — Worker updated five live guides but reported deletion forbidden by its tool-safety layer; its deletion assertion exited 1 (both files still present). No worker retry or full-success claim: parent performed the two explicit S6-authorized file deletions. Parent Python verification PASS: both absent, no live references, 55 local destinations/anchors valid, 18 domain rules intact, scope confined to seven requested docs plus this tracker. Worker and parent `git diff --check` PASS; no runtime RED/app tests/build apply to passive documentation. Historical task quotes may mention removed filenames; no live link does. Publish tail slice 5 against #765, then tail slice 6 against slice 5.
+
+L17 — Tail slice 5 `496d17a` has 199 authored changed lines, assessed medium with `reviewDue: false`; no independent verifier required. Tail slice 6 deletes the remaining 392-line initial backlog without archiving it. Both removed documents remain recoverable through Git. App/source, schema, dependencies, workflows and prior PR branches remain untouched; structural link/deletion checks above cover the complete correction.
