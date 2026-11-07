@@ -24,6 +24,8 @@ Antes de migrar o importar datos, seguir [DATABASE_SAFETY](./docs/DATABASE_SAFET
 | Promover una revisión a producción | [Release runbook](./docs/PRODUCTION_RELEASE.md) |
 | Importar información histórica y entender el asistente | [Importación histórica](./docs/HISTORICAL_IMPORT.md) |
 
+> **Referencia actual del ciclo documental:** [Cotizaciones, OT, notas WORK y ventas SALE](./docs/DOCUMENT_LIFECYCLE.md). Distingue emisión financiera, vencimiento de pago, vigencia comercial y caducidad de enlaces.
+
 No usar el backlog ni los informes históricos como porcentaje de avance actual. GitHub Issues es el tracker de ejecución; las afirmaciones sobre implementación se contrastan con código y pruebas.
 
 ## Reglas de negocio 📋

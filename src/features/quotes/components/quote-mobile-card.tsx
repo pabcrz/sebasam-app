@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveDocumentDates } from "@/features/quotes/lib/document-dates";
+
 import * as React from "react";
 import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
 import { PrintActionButton } from "./print-action-button";
@@ -75,6 +77,7 @@ export function QuoteListCard({
   workOrderActions,
 }: QuoteListCardProps) {
   const [previewOpen, setPreviewOpen] = React.useState(false);
+  const { paymentDueDate } = resolveDocumentDates(quote);
   const editable = isQuoteEditable(quote);
   const openPreview = React.useCallback(() => setPreviewOpen(true), []);
   const vehicleDescription = quote.vehicle
@@ -284,10 +287,12 @@ export function QuoteListCard({
               <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}</span>
             </p>
-            <p className="flex items-center gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Vencimiento pago: {quote.paymentDueDate ? formatDate(quote.paymentDueDate) : "—"}</span>
-            </p>
+            {paymentDueDate ? (
+              <p className="flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Vencimiento pago: {formatDate(paymentDueDate)}</span>
+              </p>
+            ) : null}
           </div>
         </>
       }

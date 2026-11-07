@@ -12,6 +12,7 @@ export async function getQuoteById(quoteId: string) {
     where: { id: quoteId },
     include: {
       customer: true,
+      payableNote: { select: { kind: true, status: true, paymentDueDate: true } },
       customerContact: true,
       customerFiscalProfile: true,
       vehicle: true,
@@ -176,7 +177,7 @@ const quoteListInclude = {
     },
   },
   payableNote: {
-    select: { id: true, kind: true, status: true },
+    select: { id: true, kind: true, status: true, paymentDueDate: true },
   },
 } satisfies Prisma.QuoteInclude;
 

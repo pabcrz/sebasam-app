@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { resolveDocumentDates, type DocumentDateSource } from "@/features/quotes/lib/document-dates";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, X, Printer } from "lucide-react";
@@ -47,7 +48,8 @@ export type SharedQuoteViewQuote = {
   vehicle: { plate: string | null; economicNumber: string | null; brand: string | null; model: string | null } | null;
   items: SerializableQuoteItem[];
   sections: { id: string; quoteId: string; name: string; sortOrder: number; isAuthorized: boolean; items: SerializableQuoteItem[] }[];
-  workOrder: { id?: string; status: WorkOrderStatus; folio?: string | null } | null;
+  workOrder: { id?: string; status: WorkOrderStatus; folio?: string | null; paymentDueDate?: Date | null } | null;
+  payableNote?: DocumentDateSource["payableNote"];
 };
 
 export interface SharedQuoteViewProps {
@@ -75,7 +77,8 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
   const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
   const isPrint = isPrintProp ?? !token;
-  const isNote = isNoteProp ?? (quote.workOrder?.status === "COMPLETED");
+  const dates = resolveDocumentDates(quote);
+  const isNote = isNoteProp ?? dates.isIssuedNote;
 
   React.useEffect(() => {
     if (!token || isPrint || isNote || (quote.status !== "DRAFT" && quote.status !== "SENT") || decision !== null || !initialStatusRevision) return;
@@ -277,7 +280,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
         selectableSectionIds={showDecisionControls && quote.sections.length > 1 ? selectedSectionIds : undefined}
         onSectionToggle={showDecisionControls && quote.sections.length > 1 ? handleSectionToggle : undefined}
         validUntil={quote.validUntil}
-        paymentDueDate={quote.paymentDueDate}
+        paymentDueDate={dates.paymentDueDate}
         isNote={isNote}
         isPrint={isPrint}
         isApproved={quote.status === "APPROVED" || decision === "accepted"}

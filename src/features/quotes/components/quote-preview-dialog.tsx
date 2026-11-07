@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { resolveDocumentDates, type DocumentDateSource } from "@/features/quotes/lib/document-dates";
 import { Eye, X } from "lucide-react";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import {
@@ -17,7 +18,7 @@ import {
   resolveQuotePreviewCustomer,
 } from "@/features/quotes/lib/quote-snapshot-display";
 
-export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & {
+export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & DocumentDateSource & {
   customer: (Pick<NonNullable<QuoteListSummary["customer"]>, "name"> & {
     commercialName?: string | null;
     legalName?: string | null;
@@ -48,6 +49,7 @@ interface QuotePreviewDialogProps {
 }
 
 export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePreviewCardProps {
+  const dates = resolveDocumentDates(quote);
   const snapshot = quote.vehicleSnapshot && typeof quote.vehicleSnapshot === "object" && !Array.isArray(quote.vehicleSnapshot)
     ? quote.vehicleSnapshot as Record<string, unknown>
     : {};
@@ -112,7 +114,11 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
     paidCents: quote.paidCents,
     remainingCents: quote.remainingCents,
     validUntil: quote.validUntil,
+    isNote: dates.isIssuedNote,
+    paymentDueDate: dates.paymentDueDate,
     compactItems: true,
+    borderlessDocument: true,
+    minimalPreview: true,
   };
 }
 

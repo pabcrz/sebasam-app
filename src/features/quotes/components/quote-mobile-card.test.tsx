@@ -245,7 +245,16 @@ describe("QuoteListCard", () => {
     expect(title).toHaveAttribute("title", fullTitle);
     expect(title).toHaveClass("line-clamp-2", "min-h-12");
     expect(screen.getByTestId("quote-dates")).toHaveClass("min-h-12");
-    expect(screen.getByText(/vencimiento pago: —/i)).toBeInTheDocument();
+    expect(screen.queryByText(/vencimiento pago:/i)).not.toBeInTheDocument();
+  });
+
+  it.each(["ASSIGNED", "IN_PROGRESS"] as const)("does not expose a stored payment deadline before issuance (%s)", (status) => {
+    renderCard(createMockQuote({
+      paymentDueDate: new Date("2026-09-30T12:00:00Z"),
+      workOrder: { number: "OT-001", status } as QuoteListItem["workOrder"],
+    }));
+    expect(screen.queryByText(/vencimiento pago:/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/vigente hasta:/i)).toBeInTheDocument();
   });
 
   it("keeps the flow action labeled and full-width above compact actions", async () => {

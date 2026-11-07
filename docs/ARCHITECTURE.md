@@ -2,6 +2,8 @@
 
 Referencia del código versionado, no de la configuración efectiva de producción ni de un porcentaje de avance. Las reglas y objetivos de producto viven en [DOMAIN_RULES](./DOMAIN_RULES.md); los pendientes se acuerdan en GitHub Issues.
 
+> **Ciclo documental implementado:** [Cotizaciones, OT y notas emitidas](./DOCUMENT_LIFECYCLE.md) describe los modelos y las reglas actuales de emisión y vencimiento.
+
 ## Límites de datos y ejecución
 
 | Área | Contrato y evidencia |
