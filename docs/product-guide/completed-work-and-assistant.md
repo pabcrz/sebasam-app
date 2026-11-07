@@ -1,25 +1,31 @@
 # Conocimiento de trabajos completados y asistente
 
+El personal consulta antecedentes de trabajo y estadísticas sin confundir similitud con totales exactos ni comisión generada con dinero pagado. El [cierre operativo](quotes-work-orders-notes.md#de-cotización-a-trabajo) alimenta conocimiento; importar histórico es un proceso distinto.
+
 ## Indexación
 
-Al completar una orden se preparan fuentes por conceptos de secciones autorizadas y conceptos sueltos, con contexto de número/fecha/unidad/responsable/tipo/descripción. Las fuentes guardan estado `PENDING`, `INDEXING`, `INDEXED`, `FAILED` o `INELIGIBLE`; la sincronización se programa tras la operación principal y fallos se registran por fuente sin deshacer el cierre del trabajo. Referencias: `src/features/work-orders/actions.ts` (`scheduleCompletedWorkKnowledge`), `src/features/completed-work-knowledge/service.ts`, modelo `CompletedWorkKnowledgeSource`.
+Completar orden prepara fuentes por conceptos de secciones autorizadas y conceptos sueltos, con número/fecha/unidad/responsable/tipo/descripción. Guarda estados `PENDING`, `INDEXING`, `INDEXED`, `FAILED`, `INELIGIBLE`. La sincronización se programa después de la operación principal; fallos por fuente no deshacen cierre. Fuentes: [acciones de trabajo](../../src/features/work-orders/actions.ts), [servicio](../../src/features/completed-work-knowledge/service.ts), [modelo](../../prisma/schema.prisma).
 
-El índice requiere trabajo completado con fecha. Si no cumple, queda inelegible. El contexto deriva unidad del vehículo/snapshot y responsable del maestro asignado o nombre de trabajo especial. La sincronización puede fallar por proveedor ausente; estados pendientes/fallidos se pueden reintentar y un estado `INDEXING` viejo puede reclamarse pasados diez minutos. No hay garantía de disponibilidad inmediata al cerrar. Referencia: `prepareCompletedWorkKnowledge`, `synchronizeCompletedWorkKnowledge`.
+Requiere trabajo `COMPLETED` con fecha; de otro modo las fuentes quedan inelegibles. Unidad deriva de vehículo/snapshot y responsable de maestro asignado o nombre especial. Proveedor ausente puede fallar; pendientes/fallidas se pueden reintentar y `INDEXING` antiguo se reclama pasados diez minutos. **No garantiza disponibilidad inmediata al cerrar.**
 
-La búsqueda lee solo fuentes indexadas y vuelve a consultar valores operativos actuales; tras cambios comerciales los importes/comisiones mostrados pueden reflejar datos vigentes y no snapshot de cuando se completó. Referencia: `src/features/completed-work-knowledge/repository.ts`.
+La búsqueda usa solo fuentes indexadas y vuelve a consultar valores operativos actuales: tras cambios comerciales, importes/comisiones pueden ser vigentes y no snapshot del cierre. Fuente: [repositorio](../../src/features/completed-work-knowledge/repository.ts). No interpretar indexación como respaldo ni garantía de consistencia instantánea.
 
 ## Asistente
 
-`POST /api/assistant/chat` exige rol operacional, JSON y pregunta de 1–1000 caracteres. El servicio usa Gemini para extraer filtros; pregunta estadística activa agregación exacta sobre columnas y el sistema además consulta hasta cinco coincidencias semánticas entre historial importado y trabajos indexados. La lista semántica no es total estadístico. Referencias: `src/app/api/assistant/chat/route.ts`, `src/features/assistant/service.ts`, `src/features/historical/repository.ts`, `src/features/completed-work-knowledge/repository.ts`.
+1. Personal autorizado pregunta en `/asistente`; `POST /api/assistant/chat` exige rol operativo, JSON y pregunta de 1–1000 caracteres.
+2. Gemini extrae filtros. Pregunta estadística activa agregación SQL exacta sobre columnas; además consulta hasta cinco coincidencias semánticas entre histórico importado y trabajos indexados.
+3. Revisar respuesta, procedencia y fuentes: la lista semántica **no es total estadístico** ni inventario completo.
 
-El proveedor puede fallar o no estar configurado; el endpoint responde error según causa. Las respuestas distinguen ingreso/comisión generados de pagos recibidos; material/refacción puede mostrar unitario derivado; los kits no se dividen. Fuentes semánticas e importes actuales tienen procedencias diferentes.
+Fuentes: [endpoint](../../src/app/api/assistant/chat/route.ts), [servicio](../../src/features/assistant/service.ts), [histórico](../../src/features/historical/repository.ts) y [trabajos actuales](../../src/features/completed-work-knowledge/repository.ts). Sin configuración Gemini, el servicio devuelve respuesta de no configuración con `envError` en el payload (el endpoint la serializa, no necesariamente con HTTP de error); `ProviderError` durante la consulta se traduce a HTTP 502. No ofrece capacidad equivalente sin proveedor.
 
-## Importación histórica
+Las respuestas distinguen ingreso/comisión generados de pagos recibidos; material/refacción puede mostrar unitario derivado y los kits no se dividen. Fuentes semánticas e importes actuales tienen procedencias diferentes. No completar datos históricos ausentes por inferencia ni tratar generación como desembolso de [nómina](customers-workers-payroll.md#nómina) o [cobro](payments-and-receivables.md).
 
-El formato es JSON `schemaVersion: 2`, tipos de concepto del enum, fecha ISO y lote con `id`/fuente. Importe/precio en pesos se valida y convierte a centavos; las reglas diferencian conceptos en nómina (sin cantidad) de partes (cantidad e importe requeridos). Trabajo duplicado se detecta por lote y referencia; conceptos repetidos por hash. Referencias: `src/features/historical/schemas.ts`, `src/features/historical/domain.ts`, `src/features/historical/importer.ts`.
+## Importación histórica: conexión, no otro procedimiento
 
-Importar persiste cada trabajo completo en su propia transacción lógica; no es una transacción global del lote: otros trabajos pueden guardarse aunque uno falle. Embeddings se preparan por concepto y una falla impide guardar ese trabajo; dry-run valida sin inserción ni llamada al proveedor. La acción de app requiere proveedor Gemini. La UX exacta documentada en `docs/HISTORICAL_IMPORT.md` debe cotejarse con el flujo actual (`src/features/historical/components/`).
+Formato, plantilla, tipos, fecha ISO, importes en pesos convertidos a centavos, cantidades de partes frente a conceptos de nómina y pasos app/CLI pertenecen a [HISTORICAL_IMPORT](../HISTORICAL_IMPORT.md). Esa guía también conserva límites de índices vectoriales, resolución informativa de maestros, hash y seguridad; no repetir formato aquí.
 
-## Límites
+La implementación valida lotes versión 2 e identifica trabajo por `(batchId, workRef)` y concepto por hash. Persiste **cada trabajo completo** en transacción, no todo el lote: otros trabajos pueden guardarse aunque uno falle. Prepara embeddings por concepto antes de insertar; fallo impide guardar ese trabajo. Dry-run valida sin inserción ni llamada al proveedor; importación activa exige proveedor (la acción de app usa Gemini). Fuentes: [importador](../../src/features/historical/importer.ts), [acciones](../../src/features/historical/actions.ts), [schemas](../../src/features/historical/schemas.ts), [componentes actuales](../../src/features/historical/components/).
 
-La búsqueda semántica no es inventario completo ni agregación exacta; la indexación puede retrasarse/fallar y búsqueda actual usa valores operativos actuales. Sin credencial Gemini, asistente/importación activa no ofrecen la misma capacidad. Datos históricos incompletos no deben completarse por inferencia.
+## Límites y siguiente paso
+
+No se verificaron producción, latencia garantizada, indexación instantánea ni ejecución sin proveedor. La búsqueda histórica no tiene ivfflat/hnsw; ver [limitaciones del importador](../HISTORICAL_IMPORT.md#limitaciones). El histórico no reconstruye ledger, cobros o saldos por inferencia. Para interpretar indicadores ir a [panel](dashboard.md); para el circuito completo, a [recorridos](flows.md#nómina-y-consulta) o al [índice](index.md).

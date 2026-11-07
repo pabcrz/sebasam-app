@@ -15,8 +15,8 @@ Antes de migrar o importar datos, seguir [DATABASE_SAFETY](./docs/DATABASE_SAFET
 
 | Necesidad | Referencia |
 |---|---|
-| Entender lo implementado, rutas y límites de datos | [Arquitectura](./docs/ARCHITECTURE.md) |
-| Consultar reglas de negocio y objetivos de producto | [Dominio](./docs/DOMAIN_RULES.md) |
+| Entender y operar el producto, sus recorridos y reglas | [Manual de producto](./docs/product-guide/index.md) |
+| Consultar estructura, modelos, rutas y límites técnicos | [Arquitectura](./docs/ARCHITECTURE.md) |
 | Trabajar con agentes, issues y verificaciones | [AI workflow](./docs/AI_WORKFLOW.md) |
 | Crear ramas y preparar PRs | [Gitflow](./docs/GITFLOW.md) |
 | Usar tokens y componentes visuales | [Diseño](./DESIGN.md) |
@@ -28,7 +28,7 @@ No usar el backlog ni los informes históricos como porcentaje de avance actual.
 
 ## Reglas de negocio 📋
 
-La tabla R1–R18, el flujo objetivo y el contrato de cobro se conservan en [DOMAIN_RULES](./docs/DOMAIN_RULES.md). No se mantienen copias en este README.
+Las reglas R1–R18 se conservan en sus capítulos dueños del [manual](./docs/product-guide/index.md): [cotizaciones y trabajo](./docs/product-guide/quotes-work-orders-notes.md#reglas-objetivo-conservadas), [finanzas](./docs/product-guide/payments-and-receivables.md#reglas-objetivo-conservadas) y [nómina](./docs/product-guide/customers-workers-payroll.md#regla-objetivo-conservada). Los [recorridos](./docs/product-guide/flows.md) distinguen flujo observado y objetivo; no se mantienen copias aquí.
 
 ## Propuestas e historial
 
