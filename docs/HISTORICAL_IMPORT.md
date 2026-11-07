@@ -2,6 +2,8 @@
 
 Captura trabajos históricos de la libreta (dictado por voz, texto o Excel) por concepto — no por totales — y consultalos con el asistente. Cada trabajo se guarda completo en una sola transacción, con búsqueda semántica por concepto y agregación exacta sobre columnas reales.
 
+El [manual de conocimiento y asistente](./product-guide/completed-work-and-assistant.md) conecta este histórico con trabajos operativos completados; este documento es dueño del formato y procedimiento, no otro manual de producto. El importador guarda cada trabajo por separado: **no hay transacción global del lote** y otros trabajos pueden persistir aunque uno falle. Embeddings se preparan por concepto antes de insertar; una falla impide guardar ese trabajo. Fuentes: [importador](../src/features/historical/importer.ts), [repositorio](../src/features/historical/repository.ts), [acciones](../src/features/historical/actions.ts) y [UI actual](../src/features/historical/components/). El flujo de app descrito abajo debe contrastarse con esos componentes antes de atribuir cobertura completa de UX.
+
 ## Quick path
 
 1. Normalizá el dictado/Excel al JSON `schemaVersion 2` (plantilla abajo).
@@ -89,7 +91,7 @@ El dry-run reporta: trabajos detectados/válidos/duplicados/con error, tipos de 
 
 ## Asistente (`/asistente`, API `POST /api/assistant/chat`)
 
-Flujo: extracción de filtros (marca, modelo, concepto/tipo, maestro, rango de fechas, `wantsStats`) → agregación SQL exacta si pide estadísticas → búsqueda semántica por embeddings de concepto (3–5 fuentes) → respuesta combinando ambas, citando fuentes `[1]`, `[2]`… y etiquetando `[capturado]` / `[derivado]` / `[desconocido]`.
+Flujo observado: extracción de filtros (marca, modelo, concepto/tipo, maestro, rango de fechas, `wantsStats`) → agregación exacta si pide estadísticas → búsqueda semántica por embeddings de concepto → respuesta combinando ambas. El [servicio actual](../src/features/assistant/service.ts) combina histórico y trabajos completados y limita la lista a cinco fuentes; su prompt pide referencias de trabajo al final y menciones naturales de datos calculados/ausentes, **no** citas inline `[1]` ni etiquetas `[capturado]` / `[derivado]` / `[desconocido]` en la respuesta. El límite de proveedor no garantiza ese formato en cada generación.
 
 - Muestra línea original (cantidad × total) y unitario derivado real para partes; kits sin dividir.
 - Nunca inventa precios, fechas, vehículos ni maestros; si falta un dato, lo dice.

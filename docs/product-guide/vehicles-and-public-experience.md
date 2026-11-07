@@ -1,23 +1,29 @@
 # Vehículos y experiencia pública
 
+El personal reutiliza unidades del cliente y comparte documentos acotados; el destinatario público consulta o decide solo lo autorizado por su enlace. Seguir [cliente y trabajo](flows.md#trabajo-habitual-observado); revisar [pagos](payments-and-receivables.md) antes de interpretar instrucciones como cobro.
+
 ## Vehículos
 
-Vehículo pertenece a un cliente. Se registra placa, número económico, marca, modelo, año, color y notas; el esquema limita longitud de varios campos y año desde 1950 hasta próximo año. La placa se normaliza a mayúsculas y puede quedar nula. La unicidad de placa es por cliente. Referencias: `src/features/vehicles/schemas.ts`, `src/features/vehicles/actions.ts`, `Vehicle` en `prisma/schema.prisma`.
+Vehículo pertenece a cliente; registra placa, número económico, marca, modelo, año, color y notas. Schemas limitan longitudes y año desde 1950 hasta próximo año. Placa normalizada a mayúsculas puede ser nula y es única por cliente. Fuentes: [schemas](../../src/features/vehicles/schemas.ts), [acciones](../../src/features/vehicles/actions.ts), [modelo](../../prisma/schema.prisma).
 
-En creación/edición de cotización se busca/reutiliza vehículo por placa normalizada o, si no hay placa, por número económico. Si se encuentra puede actualizarse con campos recibidos; si no, se crea. La cotización conserva también snapshot para representar datos históricos aunque cambie el registro enlazado. Referencias: `findOrCreateVehicle`, `createVehicleSnapshot`, `src/features/quotes/lib/quote-snapshots.ts`.
+Crear/editar cotización busca/reutiliza por placa normalizada o, sin placa, número económico; si encuentra puede actualizar campos recibidos, si no crea. La cotización también conserva snapshot histórico aunque cambie el registro enlazado. Fuentes: [acciones de cotización](../../src/features/quotes/actions.ts), [snapshots](../../src/features/quotes/lib/quote-snapshots.ts). Continuar en [expediente](customers-workers-payroll.md#clientes).
 
 ## Cotizador público
 
-`/cotizacion/[token]` sirve documento compartido con token, expiración y revocación. La decisión pública permite aceptación/rechazo conforme al estado de la cotización y guarda decisión; véase [cotizaciones y órdenes](quotes-work-orders-notes.md). La vista de documento y su shell están en `src/features/public-quotes/components/`; la ruta está en `src/app/cotizacion/[token]/page.tsx`.
+`/cotizacion/[token]` muestra documento compartido con expiración/revocación; permite aceptar/declinar conforme a estado y registra decisión. **No es sesión ni portal general.** Las notas completadas tienen tratamiento de enlace canónico y saldo calculable separado. El dueño de decisiones y vigencia es [cotizaciones](quotes-work-orders-notes.md#cotización-propuesta-y-decisión).
+
+La [ruta pública](../../src/app/cotizacion/[token]/page.tsx) y [componentes](../../src/features/public-quotes/components/) delimitan presentación. No deducir que todo dato del cliente se expone ni que cada acción de dominio tiene control visible; verificar selección explícita.
 
 ## Páginas públicas de pago
 
-`/datos-de-pago/[token]` presenta referencia, importe capturado en solicitud, cuentas elegibles, contacto y CTA para enviar comprobante por WhatsApp; no registra el pago. `/datos-de-pago/cuenta/[token]` consulta una cuenta específica solo si está habilitada para compartir y cumple datos mínimos. `src/features/public-payment/` y `src/features/payment-settings/domain.ts` contienen el contrato. El `/datos-pago` genérico es una página distinta; no asumir que representa una solicitud ni que genera obligación.
+`/datos-de-pago/[token]` presenta referencia, importe guardado/reconciliado en solicitud, cuentas compatibles con factura, contacto y CTA para enviar comprobante por WhatsApp. **No registra captura ni acredita transferencia.** La [ruta](../../src/app/datos-de-pago/[token]/page.tsx) filtra cuentas por preferencia fiscal (`isForInvoicing`), no por indicador de compartir cuenta independiente. La UI no ofrece selector de factura ni formulario fiscal; las capacidades tokenizadas de servidor y su caveat están en [finanzas](payments-and-receivables.md#solicitudes-de-pago-y-configuración).
+
+`/datos-de-pago/cuenta/[token]` consulta cuenta específica con `isPubliclyShareable` activo, titular/banco y al menos cuenta o CLABE. Deshabilitar compartir impide consulta; no atribuirle automáticamente los siete/treinta días de otros tokens. Fuente: [dominio de configuración](../../src/features/payment-settings/domain.ts) y [ruta de cuenta](../../src/app/datos-de-pago/cuenta/[token]/page.tsx).
+
+`/datos-pago` genérico es página distinta: no equivale a solicitud contextual ni genera obligación. Ver [página](../../src/app/datos-pago/page.tsx). Configuración pública no concede acceso PostgREST a tablas operativas. Los límites técnicos están en [arquitectura](../ARCHITECTURE.md#límites-de-datos-y-ejecución).
 
 ## Marca pública
 
-`src/features/public-branding/domain.ts` elimina textos vacíos y filtra mapas a URLs HTTP/HTTPS. El header/documento público consume identidad del taller desde ajustes. Esto no valida exactitud comercial de los datos ingresados; actualizar ajustes afecta lo que se presenta públicamente.
+La configuración del taller incluye identidad, ubicación, horarios, servicios/productos y bancos; [finanzas](payments-and-receivables.md#solicitudes-de-pago-y-configuración) es dueña de elegibilidad bancaria. [Branding](../../src/features/public-branding/domain.ts) omite textos vacíos y filtra mapas a HTTP/HTTPS; header/documento consumen ajustes. `PublicBusinessIdentity` proyecta nombre y contactos, no logo/dirección/mapa: esos datos son del shell/caller, según [contrato visual](../../DESIGN.md#identidad-pública).
 
-## Límites de la vista
-
-Los CTAs y enlaces no son confirmación de transferencia recibida. No asumir que todos los datos del cliente se exponen; comprobar selección explícita de datos en la ruta/componente. La configuración pública de cuentas no equivale a autorización PostgREST para tablas operativas.
+Filtrar URL no valida exactitud comercial de datos ingresados. Cambiar ajustes afecta presentación pública. CTAs, copiar datos y enviar comprobante nunca significan transferencia recibida. Para continuar el proceso interno, volver a [cobranza](payments-and-receivables.md) o al [índice](index.md).
