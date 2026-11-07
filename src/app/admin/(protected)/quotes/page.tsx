@@ -20,12 +20,6 @@ import { listCustomers } from "@/features/customers/queries";
 import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
 import { quoteFilterSchema, type QuoteFilterInput } from "@/features/quotes/schemas";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui";
 import { QuoteListCard } from "@/features/quotes/components/quote-mobile-card";
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
 import { QuoteFilters } from "@/features/quotes/components/quote-filters";
@@ -110,91 +104,85 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
       </div>
       <QuotePageToasts />
 
-      <Card className="min-w-0">
-        <CardHeader>
-          <CardTitle as="h2">Cotizaciones recientes</CardTitle>
-        </CardHeader>
-        <CardContent className="min-w-0">
-          <div className="mb-6 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
-            <QuoteFilters filters={filters} customers={customers} />
-          </div>
+      <section aria-labelledby="recent-quotes-heading" className="grid min-w-0 gap-4">
+        <h2 id="recent-quotes-heading" className="sr-only">Cotizaciones recientes</h2>
+        <QuoteFilters filters={filters} customers={customers} />
 
-          <div className="grid auto-rows-fr gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
-            {quotes.map((quote) => (
-              <QuoteListCard
-                key={quote.id}
-                quote={quote}
-                quoteStatusLabels={quoteStatusLabels}
-                quoteStatusBadgeVariant={quoteStatusBadgeVariant}
-                approveAction={approveQuoteAndCreateWorkOrderFromForm}
-                cancelAction={cancelQuoteFromForm}
-                shareAction={(quote.status === "DRAFT" ? publishSharedQuote : getOrCreateSharedQuoteAction).bind(null, quote.id)}
-                authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
-                correctDecisionAction={correctQuoteDecisionAction}
-                paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
-                paymentRequestBankAccounts={eligiblePaymentRequestBankAccounts}
-                duplicateAction={duplicateQuoteFromForm}
-                deleteAction={deleteQuoteFromForm}
-                archiveAction={archiveQuote.bind(null, quote.id)}
-                restoreAction={restoreArchivedQuote.bind(null, quote.id)}
-                customers={customers}
-                saveAction={updateDraftQuoteFromWorkspace.bind(null, quote.id)}
-                searchCustomersAction={searchCustomersForQuote}
-                workers={workers}
-                workOrderActions={{
-                  convert: convertQuoteToNoteOperationAction,
-                  assign: createAndAssignWorkOrderAction.bind(null, quote.id),
-                  complete: completeWorkOrderAction,
-                  rollback: rollbackWorkOrderAction,
-                }}
+      <div className="grid auto-rows-fr gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
+        {quotes.map((quote) => (
+          <QuoteListCard
+            key={quote.id}
+            quote={quote}
+            quoteStatusLabels={quoteStatusLabels}
+            quoteStatusBadgeVariant={quoteStatusBadgeVariant}
+            approveAction={approveQuoteAndCreateWorkOrderFromForm}
+            cancelAction={cancelQuoteFromForm}
+            shareAction={(quote.status === "DRAFT" ? publishSharedQuote : getOrCreateSharedQuoteAction).bind(null, quote.id)}
+            authorizeAction={authorizeQuoteAction.bind(null, quote.id)}
+            correctDecisionAction={correctQuoteDecisionAction}
+            paymentRequestAction={getOrCreatePaymentRequestForQuote.bind(null, quote.id)}
+            paymentRequestBankAccounts={eligiblePaymentRequestBankAccounts}
+            duplicateAction={duplicateQuoteFromForm}
+            deleteAction={deleteQuoteFromForm}
+            archiveAction={archiveQuote.bind(null, quote.id)}
+            restoreAction={restoreArchivedQuote.bind(null, quote.id)}
+            customers={customers}
+            saveAction={updateDraftQuoteFromWorkspace.bind(null, quote.id)}
+            searchCustomersAction={searchCustomersForQuote}
+            workers={workers}
+            workOrderActions={{
+              convert: convertQuoteToNoteOperationAction,
+              assign: createAndAssignWorkOrderAction.bind(null, quote.id),
+              complete: completeWorkOrderAction,
+              rollback: rollbackWorkOrderAction,
+            }}
 
-              />
-            ))}
-            {quotes.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-sm text-[var(--color-text-muted)]">
-                  No se encontraron cotizaciones.
-                </p>
-                {hasFilters ? (
-                  <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                    <Link href="/admin/quotes" className="text-[var(--color-primary)] hover:underline">
-                      Limpiar filtros
-                    </Link>{" "}
-                    o crea una nueva cotización.
-                  </p>
-                ) : (
-                  <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                    Crea una nueva cotización para comenzar.
-                  </p>
-                )}
-              </div>
-            ) : null}
+          />
+        ))}
+        {quotes.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-sm text-[var(--color-text-muted)]">
+              No se encontraron cotizaciones.
+            </p>
+            {hasFilters ? (
+              <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                <Link href="/admin/quotes" className="text-[var(--color-primary)] hover:underline">
+                  Limpiar filtros
+                </Link>{" "}
+                o crea una nueva cotización.
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                Crea una nueva cotización para comenzar.
+              </p>
+            )}
           </div>
-          {quotes.length > 0 || page > 1 ? (
-            <nav aria-label="Paginación de cotizaciones" className="mt-6 flex items-center justify-between gap-3">
-              {page > 1 ? (
-                <Link href={quotesPageHref(filters, page - 1)} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">
-                  Anterior
-                </Link>
-              ) : (
-                <button type="button" disabled className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-muted)] disabled:cursor-not-allowed disabled:opacity-60">
-                  Anterior
-                </button>
-              )}
-              <span aria-live="polite" className="text-sm text-[var(--color-text-muted)]">Página {page}</span>
-              {hasNextPage ? (
-                <Link href={quotesPageHref(filters, page + 1)} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">
-                  Siguiente
-                </Link>
-              ) : (
-                <button type="button" disabled className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-muted)] disabled:cursor-not-allowed disabled:opacity-60">
-                  Siguiente
-                </button>
-              )}
-            </nav>
-          ) : null}
-        </CardContent>
-      </Card>
+        ) : null}
+      </div>
+      {quotes.length > 0 || page > 1 ? (
+        <nav aria-label="Paginación de cotizaciones" className="mt-6 flex items-center justify-between gap-3">
+          {page > 1 ? (
+            <Link href={quotesPageHref(filters, page - 1)} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">
+              Anterior
+            </Link>
+          ) : (
+            <button type="button" disabled className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-muted)] disabled:cursor-not-allowed disabled:opacity-60">
+              Anterior
+            </button>
+          )}
+          <span aria-live="polite" className="text-sm text-[var(--color-text-muted)]">Página {page}</span>
+          {hasNextPage ? (
+            <Link href={quotesPageHref(filters, page + 1)} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">
+              Siguiente
+            </Link>
+          ) : (
+            <button type="button" disabled className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-muted)] disabled:cursor-not-allowed disabled:opacity-60">
+              Siguiente
+            </button>
+          )}
+        </nav>
+      ) : null}
+      </section>
 
       {/* Mobile Floating Action Button */}
       <div

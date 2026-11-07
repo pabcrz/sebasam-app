@@ -261,27 +261,19 @@ export function QuoteListCard({
             <span>{vehicleDescription || "Sin vehículo"}</span>
           </p>
 
-          <div className="mt-3 rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-muted)] p-3 shadow-[var(--shadow-xs)]">
+          <p className="mt-3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)]">
+            <ClipboardList className="h-4 w-4 shrink-0" aria-hidden="true" />
             {quote.workOrder ? (
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex min-w-0 items-center gap-2">
-                  <ClipboardList className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
-                  <span className="min-w-0">
-                    <span className="block text-xs font-medium text-[var(--color-text-muted)]">Orden de trabajo</span>
-                    <span className="block truncate text-sm font-medium text-[var(--color-text-main)]">
-                      {quote.workOrder.number}
-                    </span>
-                  </span>
+              <>
+                <span>Orden de trabajo</span>
+                <span className="min-w-0 break-all font-medium text-[var(--color-text-main)]">
+                  {quote.workOrder.number}
                 </span>
-                <span className="text-sm font-medium text-[var(--color-text-main)]">{quote.workOrder.number}</span>
-              </div>
+              </>
             ) : (
-              <span className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                <ClipboardList className="h-4 w-4" aria-hidden="true" />
-                 {quote.operation === "SALE" ? "Venta de refacciones" : "Sin orden de trabajo"}
-              </span>
+              <span>{quote.operation === "SALE" ? "Venta de refacciones" : "Sin orden de trabajo"}</span>
             )}
-          </div>
+          </p>
 
           <div data-testid="quote-dates" className="mt-3 flex min-h-12 flex-wrap gap-x-4 gap-y-1 border-t border-[var(--color-border-subtle)] pt-3 text-xs text-[var(--color-text-muted)]">
             <p className="flex items-center gap-1.5">

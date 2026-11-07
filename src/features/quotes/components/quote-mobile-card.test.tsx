@@ -150,6 +150,20 @@ function renderCard(quote: QuoteListItem, workOrderActions: WorkOrderActions = {
 }
 
 describe("QuoteListCard", () => {
+  it("shows the work-order reference once in an undecorated information row", () => {
+    renderCard(createMockQuote({
+      workOrder: { number: "OT-758", status: "IN_PROGRESS" } as QuoteListItem["workOrder"],
+    }));
+
+    const preview = screen.getByRole("button", { name: "Abrir vista previa de C-001" });
+    expect(within(preview).getAllByText("OT-758")).toHaveLength(1);
+    const row = within(preview).getByText("Orden de trabajo").closest("p");
+    expect(row).not.toBeNull();
+    for (const decoration of ["border", "bg-[var(--color-surface-muted)]", "shadow-[var(--shadow-xs)]"]) {
+      expect(row).not.toHaveClass(decoration);
+    }
+  });
+
   it("can shrink within a grid track", () => {
     const { container } = renderCard(createMockQuote());
 

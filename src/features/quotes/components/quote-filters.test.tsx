@@ -103,6 +103,18 @@ describe("QuoteFilters", () => {
     expect(screen.getByRole("link", { name: "Todas" })).toHaveAttribute("href", "/admin/quotes");
   });
 
+  it("keeps collapsed filter actions inline and wrappable without full-width buttons", () => {
+    renderFilters({ status: "DRAFT" });
+
+    const toggle = screen.getByRole("button", { name: "Mostrar filtros" });
+    const clear = screen.getByRole("button", { name: "Limpiar" });
+    expect(toggle.parentElement).toHaveClass("flex-wrap", "items-center");
+    expect(toggle.parentElement).not.toHaveClass("flex-col");
+    expect(toggle).not.toHaveClass("w-full");
+    expect(clear).not.toHaveClass("w-full");
+    expect(screen.getByText("1 filtro activo")).toBeInTheDocument();
+  });
+
   it("keeps filter fields collapsed by default", () => {
     renderFilters();
 

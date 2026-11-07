@@ -46,22 +46,22 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
         }))}
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
           <div className="flex items-center gap-2">
             <Filter className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
             <h3 className="text-base font-medium text-[var(--color-text-main)]">Filtros</h3>
           </div>
-          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+          <p className="text-sm text-[var(--color-text-muted)]">
             {hasFilters
               ? `${activeFilterSummary.length} filtro${activeFilterSummary.length === 1 ? "" : "s"} activo${activeFilterSummary.length === 1 ? "" : "s"}`
               : "Sin filtros activos"}
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-wrap items-center gap-2">
           {hasFilters ? (
-            <Button type="button" variant="outline" className="w-full sm:w-fit" onClick={handleClear}>
+            <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={handleClear}>
               <X className="h-4 w-4" aria-hidden="true" />
               Limpiar
             </Button>
@@ -69,7 +69,8 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
           <Button
             type="button"
             variant="secondary"
-            className="w-full sm:w-fit"
+            size="sm"
+            className="min-h-11"
             aria-expanded={open}
             aria-controls="quote-filter-fields"
             onClick={() => setOpen((current) => !current)}
