@@ -106,7 +106,8 @@ Los embeddings se insertan por SQL crudo (Prisma no escribe columnas `Unsupporte
 
 ## Seguridad / RLS
 
-- RLS habilitado en ambas tablas: `authenticated` puede `select/insert/update`; `service_role` todo. Prisma (owner) bypassa RLS por defecto.
+- La migración inicial habilitó RLS y agregó políticas para `authenticated`/`service_role`. Eso no describe por sí solo el acceso efectivo: la migración posterior [`20260907000000_enable_rls_public_tables`](../prisma/migrations/20260907000000_enable_rls_public_tables/migration.sql) revoca permisos sobre todas las tablas, secuencias y rutinas de `public` a `anon` y `authenticated`. Una política RLS no restituye privilegios SQL revocados.
+- La importación y las consultas de negocio usan Prisma con el rol de conexión del servidor; el owner normalmente evita RLS salvo configuraciones como `FORCE ROW LEVEL SECURITY`. Verificar rol, grants y migraciones efectivamente aplicadas antes de concluir qué permite una base desplegada. Seguir [DATABASE_SAFETY](./DATABASE_SAFETY.md); esta guía no autoriza restaurar grants.
 - `GEMINI_API_KEY` y modelos son server-only (`.env.example`); nunca `NEXT_PUBLIC_*`.
 - El endpoint del asistente reutiliza `requireOperationalRole`; la importación también.
 

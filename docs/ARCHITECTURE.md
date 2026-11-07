@@ -1,123 +1,101 @@
-# Arquitectura de operaciones SEBASAM
+# Arquitectura implementada de SEBASAM
 
-Esta app es el núcleo operativo limpio de SEBASAM: clientes, cotizaciones, órdenes de trabajo, asignaciones y registros de ejecución.
+Referencia del código versionado, no de la configuración efectiva de producción ni de un porcentaje de avance. Las reglas y objetivos de producto viven en [DOMAIN_RULES](./DOMAIN_RULES.md); los pendientes se acuerdan en GitHub Issues.
 
-> **Ciclo documental implementado:** [Cotizaciones, OT y notas emitidas](./DOCUMENT_LIFECYCLE.md) describe los modelos y las reglas actuales de emisión y vencimiento. Las secciones de objetivos de este documento conservan contexto histórico; no son evidencia de implementación.
+> **Ciclo documental implementado:** [Cotizaciones, OT y notas emitidas](./DOCUMENT_LIFECYCLE.md) describe los modelos y las reglas actuales de emisión y vencimiento.
 
-## Reglas de arquitectura
+## Límites de datos y ejecución
 
-| Área | Regla |
+| Área | Contrato y evidencia |
 |---|---|
-| Datos de negocio y perímetro | Prisma (rol `postgres`) es el único actor autorizado para acceder a datos operativos. El esquema `public` está cerrado a PostgREST mediante RLS y revocación de permisos (`anon`/`authenticated`). No mezclar consultas de Supabase client con Prisma para las mismas tablas. |
-| Auth e infraestructura | Supabase Auth es dueño de la identidad. Los roles de la app viven en `UserProfile`. `SUPABASE_SERVICE_ROLE_KEY` queda reservada exclusivamente para operaciones server-side de Auth. |
-| Cotización → orden de trabajo | Estado actual: una `WorkOrder` referencia una `Quote` aprobada. Objetivo pendiente: soportar autorización administrativa auditada, autorización parcial por secciones y estado `ESPERA` antes de `EN_PROCESO`. |
-| URLs de base de datos | Runtime usa `DATABASE_URL` con el pooler de Supabase. Las migraciones usan `DIRECT_URL`. |
-| Despliegue | `next build` puede generar Prisma Client, pero las migraciones corren solo a través de `db:migrate:deploy`. |
-| Rutas y roles | `/` es el hub role-aware post-login; `/login` es el único login; evitamos el namespace `/admin`. Ver [Hosting y modelo de rutas](#hosting-y-modelo-de-rutas). |
+| Datos operativos | Prisma es la vía de acceso a datos de negocio; no consultar esas mismas tablas mediante helpers de Supabase client. El cliente usa `@prisma/adapter-pg`: [`src/lib/prisma.ts`](../src/lib/prisma.ts). |
+| Auth y Storage | Supabase provee identidad e infraestructura; los roles y perfiles operativos están en `UserProfile`. La service role key es exclusivamente server-side. |
+| Runtime y migraciones | `DATABASE_URL` configura el adaptador de runtime; `DIRECT_URL`, la CLI de Prisma en [`prisma.config.ts`](../prisma.config.ts). |
+| Build y release | `build` genera Prisma Client y ejecuta Next.js; no aplica migraciones. El workflow de release migra antes de invocar Vercel: [runbook](./PRODUCTION_RELEASE.md). |
+| Perímetro SQL | Las migraciones habilitan RLS y revocan permisos de `anon`/`authenticated` en `public`. Revisar todas las migraciones aplicadas y el rol efectivo; una política RLS aislada no demuestra acceso. Ver [DATABASE_SAFETY](./DATABASE_SAFETY.md). |
 
-## Organización de features
+El rol de conexión que usa Prisma debe tener los permisos necesarios; no asumir que una URL, un archivo del repo o una política histórica prueban la configuración de la base desplegada.
 
-Las carpetas de feature agrupan schemas de entrada, server actions y queries de lectura:
+## Organización y funcionalidades presentes
 
-- `src/features/customers`
-- `src/features/quotes`
-- `src/features/work-orders`
+Las features agrupan schemas de entrada, lógica de dominio, acciones, queries y componentes. `src/lib` contiene infraestructura compartida; `src/components/ui` concentra wrappers y primitivas visuales. El dominio separa cotización comercial, operación de trabajo y movimientos financieros.
 
-La infraestructura compartida vive en `src/lib`: actualmente helpers de Prisma y Supabase.
+| Área implementada | Evidencia principal |
+|---|---|
+| Clientes, contactos y vehículos | [`src/features/customers`](../src/features/customers/), [`src/features/vehicles`](../src/features/vehicles/) |
+| Cotizaciones, secciones y decisiones públicas/administrativas | [`src/features/quotes`](../src/features/quotes/); `Quote`, `QuoteSection`, `QuoteDecision`, `SharedQuote` en el schema |
+| Órdenes, asignación y ejecución administrativa | [`src/features/work-orders`](../src/features/work-orders/); `WorkOrder`, `WorkAssignment`, `ExecutionRecord` |
+| Notas de trabajo/venta y aplicaciones de cobro | `PayableNote`, `Payment`, `PaymentApplication` en [`schema.prisma`](../prisma/schema.prisma); [`src/features/payments/domain.ts`](../src/features/payments/domain.ts) |
+| Estado de cuenta, crédito y correcciones financieras | `LedgerEntry`, `PaymentCorrection`, `QuoteCommercialCorrection`; funciones de resumen/corrección en el dominio de pagos |
+| Nómina y controles semanales | [`src/features/payroll`](../src/features/payroll/); `HelperPayrollWeek`, `PayrollWeekControl`, `WorkOrderLaborAdvance` (no existe un modelo llamado `WeeklyPayroll`) |
+| Gestión interna de usuarios | [`src/features/user-management`](../src/features/user-management/); página `/admin/users` con `requireSuperAdmin` |
+| Historia y asistente | [Importación histórica](./HISTORICAL_IMPORT.md); páginas `/admin/historical` y `/asistente` |
 
-## Auth y roles de la app
+Esta tabla prueba presencia de código/modelos, no cobertura completa de todos los criterios de aceptación ni éxito de integración en producción. Los tests al lado de las features y rutas documentan casos concretos; sus resultados deben ejecutarse en la revisión que se entrega.
 
-La identidad de Supabase se vincula con `UserProfile.id` mediante el UUID de usuario de Auth. El login usa el email interno derivado del username visible, pero la autorización siempre revisa el rol del perfil de Prisma. Los roles de acceso son `ADMIN`, `ADMIN_ASSISTANT` y `WORKER`; la clasificación laboral del empleado se guarda por separado como `workerKind` nullable (`MASTER` o `HELPER`).
+## Auth y roles
 
-En el MVP inmediato el acceso a la app es **admin-led**: solo `ADMIN` y `ADMIN_ASSISTANT` inician sesión. El rol `WORKER` y la clasificación `workerKind` se usan para modelar empleados como registros operativos (asignaciones, ejecución, nómina, cuenta del cliente), no para login propio. El login/app del trabajador (`/mis-trabajos`, `/mi-nomina`) queda para post-MVP. Ver GitHub #65.
+Supabase Auth se vincula con `UserProfile.id` por UUID. El login visible usa username y una identidad interna de email; la autorización depende del perfil activo y de guards de servidor, no del prefijo de URL.
 
-Las contraseñas del staff interno las controlan los admins, no el sign-up público. Usar herramientas server-only con service role para crear o resetear usuarios de Auth hasta que exista la pantalla de admin correspondiente.
+[`src/lib/auth/session.ts`](../src/lib/auth/session.ts) define:
+
+- `requireOperationalRole`: `SUPER_ADMIN`, `ADMIN`, `ADMIN_ASSISTANT`.
+- `requireAdmin`: `SUPER_ADMIN`, `ADMIN`.
+- `requireSuperAdmin`: solo `SUPER_ADMIN`.
+- `requireRole` concede a `SUPER_ADMIN` acceso a los roles pedidos; también exige perfil/sesión válidos.
+
+El schema incluye `WORKER` y `workerKind` (`MASTER`/`HELPER`) para registros laborales y asignaciones. Eso no equivale a un portal de trabajador ni concede acceso operativo. El self-service `/mis-trabajos` y `/mi-nomina` continúa siendo una propuesta separada del registro admin-led (GitHub #65).
+
+Las cuentas internas no usan sign-up público. Hay gestión de usuarios en `/admin/users`, reservada a Super Admin; los scripts de Auth y bootstrap descritos en el [README](../README.md) siguen siendo herramientas administrativas, no instrucciones para exponer service role al navegador.
 
 ## Hosting y modelo de rutas
 
-`sebasam.com` pertenece al proyecto de landing público. Esta app operativa corre en `app.sebasam.com` como despliegue independiente, sin `basePath` de Next.js ni proxy compartido por subruta.
+El hosting previsto separa la landing `sebasam.com` de la aplicación `app.sebasam.com`, sin `basePath` compartido. Los dominios activos se comprueban en el proveedor; no se verificaron como parte de esta referencia.
 
-La app usa un solo login y rutas según rol. La raíz `/` es el hub post-login; renderiza o redirige según `UserProfile.role`. El namespace `/admin` se evita a propósito: las funciones administrativas usan rutas semánticas y el acceso se controla por role guards en el servidor, no por prefijo de URL.
+La navegación implementada **sí usa `/admin`**. [`getRootRedirectPath`](../src/lib/auth/root-redirect.ts) manda `/` a `/admin` si hay usuario o a `/admin/login` si no lo hay; los guards resuelven después perfil, rol y cambio de contraseña. Las carpetas `(protected)` son route groups, no segmentos de URL.
 
-Mapa de rutas objetivo:
+| Ruta existente | Propósito |
+|---|---|
+| `/admin/login`, `/admin/change-password`, `/admin/setup-required` | Acceso y resolución de perfil/contraseña |
+| `/admin` | Dashboard interno |
+| `/admin/customers`, `/admin/customers/[id]` | Clientes y detalle; `/estado-de-cuenta` agrega su cuenta |
+| `/admin/quotes`, `/admin/quotes/nueva`, `/admin/quotes/[id]/edit` | Cotizador; `/admin/quotes/[id]/print` es su salida imprimible |
+| `/admin/work-orders`, `/admin/work-orders/[id]` | Gestión operativa |
+| `/admin/notas`, `/admin/notas/[id]/print` | Notas y salida imprimible |
+| `/admin/workers`, `/admin/workers/[id]/edit` | Trabajadores administrados internamente |
+| `/admin/nomina` | Nómina; incluye rutas de impresión de firmas y sobres |
+| `/admin/configuracion-pago`, `/admin/users` | Configuración financiera y administración de usuarios con sus guards específicos |
+| `/cotizacion/[token]` | Documento público tokenizado, decisiones y estado de pago cuando corresponde |
+| `/datos-de-pago/[token]`, `/datos-de-pago/cuenta/[token]` | Superficies públicas de datos de pago |
+| `/datos-pago` | Página genérica, no prueba de pago ni instrucciones de una operación específica |
+| `/admin/historical`, `/asistente` | Consulta histórica y asistente; este último exige autorización operativa |
 
-| Ruta | Rol | Propósito |
-|---|---|---|
-| `/` | `ADMIN`, `ADMIN_ASSISTANT` | Hub post-login para usuarios administrativos. |
-| `/login` | Público | Login único del staff admin. |
-| `/cotizacion` | `ADMIN`, `ADMIN_ASSISTANT` | Lista y creación de cotizaciones. |
-| `/cotizacion/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Detalle y edición de cotización. |
-| `/cliente` | `ADMIN`, `ADMIN_ASSISTANT` | Lista y creación de clientes. |
-| `/cliente/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Detalle y edición de cliente. |
-| `/trabajador` | `ADMIN`, `ADMIN_ASSISTANT` | Gestión del equipo del taller (registros admin-led). |
-| `/trabajador/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Detalle del trabajador. |
-| `/nomina` | `ADMIN`, `ADMIN_ASSISTANT` | Nómina semanal calculada desde registros admin. |
-| `/trabajo/[id]` | `ADMIN`, `ADMIN_ASSISTANT` | Detalle del trabajo con gestión de asignación y ejecución. |
-| `/datos-de-pago/[token]` | Token de cliente público | Instrucciones contextuales y opcionales para una transferencia vinculada a un `PaymentRequest`. |
-| `/datos-pago` | Público | Ruta genérica cuyo alcance final de producto está pendiente; no es autoridad para instrucciones contextuales. |
+Fuente del mapa: [`src/app`](../src/app/). La presencia de una página no concede permisos: revisar el guard de la acción/página correspondiente.
 
-Rutas post-MVP (fuera del MVP inmediato):
+### Propuesta histórica de rutas semánticas
 
-| Ruta | Rol | Propósito |
-|---|---|---|
-| `/mis-trabajos` | `WORKER` | Trabajos asignados al trabajador logueado. |
-| `/mi-nomina` | `WORKER` | Estimación de nómina propia. |
-| `/c/[token]` | Token de cliente público | Futuro portal tokenizado para clientes. |
+El mapa anterior proponía reemplazar el namespace administrativo por `/login`, `/cotizacion`, `/cotizacion/[id]`, `/cliente`, `/cliente/[id]`, `/trabajador`, `/trabajador/[id]`, `/nomina` y `/trabajo/[id]`, más `/c/[token]` como portal futuro. **No es el mapa implementado ni una migración aprobada por esta limpieza.** La ruta pública `/cotizacion/[token]` ya existe y no debe confundirse con esos aliases propuestos.
 
-Los slugs de ruta usan español singular sin acentos (`cotizacion`, `nomina`) para mantener las URLs estables y ASCII-only.
+## Modelo y estados: no confundir producto con enums
 
-## Referencia de UI
+El [schema](../prisma/schema.prisma) es la fuente de nombres persistidos. Actualmente:
 
-Figma define las pantallas y componentes finales. Los issues técnicos pueden agregar UI neutral funcional. La implementación futura debe usar primitivas de Radix para comportamiento y accesibilidad, envueltas en Tailwind que codifique el sistema de diseño de Figma.
+| Concepto | Valores persistidos |
+|---|---|
+| `QuoteStatus` | `DRAFT`, `SENT`, `APPROVED`, `REJECTED`, `CANCELLED`, `ARCHIVED` |
+| `WorkOrderStatus` | `PLANNED`, `ASSIGNED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED` |
+| `PaymentMethod` | `CASH`, `TRANSFER`, `CREDIT_CARD`, `DEBIT_CARD`, `OTHER` |
+| `PaymentStatus` | `PENDING`, `PAID` |
 
-## Modelo de dominio
+`ESPERA`, `PARTIAL` y los estados de factura de las [reglas de producto](./DOMAIN_RULES.md) no son automáticamente enums existentes. El saldo se calcula a partir de notas, capturas y aplicaciones; no se deduce de `QuoteStatus` ni de `PaymentRequestStatus`.
 
-El dominio separa claramente **cotización comercial** (`Quote`) de **orden de trabajo operativa** (`WorkOrder`).
+La autorización por secciones ya aparece en `acceptSharedQuote` y `authorizeQuote`, con `authorizedSectionIds` y `QuoteSection.isAuthorized`. La aceptación y creación/inicio de una orden no deben confundirse: revisar las acciones y validaciones operativas antes de afirmar qué transición ejecuta cada entrada. Las propuestas `ACEPTADA → ESPERA → EN_PROCESO` conservan su significado de producto sin sustituir los guards actuales por una descripción idealizada.
 
-| Entidad | Responsabilidad | Relación principal |
-|---|---|---|
-| `UserProfile` | Usuario interno con rol y clasificación laboral. En el MVP inmediato solo `ADMIN`/`ADMIN_ASSISTANT` inician sesión; `WORKER` modela registros operativos admin-led. | `WorkAssignment`, `ExecutionRecord` |
-| `Customer` | Cliente del taller | `Quote`, `Vehicle` |
-| `Vehicle` | Unidad vinculada al cliente | `Customer`, `Quote` |
-| `Quote` | Propuesta comercial con ítems, secciones y totales | `Customer`, `Vehicle`, `QuoteSection`, `QuoteItem`, `WorkOrder` |
-| `QuoteSection` | Grupo de conceptos dentro de una cotización con subtotal propio | `Quote`, `QuoteItem` |
-| `QuoteItem` | Línea de cotización con tipo, cantidad y precio | `QuoteSection`, `Quote` |
-| `WorkOrder` | Orden de trabajo vinculada a una cotización; debe evolucionar para soportar autorización administrativa y `ESPERA` | `Quote`, `WorkAssignment`, `ExecutionRecord` |
-| `WorkAssignment` | Asignación administrativa de empleado a orden de trabajo | `WorkOrder`, `UserProfile` |
-| `ExecutionRecord` | Registro administrativo de ejecución realizado | `WorkOrder`, `UserProfile` |
-| `CustomerFiscalProfile` | Perfil fiscal reutilizable, administrado por personal interno | `Customer`, `PaymentRequest` |
-| `PaymentRequest` | Solicitud tokenizada de instrucciones para transferencia; no registra pagos ni liquidaciones | `Customer`, `Quote` o `WorkOrder`, `CustomerFiscalProfile` |
-| `Payment` | Objetivo: cobro aplicado con monto y método | `Customer`, `Quote` o `WorkOrder` |
-| `LedgerEntry` | Objetivo: movimiento de la cuenta del cliente | `Customer`, `Payment` |
+`PaymentRequest` controla instrucciones tokenizadas y sus datos fiscales; no registra por sí solo un pago ni demuestra liquidación. Capturas, aplicaciones, crédito y reversiones pertenecen al [dominio de pagos](../src/features/payments/domain.ts). La intención de las instrucciones públicas y el contrato fiscal se mantienen en [DOMAIN_RULES](./DOMAIN_RULES.md), separados de la evidencia de implementación.
 
-Regla objetivo pendiente: la autorización administrativa no debe crear un flujo paralelo; debe usar el mismo registro de cotización/alcance, marcarlo como aceptado y exigir una nota con canal y motivo (p. ej. "autorización por teléfono"). La evidencia inicial es opcional. Tras la aceptación o autorización, la orden debe pasar por `ESPERA` hasta que se confirme espacio del taller y disponibilidad de maestro.
+## Referencias y límites de esta guía
 
-## Autorización parcial y dominio financiero
-
-Una cotización se construye por secciones desde el inicio. La acción principal del cotizador es **Agregar sección**; dentro de cada sección, el usuario agrega conceptos con **Agregar concepto**. Los subtotales por sección y el total de la cotización se calculan automáticamente. El cliente puede autorizar secciones individuales con **Autorizar sección** o la cotización completa con **Autorizar cotización completa**. Las secciones autorizadas no se modelan como cotizaciones separadas; persisten dentro de la misma cotización con su propio estado de autorización. La agrupación retrospectiva de conceptos no es parte del flujo principal del MVP.
-
-> **Terminología:** en la interfaz del cotizador cada línea se presenta como un **concepto** (acción **Agregar concepto**). En el modelo de dominio esa línea sigue siendo `QuoteItem`. Los tipos de concepto incluyen mano de obra, material, refacción, servicio externo y otro.
-
-El subtotal general de una cotización integra refacciones, mano de obra y servicios. Sin factura, el total pagable es el subtotal; con factura, es el subtotal más IVA. El personal define la preferencia de factura y captura o reutiliza `CustomerFiscalProfile`. Cuando corresponde, la operación conserva un snapshot fiscal para no depender de cambios posteriores al perfil reutilizable.
-
-La preferencia de factura, el método de pago, el estado de pago, el estado de factura y el saldo pendiente son ejes independientes. `QuoteStatus` describe el flujo operativo y no debe incorporar cobro ni adeudo. Facturada no significa pagada.
-
-El dominio financiero objetivo incluye métodos `CASH`, `TRANSFER` y `OTHER`; estados de pago `PENDING`, `PARTIAL` y `PAID`; y estados de factura `NOT_REQUESTED`, `DATA_MISSING`, `READY` e `ISSUED`. Estas entidades y enumeraciones están planificadas. Cada abono parcial deberá crear o actualizar el saldo del ledger del cliente y el indicador financiero de saldo pendiente de la cotización.
-
-El efectivo puede liquidar o abonar sin `PaymentRequest`. Un cambio de preferencia de factura hasta la liquidación final modifica IVA y total pagable; por eso requiere recálculo controlado, confirmación auditada y regeneración de instrucciones.
-
-La distinción operativa `ACEPTADA` → `ESPERA` → `EN_PROGRESO` se preserva: una vez autorizadas las secciones necesarias, la orden de trabajo sigue pasando por `ESPERA` hasta confirmar espacio del taller y disponibilidad de maestro.
-
-## Instrucciones públicas de transferencia
-
-`PaymentRequest` representa una solicitud tokenizada y revocable de instrucciones, no un `Payment`, una entrada de ledger ni evidencia de liquidación. Su ciclo de token, expiración y cancelación, la reutilización de `CustomerFiscalProfile`, el snapshot fiscal y el filtrado de cuentas bancarias constituyen la base implementada.
-
-La ruta `/datos-de-pago/[token]` debe mostrar únicamente un importe decidido por el personal, las cuentas elegibles para esa transferencia y las acciones de contacto o envío de comprobante. No ofrece selector de factura ni formulario fiscal. La recepción de un comprobante requiere validación interna y registro separado del pago.
-
-El link es opcional y exclusivo para `TRANSFER`; `CASH` no lo necesita. La ruta genérica `/datos-pago` no representa instrucciones ligadas a una operación y su alcance final de producto permanece pendiente.
-
-## Límites del MVP
-
-El objetivo inicial es una PWA instalable en Android Chrome, operada por admin/asistente. El empaquetado como APK, los portales de clientes tokenizados y el login/app de trabajador (`/mis-trabajos`, `/mi-nomina`) están fuera del alcance inmediato.
-
-> **Nota de alcance (GitHub #65):** los trabajadores NO se eliminan del dominio. El MVP inmediato los mantiene como registros admin-managed: el admin asigna maestro/ayudantes, registra quién ejecutó el trabajo y alimenta nómina/cuenta del cliente. El self-service del trabajador queda para post-MVP.
+- [Diseño](../DESIGN.md): tokens, composición y componentes; Figma es referencia visual, no prueba de cobertura.
+- [Runbooks](../README.md#documentación-una-entrada-por-propósito): configuración y operaciones con datos/release.
+- GitHub Issues: tracker de ejecución; el historial de Git conserva los primeros snapshots del MVP, no pendientes actuales.
+- Instalabilidad PWA, seguridad efectiva de la base, credenciales y despliegue requieren verificación en su entorno; no se deducen de este inventario estático.
