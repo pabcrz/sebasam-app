@@ -15,7 +15,7 @@ Delivery: auto-chain / feature-branch-chain (human selected); forecast 800–1,2
 
 ## Tasks
 
-- T1 [S1,S2,S3] inline; in_progress; import the ten original drafts as a versioned, checksum-verified starting point in this isolated worktree; commit: pending.
+- T1 [S1,S2,S3] inline; done; ten original drafts imported byte-identically with 14 relative destinations checked; commit: this seed slice, hash recorded in next slice.
 - T2 [S1,S2] delegated (runtime context backstop); pending; connect and reconcile the manual, redistribute unique rules/content, and consolidate technical references with single-topic ownership; commits: pending.
 - T3 [S1,S2] inline readback after writer self-checks; pending; verify content preservation, links/anchors, scope and draft integrity, finish local review slices; commits: pending.
 
@@ -30,3 +30,5 @@ L3 — Human authorized issue discovery/creation including protected `status:app
 L4 — Initial draft audit: ten files / 255 lines, broad domain coverage but weak cross-module handoffs, duplicate architecture/platform/import material and stale treatment of architecture as only a proposal. These are findings to reconcile against the updated baseline, not permission to alter product behavior. Historical old MVP snapshots remain deleted. The original untracked task file belongs to prior work and is not overwritten.
 
 L5 — Route: parent imports/verifies untouched drafts, then a bounded worker owns consolidation because the runtime context backstop fired. This is one connected behavior, not parallel independent writers. Parent owns exact deletions if child tools refuse them, task/memory state, native assessment, commit slicing and delivery policy. Workload forecast is advisory; preserve content rather than compressing it to fit a counter. Review child slices against immediate parents; tracker is the eventual final integration branch.
+
+L6 — Tracker commit `30f09c0`; source import checksum checks PASS for all ten drafts, 14 relative destinations PASS, `git diff --check` PASS. No meaningful runtime RED for passive docs. Tracker native assessment was unavailable because freshly copied untracked files required explicit declaration; no lifecycle/retry was attempted, returned plan remains writer self-verification without independent verifier. Source drafts will all be staged in the new seed candidate before that candidate's assessment.
