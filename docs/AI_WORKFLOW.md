@@ -51,6 +51,28 @@ These existing issue-first requirements also apply to the branch naming examples
 
 Use the [PR template](../.github/pull_request_template.md) as the single source for description sections and the contributor checklist. The first line must state `Closes #<number>`; select one PR type, summarize intent, map changes, record observed checks, and disclose approved scope/size exceptions or migration cautions. Its checklist retains the existing conventional-commit, no-AI-attribution and secrets-safety requirements.
 
+## Language conventions
+
+Use Spanish to explain and operate SEBASAM; use English for implementation and technical maintenance. Assign the language by audience, not by file extension.
+
+| Surface | Language |
+|---------|----------|
+| UI, validation/error messages, notifications, PDFs and public business messages | Spanish (Mexico), consistent with the product's existing terminology. |
+| README, product handbook and business rules/journeys | Spanish. |
+| Architecture, design, database safety and historical-import guides | Spanish; keep technical identifiers unchanged. |
+| Release and contribution runbooks, including this workflow and GITFLOW | English. |
+| Code identifiers, new technical filenames, API/schema/configuration keys and enums | English for new names; preserve existing contracts and paths. |
+| Code comments and test names/descriptions | English; assertions and fixtures for visible UI messages retain the exact Spanish strings. |
+| Conventional Commit messages | English, retaining the required conventional prefix. |
+| Agent instructions and new technical ODD/OpenSpec tracking, designs and specifications | English; preserve user quotations, UI copy and domain evidence in their original language. |
+| Issues and collaboration discussions/replies | The target context's language; use Spanish for Spanish-language issues and discussions. |
+
+Keep a document's prose and headings consistent with its assigned language. Product names, literal commands, code examples and quoted messages are not prose to translate. For example, write “La cotización pasa a `APPROVED`” in a Spanish guide; do not invent an `APROBADA` enum.
+
+Do not rename existing routes, fields, environment variables, persisted states or public anchors just to translate them. Preserve compatibility or update consumers as part of an explicitly scoped change. UI language does not determine the language of its identifiers or test descriptions.
+
+Apply this convention to new or edited content. Correct bounded language mixing when it is in scope; do not perform a repository-wide translation or rewrite historical ODD/OpenSpec evidence. Keep this section as the canonical language policy rather than copying it into agent-specific files or other guides.
+
 ## Change discipline
 
 - Do not bundle unrelated changes.
