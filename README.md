@@ -17,11 +17,12 @@ Antes de migrar o importar datos, seguir [DATABASE_SAFETY](./docs/DATABASE_SAFET
 |---|---|
 | Entender y operar el producto, sus recorridos y reglas | [Manual de producto](./docs/product-guide/index.md) |
 | Consultar estructura, modelos, rutas y límites técnicos | [Arquitectura](./docs/ARCHITECTURE.md) |
-| Trabajar con agentes, issues y verificaciones | [AI workflow](./docs/AI_WORKFLOW.md) |
+| Trabajar con agentes, issues y verificaciones | [Flujo de trabajo con IA](./docs/AI_WORKFLOW.md) |
+| Elegir el idioma del producto, código y documentación | [Convención de idiomas](./docs/AI_WORKFLOW.md#language-conventions) |
 | Crear ramas y preparar PRs | [Gitflow](./docs/GITFLOW.md) |
 | Usar tokens y componentes visuales | [Diseño](./DESIGN.md) |
 | Migrar, respaldar o recuperar datos | [Seguridad de base de datos](./docs/DATABASE_SAFETY.md) |
-| Promover una revisión a producción | [Release runbook](./docs/PRODUCTION_RELEASE.md) |
+| Promover una revisión a producción | [Guía de publicación](./docs/PRODUCTION_RELEASE.md) |
 | Importar información histórica y entender el asistente | [Importación histórica](./docs/HISTORICAL_IMPORT.md) |
 
 No usar el backlog ni los informes históricos como porcentaje de avance actual. GitHub Issues es el tracker de ejecución; las afirmaciones sobre implementación se contrastan con código y pruebas.
@@ -44,17 +45,21 @@ Los primeros snapshots del MVP se consultan en el historial de Git; para el trab
 
 La lista completa y autoritativa de comandos está en [package.json](./package.json). Los resultados de un informe antiguo no son verificaciones ejecutadas en tu checkout.
 
-## Environment variables
+<a id="environment-variables"></a>
 
-| Variable | Purpose |
-|----------|---------|
-| `DATABASE_URL` | Supabase pooled Postgres URL for runtime. |
-| `DIRECT_URL` | Supabase non-transaction URL for Prisma CLI migrations: Direct connection preferred, Session pooler accepted when Direct is unreachable. |
-| `NEXT_PUBLIC_SUPABASE_URL` | Browser-safe Supabase project URL. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser-safe Supabase anonymous key. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Optional server-only key. Never expose it as `NEXT_PUBLIC_*`. |
+## Variables de entorno
 
-## Commands
+| Variable | Propósito |
+|----------|-----------|
+| `DATABASE_URL` | URL de PostgreSQL de Supabase con pool de conexiones para la ejecución de la aplicación. |
+| `DIRECT_URL` | URL de Supabase sin pool transaccional para migraciones con Prisma CLI: preferir conexión Direct; se admite Session pooler cuando Direct no es accesible. |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto Supabase que puede exponerse al navegador. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave anónima de Supabase que puede exponerse al navegador. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clave opcional exclusiva del servidor. Nunca exponerla como `NEXT_PUBLIC_*`. |
+
+<a id="commands"></a>
+
+## Comandos
 
 ```bash
 pnpm dev
@@ -70,14 +75,16 @@ pnpm bootstrap:admin-profile
 pnpm auth:set-password
 ```
 
-## Internal Auth users
+<a id="internal-auth-users"></a>
 
-SEBASAM uses username-style login for staff, while Supabase Auth still stores email-based
-identities internally. The visible username `pablo` maps to `pablo@sebasam.local`.
+## Usuarios internos de autenticación
 
-For the MVP, staff accounts are controlled internally. Do not enable public sign-up.
+El personal ingresa con nombre de usuario, mientras Supabase Auth conserva internamente
+identidades basadas en correo. El usuario visible `pablo` corresponde a `pablo@sebasam.local`.
 
-Create a new internal Auth user or reset an existing user's password with the local/admin script:
+En el MVP, las cuentas del personal se controlan internamente. No habilitar el registro público.
+
+Crear un usuario interno de Auth o restablecer su contraseña con el script local de administración:
 
 ```bash
 AUTH_USERNAME="pablo" \
@@ -86,7 +93,7 @@ SUPABASE_SERVICE_ROLE_KEY="<server-only-service-role-key>" \
 pnpm auth:set-password
 ```
 
-If the Auth user already exists, pass its UUID to reset the password:
+Si el usuario de Auth ya existe, indicar su UUID para restablecer la contraseña:
 
 ```bash
 AUTH_USERNAME="pablo" \
@@ -96,16 +103,18 @@ SUPABASE_SERVICE_ROLE_KEY="<server-only-service-role-key>" \
 pnpm auth:set-password
 ```
 
-The service role key is server-only. Never commit it, never expose it to browser code, and never
-prefix it with `NEXT_PUBLIC_`.
+La clave service role es exclusiva del servidor. No incorporarla a Git, exponerla en código
+del navegador ni usar el prefijo `NEXT_PUBLIC_`.
 
-## Admin profile bootstrap
+<a id="admin-profile-bootstrap"></a>
 
-Supabase Auth owns identity and sessions. Create the Auth user manually in Supabase first,
-using the internal email that matches the visible login username, for example
-`sebas@sebasam.local` for username `sebas`.
+## Creación inicial del perfil administrativo
 
-Then create or update the matching app profile with Prisma:
+Supabase Auth administra identidad y sesiones. Crear primero el usuario de Auth en Supabase,
+con el correo interno correspondiente al nombre de usuario visible; por ejemplo,
+`sebas@sebasam.local` para el usuario `sebas`.
+
+Después, crear o actualizar el perfil correspondiente de la aplicación con Prisma:
 
 ```bash
 BOOTSTRAP_AUTH_USER_ID="<supabase-auth-user-uuid>" \
@@ -116,25 +125,26 @@ BOOTSTRAP_ROLE="ADMIN" \
 pnpm bootstrap:admin-profile
 ```
 
-The bootstrap script does not create Supabase Auth users and does not need a service role key.
-It only upserts `UserProfile` for an existing Auth user id. `BOOTSTRAP_ROLE` accepts `ADMIN`
-or `ADMIN_ASSISTANT`.
+El script de creación inicial no crea usuarios de Supabase Auth ni necesita una clave service role.
+Solo crea o actualiza `UserProfile` para un ID de usuario de Auth existente. `BOOTSTRAP_ROLE`
+admite `ADMIN` o `ADMIN_ASSISTANT`.
 
 La gestión interna de usuarios ya tiene una pantalla en `/admin/users`, reservada a Super Admin.
 Los scripts anteriores siguen siendo herramientas administrativas. Los componentes deben respetar
 los wrappers y las referencias visuales de `DESIGN.md`.
 
-## Production release
+<a id="production-release"></a>
 
-Production releases are orchestrated by the versioned GitHub Actions workflow in
-`.github/workflows/production-release.yml`. Configure the protected `production`
-GitHub Environment and Vercel as documented in
-[`docs/PRODUCTION_RELEASE.md`](./docs/PRODUCTION_RELEASE.md). Do not let Vercel
- auto-deploy production from `main`; the workflow invokes Vercel only after it
-verifies and applies all pending committed Prisma migrations. A maintainer must
-manually dispatch the workflow from `main`; that dispatch is the explicit human
-approval to promote the selected revision. Pushes to `main` never release
-production automatically.
+## Publicación en producción
+
+Las publicaciones en producción se orquestan mediante el workflow versionado de GitHub Actions
+`.github/workflows/production-release.yml`. Configurar el entorno protegido `production`
+de GitHub y Vercel según [`docs/PRODUCTION_RELEASE.md`](./docs/PRODUCTION_RELEASE.md).
+No permitir que Vercel publique automáticamente en producción desde `main`: el workflow
+invoca Vercel solo después de verificar y aplicar todas las migraciones pendientes de Prisma
+incluidas en Git. Una persona a cargo del mantenimiento debe iniciar manualmente el workflow
+desde `main`; esa ejecución es la aprobación humana explícita para promover la revisión elegida.
+Los pushes a `main` nunca publican automáticamente en producción.
 
 
 ## Restricciones operativas
