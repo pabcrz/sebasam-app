@@ -1,7 +1,7 @@
 # SEBASAM — Sistema de diseño (Figma)
 
 > Referencia visual: Figma `b3TlGONh5fTCNUilSHf75b`.
-> Este documento conserva contratos visuales y criterios de diseño, no un inventario de funcionalidades ni una certificación de fidelidad a Figma. Los flujos de negocio viven en [DOMAIN_RULES](./docs/DOMAIN_RULES.md) y el estado implementado en [ARCHITECTURE](./docs/ARCHITECTURE.md).
+> Este documento conserva contratos visuales y criterios de diseño, no un inventario de funcionalidades ni una certificación de fidelidad a Figma. Los flujos de negocio viven en el [manual de producto](./docs/product-guide/index.md) y el estado implementado en [ARCHITECTURE](./docs/ARCHITECTURE.md).
 
 ## Resumen
 
@@ -151,7 +151,7 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 
 | Export | Ruta | Responsabilidad |
 |---|---|---|
-| `PublicBusinessIdentity` | `src/features/public-branding/domain.ts` | Proyección de configuración pública: `businessName`, `phone?`, `whatsapp?`. No contiene logo, dirección ni URL de mapas. |
+| `PublicBusinessIdentity` | `src/features/public-branding/domain.ts` | Proyección de configuración pública: `businessName?`, `fullName?`, `phone?`, `whatsapp?`. No contiene logo, dirección ni URL de mapas. |
 | `toPublicBusinessIdentity` | `src/features/public-branding/domain.ts` | Mapea únicamente nombre y contactos existentes desde `PaymentSettingsData`; omite valores ausentes o vacíos. |
 | `PublicBrandHeader` | `src/features/public-branding/public-brand-header.tsx` | Renderiza la identidad y acepta `logoSrc?` independiente, provisto únicamente por el caller. Sin fallback cuando falta. |
 
@@ -221,26 +221,15 @@ La dirección y `mapsUrl` permanecen como datos de ubicación del shell público
 
 ## Flujo de cotización y estados
 
-El flujo y las reglas de autorización se mantienen únicamente en [DOMAIN_RULES](./docs/DOMAIN_RULES.md). La autorización puede ser parcial por secciones; no asumir un contrato «todo/nada». Consultá [arquitectura](./docs/ARCHITECTURE.md#modelo-y-estados-no-confundir-producto-con-enums) para nombres persistidos y diferencias con el vocabulario de producto.
+El flujo y las reglas de autorización pertenecen a [cotizaciones y trabajo](./docs/product-guide/quotes-work-orders-notes.md); los [recorridos](./docs/product-guide/flows.md#flujo-objetivo-conservado) conservan la secuencia objetivo. La autorización puede ser parcial por secciones: presentar alcance y selección sin asumir «todo/nada». Los nombres persistidos pertenecen a [arquitectura](./docs/ARCHITECTURE.md#modelo-y-estados-no-confundir-producto-con-enums).
 
 ### Estados operativos
 
-Vocabulario visual objetivo conservado para diseño; no es una lista de enums implementados ni una afirmación de pendientes actuales.
-
-| Estado | Significado | Quién lo dispara |
-|---|---|---|
-| `BORRADOR` | Cotización en construcción | Admin / asistente |
-| `ENVIADA` | Cotización compartida al cliente | Admin al generar link/PDF |
-| `ACEPTADA` | Cliente autorizó alcance total o parcial, o admin registró autorización externa | Cliente vía link con token, o Admin con nota obligatoria según reglas de dominio |
-| `DECLINADA` | Cliente declinó todo | Cliente vía link con token |
-| `CANCELADA` | Admin cancela antes o después de enviar | Admin |
-| `ESPERA` | Cotización/orden aceptada, a la espera de espacio del taller y disponibilidad de maestro | Objetivo pendiente: sistema al aceptar o autorizar |
-| `EN_PROCESO` | WorkOrder activa con empleados asignados | Admin al confirmar espacio y maestro |
-| `AJUSTE_FINAL` | Extras o ajustes antes de cerrar | Admin |
+El vocabulario visual objetivo puede usar Borrador, Enviada, Aceptada, Declinada, Cancelada, Espera, En proceso y Ajuste final. Son labels para composición y jerarquía, no otra máquina de estados ni evidencia de enums implementados. La semántica, el actor y la transición se consultan en el capítulo dueño; especialmente Espera no demuestra un estado persistido.
 
 ### Reglas de diseño por estado
 
-Separar el indicador operativo de los financieros: `FACTURADA` no implica pagada y `QuoteStatus` no representa cobro ni adeudo. El self-service del trabajador es una propuesta aparte del registro administrativo (GitHub #65). Las transiciones y responsabilidades de negocio se consultan en [DOMAIN_RULES](./docs/DOMAIN_RULES.md), sin mantener otra copia aquí.
+Separar el indicador operativo de los financieros: `FACTURADA` no implica pagada y `QuoteStatus` no representa cobro ni adeudo. El self-service del trabajador es una propuesta aparte del registro administrativo (GitHub #65). Las transiciones y responsabilidades de negocio se consultan en [cotizaciones](./docs/product-guide/quotes-work-orders-notes.md) y [finanzas](./docs/product-guide/payments-and-receivables.md), sin mantener otra copia aquí.
 
 ### Indicadores separados
 
@@ -250,6 +239,8 @@ Separar el indicador operativo de los financieros: `FACTURADA` no implica pagada
 El indicador de saldo pendiente es financiero y se muestra junto con el monto; no sustituye ni altera el badge operativo.
 
 ### Interfaz interna de cobranza
+
+Criterios de presentación del [contrato financiero canónico](./docs/product-guide/payments-and-receivables.md#contrato-de-cobro-y-facturación), no una política de cobro adicional.
 
 1. Mostrar primero el subtotal general y la fórmula aplicada: sin factura, `total = subtotal`; con factura, `total = subtotal + IVA`.
 2. Permitir al personal elegir preferencia de factura y método de pago como controles independientes.
@@ -261,6 +252,8 @@ El indicador de saldo pendiente es financiero y se muestra junto con el monto; n
 `Payment`, aplicaciones y ledger ya tienen implementación. Estos puntos son criterios de presentación; no prueban que todos los estados de producto sean enums ni que cada interacción esté cubierta. Ver [arquitectura](./docs/ARCHITECTURE.md).
 
 ### Página pública de transferencia
+
+Presentación del contrato de [instrucciones públicas](./docs/product-guide/payments-and-receivables.md#reglas-objetivo-conservadas); la selección efectiva de datos por superficie se describe en [experiencia pública](./docs/product-guide/vehicles-and-public-experience.md#páginas-públicas-de-pago).
 
 - El importe está decidido y se presenta con máxima jerarquía visual.
 - Solo aparecen cuentas compatibles con la preferencia fiscal registrada internamente.
@@ -327,5 +320,5 @@ Criterios de diseño por audiencia, no checklist de implementación. Para rutas 
 1. Revisar las dependencias de `package.json` antes de proponer instalaciones: Radix ya está incorporado y las notificaciones usan `react-hot-toast`, no Sonner.
 2. Reutilizar los wrappers tokenizados existentes en `src/components/ui`; no crear una segunda capa UI.
 3. Usar `QuoteOperationalBadge` y `QuoteFinancialBadges` desde el primer listado de cotizaciones.
-4. El schema actual en `prisma/schema.prisma` usa estados en inglés y separa `Quote`/`WorkOrder`; al implementar la UI, alinear los labels visuales con los estados de negocio documentados aquí.
+4. El schema actual en `prisma/schema.prisma` usa estados en inglés y separa `Quote`/`WorkOrder`; al implementar la UI, alinear los labels visuales con los estados de negocio del manual y los enums de arquitectura.
 5. El idioma operativo visible debe ser español de México; los identificadores técnicos permanecen en inglés.

@@ -8,8 +8,13 @@ deploy production from `main`.
 
 ### Quote retention cron
 
-Vercel runs `/api/cron/quote-retention` daily at `0 0 * * *` (UTC), as declared
-in the repository's [`vercel.json`](../vercel.json). The route fails closed unless
+The repository declares daily execution of `/api/cron/quote-retention` at
+`0 0 * * *` (UTC) in [`vercel.json`](../vercel.json). **Whether the cron is enabled
+and actually runs in deployed production was not verified here.** Archive/trash
+policy, protected dependencies and restoration belong to the
+[quotation chapter](./product-guide/quotes-work-orders-notes.md#retención-y-restauración);
+the implemented handler is [route.ts](../src/app/api/cron/quote-retention/route.ts).
+The route fails closed unless
 the request includes the Vercel cron authorization header matching `CRON_SECRET`.
 Add `CRON_SECRET` as a Vercel project environment variable for Production (and
 Preview only when scheduled processing is intentionally enabled there); use a

@@ -1,6 +1,6 @@
 # Arquitectura implementada de SEBASAM
 
-Referencia del código versionado, no de la configuración efectiva de producción ni de un porcentaje de avance. Las reglas y objetivos de producto viven en [DOMAIN_RULES](./DOMAIN_RULES.md); los pendientes se acuerdan en GitHub Issues.
+Referencia del código versionado, no de la configuración efectiva de producción ni de un porcentaje de avance. Las reglas y objetivos de producto viven en el [manual de producto](./product-guide/index.md); los pendientes se acuerdan en GitHub Issues.
 
 > **Ciclo documental implementado:** [Cotizaciones, OT y notas emitidas](./DOCUMENT_LIFECYCLE.md) describe los modelos y las reglas actuales de emisión y vencimiento.
 
@@ -44,7 +44,7 @@ Supabase Auth se vincula con `UserProfile.id` por UUID. El login visible usa use
 - `requireSuperAdmin`: solo `SUPER_ADMIN`.
 - `requireRole` concede a `SUPER_ADMIN` acceso a los roles pedidos; también exige perfil/sesión válidos.
 
-El schema incluye `WORKER` y `workerKind` (`MASTER`/`HELPER`) para registros laborales y asignaciones. Eso no equivale a un portal de trabajador ni concede acceso operativo. El self-service `/mis-trabajos` y `/mi-nomina` continúa siendo una propuesta separada del registro admin-led (GitHub #65).
+El schema incluye `WORKER` y `workerKind` (`MASTER`/`HELPER`); sus semánticas y el límite del autoservicio viven en [equipo](./product-guide/customers-workers-payroll.md#equipo). No hay rutas implementadas `/mis-trabajos` ni `/mi-nomina`; la propuesta se registra en GitHub #65.
 
 Las cuentas internas no usan sign-up público. Hay gestión de usuarios en `/admin/users`, reservada a Super Admin; los scripts de Auth y bootstrap descritos en el [README](../README.md) siguen siendo herramientas administrativas, no instrucciones para exponer service role al navegador.
 
@@ -59,16 +59,18 @@ La navegación implementada **sí usa `/admin`**. [`getRootRedirectPath`](../src
 | `/admin/login`, `/admin/change-password`, `/admin/setup-required` | Acceso y resolución de perfil/contraseña |
 | `/admin` | Dashboard interno |
 | `/admin/customers`, `/admin/customers/[id]` | Clientes y detalle; `/estado-de-cuenta` agrega su cuenta |
-| `/admin/quotes`, `/admin/quotes/nueva`, `/admin/quotes/[id]/edit` | Cotizador; `/admin/quotes/[id]/print` es su salida imprimible |
+| `/admin/quotes`, `/admin/quotes/nueva`, `/admin/quotes/[id]/edit` | Cotizador; `/admin/quotes/[id]/print` es su salida imprimible; `/admin/quotes/retention` consulta retención |
 | `/admin/work-orders`, `/admin/work-orders/[id]` | Gestión operativa |
 | `/admin/notas`, `/admin/notas/[id]/print` | Notas y salida imprimible |
 | `/admin/workers`, `/admin/workers/[id]/edit` | Trabajadores administrados internamente |
-| `/admin/nomina` | Nómina; incluye rutas de impresión de firmas y sobres |
+| `/admin/nomina` | Nómina; impresión en `/admin/nomina/imprimir/firmas` y `/admin/nomina/imprimir/sobre/[workerId]` |
 | `/admin/configuracion-pago`, `/admin/users` | Configuración financiera y administración de usuarios con sus guards específicos |
-| `/cotizacion/[token]` | Documento público tokenizado, decisiones y estado de pago cuando corresponde |
+| `/cotizacion`, `/cotizacion/[token]` | Entrada pública y documento tokenizado; semántica en [experiencia pública](./product-guide/vehicles-and-public-experience.md) |
 | `/datos-de-pago/[token]`, `/datos-de-pago/cuenta/[token]` | Superficies públicas de datos de pago |
 | `/datos-pago` | Página genérica, no prueba de pago ni instrucciones de una operación específica |
 | `/admin/historical`, `/asistente` | Consulta histórica y asistente; este último exige autorización operativa |
+| `/api/assistant/chat`, `/api/cotizacion/[token]/status` | Chat operacional y consulta de revisión/estado por token |
+| `/api/cron/quote-retention` | Handler GET autorizado por secreto; configuración en [release](./PRODUCTION_RELEASE.md#quote-retention-cron) |
 
 Fuente del mapa: [`src/app`](../src/app/). La presencia de una página no concede permisos: revisar el guard de la acción/página correspondiente.
 
@@ -87,11 +89,17 @@ El [schema](../prisma/schema.prisma) es la fuente de nombres persistidos. Actual
 | `PaymentMethod` | `CASH`, `TRANSFER`, `CREDIT_CARD`, `DEBIT_CARD`, `OTHER` |
 | `PaymentStatus` | `PENDING`, `PAID` |
 
-`ESPERA`, `PARTIAL` y los estados de factura de las [reglas de producto](./DOMAIN_RULES.md) no son automáticamente enums existentes. El saldo se calcula a partir de notas, capturas y aplicaciones; no se deduce de `QuoteStatus` ni de `PaymentRequestStatus`.
+`ESPERA` y `PARTIAL` no pertenecen a los enums anteriores; los labels de factura del [contrato financiero](./product-guide/payments-and-receivables.md#contrato-de-cobro-y-facturación) tampoco se afirman como enums persistidos. El schema mantiene `PayableNote`/`PaymentApplication` y `PaymentRequest` como modelos distintos; el significado de captura, aplicación y saldo pertenece a [finanzas](./product-guide/payments-and-receivables.md#captura-aplicación-y-saldo).
 
-La autorización por secciones ya aparece en `acceptSharedQuote` y `authorizeQuote`, con `authorizedSectionIds` y `QuoteSection.isAuthorized`. La aceptación y creación/inicio de una orden no deben confundirse: revisar las acciones y validaciones operativas antes de afirmar qué transición ejecuta cada entrada. Las propuestas `ACEPTADA → ESPERA → EN_PROCESO` conservan su significado de producto sin sustituir los guards actuales por una descripción idealizada.
+`authorizedSectionIds` y `QuoteSection.isAuthorized` aparecen en [dominio de cotización](../src/features/quotes/domain.ts); sus reglas y contraste con objetivos se documentan únicamente en [cotizaciones](./product-guide/quotes-work-orders-notes.md). Los [recorridos](./product-guide/flows.md) conectan esas entidades sin convertir vocabulario objetivo en transiciones persistidas.
 
-`PaymentRequest` controla instrucciones tokenizadas y sus datos fiscales; no registra por sí solo un pago ni demuestra liquidación. Capturas, aplicaciones, crédito y reversiones pertenecen al [dominio de pagos](../src/features/payments/domain.ts). La intención de las instrucciones públicas y el contrato fiscal se mantienen en [DOMAIN_RULES](./DOMAIN_RULES.md), separados de la evidencia de implementación.
+## Seguridad: fronteras comprobables
+
+Los enlaces públicos se resuelven por token en dominios separados: [cotización](../src/features/quotes/domain.ts), [solicitud de pago](../src/features/payment-requests/domain.ts) y [cuenta bancaria](../src/features/payment-settings/domain.ts). Su vigencia, revocación y selección pública no son intercambiables; semántica en [experiencia pública](./product-guide/vehicles-and-public-experience.md). Guards y exposición se verifican en layout, página, acción y endpoint, no por prefijo ni por exportación. Las acciones fiscales tokenizadas no tienen el guard operativo de creación/cancelación de solicitudes; no deducir un formulario público de esa capacidad.
+
+Prisma usa el rol de conexión PostgreSQL, que puede ser owner y evitar RLS. La política para `anon`/`authenticated` no protege frente a service-role filtrada. Las tablas nuevas requieren habilitación RLS y revisión de permisos por defecto según [DATABASE_SAFETY](./DATABASE_SAFETY.md); [prueba de cobertura](../src/lib/rls-coverage.test.ts) aporta evidencia estática, no inspección de la base desplegada.
+
+Los procedimientos y límites de respaldo (`public`, no Auth/Storage) pertenecen a [seguridad de datos](./DATABASE_SAFETY.md); no se verificó recuperación integral aquí. Importación y búsqueda histórica usan la infraestructura descrita en [HISTORICAL_IMPORT](./HISTORICAL_IMPORT.md#modelo-de-datos), incluida ausencia de índice ivfflat/hnsw. Las fuentes de trabajos completados tienen estado de indexación separado de la orden; comportamiento en [conocimiento](./product-guide/completed-work-and-assistant.md).
 
 ## Referencias y límites de esta guía
 
