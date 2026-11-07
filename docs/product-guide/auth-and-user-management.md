@@ -1,21 +1,33 @@
 # Autenticación y administración de usuarios
 
+El personal ingresa con cuenta interna; Super Admin administra usuarios autenticables. La ficha laboral no equivale a una cuenta. Empezar aquí antes de los [recorridos operativos](flows.md).
+
 ## Inicio de sesión y perfil
 
-El inicio de sesión recibe nombre de usuario y contraseña; normaliza username a minúsculas y construye un correo interno `username@sebasam.local` para Supabase Auth. El perfil de aplicación se busca en Prisma por UUID de Auth. Un perfil inexistente, inactivo o marcado `mustChangePassword` no obtiene acceso operacional normal. Referencias: `src/features/auth/actions.ts` (`loginAdmin`, `changePassword`), `src/lib/auth/session.ts`.
+Login recibe username/contraseña, normaliza username a minúsculas y construye email interno `username@sebasam.local` para Supabase Auth. Prisma busca perfil por UUID Auth. Perfil inexistente/inactivo o `mustChangePassword` no obtiene acceso operacional normal; páginas y acciones resuelven esos casos de manera distinta. Fuentes: [acciones de auth](../../src/features/auth/actions.ts), [sesión](../../src/lib/auth/session.ts).
 
-El cambio de contraseña requiere ocho caracteres como mínimo y confirmación coincidente; Supabase cambia la contraseña y después el perfil deja de requerir cambio. El cierre de sesión invalida la sesión de Supabase. Referencia: `src/features/auth/actions.ts`.
+Cambiar contraseña exige mínimo ocho caracteres y confirmación coincidente. Supabase cambia contraseña y luego el perfil deja de requerir cambio; cerrar sesión invalida sesión Supabase. Las rutas son `/admin/login`, `/admin/change-password` y `/admin/setup-required`. No habilitar sign-up público; provisión/bootstrap administrativo pertenece al [README](../../README.md#internal-auth-users), no a otro procedimiento aquí.
 
 ## Roles y límites
 
-Los guards distinguen `SUPER_ADMIN`, `ADMIN`, `ADMIN_ASSISTANT` y `WORKER`. `requireOperationalRole` admite los tres roles administrativos; `requireAdmin` solo superadmin/admin; `requireSuperAdmin` solo superadmin. Esto describe los guards explícitos, no implica que cada función exportada tenga un guard: verificar acción por acción. Referencia: `src/lib/auth/session.ts`.
+| Guard explícito | Roles admitidos |
+|---|---|
+| `requireOperationalRole` | `SUPER_ADMIN`, `ADMIN`, `ADMIN_ASSISTANT` |
+| `requireAdmin` | `SUPER_ADMIN`, `ADMIN` |
+| `requireSuperAdmin` | `SUPER_ADMIN` |
 
-Administración de usuarios (`/admin/users`) requiere superadmin: alta en Auth más perfil Prisma, asignación de rol, activar/desactivar y restablecer contraseña. El alta genera correo interno y obliga al cambio inicial. Si la creación del perfil falla, se intenta compensar eliminando el usuario Auth. Un superadmin no puede degradarse/desactivarse a sí mismo ni eliminar/desactivar al último superadmin activo. Referencias: `src/features/user-management/actions.ts`, `src/features/user-management/schemas.ts`.
+`requireRole` concede a superadmin los roles pedidos y exige sesión/perfil válidos. **No es garantía universal de guards:** verificar cada página, acción y endpoint. `getCurrentProfile` no impone por sí solo toda la política de `requireProfile`; prefijo de ruta, acción exportada o tipo de rol no prueban autorización completa. Fuentes: [sesión](../../src/lib/auth/session.ts) y [frontera técnica](../ARCHITECTURE.md#auth-y-roles).
+
+La revisión de permisos incluye las funciones delegadas: `createWorkOrder` llega a `requireOperationalRole` mediante `ensureWorkOrderPlanned`. En cambio, las acciones fiscales de solicitudes se autorizan por token, sin guard operativo. Consultar [órdenes](quotes-work-orders-notes.md#disponibilidad-y-conexiones) y [solicitudes](payments-and-receivables.md#solicitudes-de-pago-y-configuración), sin inferir UI ni remediar permisos desde documentación.
+
+## Administración de cuentas
+
+`/admin/users` requiere superadmin. Las acciones crean Auth y perfil Prisma, asignan rol, activan/desactivan y restablecen contraseña; alta obliga cambio inicial y genera email interno. Si falla crear perfil, se intenta compensar eliminando usuario Auth. Superadmin no puede degradarse/desactivarse a sí mismo ni retirar el rol/desactivar al último superadmin activo. Ese límite no demuestra una acción de eliminación general de cuentas. Fuentes: [acciones](../../src/features/user-management/actions.ts), [schemas](../../src/features/user-management/schemas.ts).
 
 ## Trabajadores
 
-La ficha de trabajador se administra por separado en `/admin/workers`: crea perfil `WORKER` y clase laboral, no crea credenciales de Auth. No confundir con la gestión de usuarios autenticables. El autoservicio de trabajador no queda confirmado. Referencias: `src/features/workers/actions.ts`, `src/features/user-management/actions.ts`.
+`/admin/workers` crea perfil `WORKER` y clase laboral sin crear credenciales Auth. No confundirlo con usuarios autenticables ni afirmar autoservicio comprobado. El self-service laboral es propuesta separada (GitHub #65). Continuar en [equipo y nómina](customers-workers-payroll.md#equipo).
 
-## Restricciones
+## Seguridad y siguiente paso
 
-La clave service-role se usa server-side en creación/reset de usuarios; nunca debe enviarse al navegador. Referencias: `src/lib/supabase/admin.ts`, `docs/DATABASE_SAFETY.md`. La política de provisión y recuperación de cuentas fuera de estas acciones no se documenta aquí.
+La service-role para creación/reset de usuarios es exclusiva del servidor, nunca del navegador. Ver [cliente admin](../../src/lib/supabase/admin.ts), [arquitectura](../ARCHITECTURE.md#límites-de-datos-y-ejecución) y [seguridad de datos](../DATABASE_SAFETY.md). RLS no protege frente a filtración de esa credencial. No se documenta aquí recuperación/provisión fuera de las acciones observadas ni se certifica configuración desplegada. Los [enlaces públicos](vehicles-and-public-experience.md) tienen contratos tokenizados distintos de una sesión.
