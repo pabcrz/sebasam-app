@@ -10,6 +10,10 @@
 
 Finalizar trabajo o emitir una venta no significa que esté pagada. Operación, saldo, factura y caducidad del enlace son ejes distintos.
 
+## Suma de totales de Notas
+
+Los acumulados SQL de WORK y SALE se convierten **por separado** de `Prisma.Decimal` a centavos numéricos antes de sumarse. Convertir después de `+` concatena texto y puede inflar pendiente, vencido y cobrado; el formato monetario divide entre 100 una sola vez. Esta corrección no modifica los importes almacenados, las consultas SQL, los filtros, los acuerdos ni las aplicaciones de pago.
+
 ## Qué representa cada modelo
 
 | Modelo | Responsabilidad real |
