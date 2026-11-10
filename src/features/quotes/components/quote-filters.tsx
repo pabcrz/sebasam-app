@@ -6,8 +6,8 @@ import { ChevronDown, Filter, X } from "lucide-react";
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusFilterNav } from "@/components/ui";
 import type { QuoteFilterInput } from "@/features/quotes/schemas";
 import {
-  buildQuoteFilterFormHref,
-  buildStatusFilterHref,
+  parseOperationalQuoteParams,
+  quotesHref,
   formatDateValue,
   getQuoteFilterModel,
   quoteStatusLabels,
@@ -16,35 +16,56 @@ import {
 } from "../quote-filter-model";
 
 type QuoteFiltersProps = {
-  filters: QuoteFilterInput;
+  filters: QuoteFilterInput & Partial<Pick<ReturnType<typeof parseOperationalQuoteParams>, "concept" | "kind" | "page">>;
+  rejectedDateRange?: { from: string; to: string };
   customers: QuoteFiltersCustomer[];
 };
 
-export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
+export function QuoteFilters({ filters, customers, rejectedDateRange }: QuoteFiltersProps) {
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
-  const { hasFilters, activeFilterSummary, activeChipKey } = getQuoteFilterModel(filters, customers);
+  const [open, setOpen] = React.useState(Boolean(rejectedDateRange));
+  const [rangeError, setRangeError] = React.useState(Boolean(rejectedDateRange));
+  const effectiveFilters = parseOperationalQuoteParams(filters);
+  const { activeFilterSummary } = getQuoteFilterModel({
+    ...filters,
+    showArchived: !filters.status && filters.showArchived,
+    showCancelled: !filters.status && filters.showCancelled,
+  }, customers);
+  if (effectiveFilters.concept) activeFilterSummary.push(`Concepto: ${effectiveFilters.concept}`);
+  if (effectiveFilters.economicNumber) activeFilterSummary.push(`ECO: ${effectiveFilters.economicNumber}`);
+  if (effectiveFilters.kind !== "all") activeFilterSummary.push(`Tipo: ${effectiveFilters.kind === "WORK" ? "Trabajo" : "Venta"}`);
+  const hasFilters = activeFilterSummary.length > 0;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    router.push(buildQuoteFilterFormHref(formData.entries()));
+    const entries = Object.fromEntries(formData.entries());
+    if (entries.customerId === "ALL") delete entries.customerId;
+    try {
+      const next = parseOperationalQuoteParams(entries);
+      setRangeError(false);
+      router.push(quotesHref(next));
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+      setRangeError(true);
+    }
   }
 
   function handleClear() {
+    setRangeError(false);
     router.push("/admin/quotes");
   }
 
   return (
     <div className="grid gap-4">
-      <StatusFilterNav
+      {!rangeError ? <StatusFilterNav
         label="Filtros directos por estado"
         items={statusChips.map((chip) => ({
-          href: buildStatusFilterHref(filters, chip.key),
+          href: quotesHref({ ...effectiveFilters, status: chip.key === "ALL" ? undefined : chip.key, page: 1 }),
           label: chip.label,
-          current: activeChipKey === chip.key,
+          current: (effectiveFilters.status ?? "ALL") === chip.key,
         }))}
-      />
+      /> : null}
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -60,7 +81,7 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {hasFilters ? (
+          {hasFilters || rangeError ? (
             <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={handleClear}>
               <X className="h-4 w-4" aria-hidden="true" />
               Limpiar
@@ -85,6 +106,11 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
         </div>
       </div>
 
+      {rangeError ? (
+        <p id="quote-date-error" role="alert" className="text-sm text-[var(--color-status-danger)]">
+          La fecha operativa desde no puede ser posterior a hasta. Corrige el rango para consultar cotizaciones.
+        </p>
+      ) : null}
       {hasFilters ? (
         <div className="flex flex-wrap gap-2" aria-label="Filtros activos">
           {activeFilterSummary.map((item) => (
@@ -99,18 +125,22 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
       ) : null}
 
       {open ? (
-        <form id="quote-filter-fields" onSubmit={handleSubmit} className="grid gap-4">
+        <form key={quotesHref(effectiveFilters)} id="quote-filter-fields" onSubmit={handleSubmit} className="grid gap-4">
+          <p id="quote-date-help" className="text-sm text-[var(--color-text-muted)]">Fecha operativa de cotización (ambos días incluidos)</p>
+          <p className="text-sm text-[var(--color-text-muted)]">Archivo y cancelación amplían la consulta de todos los estados. Un estado específico conserva su alcance.</p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="grid gap-1.5">
               <Label htmlFor="status" className="text-sm">
                 Estatus
               </Label>
-              <Select name="status" defaultValue={filters.status ?? ""}>
+              <Select name="status" disabled={rangeError} value={effectiveFilters.status ?? "ALL"} onValueChange={(status) => {
+                router.push(quotesHref(parseOperationalQuoteParams({ ...effectiveFilters, status, page: 1 })));
+              }}>
                 <SelectTrigger id="status" aria-label="Estatus">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="ALL">Todos</SelectItem>
                   {Object.entries(quoteStatusLabels).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
@@ -124,19 +154,19 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
               <Label htmlFor="hasWorkOrder" className="text-sm">
                 Orden de Trabajo
               </Label>
-              <Select name="hasWorkOrder" defaultValue={filters.hasWorkOrder === true ? "true" : filters.hasWorkOrder === false ? "false" : ""}>
+              <Select name="hasWorkOrder" defaultValue={filters.hasWorkOrder === true ? "true" : filters.hasWorkOrder === false ? "false" : "ALL"}>
                 <SelectTrigger id="hasWorkOrder" aria-label="Orden de Trabajo">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="ALL">Todas</SelectItem>
                   <SelectItem value="true">Con orden</SelectItem>
                   <SelectItem value="false">Sin orden</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex items-center gap-2 pt-8 sm:pt-0 sm:self-end sm:pb-2 lg:col-start-3">
+            <div className="flex flex-wrap items-center gap-2 sm:self-end">
               <input
                 type="checkbox"
                 id="showCancelled"
@@ -165,12 +195,12 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
               <Label htmlFor="customerId" className="text-sm">
                 Cliente
               </Label>
-              <Select name="customerId" defaultValue={filters.customerId ?? ""}>
+              <Select name="customerId" defaultValue={filters.customerId ?? "ALL"}>
                 <SelectTrigger id="customerId" aria-label="Cliente">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="ALL">Todos</SelectItem>
                   {customers.map((customer) => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
@@ -188,9 +218,29 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
                 id="number"
                 name="number"
                 defaultValue={filters.number ?? ""}
-                placeholder="Ej. C-001"
+                placeholder="Referencia o folio, ej. C-001"
                 type="search"
               />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="concept" className="text-sm">Concepto</Label>
+              <Input id="concept" name="concept" type="search" defaultValue={effectiveFilters.concept ?? ""} placeholder="Título o concepto" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="economicNumber" className="text-sm">ECO</Label>
+              <Input id="economicNumber" name="economicNumber" type="search" defaultValue={effectiveFilters.economicNumber ?? ""} placeholder="Ej. ECO-42" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="kind" className="text-sm">Tipo de operación</Label>
+              <Select name="kind" defaultValue={effectiveFilters.kind}>
+                <SelectTrigger id="kind" aria-label="Tipo de operación"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="WORK">Trabajo</SelectItem>
+                  <SelectItem value="SALE">Venta</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-1.5">
@@ -213,7 +263,9 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
               <Input
                 id="dateFrom"
                 name="dateFrom"
-                defaultValue={formatDateValue(filters.dateFrom)}
+                defaultValue={rejectedDateRange?.from ?? formatDateValue(filters.dateFrom)}
+                aria-describedby={rangeError ? "quote-date-help quote-date-error" : "quote-date-help"}
+                aria-invalid={rangeError}
                 type="date"
               />
             </div>
@@ -225,7 +277,9 @@ export function QuoteFilters({ filters, customers }: QuoteFiltersProps) {
               <Input
                 id="dateTo"
                 name="dateTo"
-                defaultValue={formatDateValue(filters.dateTo)}
+                defaultValue={rejectedDateRange?.to ?? formatDateValue(filters.dateTo)}
+                aria-describedby={rangeError ? "quote-date-help quote-date-error" : "quote-date-help"}
+                aria-invalid={rangeError}
                 type="date"
               />
             </div>

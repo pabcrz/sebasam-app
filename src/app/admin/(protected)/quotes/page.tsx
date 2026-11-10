@@ -19,12 +19,11 @@ import { listPaginatedQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
 import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
-import { quoteFilterSchema, type QuoteFilterInput } from "@/features/quotes/schemas";
+import { parseOperationalQuoteParams, quotesHref } from "@/features/quotes/quote-filter-model";
 import { QuoteListCard } from "@/features/quotes/components/quote-mobile-card";
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
 import { QuoteFilters } from "@/features/quotes/components/quote-filters";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
-import { hasFilterValue } from "@/lib/filters";
 import {
   quoteStatusLabels,
   quoteStatusBadgeVariant,
@@ -44,47 +43,32 @@ export const metadata: Metadata = {
 };
 
 type QuotesPageProps = {
-  searchParams: Promise<{
-    approved?: string;
-    created?: string;
-    shared?: string;
-    duplicated?: string;
-    error?: string;
-    status?: string;
-    customerId?: string;
-    number?: string;
-    plate?: string;
-    dateFrom?: string;
-    dateTo?: string;
-    showCancelled?: string;
-    showArchived?: string;
-    page?: string;
-  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function quotesPageHref(filters: QuoteFilterInput, page: number) {
-  const searchParams = new URLSearchParams({ page: String(page) });
-
-  if (filters.status) searchParams.set("status", filters.status);
-  if (filters.customerId) searchParams.set("customerId", filters.customerId);
-  if (filters.number) searchParams.set("number", filters.number);
-  if (filters.plate) searchParams.set("plate", filters.plate);
-  if (filters.dateFrom) searchParams.set("dateFrom", filters.dateFrom.toISOString().slice(0, 10));
-  if (filters.dateTo) searchParams.set("dateTo", filters.dateTo.toISOString().slice(0, 10));
-  if (filters.showCancelled) searchParams.set("showCancelled", "true");
-  if (filters.showArchived) searchParams.set("showArchived", "true");
-
-  return `/admin/quotes?${searchParams.toString()}`;
-}
 
 export default async function QuotesPage({ searchParams }: QuotesPageProps) {
   const params = await searchParams;
-  const parsedFilters = quoteFilterSchema.safeParse(params);
-  const filters = parsedFilters.success ? parsedFilters.data : {} as QuoteFilterInput;
-  const hasFilters = hasFilterValue({ ...filters, showCancelled: filters.showCancelled || undefined, showArchived: filters.showArchived || undefined });
+  let filters: ReturnType<typeof parseOperationalQuoteParams>;
+  try {
+    filters = parseOperationalQuoteParams(params);
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    const customers = await listCustomers();
+    return (
+      <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:px-6 md:py-10">
+        <h1 className="text-xl font-bold text-[var(--color-text-main)]">Cotizaciones</h1>
+        <QuoteFilters
+          customers={customers}
+          filters={parseOperationalQuoteParams({ ...params, dateFrom: undefined, dateTo: undefined })}
+          rejectedDateRange={{ from: String(params.dateFrom ?? ""), to: String(params.dateTo ?? "") }}
+        />
+      </section>
+    );
+  }
+  const hasFilters = quotesHref({ ...filters, page: 1 }) !== "/admin/quotes";
   const [customers, quotePage, paymentSettings, workers] = await Promise.all([
     listCustomers(),
-    listPaginatedQuotes(params, { operationalQueue: "quotes" }),
+    listPaginatedQuotes(params, { operationalQueue: "quotes", operationalFilters: true }),
     getPaymentSettings(),
     listActiveWorkers(),
   ]);
@@ -162,7 +146,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
       {quotes.length > 0 || page > 1 ? (
         <nav aria-label="Paginación de cotizaciones" className="mt-6 flex items-center justify-between gap-3">
           {page > 1 ? (
-            <Link href={quotesPageHref(filters, page - 1)} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">
+            <Link href={quotesHref({ ...filters, page: page - 1 })} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">
               Anterior
             </Link>
           ) : (
@@ -172,7 +156,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
           )}
           <span aria-live="polite" className="text-sm text-[var(--color-text-muted)]">Página {page}</span>
           {hasNextPage ? (
-            <Link href={quotesPageHref(filters, page + 1)} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">
+            <Link href={quotesHref({ ...filters, page: page + 1 })} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">
               Siguiente
             </Link>
           ) : (

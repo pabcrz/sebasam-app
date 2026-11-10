@@ -2,7 +2,8 @@ import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { QuoteFilterInput } from "@/features/quotes/schemas";
+import { parseOperationalQuoteParams, quotesHref } from "../quote-filter-model";
+type QuoteFiltersInput = Partial<ReturnType<typeof parseOperationalQuoteParams>>;
 import { QuoteFilters } from "./quote-filters";
 
 const push = vi.fn();
@@ -32,8 +33,8 @@ const customers = [
   { id: "cust-2", name: "Talleres Unidos" },
 ];
 
-function renderFilters(filters: Partial<QuoteFilterInput> = {}) {
-  const mergedFilters = { showCancelled: false, showArchived: false, ...filters } as QuoteFilterInput;
+function renderFilters(filters: QuoteFiltersInput = {}) {
+  const mergedFilters = { showCancelled: false, showArchived: false, ...filters } as ReturnType<typeof parseOperationalQuoteParams>;
   return render(<QuoteFilters filters={mergedFilters} customers={customers} />);
 }
 
@@ -41,8 +42,8 @@ describe("QuoteFilters", () => {
   beforeEach(() => push.mockClear());
 
   it.each([
-    [{ showCancelled: true }, "Canceladas"],
-    [{ showArchived: true }, "Archivadas"],
+    [{ showCancelled: true }, "Todas"],
+    [{ showArchived: true }, "Todas"],
     [{ showCancelled: true, showArchived: true }, "Todas"],
     [{ status: "DRAFT", showArchived: true }, "Borrador"],
   ] as const)("preserves active status selection for %j", (filters, label) => {
@@ -50,16 +51,16 @@ describe("QuoteFilters", () => {
     expect(screen.getByRole("link", { name: label })).toHaveAttribute("aria-current", "page");
   });
 
-  it("preserves status URLs, false order filters and dates while dropping visibility flags and pagination", () => {
+  it("preserves every applied criterion in status URLs while resetting pagination", () => {
     renderFilters({
       customerId: "cust-1", number: "C 001", plate: "ABC-123", hasWorkOrder: false,
       dateFrom: new Date("2026-01-01T00:00:00Z"), dateTo: new Date("2026-01-31T00:00:00Z"),
       showCancelled: true, showArchived: true,
     });
 
-    const query = "customerId=cust-1&number=C+001&plate=ABC-123&dateFrom=2026-01-01&dateTo=2026-01-31&hasWorkOrder=false";
-    expect(screen.getByRole("link", { name: "Enviadas" })).toHaveAttribute("href", `/admin/quotes?status=SENT&${query}`);
-    expect(screen.getByRole("link", { name: "Todas" })).toHaveAttribute("href", `/admin/quotes?${query}`);
+    const input = parseOperationalQuoteParams({ customerId: "cust-1", number: "C 001", plate: "ABC-123", dateFrom: "2026-01-01", dateTo: "2026-01-31", hasWorkOrder: false, showArchived: true, showCancelled: true });
+    expect(screen.getByRole("link", { name: "Enviadas" })).toHaveAttribute("href", quotesHref({ ...input, status: "SENT" }));
+    expect(screen.getByRole("link", { name: "Todas" })).toHaveAttribute("href", quotesHref(input));
     expect(screen.getByText("8 filtros activos")).toBeInTheDocument();
     for (const summary of ["Cliente: Constructora del Norte", "Folio: C 001", "Placas: ABC-123", "Desde: 2026-01-01", "Hasta: 2026-01-31", "Sin Orden", "Mostrar canceladas", "Mostrar archivadas"]) {
       expect(screen.getByText(summary)).toBeInTheDocument();
@@ -79,15 +80,15 @@ describe("QuoteFilters", () => {
     await user.type(screen.getByLabelText("Folio"), " C-001 ");
     await user.type(screen.getByLabelText("Placas"), "   ");
     await user.click(screen.getByRole("button", { name: /filtrar/i }));
-    expect(push).toHaveBeenCalledExactlyOnceWith("/admin/quotes?hasWorkOrder=false&number=C-001&dateFrom=2026-01-01&dateTo=2026-01-31");
+    expect(push).toHaveBeenCalledExactlyOnceWith("/admin/quotes?number=C-001&dateFrom=2026-01-01&dateTo=2026-01-31&hasWorkOrder=false");
   });
 
-  it("preserves the trailing query marker when submitting an empty form", async () => {
+  it("uses the canonical query-free URL when submitting an empty form", async () => {
     const user = userEvent.setup();
     renderFilters();
     await user.click(screen.getByRole("button", { name: /mostrar filtros/i }));
     await user.click(screen.getByRole("button", { name: /filtrar/i }));
-    expect(push).toHaveBeenCalledExactlyOnceWith("/admin/quotes?");
+    expect(push).toHaveBeenCalledExactlyOnceWith("/admin/quotes");
   });
 
   it("allows keyboard expansion and collapses without navigation", async () => {
@@ -216,5 +217,51 @@ describe("QuoteFilters", () => {
     expect(screen.getByText("Cliente: Constructora del Norte")).toBeInTheDocument();
     expect(screen.getByText("Folio: C-001")).toBeInTheDocument();
     expect(screen.queryByLabelText("Estatus")).not.toBeInTheDocument();
+  });
+});
+
+
+describe("operational Quote filter controls", () => {
+  beforeEach(() => push.mockClear());
+
+  it("submits and summarizes concept, ECO and type together with existing criteria", async () => {
+    const user = userEvent.setup();
+    renderFilters({ concept: "aceite", economicNumber: "ECO-42", kind: "SALE", customerId: "cust-1", hasWorkOrder: false, showArchived: true, page: 3 });
+    for (const label of ["Concepto: aceite", "ECO: ECO-42", "Tipo: Venta", "Cliente: Constructora del Norte", "Sin Orden", "Mostrar archivadas"]) expect(screen.getByText(label)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Mostrar filtros" }));
+    expect(screen.getByLabelText("Concepto")).toHaveValue("aceite");
+    expect(screen.getByLabelText("ECO")).toHaveValue("ECO-42");
+    expect(screen.getByLabelText("Tipo de operación")).toHaveTextContent("Venta");
+    expect(screen.getByText("Fecha operativa de cotización (ambos días incluidos)")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Filtrar" }));
+    expect(push).toHaveBeenCalledExactlyOnceWith("/admin/quotes?concept=aceite&customerId=cust-1&economicNumber=ECO-42&showArchived=true&kind=SALE&hasWorkOrder=false");
+  });
+
+  it("keeps quick access and selector on one status URL state with independent visibility", async () => {
+    const user = userEvent.setup();
+    const filters = { status: "DRAFT" as const, concept: "aceite", kind: "WORK" as const, showArchived: true, showCancelled: true, page: 4 };
+    const view = renderFilters(filters);
+    const expected = "/admin/quotes?concept=aceite&showArchived=true&showCancelled=true&kind=WORK&status=SENT";
+    expect(screen.getByRole("link", { name: "Enviadas" })).toHaveAttribute("href", expected);
+    await user.click(screen.getByRole("button", { name: "Mostrar filtros" }));
+    await user.click(screen.getByLabelText("Estatus"));
+    await user.click(screen.getByRole("option", { name: "Enviada" }));
+    expect(push).toHaveBeenCalledExactlyOnceWith(expected);
+    view.rerender(<QuoteFilters filters={parseOperationalQuoteParams({ ...filters, status: "SENT" })} customers={customers} />);
+    expect(screen.getByRole("link", { name: "Enviadas" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByLabelText("Estatus")).toHaveTextContent("Enviada");
+    expect(screen.queryByText("Mostrar archivadas", { selector: "span" })).not.toBeInTheDocument();
+  });
+
+  it("blocks inverted dates in the form without navigation or broadening filters", async () => {
+    const user = userEvent.setup();
+    renderFilters({ customerId: "cust-1" });
+    await user.click(screen.getByRole("button", { name: "Mostrar filtros" }));
+    await user.type(screen.getByLabelText("Desde"), "2026-08-31");
+    await user.type(screen.getByLabelText("Hasta"), "2026-08-01");
+    await user.click(screen.getByRole("button", { name: "Filtrar" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("La fecha operativa desde no puede ser posterior a hasta");
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Desde")).toHaveValue("2026-08-31");
   });
 });
