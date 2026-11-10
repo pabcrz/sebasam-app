@@ -79,6 +79,16 @@ function getMexicoCityToday() {
   return `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
 }
 
+const commonTextFields = [["number", "Folio"], ["concept", "Concepto"], ["plate", "Placas"], ["economicNumber", "ECO"]] as const;
+const commonDateFields = [["dateFrom", "Finalización/emisión desde"], ["dateTo", "Finalización/emisión hasta"]] as const;
+function commonDraft(state?: NotasFiltersProps["operationalState"]) {
+  return {
+    number: state?.number ?? "", concept: state?.concept ?? "", plate: state?.plate ?? "", economicNumber: state?.economicNumber ?? "",
+    dateFrom: state?.dateFrom ? dateValue(state.dateFrom) : "", dateTo: state?.dateTo ? dateValue(state.dateTo) : "",
+    showArchived: state?.showArchived ?? false, showCancelled: state?.showCancelled ?? false,
+  };
+}
+
 /** Opt-in consumes the same canonical URL contract as the future page caller. */
 export function NotasFilters(props: NotasFiltersProps) {
   const operationalState = props.operationalState ? parseNotasParams(
@@ -108,6 +118,8 @@ function NotasFiltersContent({
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
   // Modal form draft state
+  const [draftCommon, setDraftCommon] = React.useState(() => commonDraft(operationalState));
+  const [dateError, setDateError] = React.useState(false);
   const [draftAssignee, setDraftAssignee] = React.useState<NotasAssignee>(assignee);
   const [draftOverdue, setDraftOverdue] = React.useState<NotasOverdue>(overdue);
   const [draftCustomerId, setDraftCustomerId] = React.useState<string | undefined>(customerId);
@@ -124,6 +136,8 @@ function NotasFiltersContent({
   const handleOpenChange = (open: boolean) => {
     setIsDialogOpen(open);
     if (open) {
+      setDraftCommon(commonDraft(operationalState));
+      setDateError(false);
       setDraftAssignee(assignee);
       setDraftOverdue(overdue);
       setDraftCustomerId(customerId);
@@ -196,6 +210,23 @@ function NotasFiltersContent({
     : notasHref(next);
 
   const handleApply = () => {
+    if (operationalState) {
+      try {
+        const current = navigationHref({ mode, payment, kind: selectedKind, anchor, assignee: draftAssignee, customerId: draftCustomerId, overdue: draftOverdue });
+        const next = parseNotasParams({
+          ...Object.fromEntries(new URLSearchParams(current.split("?")[1])),
+          ...draftCommon,
+          showArchived: String(draftCommon.showArchived), showCancelled: String(draftCommon.showCancelled),
+        }, undefined, { operationalFilters: true });
+        router.push(notasHref({ ...next, page: 1 }, { operationalFilters: true }));
+        setDateError(false);
+        setIsDialogOpen(false);
+      } catch (cause) {
+        if (!(cause instanceof RangeError)) throw cause;
+        setDateError(true);
+      }
+      return;
+    }
     setIsDialogOpen(false);
     router.push(
       navigationHref({
@@ -211,6 +242,8 @@ function NotasFiltersContent({
   };
 
   const handleClear = () => {
+    setDraftCommon(commonDraft());
+    setDateError(false);
     setDraftAssignee("all");
     setDraftOverdue("all");
     setDraftCustomerId(undefined);
@@ -358,7 +391,7 @@ function NotasFiltersContent({
           </DialogTrigger>
           <DialogPortal>
             <DialogOverlay />
-            <DialogMobileContent className={operationalState ? "sm:max-w-lg [&_input]:min-h-11 [&_select]:min-h-11" : "sm:max-w-lg"}>
+            <DialogMobileContent className={operationalState ? "sm:max-w-lg [&_select]:min-h-11" : "sm:max-w-lg"}>
               <DialogMobileHeader>
                 <DialogTitle>Filtros de cartera</DialogTitle>
                 <DialogDescription className="sr-only">
@@ -373,7 +406,7 @@ function NotasFiltersContent({
                   </Label>
                   <Input
                     id="notas-anchor"
-                    className="h-10 text-sm"
+                    className={`${operationalState ? "min-h-11 " : ""}h-10 text-sm`}
                     aria-label={mode === "week" ? "Semana" : "Mes y año"}
                     type={mode === "week" ? "date" : "month"}
                     name="anchor"
@@ -395,6 +428,29 @@ function NotasFiltersContent({
                     }}
                   />
                 </div>
+
+                {operationalState ? <>
+                  <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                    {commonTextFields.map(([key, label]) => <div key={key} className="grid min-w-0 gap-1.5">
+                      <Label htmlFor={`notas-${key}`}>{label}</Label>
+                      <Input id={`notas-${key}`} type="search" value={draftCommon[key]} onChange={(event) => setDraftCommon({ ...draftCommon, [key]: event.currentTarget.value })} />
+                    </div>)}
+                  </div>
+                  <fieldset className="grid min-w-0 gap-3">
+                    <legend className="mb-2 text-sm text-slate-500">Fecha operativa: finalización WORK o emisión SALE (ambos días incluidos)</legend>
+                    {commonDateFields.map(([key, label]) => <div key={key} className="grid min-w-0 gap-1.5">
+                      <Label htmlFor={`notas-${key}`}>{label}</Label>
+                      <Input id={`notas-${key}`} type="date" value={draftCommon[key]} aria-invalid={dateError} aria-describedby={dateError ? "notas-date-error" : undefined}
+                        onChange={(event) => setDraftCommon({ ...draftCommon, [key]: event.currentTarget.value })} />
+                    </div>)}
+                  </fieldset>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {([["showArchived", "Mostrar archivadas"], ["showCancelled", "Mostrar canceladas"]] as const).map(([key, label]) => <label key={key} className="flex min-h-11 items-center gap-2 text-sm">
+                      <input type="checkbox" checked={draftCommon[key]} className="h-4 w-4" onChange={(event) => setDraftCommon({ ...draftCommon, [key]: event.currentTarget.checked })} />
+                      {label}
+                    </label>)}
+                  </div>
+                </> : null}
 
                 {/* Selector remoto de cliente */}
                 <div className="flex flex-col gap-1.5">
@@ -439,7 +495,7 @@ function NotasFiltersContent({
                             }
                           }}
                           placeholder="Buscar por cliente, chofer o teléfono..."
-                          className="h-10 pl-9 pr-8 text-sm"
+                          className={`${operationalState ? "min-h-11 " : ""}h-10 pl-9 pr-8 text-sm`}
                           aria-label="Buscar cliente"
                         />
                         {isSearchingCustomers ? (
@@ -553,6 +609,7 @@ function NotasFiltersContent({
                   </select>
                 </div>
               </DialogMobileBody>
+              {operationalState && dateError ? <p id="notas-date-error" role="alert" className="px-4 py-2 text-sm text-[var(--color-status-danger)]">La fecha de finalización/emisión desde no puede ser posterior a hasta. Corrige el rango o limpia los filtros.</p> : null}
               <DialogFooter className="flex flex-row items-center justify-between border-t border-[var(--color-border-light)] p-4 sm:justify-between">
                 <Button type="button" variant="ghost" size="sm" className="h-10" onClick={handleClear}>
                   Limpiar filtros

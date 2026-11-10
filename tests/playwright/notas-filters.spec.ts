@@ -115,7 +115,7 @@ test.describe("NotasFilters responsive browser layout", () => {
       }
 
       await page.screenshot({
-        path: path.join(process.cwd(), "test-results", "screenshots", `notas-filters-${width}.png`),
+        path: path.join(process.cwd(), "test-results", "screenshots", `notas-common-legacy-${width}.png`),
         fullPage: true,
       });
 
@@ -156,7 +156,7 @@ for (const width of [390, 1440]) {
     await expect(page.getByText("Concepto: aceite", { exact: true })).toBeVisible();
     await expect(page.getByText("Responsable: Taller", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-operational-${width}.png`), fullPage: true });
+    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-common-navigation-${width}.png`), fullPage: true });
     await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
     await expect(page.getByLabel("Responsable", { exact: true })).toBeEnabled();
     await page.getByLabel("Responsable", { exact: true }).selectOption("a0b1c2d3-1234-4abc-8def-1234567890ab");
@@ -170,12 +170,13 @@ for (const width of [390, 1440]) {
       const dialog = page.getByRole("dialog");
       await expect(page.getByLabel("Responsable", { exact: true })).toBeDisabled();
       await expect(page.getByText("El responsable solo aplica a notas WORK; todas y SALE conservan las ventas.")).toBeVisible();
-      for (const input of await dialog.locator("input, select").all()) {
+      for (const input of await dialog.locator('input:not([type="checkbox"]), select').all()) {
+        await input.scrollIntoViewIfNeeded();
         const box = getBox(await input.boundingBox(), "Operational dialog input");
         expect(box.height).toBeGreaterThanOrEqual(44);
         await assertInside(box, getBox(await dialog.boundingBox(), "Dialog"), "Input");
       }
-      if (kind === "all") await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-operational-inactive-${width}.png`), fullPage: true });
+      if (kind === "all") await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-common-inactive-${width}.png`), fullPage: true });
       await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
       expect(retained(page.url()).get("kind")).toBe(kind);
     }
@@ -190,6 +191,55 @@ for (const width of [390, 1440]) {
     expect(retained(page.url()).get("anchor")).toBe("2026-09");
     await page.getByRole("button", { name: "Limpiar filtros", exact: true }).click();
     expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ mode: "month", anchor: "2026-09", payment: "all", kind: "all" });
+    expect(errors).toEqual([]);
+  });
+}
+
+
+for (const width of [390, 1440]) {
+  test(`Common Notes controls at ${width}px`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/notes-operational?mode=week&anchor=2026-08-05&payment=partial&kind=WORK&assignee=workshop&customerId=cust-1&overdue=overdue&page=3");
+    await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
+    const fields = { Folio: "N-99", Concepto: "frenos", Placas: "DEF-999", ECO: "ECO-99", "Finalización/emisión desde": "2026-08-02", "Finalización/emisión hasta": "2026-08-30" };
+    for (const [label, value] of Object.entries(fields)) await page.getByLabel(label, { exact: true }).fill(value);
+    await expect(page.getByText("Fecha operativa: finalización WORK o emisión SALE (ambos días incluidos)")).toBeVisible();
+    await page.getByRole("checkbox", { name: "Mostrar archivadas", exact: true }).check();
+    await page.getByRole("checkbox", { name: "Mostrar canceladas", exact: true }).check();
+    const dialog = page.getByRole("dialog");
+    for (const input of await dialog.locator('input:not([type="checkbox"]), select').all()) {
+      await input.scrollIntoViewIfNeeded();
+      const box = getBox(await input.boundingBox(), "Common field");
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      await assertInside(box, getBox(await dialog.boundingBox(), "Common dialog"), "Common field");
+    }
+    await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
+    const expected = { mode: "week", anchor: "2026-08-05", payment: "partial", kind: "WORK", assignee: "workshop", customerId: "cust-1", overdue: "overdue", number: "N-99", concept: "frenos", plate: "DEF-999", economicNumber: "ECO-99", dateFrom: "2026-08-02", dateTo: "2026-08-30", showArchived: "true", showCancelled: "true" };
+    expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual(expected);
+    for (const summary of ["Folio: N-99", "Concepto: frenos", "Placas: DEF-999", "ECO: ECO-99", "Finalización/emisión desde: 2026-08-02", "Finalización/emisión hasta: 2026-08-30", "Mostrar archivadas", "Mostrar canceladas"]) {
+      await expect(page.getByText(summary, { exact: true })).toBeVisible();
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-common-${width}.png`), fullPage: true });
+    await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
+    for (const [label, value] of Object.entries(fields)) await expect(page.getByLabel(label, { exact: true })).toHaveValue(value);
+    await page.getByLabel("Concepto", { exact: true }).fill("borrador retenido");
+    await page.getByLabel("Finalización/emisión desde", { exact: true }).fill("2026-09-01");
+    const before = page.url();
+    await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
+    await expect(dialog).toBeVisible();
+    await expect(page.getByRole("alert")).toContainText("La fecha de finalización/emisión desde no puede ser posterior a hasta");
+    expect(page.url()).toBe(before);
+    await expect(page.getByLabel("Concepto", { exact: true })).toHaveValue("borrador retenido");
+    await expect(page.getByLabel("Finalización/emisión desde", { exact: true })).toHaveValue("2026-09-01");
+    await expect(page.getByRole("checkbox", { name: "Mostrar archivadas", exact: true })).toBeChecked();
+    await page.getByLabel("Finalización/emisión desde", { exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-common-error-${width}.png`), fullPage: true });
+    await page.getByRole("button", { name: "Limpiar filtros", exact: true }).click();
+    expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ mode: "week", anchor: "2026-08-05", payment: "all", kind: "all" });
+    await expect(page.getByRole("alert")).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 }
