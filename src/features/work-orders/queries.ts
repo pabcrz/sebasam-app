@@ -234,9 +234,9 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
     activePaymentMethod: string | null;
     activePaymentAmountCents: bigint | null;
     completedAt: Date;
-    totalPaidCents?: bigint;
-    totalPendingCents?: bigint;
-    totalOverdueCents?: bigint;
+    totalPaidCents?: Prisma.Decimal;
+    totalPendingCents?: Prisma.Decimal;
+    totalOverdueCents?: Prisma.Decimal;
   }>>(Prisma.sql`
     SELECT
       wo.id,
@@ -283,9 +283,9 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
         activePaymentMethod: string | null;
         activePaymentAmountCents: bigint | null;
         issuedAt: Date;
-        totalPaidCents?: bigint;
-        totalPendingCents?: bigint;
-        totalOverdueCents?: bigint;
+        totalPaidCents?: Prisma.Decimal;
+        totalPendingCents?: Prisma.Decimal;
+        totalOverdueCents?: Prisma.Decimal;
       }>>(Prisma.sql`
         SELECT
           pn.id,
@@ -317,10 +317,12 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
         ...saleEligible.map((row) => ({ ...row, kind: "SALE" as const, sortDate: row.issuedAt })),
       ].sort((a, b) => (b.sortDate?.getTime() ?? 0) - (a.sortDate?.getTime() ?? 0) || b.id.localeCompare(a.id) || a.kind.localeCompare(b.kind));
 
+  // Window SUM(bigint) returns NUMERIC (Prisma.Decimal). Convert each addend
+  // before addition: Decimal.valueOf() returns text and would concatenate.
   const totals: CompletedWorkOrderTotals = {
-    totalPaidCents: Number((eligible[0]?.totalPaidCents ?? BigInt(0)) + (saleEligible[0]?.totalPaidCents ?? BigInt(0))),
-    totalPendingCents: Number((eligible[0]?.totalPendingCents ?? BigInt(0)) + (saleEligible[0]?.totalPendingCents ?? BigInt(0))),
-    totalOverdueCents: Number((eligible[0]?.totalOverdueCents ?? BigInt(0)) + (saleEligible[0]?.totalOverdueCents ?? BigInt(0))),
+    totalPaidCents: Number(eligible[0]?.totalPaidCents ?? 0) + Number(saleEligible[0]?.totalPaidCents ?? 0),
+    totalPendingCents: Number(eligible[0]?.totalPendingCents ?? 0) + Number(saleEligible[0]?.totalPendingCents ?? 0),
+    totalOverdueCents: Number(eligible[0]?.totalOverdueCents ?? 0) + Number(saleEligible[0]?.totalOverdueCents ?? 0),
   };
 
   const offset = (input.page - 1) * pageSize;
