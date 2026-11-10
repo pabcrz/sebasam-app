@@ -111,7 +111,7 @@ export function WorkOrderActiveList({
                         url={`/admin/quotes/${wo.quote.id}/print?returnTo=/admin/work-orders`}
                         variant="outline"
                         size="sm"
-                        className="h-11 min-h-11 min-w-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
+                        className="h-11 min-h-11 min-w-11 w-full justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
                         title={`Imprimir orden ${wo.number}`}
                         aria-label={`Imprimir orden ${wo.number}`}
                       >
