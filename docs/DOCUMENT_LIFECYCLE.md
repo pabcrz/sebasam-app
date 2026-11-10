@@ -62,6 +62,12 @@ Cotizaciones combina referencia/folio, concepto, cliente, placas/ECO, tipo WORK/
 
 Un rango invertido se muestra con un mensaje y conserva sus campos para corregirlo: no se ejecuta una consulta sin fechas como sustituto ni se permite cambiar estado desde ese error; «Limpiar» sí restablece expresamente los criterios. La búsqueda histórica y el contexto de regreso de impresión/detalle no se implementan en este cambio. La comprobación de navegador usa el componente real con datos aislados en Vite; no demuestra autenticación ni el recorrido Next.js completo. Trabajos/Notas siguen pendientes de su migración visual.
 
+## Controles reutilizables de Trabajos (integración pendiente)
+
+`WorkOrderFilters` representa el contrato `parseWorkOrderParams`/`workOrdersHref`: referencia/folio, concepto, cliente, placas/ECO, ejecución y responsable maestro/taller. No ofrece ventas, archivo ni cancelación en esta bandeja WORK activa. Los campos y el resumen se derivan del estado URL; enviar reinicia la página y «Limpiar» elimina expresamente todos los criterios.
+
+Las fechas operativas de cotización y la programación en Ciudad de México tienen rangos separados, ambos inclusivos. Un rango invertido conserva los campos para corregirlos, muestra cuál de los dos rangos falló y no navega. La prueba de navegador usa el componente real en un fixture aislado, sin consultas ni mutaciones y sin demostrar autenticación Next.js. Este componente todavía no está conectado a la página de Trabajos; paginación, hidratación y tratamiento de URL entrante inválida se integran en la entrega siguiente. Notas y contexto de regreso A3 siguen pendientes.
+
 ## Qué representa cada modelo
 
 | Modelo | Responsabilidad real |

@@ -17,8 +17,8 @@ S3. "si, por el momento, y abre otra sesion para continuar"
 
 - T3.3 | S1-S2 | parent inline, sole writer | done | U3 Work/Notes query adapters, sourceb08b42c (189 lines). Commit: 3486e80; RED9/44, GREEN79/4files; ASSESS medium/reviewDuefalse/self-verification. Risk: none.
 - T3.4 | S1-S2 | parent inline, sole writer | done | U4 Decimal monetary correction, source3f2aa86 (57 lines). Commit: 6f5ecbe; RED5/40, GREEN75/4files. ASSESS medium/reviewDuefalse/self-verification. Risk: none; arithmetic only.
-- T3.5 | S1-S2 | parent inline, sole writer | in_progress | U5 Quotes functional controls/page, source6bcc11c (359 lines). Commit: pending.
-- T3.6 | S1-S2 | parent inline, sole writer | pending | U6 Work controls, source7f68924 (291 lines). Commit: pending.
+- T3.5 | S1-S2 | parent inline, sole writer | done | U5 Quotes functional controls/page, source6bcc11c (359 lines). Commit: 254832b; RED10/29, GREEN69/4files. ASSESS medium/reviewDuefalse/self-verification. diff-check initially exit2 extra EOF blank, corrected exit0. Browser deferred T4. Risk: none.
+- T3.6 | S1-S2 | parent inline, sole writer | in_progress | U6 Work controls, source7f68924 (291 lines). Commit: pending.
 - T3.7 | S1-S2 | parent inline, sole writer | pending | U7 Work page, sourcee899447 (236 lines). Commit: pending.
 - T3.8 | S1-S2 | parent inline, sole writer | pending | U8 Notes navigation controls, source65c9e25 (353 lines). Commit: pending.
 - T3.9 | S1-S2 | parent inline, sole writer | pending | U9 Notes common criteria, source0985da5 (187 lines). Commit: pending.
