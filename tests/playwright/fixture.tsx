@@ -361,11 +361,26 @@ function WorkFiltersFixture() {
       window.removeEventListener("popstate", update);
     };
   }, []);
+  const params = Object.fromEntries(new URLSearchParams(search));
+  let filters: ReturnType<typeof parseWorkOrderParams>;
+  let rejectedRange: React.ComponentProps<typeof WorkOrderFilters>["rejectedRange"];
+  try {
+    filters = parseWorkOrderParams(params);
+  } catch (cause) {
+    if (!(cause instanceof RangeError)) throw cause;
+    filters = parseWorkOrderParams({ ...params, dateFrom: undefined, dateTo: undefined, scheduledFrom: undefined, scheduledTo: undefined });
+    rejectedRange = {
+      kind: cause.message === "scheduledFrom must not be after scheduledTo." ? "scheduled" : "operational",
+      dates: { dateFrom: params.dateFrom, dateTo: params.dateTo, scheduledFrom: params.scheduledFrom, scheduledTo: params.scheduledTo },
+    };
+  }
   return (
     <main className="mx-auto grid w-full max-w-6xl gap-4 p-4 md:p-6">
       <h1 className="text-xl font-bold">Trabajos en proceso</h1>
       <WorkOrderFilters
-        filters={parseWorkOrderParams(Object.fromEntries(new URLSearchParams(search)))}
+        key={rejectedRange ? search : "valid"}
+        filters={filters}
+        rejectedRange={rejectedRange}
         customers={[{ id: "fixture-customer", name: "Taller de prueba" }]}
         workers={[{ id: "11111111-1111-4111-8111-111111111111", displayName: "Maestro de prueba" }]}
       />

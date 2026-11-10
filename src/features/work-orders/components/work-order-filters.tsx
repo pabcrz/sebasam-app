@@ -7,6 +7,10 @@ import { dateValue, parseWorkOrderParams, workOrdersHref } from "../work-order-f
 
 type Props = {
   filters: ReturnType<typeof parseWorkOrderParams>;
+  rejectedRange?: {
+    kind: "operational" | "scheduled";
+    dates: Partial<Record<"dateFrom" | "dateTo" | "scheduledFrom" | "scheduledTo", string>>;
+  };
   customers: { id: string; name: string }[];
   workers: { id: string; displayName: string }[];
 };
@@ -35,10 +39,16 @@ function FilterSelect({ name, label, value, options }: {
   );
 }
 
-export function WorkOrderFilters({ filters, customers, workers }: Props) {
+function rangeMessage(kind: "operational" | "scheduled") {
+  return kind === "scheduled"
+    ? "La programación desde no puede ser posterior a hasta. Corrige el rango."
+    : "La fecha operativa desde no puede ser posterior a hasta. Corrige el rango.";
+}
+
+export function WorkOrderFilters({ filters, customers, workers, rejectedRange }: Props) {
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
-  const [error, setError] = React.useState("");
+  const [open, setOpen] = React.useState(Boolean(rejectedRange));
+  const [error, setError] = React.useState(rejectedRange ? rangeMessage(rejectedRange.kind) : "");
   const effective = parseWorkOrderParams(filters);
   const summary: string[] = [];
   for (const [key, label] of textFields) {
@@ -64,9 +74,7 @@ export function WorkOrderFilters({ filters, customers, workers }: Props) {
       router.push(workOrdersHref(next));
     } catch (cause) {
       if (!(cause instanceof RangeError)) throw cause;
-      setError(cause.message === "scheduledFrom must not be after scheduledTo."
-        ? "La programación desde no puede ser posterior a hasta. Corrige el rango."
-        : "La fecha operativa desde no puede ser posterior a hasta. Corrige el rango.");
+      setError(rangeMessage(cause.message === "scheduledFrom must not be after scheduledTo." ? "scheduled" : "operational"));
     }
   }
 
@@ -105,7 +113,7 @@ export function WorkOrderFilters({ filters, customers, workers }: Props) {
           <div className="grid gap-4 sm:grid-cols-2">
             {group.fields.map(([key, label]) => <div key={key} className="grid min-w-0 gap-1.5">
               <Label htmlFor={`work-${key}`}>{label}</Label>
-              <Input id={`work-${key}`} name={key} type="date" defaultValue={effective[key] ? dateValue(effective[key]) : ""}
+              <Input id={`work-${key}`} name={key} type="date" defaultValue={rejectedRange?.dates[key] ?? (effective[key] ? dateValue(effective[key]) : "")}
                 aria-invalid={Boolean(error && (index === 1 ? error.startsWith("La programación") : error.startsWith("La fecha")))} aria-describedby={error ? "work-range-error" : undefined} />
             </div>)}
           </div>

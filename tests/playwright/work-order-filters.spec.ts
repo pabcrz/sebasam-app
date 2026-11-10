@@ -37,7 +37,7 @@ for (const width of [390, 1440]) {
       expect(box!.height).toBeGreaterThanOrEqual(44);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `work-order-filters-${width}.png`), fullPage: true });
+    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `work-page-filters-${width}.png`), fullPage: true });
     const before = page.url();
     await page.getByLabel("Programación desde", { exact: true }).fill("2026-10-01");
     await page.getByRole("button", { name: "Filtrar", exact: true }).click();
@@ -47,6 +47,28 @@ for (const width of [390, 1440]) {
     await expect(page).toHaveURL(/\/admin\/work-orders$/);
     await expect(page.getByText("Sin filtros activos", { exact: true })).toBeVisible();
     await expect(page.getByRole("alert")).toHaveCount(0);
+    for (const [kind, key, label, invalid, corrected, message] of [
+      ["operational", "dateFrom", "Fecha operativa desde", "2026-09-01", "2026-08-01", "La fecha operativa"],
+      ["scheduled", "scheduledFrom", "Programación desde", "2026-10-01", "2026-09-01", "La programación"],
+    ]) {
+      const incoming = new URLSearchParams({ concept: "aceite", economicNumber: "ECO-42", execution: "PLANNED", assignee: "workshop", dateFrom: "2026-08-01", dateTo: "2026-08-31", scheduledFrom: "2026-09-01", scheduledTo: "2026-09-30", [key]: invalid });
+      await page.goto(`/work-filters?${incoming}`);
+      await expect(page.getByRole("alert")).toContainText(message);
+      await expect(page.getByLabel(label, { exact: true })).toHaveValue(invalid);
+      await expect(page.getByLabel("Concepto", { exact: true })).toHaveValue("aceite");
+      await expect(page.getByLabel("Responsable", { exact: true })).toHaveText("Taller especial");
+      const rejectedUrl = page.url();
+      await page.getByRole("button", { name: "Filtrar", exact: true }).click();
+      expect(page.url()).toBe(rejectedUrl);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `work-page-rejected-${kind}-${width}.png`), fullPage: true });
+      await page.getByLabel(label, { exact: true }).fill(corrected);
+      await page.getByRole("button", { name: "Filtrar", exact: true }).click();
+      incoming.set(key, corrected);
+      await expect(page).toHaveURL(/\/admin\/work-orders\?/);
+      expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual(Object.fromEntries(incoming));
+      await expect(page.getByRole("alert")).toHaveCount(0);
+    }
     expect(errors).toEqual([]);
   });
 }

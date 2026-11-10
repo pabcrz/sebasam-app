@@ -34,7 +34,7 @@ Los acumulados SQL de WORK y SALE se convierten **por separado** de `Prisma.Deci
 
 ## Contrato aditivo de filtros operativos
 
-Los adaptadores de consulta y URL aceptan `operationalFilters: true`. Cotizaciones ya activa este contrato; Trabajos y Notas todavía conservan sus controles anteriores. `parseOperationalQuoteParams`/`quotesHref`, `parseWorkOrderParams`/`workOrdersHref` y `parseNotasParams`/`notasHref` conservan los criterios efectivos al paginar. Los campos ajenos a cada módulo no se propagan. Los accesos rápidos y controles futuros deben representar este mismo estado, no mantener filtros independientes.
+Los adaptadores de consulta y URL aceptan `operationalFilters: true`. Cotizaciones y Trabajos ya conectan sus controles a los contratos operativos; Notas todavía conserva sus controles anteriores. `parseOperationalQuoteParams`/`quotesHref`, `parseWorkOrderParams`/`workOrdersHref` y `parseNotasParams`/`notasHref` conservan los criterios efectivos al paginar. Los campos ajenos a cada módulo no se propagan. Los accesos rápidos y controles futuros deben representar este mismo estado, no mantener filtros independientes.
 
 | Criterio | Semántica de consulta |
 |---|---|
@@ -60,13 +60,13 @@ Los predicados se aplican antes de agrupar cobros, calcular totales y ordenar/pa
 
 Cotizaciones combina referencia/folio, concepto, cliente, placas/ECO, tipo WORK/SALE, estado comercial, existencia de orden y fechas operativas inclusivas antes de paginar. Los accesos rápidos y el selector usan el mismo estado de URL; cambiar criterio reinicia la página, paginar conserva todos los criterios y «Limpiar» vuelve al alcance predeterminado. Archivo y cancelación son inclusiones independientes al consultar todos los estados; un estado específico conserva su alcance y las inclusiones no se anuncian como filtros aplicados en ese caso.
 
-Un rango invertido se muestra con un mensaje y conserva sus campos para corregirlo: no se ejecuta una consulta sin fechas como sustituto ni se permite cambiar estado desde ese error; «Limpiar» sí restablece expresamente los criterios. La búsqueda histórica y el contexto de regreso de impresión/detalle no se implementan en este cambio. La comprobación de navegador usa el componente real con datos aislados en Vite; no demuestra autenticación ni el recorrido Next.js completo. Trabajos/Notas siguen pendientes de su migración visual.
+Un rango invertido se muestra con un mensaje y conserva sus campos para corregirlo: no se ejecuta una consulta sin fechas como sustituto ni se permite cambiar estado desde ese error; «Limpiar» sí restablece expresamente los criterios. La búsqueda histórica y el contexto de regreso de impresión/detalle no se implementan en este cambio. La comprobación de navegador usa el componente real con datos aislados en Vite; no demuestra autenticación ni el recorrido Next.js completo. Notas sigue pendiente de su migración visual.
 
-## Controles reutilizables de Trabajos (integración pendiente)
+## Filtros de Trabajos en pantalla
 
 `WorkOrderFilters` representa el contrato `parseWorkOrderParams`/`workOrdersHref`: referencia/folio, concepto, cliente, placas/ECO, ejecución y responsable maestro/taller. No ofrece ventas, archivo ni cancelación en esta bandeja WORK activa. Los campos y el resumen se derivan del estado URL; enviar reinicia la página y «Limpiar» elimina expresamente todos los criterios.
 
-Las fechas operativas de cotización y la programación en Ciudad de México tienen rangos separados, ambos inclusivos. Un rango invertido conserva los campos para corregirlos, muestra cuál de los dos rangos falló y no navega. La prueba de navegador usa el componente real en un fixture aislado, sin consultas ni mutaciones y sin demostrar autenticación Next.js. Este componente todavía no está conectado a la página de Trabajos; paginación, hidratación y tratamiento de URL entrante inválida se integran en la entrega siguiente. Notas y contexto de regreso A3 siguen pendientes.
+Las fechas operativas de cotización y la programación en Ciudad de México tienen rangos separados, ambos inclusivos. Un rango invertido conserva los campos para corregirlos, muestra cuál de los dos rangos falló y no navega. La prueba de navegador usa el componente real en un fixture aislado, sin consultas ni mutaciones y sin demostrar autenticación Next.js. La página conecta estos controles con `listPaginatedActiveWorkOrders`: filtra antes de paginar, hidrata solo las cotizaciones únicas de la página devuelta y conserva todos los criterios en «Anterior»/«Siguiente». El contador muestra registros de esa página, no un total global. Una URL con cualquiera de los rangos invertidos abre corrección con sus fechas originales y demás criterios, sin consultar órdenes ni hidratar cotizaciones; no se presenta como resultado vacío. El vacío predeterminado reconoce órdenes pendientes aun sin maestro y el vacío filtrado ofrece limpiar criterios. Notas y contexto de regreso A3 siguen pendientes.
 
 ## Qué representa cada modelo
 

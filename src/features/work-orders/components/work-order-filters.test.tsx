@@ -82,4 +82,22 @@ describe("WorkOrderFilters", () => {
     rerender(view());
     expect(screen.getByText("Sin filtros activos")).toBeInTheDocument();
   });
+
+  it.each([
+    ["operational", "dateFrom", "Fecha operativa desde", "2026-09-01", "2026-08-01", "La fecha operativa"],
+    ["scheduled", "scheduledFrom", "Programación desde", "2026-10-01", "2026-09-01", "La programación"],
+  ] as const)("opens rejected incoming %s dates and submits only after correction", async (kind, key, label, invalid, corrected, message) => {
+    const dates = { dateFrom: criteria.dateFrom, dateTo: criteria.dateTo, scheduledFrom: criteria.scheduledFrom, scheduledTo: criteria.scheduledTo, [key]: invalid };
+    render(<WorkOrderFilters filters={parseWorkOrderParams({ ...criteria, dateFrom: undefined, dateTo: undefined, scheduledFrom: undefined, scheduledTo: undefined })}
+      customers={customers} workers={workers} rejectedRange={{ kind, dates }} />);
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    expect(screen.getByLabelText(label)).toHaveValue(invalid);
+    expect(screen.getByLabelText("Concepto")).toHaveValue("aceite");
+    expect(push).not.toHaveBeenCalled();
+    await userEvent.clear(screen.getByLabelText(label));
+    await userEvent.type(screen.getByLabelText(label), corrected);
+    await userEvent.click(screen.getByRole("button", { name: "Filtrar" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(push).toHaveBeenCalledExactlyOnceWith(`/admin/work-orders?number=OT-42&concept=aceite&customerId=customer-1&plate=ABC-123&economicNumber=ECO-42&dateFrom=2026-08-01&dateTo=2026-08-31&execution=PLANNED&assignee=${workerId}&scheduledFrom=2026-09-01&scheduledTo=2026-09-30`);
+  });
 });
