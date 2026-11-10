@@ -5,6 +5,7 @@ import { WorkOrderFilters } from "../../src/features/work-orders/components/work
 import { parseWorkOrderParams } from "../../src/features/work-orders/work-order-filter-model";
 import { QuoteFilters } from "../../src/features/quotes/components/quote-filters";
 import { parseOperationalQuoteParams } from "../../src/features/quotes/quote-filter-model";
+import { parseNotasParams } from "../../src/features/work-orders/notas-period";
 import { NotasFilters } from "../../src/features/work-orders/components/notas-filters";
 import { QuoteListRow } from "../../src/features/quotes/components/quote-list-row";
 import { QuoteListCard } from "../../src/features/quotes/components/quote-mobile-card";
@@ -388,7 +389,34 @@ function WorkFiltersFixture() {
   );
 }
 
+/** Opt-in Notes controls with isolated URL state and no financial mutations. */
+function OperationalNotesFixture() {
+  const [search, setSearch] = React.useState(window.location.search);
+  React.useEffect(() => {
+    const original = window.history.pushState;
+    const update = () => setSearch(window.location.search);
+    window.history.pushState = function (...args) {
+      original.apply(this, args);
+      update();
+    };
+    window.addEventListener("popstate", update);
+    return () => {
+      window.history.pushState = original;
+      window.removeEventListener("popstate", update);
+    };
+  }, []);
+  const state = parseNotasParams(Object.fromEntries(new URLSearchParams(search)), undefined, { operationalFilters: true });
+  return (
+    <main className="mx-auto w-full max-w-screen-xl p-4 md:p-6">
+      <NotasFilters {...state} operationalState={state}
+        masters={[{ id: "a0b1c2d3-1234-4abc-8def-1234567890ab", displayName: "Ana Maestra" }]}
+        selectedCustomer={state.customerId ? { id: state.customerId, name: "Taller de prueba" } : null} />
+    </main>
+  );
+}
+
 function Fixture() {
+  if (window.location.pathname === "/notes-operational" || window.location.pathname === "/admin/notas") return <OperationalNotesFixture />;
   if (window.location.pathname === "/work-filters" || window.location.pathname === "/admin/work-orders") return <WorkFiltersFixture />;
   if (window.location.pathname === "/quote-filters" || window.location.pathname === "/admin/quotes") return <QuoteFiltersFixture />;
   if (window.location.pathname === "/sale-quote") {

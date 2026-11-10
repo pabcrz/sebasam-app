@@ -134,3 +134,62 @@ test.describe("NotasFilters responsive browser layout", () => {
     });
   }
 });
+
+
+for (const width of [390, 1440]) {
+  test(`Operational Notes at ${width}px`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    const common = { number: "N-42", concept: "aceite", customerId: "cust-1", plate: "ABC-123", economicNumber: "ECO-42", dateFrom: "2026-08-01", dateTo: "2026-08-31", overdue: "overdue", showArchived: "true", showCancelled: "true" };
+    function retained(url: string) {
+      const query = new URL(url).searchParams;
+      for (const [key, value] of Object.entries(common)) expect(query.get(key)).toBe(value);
+      expect(query.has("page")).toBe(false);
+      return query;
+    }
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/notes-operational?${new URLSearchParams({ ...common, mode: "week", anchor: "2026-08-05", payment: "partial", kind: "WORK", assignee: "workshop", page: "3" })}`);
+    await expect(page.getByRole("button", { name: "Parciales", exact: true })).toHaveAttribute("aria-pressed", "true");
+    for (const label of ["Semana anterior", "Semana siguiente", "Hoy", "Vista mensual"]) {
+      retained(new URL((await page.getByRole("link", { name: label, exact: true }).getAttribute("href"))!, page.url()).href);
+    }
+    await expect(page.getByText("Concepto: aceite", { exact: true })).toBeVisible();
+    await expect(page.getByText("Responsable: Taller", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-operational-${width}.png`), fullPage: true });
+    await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
+    await expect(page.getByLabel("Responsable", { exact: true })).toBeEnabled();
+    await page.getByLabel("Responsable", { exact: true }).selectOption("a0b1c2d3-1234-4abc-8def-1234567890ab");
+    await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
+    expect(retained(page.url()).get("assignee")).toBe("a0b1c2d3-1234-4abc-8def-1234567890ab");
+    for (const kind of ["all", "SALE"]) {
+      await page.getByLabel("Tipo de nota", { exact: true }).selectOption(kind);
+      expect(retained(page.url()).has("assignee")).toBe(false);
+      await expect(page.getByText(/Responsable:/)).toHaveCount(0);
+      await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(page.getByLabel("Responsable", { exact: true })).toBeDisabled();
+      await expect(page.getByText("El responsable solo aplica a notas WORK; todas y SALE conservan las ventas.")).toBeVisible();
+      for (const input of await dialog.locator("input, select").all()) {
+        const box = getBox(await input.boundingBox(), "Operational dialog input");
+        expect(box.height).toBeGreaterThanOrEqual(44);
+        await assertInside(box, getBox(await dialog.boundingBox(), "Dialog"), "Input");
+      }
+      if (kind === "all") await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-operational-inactive-${width}.png`), fullPage: true });
+      await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
+      expect(retained(page.url()).get("kind")).toBe(kind);
+    }
+    await page.getByRole("button", { name: "Pagadas", exact: true }).click();
+    expect(retained(page.url()).get("payment")).toBe("paid");
+    await page.getByRole("link", { name: "Semana anterior", exact: true }).click();
+    expect(retained(page.url()).get("anchor")).toBe("2026-07-29");
+    await page.getByRole("link", { name: "Vista mensual", exact: true }).click();
+    expect(retained(page.url()).get("mode")).toBe("month");
+    await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
+    await page.getByLabel("Mes y año", { exact: true }).fill("2026-09");
+    expect(retained(page.url()).get("anchor")).toBe("2026-09");
+    await page.getByRole("button", { name: "Limpiar filtros", exact: true }).click();
+    expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ mode: "month", anchor: "2026-09", payment: "all", kind: "all" });
+    expect(errors).toEqual([]);
+  });
+}

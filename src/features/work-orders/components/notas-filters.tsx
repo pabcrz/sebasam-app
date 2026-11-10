@@ -25,12 +25,15 @@ import {
 } from "@/components/ui";
 import {
   notasHref,
+  parseNotasParams,
   type NotasAssignee,
   type NotasMode,
   type NotasKind,
   type NotasOverdue,
   type NotasPayment,
 } from "../notas-period";
+
+import { dateValue } from "../work-order-filter-model";
 
 type Master = { id: string; displayName: string };
 
@@ -43,6 +46,7 @@ type CustomerOption = {
 };
 
 export interface NotasFiltersProps {
+  operationalState?: ReturnType<typeof parseNotasParams>;
   mode: NotasMode;
   payment: NotasPayment;
   assignee: NotasAssignee;
@@ -75,7 +79,17 @@ function getMexicoCityToday() {
   return `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
 }
 
-export function NotasFilters({
+/** Opt-in consumes the same canonical URL contract as the future page caller. */
+export function NotasFilters(props: NotasFiltersProps) {
+  const operationalState = props.operationalState ? parseNotasParams(
+    Object.fromEntries(new URLSearchParams(notasHref(props.operationalState, { operationalFilters: true }).split("?")[1])),
+    undefined, { operationalFilters: true },
+  ) : undefined;
+  return <NotasFiltersContent {...props} {...operationalState} operationalState={operationalState} />;
+}
+
+function NotasFiltersContent({
+  operationalState,
   mode,
   payment,
   assignee,
@@ -157,17 +171,34 @@ export function NotasFilters({
     return date.toISOString().slice(0, 10);
   };
 
-  const activeFilterCount =
+  const operationalSummary = operationalState ? [
+    ...([["number", "Folio"], ["concept", "Concepto"], ["plate", "Placas"], ["economicNumber", "ECO"]] as const)
+      .map(([key, label]) => operationalState[key] ? `${label}: ${operationalState[key]}` : ""),
+    customerId ? `Cliente: ${initialSelectedCustomer?.commercialName || initialSelectedCustomer?.name || customerId}` : "",
+    ...([["dateFrom", "Finalización/emisión desde"], ["dateTo", "Finalización/emisión hasta"]] as const)
+      .map(([key, label]) => operationalState[key] ? `${label}: ${dateValue(operationalState[key])}` : ""),
+    payment !== "all" ? `Cobro: ${{ pending: "Pendientes", partial: "Parciales", paid: "Pagadas" }[payment]}` : "",
+    selectedKind !== "all" ? `Tipo: ${selectedKind}` : "",
+    assignee !== "all" ? `Responsable: ${assignee === "workshop" ? "Taller" : masters.find((m) => m.id === assignee)?.displayName ?? assignee}` : "",
+    overdue !== "all" ? `Morosidad: ${overdue === "overdue" ? "Vencidas" : "Vigentes"}` : "",
+    operationalState.showArchived ? "Mostrar archivadas" : "",
+    operationalState.showCancelled ? "Mostrar canceladas" : "",
+  ].filter(Boolean) : [];
+  const activeFilterCount = operationalState ? operationalSummary.length :
     (assignee !== "all" ? 1 : 0) +
     (customerId ? 1 : 0) +
     (overdue !== "all" ? 1 : 0);
   const today = getMexicoCityToday();
   const isCurrentPeriod = mode === "week" ? isCurrentWeek : anchor.slice(0, 7) === today.slice(0, 7);
 
+  const navigationHref = (next: Parameters<typeof notasHref>[0]) => operationalState
+    ? notasHref({ ...operationalState, ...next, page: 1 }, { operationalFilters: true })
+    : notasHref(next);
+
   const handleApply = () => {
     setIsDialogOpen(false);
     router.push(
-      notasHref({
+      navigationHref({
         mode,
         payment,
         kind: selectedKind,
@@ -187,8 +218,12 @@ export function NotasFilters({
     setCustomerQuery("");
     setCustomerOptions([]);
     setIsDialogOpen(false);
+    if (operationalState) {
+      router.push(notasHref({ mode, anchor, payment: "all", kind: "all", assignee: "all", overdue: "all" }, { operationalFilters: true }));
+      return;
+    }
     router.push(
-      notasHref({
+      navigationHref({
         mode,
         payment,
         kind: selectedKind,
@@ -213,7 +248,7 @@ export function NotasFilters({
           <Button asChild variant="outline" size="icon" className="h-10 w-10">
             <Link
               aria-label={mode === "week" ? "Semana anterior" : "Mes anterior"}
-              href={notasHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(-1) })}
+              href={navigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(-1) })}
             >
               <ChevronLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
@@ -224,7 +259,7 @@ export function NotasFilters({
           <Button asChild variant="outline" size="icon" className="h-10 w-10">
             <Link
               aria-label={mode === "week" ? "Semana siguiente" : "Mes siguiente"}
-              href={notasHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(1) })}
+              href={navigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(1) })}
             >
               <ChevronRight className="h-5 w-5" aria-hidden="true" />
             </Link>
@@ -235,14 +270,14 @@ export function NotasFilters({
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant={isCurrentPeriod ? "secondary" : "outline"} size="sm" className="h-10">
             <Link
-              href={notasHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: today })}
+              href={navigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: today })}
             >
               Hoy
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm" className="h-10">
             <Link
-              href={notasHref({
+              href={navigationHref({
                 mode: mode === "week" ? "month" : "week",
                 payment,
                 assignee,
@@ -265,8 +300,8 @@ export function NotasFilters({
           <select
             aria-label="Tipo de nota"
             value={selectedKind}
-            onChange={(event) => router.push(notasHref({ mode, payment, assignee, customerId, overdue, kind: event.currentTarget.value as NotasKind, anchor }))}
-            className="h-10 min-w-32 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal normal-case text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
+            onChange={(event) => router.push(navigationHref({ mode, payment, assignee, customerId, overdue, kind: event.currentTarget.value as NotasKind, anchor }))}
+            className={`${operationalState ? "min-h-11 " : ""}h-10 min-w-32 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal normal-case text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2`}
           >
             <option value="all">Todas</option>
             <option value="WORK">WORK</option>
@@ -276,20 +311,20 @@ export function NotasFilters({
 
         <fieldset className="flex flex-col gap-1.5">
           <legend className="text-xs uppercase tracking-wide text-slate-500">Estado de pago</legend>
-          <div className="inline-flex h-10 w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-1 py-[3px] md:w-auto">
-            {(["all", "pending", "paid"] as const).map((item) => (
+          <div className={operationalState ? "grid w-full grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 sm:inline-flex sm:w-auto" : "inline-flex h-10 w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-1 py-[3px] md:w-auto"}>
+            {(operationalState ? ["all", "pending", "partial", "paid"] as const : ["all", "pending", "paid"] as const).map((item) => (
               <button
                 key={item}
                 type="button"
                 aria-pressed={payment === item}
-                onClick={() => router.push(notasHref({ mode, anchor, payment: item, assignee, customerId, overdue, kind: selectedKind }))}
-                className={`inline-flex h-8 items-center justify-center whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${
+                onClick={() => router.push(navigationHref({ mode, anchor, payment: item, assignee, customerId, overdue, kind: selectedKind }))}
+                className={`${operationalState ? "min-h-11 " : ""}inline-flex h-8 items-center justify-center whitespace-nowrap rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${
                   payment === item
                     ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
                     : "text-slate-600 hover:bg-white hover:text-slate-900"
                 }`}
               >
-                {({ all: "Todas", pending: "Pendientes", paid: "Pagadas" } as const)[item]}
+                {({ all: "Todas", pending: "Pendientes", partial: "Parciales", paid: "Pagadas" } as const)[item]}
               </button>
             ))}
           </div>
@@ -323,7 +358,7 @@ export function NotasFilters({
           </DialogTrigger>
           <DialogPortal>
             <DialogOverlay />
-            <DialogMobileContent className="sm:max-w-lg">
+            <DialogMobileContent className={operationalState ? "sm:max-w-lg [&_input]:min-h-11 [&_select]:min-h-11" : "sm:max-w-lg"}>
               <DialogMobileHeader>
                 <DialogTitle>Filtros de cartera</DialogTitle>
                 <DialogDescription className="sr-only">
@@ -346,7 +381,7 @@ export function NotasFilters({
                     onChange={(event) => {
                       if (event.currentTarget.value) {
                         router.push(
-                          notasHref({
+                          navigationHref({
                             mode,
                             payment,
                             kind: selectedKind,
@@ -482,17 +517,22 @@ export function NotasFilters({
                     id="dialog-notas-assignee"
                     aria-label="Responsable"
                     value={draftAssignee}
+                    disabled={Boolean(operationalState && selectedKind !== "WORK")}
+                    aria-describedby={operationalState && selectedKind !== "WORK" ? "notas-responsible-help" : undefined}
                     onChange={(e) => setDraftAssignee(e.currentTarget.value as NotasAssignee)}
                     className="h-10 w-full cursor-pointer rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-main)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
                   >
                     <option value="all">Todos los responsables</option>
                     <option value="workshop">Taller</option>
+                    {operationalState && draftAssignee !== "all" && draftAssignee !== "workshop" && !masters.some((m) => m.id === draftAssignee)
+                      ? <option value={draftAssignee}>{draftAssignee}</option> : null}
                     {masters.map((master) => (
                       <option key={master.id} value={master.id}>
                         {master.displayName}
                       </option>
                     ))}
                   </select>
+                  {operationalState && selectedKind !== "WORK" ? <p id="notas-responsible-help" className="text-sm text-slate-500">El responsable solo aplica a notas WORK; todas y SALE conservan las ventas.</p> : null}
                 </div>
 
                 {/* Selector de morosidad */}
@@ -525,6 +565,12 @@ export function NotasFilters({
           </DialogPortal>
         </Dialog>
       </div>
+      {operationalState ? <div className="mt-4 grid gap-2">
+        <p className="text-sm text-slate-500">El periodo de notas no representa toda la cartera; las fechas de finalización WORK o emisión SALE son inclusivas, no movimientos de cobro.</p>
+        <div aria-label="Filtros activos" className="flex flex-wrap gap-2">
+          {operationalSummary.map((item) => <span key={item} className="rounded-full border border-slate-200 px-3 py-1 text-xs">{item}</span>)}
+        </div>
+      </div> : null}
     </Card>
   );
 }

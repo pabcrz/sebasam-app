@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { parseNotasParams } from "../notas-period";
 import { NotasFilters } from "./notas-filters";
 
 const push = vi.fn();
@@ -197,5 +198,84 @@ describe("NotasFilters", () => {
     render(<NotasFilters mode="week" payment="all" assignee="all" anchor="2026-08-03" rangeLabel="3–8 de agosto de 2026" isCurrentWeek={false} masters={masters} />);
 
     expect(screen.queryByText("Semana en curso")).not.toBeInTheDocument();
+  });
+});
+
+
+const operationalInput = {
+  mode: "week", anchor: "2026-08-05", payment: "partial", kind: "WORK", assignee: "workshop", page: "3",
+  number: "N-42", concept: "aceite", customerId: "cust-1", plate: "ABC-123", economicNumber: "ECO-42",
+  dateFrom: "2026-08-01", dateTo: "2026-08-31", overdue: "overdue", showArchived: "true", showCancelled: "true",
+};
+function renderOperational(changes: Record<string, string> = {}) {
+  const state = parseNotasParams({ ...operationalInput, ...changes }, new Date("2026-08-06T12:00:00Z"), { operationalFilters: true });
+  return render(<NotasFilters {...state} operationalState={state} masters={[]} selectedCustomer={{ id: "cust-1", name: "Taller de prueba" }} />);
+}
+function expectCommon(href: string) {
+  const query = new URL(href, "http://fixture").searchParams;
+  for (const key of ["number", "concept", "customerId", "plate", "economicNumber", "dateFrom", "dateTo", "overdue", "showArchived", "showCancelled"] as const) {
+    expect(query.get(key)).toBe(operationalInput[key]);
+  }
+  expect(query.has("page")).toBe(false);
+  return query;
+}
+
+describe("operational Notes navigation opt-in", () => {
+  beforeEach(() => push.mockClear());
+
+  it("preserves every common criterion across period, today and mode links with one partial-payment state", () => {
+    renderOperational();
+    for (const label of ["Semana anterior", "Semana siguiente", "Hoy", "Vista mensual"]) {
+      const query = expectCommon(screen.getByRole("link", { name: label }).getAttribute("href")!);
+      expect(query.get("payment")).toBe("partial");
+      expect(query.get("assignee")).toBe("workshop");
+    }
+    expect(screen.getByRole("button", { name: "Parciales" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Concepto: aceite")).toBeInTheDocument();
+    expect(screen.getByText("Cobro: Parciales")).toBeInTheDocument();
+    expect(screen.getByText("Responsable: Taller")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Concepto")).not.toBeInTheDocument();
+  });
+
+  it("retains common criteria on payment, kind and explicit anchor changes", () => {
+    renderOperational();
+    fireEvent.click(screen.getByRole("button", { name: "Pagadas" }));
+    expect(expectCommon(push.mock.lastCall![0]).get("payment")).toBe("paid");
+    fireEvent.change(screen.getByLabelText("Tipo de nota"), { target: { value: "SALE" } });
+    const sale = expectCommon(push.mock.lastCall![0]);
+    expect(sale.get("kind")).toBe("SALE");
+    expect(sale.has("assignee")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    fireEvent.change(screen.getByLabelText("Semana"), { target: { value: "2026-08-19" } });
+    expect(expectCommon(push.mock.lastCall![0]).get("anchor")).toBe("2026-08-19");
+  });
+
+  it.each(["all", "SALE"])("keeps responsible inactive for %s without phantom summary or sales exclusion", (kind) => {
+    renderOperational({ kind, assignee: "workshop" });
+    expect(screen.queryByText(/Responsable:/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    expect(screen.getByLabelText("Responsable")).toBeDisabled();
+    expect(screen.getByLabelText("Responsable")).toHaveValue("all");
+    expect(screen.getByText("El responsable solo aplica a notas WORK; todas y SALE conservan las ventas.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+    expect(expectCommon(push.mock.lastCall![0]).has("assignee")).toBe(false);
+  });
+
+  it("preserves an effective WORK master absent from options on apply", () => {
+    const id = "a0b1c2d3-1234-4abc-8def-1234567890ab";
+    renderOperational({ assignee: id });
+    expect(screen.getByText(`Responsable: ${id}`)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    expect(screen.getByLabelText("Responsable")).toBeEnabled();
+    expect(screen.getByLabelText("Responsable")).toHaveValue(id);
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+    expect(expectCommon(push.mock.lastCall![0]).get("assignee")).toBe(id);
+  });
+
+  it("clears all criteria including payment/kind while preserving the period context", () => {
+    renderOperational();
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
+    expect(push).toHaveBeenCalledExactlyOnceWith("/admin/notas?mode=week&anchor=2026-08-05&payment=all&kind=all");
   });
 });

@@ -68,6 +68,12 @@ Un rango invertido se muestra con un mensaje y conserva sus campos para corregir
 
 Las fechas operativas de cotización y la programación en Ciudad de México tienen rangos separados, ambos inclusivos. Un rango invertido conserva los campos para corregirlos, muestra cuál de los dos rangos falló y no navega. La prueba de navegador usa el componente real en un fixture aislado, sin consultas ni mutaciones y sin demostrar autenticación Next.js. La página conecta estos controles con `listPaginatedActiveWorkOrders`: filtra antes de paginar, hidrata solo las cotizaciones únicas de la página devuelta y conserva todos los criterios en «Anterior»/«Siguiente». El contador muestra registros de esa página, no un total global. Una URL con cualquiera de los rangos invertidos abre corrección con sus fechas originales y demás criterios, sin consultar órdenes ni hidratar cotizaciones; no se presenta como resultado vacío. El vacío predeterminado reconoce órdenes pendientes aun sin maestro y el vacío filtrado ofrece limpiar criterios. Notas y contexto de regreso A3 siguen pendientes.
 
+## Navegación de Notas con opt-in (integración pendiente)
+
+`NotasFilters` acepta `operationalState` obtenido de `parseNotasParams` con `operationalFilters: true`. Sin esa propiedad conserva los controles y URLs anteriores. El estado efectivo combina tipo, pago (incluidas parciales), morosidad y criterios comunes recibidos: periodo anterior/siguiente, Hoy, modo, ancla, tipo, pago y aplicación del diálogo los conservan, reiniciando la página. «Limpiar filtros» restablece todos los criterios a sus valores predeterminados y conserva modo/ancla del periodo, no toda la cartera.
+
+El responsable está disponible solo en WORK: en todas/SALE se normaliza a `all`, se omite de la URL y del resumen, y se muestra deshabilitado con una explicación; no excluye ventas silenciosamente. WORK conserva maestro/taller y un identificador seleccionado que no esté en las opciones actuales. La búsqueda remota de cliente y la política de calendario no cambian. En esta entrega el opt-in se verifica con el componente real aislado; la página aún usa el contrato anterior y siguen pendientes los nuevos campos comunes/fechas/inclusiones, su corrección de rango, la integración de página y las etiquetas financieras. No se implementan histórico, cuenta de ventas ni regreso A3, ni se presenta este fixture Vite como E2E autenticado Next.js.
+
 ## Qué representa cada modelo
 
 | Modelo | Responsabilidad real |
