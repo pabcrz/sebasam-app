@@ -34,17 +34,28 @@ export const metadata: Metadata = {
 };
 
 export default async function NotasPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const filters = parseNotasParams(await searchParams);
+  const raw = await searchParams;
+  let filters: ReturnType<typeof parseNotasParams>;
+  let rejectedRange: { from: string; to: string } | undefined;
+  try {
+    filters = parseNotasParams(raw, undefined, { operationalFilters: true });
+  } catch (cause) {
+    if (!(cause instanceof RangeError)) throw cause;
+    const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] ?? "" : value ?? "";
+    rejectedRange = { from: first(raw.dateFrom), to: first(raw.dateTo) };
+    // Dateless state is only for correction rendering, never a query fallback.
+    filters = parseNotasParams({ ...raw, dateFrom: undefined, dateTo: undefined }, undefined, { operationalFilters: true });
+  }
   const [result, masters, customers, currentProfile] = await Promise.all([
-    listCompletedWorkOrders(filters),
+    rejectedRange ? null : listCompletedWorkOrders(filters, { operationalFilters: true }),
     listActiveMasters(),
     listCustomers(),
     getCurrentProfile(),
   ]);
-  const { workOrders, totals } = result;
-  const paymentHistories = await getNotePaymentHistory(workOrders.map((workOrder) => workOrder.id));
+  const workOrders = result?.workOrders ?? [];
+  const paymentHistories = result ? await getNotePaymentHistory(workOrders.map((workOrder) => workOrder.id)) : new Map();
   const quoteMap = new Map(workOrders.map((wo) => [wo.quote.id, wo.quote]));
-  const noteReturnTo = notasHref(filters);
+  const noteReturnTo = notasHref(filters, { operationalFilters: true });
   const selectedCustomer = filters.customerId
     ? customers.find((c) => c.id === filters.customerId) ?? null
     : null;
@@ -68,28 +79,34 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         </div>
       </div>
 
+      {result ? <>
+      <p className="text-sm text-[var(--color-text-muted)]">Importes de las notas seleccionadas por periodo y filtros; no representan toda la cartera ni movimientos de cobro del periodo.</p>
       <MetricCardGroup columns={3}>
         <StatCard
-          label="Pendiente de cobro"
-          value={formatCents(totals.totalPendingCents)}
+          label="Pendiente de notas seleccionadas"
+          value={formatCents(result.totals.totalPendingCents)}
           numericRole="currency"
           iconVariant="warning"
         />
         <StatCard
-          label="Saldo vencido"
-          value={formatCents(totals.totalOverdueCents)}
+          label="Vencido de notas seleccionadas"
+          value={formatCents(result.totals.totalOverdueCents)}
           numericRole="currency"
           iconVariant="danger"
         />
         <StatCard
-          label="Cobrado en periodo"
-          value={formatCents(totals.totalPaidCents)}
+          label="Cobrado acumulado de notas"
+          value={formatCents(result.totals.totalPaidCents)}
           numericRole="currency"
           iconVariant="success"
         />
       </MetricCardGroup>
+      </> : null}
 
       <NotasFilters
+        key={JSON.stringify(raw)}
+        operationalState={filters}
+        rejectedRange={rejectedRange}
         mode={filters.mode}
         payment={filters.payment}
         assignee={filters.assignee}
@@ -104,18 +121,18 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         searchCustomersAction={searchCustomersForQuote}
       />
 
-      <Card className="min-w-0">
+      {result ? <Card className="min-w-0">
         <CardHeader>
-          <CardTitle as="h2">Trabajos completados</CardTitle>
+          <CardTitle as="h2">Notas emitidas (WORK y SALE)</CardTitle>
         </CardHeader>
         <CardContent className="min-w-0">
           {workOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
               <p className="max-w-md text-sm text-[var(--color-text-muted)]">
-                No hay trabajos que coincidan con este periodo y filtros seleccionados.
+                No hay notas WORK o SALE que coincidan con este periodo y los filtros seleccionados.
               </p>
               <Button asChild variant="outline" size="sm">
-                <Link href="/admin/notas">Limpiar filtros</Link>
+                <Link href={notasHref({ mode: filters.mode, anchor: filters.anchor, payment: "all", assignee: "all", kind: "all" }, { operationalFilters: true })}>Limpiar filtros</Link>
               </Button>
             </div>
           ) : (
@@ -148,11 +165,11 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
              />
           )}
           <div className="mt-4 flex justify-between gap-3">
-            {result.page > 1 ? <Button asChild variant="outline" size="sm"><Link href={notasHref({ ...filters, page: result.page - 1 })}>Página anterior</Link></Button> : <span />}
-            {result.hasNextPage ? <Button asChild variant="outline" size="sm"><Link href={notasHref({ ...filters, page: result.page + 1 })}>Página siguiente</Link></Button> : null}
+            {result.page > 1 ? <Button asChild variant="outline" size="sm"><Link href={notasHref({ ...filters, page: result.page - 1 }, { operationalFilters: true })}>Página anterior</Link></Button> : <span />}
+            {result.hasNextPage ? <Button asChild variant="outline" size="sm"><Link href={notasHref({ ...filters, page: result.page + 1 }, { operationalFilters: true })}>Página siguiente</Link></Button> : null}
           </div>
         </CardContent>
-      </Card>
+      </Card> : null}
 
       {/* Mobile Floating Action Button */}
       <div

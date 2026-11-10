@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { parseNotasParams } from "../notas-period";
 import { NotasFilters } from "./notas-filters";
 
 const push = vi.fn();
@@ -197,5 +198,174 @@ describe("NotasFilters", () => {
     render(<NotasFilters mode="week" payment="all" assignee="all" anchor="2026-08-03" rangeLabel="3–8 de agosto de 2026" isCurrentWeek={false} masters={masters} />);
 
     expect(screen.queryByText("Semana en curso")).not.toBeInTheDocument();
+  });
+});
+
+
+const operationalInput = {
+  mode: "week", anchor: "2026-08-05", payment: "partial", kind: "WORK", assignee: "workshop", page: "3",
+  number: "N-42", concept: "aceite", customerId: "cust-1", plate: "ABC-123", economicNumber: "ECO-42",
+  dateFrom: "2026-08-01", dateTo: "2026-08-31", overdue: "overdue", showArchived: "true", showCancelled: "true",
+};
+function renderOperational(changes: Record<string, string> = {}) {
+  const state = parseNotasParams({ ...operationalInput, ...changes }, new Date("2026-08-06T12:00:00Z"), { operationalFilters: true });
+  return render(<NotasFilters {...state} operationalState={state} masters={[]} selectedCustomer={{ id: "cust-1", name: "Taller de prueba" }} />);
+}
+function expectCommon(href: string) {
+  const query = new URL(href, "http://fixture").searchParams;
+  for (const key of ["number", "concept", "customerId", "plate", "economicNumber", "dateFrom", "dateTo", "overdue", "showArchived", "showCancelled"] as const) {
+    expect(query.get(key)).toBe(operationalInput[key]);
+  }
+  expect(query.has("page")).toBe(false);
+  return query;
+}
+
+describe("operational Notes navigation opt-in", () => {
+  beforeEach(() => push.mockClear());
+
+  it("preserves every common criterion across period, today and mode links with one partial-payment state", () => {
+    renderOperational();
+    for (const label of ["Semana anterior", "Semana siguiente", "Hoy", "Vista mensual"]) {
+      const query = expectCommon(screen.getByRole("link", { name: label }).getAttribute("href")!);
+      expect(query.get("payment")).toBe("partial");
+      expect(query.get("assignee")).toBe("workshop");
+    }
+    expect(screen.getByRole("button", { name: "Parciales" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Concepto: aceite")).toBeInTheDocument();
+    expect(screen.getByText("Cobro: Parciales")).toBeInTheDocument();
+    expect(screen.getByText("Responsable: Taller")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Concepto")).not.toBeInTheDocument();
+  });
+
+  it("retains common criteria on payment, kind and explicit anchor changes", () => {
+    renderOperational();
+    fireEvent.click(screen.getByRole("button", { name: "Pagadas" }));
+    expect(expectCommon(push.mock.lastCall![0]).get("payment")).toBe("paid");
+    fireEvent.change(screen.getByLabelText("Tipo de nota"), { target: { value: "SALE" } });
+    const sale = expectCommon(push.mock.lastCall![0]);
+    expect(sale.get("kind")).toBe("SALE");
+    expect(sale.has("assignee")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    fireEvent.change(screen.getByLabelText("Semana"), { target: { value: "2026-08-19" } });
+    expect(expectCommon(push.mock.lastCall![0]).get("anchor")).toBe("2026-08-19");
+  });
+
+  it.each(["all", "SALE"])("keeps responsible inactive for %s without phantom summary or sales exclusion", (kind) => {
+    renderOperational({ kind, assignee: "workshop" });
+    expect(screen.queryByText(/Responsable:/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    expect(screen.getByLabelText("Responsable")).toBeDisabled();
+    expect(screen.getByLabelText("Responsable")).toHaveValue("all");
+    expect(screen.getByText("El responsable solo aplica a notas WORK; todas y SALE conservan las ventas.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+    expect(expectCommon(push.mock.lastCall![0]).has("assignee")).toBe(false);
+  });
+
+  it("preserves an effective WORK master absent from options on apply", () => {
+    const id = "a0b1c2d3-1234-4abc-8def-1234567890ab";
+    renderOperational({ assignee: id });
+    expect(screen.getByText(`Responsable: ${id}`)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    expect(screen.getByLabelText("Responsable")).toBeEnabled();
+    expect(screen.getByLabelText("Responsable")).toHaveValue(id);
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+    expect(expectCommon(push.mock.lastCall![0]).get("assignee")).toBe(id);
+  });
+
+  it("clears all criteria including payment/kind while preserving the period context", () => {
+    renderOperational();
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
+    expect(push).toHaveBeenCalledExactlyOnceWith("/admin/notas?mode=week&anchor=2026-08-05&payment=all&kind=all");
+  });
+});
+
+
+const commonLabels = ["Folio", "Concepto", "Placas", "ECO", "Finalización/emisión desde", "Finalización/emisión hasta"];
+const commonValues = ["N-99", "frenos", "DEF-999", "ECO-99", "2026-08-02", "2026-08-30"];
+describe("Notes operational common controls", () => {
+  beforeEach(() => push.mockClear());
+
+  it.each([[true, false], [false, true]])("applies combined fields and independent archive=%s cancel=%s", (archived, cancelled) => {
+    renderOperational();
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    expect(screen.getByText("Fecha operativa: finalización WORK o emisión SALE (ambos días incluidos)")).toBeInTheDocument();
+    for (const [index, label] of commonLabels.entries()) {
+      fireEvent.change(screen.getByLabelText(label), { target: { value: commonValues[index] } });
+    }
+    for (const [name, value] of [["Mostrar archivadas", archived], ["Mostrar canceladas", cancelled]] as const) {
+      const checkbox = screen.getByRole("checkbox", { name });
+      expect(checkbox).toBeChecked();
+      if (!value) fireEvent.click(checkbox);
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+    const query = new URL(push.mock.lastCall![0], "http://fixture").searchParams;
+    expect(Object.fromEntries(query)).toEqual({ mode: "week", anchor: "2026-08-05", payment: "partial", kind: "WORK", assignee: "workshop", customerId: "cust-1", overdue: "overdue", number: "N-99", concept: "frenos", plate: "DEF-999", economicNumber: "ECO-99", dateFrom: "2026-08-02", dateTo: "2026-08-30", ...(archived ? { showArchived: "true" } : {}), ...(cancelled ? { showCancelled: "true" } : {}) });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps an inverted range open with every draft intact and only navigates after correction", () => {
+    renderOperational();
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    fireEvent.change(screen.getByLabelText("Concepto"), { target: { value: "corregir aceite" } });
+    fireEvent.change(screen.getByLabelText("Finalización/emisión desde"), { target: { value: "2026-09-01" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar archivadas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+    expect(screen.getByRole("dialog")).toContainElement(screen.getByRole("alert"));
+    expect(screen.getByRole("alert")).toHaveTextContent("La fecha de finalización/emisión desde no puede ser posterior a hasta");
+    expect(screen.getByLabelText("Finalización/emisión desde")).toHaveValue("2026-09-01");
+    expect(screen.getByLabelText("Finalización/emisión hasta")).toHaveValue("2026-08-31");
+    expect(screen.getByLabelText("Concepto")).toHaveValue("corregir aceite");
+    expect(screen.getByRole("checkbox", { name: "Mostrar archivadas" })).not.toBeChecked();
+    expect(screen.getByText("Concepto: aceite")).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Finalización/emisión desde"), { target: { value: "2026-08-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+    expect(push).toHaveBeenCalledOnce();
+    expect(new URL(push.mock.lastCall![0], "http://fixture").searchParams.get("concept")).toBe("corregir aceite");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("resets discarded drafts from the URL when reopened and can clear a date error explicitly", () => {
+    renderOperational();
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    fireEvent.change(screen.getByLabelText("Concepto"), { target: { value: "descartado" } });
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    expect(screen.getByLabelText("Concepto")).toHaveValue("aceite");
+    fireEvent.change(screen.getByLabelText("Finalización/emisión desde"), { target: { value: "2026-09-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
+    expect(push).toHaveBeenCalledExactlyOnceWith("/admin/notas?mode=week&anchor=2026-08-05&payment=all&kind=all");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+
+describe("incoming rejected Notes dates", () => {
+  beforeEach(() => push.mockClear());
+  it.each(["correct", "clear"])("keeps correction visible and navigation safe until %s", (action) => {
+    const state = parseNotasParams({ ...operationalInput, dateFrom: undefined, dateTo: undefined }, undefined, { operationalFilters: true });
+    render(<NotasFilters {...state} operationalState={state} rejectedRange={{ from: "2026-09-01", to: "2026-08-31" }} masters={[]} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("La fecha de finalización/emisión desde no puede ser posterior a hasta");
+    expect(screen.getByLabelText("Finalización/emisión desde")).toHaveValue("2026-09-01");
+    expect(screen.getByLabelText("Concepto")).toHaveValue("aceite");
+    expect(screen.getByLabelText("Semana")).toBeDisabled();
+    expect(screen.getByLabelText("Tipo de nota")).toBeDisabled();
+    for (const link of document.querySelectorAll("a")) expect(link).toHaveAttribute("href", "#notas-date-error");
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    if (action === "clear") {
+      fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
+      expect(push).toHaveBeenCalledExactlyOnceWith("/admin/notas?mode=week&anchor=2026-08-05&payment=all&kind=all");
+    } else {
+      fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+      expect(push).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByLabelText("Finalización/emisión desde"), { target: { value: "2026-08-01" } });
+      fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+      expectCommon(push.mock.lastCall![0]);
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    }
   });
 });
