@@ -450,6 +450,36 @@ describe("QuoteBuilder", () => {
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
   });
 
+  it.each(["resolve", "reject"] as const)("ignores an older search %s while the newer query is pending", async (outcome) => {
+    vi.useFakeTimers();
+    const older = deferred<typeof customers>();
+    const newer = deferred<typeof customers>();
+    const searchCustomersAction = vi.fn().mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+    try {
+      render(<QuoteBuilder customers={customers} createAction={vi.fn()} searchCustomersAction={searchCustomersAction} />);
+      const search = screen.getByRole("combobox", { name: /cliente/i });
+      fireEvent.change(search, { target: { value: "alpha" } });
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      fireEvent.change(search, { target: { value: "beta" } });
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      expect(searchCustomersAction.mock.calls).toEqual([[{ query: "alpha" }], [{ query: "beta" }]]);
+      await act(async () => {
+        if (outcome === "resolve") older.resolve([{ id: "old", name: "Alpha old" }]);
+        else older.reject(new Error("Old failure"));
+      });
+      expect(search).toHaveValue("beta");
+      expect(screen.getByRole("status")).toHaveTextContent("Buscando clientes...");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Alpha old" })).not.toBeInTheDocument();
+      await act(async () => newer.resolve([{ id: "new", name: "Beta current" }]));
+      expect(screen.getByRole("option", { name: "Beta current" })).toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps a manually selected customer visible when an older search resolves late", async () => {
     const user = userEvent.setup();
     const pendingSearch = deferred<Array<{ id: string; name: string }>>();
