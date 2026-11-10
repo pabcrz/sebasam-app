@@ -329,14 +329,14 @@ describe("work order operational queues", () => {
     });
   });
 
-  it.each([
-    { name: "mixed Decimal windows", work: [89_000, 5_968_001, 316_001], sale: [0, 4_500, 4_500], expected: [89_000, 5_972_501, 320_501] },
-    { name: "WORK Decimal without SALE", work: [89_000, 5_968_001, 316_001], sale: null, expected: [89_000, 5_968_001, 316_001] },
-    { name: "SALE Decimal without WORK", work: null, sale: [900, 4_500, 4_500], expected: [900, 4_500, 4_500] },
-    { name: "zero Decimal windows", work: [0, 0, 0], sale: [0, 0, 0], expected: [0, 0, 0] },
-    { name: "missing windows", work: null, sale: null, expected: [0, 0, 0] },
-  ])("adds $name numerically before formatting", async ({ work, sale, expected }) => {
-    // PostgreSQL window SUM(bigint) returns NUMERIC, which Prisma maps to Decimal.
+  it.each([false, true].flatMap((operational) => [
+    { name: "mixed Decimal windows", operational, work: [89_000, 5_968_001, 316_001], sale: [0, 4_500, 4_500], expected: [89_000, 5_972_501, 320_501] },
+    { name: "WORK Decimal without SALE", operational, work: [89_000, 5_968_001, 316_001], sale: null, expected: [89_000, 5_968_001, 316_001] },
+    { name: "SALE Decimal without WORK", operational, work: null, sale: [900, 4_500, 4_500], expected: [900, 4_500, 4_500] },
+    { name: "zero Decimal windows", operational, work: [0, 0, 0], sale: [0, 0, 0], expected: [0, 0, 0] },
+    { name: "missing windows", operational, work: null, sale: null, expected: [0, 0, 0] },
+  ]))("adds $name numerically before formatting (operational=$operational)", async ({ work, sale, expected, operational }) => {
+    // Synthetic NUMERIC results, not the live September records or an assumed $100k total.
     const windowRow = (id: string, values: number[] | null) => values ? [{
       id, completedAt: new Date("2026-09-15T12:00:00Z"), issuedAt: new Date("2026-09-15T12:00:00Z"),
       totalPaidCents: new Prisma.Decimal(values[0]),
@@ -346,12 +346,10 @@ describe("work order operational queues", () => {
     vi.mocked(prisma.$queryRaw).mockResolvedValueOnce(windowRow("work", work));
     vi.mocked(prisma.payableNote.findFirst).mockResolvedValue(sale ? { id: "sale" } as never : null);
     if (sale) vi.mocked(prisma.$queryRaw).mockResolvedValueOnce(windowRow("sale", sale));
-
     const result = await listCompletedWorkOrders({
       start: new Date("2026-09-01T06:00:00Z"), end: new Date("2026-10-01T06:00:00Z"),
       payment: "all", assignee: "all", page: 1,
-    });
-
+    }, operational ? { operationalFilters: true } : {});
     expect(result.totals).toEqual({
       totalPaidCents: expected[0], totalPendingCents: expected[1], totalOverdueCents: expected[2],
     });
@@ -426,6 +424,9 @@ describe("work order operational queues", () => {
     };
     const rows = Array.from({ length: 21 }, (_, index) => ({
       id: `note-${String(index + 1).padStart(2, "0")}`,
+      totalPaidCents: new Prisma.Decimal(0),
+      totalPendingCents: new Prisma.Decimal(index % 2 === 0 ? 1_100 : 1_000),
+      totalOverdueCents: new Prisma.Decimal(0),
       effectiveTotalCents: BigInt(100),
       paidCents: BigInt(0),
       activePaymentId: null,
@@ -455,6 +456,8 @@ describe("work order operational queues", () => {
     expect(pageOne.hasNextPage).toBe(true);
     expect(pageTwo.workOrders.map(({ id }) => id)).toEqual(["note-21"]);
     expect(pageTwo.hasNextPage).toBe(false);
+    expect(pageOne.totals).toEqual({ totalPaidCents: 0, totalPendingCents: 2_100, totalOverdueCents: 0 });
+    expect(pageTwo.totals).toEqual(pageOne.totals);
     expect(new Set(ids).size).toBe(21);
     expect(ids).toEqual(rows.map(({ id }) => id));
   });

@@ -26,12 +26,6 @@ Las consultas comerciales explícitas conservan `status`, `showCancelled` y `sho
 
 Liquidar no cambia la bandeja. Archivar no liquida: las consultas de pendientes de cobro conservan su alcance independiente del periodo y del archivo de la bandeja Notas. No se cambian ledger, permisos ni acciones de transición.
 
-## Suma de totales de Notas
-
-Los acumulados SQL de WORK y SALE se convierten **por separado** de `Prisma.Decimal` a centavos numéricos antes de sumarse. Convertir después de `+` concatena texto y puede inflar pendiente, vencido y cobrado; el formato monetario divide entre 100 una sola vez. Esta corrección no modifica los importes almacenados, las consultas SQL, los filtros, los acuerdos ni las aplicaciones de pago.
-
-## Filtros comunes y cotizaciones (contrato aditivo)
-
 ## Contrato aditivo de filtros operativos
 
 Los adaptadores de consulta y URL aceptan `operationalFilters: true`. Cotizaciones, Trabajos y Notas conectan sus controles de pantalla a los contratos operativos. `parseOperationalQuoteParams`/`quotesHref`, `parseWorkOrderParams`/`workOrdersHref` y `parseNotasParams`/`notasHref` conservan los criterios efectivos al paginar. Los campos ajenos a cada módulo no se propagan. Los accesos rápidos y controles futuros deben representar este mismo estado, no mantener filtros independientes.
@@ -53,8 +47,6 @@ En Notas con `kind=all` o `SALE`, el contrato nuevo normaliza `assignee` a `all`
 Los límites finales se implementan como inicio del día siguiente exclusivo, no como 23:59:59 ni sumando 24 horas a instantes con cambio horario. Las fechas operativas almacenadas como DATE usan calendario UTC; programación/finalización/emisión usan medianoche local de Mexico City. Un rango invertido se rechaza; fechas inválidas se omiten. El rango explícito de Notas se combina con su periodo existente (intersección), sin modificar la semana lunes–sábado ni el mes. El periodo no representa toda la cartera.
 
 Los predicados se aplican antes de agrupar cobros, calcular totales y ordenar/paginar el conjunto WORK/SALE. Los importes siguen siendo pagos acumulados de los documentos seleccionados, no «cobrado en periodo». La nueva `listPaginatedActiveWorkOrders` limita la hidratación a 20 registros más una fila de detección; `listActiveWorkOrders` conserva la interfaz anterior hasta la migración de sus consumidores. No se implementa aquí el destino de consulta histórica de #769.
-
-
 
 ## Filtros de Cotizaciones en pantalla
 
