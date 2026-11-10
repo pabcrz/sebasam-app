@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 
 export const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => {
@@ -9,7 +9,7 @@ export const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTM
       <div className="w-full overflow-x-auto">
         <table
           ref={ref}
-          className={clsx("w-full caption-bottom text-left text-sm", className)}
+          className={cn("w-full caption-bottom text-left text-sm", className)}
           {...props}
         />
       </div>
@@ -22,7 +22,7 @@ export const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => {
-  return <thead ref={ref} className={clsx("border-b border-[var(--color-border-subtle)]", className)} {...props} />;
+  return <thead ref={ref} className={cn("border-b border-[var(--color-border-subtle)]", className)} {...props} />;
 });
 TableHeader.displayName = "TableHeader";
 
@@ -30,7 +30,7 @@ export const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => {
-  return <tbody ref={ref} className={clsx("divide-y divide-[var(--color-border-subtle)]", className)} {...props} />;
+  return <tbody ref={ref} className={cn("divide-y divide-[var(--color-border-subtle)]", className)} {...props} />;
 });
 TableBody.displayName = "TableBody";
 
@@ -39,7 +39,7 @@ export const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttribut
     return (
       <tr
         ref={ref}
-        className={clsx(
+        className={cn(
           "transition-colors duration-[var(--motion-fast)] hover:bg-[var(--color-bg-soft)] data-[state=selected]:bg-[var(--color-bg-soft)]",
           className,
         )}
@@ -55,7 +55,7 @@ export const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttr
     return (
       <th
         ref={ref}
-        className={clsx(
+        className={cn(
           "h-12 px-4 py-3 align-middle font-medium text-[var(--color-text-muted)]",
           className,
         )}
@@ -68,7 +68,7 @@ TableHead.displayName = "TableHead";
 
 export const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTableCellElement>>(
   ({ className, ...props }, ref) => {
-    return <td ref={ref} className={clsx("px-4 py-3 align-top", className)} {...props} />;
+    return <td ref={ref} className={cn("px-4 py-3 align-top", className)} {...props} />;
   },
 );
 TableCell.displayName = "TableCell";

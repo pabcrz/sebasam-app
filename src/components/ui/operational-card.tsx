@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 
 type OperationalCardProps = {
   body: React.ReactNode;
@@ -28,23 +28,23 @@ export function OperationalActionRow({ children }: React.PropsWithChildren) {
 }
 
 export function OperationalCard({ body, actions, onOpen, openLabel, className, bodyClassName, bodyHover = true, actionsClassName }: OperationalCardProps) {
-  const contentClassName = clsx("w-full rounded-[var(--radius-sm)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2", bodyClassName);
+  const contentClassName = cn("w-full rounded-[var(--radius-sm)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2", bodyClassName);
 
   return (
-    <div className={clsx("rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]", className)}>
+    <div className={cn("rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]", className)}>
       {onOpen ? (
         <button
           type="button"
           onClick={onOpen}
           aria-label={openLabel}
-          className={clsx(contentClassName, "active-press-subtle cursor-pointer", bodyHover && "hover:bg-[var(--color-surface-muted)]")}
+          className={cn(contentClassName, "active-press-subtle cursor-pointer", bodyHover && "hover:bg-[var(--color-surface-muted)]")}
         >
           {body}
         </button>
       ) : (
         <div className={contentClassName}>{body}</div>
       )}
-      {actions != null ? <div className={clsx(actionsClassName == null && "mt-4", actionsClassName)}>{actions}</div> : null}
+      {actions != null ? <div className={cn(actionsClassName == null && "mt-4", actionsClassName)}>{actions}</div> : null}
     </div>
   );
 }

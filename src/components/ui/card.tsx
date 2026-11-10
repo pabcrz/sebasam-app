@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 
 type CardProps = React.HTMLAttributes<HTMLDivElement> & {
   flush?: boolean;
@@ -12,7 +12,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={clsx(
+        className={cn(
           "w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)]",
           !flush && "p-[var(--space-md)]",
           "shadow-[var(--shadow-card)]",
@@ -27,7 +27,7 @@ Card.displayName = "Card";
 
 export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
-    return <div ref={ref} className={clsx("mb-[var(--space-md)] space-y-1", className)} {...props} />;
+    return <div ref={ref} className={cn("mb-[var(--space-md)] space-y-1", className)} {...props} />;
   },
 );
 CardHeader.displayName = "CardHeader";
@@ -41,7 +41,7 @@ export const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
     return (
         <Tag
         ref={ref}
-        className={clsx("text-lg font-semibold leading-tight tracking-[-0.01em] text-[var(--color-text-main)]", className)}
+        className={cn("text-lg font-semibold leading-tight tracking-[-0.01em] text-[var(--color-text-main)]", className)}
         {...props}
       />
     );
@@ -52,7 +52,7 @@ CardTitle.displayName = "CardTitle";
 export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => {
     return (
-      <p ref={ref} className={clsx("text-sm text-[var(--color-text-muted)]", className)} {...props} />
+      <p ref={ref} className={cn("text-sm text-[var(--color-text-muted)]", className)} {...props} />
     );
   },
 );
@@ -60,14 +60,14 @@ CardDescription.displayName = "CardDescription";
 
 export const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
-    return <div ref={ref} className={clsx("space-y-[var(--space-md)]", className)} {...props} />;
+    return <div ref={ref} className={cn("space-y-[var(--space-md)]", className)} {...props} />;
   },
 );
 CardContent.displayName = "CardContent";
 
 export const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
-    return <div ref={ref} className={clsx("mt-[var(--space-md)] flex items-center gap-[var(--space-sm)]", className)} {...props} />;
+    return <div ref={ref} className={cn("mt-[var(--space-md)] flex items-center gap-[var(--space-sm)]", className)} {...props} />;
   },
 );
 CardFooter.displayName = "CardFooter";
