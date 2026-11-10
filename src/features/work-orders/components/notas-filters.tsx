@@ -47,6 +47,7 @@ type CustomerOption = {
 
 export interface NotasFiltersProps {
   operationalState?: ReturnType<typeof parseNotasParams>;
+  rejectedRange?: { from: string; to: string };
   mode: NotasMode;
   payment: NotasPayment;
   assignee: NotasAssignee;
@@ -81,15 +82,15 @@ function getMexicoCityToday() {
 
 const commonTextFields = [["number", "Folio"], ["concept", "Concepto"], ["plate", "Placas"], ["economicNumber", "ECO"]] as const;
 const commonDateFields = [["dateFrom", "Finalización/emisión desde"], ["dateTo", "Finalización/emisión hasta"]] as const;
-function commonDraft(state?: NotasFiltersProps["operationalState"]) {
+function commonDraft(state?: NotasFiltersProps["operationalState"], rejected?: NotasFiltersProps["rejectedRange"]) {
   return {
     number: state?.number ?? "", concept: state?.concept ?? "", plate: state?.plate ?? "", economicNumber: state?.economicNumber ?? "",
-    dateFrom: state?.dateFrom ? dateValue(state.dateFrom) : "", dateTo: state?.dateTo ? dateValue(state.dateTo) : "",
+    dateFrom: rejected?.from ?? (state?.dateFrom ? dateValue(state.dateFrom) : ""), dateTo: rejected?.to ?? (state?.dateTo ? dateValue(state.dateTo) : ""),
     showArchived: state?.showArchived ?? false, showCancelled: state?.showCancelled ?? false,
   };
 }
 
-/** Opt-in consumes the same canonical URL contract as the future page caller. */
+/** Opt-in consumes the same canonical URL contract as the page caller. */
 export function NotasFilters(props: NotasFiltersProps) {
   const operationalState = props.operationalState ? parseNotasParams(
     Object.fromEntries(new URLSearchParams(notasHref(props.operationalState, { operationalFilters: true }).split("?")[1])),
@@ -100,6 +101,7 @@ export function NotasFilters(props: NotasFiltersProps) {
 
 function NotasFiltersContent({
   operationalState,
+  rejectedRange,
   mode,
   payment,
   assignee,
@@ -115,11 +117,11 @@ function NotasFiltersContent({
 }: NotasFiltersProps) {
   const selectedKind = kind ?? "all";
   const router = useRouter();
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(Boolean(rejectedRange));
 
   // Modal form draft state
-  const [draftCommon, setDraftCommon] = React.useState(() => commonDraft(operationalState));
-  const [dateError, setDateError] = React.useState(false);
+  const [draftCommon, setDraftCommon] = React.useState(() => commonDraft(operationalState, rejectedRange));
+  const [dateError, setDateError] = React.useState(Boolean(rejectedRange));
   const [draftAssignee, setDraftAssignee] = React.useState<NotasAssignee>(assignee);
   const [draftOverdue, setDraftOverdue] = React.useState<NotasOverdue>(overdue);
   const [draftCustomerId, setDraftCustomerId] = React.useState<string | undefined>(customerId);
@@ -134,10 +136,11 @@ function NotasFiltersContent({
   const searchRequestId = React.useRef(0);
 
   const handleOpenChange = (open: boolean) => {
+    if (rejectedRange && !open) return;
     setIsDialogOpen(open);
     if (open) {
-      setDraftCommon(commonDraft(operationalState));
-      setDateError(false);
+      setDraftCommon(commonDraft(operationalState, rejectedRange));
+      setDateError(Boolean(rejectedRange));
       setDraftAssignee(assignee);
       setDraftOverdue(overdue);
       setDraftCustomerId(customerId);
@@ -208,6 +211,8 @@ function NotasFiltersContent({
   const navigationHref = (next: Parameters<typeof notasHref>[0]) => operationalState
     ? notasHref({ ...operationalState, ...next, page: 1 }, { operationalFilters: true })
     : notasHref(next);
+
+  const safeNavigationHref = (next: Parameters<typeof notasHref>[0]) => rejectedRange ? "#notas-date-error" : navigationHref(next);
 
   const handleApply = () => {
     if (operationalState) {
@@ -281,7 +286,8 @@ function NotasFiltersContent({
           <Button asChild variant="outline" size="icon" className="h-10 w-10">
             <Link
               aria-label={mode === "week" ? "Semana anterior" : "Mes anterior"}
-              href={navigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(-1) })}
+              aria-disabled={Boolean(rejectedRange)}
+              href={safeNavigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(-1) })}
             >
               <ChevronLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
@@ -292,7 +298,8 @@ function NotasFiltersContent({
           <Button asChild variant="outline" size="icon" className="h-10 w-10">
             <Link
               aria-label={mode === "week" ? "Semana siguiente" : "Mes siguiente"}
-              href={navigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(1) })}
+              aria-disabled={Boolean(rejectedRange)}
+              href={safeNavigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(1) })}
             >
               <ChevronRight className="h-5 w-5" aria-hidden="true" />
             </Link>
@@ -303,14 +310,16 @@ function NotasFiltersContent({
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant={isCurrentPeriod ? "secondary" : "outline"} size="sm" className="h-10">
             <Link
-              href={navigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: today })}
+              aria-disabled={Boolean(rejectedRange)}
+              href={safeNavigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: today })}
             >
               Hoy
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm" className="h-10">
             <Link
-              href={navigationHref({
+              aria-disabled={Boolean(rejectedRange)}
+              href={safeNavigationHref({
                 mode: mode === "week" ? "month" : "week",
                 payment,
                 assignee,
@@ -332,6 +341,7 @@ function NotasFiltersContent({
           Tipo de nota
           <select
             aria-label="Tipo de nota"
+            disabled={Boolean(rejectedRange)}
             value={selectedKind}
             onChange={(event) => router.push(navigationHref({ mode, payment, assignee, customerId, overdue, kind: event.currentTarget.value as NotasKind, anchor }))}
             className={`${operationalState ? "min-h-11 " : ""}h-10 min-w-32 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal normal-case text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2`}
@@ -342,7 +352,7 @@ function NotasFiltersContent({
           </select>
         </label>
 
-        <fieldset className="flex flex-col gap-1.5">
+        <fieldset disabled={Boolean(rejectedRange)} className="flex flex-col gap-1.5">
           <legend className="text-xs uppercase tracking-wide text-slate-500">Estado de pago</legend>
           <div className={operationalState ? "grid w-full grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 sm:inline-flex sm:w-auto" : "inline-flex h-10 w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-1 py-[3px] md:w-auto"}>
             {(operationalState ? ["all", "pending", "partial", "paid"] as const : ["all", "pending", "paid"] as const).map((item) => (
@@ -365,7 +375,7 @@ function NotasFiltersContent({
 
         {customerId ? (
           <Button asChild variant="outline" size="sm" className="h-10">
-            <Link href={`/admin/customers/${customerId}/estado-de-cuenta`}>
+            <Link aria-disabled={Boolean(rejectedRange)} href={rejectedRange ? "#notas-date-error" : `/admin/customers/${customerId}/estado-de-cuenta`}>
               <FileText className="mr-1 h-4 w-4" aria-hidden="true" />
               Estado de cuenta
             </Link>
@@ -406,6 +416,7 @@ function NotasFiltersContent({
                   </Label>
                   <Input
                     id="notas-anchor"
+                    disabled={Boolean(rejectedRange)}
                     className={`${operationalState ? "min-h-11 " : ""}h-10 text-sm`}
                     aria-label={mode === "week" ? "Semana" : "Mes y año"}
                     type={mode === "week" ? "date" : "month"}

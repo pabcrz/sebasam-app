@@ -21,8 +21,8 @@ S3. "si, por el momento, y abre otra sesion para continuar"
 - T3.6 | S1-S2 | parent inline, sole writer | done | U6 Work controls, source7f68924 (291 lines). Commit: 878b853; RED missing new module, GREEN9/2files; ASSESS medium/reviewDuefalse/self-verification. Browser deferred T4. Risk: none.
 - T3.7 | S1-S2 | parent inline, sole writer | done | U7 Work page, sourcee899447 (236 lines). Commit: a305263; RED8/16, GREEN56/3files; ASSESS medium/reviewDuefalse/self-verification. Browser deferred T4. Risk: none.
 - T3.8 | S1-S2 | parent inline, sole writer | done | U8 Notes navigation controls, source65c9e25 (353 lines). Commit: b61b0c2; RED6/15, GREEN29/2files; ASSESS medium/reviewDuefalse/self-verification. Browser deferred T4. Risk: none; legacy opt-out pinned.
-- T3.9 | S1-S2 | parent inline, sole writer | in_progress | U9 Notes common criteria, source0985da5 (187 lines). Commit: pending.
-- T3.10 | S1-S2 | parent inline, sole writer | pending | U10 Notes page and selected metrics, source1186c3e (316 lines). Commit: pending.
+- T3.9 | S1-S2 | parent inline, sole writer | done | U9 Notes common criteria, source0985da5 (187 lines). Commit: 84055c8; RED4/19, GREEN33/2files; ASSESS medium/reviewDuefalse/self-verification. Browser deferred T4. Risk: none.
+- T3.10 | S1-S2 | parent inline, sole writer | in_progress | U10 Notes page and selected metrics, source1186c3e (316 lines). Commit: pending.
 - T3.11 | S1-S2 | parent inline plus independent security verification | pending | U11 strict opt-in print-return guard, source0b3449b (206 lines), Risk item2. Commit: pending.
 - T3.12 | S1-S2 | parent inline, sole writer | pending | U12 queue-to-print origin, source73d8f28 (244 lines). Commit: pending.
 - T3.13 | S1-S2 | parent inline, sole writer | pending | U13 minimal document-only preview option on develop frame; no restyling, legacy defaults intact. Commit: pending.

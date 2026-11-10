@@ -405,10 +405,19 @@ function OperationalNotesFixture() {
       window.removeEventListener("popstate", update);
     };
   }, []);
-  const state = parseNotasParams(Object.fromEntries(new URLSearchParams(search)), undefined, { operationalFilters: true });
+  const raw = Object.fromEntries(new URLSearchParams(search));
+  let state: ReturnType<typeof parseNotasParams>;
+  let rejectedRange: { from: string; to: string } | undefined;
+  try {
+    state = parseNotasParams(raw, undefined, { operationalFilters: true });
+  } catch (cause) {
+    if (!(cause instanceof RangeError)) throw cause;
+    rejectedRange = { from: raw.dateFrom ?? "", to: raw.dateTo ?? "" };
+    state = parseNotasParams({ ...raw, dateFrom: undefined, dateTo: undefined }, undefined, { operationalFilters: true });
+  }
   return (
     <main className="mx-auto w-full max-w-screen-xl p-4 md:p-6">
-      <NotasFilters {...state} operationalState={state}
+      <NotasFilters key={rejectedRange ? search : "valid"} {...state} operationalState={state} rejectedRange={rejectedRange}
         masters={[{ id: "a0b1c2d3-1234-4abc-8def-1234567890ab", displayName: "Ana Maestra" }]}
         selectedCustomer={state.customerId ? { id: state.customerId, name: "Taller de prueba" } : null} />
     </main>

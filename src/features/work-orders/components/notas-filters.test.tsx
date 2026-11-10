@@ -341,3 +341,31 @@ describe("Notes operational common controls", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
+
+
+describe("incoming rejected Notes dates", () => {
+  beforeEach(() => push.mockClear());
+  it.each(["correct", "clear"])("keeps correction visible and navigation safe until %s", (action) => {
+    const state = parseNotasParams({ ...operationalInput, dateFrom: undefined, dateTo: undefined }, undefined, { operationalFilters: true });
+    render(<NotasFilters {...state} operationalState={state} rejectedRange={{ from: "2026-09-01", to: "2026-08-31" }} masters={[]} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("La fecha de finalización/emisión desde no puede ser posterior a hasta");
+    expect(screen.getByLabelText("Finalización/emisión desde")).toHaveValue("2026-09-01");
+    expect(screen.getByLabelText("Concepto")).toHaveValue("aceite");
+    expect(screen.getByLabelText("Semana")).toBeDisabled();
+    expect(screen.getByLabelText("Tipo de nota")).toBeDisabled();
+    for (const link of document.querySelectorAll("a")) expect(link).toHaveAttribute("href", "#notas-date-error");
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    if (action === "clear") {
+      fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
+      expect(push).toHaveBeenCalledExactlyOnceWith("/admin/notas?mode=week&anchor=2026-08-05&payment=all&kind=all");
+    } else {
+      fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+      expect(push).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByLabelText("Finalización/emisión desde"), { target: { value: "2026-08-01" } });
+      fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+      expectCommon(push.mock.lastCall![0]);
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    }
+  });
+});

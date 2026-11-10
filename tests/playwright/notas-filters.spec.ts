@@ -115,7 +115,7 @@ test.describe("NotasFilters responsive browser layout", () => {
       }
 
       await page.screenshot({
-        path: path.join(process.cwd(), "test-results", "screenshots", `notas-common-legacy-${width}.png`),
+        path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-legacy-${width}.png`),
         fullPage: true,
       });
 
@@ -156,7 +156,7 @@ for (const width of [390, 1440]) {
     await expect(page.getByText("Concepto: aceite", { exact: true })).toBeVisible();
     await expect(page.getByText("Responsable: Taller", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-common-navigation-${width}.png`), fullPage: true });
+    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-navigation-${width}.png`), fullPage: true });
     await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
     await expect(page.getByLabel("Responsable", { exact: true })).toBeEnabled();
     await page.getByLabel("Responsable", { exact: true }).selectOption("a0b1c2d3-1234-4abc-8def-1234567890ab");
@@ -176,7 +176,7 @@ for (const width of [390, 1440]) {
         expect(box.height).toBeGreaterThanOrEqual(44);
         await assertInside(box, getBox(await dialog.boundingBox(), "Dialog"), "Input");
       }
-      if (kind === "all") await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-common-inactive-${width}.png`), fullPage: true });
+      if (kind === "all") await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-inactive-${width}.png`), fullPage: true });
       await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
       expect(retained(page.url()).get("kind")).toBe(kind);
     }
@@ -222,7 +222,7 @@ for (const width of [390, 1440]) {
       await expect(page.getByText(summary, { exact: true })).toBeVisible();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-common-${width}.png`), fullPage: true });
+    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-common-${width}.png`), fullPage: true });
     await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
     for (const [label, value] of Object.entries(fields)) await expect(page.getByLabel(label, { exact: true })).toHaveValue(value);
     await page.getByLabel("Concepto", { exact: true }).fill("borrador retenido");
@@ -236,10 +236,56 @@ for (const width of [390, 1440]) {
     await expect(page.getByLabel("Finalización/emisión desde", { exact: true })).toHaveValue("2026-09-01");
     await expect(page.getByRole("checkbox", { name: "Mostrar archivadas", exact: true })).toBeChecked();
     await page.getByLabel("Finalización/emisión desde", { exact: true }).scrollIntoViewIfNeeded();
-    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-common-error-${width}.png`), fullPage: true });
+    await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-prior-error-${width}.png`), fullPage: true });
     await page.getByRole("button", { name: "Limpiar filtros", exact: true }).click();
     expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ mode: "week", anchor: "2026-08-05", payment: "all", kind: "all" });
     await expect(page.getByRole("alert")).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}
+
+
+for (const width of [390, 1440]) {
+  test(`Incoming Notes range at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    const raw = {
+      mode: "week", anchor: "2026-08-05", payment: "partial", kind: "SALE",
+      assignee: "workshop", customerId: "cust-1", overdue: "overdue",
+      number: "N-42", concept: "aceite", plate: "ABC-123", economicNumber: "ECO-42",
+      dateFrom: "2026-09-01", dateTo: "2026-08-31",
+      showArchived: "true", showCancelled: "true", page: "2",
+    };
+    for (const action of ["correct", "clear"]) {
+      await page.goto(`/notes-operational?${new URLSearchParams(raw)}`);
+      const before = page.url();
+      await expect(page.getByRole("dialog")).toBeVisible();
+      await expect(page.getByRole("alert")).toContainText("La fecha de finalización/emisión desde no puede ser posterior a hasta");
+      await expect(page.getByLabel("Finalización/emisión desde", { exact: true })).toHaveValue(raw.dateFrom);
+      await expect(page.getByLabel("Concepto", { exact: true })).toHaveValue(raw.concept);
+      await expect(page.getByLabel("Semana", { exact: true })).toBeDisabled();
+      await expect(page.getByLabel("Tipo de nota", { exact: true })).toBeDisabled();
+      expect(await page.locator("a[href]").evaluateAll((links) => links.every((link) => link.getAttribute("href") === "#notas-date-error"))).toBe(true);
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toBeVisible();
+      await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
+      expect(page.url()).toBe(before);
+      if (action === "clear") {
+        await page.getByRole("button", { name: "Limpiar filtros", exact: true }).click();
+        expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ mode: "week", anchor: "2026-08-05", payment: "all", kind: "all" });
+      } else {
+        await page.getByLabel("Finalización/emisión desde", { exact: true }).scrollIntoViewIfNeeded();
+        await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-error-${width}.png`), fullPage: true });
+        await page.getByLabel("Finalización/emisión desde", { exact: true }).fill("2026-08-01");
+        await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
+        const { page: ignoredPage, assignee: ignoredAssignee, ...expected } = raw;
+        void ignoredPage; void ignoredAssignee;
+        expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ ...expected, dateFrom: "2026-08-01" });
+      }
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(page.getByRole("alert")).toHaveCount(0);
+    }
     expect(errors).toEqual([]);
   });
 }
