@@ -32,12 +32,12 @@ vi.mock("@/features/quotes/components/quote-mobile-card", () => ({
   ),
 }));
 vi.mock("@/features/quotes/components/quote-page-toasts", () => ({ QuotePageToasts: () => null }));
-vi.mock("@/features/quotes/components/quote-filters", () => ({ QuoteFilters: () => null }));
 
 import QuotesPage from "./page";
 
 describe("QuotesPage", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     listPaginatedQuotes.mockResolvedValue({ quotes: [], page: 1, hasNextPage: false });
   });
 
@@ -71,7 +71,7 @@ describe("QuotesPage", () => {
 
     const region = screen.getByRole("region", { name: "Cotizaciones recientes" });
     expect(screen.getByRole("heading", { level: 2, name: "Cotizaciones recientes" })).toHaveClass("sr-only");
-    expect([...region.querySelectorAll("div")].some((element) =>
+    expect([...region.querySelectorAll(":scope > div")].some((element) =>
       element.classList.contains("bg-[var(--color-bg-soft)]") ||
       element.classList.contains("shadow-[var(--shadow-card)]"),
     )).toBe(false);
@@ -85,5 +85,31 @@ describe("QuotesPage", () => {
       "auto-rows-fr",
       "lg:grid-cols-[repeat(2,minmax(0,1fr))]",
     );
+  });
+});
+
+
+describe("Quotes operational page wiring", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    listPaginatedQuotes.mockResolvedValue({ quotes: [], page: 2, hasNextPage: true });
+  });
+
+  it("queries the operational contract and preserves all combined criteria on both pagination links", async () => {
+    const params = { number: "C-42", concept: "aceite", customerId: "cust-1", plate: "ABC", economicNumber: "ECO", kind: "SALE", status: "APPROVED", hasWorkOrder: "false", showArchived: "true", showCancelled: "true", dateFrom: "2026-08-01", dateTo: "2026-08-31", page: "2" };
+    render(await QuotesPage({ searchParams: Promise.resolve(params) }));
+    expect(listPaginatedQuotes).toHaveBeenCalledExactlyOnceWith(params, { operationalQueue: "quotes", operationalFilters: true });
+    for (const [label, page] of [["Anterior", null], ["Siguiente", "3"]] as const) {
+      const url = new URL(screen.getByRole("link", { name: label }).getAttribute("href")!, "https://example.test");
+      for (const [key, value] of Object.entries(params)) expect(url.searchParams.get(key)).toBe(key === "page" ? page : value);
+    }
+    expect(screen.getByRole("link", { name: "Limpiar filtros" })).toHaveAttribute("href", "/admin/quotes");
+  });
+
+  it("represents inverted incoming dates safely without querying unfiltered results", async () => {
+    render(await QuotesPage({ searchParams: Promise.resolve({ customerId: "cust-1", dateFrom: "2026-08-31", dateTo: "2026-08-01" }) }));
+    expect(screen.getByRole("alert")).toHaveTextContent("La fecha operativa desde no puede ser posterior a hasta");
+    expect(listPaginatedQuotes).not.toHaveBeenCalled();
+    expect(screen.queryByText("No se encontraron cotizaciones.")).not.toBeInTheDocument();
   });
 });

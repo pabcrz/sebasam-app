@@ -34,7 +34,7 @@ Los acumulados SQL de WORK y SALE se convierten **por separado** de `Prisma.Deci
 
 ## Contrato aditivo de filtros operativos
 
-Los adaptadores de consulta y URL aceptan `operationalFilters: true`; las pantallas todavía no activan este contrato. `parseOperationalQuoteParams`/`quotesHref`, `parseWorkOrderParams`/`workOrdersHref` y `parseNotasParams`/`notasHref` conservan los criterios efectivos al paginar. Los campos ajenos a cada módulo no se propagan. Los accesos rápidos y controles futuros deben representar este mismo estado, no mantener filtros independientes.
+Los adaptadores de consulta y URL aceptan `operationalFilters: true`. Cotizaciones ya activa este contrato; Trabajos y Notas todavía conservan sus controles anteriores. `parseOperationalQuoteParams`/`quotesHref`, `parseWorkOrderParams`/`workOrdersHref` y `parseNotasParams`/`notasHref` conservan los criterios efectivos al paginar. Los campos ajenos a cada módulo no se propagan. Los accesos rápidos y controles futuros deben representar este mismo estado, no mantener filtros independientes.
 
 | Criterio | Semántica de consulta |
 |---|---|
@@ -53,6 +53,14 @@ En Notas con `kind=all` o `SALE`, el contrato nuevo normaliza `assignee` a `all`
 Los límites finales se implementan como inicio del día siguiente exclusivo, no como 23:59:59 ni sumando 24 horas a instantes con cambio horario. Las fechas operativas almacenadas como DATE usan calendario UTC; programación/finalización/emisión usan medianoche local de Mexico City. Un rango invertido se rechaza; fechas inválidas se omiten. El rango explícito de Notas se combina con su periodo existente (intersección), sin modificar la semana lunes–sábado ni el mes. El periodo no representa toda la cartera.
 
 Los predicados se aplican antes de agrupar cobros, calcular totales y ordenar/paginar el conjunto WORK/SALE. Los importes siguen siendo pagos acumulados de los documentos seleccionados, no «cobrado en periodo». La nueva `listPaginatedActiveWorkOrders` limita la hidratación a 20 registros más una fila de detección; `listActiveWorkOrders` conserva la interfaz anterior hasta la migración de sus consumidores. No se implementa aquí el destino de consulta histórica de #769.
+
+
+
+## Filtros de Cotizaciones en pantalla
+
+Cotizaciones combina referencia/folio, concepto, cliente, placas/ECO, tipo WORK/SALE, estado comercial, existencia de orden y fechas operativas inclusivas antes de paginar. Los accesos rápidos y el selector usan el mismo estado de URL; cambiar criterio reinicia la página, paginar conserva todos los criterios y «Limpiar» vuelve al alcance predeterminado. Archivo y cancelación son inclusiones independientes al consultar todos los estados; un estado específico conserva su alcance y las inclusiones no se anuncian como filtros aplicados en ese caso.
+
+Un rango invertido se muestra con un mensaje y conserva sus campos para corregirlo: no se ejecuta una consulta sin fechas como sustituto ni se permite cambiar estado desde ese error; «Limpiar» sí restablece expresamente los criterios. La búsqueda histórica y el contexto de regreso de impresión/detalle no se implementan en este cambio. La comprobación de navegador usa el componente real con datos aislados en Vite; no demuestra autenticación ni el recorrido Next.js completo. Trabajos/Notas siguen pendientes de su migración visual.
 
 ## Qué representa cada modelo
 
@@ -111,3 +119,7 @@ Las transacciones de [work-orders/actions.ts](../src/features/work-orders/action
 El diálogo interno conserva tres grupos: **cliente/unidad**, **conceptos** (cantidades, precio unitario e importe) y **totales** (subtotal, descuento cuando existe, IVA y total). Quitar marcos redundantes no elimina observaciones, selección por secciones, impresión ni acciones del flujo. El modo visual mínimo se limita al preview interno; la presentación pública e impresa conserva sus estilos.
 
 Pruebas del contrato: `document-dates.test.ts`, `quote-mobile-card.test.tsx`, `quote-preview-dialog.test.tsx`, `quote-document-view.test.tsx` y la ruta `notas/[id]/print/page.test.tsx`. Las pruebas financieras existentes siguen siendo la autoridad para cálculos; este cambio no modifica esas reglas.
+
+## Suma de totales de Notas
+
+Los acumulados SQL de WORK y SALE se convierten **por separado** de `Prisma.Decimal` a centavos numéricos antes de sumarse. Convertir después de `+` concatena texto y puede inflar pendiente, vencido y cobrado; el formato monetario divide entre 100 una sola vez. Cada ventana se cuenta una vez por tipo, incluso al paginar. Esta corrección no modifica los importes almacenados, las consultas SQL, los filtros, los acuerdos ni las aplicaciones de pago.

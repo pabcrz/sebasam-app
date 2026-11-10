@@ -1,6 +1,8 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { WorkOrderOperationsDialog } from "../../src/features/work-orders/components/work-order-operations-dialog";
+import { QuoteFilters } from "../../src/features/quotes/components/quote-filters";
+import { parseOperationalQuoteParams } from "../../src/features/quotes/quote-filter-model";
 import { NotasFilters } from "../../src/features/work-orders/components/notas-filters";
 import { QuoteListRow } from "../../src/features/quotes/components/quote-list-row";
 import { QuoteListCard } from "../../src/features/quotes/components/quote-mobile-card";
@@ -314,7 +316,35 @@ function QuoteFlowFixture() {
   );
 }
 
+/** Actual component with isolated URL navigation; no server queries or mutation actions. */
+function QuoteFiltersFixture() {
+  const [search, setSearch] = React.useState(window.location.search);
+  React.useEffect(() => {
+    const original = window.history.pushState;
+    const update = () => setSearch(window.location.search);
+    window.history.pushState = function (...args) {
+      original.apply(this, args);
+      update();
+    };
+    window.addEventListener("popstate", update);
+    return () => {
+      window.history.pushState = original;
+      window.removeEventListener("popstate", update);
+    };
+  }, []);
+  return (
+    <main className="mx-auto grid w-full max-w-6xl gap-4 p-4 md:p-6">
+      <h1 className="text-xl font-bold">Cotizaciones</h1>
+      <QuoteFilters
+        filters={parseOperationalQuoteParams(Object.fromEntries(new URLSearchParams(search)))}
+        customers={[{ id: "fixture-customer", name: "Taller de prueba" }]}
+      />
+    </main>
+  );
+}
+
 function Fixture() {
+  if (window.location.pathname === "/quote-filters" || window.location.pathname === "/admin/quotes") return <QuoteFiltersFixture />;
   if (window.location.pathname === "/sale-quote") {
     return <SaleQuoteFixture />;
   }
