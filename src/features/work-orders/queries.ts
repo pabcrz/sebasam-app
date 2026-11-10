@@ -94,7 +94,10 @@ export async function listActiveWorkOrders() {
   await requireOperationalRole();
 
   const workOrders = await prisma.workOrder.findMany({
-    where: { status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] } },
+    where: {
+      status: { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
+      quote: { operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } },
+    },
     include: workOrderInclude,
     orderBy: { createdAt: "desc" },
   });
@@ -113,6 +116,9 @@ export type ListCompletedWorkOrdersInput = {
   customerId?: string;
   overdue?: "all" | "overdue" | "current";
   kind?: "all" | "WORK" | "SALE";
+  /** Explicit historical inclusion; neither option changes payment membership. */
+  showArchived?: boolean;
+  showCancelled?: boolean;
   page: number;
 };
 
@@ -218,8 +224,19 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
       ? Prisma.sql`AND q."customerId" = ${input.customerId}`
       : Prisma.empty;
 
+  const hiddenQuoteStatuses = [
+    "REJECTED",
+    ...(!input.showCancelled ? ["CANCELLED"] : []),
+    ...(!input.showArchived ? ["ARCHIVED"] : []),
+  ];
+  const noteStatuses: Array<"ISSUED" | "CANCELLED"> = input.showCancelled ? ["ISSUED", "CANCELLED"] : ["ISSUED"];
+  const quoteMembership = Prisma.sql`q."deletedAt" IS NULL AND q.status::text NOT IN (${Prisma.join(hiddenQuoteStatuses)})`;
+
   const baseWhere = Prisma.sql`
     WHERE wo.status::text = ${WorkOrderStatus.COMPLETED}
+      AND q.operation::text = 'WORK'
+      AND ${quoteMembership}
+      AND (pn.id IS NULL OR pn.status::text IN (${Prisma.join(noteStatuses)}))
       AND wo."completedAt" >= ${input.start}
       AND wo."completedAt" < ${input.end}
       ${assigneeFilter}
@@ -251,6 +268,9 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
       COALESCE(SUM(CASE WHEN ${balanceExpr} > 0 AND wo."paymentDueDate" IS NOT NULL AND wo."paymentDueDate" < ${todayCdmxMidnight} THEN ${balanceExpr} ELSE 0 END) OVER(), 0) AS "totalOverdueCents"
     FROM "WorkOrder" wo
     JOIN "Quote" q ON q.id = wo."quoteId"
+    -- Match resolveDocumentDates: legacy completed WORK may have no note;
+    -- an explicit DRAFT/CANCELLED note is not issued by default.
+    LEFT JOIN "PayableNote" pn ON pn."quoteId" = q.id
     LEFT JOIN "SettlementAgreement" sa ON sa."quoteId" = q.id AND sa.status::text = ${SettlementAgreementStatus.ACTIVE}
     LEFT JOIN "PaymentApplication" pa ON pa."workOrderId" = wo.id AND pa."reversedAt" IS NULL
     LEFT JOIN "Payment" p ON p.id = pa."paymentId" AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL
@@ -264,7 +284,7 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
   // the payable-note boundary and merge them with completed work for the
   // existing Notes workspace.
   const saleCandidate = input.kind !== "WORK" && input.assignee === "all"
-    ? await prisma.payableNote.findFirst({ where: { kind: "SALE", status: "ISSUED" }, select: { id: true } })
+    ? await prisma.payableNote.findFirst({ where: { kind: "SALE", status: { in: noteStatuses } }, select: { id: true } })
     : null;
   const saleHavingConditions: Prisma.Sql[] = [];
   const salePaidCentsExpr = Prisma.sql`COALESCE(SUM(pa."amountCents") FILTER (WHERE pa."reversedAt" IS NULL AND p.id IS NOT NULL AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL), 0)`;
@@ -299,9 +319,11 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
           COALESCE(SUM(CASE WHEN ${saleBalanceExpr} > 0 THEN ${saleBalanceExpr} ELSE 0 END) OVER (), 0) AS "totalPendingCents",
           COALESCE(SUM(CASE WHEN ${saleBalanceExpr} > 0 AND pn."paymentDueDate" IS NOT NULL AND pn."paymentDueDate" < ${todayCdmxMidnight} THEN ${saleBalanceExpr} ELSE 0 END) OVER (), 0) AS "totalOverdueCents"
         FROM "PayableNote" pn
+        JOIN "Quote" q ON q.id = pn."quoteId"
         LEFT JOIN "PaymentApplication" pa ON pa."payableNoteId" = pn.id AND pa."reversedAt" IS NULL
         LEFT JOIN "Payment" p ON p.id = pa."paymentId" AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL
-        WHERE pn.kind::text = 'SALE' AND pn.status::text = 'ISSUED'
+        WHERE pn.kind::text = 'SALE' AND pn.status::text IN (${Prisma.join(noteStatuses)})
+          AND ${quoteMembership}
           AND pn."issuedAt" >= ${input.start} AND pn."issuedAt" < ${input.end}
           ${input.customerId && input.customerId.trim() !== "" && input.customerId !== "all" ? Prisma.sql`AND pn."customerId" = ${input.customerId}` : Prisma.empty}
         GROUP BY pn.id, pn."totalCents", pn."issuedAt", pn."paymentDueDate"

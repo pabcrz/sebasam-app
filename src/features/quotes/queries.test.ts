@@ -83,19 +83,36 @@ describe("listQuotes filters", () => {
     expect(getFindManyCall().where).toEqual({ deletedAt: null, status: { notIn: ["CANCELLED"] } });
   });
 
-  it("keeps drafts without an excluded work order in Cotizaciones and excludes later operational queues", async () => {
+  it("keeps approved WORK and SALE quotes without an order or issued note in Cotizaciones", async () => {
     await listPaginatedQuotes({}, { operationalQueue: "quotes" });
-
     expect(getFindManyCall().where).toEqual({
       deletedAt: null,
       status: { in: ["DRAFT", "SENT", "APPROVED"] },
-      NOT: {
-        workOrder: {
-          status: { in: ["ASSIGNED", "IN_PROGRESS", "COMPLETED"] },
-        },
-      },
+      NOT: [
+        { workOrder: { status: { in: ["PLANNED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"] } } },
+        { payableNote: { kind: "SALE", status: "ISSUED" } },
+      ],
     });
-    expect(getFindManyCall().where.NOT.workOrder.status.in).not.toContain("PLANNED");
+  });
+
+  it("moves pending assignment and completed/direct WORK out of Cotizaciones", async () => {
+    await listQuotes({}, { operationalQueue: "quotes" });
+    expect(getFindManyCall().where.NOT).toContainEqual({
+      workOrder: { status: { in: ["PLANNED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"] } },
+    });
+  });
+
+  it("moves an issued SALE directly out of Cotizaciones without requiring a work order", async () => {
+    await listQuotes({}, { operationalQueue: "quotes" });
+    expect(getFindManyCall().where.NOT).toContainEqual({ payableNote: { kind: "SALE", status: "ISSUED" } });
+  });
+
+  it("allows the existing cancelled-order return to an operational quote", async () => {
+    await listQuotes({}, { operationalQueue: "quotes" });
+    const exclusions = getFindManyCall().where.NOT;
+    expect(exclusions[0].workOrder.status.in).not.toContain("CANCELLED");
+    expect(getFindManyCall().where.status.in).toContain("DRAFT");
+    expect(getFindManyCall().where.status.in).toContain("APPROVED");
   });
 
   it("respects explicit status filter in operationalQueue", async () => {

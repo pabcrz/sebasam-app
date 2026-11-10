@@ -10,6 +10,22 @@
 
 Finalizar trabajo o emitir una venta no significa que esté pagada. Operación, saldo, factura y caducidad del enlace son ejes distintos.
 
+## Pertenencia a bandejas operativas
+
+Cada operación tiene una bandeja principal; el estado de pago no decide esa pertenencia.
+
+| Bandeja | Pertenencia predeterminada |
+|---|---|
+| Cotizaciones | `DRAFT`, `SENT` o `APPROVED`, WORK o SALE, sin OT `PLANNED`/`ASSIGNED`/`IN_PROGRESS`/`COMPLETED` ni nota SALE `ISSUED`. Una nota DRAFT no demuestra emisión. |
+| Trabajos | OT `PLANNED` (pendiente de asignación), `ASSIGNED` o `IN_PROGRESS`, de operación WORK no eliminada, rechazada, cancelada ni archivada. Nunca ventas. |
+| Notas | WORK `COMPLETED` con nota `ISSUED` o sin fila financiera histórica, y SALE `ISSUED`. Fuera por defecto: notas DRAFT/CANCELLED y cotizaciones eliminadas, rechazadas, canceladas o archivadas. |
+
+Aprobar sin generar OT mantiene la cotización; generar OT la lleva a Trabajos aun sin responsable; finalizar o convertir directamente a WORK terminado la lleva a Notas. Emitir SALE la lleva directamente a Notas sin OT. Cancelar una OT mediante el regreso comercial permitido permite volver a Cotizaciones si su estado comercial vuelve a ser operativo; no se modifican esas validaciones.
+
+Las consultas comerciales explícitas conservan `status`, `showCancelled` y `showArchived`; la consulta administrativa `listWorkOrders` conserva todos los estados. Para Notas, `listCompletedWorkOrders` acepta `showArchived` y `showCancelled` independientes y opcionales: el primero incluye cotizaciones archivadas; el segundo incluye cotizaciones canceladas y notas CANCELLED dentro del periodo de finalización/emisión existente. Ninguno admite notas DRAFT ni cambia importes, pagos, deuda o fechas. Estos parámetros de consulta no agregan controles de pantalla.
+
+Liquidar no cambia la bandeja. Archivar no liquida: las consultas de pendientes de cobro conservan su alcance independiente del periodo y del archivo de la bandeja Notas. No se cambian ledger, permisos ni acciones de transición.
+
 ## Suma de totales de Notas
 
 Los acumulados SQL de WORK y SALE se convierten **por separado** de `Prisma.Decimal` a centavos numéricos antes de sumarse. Convertir después de `+` concatena texto y puede inflar pendiente, vencido y cobrado; el formato monetario divide entre 100 una sola vez. Esta corrección no modifica los importes almacenados, las consultas SQL, los filtros, los acuerdos ni las aplicaciones de pago.

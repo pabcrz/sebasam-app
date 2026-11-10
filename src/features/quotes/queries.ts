@@ -45,13 +45,12 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
   const quoteQueueStatuses: QuoteStatus[] = [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.APPROVED];
 
   if (options.operationalQueue === "quotes") {
-    where.NOT = {
-      workOrder: {
-        status: {
-          in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED],
-        },
-      },
-    };
+    // A cancelled order can return to the commercial queue; a planned order
+    // already belongs to Trabajos, even before its first assignment.
+    where.NOT = [
+      { workOrder: { status: { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED] } } },
+      { payableNote: { kind: "SALE", status: "ISSUED" } },
+    ];
   }
 
   where.deletedAt = null;
