@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { quoteFilterSchema, quoteListPageSchema, type QuoteFilterInput } from "./schemas";
 import { getQuotePaidTotals } from "@/features/payments/queries";
+import { parseOperationalQuoteParams } from "./quote-filter-model";
+import { operationalQuoteWhere, parsePage, type OperationalFilterOptions } from "@/features/work-orders/work-order-filter-model";
 
 export async function getQuoteById(quoteId: string) {
   await requireOperationalRole();
@@ -36,11 +38,14 @@ function findActiveSharedQuote<T extends { expiresAt: Date; revokedAt: Date | nu
   return sharedQuotes.find((sharedQuote) => sharedQuote.revokedAt === null && sharedQuote.expiresAt >= now) ?? null;
 }
 
-type QuoteListOptions = { operationalQueue?: "quotes" };
+type QuoteListOptions = OperationalFilterOptions & { operationalQueue?: "quotes" };
 
 function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.QuoteWhereInput | undefined {
   const parsed = quoteFilterSchema.safeParse(input);
-  const filters = parsed.success ? parsed.data : ({} as QuoteFilterInput);
+  const operationalFilters = options.operationalFilters
+    ? parseOperationalQuoteParams(input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {})
+    : undefined;
+  const filters = operationalFilters ?? (parsed.success ? parsed.data : ({} as QuoteFilterInput));
   const where: Prisma.QuoteWhereInput = {};
   const quoteQueueStatuses: QuoteStatus[] = [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.APPROVED];
 
@@ -130,6 +135,15 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
     } else {
       where.NOT = { workOrder: { isNot: null } };
     }
+  }
+
+  if (operationalFilters) {
+    // Keep legacy callers unchanged; the opt-in replaces common predicates only.
+    delete where.OR;
+    delete where.AND;
+    delete where.operationalDate;
+    Object.assign(where, operationalQuoteWhere(operationalFilters));
+    if (operationalFilters.kind !== "all") where.operation = operationalFilters.kind;
   }
 
   return Object.keys(where).length > 0 ? where : undefined;
@@ -255,7 +269,7 @@ export async function listPaginatedQuotes(input: unknown = {}, options: QuoteLis
     ? (input as Record<string, unknown>).page
     : undefined;
   const parsedPage = quoteListPageSchema.safeParse(pageInput);
-  const page = parsedPage.success ? parsedPage.data : 1;
+  const page = options.operationalFilters ? parsePage(pageInput) : parsedPage.success ? parsedPage.data : 1;
   const pageSize = 20;
   const quotes = await findQuotes(buildQuoteWhere(input, options), {
     skip: (page - 1) * pageSize,

@@ -30,6 +30,14 @@ Liquidar no cambia la bandeja. Archivar no liquida: las consultas de pendientes 
 
 Los acumulados SQL de WORK y SALE se convierten **por separado** de `Prisma.Decimal` a centavos numéricos antes de sumarse. Convertir después de `+` concatena texto y puede inflar pendiente, vencido y cobrado; el formato monetario divide entre 100 una sola vez. Esta corrección no modifica los importes almacenados, las consultas SQL, los filtros, los acuerdos ni las aplicaciones de pago.
 
+## Filtros comunes y cotizaciones (contrato aditivo)
+
+El contrato nuevo se activa con `operationalFilters: true`; las pantallas todavía no lo usan. `parseOperationalQuoteParams` y `quotesHref` conservan referencia/folio, concepto, cliente, placas/ECO, fecha operativa, tipo WORK/SALE, estado comercial, `hasWorkOrder`, inclusiones de archivo/cancelación y página. Los criterios combinados se aplican antes de paginar; unidad vinculada y snapshot son fuentes alternativas para placas/ECO.
+
+Las fechas de URL son días inclusivos; las consultas usan inicio del día siguiente exclusivo. El modelo común distingue calendario DATE de instantes de Mexico City y evita sumar 24 horas al atravesar cambios horarios. Las fechas inválidas se omiten y los rangos invertidos se rechazan. La página operativa comparte normalización entre URL y consulta; las llamadas sin opt-in conservan su esquema y coerción anteriores.
+
+Los controles futuros deben reflejar un único estado efectivo. Este paso prepara contratos y consultas, no agrega pantallas ni el destino histórico de #769. Los adaptadores de Trabajos y Notas se integran en la siguiente entrega de la cadena.
+
 ## Qué representa cada modelo
 
 | Modelo | Responsabilidad real |

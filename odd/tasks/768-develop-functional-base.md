@@ -9,8 +9,8 @@ S3. "si, por el momento, y abre otra sesion para continuar"
 ## Tasks
 - T1 | S1-S3 | new Gentle Shell owner | done | Preserve the previous branch and dirty changes, then establish a fresh issue branch based on develop without destructive Git operations. Commit: pending.
 - T2 | S1-S2 | read-only delegated inventory (context backstop; parent sole source writer) | done | Inventory the old functional work units against develop, separating necessary functional controls from preview restyling. Refine T3 into bounded work units before source writes. Commit: pending.
-- T3.1 | S1-S2 | parent inline, sole writer | in_progress | U1 queue membership, source9d9c92b (158 authored lines excluding old tracker). Commit: pending.
-- T3.2 | S1-S2 | parent inline, sole writer | pending | U2 common additive filter contracts, sourceffa6de6 (341 lines). Commit: pending.
+- T3.1 | S1-S2 | parent inline, sole writer | done | U1 queue membership, source9d9c92b. Commit: e65a8c5; RED10 failures/53, GREEN69/3files; ASSESS medium, reviewDuefalse. Risk: none.
+- T3.2 | S1-S2 | parent inline, sole writer | in_progress | U2 common additive filter contracts, sourceffa6de6 (341 lines). Commit: pending.
 - T3.3 | S1-S2 | parent inline, sole writer | pending | U3 Work/Notes query adapters, sourceb08b42c (189 lines). Commit: pending.
 - T3.4 | S1-S2 | parent inline, sole writer | pending | U4 Decimal monetary correction, source3f2aa86 (57 lines). Commit: pending.
 - T3.5 | S1-S2 | parent inline, sole writer | pending | U5 Quotes functional controls/page, source6bcc11c (359 lines). Commit: pending.

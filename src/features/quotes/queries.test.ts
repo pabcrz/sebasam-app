@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { listArchivedEligibleQuotes, listPaginatedQuotes, listQuotes, listQuotesByIds, listRecoverableTrashedQuotes } from "./queries";
 import { getQuotePaidTotals } from "@/features/payments/queries";
+import { parseOperationalQuoteParams, quotesHref } from "./quote-filter-model";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -457,4 +458,63 @@ where: { deletedAt: null, customerId: "cust-1", status: { notIn: ["ARCHIVED"] } 
       "Los pagos registrados exceden el total de la cotización C-001.",
     );
   });
+});
+
+
+describe("A2q verifier regressions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.quote.findMany).mockResolvedValue([]);
+    vi.mocked(getQuotePaidTotals).mockResolvedValue(new Map());
+  });
+
+  it("B1 preserves the legacy customer scope when unknown concept is an array", async () => {
+    const result = await listQuotes({ customerId: "customer-1", concept: ["x"] });
+
+    expect(result).toEqual([]);
+    expect(getFindManyCall().where).toEqual({
+      deletedAt: null,
+      customerId: "customer-1",
+      status: { notIn: ["CANCELLED", "ARCHIVED"] },
+    });
+  });
+
+  it("B2 uses the same operational page for query, model and URL without changing legacy coercion", async () => {
+    const input = { page: "1e2" };
+    const filters = parseOperationalQuoteParams(input);
+    const result = await listPaginatedQuotes(input, {
+      operationalQueue: "quotes",
+      operationalFilters: true,
+    });
+
+    expect(filters.page).toBe(1);
+    expect(quotesHref(filters)).toBe("/admin/quotes");
+    expect(result.page).toBe(filters.page);
+    expect(getFindManyCall()).toMatchObject({ skip: 0, take: 21 });
+
+    vi.mocked(prisma.quote.findMany).mockClear();
+    const legacy = await listPaginatedQuotes(input, { operationalQueue: "quotes" });
+    expect(legacy.page).toBe(100);
+    expect(getFindManyCall()).toMatchObject({ skip: 1980, take: 21 });
+  });
+});
+
+describe("additive operational quote predicates", () => {
+  it("combines concept, kind, reference, snapshot unit and inclusive calendar dates before pagination", async () => {
+    vi.mocked(prisma.quote.findMany).mockResolvedValue([]);
+    await listPaginatedQuotes({ concept: "aceite", kind: "SALE", number: "42", plate: "ABC", economicNumber: "ECO", customerId: "c", dateFrom: "2026-08-01", dateTo: "2026-08-31", showArchived: "false", page: "2" }, { operationalQueue: "quotes", operationalFilters: true });
+    const call = vi.mocked(prisma.quote.findMany).mock.lastCall![0]!;
+    expect(call).toMatchObject({ skip: 20, take: 21, where: { operation: "SALE", customerId: "c", operationalDate: { gte: new Date("2026-08-01"), lt: new Date("2026-09-01") } } });
+    const where = JSON.stringify(call.where);
+    for (const text of ["aceite", "items", "description", "title", "folio", "ABC", "vehicleSnapshot", "ECO"]) expect(where).toContain(text);
+    expect(where).not.toContain("ARCHIVED");
+  });
+});
+
+
+it("normalizes unsafe operational page offsets without changing legacy pagination", async () => {
+  vi.mocked(prisma.quote.findMany).mockResolvedValue([]);
+  const result = await listPaginatedQuotes({ page: "9007199254740992" }, { operationalFilters: true });
+  expect(result.page).toBe(1);
+  expect(vi.mocked(prisma.quote.findMany).mock.lastCall![0]).toMatchObject({ skip: 0, take: 21 });
 });

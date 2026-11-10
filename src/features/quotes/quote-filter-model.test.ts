@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { QuoteFilterInput } from "./schemas";
 import {
   buildQuoteFilterFormHref,
+  quotesHref,
+  parseOperationalQuoteParams,
   buildStatusFilterHref,
   formatDateValue,
   getQuoteFilterModel,
@@ -47,5 +49,14 @@ describe("quote filter model", () => {
       ["hasWorkOrder", "false"], ["attachment", { name: "ignored" }],
     ])).toBe("/admin/quotes?number=C-001&hasWorkOrder=false");
     expect(buildQuoteFilterFormHref([])).toBe("/admin/quotes?");
+  });
+});
+
+
+describe("operational quote URLs", () => {
+  it("preserves every effective criterion and page while dropping unrelated fields", () => {
+    const state = parseOperationalQuoteParams({ number: " C-42 ", concept: "aceite", customerId: "c", plate: "ABC", economicNumber: "ECO", kind: "SALE", dateFrom: "2026-08-01", dateTo: "2026-08-31", hasWorkOrder: "false", showArchived: "true", showCancelled: "false", status: "APPROVED", page: "2", assignee: "workshop", payment: "paid" });
+    expect(Object.fromEntries(new URL(quotesHref(state), "https://example.test").searchParams)).toEqual({ number: "C-42", concept: "aceite", customerId: "c", plate: "ABC", economicNumber: "ECO", dateFrom: "2026-08-01", dateTo: "2026-08-31", showArchived: "true", kind: "SALE", status: "APPROVED", hasWorkOrder: "false", page: "2" });
+    expect(parseOperationalQuoteParams(Object.fromEntries(new URL(quotesHref(state), "https://example.test").searchParams))).toEqual(state);
   });
 });
