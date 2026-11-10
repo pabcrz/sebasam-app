@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { assertOperationalClosureQuote } from "./operational-validation";
 import { WorkOrderOperationError } from "./domain";
+import { dateBounds, operationalQuoteWhere, parseCommonOperationalFilters, parseWorkOrderParams, normalizeResponsible, parsePage, type CommonOperationalFilters, type OperationalFilterOptions } from "./work-order-filter-model";
 export { listActiveWorkers } from "@/features/workers/queries";
 
 const workOrderInclude = {
@@ -105,13 +106,31 @@ export async function listActiveWorkOrders() {
   return workOrders.map(serializeWorkOrder);
 }
 
+/** Opt-in bounded Trabajos query; legacy listActiveWorkOrders remains unchanged. */
+export async function listPaginatedActiveWorkOrders(input: Record<string, unknown> = {}) {
+  await requireOperationalRole();
+  const filters = parseWorkOrderParams(input);
+  const quote = operationalQuoteWhere({ ...filters, number: undefined });
+  const contains = (value: string) => ({ contains: value, mode: "insensitive" as const });
+  const where: Prisma.WorkOrderWhereInput = {
+    status: filters.execution ?? { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
+    quote: { ...quote, operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } },
+  };
+  if (filters.number) where.OR = [{ number: contains(filters.number) }, { folio: contains(filters.number) }, { quote: { OR: [{ number: contains(filters.number) }, { folio: contains(filters.number) }] } }];
+  if (filters.assignee === "workshop") where.isSpecial = true;
+  else if (filters.assignee !== "all") where.assignments = { some: { workerId: filters.assignee, status: { not: AssignmentStatus.CANCELLED }, worker: { workerKind: WorkerKind.MASTER } } };
+  if (filters.scheduledFrom || filters.scheduledTo) where.scheduledFor = dateBounds(filters.scheduledFrom, filters.scheduledTo, true);
+  const workOrders = await prisma.workOrder.findMany({ where, include: workOrderInclude, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (filters.page - 1) * 20, take: 21 });
+  return { workOrders: workOrders.slice(0, 20).map(serializeWorkOrder), page: filters.page, hasNextPage: workOrders.length > 20 };
+}
+
 import { localDateToMexicoCityInstant } from "@/features/quotes/lib/operational-date";
 import { mexicoCityDateParts } from "./receivables-policy";
 
 export type ListCompletedWorkOrdersInput = {
   start: Date;
   end: Date;
-  payment: "all" | "pending" | "paid";
+  payment: "all" | "pending" | "partial" | "paid";
   assignee: "all" | "workshop" | string;
   customerId?: string;
   overdue?: "all" | "overdue" | "current";
@@ -120,7 +139,7 @@ export type ListCompletedWorkOrdersInput = {
   showArchived?: boolean;
   showCancelled?: boolean;
   page: number;
-};
+} & Partial<CommonOperationalFilters>;
 
 export type CompletedWorkOrderTotals = {
   totalPendingCents: number;
@@ -158,14 +177,44 @@ export type CompletedSaleNoteItem = {
 };
 export type CompletedNoteItem = CompletedWorkOrderItem | CompletedSaleNoteItem;
 
+/** SQL counterparts to operationalQuoteWhere, evaluated before financial grouping. */
+function noteSearchFilters(input: Partial<CommonOperationalFilters>, dateColumn: Prisma.Sql, reference: Prisma.Sql, folio: Prisma.Sql) {
+  const conditions: Prisma.Sql[] = [];
+  const pattern = (value: string) => `%${value.replace(/[\\%_]/g, "\\$&")}%`;
+  if (input.number) {
+    const value = pattern(input.number);
+    conditions.push(Prisma.sql`(${reference} ILIKE ${value} OR ${folio} ILIKE ${value} OR pn."referenceNumber" ILIKE ${value} OR q.number ILIKE ${value} OR q.folio ILIKE ${value})`);
+  }
+  if (input.concept) {
+    const value = pattern(input.concept);
+    conditions.push(Prisma.sql`(q.title ILIKE ${value} OR q.description ILIKE ${value} OR EXISTS (SELECT 1 FROM "QuoteItem" qi WHERE qi."quoteId" = q.id AND qi.description ILIKE ${value}))`);
+  }
+  if (input.plate) {
+    const value = pattern(input.plate);
+    conditions.push(Prisma.sql`((q."vehicleSnapshot"->>'plate') ILIKE ${value} OR EXISTS (SELECT 1 FROM "Vehicle" v WHERE v.id = q."vehicleId" AND v.plate ILIKE ${value}))`);
+  }
+  if (input.economicNumber) {
+    const value = pattern(input.economicNumber);
+    conditions.push(Prisma.sql`((q."vehicleSnapshot"->>'economicNumber') ILIKE ${value} OR EXISTS (SELECT 1 FROM "Vehicle" v WHERE v.id = q."vehicleId" AND v."economicNumber" ILIKE ${value}))`);
+  }
+  const bounds = dateBounds(input.dateFrom, input.dateTo, true);
+  if (bounds.gte) conditions.push(Prisma.sql`${dateColumn} >= ${bounds.gte}`);
+  if (bounds.lt) conditions.push(Prisma.sql`${dateColumn} < ${bounds.lt}`);
+  return conditions.length ? Prisma.sql`AND ${Prisma.join(conditions, " AND ")}` : Prisma.empty;
+}
+
 /** Returns completed work orders (COMPLETED) — shown in the Notas section. */
-export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInput): Promise<{
+export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInput, options: OperationalFilterOptions = {}): Promise<{
   page: number;
   hasNextPage: boolean;
   totals: CompletedWorkOrderTotals;
   workOrders: CompletedNoteItem[];
 }> {
   await requireOperationalRole();
+  if (options.operationalFilters) {
+    const common = parseCommonOperationalFilters(input);
+    input = { ...input, ...common, page: parsePage(input.page), assignee: input.kind === "WORK" ? normalizeResponsible(input.assignee) : "all" };
+  }
   const pageSize = 20;
 
   // Active payment application condition:
@@ -188,7 +237,9 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
 
   const havingConditions: Prisma.Sql[] = [];
 
-  if (input.payment === "pending") {
+  if (options.operationalFilters && input.payment === "partial") {
+    havingConditions.push(Prisma.sql`${balanceExpr} > 0 AND ${paidCentsExpr} > 0`);
+  } else if (input.payment === "pending") {
     havingConditions.push(Prisma.sql`${balanceExpr} > 0`);
   } else if (input.payment === "paid") {
     havingConditions.push(Prisma.sql`${balanceExpr} = 0`);
@@ -241,6 +292,7 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
       AND wo."completedAt" < ${input.end}
       ${assigneeFilter}
       ${customerFilter}
+      ${options.operationalFilters ? noteSearchFilters(input, Prisma.sql`wo."completedAt"`, Prisma.sql`wo.number`, Prisma.sql`wo.folio`) : Prisma.empty}
   `;
 
   const eligible = input.kind === "SALE" ? [] : await prisma.$queryRaw<Array<{
@@ -289,6 +341,7 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
   const saleHavingConditions: Prisma.Sql[] = [];
   const salePaidCentsExpr = Prisma.sql`COALESCE(SUM(pa."amountCents") FILTER (WHERE pa."reversedAt" IS NULL AND p.id IS NOT NULL AND p.status::text = ${PaymentStatus.PAID} AND p."reversedAt" IS NULL), 0)`;
   const saleBalanceExpr = Prisma.sql`pn."totalCents" - ${salePaidCentsExpr}`;
+  if (options.operationalFilters && input.payment === "partial") saleHavingConditions.push(Prisma.sql`${saleBalanceExpr} > 0 AND ${salePaidCentsExpr} > 0`);
   if (input.payment === "pending") saleHavingConditions.push(Prisma.sql`${saleBalanceExpr} > 0`);
   if (input.payment === "paid") saleHavingConditions.push(Prisma.sql`${saleBalanceExpr} = 0`);
   if (input.overdue === "overdue") saleHavingConditions.push(Prisma.sql`${saleBalanceExpr} > 0 AND pn."paymentDueDate" IS NOT NULL AND pn."paymentDueDate" < ${todayCdmxMidnight}`);
@@ -326,6 +379,7 @@ export async function listCompletedWorkOrders(input: ListCompletedWorkOrdersInpu
           AND ${quoteMembership}
           AND pn."issuedAt" >= ${input.start} AND pn."issuedAt" < ${input.end}
           ${input.customerId && input.customerId.trim() !== "" && input.customerId !== "all" ? Prisma.sql`AND pn."customerId" = ${input.customerId}` : Prisma.empty}
+          ${options.operationalFilters ? noteSearchFilters(input, Prisma.sql`pn."issuedAt"`, Prisma.sql`pn."referenceNumber"`, Prisma.sql`pn."referenceNumber"`) : Prisma.empty}
         GROUP BY pn.id, pn."totalCents", pn."issuedAt", pn."paymentDueDate"
         ${saleHavingClause}
         ORDER BY pn."issuedAt" DESC, pn.id DESC

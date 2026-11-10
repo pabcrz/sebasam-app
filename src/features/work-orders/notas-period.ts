@@ -1,7 +1,8 @@
+import { commonFilterParams, parseCommonOperationalFilters, normalizeResponsible, parsePage, type CommonOperationalFilters, type OperationalFilterOptions } from "./work-order-filter-model";
 const TIME_ZONE = "America/Mexico_City";
 
 export type NotasMode = "week" | "month";
-export type NotasPayment = "all" | "pending" | "paid";
+export type NotasPayment = "all" | "pending" | "partial" | "paid";
 export type NotasAssignee = "all" | "workshop" | string;
 export type NotasOverdue = "all" | "overdue" | "current";
 export type NotasKind = "all" | "WORK" | "SALE";
@@ -81,14 +82,15 @@ function rangeLabel(mode: NotasMode, start: ReturnType<typeof calendarDate>, end
   }).formatRange(utcDate(start), utcDate(addDays(end, -1)));
 }
 
-export function parseNotasParams(input: Record<string, string | string[] | undefined>, now = new Date()) {
+export function parseNotasParams(input: Record<string, string | string[] | undefined>, now = new Date(), options: OperationalFilterOptions = {}) {
+  const common = options.operationalFilters ? parseCommonOperationalFilters(input) : undefined;
   const mode: NotasMode = input.mode === "month" ? "month" : "week";
-  const payment: NotasPayment = ["all", "pending", "paid"].includes(String(input.payment)) ? input.payment as NotasPayment : "all";
-  const assignee = normalizeAssignee(input.assignee);
+  const payment: NotasPayment = options.operationalFilters && input.payment === "partial" ? "partial" : ["all", "pending", "paid"].includes(String(input.payment)) ? input.payment as NotasPayment : "all";
+  const assignee = options.operationalFilters && input.kind !== "WORK" ? "all" : normalizeAssignee(input.assignee);
   const customerId = normalizeCustomerId(input.customerId);
   const overdue = normalizeOverdue(input.overdue);
   const kind: NotasKind = input.kind === "WORK" || input.kind === "SALE" ? input.kind : "all";
-  const page = /^\d+$/.test(String(input.page)) ? Math.max(1, Number(input.page)) : 1;
+  const page = options.operationalFilters ? parsePage(input.page) : /^\d+$/.test(String(input.page)) ? Math.max(1, Number(input.page)) : 1;
   const anchor = calendarDate(typeof input.anchor === "string" ? `${input.anchor}${mode === "month" && /^\d{4}-\d{2}$/.test(input.anchor) ? "-01" : ""}` : undefined, now);
   const weekday = new Date(Date.UTC(anchor.year, anchor.month - 1, anchor.day)).getUTCDay();
   const startDate = mode === "month" ? { ...anchor, day: 1 } : addDays(anchor, -((weekday + 6) % 7));
@@ -98,6 +100,7 @@ export function parseNotasParams(input: Record<string, string | string[] | undef
   const currentWeekStart = addDays(currentDate, -((currentWeekday + 6) % 7));
   const isCurrentWeek = mode === "week" && value(startDate) === value(currentWeekStart);
   return {
+    ...common,
     mode,
     payment,
     assignee,
@@ -122,7 +125,7 @@ export function notasHref(state: {
   overdue?: NotasOverdue;
   kind?: NotasKind;
   page?: number;
-}) {
+} & Partial<CommonOperationalFilters>, options: OperationalFilterOptions = {}) {
   const params = new URLSearchParams({
     mode: state.mode,
     anchor: state.mode === "month" ? state.anchor.slice(0, 7) : state.anchor,
@@ -138,6 +141,16 @@ export function notasHref(state: {
   if (state.kind) params.set("kind", state.kind);
   if (state.page && state.page > 1) {
     params.set("page", String(state.page));
+  }
+  if (options.operationalFilters) {
+    const common = commonFilterParams(parseCommonOperationalFilters(state));
+    common.forEach((value, key) => params.set(key, value));
+    if (state.kind !== "WORK") params.delete("assignee");
+    else params.set("assignee", normalizeResponsible(state.assignee));
+    const page = parsePage(state.page);
+    params.delete("page");
+    if (page > 1) params.set("page", String(page));
+    if (!state.kind) params.set("kind", "all");
   }
   return `/admin/notas?${params}`;
 }

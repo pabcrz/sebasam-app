@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
-import { getCompletedWorkOrderById, listActiveWorkOrders, listCompletedWorkOrders } from "./queries";
+import { getCompletedWorkOrderById, listPaginatedActiveWorkOrders, listActiveWorkOrders, listCompletedWorkOrders } from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: { $queryRaw: vi.fn(), payableNote: { findMany: vi.fn(), findFirst: vi.fn() }, workOrder: { findMany: vi.fn(), findFirst: vi.fn() } },
@@ -515,4 +515,57 @@ describe("work order operational queues", () => {
 
     expect(prisma.payableNote.findFirst).not.toHaveBeenCalled();
   });
+});
+
+
+describe("additive operational query filters", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.workOrder.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.payableNote.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.payableNote.findFirst).mockResolvedValue({ id: "sale" } as never);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+  });
+
+  it("bounds active work only through the new paginated query with execution/responsible/scheduling predicates", async () => {
+    const result = await listPaginatedActiveWorkOrders({ number: "OT-42", concept: "aceite", plate: "ABC", economicNumber: "ECO", execution: "PLANNED", assignee: "workshop", scheduledFrom: "2021-04-03", scheduledTo: "2021-04-04", dateFrom: "2026-08-01", dateTo: "2026-08-31", page: "2" });
+    const call = vi.mocked(prisma.workOrder.findMany).mock.lastCall![0]!;
+    expect(call).toMatchObject({ skip: 20, take: 21, orderBy: [{ createdAt: "desc" }, { id: "desc" }], where: { status: "PLANNED", isSpecial: true, scheduledFor: { gte: new Date("2021-04-03T06:00:00Z"), lt: new Date("2021-04-05T05:00:00Z") }, quote: { operation: "WORK", operationalDate: { gte: new Date("2026-08-01"), lt: new Date("2026-09-01") } } } });
+    for (const text of ["OT-42", "aceite", "ABC", "ECO", "vehicleSnapshot"]) expect(JSON.stringify(call.where)).toContain(text);
+    expect(result).toEqual({ workOrders: [], page: 2, hasNextPage: false });
+    await listActiveWorkOrders();
+    expect(vi.mocked(prisma.workOrder.findMany).mock.lastCall![0]).not.toHaveProperty("take");
+  });
+
+  it.each(["all", "SALE", "WORK"] as const)("reconciles %s responsible before selecting either note kind", async (kind) => {
+    await listCompletedWorkOrders({ start: new Date("2026-08-01"), end: new Date("2026-09-01"), payment: "all", assignee: "workshop", kind, page: 1 }, { operationalFilters: true });
+    expect(prisma.payableNote.findFirst).toHaveBeenCalledTimes(kind === "WORK" ? 0 : 1);
+    const sql = vi.mocked(prisma.$queryRaw).mock.calls.map(([q]) => (q as { strings: string[] }).strings.join("?")).join(";");
+    expect(sql.includes('wo."isSpecial" = true')).toBe(kind === "WORK");
+  });
+
+  it("applies common criteria to WORK and SALE SQL before aggregation and global pagination", async () => {
+    await listCompletedWorkOrders({ start: new Date("2026-08-01"), end: new Date("2026-09-01"), payment: "pending", assignee: "all", page: 3, number: "42", concept: "aceite", plate: "ABC", economicNumber: "ECO", dateFrom: new Date("2026-08-03"), dateTo: new Date("2026-08-04") }, { operationalFilters: true });
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+    for (const [raw] of vi.mocked(prisma.$queryRaw).mock.calls) {
+      const q = raw as { strings: string[]; values: unknown[] };
+      const sql = q.strings.join("?");
+      for (const token of ['"QuoteItem"', '"Vehicle"', '"vehicleSnapshot"', 'ILIKE', 'GROUP BY', 'HAVING']) expect(sql).toContain(token);
+      expect(q.values).toEqual(expect.arrayContaining(["%42%", "%aceite%", "%ABC%", "%ECO%", new Date("2026-08-03T06:00:00Z"), new Date("2026-08-05T06:00:00Z")]));
+      expect(sql.indexOf('"QuoteItem"')).toBeLessThan(sql.indexOf("GROUP BY"));
+      expect(sql).not.toContain("LIMIT");
+    }
+  });
+});
+
+
+it("filters partial collections on both operational note kinds without modifying balances", async () => {
+  vi.clearAllMocks();
+  vi.mocked(prisma.payableNote.findFirst).mockResolvedValue({ id: "sale" } as never);
+  vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+  await listCompletedWorkOrders({ start: new Date("2026-08-01"), end: new Date("2026-09-01"), payment: "partial", assignee: "all", page: 1 }, { operationalFilters: true });
+  expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+  for (const [raw] of vi.mocked(prisma.$queryRaw).mock.calls) {
+    expect((raw as { strings: string[] }).strings.join("?")).toMatch(/HAVING .* > 0 AND COALESCE\(SUM/);
+  }
 });
