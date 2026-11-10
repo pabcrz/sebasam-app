@@ -345,7 +345,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
 
       <nav
         aria-label="Navegación móvil"
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] text-white md:hidden print:hidden"
+        className="fixed bottom-0 left-0 right-[var(--removed-body-scroll-bar-size,0px)] z-40 border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] text-white md:hidden print:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className={`mx-auto grid w-full max-w-md gap-1 px-1 pt-2 ${isPatron ? "grid-cols-6" : "grid-cols-5"}`}>

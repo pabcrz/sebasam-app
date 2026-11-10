@@ -126,7 +126,7 @@ export default async function WorkOrdersPage({ searchParams }: {
 
       {/* Mobile Floating Action Button */}
       <div
-        className="fixed right-4 z-40 sm:hidden"
+        className="fixed right-[calc(1rem+var(--removed-body-scroll-bar-size,0px))] z-40 sm:hidden"
         style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
       >
         <QuoteBuilderDialog
