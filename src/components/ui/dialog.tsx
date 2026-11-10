@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { clsx } from "clsx";
+import { Dialog as DialogPrimitive } from "radix-ui";
+import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
 export const Dialog = DialogPrimitive.Root;
@@ -29,7 +29,7 @@ export const DialogOverlay = React.forwardRef<
     <DialogPrimitive.Overlay
       ref={ref}
       data-dialog-overlay
-      className={clsx(
+      className={cn(
         "fixed inset-0 z-50 bg-[var(--color-overlay)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         className,
       )}
@@ -189,7 +189,7 @@ export const DialogContent = React.forwardRef<
           <DialogOverlay />
           <DialogPrimitive.Content
             ref={setRef}
-            className={clsx(
+            className={cn(
               "fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh_-_2rem)] w-[calc(100vw_-_2rem)] translate-x-[-50%] translate-y-[-50%] gap-[var(--space-md)] overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-[var(--space-lg)] shadow-[var(--shadow-dialog)]",
               className,
             )}
@@ -235,7 +235,7 @@ export const DialogMobileContent = React.forwardRef<
   return (
     <DialogContent
       ref={ref}
-      className={clsx("grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0", className)}
+      className={cn("grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0", className)}
       {...props}
     />
   );
@@ -243,13 +243,13 @@ export const DialogMobileContent = React.forwardRef<
 DialogMobileContent.displayName = "DialogMobileContent";
 
 export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={clsx("flex flex-col gap-1.5 text-center sm:text-left", className)} {...props} />;
+  return <div className={cn("flex flex-col gap-1.5 text-center sm:text-left", className)} {...props} />;
 }
 
 export function DialogMobileHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <DialogHeader
-      className={clsx(
+      className={cn(
         "relative shrink-0 border-b border-[var(--color-border-subtle)] px-4 py-3 pr-12 text-left sm:px-6 sm:pr-14",
         className,
       )}
@@ -265,7 +265,7 @@ type DialogMobileBodyProps = React.HTMLAttributes<HTMLDivElement> & {
 export function DialogMobileBody({ className, padding = "default", ...props }: DialogMobileBodyProps) {
   return (
     <div
-      className={clsx("min-h-0 overflow-y-auto", padding === "default" ? "px-4 py-4 sm:px-6 sm:py-6" : "p-0", className)}
+      className={cn("min-h-0 overflow-y-auto", padding === "default" ? "px-4 py-4 sm:px-6 sm:py-6" : "p-0", className)}
       {...props}
     />
   );
@@ -280,7 +280,7 @@ export const DialogMobileClose = React.forwardRef<
       <button
         ref={ref}
         type={type}
-        className={clsx(
+        className={cn(
           "absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50",
           className,
         )}
@@ -294,7 +294,7 @@ export const DialogMobileClose = React.forwardRef<
 DialogMobileClose.displayName = "DialogMobileClose";
 
 export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={clsx("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)} {...props} />;
+  return <div className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)} {...props} />;
 }
 
 export const DialogTitle = React.forwardRef<
@@ -304,7 +304,7 @@ export const DialogTitle = React.forwardRef<
   return (
     <DialogPrimitive.Title
       ref={ref}
-      className={clsx("text-lg font-semibold leading-none tracking-tight text-[var(--color-text-main)]", className)}
+      className={cn("text-lg font-semibold leading-none tracking-tight text-[var(--color-text-main)]", className)}
       {...props}
     />
   );
@@ -318,7 +318,7 @@ export const DialogDescription = React.forwardRef<
   return (
     <DialogPrimitive.Description
       ref={ref}
-      className={clsx("text-sm text-[var(--color-text-muted)]", className)}
+      className={cn("text-sm text-[var(--color-text-muted)]", className)}
       {...props}
     />
   );

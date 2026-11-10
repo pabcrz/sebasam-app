@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -51,7 +51,7 @@ export function ConfirmDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={clsx("max-w-2xl", className)}
+        className={cn("max-w-2xl", className)}
         onEscapeKeyDown={onEscapeKeyDown}
         onPointerDownOutside={onPointerDownOutside}
         onCloseAutoFocus={onCloseAutoFocus}
