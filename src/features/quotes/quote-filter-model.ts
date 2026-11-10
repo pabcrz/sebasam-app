@@ -1,5 +1,6 @@
+import { commonFilterParams, parseCommonOperationalFilters, parsePage, type FilterParams } from "@/features/work-orders/work-order-filter-model";
 import type { QuoteStatus } from "@/generated/prisma/client";
-import type { QuoteFilterInput } from "./schemas";
+import { operationalQuoteFilterSchema, type QuoteFilterInput } from "./schemas";
 
 export const quoteStatusLabels: Record<QuoteStatus, string> = {
   DRAFT: "Borrador",
@@ -106,4 +107,24 @@ export function buildQuoteFilterFormHref(entries: Iterable<[string, unknown]>): 
   }
 
   return `/admin/quotes?${params.toString()}`;
+}
+
+
+/** Additive queue contract; legacy form/chip URLs remain unchanged until UI migration. */
+export function parseOperationalQuoteParams(input: FilterParams) {
+  const common = parseCommonOperationalFilters(input);
+  const status = typeof input.status === "string" && isQuoteStatus(input.status) ? input.status : undefined;
+  const kind = operationalQuoteFilterSchema.shape.kind.parse(input.kind) ?? "all";
+  const hasWorkOrder = input.hasWorkOrder === true || input.hasWorkOrder === "true" ? true : input.hasWorkOrder === false || input.hasWorkOrder === "false" ? false : undefined;
+  return { ...common, status, kind, hasWorkOrder, page: parsePage(input.page) };
+}
+
+export function quotesHref(state: ReturnType<typeof parseOperationalQuoteParams>) {
+  const filters = parseOperationalQuoteParams(state);
+  const params = commonFilterParams(filters);
+  if (filters.kind !== "all") params.set("kind", filters.kind);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.hasWorkOrder !== undefined) params.set("hasWorkOrder", String(filters.hasWorkOrder));
+  if (filters.page > 1) params.set("page", String(filters.page));
+  return `/admin/quotes${params.size ? `?${params}` : ""}`;
 }

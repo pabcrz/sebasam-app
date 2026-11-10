@@ -10,9 +10,49 @@
 
 Finalizar trabajo o emitir una venta no significa que esté pagada. Operación, saldo, factura y caducidad del enlace son ejes distintos.
 
+## Pertenencia a bandejas operativas
+
+Cada operación tiene una bandeja principal; el estado de pago no decide esa pertenencia.
+
+| Bandeja | Pertenencia predeterminada |
+|---|---|
+| Cotizaciones | `DRAFT`, `SENT` o `APPROVED`, WORK o SALE, sin OT `PLANNED`/`ASSIGNED`/`IN_PROGRESS`/`COMPLETED` ni nota SALE `ISSUED`. Una nota DRAFT no demuestra emisión. |
+| Trabajos | OT `PLANNED` (pendiente de asignación), `ASSIGNED` o `IN_PROGRESS`, de operación WORK no eliminada, rechazada, cancelada ni archivada. Nunca ventas. |
+| Notas | WORK `COMPLETED` con nota `ISSUED` o sin fila financiera histórica, y SALE `ISSUED`. Fuera por defecto: notas DRAFT/CANCELLED y cotizaciones eliminadas, rechazadas, canceladas o archivadas. |
+
+Aprobar sin generar OT mantiene la cotización; generar OT la lleva a Trabajos aun sin responsable; finalizar o convertir directamente a WORK terminado la lleva a Notas. Emitir SALE la lleva directamente a Notas sin OT. Cancelar una OT mediante el regreso comercial permitido permite volver a Cotizaciones si su estado comercial vuelve a ser operativo; no se modifican esas validaciones.
+
+Las consultas comerciales explícitas conservan `status`, `showCancelled` y `showArchived`; la consulta administrativa `listWorkOrders` conserva todos los estados. Para Notas, `listCompletedWorkOrders` acepta `showArchived` y `showCancelled` independientes y opcionales: el primero incluye cotizaciones archivadas; el segundo incluye cotizaciones canceladas y notas CANCELLED dentro del periodo de finalización/emisión existente. Ninguno admite notas DRAFT ni cambia importes, pagos, deuda o fechas. Estos parámetros de consulta no agregan controles de pantalla.
+
+Liquidar no cambia la bandeja. Archivar no liquida: las consultas de pendientes de cobro conservan su alcance independiente del periodo y del archivo de la bandeja Notas. No se cambian ledger, permisos ni acciones de transición.
+
 ## Suma de totales de Notas
 
 Los acumulados SQL de WORK y SALE se convierten **por separado** de `Prisma.Decimal` a centavos numéricos antes de sumarse. Convertir después de `+` concatena texto y puede inflar pendiente, vencido y cobrado; el formato monetario divide entre 100 una sola vez. Esta corrección no modifica los importes almacenados, las consultas SQL, los filtros, los acuerdos ni las aplicaciones de pago.
+
+## Filtros comunes y cotizaciones (contrato aditivo)
+
+## Contrato aditivo de filtros operativos
+
+Los adaptadores de consulta y URL aceptan `operationalFilters: true`; las pantallas todavía no activan este contrato. `parseOperationalQuoteParams`/`quotesHref`, `parseWorkOrderParams`/`workOrdersHref` y `parseNotasParams`/`notasHref` conservan los criterios efectivos al paginar. Los campos ajenos a cada módulo no se propagan. Los accesos rápidos y controles futuros deben representar este mismo estado, no mantener filtros independientes.
+
+| Criterio | Semántica de consulta |
+|---|---|
+| `number` | Referencia o folio, sin distinguir mayúsculas: cotización; OT y cotización en Trabajos; OT/nota y cotización en Notas. |
+| `concept` | Título, descripción o descripción de conceptos de la cotización, incluidas sus secciones. |
+| `customerId`, `plate`, `economicNumber` | Criterios combinables; placas/ECO consultan unidad vinculada o snapshot. No se exige unidad a una venta. |
+| `dateFrom`, `dateTo` | Días inclusivos; fecha operativa de cotización en Cotizaciones/Trabajos, finalización WORK o emisión SALE en Notas. No son fechas de movimientos de cobro. |
+| `scheduledFrom`, `scheduledTo` | Solo Trabajos: programación en America/Mexico_City, distinta de la fecha operativa. |
+| `kind` | WORK/SALE en Cotizaciones y Notas; inactivo en Trabajos, que conserva solo WORK. |
+| `execution`, `assignee` | Trabajos: PLANNED/ASSIGNED/IN_PROGRESS; responsable maestro o taller. En Notas el responsable solo está activo con `kind=WORK`. |
+| `payment`, `overdue` | Notas: todos, pendientes (incluye parciales), parciales o pagadas; vencimiento separado. No cambia la pertenencia ni persiste estados nuevos. |
+| `showArchived`, `showCancelled` | Inclusiones expresas e independientes en Cotizaciones/Notas; no aplican a la bandeja de ejecución activa. El estado comercial explícito y `hasWorkOrder` siguen disponibles en Cotizaciones. |
+
+En Notas con `kind=all` o `SALE`, el contrato nuevo normaliza `assignee` a `all` y omite el responsable inactivo de la URL: **no elimina ventas para satisfacer un filtro de taller**. Los controles futuros deben deshabilitar ese criterio, explicar que es exclusivo de WORK y nunca mostrarlo como aplicado si fue normalizado. Las llamadas anteriores sin opt-in conservan su comportamiento mientras se migra la pantalla.
+
+Los límites finales se implementan como inicio del día siguiente exclusivo, no como 23:59:59 ni sumando 24 horas a instantes con cambio horario. Las fechas operativas almacenadas como DATE usan calendario UTC; programación/finalización/emisión usan medianoche local de Mexico City. Un rango invertido se rechaza; fechas inválidas se omiten. El rango explícito de Notas se combina con su periodo existente (intersección), sin modificar la semana lunes–sábado ni el mes. El periodo no representa toda la cartera.
+
+Los predicados se aplican antes de agrupar cobros, calcular totales y ordenar/paginar el conjunto WORK/SALE. Los importes siguen siendo pagos acumulados de los documentos seleccionados, no «cobrado en periodo». La nueva `listPaginatedActiveWorkOrders` limita la hidratación a 20 registros más una fila de detección; `listActiveWorkOrders` conserva la interfaz anterior hasta la migración de sus consumidores. No se implementa aquí el destino de consulta histórica de #769.
 
 ## Qué representa cada modelo
 

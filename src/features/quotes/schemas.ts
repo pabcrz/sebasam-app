@@ -263,6 +263,12 @@ export const quoteFilterSchema = z.object({
   showArchived: z.coerce.boolean().default(false),
 });
 
+/** Additive filter fields are validated only by operational opt-in consumers. */
+export const operationalQuoteFilterSchema = quoteFilterSchema.extend({
+  concept: optionalFilterString(),
+  kind: z.enum(["all", "WORK", "SALE"]).optional().catch(undefined),
+});
+
 export const quoteLifecycleReasonSchema = z.string().trim().min(3).max(500);
 
 export const quoteCommercialCorrectionSchema = quoteDraftInputSchema.extend({
