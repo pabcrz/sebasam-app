@@ -28,7 +28,7 @@ Tracker #807 (children #793–#806). Branch `feature/807-work` from `develop`; o
 - T8 #800 Single document preview. Route: worker. Done; hosts now Sheet; payment-methods block is a fixed list per HTML.
 - T9 #801 Unified mobile/side navigation. Route: worker. Done (icons only per HTML; other roles keep old filtering; bar-hiding on quote flow is #802).
 - T10 #802 Create/edit quote flow. Route: 2 workers. Done; OPEN DECISION: today closing with data discards after confirm (no local/server draft) — issue says close never loses capture; Nóm. column keeps existing rule (Mano de obra auto, Otro opt-in).
-- T11 #803 Home as prioritized inbox. Pending.
+- T11 #803 Home as prioritized inbox. Route: worker. Done; OPEN: no "stopped" job state in data (amber branch inert), approved row links to status=APPROVED list.
 - T12 #804 Quotes, Work orders, Notes, Payroll. Pending.
 - T13 #805 Customers, profile, statement. Pending.
 - T14 #806 Settings, Workers, Users. Pending.
