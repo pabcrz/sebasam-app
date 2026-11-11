@@ -26,7 +26,7 @@ Tracker #807 (children #793–#806). Branch `feature/807-work` from `develop`; o
 - T6 #798 PageHeader, SearchBar+filters, PeriodNavigator. Route: worker. Pieces done; screen adoption in #804/#805 (Estado de cuenta needs weekDays=7; Notas 6). Nómina "De Noviembre De" fixed.
 - T7 [S9] #799 Unified operational card. Route: worker. Done for quotes (primary restored: draft->share per HTML, main had none); work orders/notes adopt EntityCard in #804; search by driver pending (#804).
 - T8 #800 Single document preview. Route: worker. Done; hosts now Sheet; payment-methods block is a fixed list per HTML.
-- T9 #801 Unified mobile/side navigation. Pending.
+- T9 #801 Unified mobile/side navigation. Route: worker. Done (icons only per HTML; other roles keep old filtering; bar-hiding on quote flow is #802).
 - T10 #802 Create/edit quote flow. Pending.
 - T11 #803 Home as prioritized inbox. Pending.
 - T12 #804 Quotes, Work orders, Notes, Payroll. Pending.
