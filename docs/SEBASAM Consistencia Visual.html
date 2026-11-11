@@ -1,0 +1,1534 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>SEBASAM Consistencia Visual</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one system document. Diagnosis → foundations → shared pieces → every screen built only from those pieces → coverage map. Tokens mirror DESIGN.md. */
+:root{
+  --bg:#F3F6FA; --surface:#FFFFFF; --surface-2:#F7F9FC; --border:#D7E0EA; --border-strong:#BFCCDB;
+  --text:#001024; --muted:#64748B; --muted-fg:#475569;
+  --primary:#004AAD; --link:#004AAD;
+  --btn-primary:#0A3D8F; --btn-primary-hover:#08316F; --on-primary:#FFFFFF; --tonal-bg:#E6F1FB; --tonal-bg-hover:#D3E5F8; --tonal-fg:#004AAD; --sel-bg:#D6E6F8; --logo-bg:transparent; --logo-filter:brightness(0); --amount:#004AAD; --doc-head-bg:var(--brand-grad); --doc-head-fg:#FFFFFF; --doc-head-bd:transparent;
+  --brand-grad:linear-gradient(90deg,#004AAD 0%,#001024 100%);
+  --tint:#E6F1FB; --tint-strong:#D3E5F8;
+  --ok:#15803D; --ok-bg:#E7F8EE; --ok-bd:#A7E3BF;
+  --warn:#B45309; --warn-bg:#FEF5E1; --warn-bd:#F5D08A;
+  --bad:#B91C1C; --bad-bg:#FDECEC; --bad-bd:#F5B5B5;
+  --info:#004AAD; --info-bg:#E6F1FB; --info-bd:#B5D3F2;
+  --neutral-bg:#EEF2F7; --neutral-bd:#D7E0EA;
+  --annot:#C2410C; --annot-bg:#FFF1E8;
+  --shadow-sm:0 1px 3px rgba(0,16,36,.06),0 1px 2px rgba(0,16,36,.04);
+  --shadow-md:0 4px 12px rgba(0,16,36,.07),0 2px 4px rgba(0,16,36,.04);
+  --shadow-action:0 2px 6px rgba(0,74,173,.25);
+  --shadow-card:0 1px 2px rgba(0,16,36,.05),0 4px 14px rgba(0,16,36,.07); --shadow-card-hover:0 2px 4px rgba(0,16,36,.06),0 8px 22px rgba(0,16,36,.1);
+  --ring:0 0 0 3px rgba(0,74,173,.25);
+  --nav-bg:#FFFFFF; --nav-surface:#FFFFFF; --nav-border:#D7E0EA; --nav-fg:#001024; --nav-muted:#64748B; --nav-pill:#E6F1FB; --nav-active-bg:#D3E5F8; --nav-solid:#002B68; --nav-label:#002B68; --nav-grad-a:#004AAD; --nav-grad-b:#001024; --nav-hover:rgba(0,74,173,.06);
+  --scrim:rgba(0,16,36,.45); --frame:#0A1322;
+  --f-sans:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; /* numbers: Inter with tabular figures */
+  --r-xs:8px; --r-sm:12px; --r-md:12px; --r-lg:16px; --r-sheet:24px;
+  --ctl:36px; --ctl-sm:32px; --ctl-lg:40px; --hit:44px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E131B; --surface:#161D28; --surface-2:#121923; --border:#263142; --border-strong:#344257;
+  --text:#E7ECF3; --muted:#8C99AB; --muted-fg:#B4BFCD; --primary:#8DB4F2; --link:#9CC0F5;
+  --btn-primary:#EEF2F7; --btn-primary-hover:#FFFFFF; --on-primary:#0E131B; --tonal-bg:#24375A; --tonal-bg-hover:#2C4570; --tonal-fg:#FFFFFF; --sel-bg:#24375A; --logo-bg:transparent; --logo-filter:none; --amount:#B9D2FA; --doc-head-bg:#1B2433; --doc-head-fg:#E7ECF3; --doc-head-bd:#263142; --brand-grad:linear-gradient(90deg,#3F74D6 0%,#24437E 100%);
+  --tint:#1C2A40; --tint-strong:#24375A;
+  --ok:#6FD39A; --ok-bg:rgba(111,211,154,.12); --ok-bd:rgba(111,211,154,.3);
+  --warn:#F2C46B; --warn-bg:rgba(242,196,107,.12); --warn-bd:rgba(242,196,107,.3);
+  --bad:#F29B9B; --bad-bg:rgba(242,155,155,.12); --bad-bd:rgba(242,155,155,.3);
+  --info:#9CC0F5; --info-bg:rgba(156,192,245,.12); --info-bd:rgba(156,192,245,.3);
+  --neutral-bg:rgba(148,163,184,.1); --neutral-bd:rgba(148,163,184,.24);
+  --annot:#F5B78A; --annot-bg:rgba(245,183,138,.1);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.35); --shadow-md:0 6px 18px rgba(0,0,0,.4); --shadow-action:0 2px 8px rgba(0,0,0,.35); --shadow-card:0 1px 2px rgba(0,0,0,.35),0 4px 14px rgba(0,0,0,.25); --shadow-card-hover:0 2px 4px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.35); --ring:0 0 0 3px rgba(141,180,242,.35);
+  --nav-bg:#121923; --nav-surface:#161D28; --nav-border:#263142; --nav-fg:#E7ECF3; --nav-muted:#8C99AB; --nav-pill:#24375A; --nav-active-bg:#1C2A40; --nav-grad-a:#9CC0F5; --nav-grad-b:#FFFFFF; --nav-solid:#3F74D6; --nav-label:#9CC0F5; --nav-hover:rgba(141,180,242,.08);
+  --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0E131B; --surface:#161D28; --surface-2:#121923; --border:#263142; --border-strong:#344257;
+  --text:#E7ECF3; --muted:#8C99AB; --muted-fg:#B4BFCD; --primary:#8DB4F2; --link:#9CC0F5;
+  --btn-primary:#EEF2F7; --btn-primary-hover:#FFFFFF; --on-primary:#0E131B; --tonal-bg:#24375A; --tonal-bg-hover:#2C4570; --tonal-fg:#FFFFFF; --sel-bg:#24375A; --logo-bg:transparent; --logo-filter:none; --amount:#B9D2FA; --doc-head-bg:#1B2433; --doc-head-fg:#E7ECF3; --doc-head-bd:#263142; --brand-grad:linear-gradient(90deg,#3F74D6 0%,#24437E 100%);
+  --tint:#1C2A40; --tint-strong:#24375A;
+  --ok:#6FD39A; --ok-bg:rgba(111,211,154,.12); --ok-bd:rgba(111,211,154,.3);
+  --warn:#F2C46B; --warn-bg:rgba(242,196,107,.12); --warn-bd:rgba(242,196,107,.3);
+  --bad:#F29B9B; --bad-bg:rgba(242,155,155,.12); --bad-bd:rgba(242,155,155,.3);
+  --info:#9CC0F5; --info-bg:rgba(156,192,245,.12); --info-bd:rgba(156,192,245,.3);
+  --neutral-bg:rgba(148,163,184,.1); --neutral-bd:rgba(148,163,184,.24);
+  --annot:#F5B78A; --annot-bg:rgba(245,183,138,.1);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.35); --shadow-md:0 6px 18px rgba(0,0,0,.4); --shadow-action:0 2px 8px rgba(0,0,0,.35); --shadow-card:0 1px 2px rgba(0,0,0,.35),0 4px 14px rgba(0,0,0,.25); --shadow-card-hover:0 2px 4px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.35); --ring:0 0 0 3px rgba(141,180,242,.35);
+  --nav-bg:#121923; --nav-surface:#161D28; --nav-border:#263142; --nav-fg:#E7ECF3; --nav-muted:#8C99AB; --nav-pill:#24375A; --nav-active-bg:#1C2A40; --nav-grad-a:#9CC0F5; --nav-grad-b:#FFFFFF; --nav-solid:#3F74D6; --nav-label:#9CC0F5; --nav-hover:rgba(141,180,242,.08);
+  --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font:400 15px/1.5 var(--f-sans);-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 72px}
+h1,h2,h3,h4,h5{text-wrap:balance;margin:0}
+p{margin:0}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+svg.i.sm{width:15px;height:15px}
+:focus-visible{outline:none;box-shadow:var(--ring)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- Document chrome ---------- */
+.theme-toggle{position:fixed;z-index:30;top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:500 13px/1 var(--f-sans);cursor:pointer;box-shadow:var(--shadow-md)}
+.doc-head{display:grid;gap:14px;padding-bottom:28px;border-bottom:1px solid var(--border)}
+.eyebrow{font:500 12px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.doc-head h1{font-size:clamp(28px,4vw,40px);font-weight:800;letter-spacing:-.02em;line-height:1.1;max-width:22ch}
+.lede{max-width:68ch;color:var(--muted-fg);font-size:16px}
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.toc a{font-size:13px;font-weight:500;color:var(--muted-fg);text-decoration:none;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface)}
+.toc a:hover{color:var(--text);border-color:var(--border-strong)}
+section.block{padding-top:64px;display:grid;gap:20px}
+.block-head{display:grid;gap:6px;max-width:74ch}
+.block-head h2{font-size:26px;font-weight:800;letter-spacing:-.015em}
+.block-head p{color:var(--muted-fg)}
+.sub-head{display:grid;gap:4px;max-width:74ch;margin-top:12px}
+.sub-head h3{font-size:19px;font-weight:700}
+.sub-head p{color:var(--muted-fg);font-size:14.5px}
+.spec{background:var(--surface-2);border:1px dashed var(--border-strong);border-radius:var(--r-lg);padding:20px;display:grid;gap:16px;min-width:0}
+.spec-label{font:500 11px/1.4 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.annot{font:500 12px/1.4 var(--f-mono);color:var(--annot)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:20px;align-items:start}
+.three{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:16px;align-items:start}
+.pill-tag{display:inline-flex;align-items:center;gap:6px;font:500 11px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:6px;justify-self:start}
+.pill-tag.before{background:var(--bad-bg);color:var(--bad)}
+.pill-tag.after{background:var(--ok-bg);color:var(--ok)}
+.pill-tag.neutral{background:var(--neutral-bg);color:var(--muted-fg)}
+.note-list{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.note-list li{display:grid;grid-template-columns:18px 1fr;gap:10px;font-size:14px;color:var(--muted-fg)}
+.note-list li svg{margin-top:2px}
+.note-list.bad li svg{color:var(--bad)}
+.note-list.good li svg{color:var(--ok)}
+.note-list b{color:var(--text);font-weight:600}
+.cause{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;display:grid;gap:8px;align-content:start}
+.cause .k{font:500 12px/1 var(--f-mono);color:var(--annot)}
+.cause h3{font-size:16px;font-weight:700}
+.cause p{font-size:14px;color:var(--muted-fg)}
+.order{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:0;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:var(--surface)}
+.order div{padding:16px;display:grid;gap:4px;border-left:1px solid var(--border)}
+.order div:first-child{border-left:0}
+.order b{font-size:15px}
+.order span{font-size:13.5px;color:var(--muted-fg)}
+.order .k{font:500 11px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* ---------- Button ---------- */
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:var(--ctl);padding:0 14px;border-radius:var(--r-md);border:1px solid transparent;font:500 14px/1 var(--f-sans);color:var(--text);background:transparent;cursor:pointer;white-space:nowrap;text-decoration:none;min-width:0;transition:background-color .15s,border-color .15s,box-shadow .15s,transform .1s}
+.btn::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,var(--hit));height:max(100%,var(--hit));transform:translate(-50%,-50%)}
+.btn:active{transform:translateY(1px)}
+.btn>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.btn-primary{background:var(--btn-primary);color:var(--on-primary);box-shadow:var(--shadow-action);font-weight:600}
+.btn-primary:hover{background:var(--btn-primary-hover)}
+.btn-tonal{background:var(--tonal-bg);color:var(--tonal-fg);font-weight:600}
+.btn-tonal:hover{background:var(--tonal-bg-hover)}
+.btn-secondary{background:var(--tint);color:var(--text)}
+.btn-secondary:hover{background:var(--tint-strong)}
+.btn-outline{background:var(--surface);border-color:var(--border)}
+.btn-outline:hover{border-color:var(--border-strong);background:var(--surface-2)}
+.btn-ghost:hover{background:var(--neutral-bg)}
+.btn-danger-outline{background:var(--surface);border-color:var(--bad-bd);color:var(--bad)}
+.btn-danger-outline:hover{background:var(--bad-bg)}
+.btn-lg{height:var(--ctl-lg);padding:0 16px}
+.btn-sm{height:var(--ctl-sm);padding:0 10px;font-size:13px}
+.btn-icon{width:var(--ctl);padding:0}
+.btn-sm.btn-icon{width:var(--ctl-sm)}
+.btn-block{width:100%}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn .count{font:500 11px/1 var(--f-mono);background:var(--primary);color:#fff;border-radius:999px;min-width:18px;height:18px;padding:0 5px;display:inline-grid;place-items:center}
+.btn.show-hit::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,var(--hit));height:max(100%,var(--hit));transform:translate(-50%,-50%);outline:1px dashed var(--annot);border-radius:var(--r-md);pointer-events:none}
+.scale{display:grid;gap:18px}
+.scale-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
+.scale-row .demo{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.scale-row .annot{text-align:right}
+.linkbtn{border:0;background:none;color:var(--link);font:500 13px var(--f-sans);cursor:pointer;padding:6px 4px;border-radius:6px}
+
+/* ---------- Badge ---------- */
+.badge{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:999px;border:1px solid var(--neutral-bd);background:var(--neutral-bg);color:var(--muted-fg);font:500 12px/1 var(--f-sans);white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge.info{background:var(--info-bg);border-color:var(--info-bd);color:var(--info)}
+.badge.ok{background:var(--ok-bg);border-color:var(--ok-bd);color:var(--ok)}
+.badge.warn{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn)}
+.badge.bad{background:var(--bad-bg);border-color:var(--bad-bd);color:var(--bad)}
+.badge.plain::before{display:none}
+
+/* ---------- Surfaces ---------- */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-sm)}
+.screen{background:var(--bg);border:1px solid var(--border);border-radius:18px;padding:20px;display:grid;gap:16px;min-width:0}
+
+/* ---------- PageHeader ---------- */
+.ph{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px}
+.ph-title{flex:1 1 160px;min-width:0;display:grid;gap:2px}
+.ph-title h3{font-size:22px;font-weight:800;letter-spacing:-.015em;line-height:1.15}
+.ph-title p{font-size:13.5px;color:var(--muted)}
+.ph-actions{display:flex;gap:8px;flex-wrap:wrap}
+.backlink{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;color:var(--muted-fg);text-decoration:none}
+
+/* ---------- Segmented ---------- */
+.seg{display:inline-flex;gap:2px;padding:0;background:var(--neutral-bg);border:0;border-radius:var(--r-lg);max-width:100%;overflow-x:auto;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{position:relative;height:var(--ctl);padding:0 11px;border:0;border-radius:var(--r-lg);background:transparent;color:var(--muted-fg);font:500 13px/1 var(--f-sans);cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--tonal-bg);color:var(--tonal-fg);font-weight:600;box-shadow:inset 0 0 0 1px var(--tonal-bg-hover)}
+.utabs{display:flex;border-bottom:1px solid var(--border);gap:4px;overflow-x:auto;scrollbar-width:none}
+.utabs button{position:relative;flex:1;height:40px;padding:0 10px;border:0;background:transparent;color:var(--muted);font:500 14px/1 var(--f-sans);cursor:pointer;white-space:nowrap}
+.utabs button .n{font:500 12px/1 var(--f-mono);color:var(--muted);margin-left:5px}
+.utabs button[aria-pressed="true"]{color:var(--text);font-weight:600}
+.utabs button[aria-pressed="true"]::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;background:var(--primary)}
+.seg button[aria-pressed="true"] .n{color:var(--tonal-fg);opacity:.75}
+.seg button .n{font:500 11.5px/1 var(--f-mono);color:var(--muted);margin-left:5px}
+.seg.full{display:flex}
+.seg.full button{flex:1}
+
+/* ---------- Search + filters ---------- */
+.ft{display:grid;gap:10px;min-width:0}
+.ft-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
+.search{flex:1 1 200px;min-width:0;display:flex;align-items:center;gap:8px;height:var(--ctl);padding:0 12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);color:var(--muted)}
+.search input{flex:1;min-width:0;border:0;background:transparent;font:400 14px var(--f-sans);color:var(--text)}
+.search input:focus{outline:none}
+.search:focus-within{border-color:var(--primary);box-shadow:var(--ring)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 6px 0 10px;border-radius:var(--r-sm);background:var(--tint);color:var(--text);font-size:12.5px;border:0;cursor:pointer}
+.chip b{font-weight:600}
+.chip svg{color:var(--muted-fg)}
+.choice{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:var(--r-sm);border:0;background:var(--neutral-bg);color:var(--text);font:500 13px/1 var(--f-sans);cursor:pointer}
+.choice{transition:background-color .15s,color .15s,box-shadow .15s}
+.choice:hover{background:var(--tonal-bg);color:var(--tonal-fg);box-shadow:inset 0 0 0 1px var(--tonal-bg-hover)}
+.choice:active{transform:translateY(1px)}
+.choice[aria-pressed="true"]{background:var(--tonal-bg);color:var(--tonal-fg);font-weight:600}
+.field{display:grid;gap:6px;min-width:0}
+.field>label,.field>.lbl{font-size:13px;font-weight:500;color:var(--muted-fg)}
+.field .help{font-size:12.5px;color:var(--muted)}
+.input,.select{height:var(--ctl);border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);color:var(--text);padding:0 12px;font:400 14px var(--f-sans);width:100%;min-width:0}
+.input:focus,.select:focus{border-color:var(--primary);box-shadow:var(--ring);outline:none}
+.fields-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px}
+
+/* ---------- PeriodNavigator ---------- */
+.pn{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;min-width:0}
+.pn-step{display:inline-flex;border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;background:var(--surface)}
+.pn-step button{position:relative;width:var(--ctl);height:calc(var(--ctl) - 2px);border:0;background:transparent;color:var(--text);display:grid;place-items:center;cursor:pointer}
+.pn-step button+button{border-left:1px solid var(--border)}
+.pn-label{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;flex:1 1 170px;min-width:0}
+.pn-label strong{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.pn-right{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- StatTile ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px}
+.stats.two-col{grid-template-columns:repeat(2,minmax(0,1fr))}
+.stat{padding:12px 14px;display:grid;gap:4px;align-content:start;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+.stat .l{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted-fg);font-weight:500}
+.stat .v{font:600 21px/1.15 var(--f-mono);letter-spacing:-.01em}
+.stat .s{font-size:12px;color:var(--muted)}
+.stat.key{background:var(--tint);border-color:transparent}
+.stat .v.warn{color:var(--warn)} .stat .v.bad{color:var(--bad)} .stat .v.ok{color:var(--ok)}
+.tip{position:relative;display:inline-grid}
+.tip button{width:20px;height:20px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:help;padding:0}
+.tip .bubble{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);width:220px;padding:10px 12px;border-radius:var(--r-md);background:var(--text);color:var(--bg);font-size:12.5px;line-height:1.4;font-weight:400;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:opacity .15s;z-index:5}
+.tip:hover .bubble,.tip:focus-within .bubble{opacity:1}
+
+/* ---------- EntityCard (quote / job) ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px}
+.ocard{padding:14px;display:grid;gap:12px;align-content:start;min-width:0}
+.oc-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.oc-title{display:grid;gap:5px;min-width:0}
+.oc-title h4{font-size:16px;font-weight:700;line-height:1.25;overflow-wrap:anywhere}
+.oc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.folio{font:500 12px/1 var(--f-mono);color:var(--muted-fg)}
+.amount{font:600 19px/1.1 var(--f-mono);color:var(--amount);letter-spacing:-.01em;text-align:right;white-space:nowrap}
+.amount small{display:block;font:400 12px/1.4 var(--f-sans);color:var(--muted);letter-spacing:0}
+.oc-who{display:grid;gap:3px}
+.oc-who .name{font-weight:600;font-size:14.5px}
+.line{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--muted-fg);min-width:0}
+.line span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.facts{display:grid;gap:5px;margin:0;padding:10px 0 0;border-top:1px solid var(--border)}
+.facts div{display:flex;justify-content:space-between;gap:12px;font-size:13px}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;font-weight:500;text-align:right}
+.hint{color:var(--warn);font-weight:500}
+.ident{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:13.5px;color:var(--muted-fg);min-width:0}
+.eco{font:500 12.5px/1 var(--f-mono);color:var(--text);letter-spacing:.02em}
+.drv{display:inline-flex;align-items:center;gap:5px}
+.unit{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.unit>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.unit svg,.drv svg{color:var(--muted-fg)}
+.unit i{font-style:normal;color:var(--muted)}
+.eco i{font-style:normal;color:var(--muted)}
+.plate{font:500 12.5px/1 var(--f-mono);color:var(--text);letter-spacing:.02em}
+.ocard{cursor:pointer;border-color:transparent;box-shadow:var(--shadow-card);transition:box-shadow .15s}
+.ocard:hover{box-shadow:var(--shadow-card-hover)}
+.drv b{color:var(--text);font-weight:600}
+.drv svg{color:var(--muted-fg)}
+.assign{display:flex;justify-content:space-between;gap:12px;font-size:13.5px;padding:8px 10px;border-radius:var(--r-md);background:var(--neutral-bg)}
+.assign span{color:var(--muted)}
+.assign b{font-weight:600}
+.cardfoot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cf-tools{display:flex;gap:4px;margin-left:-6px}
+.cf-tools .btn{width:var(--ctl-sm);height:var(--ctl-sm);padding:0;color:var(--muted-fg)}
+.cf-tools .btn:hover{color:var(--text)}
+.cf-main{max-width:60%}
+.cf-main span{overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- ListRow (clients / workers / users) ---------- */
+.list{display:grid;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr) auto 16px;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--border);color:inherit;text-decoration:none}
+.lrow:first-child{border-top:0}
+.lrow:hover{background:var(--surface-2)}
+.lrow .tx{display:grid;gap:2px;min-width:0}
+.lrow .tx b{font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.lrow .tx span{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lrow .end{text-align:right;display:grid;gap:2px;justify-items:end}
+.lrow .end .v{font:500 14px/1.1 var(--f-mono)}
+.lrow .end .v.warn{color:var(--warn)}
+.lrow .end .s{font-size:11.5px;color:var(--muted)}
+.lrow .units{grid-column:1/-1;display:grid;gap:4px;margin-top:2px;padding-top:8px;border-top:1px dashed var(--border);min-width:0}
+.uline{display:flex;justify-content:space-between;align-items:center;gap:8px;min-width:0}
+.uline .ident{font-size:12.5px;gap:3px 10px}
+.umore{font-size:12.5px;font-weight:600;color:var(--link)}
+.lrow .chev{color:var(--muted)}
+.list-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+
+/* ---------- Sections (forms, settings, detail) ---------- */
+.section{display:grid;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+.section-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.section-h h4{font-size:15px;font-weight:700}
+.section-h p{font-size:12.5px;color:var(--muted);margin-top:2px}
+.contact{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.contact li{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;min-width:0}
+.contact li svg{color:var(--muted);flex:none}
+.contact li.empty{color:var(--muted);font-weight:400}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px 16px;margin:0}
+.kv div{display:grid;gap:1px;min-width:0}
+.kv dt{font-size:12px;color:var(--muted)}
+.kv dd{margin:0;font-size:14px;font-weight:500;overflow-wrap:anywhere}
+.kv dd.empty{color:var(--muted);font-weight:400}
+.empty-state{display:grid;justify-items:center;gap:8px;text-align:center;padding:18px 10px;color:var(--muted-fg);font-size:13.5px}
+.empty-state b{color:var(--text);font-size:14.5px}
+.danger-zone{display:grid;gap:10px;padding:14px;border:1px solid var(--bad-bd);border-radius:var(--r-lg);background:var(--surface)}
+.danger-zone h4{font-size:14px;font-weight:700;color:var(--bad)}
+.dz-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.dz-row p{font-size:12.5px;color:var(--muted);flex:1 1 160px}
+.dz-row b{display:block;font-size:13.5px;color:var(--text)}
+.bank{display:grid;gap:8px;padding:12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface)}
+.bank-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.bank-top b{font-size:14.5px}
+.clabe{display:flex;align-items:center;justify-content:space-between;gap:8px;font:500 13.5px/1 var(--f-mono)}
+.clabe span{color:var(--muted);font-family:var(--f-sans);font-size:12px;font-weight:400;margin-right:6px}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13.5px}
+.switch{position:relative;width:38px;height:22px;border-radius:999px;border:0;background:var(--border-strong);cursor:pointer;flex:none}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch[aria-checked="true"]{background:var(--primary)}
+.switch[aria-checked="true"]::after{transform:translateX(16px)}
+.preview-doc{border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;background:var(--surface)}
+.preview-doc .hd{background:var(--doc-head-bg);color:var(--doc-head-fg);border-bottom:1px solid var(--doc-head-bd);padding:12px 14px;display:grid;gap:2px}
+.preview-doc .hd b{font-size:15px;letter-spacing:.02em}
+.preview-doc .hd span{font-size:11.5px;opacity:.85}
+.preview-doc .bd{padding:10px 14px;font-size:12px;color:var(--muted)}
+.settings-group{display:grid;gap:6px}
+.settings-group h5{font:500 11px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 4px}
+.dirty-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-lg);background:var(--text);color:var(--bg);font-size:13px}
+.dirty-bar .btn-ghost{color:var(--bg)}
+.dirty-bar .btn-ghost:hover{background:rgba(127,127,127,.2)}
+
+/* ---------- Inbox ---------- */
+.task{display:grid;grid-template-columns:44px minmax(0,1fr) 18px;gap:12px;align-items:center;padding:12px 14px;text-decoration:none;color:inherit;border-top:1px solid var(--border)}
+.task:first-child{border-top:0}
+.task:hover{background:var(--surface-2)}
+.task .n{font:500 24px/1 var(--f-mono);letter-spacing:-.03em;text-align:right}
+.task .tx{display:grid;gap:2px;min-width:0}
+.task .tx b{font-weight:600;font-size:14.5px}
+.task .tx span{font-size:12.5px;color:var(--muted)}
+.task.urgent .n,.task.urgent .tx span{color:var(--warn)}
+.task .go{color:var(--muted)}
+
+.ocard.featured{box-shadow:var(--shadow-card-hover)}
+.feat-eb{display:flex;align-items:center;gap:6px;color:var(--primary)!important}
+.list,.stat,.section{border-color:transparent;box-shadow:var(--shadow-card)}
+.stat.key{box-shadow:none}
+.sheet .list,.sheet .section,.desk-panel .list,.desk-panel .section{border-color:var(--border);box-shadow:none}
+.focus{padding:14px;display:grid;gap:10px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--info-bd);box-shadow:var(--shadow-md)}
+.focus .eb{display:flex;align-items:center;gap:6px;font:600 11.5px/1 var(--f-sans);color:var(--primary);text-transform:uppercase;letter-spacing:.06em}
+.focus h4{font-size:17px;font-weight:700;line-height:1.25}
+.focus p{font-size:13px;color:var(--muted-fg);margin-top:3px}
+.focus .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.focus .acts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px}
+.todo{display:grid;grid-template-columns:20px minmax(0,1fr) auto 16px;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--border);color:inherit;text-decoration:none}
+.todo:first-child{border-top:0}
+.todo:hover{background:var(--surface-2)}
+.todo .ic{color:var(--primary)}
+.todo .tx{display:grid;gap:2px;min-width:0}
+.todo .tx b{font-size:14.5px;font-weight:600}
+.todo .tx span{font-size:12.5px;color:var(--muted)}
+.todo .n{font:500 18px/1 var(--f-mono)}
+.todo .go{color:var(--muted)}
+.todo.hot .ic,.todo.hot .tx span,.todo.hot .n{color:var(--warn)}
+.desk-scroll{overflow-x:auto;border-radius:var(--r-lg);border:1px solid var(--border);box-shadow:var(--shadow-md)}
+.desk{display:grid;grid-template-columns:64px minmax(0,1fr) 400px;width:1366px;min-width:1366px;height:657px;background:var(--bg);}
+.res-tag{display:inline-flex;align-items:center;gap:6px;font:500 11.5px/1 var(--f-mono);color:var(--muted);margin-bottom:8px}
+.desk-side{position:relative;z-index:6}
+.rail{position:absolute;inset:0 auto 0 0;width:64px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:4px;padding:12px 14px;overflow:hidden;transition:width .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s}
+.desk.expanded .rail{width:220px;box-shadow:var(--shadow-md)}
+.rail .brand{display:flex;align-items:center;gap:12px;height:40px;padding:0 0 0 2px;margin-bottom:8px;flex:none;border:0;background:none;color:var(--text);cursor:pointer;width:100%;text-align:left;border-radius:var(--r-sm)}
+.rail .brand:hover{background:var(--surface-2)}
+.brand-chev{margin-left:auto;margin-right:6px;color:var(--muted);opacity:0;transition:opacity .15s}
+.desk.expanded .brand-chev{opacity:1}
+.rail .logo{width:32px;height:32px;border-radius:var(--r-xs);background:var(--logo-bg);display:grid;place-items:center;flex:none}
+.rail .logo img{width:28px;height:28px;filter:var(--logo-filter)}
+.lbl-t{white-space:nowrap;opacity:0;transition:opacity .15s}
+.desk.expanded .lbl-t{opacity:1;transition-delay:.06s}
+.rail .brand .lbl-t{font-size:16px;font-weight:800;letter-spacing:-.03em}
+.dnav{display:flex;align-items:center;gap:12px;height:36px;padding:0 0 0 9px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--muted-fg);text-decoration:none;font:500 14px/1 var(--f-sans);cursor:pointer;flex:none;width:100%}
+.dnav svg{flex:none}
+.dnav:hover{background:var(--surface-2);color:var(--text)}
+.dnav.on{background:var(--brand-grad);color:#fff;font-weight:600}
+.desk-main{padding:20px;display:grid;gap:14px;align-content:start;overflow:auto}
+.desk-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ocard.sel{border-color:transparent;box-shadow:var(--shadow-card-hover),0 0 0 2px color-mix(in srgb,var(--amount) 55%,transparent)}
+.ocard.sel .oc-title h4,.ocard.sel .folio{color:var(--amount)}
+.desk-panel{background:var(--surface);border-left:1px solid var(--border);display:grid;grid-template-rows:auto 1fr auto;min-height:0}
+.desk-panel .sheet-h{position:static;margin:0;padding:12px 10px 12px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
+.dp-body{padding:16px;display:grid;gap:12px;align-content:start;overflow:auto}
+.dp-foot{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}
+.dp-foot .btn{flex:1}
+.flow{display:grid;grid-template-columns:220px minmax(0,1fr) 320px;grid-template-rows:56px 1fr;width:1366px;min-width:1366px;height:657px;background:var(--bg)}
+.flow-top{grid-column:1/-1;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:0 10px;background:var(--surface);border-bottom:1px solid var(--border)}
+.flow-top .t{display:flex;align-items:baseline;gap:10px}
+.flow-top .t b{font-size:16px}
+.flow-top .t span{font-size:12.5px}
+.steps{list-style:none;margin:0;padding:18px 14px;display:grid;gap:4px;align-content:start;border-right:1px solid var(--border);background:var(--surface)}
+.st{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:center;padding:8px;border-radius:var(--r-sm)}
+.st .dot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:600 12px/1 var(--f-mono);border:1px solid var(--border);color:var(--muted)}
+.st .tx{display:grid;gap:1px;min-width:0}
+.st .tx b{font-size:13.5px}
+.st .tx span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st.done .dot{background:var(--ok-bg);border-color:var(--ok-bd);color:var(--ok)}
+.st.now{background:var(--nav-active-bg)}
+.st.now .dot{background:var(--btn-primary);border-color:transparent;color:#fff}
+.st.next .tx b{color:var(--muted-fg);font-weight:500}
+.csec{display:grid;gap:2px;background:var(--surface);border:0;border-radius:var(--r-lg);padding:10px 12px;box-shadow:var(--shadow-card)}
+.csec-h{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:center;padding-bottom:6px}
+.csec-name{font-weight:700;border-color:transparent;background:transparent;padding-left:4px}
+.csec-name:hover{border-color:var(--border)}
+.crow{display:grid;grid-template-columns:18px minmax(0,1fr) 124px 32px 96px 92px 84px 32px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--border)}
+.crow.head{font:500 11px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-top:0;padding:4px 0}
+.crow .r{text-align:right}
+.grip{color:var(--muted);cursor:grab;display:grid;place-items:center}
+.ctsel{height:32px;font-size:13px;padding:0 8px;background:var(--surface-2)}
+.cpay{color:var(--muted)}
+.cpay[aria-pressed="true"]{background:var(--ok-bg);color:var(--ok)}
+.cdesc{display:grid;gap:3px;min-width:0}
+.cdesc .input{height:32px}
+.ctype{font-size:11.5px;color:var(--muted);padding-left:12px}
+.stepper{display:inline-flex;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:var(--r-sm);height:32px;padding:0 2px}
+.crow>.input{height:32px}
+.ctotal{font-weight:600}
+.cadd{display:flex;gap:4px;flex-wrap:wrap;padding-top:6px;border-top:1px solid var(--border)}
+.cadd{gap:6px}
+.msec{display:grid}
+.msec-h{display:flex;align-items:center;gap:6px;padding:4px 2px 6px 6px}
+.msec-h span.mono{margin-left:auto}
+.msec-h b{font-size:13px;letter-spacing:.02em}
+.msec-h span{font-size:13px;font-weight:600}
+.mlist{display:grid;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-card);overflow:hidden}
+.mrow{display:grid;grid-template-columns:18px minmax(0,1fr);gap:0 6px;padding:0 10px 0 6px;border-top:1px solid var(--border);align-items:start}
+.mgrip{color:var(--muted);display:grid;place-items:center;height:56px;cursor:grab;touch-action:none}
+.msec-h .mgrip{height:auto;margin-right:2px}
+.mhead{display:grid;grid-template-columns:minmax(0,1fr) auto 16px;gap:8px;align-items:center;width:100%;min-height:56px;padding:8px 0;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit}
+.mt{display:grid;gap:2px;min-width:0}
+.mchev{color:var(--muted);transition:transform .2s}
+.mrow.open .mchev{transform:rotate(180deg)}
+.mrow.open{background:var(--surface-2)}
+.medit{grid-column:1/-1;display:none;gap:10px;padding:4px 2px 12px 6px}
+.mrow.open .medit{display:grid}
+.medit .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-right:-10px;padding-right:10px}
+.medit .chips::-webkit-scrollbar{display:none}
+.medit .chips .choice{flex:none}
+.medit .fields-2{grid-template-columns:116px minmax(0,1fr);gap:10px}
+.medit .stepper{height:var(--ctl);width:100%}
+.medit-f{display:flex;gap:4px;align-items:center}
+.medit-f .btn-tonal{margin-left:auto}
+.mdel{color:var(--bad)}
+.mrow:first-child{border-top:0}
+.mrow .mt b{font-size:14.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow .t{font-weight:600}
+.mrow .m{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.mrow .pay{display:inline-flex;align-items:center;gap:4px;color:var(--ok);font-weight:500}
+.madd{display:flex;gap:4px;padding:6px 6px 2px;flex-wrap:wrap}
+.madd .btn,.cadd .btn:not(.btn-icon){color:var(--link);border:1px dashed var(--border-strong);background:transparent}
+.madd .btn:hover,.cadd .btn:not(.btn-icon):hover{border-style:solid;border-color:var(--tonal-bg-hover);background:var(--tonal-bg);color:var(--tonal-fg)}
+.madd{gap:6px}
+.totbar{display:grid;gap:2px}
+.totbar span{font-size:11.5px;color:var(--muted)}
+.totbar{flex:1 1 auto;min-width:0}
+.totbar .nx{font-size:15px;font-weight:600;color:var(--text);letter-spacing:0}
+.totbar b{font-size:22px;font-weight:700;color:var(--amount);letter-spacing:-.01em}
+.actionbar-b .totbar+.btn{flex:0 0 auto;padding:0 22px}
+.flow-main{padding:20px;display:grid;gap:14px;align-content:start;overflow:auto}
+.flow-side{padding:20px 16px;display:grid;gap:12px;align-content:start;border-left:1px solid var(--border);overflow:hidden}
+.flow-main{scroll-behavior:smooth}
+.concepts{width:100%;border-collapse:collapse;font-size:13.5px}
+.concepts th{text-align:left;font:500 11px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--border)}
+.concepts td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.concepts tr:last-child td{border-bottom:0}
+.concepts td b{display:block;font-weight:600}
+.concepts td span{font-size:12px;color:var(--muted)}
+.concepts .r{text-align:right}
+/* ---------- Devices ---------- */
+.devices{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:28px 20px;justify-items:center;align-items:start}
+.dev-wrap{display:grid;gap:10px;width:100%;max-width:375px}
+.dev-cap{display:grid;gap:3px}
+.dev-cap b{font-size:14.5px}
+.dev-cap span{font-size:12.5px;color:var(--muted)}
+.device{position:relative;width:100%;height:740px;border:8px solid var(--frame);border-radius:36px;overflow:hidden;background:var(--bg);box-shadow:var(--shadow-md)}
+.device .scroll{position:absolute;inset:0 0 60px 0;overflow-y:auto;padding:14px 12px 24px;display:grid;gap:12px;align-content:start;scrollbar-width:thin}
+.device.full .scroll{inset:52px 0 68px 0}
+.device .tabbar{position:absolute;left:0;right:0;bottom:0;height:60px;background:var(--nav-bg);border-top:1px solid var(--nav-border);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));z-index:3}
+.tab{border:0;background:transparent;color:var(--nav-muted);display:grid;justify-items:center;align-content:center;gap:3px;cursor:pointer;font:500 10.5px/1.1 var(--f-sans);padding:0 2px;min-width:0}
+.tab .pill{width:56px;height:34px;border-radius:17px;display:grid;place-items:center}
+.tab .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.tab[aria-current="page"]{color:var(--nav-fg)}
+.tab[aria-current="page"] .pill{background:var(--brand-grad)}
+.tab[aria-current="page"] svg.i{stroke:#fff}
+.tab[aria-current="page"] .lbl{color:var(--nav-label);font-weight:700}
+.tab[aria-current="page"] .lbl{font-weight:600}
+.tab[aria-expanded="true"]{color:var(--nav-fg)}
+.tab svg.i{width:22px;height:22px}
+.topbar{position:absolute;left:0;right:0;top:0;height:52px;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;padding:0 4px;background:var(--surface);border-bottom:1px solid var(--border);z-index:3}
+.topbar .t{text-align:left;display:grid;gap:1px;padding-left:4px;min-width:0}
+.topbar .t b{font-size:14.5px}
+.topbar .t span{font-size:11.5px;color:var(--muted)}
+.progress{position:absolute;left:0;right:0;top:52px;height:3px;background:var(--border);z-index:3}
+.progress i{display:block;height:100%;width:25%;background:var(--primary)}
+.actionbar-b{position:absolute;left:0;right:0;bottom:0;padding:12px;background:var(--surface);border-top:1px solid var(--border);display:flex;gap:8px;z-index:3}
+.actionbar-b .btn{flex:1}
+.scrim{position:absolute;inset:0 0 60px 0;background:var(--scrim);z-index:4;opacity:0;pointer-events:none;transition:opacity .2s}
+.device.full .scrim,.device.nobar .scrim{bottom:0}
+.sheet{position:absolute;left:0;right:0;bottom:60px;background:var(--nav-surface);color:var(--nav-fg);border-radius:var(--r-sheet) var(--r-sheet) 0 0;border-top:1px solid var(--nav-border);padding:6px 12px 12px;z-index:5;max-height:calc(100% - 90px);overflow:auto;box-shadow:0 -8px 24px rgba(0,16,36,.14);transform:translateY(105%);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.device.nobar .sheet{bottom:0}
+.device.open .sheet{transform:none}
+.device.open .scrim{opacity:1;pointer-events:auto}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--nav-border);margin:4px auto 8px}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 2px 10px}
+.sheet-h b{font-size:16px}
+.sheet-h{position:sticky;top:-6px;z-index:1;min-height:44px;background:var(--nav-surface);margin:0 -4px;padding:2px 0 8px 4px}
+.sheet-h .btn-icon{margin-left:auto;flex:none;color:var(--muted-fg)}
+.anatomy{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:var(--surface)}
+.anatomy .a-h{display:flex;align-items:center;justify-content:space-between;gap:8px;height:52px;padding:0 6px 0 14px;border-bottom:1px solid var(--border)}
+.anatomy .a-h b{font-size:15px}
+.anatomy .a-b{padding:14px;font-size:13px;color:var(--muted);min-height:60px}
+.anatomy .a-f{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--border)}
+.anatomy .a-f .btn{flex:1}
+.sheet-foot{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);margin-top:12px}
+.sheet-foot .btn{flex:1}
+.ngroup{display:grid;padding-top:4px}
+.ngroup h5{padding:8px 8px 4px;font:500 11px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--nav-muted)}
+.nrow{display:grid;grid-template-columns:22px minmax(0,1fr) 16px;gap:12px;align-items:center;padding:9px 8px;border-radius:var(--r-sm);color:inherit;text-decoration:none}
+.nrow:hover{background:var(--nav-hover)}
+.nrow .t{color:var(--nav-muted);display:grid;place-items:center}
+.nrow .tx{display:grid;gap:1px;min-width:0}
+.nrow .tx b{font-size:14.5px;font-weight:600}
+.nrow .tx span{font-size:12px;color:var(--nav-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nrow .chev{color:var(--nav-muted)}
+.fgroup{display:grid;gap:8px;padding:10px 0;border-top:1px solid var(--border)}
+.fgroup:first-of-type{border-top:0}
+.fgroup>b{font-size:13.5px}
+.coverage{width:100%;border-collapse:collapse;font-size:13.5px;min-width:720px}
+.coverage th{text-align:left;font:500 11px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--border)}
+.coverage td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.coverage td:first-child{font-family:var(--f-mono);font-size:12.5px;white-space:nowrap}
+.coverage tr:last-child td{border-bottom:0}
+.table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+.palette td{vertical-align:middle}
+.palette .tok{font-size:12px;color:var(--muted-fg)}
+.sw{display:inline-block;width:28px;height:20px;border-radius:6px;vertical-align:middle;margin-right:8px;box-shadow:inset 0 0 0 1px rgba(127,127,127,.35)}
+.palette code{font:500 12px var(--f-mono);color:var(--muted-fg)}
+.qdoc{border-radius:var(--r-lg);overflow:hidden;background:var(--surface);box-shadow:var(--shadow-card)}
+.qd-h{background:var(--doc-head-bg);color:var(--doc-head-fg);border-bottom:1px solid var(--doc-head-bd);padding:14px 16px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.qd-brand{display:grid;gap:2px;min-width:0}
+.qd-brand b{font-size:16px;letter-spacing:.04em}
+.qd-brand span{font-size:11px;opacity:.85}
+.qd-fol{text-align:right;display:grid;gap:2px;flex:none}
+.qd-fol span{font-size:11px;opacity:.85}
+.qd-fol b{font-size:13px}
+.qd-b{padding:14px 16px;display:grid;gap:12px}
+.qd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.qd-grid>div{display:grid;gap:1px;min-width:0}
+.qd-grid b{font-size:14px}
+.qd-grid span.muted{font-size:12px}
+.qd-l{font:500 10.5px/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.qd-svc{display:grid;gap:2px;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.qd-svc span{font:500 10.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted-fg)}
+.qd-svc b{font-size:15px}
+.qd-tw{overflow-x:auto}
+.qd-t{width:100%;border-collapse:collapse;font-size:13px}
+.qd-t th{text-align:left;font:500 10.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 4px;border-bottom:1px solid var(--border)}
+.qd-t td{padding:6px 4px;border-bottom:1px solid var(--border)}
+.qd-t .r{text-align:right}
+.qd-t td:first-child{width:36px;color:var(--muted-fg)}
+.qd-sec td{font-weight:700;padding-top:10px;background:transparent}
+.qd-tot{display:grid;gap:4px;margin:0;justify-self:end;min-width:200px}
+.qd-tot div{display:flex;justify-content:space-between;gap:20px;font-size:13px}
+.qd-tot dt{color:var(--muted)}
+.qd-tot dd{margin:0}
+.qd-tot .tt{padding-top:6px;border-top:1px solid var(--border);font-size:16px;font-weight:700;color:var(--amount)}
+.qd-tot .tt dt{color:var(--text)}
+.qd-meta{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.qd-notes{display:grid;gap:4px;padding-top:10px;border-top:1px solid var(--border)}
+.qd-ul{margin:0;padding-left:18px;display:grid;gap:3px;font-size:13px;color:var(--muted-fg);line-height:1.45}
+.qd-ul li::marker{color:var(--muted)}
+.qd-notes p{font-size:13px;color:var(--muted-fg);line-height:1.5}
+.actionbar-b{box-shadow:0 -6px 16px rgba(0,16,36,.08)}
+.device .scroll{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.device .scroll,.dp-body,.flow-main,.desk-main,.sheet{grid-auto-rows:max-content}
+
+/* preview: prod-like section structure */
+.qd-grid{background:var(--surface-2);border-radius:var(--r-sm);padding:10px 12px}
+.qd-svc{padding:0;border:0}
+.qd-tw{overflow-x:auto}
+.qd-t th{padding:8px}
+.qd-t td{padding:7px 8px;border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent)}
+.qd-sec td{border-radius:0}
+.qd-sec td:first-child{border-radius:var(--r-xs) 0 0 var(--r-xs)}
+.qd-sec td:last-child{border-radius:0 var(--r-xs) var(--r-xs) 0}
+.qd-t tbody tr.qd-sec td{border-bottom:0}
+.qd-t tbody tr:last-child td{border-bottom:0}
+.qd-sec td,.qd-sec td:first-child{background:var(--surface-2);color:var(--text);font:700 11px/1.2 var(--f-sans);letter-spacing:.08em;text-transform:uppercase;padding:9px 8px;width:auto}
+.qd-sec td:last-child{text-transform:none;letter-spacing:0;font-size:12.5px}
+.qd-totbox{display:flex;flex-wrap:wrap-reverse;gap:12px 20px;align-items:flex-end;justify-content:space-between;background:var(--surface-2);border-radius:var(--r-sm);padding:12px 14px}
+.qd-words{flex:1 1 180px;font:500 11px/1.45 var(--f-sans);text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.qd-totbox .qd-tot{flex:1 1 200px;min-width:200px;justify-self:auto}
+.qd-tot .tax{padding-bottom:8px;border-bottom:1px solid var(--border)}
+.qd-tot .tt{border-top:0;padding-top:2px;font-size:20px}
+.qd-notes{border-top:0;padding:10px 12px;background:var(--surface-2);border-radius:var(--r-sm)}
+.qd-foot{font-size:12px;color:var(--muted)}
+.jump{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.jump .choice{flex:none;gap:6px}
+.textarea{height:auto;padding:10px 12px;resize:vertical;line-height:1.45}
+.two-fixed{grid-template-columns:repeat(2,minmax(0,1fr))}
+.footer-note{margin-top:64px;padding-top:20px;border-top:1px solid var(--border);color:var(--muted);font-size:13px;max-width:90ch}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<!-- Tabler Icons (MIT), outline set v3.19.0 -->
+  <defs><linearGradient id="nav-grad" gradientUnits="userSpaceOnUse" x1="3" y1="3" x2="21" y2="21"><stop offset="0" style="stop-color:var(--nav-grad-a)"/><stop offset="1" style="stop-color:var(--nav-grad-b)"/></linearGradient></defs>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></symbol>
+  <symbol id="i-printer" viewBox="0 0 24 24"><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2"/><path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4"/><path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M8.7 10.7l6.6 -3.4"/><path d="M8.7 13.3l6.6 3.4"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6l6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6l-6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6l6 -6"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M14 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M4 6l8 0"/><path d="M16 6l4 0"/><path d="M8 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M4 12l2 0"/><path d="M10 12l10 0"/><path d="M17 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M4 18l11 0"/><path d="M19 18l1 0"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M11.46 20.846a12 12 0 0 1 -7.96 -14.846a12 12 0 0 0 8.5 -3a12 12 0 0 0 8.5 3a12 12 0 0 1 -.09 7.06"/><path d="M15 19l2 2l4 -4"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"/><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"/><path d="M9 12l.01 0"/><path d="M13 12l2 0"/><path d="M9 16l.01 0"/><path d="M13 16l2 0"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M10 14l11 -11"/><path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M10 12h4v4h-4z"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></symbol>
+  <symbol id="i-doc-check" viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/><path d="M9 15l2 2l4 -4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></symbol>
+  <symbol id="i-user-cog" viewBox="0 0 24 24"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h2.5"/><path d="M19.001 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M19.001 15.5v1.5"/><path d="M19.001 21v1.5"/><path d="M22.032 17.25l-1.299 .75"/><path d="M17.27 20l-1.3 .75"/><path d="M15.97 17.25l1.3 .75"/><path d="M20.733 20l1.3 .75"/></symbol>
+  <symbol id="i-cash" viewBox="0 0 24 24"><path d="M7 9m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"/><path d="M14 14m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 9v-2a2 2 0 0 0 -2 -2h-10a2 2 0 0 0 -2 2v6a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M12 8l0 4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></symbol>
+  <symbol id="i-user-shield" viewBox="0 0 24 24"><path d="M6 21v-2a4 4 0 0 1 4 -4h2"/><path d="M22 16c0 4 -2.5 6 -3.5 6s-3.5 -2 -3.5 -6c1 0 2.5 -.5 3.5 -1.5c1 1 2.5 1.5 3.5 1.5z"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/></symbol>
+  <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M16 19h6"/><path d="M19 16v6"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></symbol>
+  <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 21l18 0"/><path d="M3 10l18 0"/><path d="M5 6l7 -3l7 3"/><path d="M4 10l0 11"/><path d="M20 10l0 11"/><path d="M8 14l0 3"/><path d="M12 14l0 3"/><path d="M16 14l0 3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z"/><path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z"/><path d="M3 7l9 6l9 -6"/></symbol>
+  <symbol id="i-user-off" viewBox="0 0 24 24"><path d="M8.18 8.189a4.01 4.01 0 0 0 2.616 2.627m3.507 -.545a4 4 0 1 0 -5.59 -5.552"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4c.412 0 .81 .062 1.183 .178m2.633 2.618c.12 .38 .184 .785 .184 1.204v2"/><path d="M3 3l18 18"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2m4 -14h6m-6 4h6m-2 4h2"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><path d="M11 15h1"/><path d="M12 15v3"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l16 0"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><path d="M9 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M9 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M9 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M15 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M15 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M15 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5"/></symbol>
+  <symbol id="i-wheel" viewBox="0 0 24 24"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></symbol>
+</svg>
+
+<button class="theme-toggle" type="button" data-theme-toggle aria-label="Cambiar a modo oscuro"><svg class="i"><use href="#i-moon"/></svg><span>Oscuro</span></button>
+
+<div class="wrap">
+
+  <header class="doc-head">
+    <span class="eyebrow">SEBASAM · Propuesta de sistema · v2 · nov 2026</span>
+    <h1>Un solo sistema para todo el taller</h1>
+    <p class="lede">Esta versión cubre la app completa: el diagnóstico, las reglas, las piezas compartidas y cada pantalla armada solo con esas piezas. Al final hay un mapa de cobertura con todas las rutas, para que ningún cambio quede suelto.</p>
+    <nav class="toc" aria-label="Secciones">
+      <a href="#diagnostico">Diagnóstico</a><a href="#fundamentos">Fundamentos</a><a href="#piezas">Piezas</a><a href="#navegacion">Navegación</a><a href="#operacion">Operación</a><a href="#escritorio">Escritorio</a><a href="#clientes">Clientes</a><a href="#equipo">Trabajadores</a><a href="#configuracion">Configuración</a><a href="#cobertura">Cobertura</a>
+    </nav>
+  </header>
+
+  <!-- ================= DIAGNOSIS ================= -->
+  <section class="block" id="diagnostico">
+    <div class="block-head">
+      <span class="eyebrow">Diagnóstico</span>
+      <h2>Por qué cada cambio rompe otra cosa</h2>
+      <p>El problema no es una pantalla fea. Es que no existen piezas compartidas, así que cada arreglo se hace a mano en un lugar y deja de coincidir con los demás.</p>
+    </div>
+    <div class="three">
+      <div class="cause"><span class="k">Causa 1</span><h3>Cada pantalla arma sus propias piezas</h3><p>Hay tres barras de filtros, dos navegadores de periodo y dos tarjetas distintas para lo mismo. Un cambio de estilo "global" cae distinto en cada una.</p></div>
+      <div class="cause"><span class="k">Causa 2</span><h3>Las reglas no están escritas</h3><p>Tamaños, orden de acciones y cuándo hay acción primaria se deciden de nuevo en cada iteración. <span class="mono">size="sm"</span> se usa 128 veces y se corrige a mano en 68 lugares.</p></div>
+      <div class="cause"><span class="k">Causa 3</span><h3>Se trabaja por pantalla, no por pieza</h3><p>Arreglar Cotizaciones no arregla Trabajos, y a veces deshace algo que ya estaba bien en otro lado.</p></div>
+    </div>
+    <div class="spec">
+      <span class="spec-label">Regresiones encontradas en desarrollo frente a producción y main</span>
+      <ul class="note-list bad">
+        <li><svg class="i sm"><use href="#i-alert"/></svg><span><b>Clientes se recorta a la derecha en móvil.</b> Las filas y el contador quedan cortados dentro de la tarjeta de búsqueda.</span></li>
+        <li><svg class="i sm"><use href="#i-alert"/></svg><span><b>La acción primaria de cotización dejó de ser dinámica.</b> En develop es fija (Autorizar en borrador); main la decide según el estado.</span></li>
+        <li><svg class="i sm"><use href="#i-alert"/></svg><span><b>Dos barras de navegación según el rol.</b> El patrón (ADMIN) ve 6 pestañas fijas sin "Más"; el SUPER_ADMIN ve 4 + "Más". En las dos hay etiquetas recortadas ("Cotiz.", "Hist.", "IA").</span></li>
+        <li><svg class="i sm"><use href="#i-alert"/></svg><span><b>Estado de cuenta usa otro navegador de periodo y tarjetas con bordes de color</b> que no aparecen en ninguna otra pantalla.</span></li>
+      </ul>
+    </div>
+    <div class="sub-head"><h3>Cómo se trabaja desde ahora</h3><p>Siempre en este orden. Cada issue toca una pieza y lista las pantallas que la usan. Una pantalla solo cambia porque cambia una pieza, nunca por un estilo suelto.</p></div>
+    <div class="order">
+      <div><span class="k">Paso 1</span><b>Fundamentos</b><span>Tokens, escala de botones, iconos, estados.</span></div>
+      <div><span class="k">Paso 2</span><b>Piezas</b><span>Encabezado, búsqueda y filtros, periodo, tarjeta, fila, sección, hoja.</span></div>
+      <div><span class="k">Paso 3</span><b>Navegación</b><span>Barra inferior y hoja "Más".</span></div>
+      <div><span class="k">Paso 4</span><b>Pantallas</b><span>Se reemplazan piezas viejas por nuevas, una pantalla por issue.</span></div>
+    </div>
+  </section>
+
+  <!-- ================= FOUNDATIONS ================= -->
+  <section class="block" id="fundamentos">
+    <div class="block-head">
+      <span class="eyebrow">Paso 1 · Fundamentos</span>
+      <h2>Reglas que no se discuten en cada pantalla</h2>
+    </div>
+    <div class="two">
+      <div class="spec">
+        <span class="spec-label">Botones · compacto a la vista, 44 px al dedo</span>
+        <div class="scale">
+          <div class="scale-row"><div class="demo"><button class="btn btn-primary btn-lg"><svg class="i"><use href="#i-plus"/></svg>Nueva cotización</button></div><span class="annot">40 · lg<br>acción principal</span></div>
+          <div class="scale-row"><div class="demo"><button class="btn btn-primary">Guardar</button><button class="btn btn-outline"><svg class="i"><use href="#i-printer"/></svg>Imprimir</button><button class="btn btn-ghost">Cancelar</button></div><span class="annot">36 · default<br>todo lo demás</span></div>
+          <div class="scale-row"><div class="demo"><button class="btn btn-ghost btn-sm btn-icon show-hit" aria-label="Editar"><svg class="i"><use href="#i-pencil"/></svg></button><button class="btn btn-outline btn-sm show-hit">Ver</button></div><span class="annot">32 · sm<br>herramientas y filas</span></div>
+        </div>
+        <span class="annot">La línea punteada es el área táctil invisible de 44 px. El tamaño lo decide la jerarquía de la acción, no la pantalla.</span>
+      </div>
+      <div class="spec">
+        <span class="spec-label">Estados y montos</span>
+        <div class="chips"><span class="badge">Borrador</span><span class="badge info">Enviada</span><span class="badge ok">Aceptada</span><span class="badge warn">Parcial</span><span class="badge bad">Vencida</span><span class="badge info">En proceso</span></div>
+        <ul class="note-list good">
+          <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Un estado = una insignia.</b> "Activo" no se muestra cuando es lo normal; solo se marca lo que se sale de lo normal (Inactivo).</span></li>
+          <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Una sola familia: Inter.</b> Montos, folios, placas y CLABE usan sus cifras tabulares, que miden lo mismo y se alinean en columnas sin pasar a una monoespaciada. Los montos van en semibold.</span></li>
+          <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Color semántico solo en el dato.</b> Nada de bordes laterales de colores ni iconos dentro de cajitas.</span></li>
+          <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Iconos Tabler, set outline, trazo 2.</b> Entran por un wrapper propio (<span class="mono">&lt;Icon name&gt;</span>) para no depender de la librería.</span></li>
+          <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Toda tarjeta abre su vista previa.</b> Cotizaciones, trabajos y notas muestran los conceptos en solo lectura al tocarlas, sin tener que entrar a editar.</span></li>
+          <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Tres niveles de azul, cada uno con un trabajo.</b> El gradiente de marca marca dónde estás: la pestaña activa y el ítem activo de la barra lateral. La acción principal de la página ("Nueva", "Agregar", "Siguiente", "Guardar") usa azul plano #0A3D8F. La acción de cada tarjeta usa el estilo tonal (fondo azul tenue, texto azul). Nada más lleva gradiente.</span></li>
+          <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Una acción primaria por superficie</b> y siempre en el mismo lugar: abajo o a la derecha.</span></li>
+          <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Secciones con pestañas, filtros con segmentado.</b> Cambiar de sección dentro de una página (Resumen / Vehículos, Pendientes / Por periodo) usa pestañas subrayadas. Filtrar una lista (Todas / Pendientes / Pagadas) usa el control segmentado. Así se distingue a simple vista qué cambia de lugar y qué solo filtra.</span></li>
+          <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Sombra o borde, nunca los dos.</b> Una superficie sobre el fondo de la página (tarjeta, lista, cifra) se separa con sombra y sin borde. Una superficie dentro de una hoja o panel, que ya es blanco, lleva borde fino y sin sombra, porque ahí la sombra no se ve.</span></li>
+          <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Tres radios, todos múltiplos de 4.</b> 8 px para elementos pequeños dentro de un control, 12 px para todo lo que se toca (botones, campos, chips, opciones del segmentado, pestaña activa), 16 px para el contenedor del segmentado y 16 px para superficies (tarjetas, listas, secciones). Las hojas usan 24 px arriba. La forma de pastilla queda solo para las insignias de estado y el indicador de la pestaña activa.</span></li>
+          <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Cerrar (✕) siempre arriba a la derecha,</b> en todas las hojas, diálogos y flujos. Nunca a la izquierda, nunca abajo.</span></li>
+        </ul>
+      </div>
+    </div>
+  <div class="spec" style="margin-top:20px"><span class="spec-label">Paleta · modo claro y modo oscuro</span><div class="table-wrap"><table class="coverage palette"><thead><tr><th>Uso</th><th>Token</th><th>Claro</th><th>Oscuro</th></tr></thead><tbody><tr><td>Fondo de pantalla</td><td class="mono tok">--bg</td><td><span class="sw" style="background:#F3F6FA"></span><code>#F3F6FA</code></td><td><span class="sw" style="background:#0E131B"></span><code>#0E131B</code></td></tr><tr><td>Superficie (tarjetas, hojas)</td><td class="mono tok">--surface</td><td><span class="sw" style="background:#FFFFFF"></span><code>#FFFFFF</code></td><td><span class="sw" style="background:#161D28"></span><code>#161D28</code></td></tr><tr><td>Superficie secundaria</td><td class="mono tok">--surface-2</td><td><span class="sw" style="background:#F7F9FC"></span><code>#F7F9FC</code></td><td><span class="sw" style="background:#121923"></span><code>#121923</code></td></tr><tr><td>Borde</td><td class="mono tok">--border</td><td><span class="sw" style="background:#D7E0EA"></span><code>#D7E0EA</code></td><td><span class="sw" style="background:#263142"></span><code>#263142</code></td></tr><tr><td>Texto principal</td><td class="mono tok">--text</td><td><span class="sw" style="background:#001024"></span><code>#001024</code></td><td><span class="sw" style="background:#E7ECF3"></span><code>#E7ECF3</code></td></tr><tr><td>Texto secundario</td><td class="mono tok">--muted-fg</td><td><span class="sw" style="background:#475569"></span><code>#475569</code></td><td><span class="sw" style="background:#B4BFCD"></span><code>#B4BFCD</code></td></tr><tr><td>Texto tenue</td><td class="mono tok">--muted</td><td><span class="sw" style="background:#64748B"></span><code>#64748B</code></td><td><span class="sw" style="background:#8C99AB"></span><code>#8C99AB</code></td></tr><tr><td>Acción principal</td><td class="mono tok">--btn-primary</td><td><span class="sw" style="background:#0A3D8F"></span><code>#0A3D8F</code></td><td><span class="sw" style="background:#EEF2F7"></span><code>#EEF2F7</code></td></tr><tr><td>Texto sobre acción principal</td><td class="mono tok">--on-primary</td><td><span class="sw" style="background:#FFFFFF"></span><code>#FFFFFF</code></td><td><span class="sw" style="background:#0E131B"></span><code>#0E131B</code></td></tr><tr><td>Acción de tarjeta (fondo)</td><td class="mono tok">--tonal-bg</td><td><span class="sw" style="background:#E6F1FB"></span><code>#E6F1FB</code></td><td><span class="sw" style="background:#24375A"></span><code>#24375A</code></td></tr><tr><td>Acción de tarjeta (texto)</td><td class="mono tok">--tonal-fg</td><td><span class="sw" style="background:#004AAD"></span><code>#004AAD</code></td><td><span class="sw" style="background:#FFFFFF"></span><code>#FFFFFF</code></td></tr><tr><td>Gradiente de marca (navegación activa)</td><td class="mono tok">--brand-grad</td><td><span class="sw" style="background:linear-gradient(90deg,#004AAD 0%,#001024 100%)"></span><code>gradiente</code></td><td><span class="sw" style="background:linear-gradient(90deg,#3F74D6 0%,#24437E 100%)"></span><code>gradiente</code></td></tr><tr><td>Monto</td><td class="mono tok">--amount</td><td><span class="sw" style="background:#004AAD"></span><code>#004AAD</code></td><td><span class="sw" style="background:#B9D2FA"></span><code>#B9D2FA</code></td></tr><tr><td>Enlace</td><td class="mono tok">--link</td><td><span class="sw" style="background:#004AAD"></span><code>#004AAD</code></td><td><span class="sw" style="background:#9CC0F5"></span><code>#9CC0F5</code></td></tr><tr><td>Éxito</td><td class="mono tok">--ok</td><td><span class="sw" style="background:#15803D"></span><code>#15803D</code></td><td><span class="sw" style="background:#6FD39A"></span><code>#6FD39A</code></td></tr><tr><td>Advertencia</td><td class="mono tok">--warn</td><td><span class="sw" style="background:#B45309"></span><code>#B45309</code></td><td><span class="sw" style="background:#F2C46B"></span><code>#F2C46B</code></td></tr><tr><td>Error</td><td class="mono tok">--bad</td><td><span class="sw" style="background:#B91C1C"></span><code>#B91C1C</code></td><td><span class="sw" style="background:#F29B9B"></span><code>#F29B9B</code></td></tr><tr><td>Información</td><td class="mono tok">--info</td><td><span class="sw" style="background:#004AAD"></span><code>#004AAD</code></td><td><span class="sw" style="background:#9CC0F5"></span><code>#9CC0F5</code></td></tr></tbody></table></div><span class="annot">El oscuro no invierte el claro: usa grises tinta con un tinte azul leve, azules menos saturados y la acción principal en casi blanco con texto oscuro.</span></div>
+  </section>
+
+  <!-- ================= PIECES ================= -->
+  <section class="block" id="piezas">
+    <div class="block-head">
+      <span class="eyebrow">Paso 2 · Piezas compartidas</span>
+      <h2>Ocho piezas para todas las pantallas</h2>
+      <p>Cada pieza se construye una vez en <span class="mono">src/components/ui</span>. Las pantallas solo las combinan.</p>
+    </div>
+
+    <div class="two">
+      <div class="spec">
+        <span class="spec-label">1 · PageHeader</span>
+        <div class="ph"><div class="ph-title"><h3>Cotizaciones</h3></div><div class="ph-actions"><button class="btn btn-ghost btn-icon" aria-label="Archivo y papelera"><svg class="i"><use href="#i-history"/></svg></button><button class="btn btn-primary"><svg class="i"><use href="#i-plus"/></svg>Nueva</button></div></div>
+        <span class="annot">Título y estado a la izquierda. Primaria al final; secundarias como iconos o en ⋯.</span>
+      </div>
+      <div class="spec">
+        <span class="spec-label">2 · SearchBar + FilterSheet</span>
+        <div class="ft" data-ft>
+          <div class="ft-row"><label class="search" for="q1"><svg class="i"><use href="#i-search"/></svg><input id="q1" type="search" placeholder="Folio, cliente, chofer, placas o ECO"></label><button class="btn btn-outline" type="button"><svg class="i"><use href="#i-filter"/></svg>Filtros<span class="count" data-ft-count>2</span></button></div>
+          <div class="chips" data-ft-chips><button class="chip" data-chip>Este mes<svg class="i sm"><use href="#i-x"/></svg></button><button class="chip" data-chip>Sin orden<svg class="i sm"><use href="#i-x"/></svg></button><button class="linkbtn" data-clear>Limpiar</button></div>
+        </div>
+        <span class="annot">Una búsqueda que entiende folio, cliente, concepto, placas y ECO. Los filtros activos quedan visibles como chips.</span>
+      </div>
+      <div class="spec">
+        <span class="spec-label">3 · PeriodNavigator</span>
+        <div class="pn" data-pn data-modes="week,month,year,all">
+          <div class="pn-step"><button data-prev aria-label="Periodo anterior"><svg class="i"><use href="#i-left"/></svg></button><button data-next aria-label="Periodo siguiente"><svg class="i"><use href="#i-right"/></svg></button></div>
+          <div class="pn-label"><strong data-label>—</strong><span class="badge info" data-current>En curso</span></div>
+          <div class="pn-right"><button class="btn btn-outline btn-sm" data-today>Hoy</button></div>
+          <div class="seg" role="group" aria-label="Vista" data-seg data-mode><button aria-pressed="true" data-m="week">Semana</button><button aria-pressed="false" data-m="month">Mes</button><button aria-pressed="false" data-m="year">Año</button><button aria-pressed="false" data-m="all">Todo</button></div>
+        </div>
+        <span class="annot">El mismo en Notas, Nómina y Estado de cuenta. Cada pantalla elige qué vistas ofrece.</span>
+      </div>
+      <div class="spec">
+        <span class="spec-label">4 · StatTile</span>
+        <div class="stats">
+          <div class="stat"><span class="l">Pendiente de cobro<span class="tip"><button aria-label="Qué incluye"><svg class="i sm"><use href="#i-info"/></svg></button><span class="bubble" role="tooltip">Saldo de las notas del periodo y filtros elegidos. No es toda la cartera.</span></span></span><span class="v">$4,500.00</span></div>
+          <div class="stat"><span class="l">Vencido</span><span class="v bad">$1,200.00</span><span class="s">2 notas</span></div>
+          <div class="stat key"><span class="l">Saldo final</span><span class="v">$3,300.00</span><span class="s">Al 11 nov</span></div>
+        </div>
+        <span class="annot">La explicación va en ⓘ. El dato clave usa fondo tinte, no borde de color.</span>
+      </div>
+      <div class="spec">
+        <span class="spec-label">5 · EntityCard (cotización y trabajo)</span>
+        <article class="card ocard">
+          <div class="oc-top"><div class="oc-title"><h4>Muelles</h4><div class="oc-meta"><span class="folio">C-041126-02</span><span class="badge info">Enviada</span></div></div><div class="amount">$15,288.80</div></div>
+          <div class="oc-who"><span class="name">Oscar Méndez</span><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span>Chevrolet 350</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>Don Toño</b></span></span></div>
+          <dl class="facts"><div><dt>Enviada</dt><dd>4 nov 2026</dd></div><div><dt>Vigente hasta</dt><dd>11 nov · <span class="hint">hoy vence</span></dd></div></dl>
+          <div class="cardfoot"><div class="cf-tools"><button class="btn btn-ghost btn-icon" aria-label="Editar" title="Editar"><svg class="i"><use href="#i-pencil"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Imprimir" title="Imprimir"><svg class="i"><use href="#i-printer"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Compartir" title="Compartir"><svg class="i"><use href="#i-share"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Más acciones" title="Más acciones"><svg class="i"><use href="#i-more"/></svg></button></div><button class="btn btn-tonal cf-main"><svg class="i"><use href="#i-shield"/></svg><span>Autorizar</span></button></div>
+        </article>
+        <span class="annot">Tocar la tarjeta, fuera de los botones, abre la vista previa (la misma pieza que el último paso de crear o editar); las acciones siguen en el pie. Vale para cotizaciones, trabajos y notas. Identidad de la unidad (icono de carro): ECO + modelo; si no hay ECO, placas + modelo; si no, solo el modelo. El chofer va aparte, con icono de persona. Nada de "Sin ECO" de relleno. Primaria según estado (lógica de main): borrador → Compartir · enviada → Autorizar · aceptada → Crear orden · rechazada → Corregir · archivada → Restaurar.</span>
+      </div>
+      <div class="spec">
+        <span class="spec-label">6 · ListRow (clientes, trabajadores, usuarios)</span>
+        <div class="list">
+          <a class="lrow" href="#piezas"><span class="tx"><b>Oscar Méndez</b><span>Chevrolet 350 2005 · Sin teléfono</span></span><span class="end"><span class="v">$0.00</span><span class="s">Al corriente</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+          <a class="lrow" href="#piezas"><span class="tx"><b>Mónica Granados</b><span>Ford · 55 1234 5678</span></span><span class="end"><span class="v warn">$4,500.00</span><span class="s">Pendiente</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+        </div>
+        <span class="annot">Toda la fila abre el detalle. A la derecha va el dato que sirve para decidir (saldo, trabajos activos), no un botón.</span>
+      </div>
+      <div class="spec">
+        <span class="spec-label">7 · Section + DangerZone</span>
+        <div class="section"><div class="section-h"><div><h4>Datos del taller</h4><p>Aparecen en cotizaciones, notas y estados de cuenta.</p></div><button class="btn btn-ghost btn-sm">Editar</button></div><dl class="kv"><div><dt>Nombre corto</dt><dd>SEBASAM</dd></div><div><dt>Teléfono</dt><dd class="empty">Sin teléfono</dd></div></dl></div>
+        <div class="danger-zone"><h4>Zona de riesgo</h4><div class="dz-row"><p><b>Desactivar</b>Conserva su historial.</p><button class="btn btn-outline btn-sm">Desactivar</button></div></div>
+        <span class="annot">Cuando el dato se explica solo (teléfono, correo, dirección), no lleva etiqueta: icono más el dato, o "Sin teléfono" en gris si falta. Leer primero, editar a demanda. Lo destructivo vive aparte, al final y con contorno rojo, nunca como botón sólido en medio del flujo.</span>
+      </div>
+      <div class="spec">
+        <span class="spec-label">8 · Sheet (hoja inferior)</span>
+        <p class="muted" style="font-size:14px">Para filtrar, gestionar, editar y "Más". Sale desde abajo, con asa y fondo oscurecido, y se cierra tocando afuera. Si tiene acción, la acción va fija al pie: Cancelar a la izquierda y la primaria a la derecha. Reemplaza a los diálogos centrados con cinco botones apilados.</p>
+        <div class="anatomy" aria-label="Anatomía de una hoja o diálogo">
+          <div class="a-h"><b>Título de la hoja</b><button class="btn btn-ghost btn-icon show-hit" aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+          <div class="a-b">Contenido con scroll propio. El encabezado y el pie no se mueven.</div>
+          <div class="a-f"><button class="btn btn-outline">Secundaria</button><button class="btn btn-primary">Primaria</button></div>
+        </div>
+        <span class="annot">Regla fija para hojas, diálogos y flujos: título a la izquierda, ✕ siempre arriba a la derecha, encabezado de 52 px que no se mueve con el scroll. Acciones al pie: secundaria a la izquierda y primaria a la derecha. En los flujos de varios pasos, ← (paso anterior) va a la izquierda y ✕ sigue a la derecha.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= NAVIGATION ================= -->
+  <section class="block" id="navegacion">
+    <div class="block-head">
+      <span class="eyebrow">Paso 3 · Navegación</span>
+      <h2>Una sola barra para todos los roles</h2>
+      <p>Hoy la forma de la barra cambia según el rol: el patrón ve 6 pestañas apretadas y el SUPER_ADMIN ve 4 + "Más". La propuesta usa la misma estructura para todos: Inicio, Cotizaciones, Trabajos, Notas y "Más". El rol solo decide qué filas aparecen dentro de "Más". Para el patrón, por ejemplo, serían Clientes y Nómina; para el SUPER_ADMIN, además, Trabajadores, Herramientas y Administración. Así nadie tiene que aprender dos barras, y "Cotizaciones" entra completo.</p>
+    </div>
+    <div class="devices">
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Hoja "Más" abierta</b><span>"Más" se vuelve "Cerrar". Las opciones están agrupadas y tienen nombres completos.</span></div>
+        <div class="device open" data-device data-nav-demo data-tabbar="Trabajos">
+          <div class="scroll"><div class="ph"><div class="ph-title"><h3>Trabajos</h3><p>1 activo</p></div></div></div>
+          <div class="scrim" data-scrim></div>
+          <div class="sheet" role="dialog" aria-label="Más opciones"><div class="grab"></div><div class="sheet-h"><b>Más</b><button class="btn btn-ghost btn-icon" aria-label="Cerrar" data-more-close><svg class="i"><use href="#i-x"/></svg></button></div>
+            <div class="ngroup"><h5>Operación</h5>
+              <a class="nrow" href="#navegacion"><span class="t"><svg class="i"><use href="#i-users"/></svg></span><span class="tx"><b>Clientes</b><span>Fichas, vehículos y saldos</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+              <a class="nrow" href="#navegacion"><span class="t"><svg class="i"><use href="#i-user-cog"/></svg></span><span class="tx"><b>Trabajadores</b><span>Maestros y asignaciones</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+              <a class="nrow" href="#navegacion"><span class="t"><svg class="i"><use href="#i-cash"/></svg></span><span class="tx"><b>Nómina</b><span>Semana abierta · $17,410.50</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+            </div>
+            <div class="ngroup"><h5>Herramientas</h5>
+              <a class="nrow" href="#navegacion"><span class="t"><svg class="i"><use href="#i-history"/></svg></span><span class="tx"><b>Carga de histórico</b><span>Importar trabajos de la libreta</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+              <a class="nrow" href="#navegacion"><span class="t"><svg class="i"><use href="#i-sparkles"/></svg></span><span class="tx"><b>Asistente</b><span>Consultas rápidas</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+            </div>
+            <div class="ngroup"><h5>Administración</h5>
+              <a class="nrow" href="#navegacion"><span class="t"><svg class="i"><use href="#i-settings"/></svg></span><span class="tx"><b>Configuración</b><span>Taller, cobro y apariencia</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+              <a class="nrow" href="#navegacion"><span class="t"><svg class="i"><use href="#i-user-shield"/></svg></span><span class="tx"><b>Usuarios</b><span>Accesos y permisos</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Flujo a pantalla completa</b><span>Crear o editar cotización oculta la barra de navegación: arriba ← título ✕ y progreso. Abajo, siempre igual: a la izquierda el contexto (el paso actual o el total) y a la derecha un botón compacto con el nombre del paso que sigue ("Conceptos →").</span></div>
+        <div class="device full" data-device>
+          <div class="topbar"><button class="btn btn-ghost btn-icon" aria-label="Paso anterior" disabled><svg class="i"><use href="#i-back"/></svg></button><div class="t"><b>Nueva cotización</b><span>Paso 1 de 4 · Cliente</span></div><button class="btn btn-ghost btn-icon" aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+          <div class="progress"><i></i></div>
+          <div class="scroll">
+            <div class="field"><span class="lbl">Tipo de operación</span><div class="seg full" data-seg><button aria-pressed="true">Trabajo de taller</button><button aria-pressed="false">Venta</button></div></div>
+            <div class="field"><label for="b1">Cliente</label><label class="search" for="b1"><svg class="i"><use href="#i-search"/></svg><input id="b1" type="search" placeholder="Nombre, teléfono o placas"></label><button class="linkbtn" style="justify-self:start">+ Crear cliente nuevo</button></div>
+            <div class="field"><label for="b2">Vehículo</label><select id="b2" class="select"><option>Elige primero un cliente</option></select></div>
+            <div class="field"><label for="b3">Placas <span class="muted">(opcional)</span></label><input id="b3" class="input" placeholder="ABC-123"></div>
+          </div>
+          <div class="actionbar-b" style="align-items:center"><div class="totbar"><span>Paso 1 de 4</span><b class="nx">Cliente y unidad</b></div><button class="btn btn-primary">Conceptos<svg class="i"><use href="#i-arrow"/></svg></button></div>
+        </div>
+      </div>
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Nueva cotización · Conceptos</b><span>Lista plana por sección. Tocar un concepto lo expande para editarlo (˅) y tocarlo otra vez lo contrae a su resumen. ⋮⋮ indica que se puede mover manteniendo presionado. Prueba "+ Refacción" para ver cómo se agrega.</span></div><template data-new-row><div class="mrow open" data-acc><span class="mgrip" title="Mantén presionado para mover"><svg class="i sm"><use href="#i-grip"/></svg></span><button class="mhead" type="button" data-acc-toggle aria-expanded="true"><span class="mt"><b class="muted">Nuevo concepto</b><span class="m">TYPE</span></span><span class="mono t">$0.00</span><svg class="i sm mchev"><use href="#i-down"/></svg></button><div class="medit"><div class="chips" data-choice><button class="choice" aria-pressed="false">Mano de obra</button><button class="choice" aria-pressed="false">Refacción</button><button class="choice" aria-pressed="false">Material</button></div><div class="field"><label for="md7">Descripción</label><input id="md7" class="input" value="" placeholder="Ej. Hoja 1a"></div><div class="fields-2"><div class="field"><span class="lbl">Cantidad</span><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">1</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span></div><div class="field"><label for="mp7">Precio unitario</label><input id="mp7" class="input mono" value="" placeholder="$0.00"></div></div><div class="toggle-row"><span>Entra a nómina</span><button class="switch" role="switch" aria-checked="false" aria-label="Entra a nómina" data-switch></button></div><div class="medit-f"><button class="btn btn-ghost btn-sm"><svg class="i sm"><use href="#i-copy"/></svg>Duplicar</button><button class="btn btn-ghost btn-sm mdel"><svg class="i sm"><use href="#i-trash"/></svg>Eliminar</button><button class="btn btn-tonal btn-sm" data-acc-close>Listo</button></div></div></div></template>
+        <div class="device full" data-device>
+          <div class="topbar"><button class="btn btn-ghost btn-icon" aria-label="Paso anterior"><svg class="i"><use href="#i-back"/></svg></button><div class="t"><b>Nueva cotización</b><span>Paso 2 de 4 · Conceptos</span></div><button class="btn btn-ghost btn-icon" aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+          <div class="progress"><i style="width:50%"></i></div>
+          <div class="scroll"><div class="msec"><div class="msec-h"><span class="mgrip"><svg class="i sm"><use href="#i-grip"/></svg></span><b>Lado izquierdo</b><span class="mono">$2,000.00</span></div><div class="mlist" data-mlist><div class="mrow" data-acc><span class="mgrip" title="Mantén presionado para mover"><svg class="i sm"><use href="#i-grip"/></svg></span><button class="mhead" type="button" data-acc-toggle aria-expanded="false"><span class="mt"><b>Bajar muelle izquierda</b><span class="m">Mano de obra<span class="pay"><svg class="i sm"><use href="#i-cash"/></svg>Nómina</span></span></span><span class="mono t">$700.00</span><svg class="i sm mchev"><use href="#i-down"/></svg></button><div class="medit"><div class="chips" data-choice><button class="choice" aria-pressed="true">Mano de obra</button><button class="choice" aria-pressed="false">Refacción</button><button class="choice" aria-pressed="false">Material</button></div><div class="field"><label for="md1">Descripción</label><input id="md1" class="input" value="Bajar muelle izquierda" placeholder="Ej. Hoja 1a"></div><div class="fields-2"><div class="field"><span class="lbl">Cantidad</span><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">1</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span></div><div class="field"><label for="mp1">Precio unitario</label><input id="mp1" class="input mono" value="700.00" placeholder="$0.00"></div></div><div class="toggle-row"><span>Entra a nómina</span><button class="switch" role="switch" aria-checked="true" aria-label="Entra a nómina" data-switch></button></div><div class="medit-f"><button class="btn btn-ghost btn-sm"><svg class="i sm"><use href="#i-copy"/></svg>Duplicar</button><button class="btn btn-ghost btn-sm mdel"><svg class="i sm"><use href="#i-trash"/></svg>Eliminar</button><button class="btn btn-tonal btn-sm" data-acc-close>Listo</button></div></div></div><div class="mrow" data-acc><span class="mgrip" title="Mantén presionado para mover"><svg class="i sm"><use href="#i-grip"/></svg></span><button class="mhead" type="button" data-acc-toggle aria-expanded="false"><span class="mt"><b>Tornillo de centro</b><span class="m">Refacción</span></span><span class="mono t">$60.00</span><svg class="i sm mchev"><use href="#i-down"/></svg></button><div class="medit"><div class="chips" data-choice><button class="choice" aria-pressed="false">Mano de obra</button><button class="choice" aria-pressed="true">Refacción</button><button class="choice" aria-pressed="false">Material</button></div><div class="field"><label for="md2">Descripción</label><input id="md2" class="input" value="Tornillo de centro" placeholder="Ej. Hoja 1a"></div><div class="fields-2"><div class="field"><span class="lbl">Cantidad</span><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">1</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span></div><div class="field"><label for="mp2">Precio unitario</label><input id="mp2" class="input mono" value="60.00" placeholder="$0.00"></div></div><div class="medit-f"><button class="btn btn-ghost btn-sm"><svg class="i sm"><use href="#i-copy"/></svg>Duplicar</button><button class="btn btn-ghost btn-sm mdel"><svg class="i sm"><use href="#i-trash"/></svg>Eliminar</button><button class="btn btn-tonal btn-sm" data-acc-close>Listo</button></div></div></div><div class="mrow" data-acc><span class="mgrip" title="Mantén presionado para mover"><svg class="i sm"><use href="#i-grip"/></svg></span><button class="mhead" type="button" data-acc-toggle aria-expanded="false"><span class="mt"><b>Hoja 1a</b><span class="m">Refacción</span></span><span class="mono t">$1,000.00</span><svg class="i sm mchev"><use href="#i-down"/></svg></button><div class="medit"><div class="chips" data-choice><button class="choice" aria-pressed="false">Mano de obra</button><button class="choice" aria-pressed="true">Refacción</button><button class="choice" aria-pressed="false">Material</button></div><div class="field"><label for="md3">Descripción</label><input id="md3" class="input" value="Hoja 1a" placeholder="Ej. Hoja 1a"></div><div class="fields-2"><div class="field"><span class="lbl">Cantidad</span><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">1</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span></div><div class="field"><label for="mp3">Precio unitario</label><input id="mp3" class="input mono" value="1,000.00" placeholder="$0.00"></div></div><div class="medit-f"><button class="btn btn-ghost btn-sm"><svg class="i sm"><use href="#i-copy"/></svg>Duplicar</button><button class="btn btn-ghost btn-sm mdel"><svg class="i sm"><use href="#i-trash"/></svg>Eliminar</button><button class="btn btn-tonal btn-sm" data-acc-close>Listo</button></div></div></div><div class="mrow open" data-acc><span class="mgrip" title="Mantén presionado para mover"><svg class="i sm"><use href="#i-grip"/></svg></span><button class="mhead" type="button" data-acc-toggle aria-expanded="true"><span class="mt"><b>Gomas de columpio</b><span class="m">Refacción · 4 × $60.00</span></span><span class="mono t">$240.00</span><svg class="i sm mchev"><use href="#i-down"/></svg></button><div class="medit"><div class="chips" data-choice><button class="choice" aria-pressed="false">Mano de obra</button><button class="choice" aria-pressed="true">Refacción</button><button class="choice" aria-pressed="false">Material</button></div><div class="field"><label for="md4">Descripción</label><input id="md4" class="input" value="Gomas de columpio" placeholder="Ej. Hoja 1a"></div><div class="fields-2"><div class="field"><span class="lbl">Cantidad</span><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">4</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span></div><div class="field"><label for="mp4">Precio unitario</label><input id="mp4" class="input mono" value="60.00" placeholder="$0.00"></div></div><div class="medit-f"><button class="btn btn-ghost btn-sm"><svg class="i sm"><use href="#i-copy"/></svg>Duplicar</button><button class="btn btn-ghost btn-sm mdel"><svg class="i sm"><use href="#i-trash"/></svg>Eliminar</button><button class="btn btn-tonal btn-sm" data-acc-close>Listo</button></div></div></div></div><div class="madd"><button class="btn btn-ghost btn-sm" data-add="Mano de obra">+ Mano de obra</button><button class="btn btn-ghost btn-sm" data-add="Refacción">+ Refacción</button><button class="btn btn-ghost btn-sm" data-add="Material">+ Material</button></div></div><div class="msec"><div class="msec-h"><span class="mgrip"><svg class="i sm"><use href="#i-grip"/></svg></span><b>Lado derecho</b><span class="mono">$1,350.00</span></div><div class="mlist" data-mlist><div class="mrow" data-acc><span class="mgrip" title="Mantén presionado para mover"><svg class="i sm"><use href="#i-grip"/></svg></span><button class="mhead" type="button" data-acc-toggle aria-expanded="false"><span class="mt"><b>Bajar muelle derecha</b><span class="m">Mano de obra<span class="pay"><svg class="i sm"><use href="#i-cash"/></svg>Nómina</span></span></span><span class="mono t">$700.00</span><svg class="i sm mchev"><use href="#i-down"/></svg></button><div class="medit"><div class="chips" data-choice><button class="choice" aria-pressed="true">Mano de obra</button><button class="choice" aria-pressed="false">Refacción</button><button class="choice" aria-pressed="false">Material</button></div><div class="field"><label for="md5">Descripción</label><input id="md5" class="input" value="Bajar muelle derecha" placeholder="Ej. Hoja 1a"></div><div class="fields-2"><div class="field"><span class="lbl">Cantidad</span><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">1</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span></div><div class="field"><label for="mp5">Precio unitario</label><input id="mp5" class="input mono" value="700.00" placeholder="$0.00"></div></div><div class="toggle-row"><span>Entra a nómina</span><button class="switch" role="switch" aria-checked="true" aria-label="Entra a nómina" data-switch></button></div><div class="medit-f"><button class="btn btn-ghost btn-sm"><svg class="i sm"><use href="#i-copy"/></svg>Duplicar</button><button class="btn btn-ghost btn-sm mdel"><svg class="i sm"><use href="#i-trash"/></svg>Eliminar</button><button class="btn btn-tonal btn-sm" data-acc-close>Listo</button></div></div></div><div class="mrow" data-acc><span class="mgrip" title="Mantén presionado para mover"><svg class="i sm"><use href="#i-grip"/></svg></span><button class="mhead" type="button" data-acc-toggle aria-expanded="false"><span class="mt"><b>Hoja 2a</b><span class="m">Refacción</span></span><span class="mono t">$650.00</span><svg class="i sm mchev"><use href="#i-down"/></svg></button><div class="medit"><div class="chips" data-choice><button class="choice" aria-pressed="false">Mano de obra</button><button class="choice" aria-pressed="true">Refacción</button><button class="choice" aria-pressed="false">Material</button></div><div class="field"><label for="md6">Descripción</label><input id="md6" class="input" value="Hoja 2a" placeholder="Ej. Hoja 1a"></div><div class="fields-2"><div class="field"><span class="lbl">Cantidad</span><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">1</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span></div><div class="field"><label for="mp6">Precio unitario</label><input id="mp6" class="input mono" value="650.00" placeholder="$0.00"></div></div><div class="medit-f"><button class="btn btn-ghost btn-sm"><svg class="i sm"><use href="#i-copy"/></svg>Duplicar</button><button class="btn btn-ghost btn-sm mdel"><svg class="i sm"><use href="#i-trash"/></svg>Eliminar</button><button class="btn btn-tonal btn-sm" data-acc-close>Listo</button></div></div></div></div><div class="madd"><button class="btn btn-ghost btn-sm" data-add="Mano de obra">+ Mano de obra</button><button class="btn btn-ghost btn-sm" data-add="Refacción">+ Refacción</button><button class="btn btn-ghost btn-sm" data-add="Material">+ Material</button></div></div><button class="btn btn-outline btn-block"><svg class="i"><use href="#i-plus"/></svg>Agregar sección</button>
+          </div>
+          <div class="actionbar-b" style="align-items:center"><div class="totbar"><span>Total con IVA</span><b class="mono">$3,886.00</b></div><button class="btn btn-primary">Notas<svg class="i"><use href="#i-arrow"/></svg></button></div>
+        </div>
+      </div>
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Nueva cotización · Notas</b><span>Título, fechas y descripción en un solo formulario corto. La fecha de vencimiento de pago es opcional y lo dice en su etiqueta.</span></div>
+        <div class="device full" data-device>
+          <div class="topbar"><button class="btn btn-ghost btn-icon" aria-label="Paso anterior"><svg class="i"><use href="#i-back"/></svg></button><div class="t"><b>Nueva cotización</b><span>Paso 3 de 4 · Notas</span></div><button class="btn btn-ghost btn-icon" aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div><div class="progress"><i style="width:75%"></i></div>
+          <div class="scroll">
+            <div class="field"><label for="s3t">Título</label><input id="s3t" class="input" value="Refuerzo y hoja rota"><span class="help">Aparece como "Servicio" en el documento.</span></div>
+            <div class="fields-2 two-fixed"><div class="field"><label for="s3d">Fecha de cotización</label><input id="s3d" class="input" value="11 nov 2026"></div><div class="field"><label for="s3v">Vence el pago <span class="muted">(opcional)</span></label><input id="s3v" class="input" placeholder="Sin fecha"></div></div>
+            <div class="field"><label for="s3x">Descripción</label><textarea id="s3x" class="input textarea" rows="5" placeholder="Detalles adicionales de la cotización…">- Cambio de hojas en ambos lados.
+- Se revisan bujes en la siguiente visita.
+- El precio de refacciones puede variar.</textarea><span class="help">Cada renglón que empieza con "-" se muestra como lista en el documento.</span></div>
+            <div class="section"><div class="toggle-row"><span><b style="display:block">Cotización administrativa</b><span class="muted" style="font-size:12.5px">Igual que el interruptor actual del formulario.</span></span><button class="switch" role="switch" aria-checked="false" aria-label="Cotización administrativa" data-switch></button></div></div>
+          </div>
+          <div class="actionbar-b" style="align-items:center"><div class="totbar"><span>Total con IVA</span><b class="mono">$3,886.00</b></div><button class="btn btn-primary">Vista previa<svg class="i"><use href="#i-arrow"/></svg></button></div>
+        </div>
+      </div>
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Nueva cotización · Vista previa</b><span>Es la misma pieza de vista previa que se abre al tocar cualquier tarjeta de cotización, trabajo o nota: el documento tal como lo recibe el cliente. En el flujo solo se suman los atajos para regresar a un paso y el botón para crear. Toda la pantalla hace scroll como una sola página; la barra superior y el botón de abajo quedan fijos. El documento nunca tiene scroll propio.</span></div>
+        <div class="device full" data-device>
+          <div class="topbar"><button class="btn btn-ghost btn-icon" aria-label="Paso anterior"><svg class="i"><use href="#i-back"/></svg></button><div class="t"><b>Nueva cotización</b><span>Paso 4 de 4 · Revisar</span></div><button class="btn btn-ghost btn-icon" aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div><div class="progress"><i style="width:100%"></i></div>
+          <div class="scroll">
+            <div class="chips jump"><button class="choice"><svg class="i sm"><use href="#i-pencil"/></svg>Cliente</button><button class="choice"><svg class="i sm"><use href="#i-pencil"/></svg>Conceptos</button><button class="choice"><svg class="i sm"><use href="#i-pencil"/></svg>Notas</button></div>
+            <div class="qdoc"><div class="qd-b"><div class="qd-meta"><span class="badge">Borrador</span><span class="muted">Cotización</span></div><div class="qd-grid"><div><span class="qd-l">Cliente</span><b>Mónica Granados</b><span class="muted">55 1234 5678</span></div><div><span class="qd-l">Unidad</span><b>ECO 42 · Ford</b><span class="muted">Chofer: El Mariachi</span></div></div><div class="qd-svc"><span>Servicio</span><b>Refuerzo y hoja rota</b></div><div class="qd-tw"><table class="qd-t"><thead><tr><th>Cant.</th><th>Concepto</th><th class="r">Importe</th></tr></thead><tbody><tr class="qd-sec"><td colspan="2">Lado izquierdo</td><td class="mono r">$2,000.00</td></tr><tr><td class="mono">1</td><td>Bajar muelle izquierda</td><td class="mono r">$700.00</td></tr><tr><td class="mono">1</td><td>Tornillo de centro</td><td class="mono r">$60.00</td></tr><tr><td class="mono">1</td><td>Hoja 1a</td><td class="mono r">$1,000.00</td></tr><tr><td class="mono">4</td><td>Gomas de columpio</td><td class="mono r">$240.00</td></tr><tr class="qd-sec"><td colspan="2">Lado derecho</td><td class="mono r">$1,350.00</td></tr><tr><td class="mono">1</td><td>Bajar muelle derecha</td><td class="mono r">$700.00</td></tr><tr><td class="mono">1</td><td>Hoja 2a</td><td class="mono r">$650.00</td></tr></tbody></table></div><div class="qd-totbox"><p class="qd-words">Tres mil ochocientos ochenta y seis pesos 00/100 M.N.</p><dl class="qd-tot"><div><dt>Subtotal</dt><dd class="mono">$3,350.00</dd></div><div class="tax"><dt>IVA (16%)</dt><dd class="mono">$536.00</dd></div><div class="tt"><dt>Total</dt><dd class="mono">$3,886.00</dd></div></dl></div><div class="qd-notes"><span class="qd-l">Notas</span><ul class="qd-ul"><li>Cambio de hojas en ambos lados.</li><li>Se revisan bujes en la siguiente visita.</li><li>El precio de refacciones puede variar si el proveedor cambia la lista antes de autorizar.</li></ul></div><div class="qd-notes"><span class="qd-l">Formas de pago</span><p>Efectivo, transferencia, tarjeta de débito o de crédito. Para transferencia, al autorizar se comparte el enlace con las cuentas del taller.</p></div><p class="qd-foot">Cotizada el 11 nov 2026 · Vigente hasta el 18 nov 2026</p></div></div>
+          </div>
+          <div class="actionbar-b" style="align-items:center"><div class="totbar"><span>Paso 4 de 4</span><b class="nx">Vista previa</b></div><button class="btn btn-primary"><svg class="i"><use href="#i-check"/></svg>Crear cotización</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= OPERATION SCREENS ================= -->
+  <section class="block" id="operacion">
+    <div class="block-head">
+      <span class="eyebrow">Paso 4 · Pantallas de operación</span>
+      <h2>Inicio, Cotizaciones, Trabajos, Notas y Nómina</h2>
+    </div>
+    <div class="devices">
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Inicio</b><span>Primero la operación: el siguiente trabajo aprobado, listo para asignar. El seguimiento de cotizaciones queda abajo porque muchas son solo consultas.</span></div>
+        <div class="device" data-device data-tabbar="Inicio">
+          <div class="scroll">
+            <div class="ph"><div class="ph-title"><h3>Buen día</h3><p>Martes 11 de noviembre · 17 pendientes</p></div><div class="ph-actions"><button class="btn btn-primary btn-icon" aria-label="Nueva cotización"><svg class="i"><use href="#i-plus"/></svg></button></div></div>
+            <div class="settings-group"><h5 class="feat-eb"><svg class="i sm"><use href="#i-wrench"/></svg>Siguiente trabajo</h5><article class="card ocard featured"><div class="oc-top"><div class="oc-title"><h4>Refuerzo y hoja rota</h4><div class="oc-meta"><span class="folio">C-041126-01</span><span class="badge ok">Aceptada</span></div></div><div class="amount">$10,022.40</div></div><div class="oc-who"><span class="name">Mónica Granados</span><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 42 · Ford</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>El Mariachi</b></span></span></div><dl class="facts"><div><dt>Aceptada</dt><dd>Ayer, 10 nov</dd></div><div><dt>Maestro</dt><dd><span class="hint">Sin asignar</span></dd></div></dl><div class="cardfoot"><div class="cf-tools"><button class="btn btn-ghost btn-icon" aria-label="Editar" title="Editar"><svg class="i"><use href="#i-pencil"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Imprimir" title="Imprimir"><svg class="i"><use href="#i-printer"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Compartir" title="Compartir"><svg class="i"><use href="#i-share"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Más acciones" title="Más acciones"><svg class="i"><use href="#i-more"/></svg></button></div><button class="btn btn-tonal cf-main"><svg class="i"><use href="#i-wrench"/></svg><span>Asignar</span></button></div></article></div><div class="settings-group"><h5>Para hoy · operación</h5><div class="list"><a class="todo hot" href="#operacion"><svg class="i ic"><use href="#i-wrench"/></svg><span class="tx"><b>Asignar trabajos aprobados</b><span>1 más esperando maestro</span></span><span class="n">1</span><svg class="i sm go"><use href="#i-right"/></svg></a><a class="todo" href="#operacion"><svg class="i ic"><use href="#i-clip"/></svg><span class="tx"><b>Completar trabajos activos</b><span>En proceso desde el 9 nov</span></span><span class="n">1</span><svg class="i sm go"><use href="#i-right"/></svg></a></div></div><div class="settings-group"><h5>Seguimiento de cotizaciones</h5><div class="list"><a class="todo" href="#operacion"><svg class="i ic"><use href="#i-send"/></svg><span class="tx"><b>Dar seguimiento a enviadas</b><span>Sin respuesta en 7 días</span></span><span class="n">1</span><svg class="i sm go"><use href="#i-right"/></svg></a><a class="todo" href="#operacion"><svg class="i ic"><use href="#i-doc"/></svg><span class="tx"><b>Enviar cotizaciones en borrador</b><span>La más antigua tiene 6 días</span></span><span class="n">13</span><svg class="i sm go"><use href="#i-right"/></svg></a></div></div>
+            <div class="stats two-col"><div class="stat"><span class="l">Por cobrar</span><span class="v">$4,500.00</span></div><div class="stat"><span class="l">Nómina de la semana</span><span class="v">$17,410.50</span></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Cotizaciones</b><span>Pestañas de estado, una búsqueda y tarjetas con un solo pie.</span></div>
+        <div class="device" data-device data-tabbar="Cotizaciones">
+          <div class="scroll">
+            <div class="ph"><div class="ph-title"><h3>Cotizaciones</h3></div><div class="ph-actions"><button class="btn btn-ghost btn-icon" aria-label="Archivo y papelera"><svg class="i"><use href="#i-history"/></svg></button><button class="btn btn-primary"><svg class="i"><use href="#i-plus"/></svg>Nueva</button></div></div>
+            <div class="seg" data-seg><button aria-pressed="true">Todas<span class="n">24</span></button><button aria-pressed="false">Borrador<span class="n">13</span></button><button aria-pressed="false">Enviadas<span class="n">1</span></button><button aria-pressed="false">Aceptadas<span class="n">6</span></button><button aria-pressed="false">Declinadas<span class="n">2</span></button></div>
+            <div class="ft-row"><label class="search" for="q3"><svg class="i"><use href="#i-search"/></svg><input id="q3" type="search" placeholder="Folio, cliente, chofer o ECO"></label><button class="btn btn-outline btn-icon" aria-label="Filtros"><svg class="i"><use href="#i-filter"/></svg></button></div>
+            <article class="card ocard">
+              <div class="oc-top"><div class="oc-title"><h4>Presupuesto</h4><div class="oc-meta"><span class="folio">C-101126-02</span><span class="badge">Borrador</span></div></div><div class="amount">$10,788.00</div></div>
+              <div class="oc-who"><span class="name">Lx Automotriz</span><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 118 · Kenworth T800</span></span></span></div>
+              <dl class="facts"><div><dt>Cotizada</dt><dd>10 nov 2026</dd></div><div><dt>Vigente hasta</dt><dd>17 nov · <span class="hint">6 días</span></dd></div></dl>
+              <div class="cardfoot"><div class="cf-tools"><button class="btn btn-ghost btn-icon" aria-label="Editar"><svg class="i"><use href="#i-pencil"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Imprimir"><svg class="i"><use href="#i-printer"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Más acciones"><svg class="i"><use href="#i-more"/></svg></button></div><button class="btn btn-tonal cf-main"><svg class="i"><use href="#i-share"/></svg><span>Compartir</span></button></div>
+            </article>
+            <article class="card ocard">
+              <div class="oc-top"><div class="oc-title"><h4>Refuerzo y hoja rota</h4><div class="oc-meta"><span class="folio">C-041126-01</span><span class="badge ok">Aceptada</span></div></div><div class="amount">$10,022.40</div></div>
+              <div class="oc-who"><span class="name">Mónica Granados</span><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 42 · Ford</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>El Mariachi</b></span></span></div>
+              <div class="cardfoot"><div class="cf-tools"><button class="btn btn-ghost btn-icon" aria-label="Editar"><svg class="i"><use href="#i-pencil"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Imprimir"><svg class="i"><use href="#i-printer"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Compartir"><svg class="i"><use href="#i-share"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Más acciones"><svg class="i"><use href="#i-more"/></svg></button></div><button class="btn btn-tonal cf-main"><svg class="i"><use href="#i-wrench"/></svg><span>Crear orden</span></button></div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Cotizaciones · filtros</b><span>De 13 campos a una búsqueda y 3 filtros. Lo que repetía las pestañas se elimina.</span></div>
+        <div class="device open" data-device data-sheet-demo data-tabbar="Cotizaciones">
+          <div class="scroll"><div class="ph"><div class="ph-title"><h3>Cotizaciones</h3></div></div><div class="card" style="height:200px"></div><div class="card" style="height:200px"></div></div>
+          <div class="scrim" data-scrim></div>
+          <div class="sheet" role="dialog" aria-label="Filtros">
+            <div class="grab"></div>
+            <div class="sheet-h"><b>Filtros</b><button class="btn btn-ghost btn-icon" aria-label="Cerrar" data-close><svg class="i"><use href="#i-x"/></svg></button></div>
+            <div class="fgroup"><b>Fecha de cotización</b><div class="chips" data-choice><button class="choice" aria-pressed="false">Hoy</button><button class="choice" aria-pressed="false">Esta semana</button><button class="choice" aria-pressed="true">Este mes</button><button class="choice" aria-pressed="false">Elegir fechas…</button></div></div>
+            <div class="fgroup"><b>Orden de trabajo</b><div class="seg full" data-seg><button aria-pressed="false">Todas</button><button aria-pressed="false">Con orden</button><button aria-pressed="true">Sin orden</button></div></div>
+            <div class="fgroup"><b>Tipo de operación</b><div class="seg full" data-seg><button aria-pressed="true">Todas</button><button aria-pressed="false">Taller</button><button aria-pressed="false">Venta</button></div></div>
+            <div class="sheet-foot"><button class="btn btn-outline">Limpiar</button><button class="btn btn-primary" data-close>Ver 9 cotizaciones</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Trabajos</b><span>La misma tarjeta y el mismo pie, con la unidad y el chofer. Sin tarjeta dentro de tarjeta.</span></div>
+        <div class="device" data-device data-tabbar="Trabajos">
+          <div class="scroll">
+            <div class="ph"><div class="ph-title"><h3>Trabajos</h3><p>1 activo · 9 completados</p></div><div class="ph-actions"><button class="btn btn-primary"><svg class="i"><use href="#i-plus"/></svg>Agregar</button></div></div>
+            <div class="seg" data-seg><button aria-pressed="true">Activos<span class="n">1</span></button><button aria-pressed="false">En espera<span class="n">0</span></button><button aria-pressed="false">Completados<span class="n">9</span></button></div>
+            <div class="ft-row"><label class="search" for="q4"><svg class="i"><use href="#i-search"/></svg><input id="q4" type="search" placeholder="Folio, cliente o maestro"></label><button class="btn btn-outline btn-icon" aria-label="Filtros"><svg class="i"><use href="#i-filter"/></svg></button></div>
+            <article class="card ocard">
+              <div class="oc-top"><div class="oc-title"><h4>Lx Automotriz</h4><div class="oc-meta"><span class="folio">T-0926-02</span><span class="badge info">En proceso</span></div></div><div class="amount">$10,788.00<small>Presupuesto</small></div></div>
+              <span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 118 · Kenworth T800</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>Juan Pérez</b></span></span><div class="assign"><span>Asignado a</span><b>Alfadir Amaya</b></div>
+              <div class="cardfoot"><div class="cf-tools"><button class="btn btn-ghost btn-icon" aria-label="Editar"><svg class="i"><use href="#i-pencil"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Imprimir"><svg class="i"><use href="#i-printer"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Compartir"><svg class="i"><use href="#i-share"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Más acciones"><svg class="i"><use href="#i-more"/></svg></button></div><button class="btn btn-tonal cf-main" data-open-sheet="gestionar"><svg class="i"><use href="#i-clip"/></svg><span>Gestionar</span></button></div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Trabajos · gestionar</b><span>Antes: diálogo con 5 botones apilados y "Cancelar orden" rojo en medio. Ahora: estado, una primaria y lo riesgoso al final.</span></div>
+        <div class="device open" data-device data-sheet-demo data-tabbar="Trabajos">
+          <div class="scroll"><div class="ph"><div class="ph-title"><h3>Trabajos</h3></div></div><div class="card" style="height:220px"></div></div>
+          <div class="scrim" data-scrim></div>
+          <div class="sheet" role="dialog" aria-label="Gestionar trabajo">
+            <div class="grab"></div>
+            <div class="sheet-h"><div style="display:grid;gap:4px"><b>T-0926-02 · Lx Automotriz</b><span class="badge info" style="justify-self:start">En proceso</span></div><button class="btn btn-ghost btn-icon" aria-label="Cerrar" data-close><svg class="i"><use href="#i-x"/></svg></button></div>
+            <div class="list">
+              <div class="lrow"><span class="tx"><b>Asignado a</b><span>Alfadir Amaya · Maestro</span></span><button class="btn btn-ghost btn-sm">Cambiar</button><span></span></div>
+              <div class="lrow"><span class="tx"><b>Avance de mano de obra</b><span>Sin registros todavía</span></span><button class="btn btn-ghost btn-sm">Registrar</button><span></span></div>
+            </div>
+            <div class="sheet-foot" style="border-top:0;margin-top:4px;padding-top:4px"><button class="btn btn-primary btn-lg" data-close><svg class="i"><use href="#i-check"/></svg>Finalizar trabajo</button></div>
+            <div class="danger-zone" style="margin-top:12px"><div class="dz-row"><p><b>Cancelar orden</b>Regresa la cotización. Solo si no hay pagos.</p><button class="btn btn-danger-outline btn-sm">Cancelar orden</button></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Notas</b><span>La misma tarjeta, con ECO, placas y chofer. La acción primaria es registrar el pago.</span></div>
+        <div class="device" data-device data-tabbar="Notas">
+          <div class="scroll">
+            <div class="ph"><div class="ph-title"><h3>Notas</h3><p>Trabajo y venta</p></div><div class="ph-actions"><button class="btn btn-primary"><svg class="i"><use href="#i-plus"/></svg>Nueva</button></div></div>
+            <div class="pn" data-pn data-modes="week,month">
+              <div class="pn-step"><button data-prev aria-label="Periodo anterior"><svg class="i"><use href="#i-left"/></svg></button><button data-next aria-label="Periodo siguiente"><svg class="i"><use href="#i-right"/></svg></button></div>
+              <div class="pn-label"><strong data-label>—</strong><span class="badge info" data-current>En curso</span></div>
+            </div>
+            <div class="stats two-col"><div class="stat"><span class="l">Por cobrar<span class="tip"><button aria-label="Qué incluye"><svg class="i sm"><use href="#i-info"/></svg></button><span class="bubble" role="tooltip">Saldo de las notas del periodo y filtros elegidos.</span></span></span><span class="v warn">$4,500.00</span></div><div class="stat"><span class="l">Cobrado</span><span class="v">$0.00</span></div></div>
+            <div class="ft-row"><div class="seg" data-seg><button aria-pressed="true">Todas</button><button aria-pressed="false">Pendientes</button><button aria-pressed="false">Pagadas</button></div><button class="btn btn-outline btn-icon" aria-label="Filtros"><svg class="i"><use href="#i-filter"/></svg></button></div>
+            <article class="card ocard"><div class="oc-top"><div class="oc-title"><h4>Refuerzo y hoja rota</h4><div class="oc-meta"><span class="folio">N-1126-03</span><span class="badge warn">Parcial</span></div></div><div class="amount">$10,022.40<small>Saldo $4,500.00</small></div></div><div class="oc-who"><span class="name">Mónica Granados</span><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 42 · Ford</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>El Mariachi</b></span></span></div><dl class="facts"><div><dt>Finalizada</dt><dd>8 nov 2026</dd></div><div><dt>Vence</dt><dd>14 nov · <span class="hint">3 días</span></dd></div></dl><div class="cardfoot"><div class="cf-tools"><button class="btn btn-ghost btn-icon" aria-label="Imprimir"><svg class="i"><use href="#i-printer"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Compartir"><svg class="i"><use href="#i-share"/></svg></button><button class="btn btn-ghost btn-icon" aria-label="Más acciones"><svg class="i"><use href="#i-more"/></svg></button></div><button class="btn btn-tonal cf-main"><svg class="i"><use href="#i-cash"/></svg><span>Registrar pago</span></button></div></article>
+          </div>
+        </div>
+      </div>
+
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Nómina</b><span>Estado de la semana visible, impresión en ⋯ y sin selector de una sola opción.</span></div>
+        <div class="device" data-device data-tabbar="Más">
+          <div class="scroll">
+            <div class="ph"><div class="ph-title"><h3>Nómina</h3><p>Mano de obra a liquidar</p></div><div class="ph-actions"><button class="btn btn-outline btn-icon" aria-label="Imprimir"><svg class="i"><use href="#i-printer"/></svg></button></div></div>
+            <div class="pn" data-pn data-modes="week,month">
+              <div class="pn-step"><button data-prev aria-label="Periodo anterior"><svg class="i"><use href="#i-left"/></svg></button><button data-next aria-label="Periodo siguiente"><svg class="i"><use href="#i-right"/></svg></button></div>
+              <div class="pn-label"><strong data-label>—</strong><span class="badge ok">Abierta</span></div>
+            </div>
+            <div class="stats two-col">
+              <div class="stat key"><span class="l">Total a pagar</span><span class="v">$17,410.50</span></div>
+              <div class="stat"><span class="l">Mano de obra</span><span class="v">$34,856.00</span></div>
+            </div>
+            <div class="list">
+              <a class="lrow" href="#operacion"><span class="tx"><b>Alfadir Amaya</b><span>4 trabajos · comisión</span></span><span class="end"><span class="v">$8,120.00</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+              <a class="lrow" href="#operacion"><span class="tx"><b>Refugio Briones</b><span>3 trabajos · comisión</span></span><span class="end"><span class="v">$5,790.50</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+              <a class="lrow" href="#operacion"><span class="tx"><b>Roberto Vital</b><span>2 trabajos · sueldo fijo</span></span><span class="end"><span class="v">$3,500.00</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+            </div>
+            <button class="btn btn-outline btn-block"><svg class="i"><use href="#i-receipt"/></svg>Hoja de firmas</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ================= DESKTOP ================= -->
+  <section class="block" id="escritorio">
+    <div class="block-head">
+      <span class="eyebrow">Paso 4 · Escritorio</span>
+      <h2>La hoja se vuelve panel lateral</h2>
+      <p>Es la misma pieza con otra forma según el ancho. En escritorio la hoja no tapa la pantalla: se abre como panel a la derecha y la lista sigue visible, así puedes pasar de un trabajo a otro sin cerrar nada.</p>
+    </div>
+    <span class="res-tag">Simulado a 1366 × 657 (pantalla de 1366 × 768 del taller, menos la barra del navegador)</span>
+    <div class="desk-scroll">
+      <div class="desk">
+        <aside class="desk-side"><div class="rail"><button class="brand" type="button" data-rail aria-label="Expandir menú" title="Expandir menú"><span class="logo"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAQKADAAQAAAABAAAAQAAAAABGUUKwAAAEq0lEQVR4Ae2YW4hVVRjH51SWN8xqrBlvoCmSeQ9Fwhfxgvjuiz4MSg8VMfrgS48FglBIODAkiGY09FJqg3h9UAQfR1EjcQhRtLGZFLPMzLTT7zfsxWx1nLPHmcOcy/rgx9p7nX3WXt9//b+1zkxNPp/P1VRpVHPuVbrkMe2oQFQgKhAV6FHAY/C5ntvqvKp6Aapz2WPWUYGoQFQgKhAViApUjAL8pB32rMmU7b/DSPo1kl4P8+EF+BdOw+5cLneLtnKD5OfBEfgIJsLYpPX+EMyq2OxJbhwcBkWYAtvgG/gC3oR34CC8mkWEcvxjSNvvBW3+JZyAj+EYNIP9B6ABKitY1Ry0QC18DqvTGXK/DLZDHeyBgntcuTngRRI2qbswDtogHWe40fp+bm5ujn1GuQlwn2z+g1FwA2ZDOt7m5jYolM89gNIObDocMp/jPNsIH8Ak+A4Wg6fAEnBznAlrwX2hz+CZgiXS5wAD/ZAJLIX98D3MKzQez4yEOdAGiqAAN8HEd8FcUBiPwvGFxvPzIVWASbYwh0/gdVgPm+EVqIU3oD7Bz18GrX0PfoercBZ+BMvBXJZDI2zlx9Bx2oKRSQAmOoKRZoDPP0zI04phv4SN53mutfVLMDxhJK21GzDRBbASxoLH2EX4B+7ATeiEa/BLQieJWds1zEkx3AMWwxxwvA5o5pl22kxRcJdMRllB6+r8BCZnopIW0IkpjqK4+Xhta0LizvwX3AZX72+YAgqlSG1M/D3aRyIRv47O6WDJTKP1e6PhN9AFO+Ai33f8fkVWAXzZ17xgZ79Gf8rDJKF4WnotKKJieXZvoNX6HnGuqM4ztL1ueBcOw2dwifnYP6DIKsB93rKOCVqLTtbVDiVgAmJSjueKhtYS8F60rP3hnbYmq0scS5Etj5/hJPwKXST5J2138H5XupU+nTgoESZTaDATvA4XwO9YBvaFMIFw7gbb+9eZ1tfqEkqg+5okyCe/i37Hkwv0NdHnquuOepjF/QRamQRhDlwOTmQVwITPww9M0kQfCSaZdoDPOq6rHjZAkzIhV9jkxvAdbW5iOkqHLaTv2+R+Oq37xDnQCafg8mCuPON1R1YBnGADLGKSWv3x0AGGQngtoVR0hG6wXnWBO/wf4NFln4I6psfZ+yR5j3ds4fog1yZe1MgqgLX8FTSBk33C/kw2iMDH2YJEPQJnQi3Ugbv8VNq3YBsUPdKJPPVlTGoNHzrZVggr7PN+X7T9sKRVLK9t0yVgGXhv639zdIOJuyd4fOkIz/4ucKO7Rlv0yOoAbWq9zoXeHBAsr9XFknEDvAVhA9T67ug+uxU2gQnnSdZyGZLIKoBH2F4murO/s8Q9OiT9K3AV9+2M1dnfsYrxfFYBXM2NJLOI9vGyCWWgM8RysM9rYzJcB52gO9zdP4WSiKwCWNNHYTeExEICWtoS0cZhxw+lYH8LNLLiHbQlFbozqwA+5y+1Mb1koCB+HjZCyyVsfgu5vgQ6oOSCRcn2DwGU8lj6EHrbrHSApB3gJihXYB8v8jpGVCAqEBWICkQFogJRgahAVCAqEBWICkQFogJRgahAVCAqUAIKJP+3L4GZDM0U/gcLpvif04MsswAAAABJRU5ErkJggg==" alt="SEBASAM"></span><span class="lbl-t">SEBASAM</span><svg class="i sm brand-chev"><use href="#i-left"/></svg></button><a class="dnav" href="#escritorio" title="Inicio"><svg class="i"><use href="#i-home"/></svg><span class="lbl-t">Inicio</span></a><a class="dnav" href="#escritorio" title="Cotizaciones"><svg class="i"><use href="#i-doc"/></svg><span class="lbl-t">Cotizaciones</span></a><a class="dnav on" href="#escritorio" title="Trabajos"><svg class="i"><use href="#i-truck"/></svg><span class="lbl-t">Trabajos</span></a><a class="dnav" href="#escritorio" title="Notas"><svg class="i"><use href="#i-doc-check"/></svg><span class="lbl-t">Notas</span></a><a class="dnav" href="#escritorio" title="Clientes"><svg class="i"><use href="#i-users"/></svg><span class="lbl-t">Clientes</span></a><a class="dnav" href="#escritorio" title="Nómina"><svg class="i"><use href="#i-cash"/></svg><span class="lbl-t">Nómina</span></a></div></aside>
+        <div class="desk-main">
+          <div class="ph"><div class="ph-title"><h3>Trabajos</h3><p>3 activos · 9 completados</p></div><div class="ph-actions"><button class="btn btn-primary"><svg class="i"><use href="#i-plus"/></svg>Agregar trabajo</button></div></div>
+          <div class="ft-row"><div class="seg" data-seg><button aria-pressed="true">Activos<span class="n">3</span></button><button aria-pressed="false">En espera<span class="n">0</span></button><button aria-pressed="false">Completados<span class="n">9</span></button></div><label class="search" for="dq"><svg class="i"><use href="#i-search"/></svg><input id="dq" type="search" placeholder="Folio, cliente, chofer o ECO"></label></div>
+          <div class="desk-cards">
+            <article class="card ocard sel"><div class="oc-top"><div class="oc-title"><h4>Lx Automotriz</h4><div class="oc-meta"><span class="folio">T-0926-02</span><span class="badge info">En proceso</span></div></div><div class="amount">$10,788.00<small>Presupuesto</small></div></div><div class="oc-who"><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 118 · Kenworth T800</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>Juan Pérez</b></span></span></div><div class="assign"><span>Asignado a</span><b>Alfadir Amaya</b></div></article>
+            <article class="card ocard"><div class="oc-top"><div class="oc-title"><h4>Oscar Méndez</h4><div class="oc-meta"><span class="folio">T-1126-01</span><span class="badge info">En proceso</span></div></div><div class="amount">$15,288.80<small>Muelles</small></div></div><div class="oc-who"><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span>Chevrolet 350</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>Don Toño</b></span></span></div><div class="assign"><span>Asignado a</span><b>Alfadir Amaya</b></div></article>
+            <article class="card ocard"><div class="oc-top"><div class="oc-title"><h4>Mónica Granados</h4><div class="oc-meta"><span class="folio">T-1126-02</span><span class="badge">En espera</span></div></div><div class="amount">$10,022.40<small>Refuerzo</small></div></div><div class="oc-who"><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 42 · Ford</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>El Mariachi</b></span></span></div><div class="assign"><span>Asignado a</span><b>Alfadir Amaya</b></div></article>
+          </div>
+        </div>
+        <aside class="desk-panel" aria-label="Gestionar trabajo">
+          <div class="sheet-h"><div style="display:grid;gap:4px"><b>T-0926-02 · Lx Automotriz</b><span class="badge info" style="justify-self:start">En proceso</span></div><button class="btn btn-ghost btn-icon" aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+          <div class="dp-body">
+            <span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 118 · Kenworth T800</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>Juan Pérez</b></span></span>
+            <div class="list">
+              <div class="lrow"><span class="tx"><b>Asignado a</b><span>Alfadir Amaya · Maestro</span></span><button class="btn btn-ghost btn-sm">Cambiar</button><span></span></div>
+              <div class="lrow"><span class="tx"><b>Avance de mano de obra</b><span>Sin registros todavía</span></span><button class="btn btn-ghost btn-sm">Registrar</button><span></span></div>
+            </div>
+            <div class="section"><div class="section-h"><div><h4>Conceptos</h4><p>Vista previa de solo lectura</p></div></div>
+              <dl class="facts" style="border-top:0;padding-top:0"><div><dt>Hoja maestra 3"</dt><dd class="mono">$4,200.00</dd></div><div><dt>Mano de obra</dt><dd class="mono">$3,800.00</dd></div><div><dt>Abrazaderas (4)</dt><dd class="mono">$2,788.00</dd></div></dl>
+            </div>
+            <div class="danger-zone"><div class="dz-row"><p><b>Cancelar orden</b>Regresa la cotización. Solo si no hay pagos.</p><button class="btn btn-danger-outline btn-sm">Cancelar orden</button></div></div>
+          </div>
+          <div class="dp-foot"><button class="btn btn-outline">Cerrar</button><button class="btn btn-primary"><svg class="i"><use href="#i-check"/></svg>Finalizar trabajo</button></div>
+        </aside>
+      </div>
+    </div>
+
+    <div class="sub-head"><h3>Crear y editar cotización en escritorio</h3><p>Formularios largos no van en modal: usan página completa. A la izquierda los pasos, al centro el trabajo y a la derecha un resumen fijo con las acciones.</p></div>
+    <span class="res-tag">Simulado a 1366 × 657</span>
+    <div class="desk-scroll">
+      <div class="flow">
+        <div class="flow-top"><button class="btn btn-ghost btn-sm"><svg class="i"><use href="#i-back"/></svg>Cotizaciones</button><div class="t"><b>Nueva cotización</b><span class="muted">Borrador · guardado hace 5 s</span></div><button class="btn btn-ghost btn-icon" aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <ol class="steps">
+          <li class="st done"><span class="dot"><svg class="i sm"><use href="#i-check"/></svg></span><span class="tx"><b>Cliente y unidad</b><span>Mónica Granados · ECO 42</span></span></li>
+          <li class="st now"><span class="dot">2</span><span class="tx"><b>Conceptos</b><span>6 conceptos · 2 secciones</span></span></li>
+          <li class="st next"><span class="dot">3</span><span class="tx"><b>Notas</b><span>Internas y para el cliente</span></span></li>
+          <li class="st next"><span class="dot">4</span><span class="tx"><b>Revisar y enviar</b><span>Vista previa del documento</span></span></li>
+        </ol>
+        <div class="flow-main"><div class="ph"><div class="ph-title"><h3>Conceptos</h3><p>Tab avanza de campo; Enter agrega otro concepto en la misma sección.</p></div><div class="ph-actions"><button class="btn btn-outline"><svg class="i"><use href="#i-plus"/></svg>Agregar sección</button></div></div><div class="csec"><div class="csec-h"><span class="grip"><svg class="i sm"><use href="#i-grip"/></svg></span><input class="input csec-name" value="Lado izquierdo" aria-label="Nombre de la sección"><span class="mono muted">$2,000.00</span></div><div class="crow head"><span></span><span>Concepto</span><span>Tipo</span><span title="Entra a nómina">Nóm.</span><span>Cant.</span><span class="r">P. unitario</span><span class="r">Importe</span><span></span></div><div class="crow"><span class="grip"><svg class="i sm"><use href="#i-grip"/></svg></span><input class="input" value="Bajar muelle izquierda" aria-label="Descripción"><select class="select ctsel" aria-label="Tipo"><option selected>Mano de obra</option><option>Refacción</option><option>Material</option></select><button class="btn btn-ghost btn-sm btn-icon cpay" aria-pressed="true" aria-label="Entra a nómina" title="Entra a nómina"><svg class="i"><use href="#i-cash"/></svg></button><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">1</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span><input class="input mono r" value="700.00" aria-label="Precio unitario"><span class="mono r ctotal">$700.00</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Más acciones" title="Duplicar · Eliminar"><svg class="i"><use href="#i-more"/></svg></button></div><div class="crow"><span class="grip"><svg class="i sm"><use href="#i-grip"/></svg></span><input class="input" value="Tornillo de centro" aria-label="Descripción"><select class="select ctsel" aria-label="Tipo"><option>Mano de obra</option><option selected>Refacción</option><option>Material</option></select><span></span><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">1</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span><input class="input mono r" value="60.00" aria-label="Precio unitario"><span class="mono r ctotal">$60.00</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Más acciones" title="Duplicar · Eliminar"><svg class="i"><use href="#i-more"/></svg></button></div><div class="crow"><span class="grip"><svg class="i sm"><use href="#i-grip"/></svg></span><input class="input" value="Hoja 1a" aria-label="Descripción"><select class="select ctsel" aria-label="Tipo"><option>Mano de obra</option><option selected>Refacción</option><option>Material</option></select><span></span><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">1</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span><input class="input mono r" value="1,000.00" aria-label="Precio unitario"><span class="mono r ctotal">$1,000.00</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Más acciones" title="Duplicar · Eliminar"><svg class="i"><use href="#i-more"/></svg></button></div><div class="crow"><span class="grip"><svg class="i sm"><use href="#i-grip"/></svg></span><input class="input" value="Gomas de columpio" aria-label="Descripción"><select class="select ctsel" aria-label="Tipo"><option>Mano de obra</option><option selected>Refacción</option><option>Material</option></select><span></span><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">4</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span><input class="input mono r" value="60.00" aria-label="Precio unitario"><span class="mono r ctotal">$240.00</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Más acciones" title="Duplicar · Eliminar"><svg class="i"><use href="#i-more"/></svg></button></div><div class="cadd"><button class="btn btn-ghost btn-sm">+ Mano de obra</button><button class="btn btn-ghost btn-sm">+ Refacción</button><button class="btn btn-ghost btn-sm">+ Material</button><button class="btn btn-ghost btn-sm btn-icon" aria-label="Más tipos"><svg class="i"><use href="#i-more"/></svg></button></div></div><div class="csec"><div class="csec-h"><span class="grip"><svg class="i sm"><use href="#i-grip"/></svg></span><input class="input csec-name" value="Lado derecho" aria-label="Nombre de la sección"><span class="mono muted">$1,350.00</span></div><div class="crow head"><span></span><span>Concepto</span><span>Tipo</span><span title="Entra a nómina">Nóm.</span><span>Cant.</span><span class="r">P. unitario</span><span class="r">Importe</span><span></span></div><div class="crow"><span class="grip"><svg class="i sm"><use href="#i-grip"/></svg></span><input class="input" value="Bajar muelle derecha" aria-label="Descripción"><select class="select ctsel" aria-label="Tipo"><option selected>Mano de obra</option><option>Refacción</option><option>Material</option></select><button class="btn btn-ghost btn-sm btn-icon cpay" aria-pressed="true" aria-label="Entra a nómina" title="Entra a nómina"><svg class="i"><use href="#i-cash"/></svg></button><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">1</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span><input class="input mono r" value="700.00" aria-label="Precio unitario"><span class="mono r ctotal">$700.00</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Más acciones" title="Duplicar · Eliminar"><svg class="i"><use href="#i-more"/></svg></button></div><div class="crow"><span class="grip"><svg class="i sm"><use href="#i-grip"/></svg></span><input class="input" value="Hoja 2a" aria-label="Descripción"><select class="select ctsel" aria-label="Tipo"><option>Mano de obra</option><option selected>Refacción</option><option>Material</option></select><span></span><span class="stepper"><button class="btn btn-ghost btn-sm btn-icon" aria-label="Restar">−</button><span class="mono">1</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Sumar">+</button></span><input class="input mono r" value="650.00" aria-label="Precio unitario"><span class="mono r ctotal">$650.00</span><button class="btn btn-ghost btn-sm btn-icon" aria-label="Más acciones" title="Duplicar · Eliminar"><svg class="i"><use href="#i-more"/></svg></button></div><div class="cadd"><button class="btn btn-ghost btn-sm">+ Mano de obra</button><button class="btn btn-ghost btn-sm">+ Refacción</button><button class="btn btn-ghost btn-sm">+ Material</button><button class="btn btn-ghost btn-sm btn-icon" aria-label="Más tipos"><svg class="i"><use href="#i-more"/></svg></button></div></div></div>
+        <aside class="flow-side">
+          <div class="section">
+            <div class="section-h"><div><h4>Resumen</h4></div></div>
+            <div style="display:grid;gap:4px"><b style="font-size:14px">Mónica Granados</b><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 42 · Ford</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>El Mariachi</b></span></span></div>
+            <dl class="facts"><div><dt>Subtotal</dt><dd class="mono">$3,350.00</dd></div><div><dt>IVA 16%</dt><dd class="mono">$536.00</dd></div><div><dt><b style="color:var(--text)">Total</b></dt><dd class="mono" style="font-size:16px">$3,886.00</dd></div></dl><div class="toggle-row"><span>Incluir IVA</span><button class="switch" role="switch" aria-checked="true" aria-label="Incluir IVA" data-switch></button></div><div class="field"><label for="disc">Descuento global</label><input id="disc" class="input mono" placeholder="$0.00"></div>
+          </div>
+          <div style="display:grid;gap:8px"><button class="btn btn-primary btn-block">Notas<svg class="i"><use href="#i-arrow"/></svg></button><button class="btn btn-ghost btn-block">Guardar y salir</button></div>
+        </aside>
+      </div>
+    </div>
+
+    <span class="res-tag">Paso 4 · Vista previa · simulado a 1366 × 657 · solo la columna central hace scroll; barra superior, pasos y resumen quedan fijos</span>
+    <div class="desk-scroll">
+      <div class="flow">
+        <div class="flow-top"><button class="btn btn-ghost btn-sm"><svg class="i"><use href="#i-back"/></svg>Cotizaciones</button><div class="t"><b>Nueva cotización</b><span class="muted">Borrador · guardado hace 5 s</span></div><button class="btn btn-ghost btn-icon" aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <ol class="steps"><li class="st done"><span class="dot"><svg class="i sm"><use href="#i-check"/></svg></span><span class="tx"><b>Cliente y unidad</b><span>Mónica Granados · ECO 42</span></span></li><li class="st done"><span class="dot"><svg class="i sm"><use href="#i-check"/></svg></span><span class="tx"><b>Conceptos</b><span>6 conceptos · 2 secciones</span></span></li><li class="st done"><span class="dot"><svg class="i sm"><use href="#i-check"/></svg></span><span class="tx"><b>Notas</b><span>Refuerzo y hoja rota</span></span></li><li class="st now"><span class="dot">4</span><span class="tx"><b>Revisar y enviar</b><span>Vista previa del documento</span></span></li></ol>
+        <div class="flow-main"><div class="ph"><div class="ph-title"><h3>Vista previa</h3><p>La misma vista previa de todo el sistema. Toca un paso a la izquierda para corregirlo.</p></div></div><div class="qdoc"><div class="qd-b"><div class="qd-meta"><span class="badge">Borrador</span><span class="muted">Cotización</span></div><div class="qd-grid"><div><span class="qd-l">Cliente</span><b>Mónica Granados</b><span class="muted">55 1234 5678</span></div><div><span class="qd-l">Unidad</span><b>ECO 42 · Ford</b><span class="muted">Chofer: El Mariachi</span></div></div><div class="qd-svc"><span>Servicio</span><b>Refuerzo y hoja rota</b></div><div class="qd-tw"><table class="qd-t"><thead><tr><th>Cant.</th><th>Concepto</th><th class="r">Unitario</th><th class="r">Importe</th></tr></thead><tbody><tr class="qd-sec"><td colspan="3">Lado izquierdo</td><td class="mono r">$2,000.00</td></tr><tr><td class="mono">1</td><td>Bajar muelle izquierda</td><td class="mono r">$700.00</td><td class="mono r">$700.00</td></tr><tr><td class="mono">1</td><td>Tornillo de centro</td><td class="mono r">$60.00</td><td class="mono r">$60.00</td></tr><tr><td class="mono">1</td><td>Hoja 1a</td><td class="mono r">$1,000.00</td><td class="mono r">$1,000.00</td></tr><tr><td class="mono">4</td><td>Gomas de columpio</td><td class="mono r">$60.00</td><td class="mono r">$240.00</td></tr><tr class="qd-sec"><td colspan="3">Lado derecho</td><td class="mono r">$1,350.00</td></tr><tr><td class="mono">1</td><td>Bajar muelle derecha</td><td class="mono r">$700.00</td><td class="mono r">$700.00</td></tr><tr><td class="mono">1</td><td>Hoja 2a</td><td class="mono r">$650.00</td><td class="mono r">$650.00</td></tr></tbody></table></div><div class="qd-totbox"><p class="qd-words">Tres mil ochocientos ochenta y seis pesos 00/100 M.N.</p><dl class="qd-tot"><div><dt>Subtotal</dt><dd class="mono">$3,350.00</dd></div><div class="tax"><dt>IVA (16%)</dt><dd class="mono">$536.00</dd></div><div class="tt"><dt>Total</dt><dd class="mono">$3,886.00</dd></div></dl></div><div class="qd-notes"><span class="qd-l">Notas</span><ul class="qd-ul"><li>Cambio de hojas en ambos lados.</li><li>Se revisan bujes en la siguiente visita.</li><li>El precio de refacciones puede variar si el proveedor cambia la lista antes de autorizar.</li></ul></div><div class="qd-notes"><span class="qd-l">Formas de pago</span><p>Efectivo, transferencia, tarjeta de débito o de crédito. Para transferencia, al autorizar se comparte el enlace con las cuentas del taller.</p></div><p class="qd-foot">Cotizada el 11 nov 2026 · Vigente hasta el 18 nov 2026</p></div></div></div>
+        <aside class="flow-side">
+          <div class="section"><div class="section-h"><div><h4>Antes de crear</h4></div></div>
+            <ul class="note-list good"><li><svg class="i sm"><use href="#i-check"/></svg><span>Cliente y unidad completos</span></li><li><svg class="i sm"><use href="#i-check"/></svg><span>Todos los conceptos tienen precio</span></li><li><svg class="i sm"><use href="#i-check"/></svg><span>Vigencia de 7 días</span></li></ul>
+          </div>
+          
+          <div style="display:grid;gap:8px"><button class="btn btn-primary btn-block"><svg class="i"><use href="#i-check"/></svg>Crear cotización</button><button class="btn btn-ghost btn-block">Guardar y salir</button></div>
+        </aside>
+      </div>
+    </div>
+    <div class="spec">
+      <span class="spec-label">Una pieza, tres formas según el ancho</span>
+      <ul class="note-list good">
+        <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Teléfono (menos de 768 px):</b> hoja inferior con asa y fondo oscurecido.</span></li>
+        <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Tableta (768 a 1023 px):</b> panel derecho de 420 px por encima del contenido, con fondo oscurecido.</span></li>
+        <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Pantalla de referencia: 1366 × 768,</b> la del taller. La barra lateral va colapsada a 64 px, solo con logo corto e iconos (el nombre aparece al pasar el mouse). Al tocar el logo se expande a 220 px por encima del contenido, sin empujarlo, y los iconos no se mueven de lugar; expandida muestra una flecha ‹ para contraerla. Recuerda la preferencia. Con el panel abierto, la lista conserva dos columnas de tarjetas.</span></li>
+        <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Escritorio (1024 px o más):</b> panel derecho de 420 px junto a la lista, sin oscurecer. La tarjeta abierta queda marcada y al tocar otra cambia el contenido del panel. Esc cierra.</span></li>
+        <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Un solo scroll por pantalla:</b> el contenido se desplaza como una página; encabezado y acciones quedan fijos. Sin cajas con scroll dentro de otra caja con scroll, salvo tablas anchas, que se desplazan solo de lado.</span></li>
+        <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Siempre igual por dentro:</b> título a la izquierda, ✕ a la derecha, contenido con scroll y acciones fijas al pie.</span></li>
+        <li><svg class="i sm"><use href="#i-check"/></svg><span><b>Excepciones:</b> las confirmaciones cortas (eliminar, cancelar) usan un diálogo centrado de 440 px con la misma anatomía. Los flujos largos (crear o editar cotización o nota) usan página completa: en teléfono, barra superior con ← y ✕ y acción fija abajo; en escritorio, pasos a la izquierda, trabajo al centro y resumen fijo a la derecha. Se guarda solo como borrador, así que salir nunca pierde lo capturado.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= CLIENTS ================= -->
+  <section class="block" id="clientes">
+    <div class="block-head">
+      <span class="eyebrow">Paso 4 · Clientes</span>
+      <h2>Lista, ficha y estado de cuenta como un solo lugar</h2>
+      <p>Hoy la lista no dice nada útil (todas las filas dicen "Sin contacto · Activo"), la ficha es un diálogo con mucho texto y el estado de cuenta es otra página con otro estilo. La propuesta: una lista que ayuda a decidir y una ficha con pestañas, donde el estado de cuenta es una de ellas.</p>
+    </div>
+    <div class="devices">
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Clientes</b><span>Búsqueda al escribir, filtros rápidos y el saldo en cada fila.</span></div>
+        <div class="device" data-device data-tabbar="Más">
+          <div class="scroll">
+            <div class="ph"><div class="ph-title"><h3>Clientes</h3><p>48 activos · 3 con saldo</p></div><div class="ph-actions"><button class="btn btn-primary"><svg class="i"><use href="#i-user-plus"/></svg>Nuevo</button></div></div>
+            <label class="search" for="q5"><svg class="i"><use href="#i-search"/></svg><input id="q5" type="search" placeholder="Nombre, teléfono, correo o placas"></label>
+            <div class="chips" data-choice><button class="choice" aria-pressed="true">Todos</button><button class="choice" aria-pressed="false">Con saldo · 3</button><button class="choice" aria-pressed="false">Inactivos</button></div>
+            <div class="list">
+              <a class="lrow" href="#clientes"><span class="tx"><b>Mónica Granados</b><span>55 1234 5678 · 1 unidad</span></span><span class="end"><span class="v warn">$4,500.00</span><span class="s">Vence en 3 días</span></span><svg class="i sm chev"><use href="#i-right"/></svg><span class="units"><span class="uline"><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 42 · Ford</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>El Mariachi</b></span></span></span></span></a><a class="lrow" href="#clientes"><span class="tx"><b>Transportes Horizonte</b><span>55 5100 1001 · 15 unidades</span></span><span class="end"><span class="v">$0.00</span><span class="s">2 en taller</span></span><svg class="i sm chev"><use href="#i-right"/></svg><span class="units"><span class="uline"><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span>Chevrolet 350</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>Don Toño</b></span></span></span></span></a>
+              <a class="lrow" href="#clientes"><span class="tx"><b>Oscar Méndez</b><span>Sin teléfono · 1 unidad</span></span><span class="end"><span class="v">$0.00</span><span class="s">Al corriente</span></span><svg class="i sm chev"><use href="#i-right"/></svg><span class="units"><span class="uline"><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 118 · Kenworth T800</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>Juan Pérez</b></span></span><span class="badge info">En taller</span></span><span class="uline"><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 042 · International 4400</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>El Mariachi</b></span></span><span class="badge info">En taller</span></span><span class="umore">+13 unidades más</span></span></a>
+              <a class="lrow" href="#clientes"><span class="tx"><b>Lx Automotriz</b><span>Sin vehículos · Sin contacto</span></span><span class="end"><span class="v">$0.00</span><span class="s">Al corriente</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+              <a class="lrow" href="#clientes"><span class="tx"><b>Sergio Hiedra <span class="badge plain">Inactivo</span></b><span>Sin contacto</span></span><span class="end"><span class="v">$0.00</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+            </div>
+            <div class="list-head"><span>Mostrando 4 de 51</span><button class="linkbtn">Cargar más</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Ficha del cliente</b><span>Página propia, no diálogo. Resumen arriba y lo demás en pestañas.</span></div>
+        <div class="device" data-device data-tabbar="Más">
+          <div class="scroll" data-tabs>
+            <a class="backlink" href="#clientes"><svg class="i sm"><use href="#i-back"/></svg>Clientes</a>
+            <div class="ph"><div class="ph-title"><h3>Oscar Méndez</h3><p>Cliente desde mar 2026 · 3 cotizaciones</p></div><div class="ph-actions"><button class="btn btn-ghost btn-icon" aria-label="Más acciones"><svg class="i"><use href="#i-more"/></svg></button><button class="btn btn-primary"><svg class="i"><use href="#i-plus"/></svg>Cotizar</button></div></div>
+            <div class="stats two-col"><div class="stat"><span class="l">Saldo pendiente</span><span class="v">$0.00</span></div><div class="stat"><span class="l">Saldo a favor</span><span class="v ok">$0.00</span></div></div>
+            <div class="utabs" data-seg data-tabset><button aria-pressed="true" data-tab-target="res">Resumen</button><button aria-pressed="false" data-tab-target="veh">Vehículos<span class="n">1</span></button><button aria-pressed="false" data-tab-target="con">Contactos<span class="n">0</span></button></div>
+            <div data-panel="res" class="section">
+              <div class="section-h"><div><h4>Datos</h4></div><button class="btn btn-ghost btn-sm">Editar</button></div>
+              <ul class="contact"><li class="empty"><svg class="i sm"><use href="#i-phone"/></svg><span>Sin teléfono</span></li><li class="empty"><svg class="i sm"><use href="#i-mail"/></svg><span>Sin correo</span></li><li class="empty"><svg class="i sm"><use href="#i-pin"/></svg><span>Sin dirección</span></li><li class="empty"><svg class="i sm"><use href="#i-receipt"/></svg><span>Sin datos fiscales</span></li></ul>
+            </div>
+            <div data-panel="veh" class="list" hidden><div class="lrow"><span class="tx"><b>Chevrolet 350 2005</b><span>Sin placas · Sin ECO</span></span><span></span><svg class="i sm chev"><use href="#i-right"/></svg></div></div>
+            <div data-panel="con" class="card empty-state" hidden><b>Sin contactos</b>Agrega choferes o encargados para elegirlos en cotizaciones y notas.<button class="btn btn-outline btn-sm"><svg class="i sm"><use href="#i-plus"/></svg>Agregar contacto</button></div>
+            <a class="lrow card" href="#clientes" style="border-radius:var(--r-lg)"><span class="tx"><b>Estado de cuenta</b><span>Al corriente · sin notas pendientes</span></span><span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+          </div>
+        </div>
+      </div>
+
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Estado de cuenta</b><span>Mismo PeriodNavigator, mismas StatTile y cuentas listas para copiar.</span></div>
+        <div class="device" data-device data-tabbar="Más">
+          <div class="scroll" data-tabs>
+            <a class="backlink" href="#clientes"><svg class="i sm"><use href="#i-back"/></svg>Oscar Méndez</a>
+            <div class="ph"><div class="ph-title"><h3>Estado de cuenta</h3><p>Emitido el 11 nov 2026</p></div><div class="ph-actions"><button class="btn btn-outline"><svg class="i"><use href="#i-printer"/></svg>PDF</button></div></div>
+            <div class="utabs" data-seg data-tabset><button aria-pressed="true" data-tab-target="pend">Pendientes</button><button aria-pressed="false" data-tab-target="per">Por periodo</button></div>
+            <div data-panel="pend" style="display:grid;gap:12px">
+              <div class="stats two-col"><div class="stat"><span class="l">Facturado</span><span class="v">$0.00</span></div><div class="stat"><span class="l">Abonado</span><span class="v ok">$0.00</span></div><div class="stat key"><span class="l">Saldo pendiente</span><span class="v">$0.00</span></div><div class="stat"><span class="l">Vencido</span><span class="v">$0.00</span></div></div>
+              <div class="card empty-state"><b>Cuenta al corriente</b>Este cliente no tiene notas con saldo pendiente.</div>
+            </div>
+            <div data-panel="per" style="display:grid;gap:12px" hidden>
+              <div class="pn" data-pn data-modes="month,week,year,all">
+                <div class="pn-step"><button data-prev aria-label="Periodo anterior"><svg class="i"><use href="#i-left"/></svg></button><button data-next aria-label="Periodo siguiente"><svg class="i"><use href="#i-right"/></svg></button></div>
+                <div class="pn-label"><strong data-label>—</strong></div>
+                <div class="seg" role="group" aria-label="Vista" data-seg data-mode><button aria-pressed="false" data-m="week">Sem</button><button aria-pressed="true" data-m="month">Mes</button><button aria-pressed="false" data-m="year">Año</button><button aria-pressed="false" data-m="all">Todo</button></div>
+              </div>
+              <div class="stats two-col"><div class="stat"><span class="l">Saldo inicial</span><span class="v">$0.00</span></div><div class="stat"><span class="l">Cargos</span><span class="v">+$0.00</span></div><div class="stat"><span class="l">Abonos</span><span class="v ok">−$0.00</span></div><div class="stat key"><span class="l">Saldo final</span><span class="v">$0.00</span></div></div>
+              <div class="card empty-state"><b>Sin movimientos en el periodo</b>Prueba con otro mes o con "Todo".</div>
+            </div>
+            <div class="section">
+              <div class="section-h"><div><h4>Cuentas para transferencia</h4><p>Envía tu comprobante por WhatsApp con el folio de la nota.</p></div></div>
+              <div class="bank"><div class="bank-top"><b>Santander</b><span class="badge plain info">Facturación</span></div><div class="clabe"><span>CLABE</span>•••• •••• •••• 3625<button class="btn btn-ghost btn-sm" data-copy="CLABE Santander">Copiar</button></div></div>
+              <div class="bank"><div class="bank-top"><b>Mercado Pago</b><span class="badge plain">Solo transferencias</span></div><div class="clabe"><span>CLABE</span>•••• •••• •••• 4949<button class="btn btn-ghost btn-sm" data-copy="CLABE Mercado Pago">Copiar</button></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FLEET -->
+  <section class="block" style="padding-top:20px"><div class="spec"><span class="spec-label">Cliente con flotilla · pestaña Vehículos de Transportes Horizonte</span><div class="two"><div style="display:grid;gap:10px"><div class="ft-row"><label class="search" for="fv"><svg class="i"><use href="#i-search"/></svg><input id="fv" type="search" placeholder="ECO, placas, unidad o chofer"></label></div><div class="chips" data-choice><button class="choice" aria-pressed="true">Todas · 15</button><button class="choice" aria-pressed="false">En taller · 2</button><button class="choice" aria-pressed="false">Sin ECO · 3</button></div><div class="list"><a class="lrow" href="#clientes"><span class="tx"><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 118 · Kenworth T800</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>Juan Pérez</b></span></span></span><span class="end"><span class="badge info">En taller</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a><a class="lrow" href="#clientes"><span class="tx"><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 042 · International 4400</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>El Mariachi</b></span></span></span><span class="end"><span class="badge info">En taller</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a><a class="lrow" href="#clientes"><span class="tx"><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><i>ECO</i> 077 · Freightliner M2</span></span><span class="drv"><svg class="i sm"><use href="#i-wheel"/></svg><b>Don Toño</b></span></span></span><span class="end"><span class="s">Último ingreso 2 oct</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a><a class="lrow" href="#clientes"><span class="tx"><span class="ident"><span class="unit"><svg class="i sm"><use href="#i-car"/></svg><span><span class="plate">LX-5520</span> · Isuzu ELF</span></span></span></span><span class="end"><span class="s">Último ingreso 14 ago</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a></div><div class="list-head"><span>Mostrando 4 de 15</span><button class="linkbtn">Ver todas</button></div></div><ul class="note-list good"><li><svg class="i sm"><use href="#i-check"/></svg><span><b>En la lista de clientes, cada unidad va en su propia línea completa</b> con la misma identidad que las tarjetas: ECO (o modelo si no hay), placas y chofer, sin cortes. Se muestran hasta 2: primero las que están en el taller, con la insignia "En taller", y si no hay ninguna, la más reciente. El resto se resume en "+13 unidades más", que abre la pestaña Vehículos.</span></li><li><svg class="i sm"><use href="#i-check"/></svg><span><b>Si buscas por ECO, placas o chofer,</b> aparece el cliente con la unidad que coincidió: "Coincide: ECO 118 · Kenworth T800". No hace falta saber de quién es la unidad.</span></li><li><svg class="i sm"><use href="#i-check"/></svg><span><b>En la ficha, Vehículos es una lista con búsqueda,</b> con filtros rápidos (En taller, Sin ECO) y las unidades del taller primero. Arriba de 8 unidades se muestran 4 y "Ver todas".</span></li><li><svg class="i sm"><use href="#i-check"/></svg><span><b>Cada unidad es la misma línea de identidad</b> que en las tarjetas (ECO, unidad, placas y chofer habitual) y abre su historial de trabajos.</span></li><li><svg class="i sm"><use href="#i-check"/></svg><span><b>Al cotizar,</b> el selector de unidad usa la misma búsqueda. Para una flotilla nunca es un select con 15 opciones.</span></li></ul></div></div></section>
+  <!-- ================= TEAM ================= -->
+  <section class="block" id="equipo">
+    <div class="block-head">
+      <span class="eyebrow">Paso 4 · Trabajadores y usuarios</span>
+      <h2>La misma lista y una hoja para editar</h2>
+      <p>Trabajadores y Usuarios usan ListRow y la misma hoja de edición. Lo destructivo deja de ser un botón rojo sólido junto a "Guardar".</p>
+    </div>
+    <div class="devices">
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Trabajadores</b><span>Rol y carga de trabajo en cada fila, no tres renglones de datos.</span></div>
+        <div class="device" data-device data-tabbar="Más">
+          <div class="scroll">
+            <div class="ph"><div class="ph-title"><h3>Trabajadores</h3><p>3 maestros activos</p></div><div class="ph-actions"><button class="btn btn-primary"><svg class="i"><use href="#i-user-plus"/></svg>Nuevo</button></div></div>
+            <label class="search" for="q6"><svg class="i"><use href="#i-search"/></svg><input id="q6" type="search" placeholder="Nombre o usuario"></label>
+            <div class="chips" data-choice><button class="choice" aria-pressed="true">Activos</button><button class="choice" aria-pressed="false">Inactivos</button></div>
+            <div class="list">
+              <a class="lrow" href="#equipo"><span class="tx"><b>Alfadir Amaya</b><span>Maestro · @alfa</span></span><span class="end"><span class="v">1</span><span class="s">trabajo activo</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+              <a class="lrow" href="#equipo"><span class="tx"><b>Refugio Briones</b><span>Maestro · @cuco</span></span><span class="end"><span class="v">0</span><span class="s">sin trabajos</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+              <a class="lrow" href="#equipo"><span class="tx"><b>Roberto Vital</b><span>Maestro · @roberto</span></span><span class="end"><span class="v">0</span><span class="s">sin trabajos</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Editar trabajador</b><span>Cancelar y Guardar fijos al pie. La zona de riesgo va aparte, al final.</span></div>
+        <div class="device open nobar" data-device data-sheet-demo>
+          <div class="scroll"><div class="ph"><div class="ph-title"><h3>Trabajadores</h3></div></div></div>
+          <div class="scrim" data-scrim></div>
+          <div class="sheet" role="dialog" aria-label="Editar trabajador" style="max-height:calc(100% - 40px)">
+            <div class="grab"></div>
+            <div class="sheet-h"><b>Editar a Alfadir Amaya</b><button class="btn btn-ghost btn-icon" aria-label="Cerrar" data-close><svg class="i"><use href="#i-x"/></svg></button></div>
+            <div style="display:grid;gap:12px">
+              <div class="field"><label for="w1">Nombre</label><input id="w1" class="input" value="Alfadir Amaya"></div>
+              <div class="fields-2"><div class="field"><label for="w2">Usuario</label><input id="w2" class="input" value="alfa"></div><div class="field"><label for="w3">Tipo</label><select id="w3" class="select"><option>Maestro</option></select></div></div>
+              <div class="field"><label for="w4">Correo interno</label><input id="w4" class="input" value="alfa@sebasam.local"></div>
+              <div class="danger-zone"><h4>Zona de riesgo</h4>
+                <div class="dz-row"><p><b>Desactivar</b>Conserva asignaciones e historial.</p><button class="btn btn-outline btn-sm"><svg class="i sm"><use href="#i-user-off"/></svg>Desactivar</button></div>
+                <div class="dz-row"><p><b>Eliminar</b>Borra el registro de forma permanente.</p><button class="btn btn-danger-outline btn-sm"><svg class="i sm"><use href="#i-trash"/></svg>Eliminar</button></div>
+              </div>
+            </div>
+            <div class="sheet-foot"><button class="btn btn-outline" data-close>Cancelar</button><button class="btn btn-primary" data-close>Guardar</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SETTINGS ================= -->
+  <section class="block" id="configuracion">
+    <div class="block-head">
+      <span class="eyebrow">Paso 4 · Configuración</span>
+      <h2>De un formulario largo a un índice de ajustes</h2>
+      <p>Hoy es una sola página con todos los campos abiertos, un único "Guardar configuración" arriba y un formulario de "Agregar cuenta" siempre visible. No se sabe qué cambió ni qué se guarda. La propuesta: un índice agrupado, cada ajuste en su propia pantalla, guardado por sección y una vista previa de cómo lo ve el cliente.</p>
+    </div>
+    <div class="devices">
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Configuración</b><span>Índice agrupado. Cada fila resume su valor actual, así no hace falta abrirla para saberlo.</span></div>
+        <div class="device" data-device data-tabbar="Más">
+          <div class="scroll">
+            <div class="ph"><div class="ph-title"><h3>Configuración</h3></div></div>
+            <div class="settings-group"><h5>Taller</h5><div class="list">
+              <a class="lrow" href="#configuracion"><span class="tx"><b>Datos del taller</b><span>SEBASAM · Iztapalapa, CDMX</span></span><span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+              <a class="lrow" href="#configuracion"><span class="tx"><b>Contacto</b><span>WhatsApp configurado · sin teléfono fijo</span></span><span class="badge warn plain">Incompleto</span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+            </div></div>
+            <div class="settings-group"><h5>Cobro</h5><div class="list">
+              <a class="lrow" href="#configuracion"><span class="tx"><b>Cuentas bancarias</b><span>Santander · Mercado Pago</span></span><span class="end"><span class="v">2</span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+            </div></div>
+            <div class="settings-group"><h5>Equipo y acceso</h5><div class="list">
+              <a class="lrow" href="#configuracion"><span class="tx"><b>Usuarios</b><span>Quién entra al panel</span></span><span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+              <a class="lrow" href="#configuracion"><span class="tx"><b>Mi contraseña</b><span>Cambiar contraseña</span></span><span></span><svg class="i sm chev"><use href="#i-right"/></svg></a>
+            </div></div>
+            <div class="settings-group"><h5>Apariencia</h5><div class="section">
+              <div class="toggle-row"><span>Tema</span><div class="seg" data-seg><button aria-pressed="true">Claro</button><button aria-pressed="false">Oscuro</button><button aria-pressed="false">Sistema</button></div></div>
+              <div class="toggle-row"><span>Tamaño de letra</span><div class="seg" data-seg><button aria-pressed="false">A</button><button aria-pressed="true">A+</button></div></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Datos del taller</b><span>Vista previa en vivo del encabezado. El guardado aparece solo cuando hay cambios.</span></div>
+        <div class="device" data-device data-tabbar="Más">
+          <div class="scroll">
+            <a class="backlink" href="#configuracion"><svg class="i sm"><use href="#i-back"/></svg>Configuración</a>
+            <div class="ph"><div class="ph-title"><h3>Datos del taller</h3><p>Aparecen en cotizaciones, notas y estados de cuenta.</p></div></div>
+            <div class="preview-doc"><div class="hd"><b data-prev-name>SEBASAM</b><span>Servicio y refacciones para suspensiones de aire y muelles</span></div><div class="bd">Batalla de Casa Blanca 1719B, Leyes de Reforma, Iztapalapa, CDMX</div></div>
+            <div class="field"><label for="c1">Nombre corto</label><input id="c1" class="input" value="SEBASAM" data-live-name><span class="help">Va en el encabezado de los documentos.</span></div>
+            <div class="field"><label for="c2">Nombre completo</label><input id="c2" class="input" value="Servicio y refacciones para suspensiones de aire y muelles"></div>
+            <div class="field"><label for="c3">Dirección</label><input id="c3" class="input" value="Batalla de Casa Blanca 1719B, Leyes de Reforma, Iztapalapa"></div>
+            <div class="field"><label for="c4">Enlace de Google Maps</label><input id="c4" class="input" value="https://maps.app.goo.gl/…"></div>
+            <div class="dirty-bar" data-dirty hidden><span>Cambios sin guardar</span><span style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" data-discard>Descartar</button><button class="btn btn-primary btn-sm">Guardar</button></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="dev-wrap">
+        <div class="dev-cap"><b>Cuentas bancarias</b><span>Cada cuenta como tarjeta con su uso y su enlace público. "Agregar" abre una hoja, no un formulario siempre visible.</span></div>
+        <div class="device" data-device data-tabbar="Más">
+          <div class="scroll">
+            <a class="backlink" href="#configuracion"><svg class="i sm"><use href="#i-back"/></svg>Configuración</a>
+            <div class="ph"><div class="ph-title"><h3>Cuentas bancarias</h3><p>Donde tus clientes transfieren.</p></div><div class="ph-actions"><button class="btn btn-primary"><svg class="i"><use href="#i-plus"/></svg>Agregar</button></div></div>
+            <div class="bank">
+              <div class="bank-top"><b>Santander</b><span class="badge info plain">Facturación</span></div>
+              <div class="clabe"><span>CLABE</span>•••• •••• •••• 3625</div>
+              <div class="clabe"><span>Titular</span><span style="color:var(--text);font-size:13px">Federico Cruz Andrés</span></div>
+              <div class="toggle-row" style="border-top:1px solid var(--border);padding-top:8px"><span>Enlace público</span><button class="switch" role="switch" aria-checked="true" aria-label="Enlace público Santander" data-switch></button></div>
+              <div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" data-copy="enlace de Santander"><svg class="i sm"><use href="#i-copy"/></svg>Copiar enlace</button><button class="btn btn-ghost btn-sm">Editar</button></div>
+            </div>
+            <div class="bank">
+              <div class="bank-top"><b>Mercado Pago</b><span class="badge plain">Solo transferencias</span></div>
+              <div class="clabe"><span>CLABE</span>•••• •••• •••• 4949</div>
+              <div class="toggle-row" style="border-top:1px solid var(--border);padding-top:8px"><span>Enlace público</span><button class="switch" role="switch" aria-checked="false" aria-label="Enlace público Mercado Pago" data-switch></button></div>
+              <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm">Editar</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= COVERAGE ================= -->
+  <section class="block" id="cobertura">
+    <div class="block-head">
+      <span class="eyebrow">Mapa de cobertura</span>
+      <h2>Todas las rutas y qué piezas usan</h2>
+      <p>Si una ruta no está aquí, no se toca. Si está, solo cambia a través de sus piezas. Este mapa es la base para los issues.</p>
+    </div>
+    <div class="table-wrap">
+      <table class="coverage">
+        <thead><tr><th>Ruta</th><th>Pantalla</th><th>Piezas</th><th>Estado en la propuesta</th></tr></thead>
+        <tbody>
+          <tr><td>/admin</td><td>Inicio</td><td>PageHeader · bandeja · StatTile</td><td><span class="badge ok plain">Diseñada</span></td></tr>
+          <tr><td>/admin/quotes</td><td>Cotizaciones</td><td>PageHeader · SearchBar · FilterSheet · EntityCard</td><td><span class="badge ok plain">Diseñada</span></td></tr>
+          <tr><td>/admin/quotes/nueva · /[id]/edit</td><td>Crear y editar cotización</td><td>Flujo a pantalla completa · barra de acción</td><td><span class="badge ok plain">Diseñada (4 pasos)</span></td></tr>
+          <tr><td>/admin/quotes/retention</td><td>Archivo y papelera</td><td>PageHeader · SearchBar · ListRow</td><td><span class="badge plain">Hereda piezas</span></td></tr>
+          <tr><td>/admin/work-orders · /[id]</td><td>Trabajos y gestionar</td><td>PageHeader · SearchBar · EntityCard · Sheet · DangerZone</td><td><span class="badge ok plain">Diseñada</span></td></tr>
+          <tr><td>/admin/notas</td><td>Notas</td><td>PageHeader · PeriodNavigator · StatTile · SearchBar</td><td><span class="badge ok plain">Diseñada</span></td></tr>
+          <tr><td>/admin/nomina</td><td>Nómina</td><td>PageHeader · PeriodNavigator · StatTile · ListRow</td><td><span class="badge ok plain">Diseñada</span></td></tr>
+          <tr><td>/admin/customers</td><td>Clientes</td><td>PageHeader · SearchBar · ListRow</td><td><span class="badge ok plain">Diseñada</span></td></tr>
+          <tr><td>/admin/customers/[id]</td><td>Ficha del cliente</td><td>PageHeader · StatTile · Section · pestañas</td><td><span class="badge ok plain">Diseñada</span></td></tr>
+          <tr><td>/admin/customers/[id]/estado-de-cuenta</td><td>Estado de cuenta</td><td>PeriodNavigator · StatTile · Section</td><td><span class="badge ok plain">Diseñada</span></td></tr>
+          <tr><td>/admin/workers · /[id]/edit</td><td>Trabajadores</td><td>PageHeader · ListRow · Sheet · DangerZone</td><td><span class="badge ok plain">Diseñada</span></td></tr>
+          <tr><td>/admin/users</td><td>Usuarios</td><td>PageHeader · ListRow · Sheet</td><td><span class="badge plain">Hereda piezas</span></td></tr>
+          <tr><td>/admin/configuracion-pago</td><td>Configuración</td><td>Índice · Section · barra de cambios</td><td><span class="badge ok plain">Diseñada</span></td></tr>
+          <tr><td>/admin/change-password</td><td>Mi contraseña</td><td>Section · barra de cambios</td><td><span class="badge plain">Hereda piezas</span></td></tr>
+          <tr><td>/admin/historical</td><td>Carga de histórico</td><td>PageHeader · Section</td><td><span class="badge plain">Hereda piezas</span></td></tr>
+          <tr><td>/asistente</td><td>Asistente</td><td>—</td><td><span class="badge plain">Fuera de esta fase</span></td></tr>
+          <tr><td>/admin/login · setup-required</td><td>Acceso</td><td>—</td><td><span class="badge plain">Fuera de esta fase</span></td></tr>
+          <tr><td>*/print · nomina/imprimir/*</td><td>Documentos impresos</td><td>Plantilla de documento</td><td><span class="badge plain">Fuera de esta fase</span></td></tr>
+          <tr><td>/cotizacion/[token] · /datos-de-pago/*</td><td>Páginas públicas</td><td>Superficie pública</td><td><span class="badge plain">Fase 2</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="footer-note">Propuesta independiente del repositorio. Tokens de DESIGN.md e iconos Tabler (MIT, set outline). Los datos vienen de las capturas y de desarrollo; los saldos de clientes, la carga de trabajadores y los montos de nómina por persona son ejemplos, igual que los ECO y los nombres de choferes. Las CLABE están enmascaradas a propósito. Las acciones primarias de cotización siguen la lógica de main (resolveQuoteActionPresentation).</p>
+</div>
+
+<script>
+(function(){
+  function each(sel,root,fn){Array.prototype.forEach.call((root||document).querySelectorAll(sel),fn);}
+
+  // Tab bars (static devices)
+  var TABS=[["home","Inicio"],["doc","Cotizaciones"],["truck","Trabajos"],["doc-check","Notas"],["more","Más"]];
+  each('[data-tabbar]',null,function(dev){
+    var cur=dev.getAttribute('data-tabbar'), nav=document.createElement('nav');
+    nav.className='tabbar'; nav.setAttribute('aria-label','Navegación principal');
+    nav.innerHTML=TABS.map(function(t){
+      var isMore=t[1]==='Más', demo=dev.hasAttribute('data-nav-demo');
+      var attrs=(isMore&&demo)?' data-more aria-expanded="true"':(t[1]===cur?' aria-current="page"':'');
+      var ic=(isMore&&demo)?'x':t[0], lb=(isMore&&demo)?'Cerrar':t[1];
+      return '<button class="tab"'+attrs+' data-tab aria-label="'+lb+'" title="'+lb+'"><span class="pill"><svg class="i"><use href="#i-'+ic+'"/></svg></span><span class="lbl">'+lb+'</span></button>';
+    }).join('');
+    dev.appendChild(nav);
+  });
+
+  // Nav demo (Más / Cerrar)
+  each('[data-nav-demo]',null,function(dev){
+    var more=dev.querySelector('[data-more]'), scrim=dev.querySelector('[data-scrim]');
+    function setOpen(o){
+      dev.classList.toggle('open',o); more.setAttribute('aria-expanded',String(o));
+      more.querySelector('use').setAttribute('href',o?'#i-x':'#i-more'); more.querySelector('.lbl').textContent=o?'Cerrar':'Más';
+    }
+    more.addEventListener('click',function(){setOpen(!dev.classList.contains('open'));});
+    scrim.addEventListener('click',function(){setOpen(false);});
+    each('[data-more-close]',dev,function(b){b.addEventListener('click',function(){setOpen(false);});});
+    each('[data-tab]:not([data-more])',dev,function(t){t.addEventListener('click',function(){
+      each('[data-tab]',dev,function(x){x.removeAttribute('aria-current');}); t.setAttribute('aria-current','page'); setOpen(false);
+    });});
+    each('.nrow',dev,function(r){r.addEventListener('click',function(e){e.preventDefault();setOpen(false);});});
+  });
+
+  // Sheet demos: close on scrim / data-close, reopen by clicking the device body
+  each('[data-sheet-demo]',null,function(dev){
+    function close(){dev.classList.remove('open');}
+    var scrim=dev.querySelector('[data-scrim]'); if(scrim) scrim.addEventListener('click',close);
+    each('[data-close]',dev,function(b){b.addEventListener('click',close);});
+    var body=dev.querySelector('.scroll'); if(body) body.addEventListener('click',function(){dev.classList.add('open');});
+  });
+
+  // Segmented controls + tabsets
+  each('[data-seg]',null,function(seg){
+    seg.addEventListener('click',function(e){
+      var b=e.target.closest('button'); if(!b||!seg.contains(b)) return;
+      each('button',seg,function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});
+      if(seg.hasAttribute('data-tabset')){
+        var scope=seg.closest('[data-tabs]'), target=b.getAttribute('data-tab-target');
+        each('[data-panel]',scope,function(p){p.hidden=p.getAttribute('data-panel')!==target;});
+      }
+    });
+  });
+
+  // Choice chips (single select)
+  each('[data-choice]',null,function(g){
+    g.addEventListener('click',function(e){
+      var b=e.target.closest('.choice'); if(!b) return;
+      each('.choice',g,function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});
+    });
+  });
+
+  // Filter chips
+  each('[data-ft]',null,function(ft){
+    var count=ft.querySelector('[data-ft-count]'), row=ft.querySelector('[data-ft-chips]');
+    function sync(){var n=ft.querySelectorAll('[data-chip]').length;count.textContent=n;count.hidden=n===0;row.hidden=n===0;}
+    ft.addEventListener('click',function(e){
+      var c=e.target.closest('[data-chip]'); if(c){c.remove();sync();return;}
+      if(e.target.closest('[data-clear]')){each('[data-chip]',ft,function(x){x.remove();});sync();}
+    });
+    sync();
+  });
+
+  // Switches
+  each('[data-switch]',null,function(s){s.addEventListener('click',function(){s.setAttribute('aria-checked',s.getAttribute('aria-checked')==='true'?'false':'true');});});
+
+  // Copy buttons (demo values are masked; copy a placeholder label)
+  each('[data-copy]',null,function(b){
+    b.addEventListener('click',function(){
+      var label=b.textContent;
+      function done(){b.textContent='Copiado';setTimeout(function(){b.innerHTML=b.getAttribute('data-orig');},1400);}
+      b.setAttribute('data-orig',b.innerHTML);
+      try{navigator.clipboard.writeText(b.getAttribute('data-copy')).then(done,done);}catch(err){done();}
+    });
+  });
+
+  // Live preview + dirty bar
+  var nameIn=document.querySelector('[data-live-name]'), nameOut=document.querySelector('[data-prev-name]'), dirty=document.querySelector('[data-dirty]');
+  if(nameIn){
+    var original=nameIn.value;
+    nameIn.addEventListener('input',function(){nameOut.textContent=nameIn.value||'—';dirty.hidden=nameIn.value===original;});
+    dirty.querySelector('[data-discard]').addEventListener('click',function(){nameIn.value=original;nameOut.textContent=original;dirty.hidden=true;});
+  }
+
+  // Period navigator
+  var M=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var S=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  var TODAY=new Date(2026,10,11);
+  function monday(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x;}
+  function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+  function weekLabel(s){
+    var e=new Date(s);e.setDate(e.getDate()+5);
+    if(s.getMonth()===e.getMonth()) return s.getDate()+'–'+e.getDate()+' de '+M[e.getMonth()]+' de '+e.getFullYear();
+    if(s.getFullYear()===e.getFullYear()) return s.getDate()+' '+S[s.getMonth()]+' – '+e.getDate()+' '+S[e.getMonth()]+' de '+e.getFullYear();
+    return s.getDate()+' '+S[s.getMonth()]+' '+s.getFullYear()+' – '+e.getDate()+' '+S[e.getMonth()]+' '+e.getFullYear();
+  }
+  each('[data-pn]',null,function(pn){
+    var modes=(pn.getAttribute('data-modes')||'week').split(','), mode=modes[0];
+    var label=pn.querySelector('[data-label]'), badge=pn.querySelector('[data-current]'), today=pn.querySelector('[data-today]'), modeSeg=pn.querySelector('[data-mode]');
+    var prev=pn.querySelector('[data-prev]'), next=pn.querySelector('[data-next]');
+    var cur;
+    function reset(){ cur= mode==='week'?monday(TODAY): mode==='month'?new Date(TODAY.getFullYear(),TODAY.getMonth(),1): new Date(TODAY.getFullYear(),0,1); }
+    function isCurrent(){
+      if(mode==='all') return true;
+      if(mode==='week') return cur.getTime()===monday(TODAY).getTime();
+      if(mode==='month') return cur.getMonth()===TODAY.getMonth()&&cur.getFullYear()===TODAY.getFullYear();
+      return cur.getFullYear()===TODAY.getFullYear();
+    }
+    function render(){
+      label.textContent= mode==='week'?weekLabel(cur): mode==='month'?cap(M[cur.getMonth()])+' de '+cur.getFullYear(): mode==='year'?String(cur.getFullYear()):'Todo el historial';
+      var c=isCurrent();
+      if(badge){badge.hidden=!c||mode==='all';badge.textContent= mode==='week'?'Semana en curso': mode==='month'?'Mes en curso':'Año en curso';}
+      if(today) today.disabled=c;
+      prev.disabled=mode==='all'; next.disabled=mode==='all';
+    }
+    function step(n){
+      if(mode==='week'){cur=new Date(cur);cur.setDate(cur.getDate()+7*n);}
+      else if(mode==='month'){cur=new Date(cur.getFullYear(),cur.getMonth()+n,1);}
+      else if(mode==='year'){cur=new Date(cur.getFullYear()+n,0,1);}
+      render();
+    }
+    prev.addEventListener('click',function(){step(-1);});
+    next.addEventListener('click',function(){step(1);});
+    if(today) today.addEventListener('click',function(){reset();render();});
+    if(modeSeg) modeSeg.addEventListener('click',function(e){var b=e.target.closest('button[data-m]'); if(!b) return; mode=b.getAttribute('data-m'); reset(); render();});
+    reset(); render();
+  });
+
+  // Desktop rail toggle
+  each('[data-rail]',null,function(b){b.addEventListener('click',function(){var d=b.closest('.desk');var x=d.classList.toggle('expanded');b.setAttribute('aria-label',x?'Contraer menú':'Expandir menú');});});
+
+  // Mobile concept accordion
+  each('[data-mlist]',null,function(list){
+    list.addEventListener('click',function(e){
+      var t=e.target.closest('[data-acc-toggle],[data-acc-close]'); if(!t) return;
+      var row=t.closest('[data-acc]'), willOpen=t.hasAttribute('data-acc-toggle')&&!row.classList.contains('open');
+      each('[data-acc]',list.closest('.device'),function(r){r.classList.remove('open');r.querySelector('[data-acc-toggle]').setAttribute('aria-expanded','false');});
+      if(willOpen){row.classList.add('open');t.setAttribute('aria-expanded','true');}
+    });
+  });
+  var tplNew=document.querySelector('template[data-new-row]');
+  each('[data-add]',null,function(b){b.addEventListener('click',function(){
+    var dev=b.closest('.device'), list=b.closest('.msec').querySelector('[data-mlist]');
+    each('[data-acc]',dev,function(r){r.classList.remove('open');});
+    var frag=tplNew.content.cloneNode(true), row=frag.querySelector('[data-acc]'), typ=b.getAttribute('data-add');
+    row.querySelector('.m').textContent=typ;
+    each('.choice',row,function(x){x.setAttribute('aria-pressed',x.textContent===typ?'true':'false');});
+    var seg=row.querySelector('[data-choice]'); seg.addEventListener('click',function(e){var bb=e.target.closest('.choice'); if(!bb) return; each('.choice',seg,function(x){x.setAttribute('aria-pressed',x===bb?'true':'false');});});
+    var sw=row.querySelector('[data-switch]'); if(sw){ if(typ!=='Mano de obra') sw.closest('.toggle-row').remove(); else sw.addEventListener('click',function(){sw.setAttribute('aria-checked',sw.getAttribute('aria-checked')==='true'?'false':'true');}); }
+    list.appendChild(frag); var inp=row.querySelector('input'); if(inp) inp.focus({preventScroll:true});
+  });});
+
+  // Theme toggle
+  var tbtn=document.querySelector('[data-theme-toggle]'), root=document.documentElement, mq=window.matchMedia('(prefers-color-scheme: dark)');
+  function isDark(){var t=root.getAttribute('data-theme');return t?t==='dark':mq.matches;}
+  function paint(){var d=isDark();tbtn.querySelector('use').setAttribute('href',d?'#i-sun':'#i-moon');tbtn.querySelector('span').textContent=d?'Claro':'Oscuro';tbtn.setAttribute('aria-label',d?'Cambiar a modo claro':'Cambiar a modo oscuro');}
+  tbtn.addEventListener('click',function(){root.setAttribute('data-theme',isDark()?'light':'dark');paint();});
+  if(mq.addEventListener) mq.addEventListener('change',paint);
+  paint();
+})();
+</script>
+
+</body></html>
