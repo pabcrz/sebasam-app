@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 
 export interface SpinnerProps extends React.HTMLAttributes<HTMLSpanElement> {
   size?: "sm" | "md" | "lg";
@@ -18,7 +18,7 @@ export const Spinner = React.forwardRef<HTMLSpanElement, SpinnerProps>(
     return (
       <span
         ref={ref}
-        className={clsx(
+        className={cn(
           "inline-block animate-spin rounded-full border-current border-t-transparent",
           sizeClasses[size],
           className,

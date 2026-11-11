@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
-import { clsx } from "clsx";
+import { Checkbox as CheckboxPrimitive } from "radix-ui";
+import { cn } from "@/lib/utils";
 
 export interface CheckboxProps extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> {
   label?: React.ReactNode;
@@ -16,11 +16,12 @@ export const Checkbox = React.forwardRef<
   const checkboxId = id ?? generatedId;
 
   return (
-    <div className={clsx("flex items-center gap-2", className)}>
+    <div className={cn("flex items-center gap-2", className)}>
       <CheckboxPrimitive.Root
         ref={ref}
         id={checkboxId}
-        className={clsx(
+        data-slot="checkbox"
+        className={cn(
           "peer flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-[var(--color-primary)] data-[state=checked]:bg-[var(--color-primary)]",
         )}
         {...props}

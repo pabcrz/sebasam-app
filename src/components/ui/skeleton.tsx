@@ -1,6 +1,6 @@
 "use client";
 
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 
 export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   circle?: boolean;
@@ -9,7 +9,7 @@ export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
 export function Skeleton({ className, circle, ...props }: SkeletonProps) {
   return (
     <div
-      className={clsx(
+      className={cn(
         "animate-pulse animate-shimmer bg-[var(--color-border-light)]/60",
         circle ? "rounded-full" : "rounded-md",
         className,

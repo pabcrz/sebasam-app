@@ -1,6 +1,6 @@
 import * as React from "react";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 import { Card } from "./card";
 
 export type StatIconVariant =
@@ -74,7 +74,7 @@ export function StatCard({
   className,
   ...props
 }: StatCardProps) {
-  const valueClasses = clsx(
+  const valueClasses = cn(
     "font-bold",
     numericRole ? numericRoleClasses[numericRole] : "text-2xl",
     valueClassName ?? "text-[var(--color-text-main)]",
@@ -83,12 +83,12 @@ export function StatCard({
   const TrendIcon = trend ? trendIcons[trend.direction] : null;
 
   return (
-    <Card className={clsx("min-w-0 p-4", className)} {...props}>
+    <Card className={cn("min-w-0 p-4", className)} {...props}>
       <div className="flex items-center justify-between gap-2">
         <span className="min-w-0 break-words text-xs font-medium text-[var(--color-text-muted)]">{label}</span>
         {icon ? (
           <div
-            className={clsx(
+            className={cn(
               "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
               iconVariantClasses[iconVariant],
             )}
@@ -99,7 +99,7 @@ export function StatCard({
       </div>
 
       <div className="mt-2 flex min-w-0 items-baseline justify-between gap-2">
-        <span className={clsx("min-w-0 flex-1 break-words", valueClasses)} data-numeric-role={numericRole}>
+        <span className={cn("min-w-0 flex-1 break-words", valueClasses)} data-numeric-role={numericRole}>
           {value}
         </span>
         {action ? <span className="shrink-0">{action}</span> : null}
@@ -107,7 +107,7 @@ export function StatCard({
 
       {trend && TrendIcon ? (
         <p
-          className={clsx(
+          className={cn(
             "mt-1.5 inline-flex items-center gap-1 text-xs font-medium",
             trendClasses[trend.direction],
           )}

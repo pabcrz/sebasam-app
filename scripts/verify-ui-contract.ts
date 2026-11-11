@@ -7,7 +7,7 @@ function assertIncludes(source: string, substring: string, message: string) {
 
 function assertNoRadix(source: string, context: string) {
   assert(
-    !source.includes("@radix-ui"),
+    !/from\s+["'](?:@radix-ui\/[^"']+|radix-ui)["']/.test(source),
     `${context} must import controlled wrappers from @/components/ui, not Radix directly`,
   );
 }

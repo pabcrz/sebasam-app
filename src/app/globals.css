@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 :root {
   --background: #f3f6fa;
@@ -221,6 +222,23 @@
   --motion-fast: var(--motion-fast);
   --motion-base: var(--motion-base);
   --motion-slow: var(--motion-slow);
+
+  /* shadcn/ui semantic aliases: generated components resolve to SEBASAM tokens */
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-text-main);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-text-main);
+  --color-primary-foreground: var(--color-white);
+  --color-secondary: var(--color-blue-tint);
+  --color-secondary-foreground: var(--color-text-main);
+  --color-muted: var(--color-surface-muted);
+  --color-muted-foreground: var(--color-text-muted);
+  --color-accent: var(--color-bg-soft);
+  --color-accent-foreground: var(--color-text-main);
+  --color-destructive: var(--color-status-danger);
+  --color-border: var(--color-border-light);
+  --color-input: var(--color-border-light);
+  --color-ring: var(--color-focus-ring);
 
   /* Touch */
   --spacing-tap: var(--tap-min-height);

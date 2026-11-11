@@ -116,7 +116,7 @@ Regla de badges: fondo pastel con alpha bajo + borde con alpha medio + texto/dot
 
 ### Base UI
 
-Implementar como wrappers Tailwind sobre comportamiento nativo o Radix cuando se requiera accesibilidad avanzada.
+Implementar como wrappers Tailwind sobre comportamiento nativo o Radix cuando se requiera accesibilidad avanzada, siguiendo las convenciones de shadcn/ui (ver «Wrappers sobre Radix»).
 
 | Componente | Notas de implementación |
 |---|---|
@@ -133,7 +133,15 @@ Implementar como wrappers Tailwind sobre comportamiento nativo o Radix cuando se
 
 Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directamente a las pantallas.
 
-> **Regla del proyecto:** todas las pantallas deben consumir wrappers desde `src/components/ui`. No importar Radix directamente en pantallas, páginas o componentes de dominio; si un primitivo de Radix no está envuelto aún, crear el wrapper en `src/components/ui` antes de usarlo.
+> **Regla del proyecto:** todas las pantallas deben consumir wrappers desde `src/components/ui`. No importar Radix (`radix-ui` ni `@radix-ui/*`) directamente en pantallas, páginas o componentes de dominio; si un primitivo de Radix no está envuelto aún, crear el wrapper en `src/components/ui` antes de usarlo.
+
+**Convenciones shadcn/ui:** los wrappers siguen el modelo de shadcn/ui (`components.json` en la raíz).
+
+- Importar primitivos desde el paquete unificado `radix-ui` (`import { Checkbox as CheckboxPrimitive } from "radix-ui"`).
+- Combinar clases con `cn()` de `@/lib/utils`: el `className` del llamador gana sobre las clases base en conflicto, así que no pasar clases contradictorias en un mismo string.
+- Definir variantes con `cva` y exportarlas (por ejemplo `buttonVariants`) para estilizar elementos que no pueden ser el componente, como un `next/link`.
+- Para un componente nuevo, `pnpm dlx shadcn@latest add <componente>` y adaptar el resultado a los tokens SEBASAM antes de exportarlo desde `index.ts`. `globals.css` mapea los colores semánticos de shadcn (`bg-popover`, `text-muted-foreground`, `border-input`…) a esos tokens, y `tw-animate-css` provee las animaciones `data-[state]`.
+- Antes de agregar un componente con capas (menús, popovers), revisar que use la misma versión de `@radix-ui/react-dismissable-layer` que `Dialog` y `Select` (`pnpm why @radix-ui/react-dismissable-layer`); dos copias rompen el apilado de capas.
 
 | Componente | Uso típico |
 |---|---|
@@ -317,7 +325,7 @@ Criterios de diseño por audiencia, no checklist de implementación. Para rutas 
 
 ## Notas de implementación
 
-1. Revisar las dependencias de `package.json` antes de proponer instalaciones: Radix ya está incorporado y las notificaciones usan `react-hot-toast`, no Sonner.
+1. Revisar las dependencias de `package.json` antes de proponer instalaciones: Radix (vía shadcn/ui) ya está incorporado y las notificaciones usan `react-hot-toast`, no Sonner.
 2. Reutilizar los wrappers tokenizados existentes en `src/components/ui`; no crear una segunda capa UI.
 3. Usar `QuoteOperationalBadge` y `QuoteFinancialBadges` desde el primer listado de cotizaciones.
 4. El schema actual en `prisma/schema.prisma` usa estados en inglés y separa `Quote`/`WorkOrder`; al implementar la UI, alinear los labels visuales con los estados de negocio del manual y los enums de arquitectura.

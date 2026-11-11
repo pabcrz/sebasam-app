@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 
 export type OperationalCardLayoutProps = {
   header: React.ReactNode;
@@ -19,7 +19,7 @@ export function OperationalCardLayout({
   className,
 }: OperationalCardLayoutProps) {
   return (
-    <div className={clsx("flex flex-col gap-3 text-left", className)}>
+    <div className={cn("flex flex-col gap-3 text-left", className)}>
       <div data-testid="card-header">{header}</div>
       <div data-testid="card-identity">{identity}</div>
       {context ? <div data-testid="card-context">{context}</div> : null}
@@ -51,7 +51,7 @@ export function OperationalCardActions({
   actionGapClassName = "gap-2",
 }: OperationalCardActionsProps) {
   return (
-    <div className={clsx("grid gap-3", className)}>
+    <div className={cn("grid gap-3", className)}>
       {primary ? (
         <div data-testid="operational-card-primary-action" className="w-full [&_a]:w-full [&_button]:w-full">
           {primary}
@@ -60,10 +60,10 @@ export function OperationalCardActions({
       {frequent || overflow ? (
         <div
           data-testid="operational-card-secondary-actions"
-          className={clsx("flex w-full items-center", actionGapClassName)}
+          className={cn("flex w-full items-center", actionGapClassName)}
         >
           {frequent ? (
-            <div className={clsx("flex min-w-0 flex-1 items-center [&>*]:flex-1 [&>*]:min-w-0", actionGapClassName)}>
+            <div className={cn("flex min-w-0 flex-1 items-center [&>*]:flex-1 [&>*]:min-w-0", actionGapClassName)}>
               {frequent}
             </div>
           ) : null}

@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import * as LabelPrimitive from "@radix-ui/react-label";
-import { clsx } from "clsx";
+import { Label as LabelPrimitive } from "radix-ui";
+import { cn } from "@/lib/utils";
 
 export type LabelProps = React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>;
 
@@ -11,7 +11,8 @@ export const Label = React.forwardRef<React.ElementRef<typeof LabelPrimitive.Roo
     return (
       <LabelPrimitive.Root
         ref={ref}
-        className={clsx(
+        data-slot="label"
+        className={cn(
           "text-sm font-medium leading-none text-[var(--color-text-main)] peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
           className,
         )}
