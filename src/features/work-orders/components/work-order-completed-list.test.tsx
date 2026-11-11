@@ -234,7 +234,7 @@ describe("WorkOrderCompletedList", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Ver vista previa de nota COT-001" }));
     expect(screen.getByRole("heading", { name: "Nota COT-001" })).toBeInTheDocument();
-    expect(screen.getAllByText("Cambio de aceite")).toHaveLength(2);
+    expect(screen.getAllByText("Cambio de aceite")).toHaveLength(1);
     expect(screen.queryByTestId("nota-detail-dialog")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Cerrar" }));
@@ -247,18 +247,16 @@ describe("WorkOrderCompletedList", () => {
     expect(within(detailDialog).queryByRole("button", { name: "Imprimir nota de remisión COT-001" })).not.toBeInTheDocument();
     expect(cardPrintAction).toBeInTheDocument();
     expect(cardPrintAction).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas");
-    expect(screen.getAllByRole("listitem")).toHaveLength(longPaymentHistory.length);
+    expect(within(screen.getByTestId("nota-payment-history")).getAllByRole("listitem")).toHaveLength(longPaymentHistory.length);
     expect(screen.getByTestId("quote-payment-balance-indicator")).toHaveTextContent(/Saldo pendiente\s*\$125\.00/);
     expect(screen.getByTestId("note-due-date")).toHaveTextContent(/Fecha de vencimiento de pago: 21 de agosto de 2026\./);
     expect(screen.queryByTestId("quote-validity")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Registrar pago para COT-001" })).toBeInTheDocument();
     expect(screen.getByTestId("nota-detail-actions").querySelector('[aria-label="Compartir cotización COT-001"]')).not.toBeNull();
-    expect(screen.getByTestId("nota-detail-summary")).toHaveTextContent("Cliente de prueba");
+    expect(within(screen.getByTestId("document-preview")).getByRole("region", { name: "Cliente y unidad" })).toHaveTextContent("Cliente de prueba");
     expect(screen.getByTestId("nota-detail-summary")).toHaveTextContent("Referencia interna: OT-001");
     expect(screen.getByTestId("nota-detail-body")).toHaveClass("overflow-y-auto");
-    expect(screen.getByTestId("nota-detail-body")).toHaveClass("p-0");
-    expect(screen.getByTestId("nota-detail-body")).not.toHaveClass("px-4", "py-4", "sm:px-6", "sm:py-6");
-    expect(screen.getByTestId("nota-detail-dialog")).toHaveClass("h-dvh", "w-screen", "sm:max-w-2xl");
+    expect(screen.getByTestId("nota-detail-dialog")).toHaveAttribute("data-dialog-variant", "sheet");
   });
 
   it("renders SALE notes through the same payable actions without a WorkOrder", () => {

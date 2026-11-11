@@ -33,7 +33,10 @@ import {
 import { useQuoteCustomerSearch } from "./use-quote-customer-search";
 import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderStepper } from "./quote-builder-stepper";
-import { QuotePreviewCard } from "./quote-preview-card";
+import type { QuotePreviewCardProps } from "./quote-preview-card";
+import { toDocumentPreviewProps } from "./document-preview-model";
+import { DocumentPreview } from "@/components/document-preview";
+import { quoteStatusLabels } from "@/features/quotes/lib/status";
 import type { QuoteFormActionState } from "../actions";
 import { createCustomerContactAction } from "@/features/customers/actions";
 import {
@@ -1195,23 +1198,26 @@ export function QuoteBuilder({
                 ? formatQuoteContactRole(selectedContact.role)
                 : null;
 
+              const previewProps: QuotePreviewCardProps = {
+                customerName: customerDisplayName,
+                legalName: legalDisplayName,
+                contactName: selectedContact?.name,
+                contactRole: contactRoleBadge,
+                vehicle,
+                title,
+                description,
+                administrative,
+                sections,
+                subtotalCents,
+                discountCents,
+                taxCents,
+                totalCents,
+                validUntil,
+              };
+              const typeLabel = isSaleNote || mode === "direct-note" ? "Nota" : mode === "direct-work-order" || mode === "direct" ? "Trabajo" : "Cotización";
               return (
-                <QuotePreviewCard
-                  customerName={customerDisplayName}
-                  legalName={legalDisplayName}
-                  contactName={selectedContact?.name}
-                  contactRole={contactRoleBadge}
-                  vehicle={vehicle}
-                  title={title}
-                  description={description}
-                  administrative={administrative}
-                  sections={sections}
-                  subtotalCents={subtotalCents}
-                  discountCents={discountCents}
-                  taxCents={taxCents}
-                  totalCents={totalCents}
-                  validUntil={validUntil}
-                  compactItems
+                <DocumentPreview
+                  {...toDocumentPreviewProps(previewProps, { typeLabel, statusLabel: quoteStatusLabels.DRAFT })}
                 />
               );
             })()}
