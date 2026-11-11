@@ -27,15 +27,19 @@ type WorkerEditFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   worker: WorkerEditFormWorker;
   returnTo?: string;
+  /** Lets a footer outside the form submit it (`<Button form={formId}>`). */
+  formId?: string;
+  /** Sheets render their own Guardar in the footer; the standalone edit page keeps this one. */
+  showSubmit?: boolean;
 };
 
-export function WorkerEditForm({ action, worker, returnTo }: WorkerEditFormProps) {
+export function WorkerEditForm({ action, worker, returnTo, formId, showSubmit = true }: WorkerEditFormProps) {
   const [username, setUsername] = React.useState(worker.username);
   const [workerKind, setWorkerKind] = React.useState<"MASTER" | "HELPER">(worker.workerKind ?? "MASTER");
   const generatedEmail = usernameToInternalEmail(username.trim().toLowerCase());
 
   return (
-    <form action={action} className="grid gap-4" data-testid="worker-edit-form">
+    <form id={formId} action={action} className="grid gap-4" data-testid="worker-edit-form">
       {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       <fieldset className="grid gap-4">
         <SectionLabel as="legend">Perfil operativo</SectionLabel>
@@ -104,9 +108,11 @@ export function WorkerEditForm({ action, worker, returnTo }: WorkerEditFormProps
           </div>
         )}
       </fieldset>
-      <Button type="submit" variant="primary" className="w-full sm:w-fit">
-        Guardar trabajador
-      </Button>
+      {showSubmit ? (
+        <Button type="submit" variant="primary" className="w-full sm:w-fit">
+          Guardar trabajador
+        </Button>
+      ) : null}
     </form>
   );
 }

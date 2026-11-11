@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@/components/ui";
+import { Button, Input, PageHeader, SegmentedControl } from "@/components/ui";
 import {
   createWorkerFromForm,
   deleteWorkerFromForm,
@@ -34,6 +34,13 @@ const statusLabels = {
   INACTIVE: "Inactivos",
 } as const;
 
+function workersHref(status: string, query: string) {
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  params.set("status", status);
+  return `/admin/workers?${params.toString()}`;
+}
+
 export default async function WorkersPage({ searchParams }: WorkersPageProps) {
   const params = await searchParams;
   const parsedSearch = workerSearchSchema.safeParse({ query: params.q, status: params.status });
@@ -63,78 +70,53 @@ export default async function WorkersPage({ searchParams }: WorkersPageProps) {
         </p>
       ) : null}
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
-          Trabajadores
-        </h1>
-        <div className="hidden sm:block">
-          <WorkerCreateDialog action={createWorkerFromForm} triggerVariant="primary" triggerSize="sm" triggerClassName="w-full sm:w-auto" />
+      <PageHeader
+        title="Trabajadores"
+        primaryAction={
+          <WorkerCreateDialog action={createWorkerFromForm} triggerVariant="primary" triggerSize="lg" />
+        }
+      />
+
+      <div className="grid gap-3">
+        <form className="flex min-w-0 items-center gap-2">
+          <input type="hidden" name="status" value={search.status} />
+          <Input
+            name="q"
+            defaultValue={search.query}
+            placeholder="Buscar por nombre, usuario o correo"
+            aria-label="Buscar trabajadores"
+            className="min-w-0 flex-1"
+          />
+          <Button type="submit" variant="secondary" size="sm">
+            Buscar
+          </Button>
+        </form>
+
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <SegmentedControl
+            label="Filtrar trabajadores"
+            value={search.status}
+            options={Object.entries(statusLabels).map(([value, label]) => ({
+              value,
+              label,
+              href: workersHref(value, search.query),
+            }))}
+          />
+          {search.query || search.status !== "ALL" ? (
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/admin/workers">
+                <Icon name="close" className="h-4 w-4" aria-hidden="true" />
+                Limpiar
+              </Link>
+            </Button>
+          ) : null}
         </div>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2" className="flex items-center gap-2">
-            <Icon name="search" className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
-            Buscar trabajadores
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-            <Input
-              name="q"
-              defaultValue={search.query}
-              placeholder="Buscar por nombre, usuario o correo"
-            />
-            <select
-              name="status"
-              defaultValue={search.status}
-              aria-label="Filtrar por estado"
-              className="min-h-[var(--tap-min-height)] rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-base text-[var(--color-text-main)]"
-            >
-              {Object.entries(statusLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <div className="flex gap-2">
-              <Button type="submit" variant="secondary">
-                Buscar
-              </Button>
-              {search.query || search.status !== "ALL" ? (
-                <Button asChild variant="outline">
-                  <Link href="/admin/workers">
-                    <Icon name="close" className="h-4 w-4" aria-hidden="true" />
-                    Limpiar
-                  </Link>
-                </Button>
-              ) : null}
-            </div>
-          </form>
-
-          <div className="mt-6">
-            <WorkerCardList
-              workers={workers}
-              updateAction={updateWorkerFromForm}
-              setActiveAction={setWorkerActiveFromForm}
-              deleteAction={deleteWorkerFromForm}
-            />
-
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Mobile Floating Action Button */}
-      <div
-        className="fixed right-[calc(1rem+var(--removed-body-scroll-bar-size,0px))] z-40 sm:hidden"
-        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
-      >
-        <WorkerCreateDialog
-          action={createWorkerFromForm}
-          triggerVariant="primary"
-          triggerSize="sm"
-          triggerClassName="h-11 px-4 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-1.5 border border-white/20"
+        <WorkerCardList
+          workers={workers}
+          updateAction={updateWorkerFromForm}
+          setActiveAction={setWorkerActiveFromForm}
+          deleteAction={deleteWorkerFromForm}
         />
       </div>
     </section>

@@ -1,15 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { Icon } from "@/components/ui/icon";
 import {
   Button,
-  Dialog,
-  DialogContent,
+  DialogClose,
   DialogDescription,
-  DialogHeader,
+  DialogMobileBody,
+  DialogMobileContent,
+  DialogMobileFooter,
+  DialogMobileHeader,
   DialogTitle,
   DialogTrigger,
+  Icon,
+  Sheet,
 } from "@/components/ui";
 import type { ButtonVariant } from "@/components/ui";
 import { WorkerCreateForm } from "./worker-create-form";
@@ -24,11 +27,12 @@ type WorkerCreateDialogProps = {
 };
 
 export function WorkerCreateDialog({ action, triggerVariant = "primary", triggerSize, triggerClassName, triggerIconOnly = false, triggerAriaLabel }: WorkerCreateDialogProps) {
+  const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [isPending, setIsPending] = React.useState(false);
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => { if (!isPending) setOpen(nextOpen); }}>
+    <Sheet open={open} onOpenChange={(nextOpen) => { if (!isPending) setOpen(nextOpen); }}>
       <DialogTrigger asChild>
         <Button
           type="button"
@@ -43,19 +47,31 @@ export function WorkerCreateDialog({ action, triggerVariant = "primary", trigger
           <span className={triggerIconOnly ? "sr-only" : undefined}>Crear trabajador</span>
         </Button>
       </DialogTrigger>
-      <DialogContent
-        className="max-w-2xl"
+      <DialogMobileContent
+        variant="sheet"
         onEscapeKeyDown={(event) => { if (isPending) event.preventDefault(); }}
         onPointerDownOutside={(event) => { if (isPending) event.preventDefault(); }}
       >
-        <DialogHeader>
+        <DialogMobileHeader>
           <DialogTitle>Crear trabajador</DialogTitle>
           <DialogDescription>
             Registra un maestro o ayudante para las asignaciones operativas.
           </DialogDescription>
-        </DialogHeader>
-        <WorkerCreateForm action={action} isPending={isPending} onSubmit={() => setIsPending(true)} />
-      </DialogContent>
-    </Dialog>
+        </DialogMobileHeader>
+        <DialogMobileBody>
+          <WorkerCreateForm formId={formId} action={action} isPending={isPending} onSubmit={() => setIsPending(true)} />
+        </DialogMobileBody>
+        <DialogMobileFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline" disabled={isPending}>
+              Cancelar
+            </Button>
+          </DialogClose>
+          <Button type="submit" form={formId} variant="primary" size="lg" loading={isPending} disabled={isPending}>
+            Crear trabajador
+          </Button>
+        </DialogMobileFooter>
+      </DialogMobileContent>
+    </Sheet>
   );
 }
