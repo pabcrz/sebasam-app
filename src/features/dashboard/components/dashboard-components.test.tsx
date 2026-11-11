@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { buildInboxRows, prioritizeInbox } from "../inbox-priority";
 import { DashboardView } from "./dashboard-view";
+import { InboxRowsSection } from "./inbox-rows-section";
 import { KpiPeriodMetrics } from "./kpi-period-metrics";
+import { NextWorkCard } from "./next-work-card";
 import { PayrollEstimateCard } from "./payroll-estimate-card";
-import { QueueSnapshotCards } from "./queue-snapshot-cards";
 import { ReceivablesSection } from "./receivables-section";
 
 describe("KpiPeriodMetrics", () => {
@@ -112,26 +114,78 @@ describe("PayrollEstimateCard", () => {
   });
 });
 
-describe("QueueSnapshotCards", () => {
-  it("uses the shared count role instead of a larger queue-specific scale", () => {
-    render(<QueueSnapshotCards queues={{ draftQuotesCount: 12, sentQuotesCount: 7, approvedQuotesCount: 4, activeExecutionCount: 8 }} />);
+describe("NextWorkCard", () => {
+  const nextWork = {
+    quoteId: "quote-oldest",
+    number: "C-041126-01",
+    title: "Refuerzo y hoja rota",
+    customerName: "Mónica Granados",
+    totalCents: 1_002_240,
+    approvedAt: new Date("2026-11-10T18:00:00.000Z"),
+    vehicle: { economicNumber: "42", plate: null, brand: "Ford", model: "Transit" },
+  };
 
-    for (const value of ["12", "7", "4", "8"]) {
-      expect(screen.getByText(value)).toHaveAttribute("data-numeric-role", "count");
-      expect(screen.getByText(value)).toHaveClass("text-2xl", "font-mono", "tabular-nums");
-      expect(screen.getByText(value)).not.toHaveClass("text-3xl");
+  it("shows the oldest approved quote as a featured card with an Asignar action to the approved list", () => {
+    const { container } = render(<NextWorkCard nextWork={nextWork} />);
+
+    expect(screen.getByRole("heading", { name: "Siguiente trabajo" })).toBeInTheDocument();
+    expect(container.querySelector('[data-variant="featured"]')).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Refuerzo y hoja rota" })).toBeInTheDocument();
+    expect(screen.getByText("C-041126-01")).toBeInTheDocument();
+    expect(screen.getByText("Mónica Granados")).toBeInTheDocument();
+    expect(screen.getByText("ECO 42 · Ford Transit")).toBeInTheDocument();
+    expect(screen.getByText("$10,022.40")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Asignar" })).toHaveAttribute("href", "/admin/quotes?status=APPROVED");
+  });
+});
+
+describe("InboxRowsSection", () => {
+  const queues = { draftQuotesCount: 13, sentQuotesCount: 1, approvedQuotesCount: 2, activeExecutionCount: 1 };
+
+  it("renders each pending row as a link to its filtered list, in priority order", () => {
+    const rows = prioritizeInbox(buildInboxRows(queues, { oldestApprovedAt: null }));
+    render(<InboxRowsSection heading="Para hoy" rows={rows.filter((row) => row.key === "approved" || row.key === "active")} emptyText="Nada pendiente para hoy." />);
+
+    const links = screen.getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/admin/quotes?status=APPROVED", "/admin/work-orders"]);
+    expect(screen.getByRole("link", { name: /asignar trabajos aprobados/i })).toHaveTextContent("2");
+    expect(screen.getByRole("link", { name: /completar trabajos activos/i })).toHaveTextContent("1");
+  });
+
+  it("keeps every row free of border classes and icon boxes", () => {
+    const rows = prioritizeInbox(buildInboxRows(queues, { oldestApprovedAt: null }));
+    render(<InboxRowsSection heading="Seguimiento de cotizaciones" rows={rows} emptyText="Sin seguimiento." />);
+
+    for (const link of screen.getAllByRole("link")) {
+      expect(link.className).not.toMatch(/border/);
+      expect(link.querySelector("svg")).toBeNull();
     }
   });
 
-  it("renders each queue as a single link to its management screen", () => {
-    render(<QueueSnapshotCards queues={{ draftQuotesCount: 12, sentQuotesCount: 7, approvedQuotesCount: 4, activeExecutionCount: 8 }} />);
+  it("shows active jobs in amber with a text cue when one is stopped", () => {
+    const rows = prioritizeInbox(buildInboxRows(queues, { oldestApprovedAt: null, stoppedActiveCount: 1 }));
+    render(<InboxRowsSection heading="Para hoy" rows={rows.filter((row) => row.key === "active")} emptyText="Nada pendiente para hoy." />);
 
-    expect(screen.getByRole("link", { name: /enviar cotizaciones borrador · 12/i })).toHaveAttribute("href", "/admin/quotes?status=DRAFT");
-    expect(screen.getByRole("link", { name: /dar seguimiento a cotizaciones enviadas · 7/i })).toHaveAttribute("href", "/admin/quotes?status=SENT");
-    expect(screen.getByRole("link", { name: /asignar o iniciar trabajos aprobados · 4/i })).toHaveAttribute("href", "/admin/quotes?status=APPROVED");
+    const stopped = screen.getByRole("link", { name: /completar trabajos activos/i });
+    expect(stopped).toHaveTextContent("1 detenido");
+    expect(within(stopped).getByText("1 detenido")).toHaveClass("text-[var(--color-status-warning-fg)]");
+  });
 
-    const workOrderLink = screen.getByRole("link", { name: /completar trabajos activos · 8/i });
-    expect(workOrderLink).toHaveAttribute("href", "/admin/work-orders");
+  it("does not paint follow-up rows amber", () => {
+    const rows = prioritizeInbox(buildInboxRows(queues, { oldestApprovedAt: null, stoppedActiveCount: 1 }));
+    render(<InboxRowsSection heading="Seguimiento de cotizaciones" rows={rows.filter((row) => row.key === "draft" || row.key === "sent")} emptyText="Sin seguimiento." />);
+
+    for (const text of screen.getAllByText(/Sin respuesta|Pendientes de enviar/)) {
+      expect(text).not.toHaveClass("text-[var(--color-status-warning-fg)]");
+    }
+  });
+
+  it("shows the empty state when nothing is pending", () => {
+    render(<InboxRowsSection heading="Para hoy" rows={[]} emptyText="Nada pendiente para hoy." />);
+
+    expect(screen.getByRole("heading", { name: "Para hoy" })).toBeInTheDocument();
+    expect(screen.getByText("Nada pendiente para hoy.")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });
 
@@ -149,6 +203,15 @@ describe("ReceivablesSection", () => {
 describe("DashboardView", () => {
   const sampleSnapshot = {
     queues: { draftQuotesCount: 12, sentQuotesCount: 7, approvedQuotesCount: 4, activeExecutionCount: 8 },
+    nextWork: {
+      quoteId: "quote-oldest",
+      number: "C-041126-01",
+      title: "Refuerzo y hoja rota",
+      customerName: "Mónica Granados",
+      totalCents: 1_002_240,
+      approvedAt: new Date("2026-11-10T18:00:00.000Z"),
+      vehicle: null,
+    },
     receivables: [],
     kpis: {
       week: {
@@ -218,6 +281,34 @@ describe("DashboardView", () => {
     expect(screen.getByRole("heading", { level: 3, name: "Trabajadores" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 3, name: "Notas" })).not.toBeInTheDocument();
     expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
+  });
+
+  it("opens the inbox with Siguiente trabajo, then Para hoy, then seguimiento, before the finance blocks", () => {
+    render(<DashboardView snapshot={sampleSnapshot} customers={[]} createQuoteAction={vi.fn()} role="SUPER_ADMIN" />);
+
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    expect(headings.indexOf("Siguiente trabajo")).toBeLessThan(headings.indexOf("Para hoy"));
+    expect(headings.indexOf("Para hoy")).toBeLessThan(headings.indexOf("Seguimiento de cotizaciones"));
+    expect(headings.indexOf("Seguimiento de cotizaciones")).toBeLessThan(headings.indexOf("Cuentas por cobrar"));
+    expect(screen.getByRole("link", { name: /dar seguimiento a cotizaciones enviadas/i })).toHaveAttribute("href", "/admin/quotes?status=SENT");
+    expect(screen.getByRole("link", { name: /enviar cotizaciones borrador/i })).toHaveAttribute("href", "/admin/quotes?status=DRAFT");
+    expect(screen.getByRole("link", { name: /asignar trabajos aprobados/i })).toHaveAttribute("href", "/admin/quotes?status=APPROVED");
+    expect(screen.getByRole("link", { name: /completar trabajos activos/i })).toHaveAttribute("href", "/admin/work-orders");
+  });
+
+  it("hides Siguiente trabajo when no approved quote is waiting", () => {
+    render(
+      <DashboardView
+        snapshot={{ ...sampleSnapshot, nextWork: null, queues: { ...sampleSnapshot.queues, approvedQuotesCount: 0 } }}
+        customers={[]}
+        createQuoteAction={vi.fn()}
+        role="SUPER_ADMIN"
+      />,
+    );
+
+    expect(screen.queryByRole("heading", { name: "Siguiente trabajo" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Asignar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Para hoy" })).toBeInTheDocument();
   });
 
   it("renders the simplified operational surface for ADMIN", () => {
