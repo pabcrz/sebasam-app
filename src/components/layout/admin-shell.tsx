@@ -1,13 +1,31 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Icon, type IconName } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
 import { logoutAdmin } from "@/features/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { FontScaleToggle } from "@/components/font-scale-toggle";
 import { Button } from "@/components/ui/button";
+import {
+  DialogMobileBody,
+  DialogMobileClose,
+  DialogMobileContent,
+  DialogMobileHeader,
+  DialogTitle,
+  Sheet,
+} from "@/components/ui/dialog";
+import {
+  ADMIN_NAV_ITEMS,
+  type AdminNavItem,
+  getActiveNavHref,
+  getAdminNav,
+  readRailExpanded,
+  setRailExpanded,
+  subscribeRailExpanded,
+} from "./admin-nav";
 
 interface AdminShellProps {
   displayName: string;
@@ -15,81 +33,25 @@ interface AdminShellProps {
   children: React.ReactNode;
 }
 
-type NavItem = {
-  href: string;
-  label: string;
-  mobileLabel?: string;
-  icon: IconName;
-};
+const railServerSnapshot = () => false;
 
-/** All nav items shown in the desktop sidebar. */
-const navItems: NavItem[] = [
-  { href: "/admin", label: "Inicio", icon: "home" },
-  { href: "/admin/customers", label: "Clientes", icon: "users" },
-  { href: "/admin/workers", label: "Trabajadores", icon: "workers" },
-  { href: "/admin/quotes", label: "Cotizaciones", icon: "quotes" },
-  { href: "/admin/work-orders", label: "Trabajos", icon: "jobs" },
-  { href: "/admin/notas", label: "Notas", icon: "notes" },
-  { href: "/admin/nomina", label: "Nómina", icon: "cash" },
-  { href: "/admin/historical", label: "Histórico", icon: "history" },
-  { href: "/asistente", label: "Asistente", icon: "assistant" },
-  { href: "/admin/configuracion-pago", label: "Configuración", icon: "settings" },
-  { href: "/admin/users", label: "Usuarios", icon: "shield" }, // Added for SUPER_ADMIN
-];
+export function getSectionTitle(pathname: string): string {
+  const href = getActiveNavHref(pathname);
+  return ADMIN_NAV_ITEMS.find((item) => item.href === href)?.label ?? "Inicio";
+}
 
-const patronNavHrefs = new Set([
-  "/admin",
-  "/admin/customers",
-  "/admin/quotes",
-  "/admin/work-orders",
-  "/admin/notas",
-  "/admin/nomina",
-]);
+interface NavLinkProps {
+  item: AdminNavItem;
+  active: boolean;
+  variant: "bar" | "rail" | "sheet";
+  expanded?: boolean;
+  onNavStart?: () => void;
+}
 
-/** Primary operational destinations shown directly in the 5-item mobile bottom nav bar. */
-export const primaryMobileNavItems: NavItem[] = [
-  { href: "/admin", label: "Inicio", icon: "home" },
-  { href: "/admin/quotes", label: "Cotizaciones", mobileLabel: "Cotiz.", icon: "quotes" },
-  { href: "/admin/work-orders", label: "Trabajos", icon: "jobs" },
-  { href: "/admin/notas", label: "Notas", icon: "notes" },
-];
-
-/** Secondary destinations accessible via the 'Más' bottom sheet. */
-export const secondaryMobileNavItems: NavItem[] = [
-  { href: "/admin/customers", label: "Clientes", icon: "users" },
-  { href: "/admin/nomina", label: "Nómina", icon: "cash" },
-  { href: "/admin/historical", label: "Histórico", mobileLabel: "Hist.", icon: "history" },
-  { href: "/asistente", label: "Asistente", mobileLabel: "IA", icon: "assistant" },
-  { href: "/admin/workers", label: "Trabajadores", icon: "workers" },
-  { href: "/admin/configuracion-pago", label: "Configuración", icon: "settings" },
-  { href: "/admin/users", label: "Usuarios", icon: "shield" },
-];
-
-const patronMobileNavItems: NavItem[] = [
-  primaryMobileNavItems[0],
-  secondaryMobileNavItems[0],
-  primaryMobileNavItems[1],
-  primaryMobileNavItems[2],
-  primaryMobileNavItems[3],
-  secondaryMobileNavItems[1],
-];
-
-function NavLink({
-  href,
-  label,
-  mobileLabel,
-  icon: iconName,
-  mobile = false,
-  onNavStart,
-}: NavItem & { mobile?: boolean; onNavStart?: () => void }) {
-  const pathname = usePathname();
+function NavLink({ item, active, variant, expanded = false, onNavStart }: NavLinkProps) {
+  const { href, label, icon, description } = item;
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
-
-  const active =
-    href === "/admin"
-      ? pathname === href
-      : pathname === href || pathname.startsWith(`${href}/`);
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (active || isPending) {
@@ -103,52 +65,92 @@ function NavLink({
     });
   };
 
+  const pendingClass = isPending ? "opacity-75" : "";
+  const current = active ? "page" : undefined;
+
+  if (variant === "bar") {
+    return (
+      <Link
+        href={href}
+        onClick={handleClick}
+        aria-label={label}
+        title={label}
+        aria-current={current}
+        className={`group flex min-h-[var(--tap-min-height)] min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] py-1 transition-colors duration-150 active-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] ${pendingClass}`}
+      >
+        <span
+          className={`flex h-[34px] w-14 items-center justify-center rounded-[17px] transition-colors duration-150 ${
+            active
+              ? "bg-[image:var(--gradient-primary)] text-white"
+              : "text-[var(--color-text-muted)] group-hover:bg-[var(--color-bg-soft)] group-hover:text-[var(--color-text-main)]"
+          }`}
+        >
+          <Icon name={icon} className="h-[22px] w-[22px]" aria-hidden="true" />
+        </span>
+      </Link>
+    );
+  }
+
+  if (variant === "rail") {
+    return (
+      <Link
+        href={href}
+        onClick={handleClick}
+        title={label}
+        aria-current={current}
+        className={`flex h-9 w-full items-center gap-3 overflow-hidden whitespace-nowrap rounded-[var(--radius-sm)] pl-[9px] pr-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] ${
+          active
+            ? "bg-[image:var(--gradient-primary)] font-semibold text-white"
+            : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)]"
+        } ${pendingClass}`}
+      >
+        <Icon name={icon} className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+        <span className={`transition-opacity duration-150 ${expanded ? "opacity-100" : "opacity-0"}`}>{label}</span>
+      </Link>
+    );
+  }
+
   return (
     <Link
       href={href}
       onClick={handleClick}
-      aria-label={mobile ? label : undefined}
-      className={
-        mobile
-          ? `group flex min-h-[var(--tap-min-height)] min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] px-1 py-1.5 text-[0.68rem] font-semibold leading-none transition-all duration-150 active-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-900)] ${
-              active
-                ? "bg-white/14 text-white shadow-sm"
-                : "text-[var(--color-on-navy-tint)] hover:bg-white/8 hover:text-white"
-            } ${isPending ? "opacity-75" : ""}`
-          : `group flex min-h-[var(--tap-min-height)] items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150 active-press-subtle ${
-              active
-                ? "bg-[var(--color-blue-tint)] text-[var(--color-nav-active-text)] shadow-sm"
-                : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)]"
-            } ${isPending ? "opacity-75" : ""}`
-      }
-      aria-current={active ? "page" : undefined}
+      aria-current={current}
+      className={`flex min-h-[var(--tap-min-height)] items-center gap-3 px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] ${
+        active
+          ? "bg-[image:var(--gradient-primary)] text-white"
+          : "text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]"
+      } ${pendingClass}`}
     >
+      <span
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] ${
+          active ? "bg-white/15" : "bg-[var(--color-blue-tint)] text-[var(--color-nav-active-text)]"
+        }`}
+      >
+        <Icon name={icon} className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold leading-tight">{label}</span>
+        {description ? (
+          <span className={`block truncate text-xs ${active ? "text-white/80" : "text-[var(--color-text-muted)]"}`}>
+            {description}
+          </span>
+        ) : null}
+      </span>
       <Icon
-        name={iconName}
-        className={`transition-transform duration-200 ease-out will-change-transform ${
-          mobile ? "h-5 w-5" : "h-4 w-4"
-        } ${active ? "scale-110" : "group-hover:scale-110 group-active:scale-95"}`}
+        name="chevron-right"
+        className={`h-4 w-4 shrink-0 ${active ? "text-white" : "text-[var(--color-text-muted)]"}`}
         aria-hidden="true"
       />
-      <span className={mobile ? "whitespace-nowrap" : undefined}>{mobileLabel ?? label}</span>
     </Link>
   );
-}
-
-export function getSectionTitle(pathname: string): string {
-  if (pathname === "/admin") {
-    return "Inicio";
-  }
-  const matched = navItems
-    .filter((item) => item.href !== "/admin")
-    .find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
-  return matched?.label ?? "Inicio";
 }
 
 export function AdminShell({ displayName, role, children }: AdminShellProps) {
   const [isGlobalPending, setGlobalPending] = React.useState(false);
   const [isMoreOpen, setIsMoreOpen] = React.useState(false);
+  const isRailExpanded = React.useSyncExternalStore(subscribeRailExpanded, readRailExpanded, railServerSnapshot);
   const profileMenuRef = React.useRef<HTMLDetailsElement>(null);
+  const mobileNavRef = React.useRef<HTMLElement>(null);
   const pathname = usePathname();
 
   React.useEffect(() => {
@@ -175,35 +177,73 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
     return () => clearTimeout(timer);
   }, [pathname]);
 
-  const isSecondaryActive = secondaryMobileNavItems.some(
-    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
-  );
-  const isPatron = role === "ADMIN";
-  const desktopNavItems = isPatron
-    ? navItems.filter((item) => patronNavHrefs.has(item.href))
-    : navItems.filter((item) => item.href !== "/admin/users" || role === "SUPER_ADMIN");
+  const nav = getAdminNav(role);
+  // One current item for the whole shell: the longest matching destination.
+  const activeHref = getActiveNavHref(pathname);
+  const moreIsCurrent = activeHref !== null && nav.sheet.some((group) => group.items.some((item) => item.href === activeHref));
+  const labelVisibility = isRailExpanded ? "opacity-100" : "opacity-0";
 
   return (
     <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 print:min-h-0 print:bg-transparent print:pb-0 print:block print:w-full">
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-[var(--color-border-light)] bg-[var(--color-surface)] p-4 text-[var(--color-text-main)] md:flex overflow-y-auto print:hidden">
-        <div className="border-b border-[var(--color-border-light)] px-3 pb-5">
-          <Link
-            href="/admin"
-            className="inline-flex min-h-[var(--tap-min-height)] items-center rounded-md px-2 text-xl font-extrabold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+      <aside className="sticky top-0 z-50 hidden h-dvh w-16 shrink-0 md:flex print:hidden">
+        {/* Expands over the content: the aside keeps 64px, so the content never moves. */}
+        <div
+          data-admin-rail
+          data-expanded={isRailExpanded ? "true" : "false"}
+          className={`absolute inset-y-0 left-0 flex flex-col overflow-x-hidden overflow-y-auto border-r border-[var(--color-border-light)] bg-[var(--color-surface)] px-3.5 py-4 text-[var(--color-text-main)] transition-[width,box-shadow] duration-200 ease-out ${
+            isRailExpanded ? "w-[220px] shadow-lg" : "w-16"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => setRailExpanded(!isRailExpanded)}
+            aria-expanded={isRailExpanded}
+            aria-label={isRailExpanded ? "Contraer menú" : "Expandir menú"}
+            title={isRailExpanded ? "Contraer menú" : "Expandir menú"}
+            className="mb-2 flex h-10 w-full shrink-0 items-center gap-3 rounded-[var(--radius-sm)] pl-0.5 text-left hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
           >
-            SEBASAM
-          </Link>
-        </div>
+            <Image
+              src="/logo-white-short.png"
+              alt=""
+              aria-hidden="true"
+              width={32}
+              height={32}
+              unoptimized
+              className="h-8 w-8 shrink-0 object-contain [filter:brightness(0)] [.dark_&]:[filter:none]"
+            />
+            <span
+              className={`whitespace-nowrap text-base font-extrabold tracking-[-0.03em] transition-opacity duration-150 ${labelVisibility}`}
+            >
+              SEBASAM
+            </span>
+            <Icon
+              name="chevron-left"
+              className={`ml-auto mr-1 h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-opacity duration-150 ${labelVisibility}`}
+              aria-hidden="true"
+            />
+          </button>
 
-        <nav aria-label="Navegación principal" className="mt-6 flex flex-1 flex-col gap-1">
-          {desktopNavItems.map((item) => (
-            <NavLink key={item.href} {...item} onNavStart={() => setGlobalPending(true)} />
-          ))}
-        </nav>
+          <nav aria-label="Navegación principal" className="mt-2 flex flex-col gap-1">
+            {nav.desktop.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                active={item.href === activeHref}
+                variant="rail"
+                expanded={isRailExpanded}
+                onNavStart={() => setGlobalPending(true)}
+              />
+            ))}
+          </nav>
 
-        <div className="border-t border-[var(--color-border-light)] px-3 pt-4">
-          <p className="truncate text-sm font-semibold">{displayName}</p>
-          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{role}</p>
+          <div className="mt-auto border-t border-[var(--color-border-light)] pt-3">
+            <p className={`truncate text-sm font-semibold transition-opacity duration-150 ${labelVisibility}`}>
+              {displayName}
+            </p>
+            <p className={`mt-1 truncate text-xs text-[var(--color-text-muted)] transition-opacity duration-150 ${labelVisibility}`}>
+              {role}
+            </p>
+          </div>
         </div>
       </aside>
 
@@ -280,84 +320,92 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         <main className="flex-1 print:min-h-0 print:block print:w-full">{children}</main>
       </div>
 
-      {/* Mobile "Más" drawer backdrop & sheet */}
-      {isMoreOpen && !isPatron ? (
-        <div className="fixed inset-0 z-40 md:hidden print:hidden">
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-            onClick={() => setIsMoreOpen(false)}
-            aria-hidden="true"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Menú secundario"
-            className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] mx-auto w-full max-w-md rounded-t-2xl border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] p-4 text-white shadow-2xl"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--color-navy-700)] pb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-on-navy-tint)]">
-                Más opciones
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsMoreOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-on-navy-tint)] hover:bg-white/10 hover:text-white"
-                aria-label="Cerrar menú"
+      {/* "Más" sheet. Non-modal so the bar stays tappable: its "Más"/"Cerrar" button closes it. */}
+      <Sheet open={isMoreOpen} onOpenChange={setIsMoreOpen} modal={false}>
+        <DialogMobileContent
+          variant="sheet"
+          aria-describedby={undefined}
+          className="bottom-[calc(4rem+env(safe-area-inset-bottom))] md:hidden"
+          onInteractOutside={(event) => {
+            if (event.target instanceof Node && mobileNavRef.current?.contains(event.target)) {
+              event.preventDefault();
+            }
+          }}
+        >
+          <DialogMobileHeader>
+            <DialogTitle>Más</DialogTitle>
+            <DialogMobileClose aria-label="Cerrar menú" />
+          </DialogMobileHeader>
+          <DialogMobileBody className="grid gap-4">
+            {nav.sheet.map((group) => (
+              <div
+                key={group.id}
+                role="group"
+                aria-labelledby={`admin-nav-group-${group.id}`}
+                className="grid gap-1.5"
               >
-                <Icon name="close" className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-            <div className="grid grid-cols-4 gap-2 pt-3">
-              {secondaryMobileNavItems
-                .filter((item) => item.href !== "/admin/users" || role === "SUPER_ADMIN")
-                .map((item) => (
-                  <NavLink
-                    key={item.href}
-                    {...item}
-                    mobile
-                    onNavStart={() => {
-                      setIsMoreOpen(false);
-                      setGlobalPending(true);
-                    }}
-                  />
-                ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
+                <h3
+                  id={`admin-nav-group-${group.id}`}
+                  className="px-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
+                >
+                  {group.title}
+                </h3>
+                <div className="divide-y divide-[var(--color-border-light)] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={item.href}
+                      item={item}
+                      active={item.href === activeHref}
+                      variant="sheet"
+                      onNavStart={() => {
+                        setIsMoreOpen(false);
+                        setGlobalPending(true);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </DialogMobileBody>
+        </DialogMobileContent>
+      </Sheet>
 
       <nav
+        ref={mobileNavRef}
         aria-label="Navegación móvil"
-        className="fixed bottom-0 left-0 right-[var(--removed-body-scroll-bar-size,0px)] z-40 border-t border-[var(--color-navy-700)] bg-[var(--color-navy-900)] text-white md:hidden print:hidden"
+        className="fixed bottom-0 left-0 right-[var(--removed-body-scroll-bar-size,0px)] z-[60] border-t border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] md:hidden print:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className={`mx-auto grid w-full max-w-md gap-1 px-1 pt-2 ${isPatron ? "grid-cols-6" : "grid-cols-5"}`}>
-          {(isPatron ? patronMobileNavItems : primaryMobileNavItems).map((item) => (
-            <NavLink key={item.href} {...item} mobile onNavStart={() => setGlobalPending(true)} />
+        <div className="mx-auto grid w-full max-w-md grid-cols-5 gap-1 px-1 pt-1">
+          {nav.bar.map((item) => (
+            <NavLink
+              key={item.href}
+              item={item}
+              active={item.href === activeHref}
+              variant="bar"
+              onNavStart={() => setGlobalPending(true)}
+            />
           ))}
-          {!isPatron ? (
-            <button
-              type="button"
-              onClick={() => setIsMoreOpen((prev) => !prev)}
-              aria-label="Más"
-              aria-expanded={isMoreOpen}
-              aria-haspopup="dialog"
-              aria-current={isSecondaryActive ? "page" : undefined}
-              className={`group flex min-h-[var(--tap-min-height)] min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] px-1 py-1.5 text-[0.68rem] font-semibold leading-none transition-all duration-150 active-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-900)] ${
-                isSecondaryActive || isMoreOpen
-                  ? "bg-white/14 text-white shadow-sm"
-                  : "text-[var(--color-on-navy-tint)] hover:bg-white/8 hover:text-white"
+          <button
+            type="button"
+            onClick={() => setIsMoreOpen((prev) => !prev)}
+            aria-label={isMoreOpen ? "Cerrar" : "Más"}
+            title={isMoreOpen ? "Cerrar" : "Más"}
+            aria-expanded={isMoreOpen}
+            aria-haspopup="dialog"
+            aria-current={moreIsCurrent && !isMoreOpen ? "page" : undefined}
+            className="group flex min-h-[var(--tap-min-height)] min-w-0 flex-col items-center justify-center gap-1 rounded-[var(--radius-md)] py-1 transition-colors duration-150 active-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+          >
+            <span
+              className={`flex h-[34px] w-14 items-center justify-center rounded-[17px] transition-colors duration-150 ${
+                moreIsCurrent && !isMoreOpen
+                  ? "bg-[image:var(--gradient-primary)] text-white"
+                  : "text-[var(--color-text-muted)] group-hover:bg-[var(--color-bg-soft)] group-hover:text-[var(--color-text-main)]"
               }`}
             >
-              <Icon name="more"
-                className={`h-5 w-5 transition-transform duration-200 ease-out will-change-transform ${
-                  isSecondaryActive || isMoreOpen ? "scale-110" : "group-hover:scale-110 group-active:scale-95"
-                }`}
-                aria-hidden="true"
-              />
-              <span className="whitespace-nowrap">Más</span>
-            </button>
-          ) : null}
+              <Icon name={isMoreOpen ? "close" : "more"} className="h-[22px] w-[22px]" aria-hidden="true" />
+            </span>
+          </button>
         </div>
       </nav>
     </div>
