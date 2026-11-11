@@ -5,7 +5,6 @@ import RootLayout from "./layout";
 
 vi.mock("next/font/google", () => ({
   Inter: () => ({ variable: "font-inter" }),
-  DM_Mono: () => ({ variable: "font-dm-mono" }),
 }));
 
 vi.mock("next/script", () => ({

@@ -38,26 +38,26 @@ Los tokens semánticos cambian según la clase `light`/`dark` en `<html>`. El mo
 
 | Uso | Token | Claro | Oscuro |
 |---|---|---|---|
-| Fondo de pantalla | `--bg` | `#F3F6FA` | `#0E131B` |
-| Superficie (tarjetas, hojas) | `--surface` | `#FFFFFF` | `#161D28` |
-| Superficie secundaria | `--surface-2` | `#F7F9FC` | `#121923` |
-| Borde | `--border` | `#D7E0EA` | `#263142` |
-| Texto principal | `--text` | `#001024` | `#E7ECF3` |
-| Texto secundario | `--muted-fg` | `#475569` | `#B4BFCD` |
-| Texto tenue | `--muted` | `#64748B` | `#8C99AB` |
-| Acción principal | `--btn-primary` | `#0A3D8F` | `#EEF2F7` |
-| Texto sobre acción principal | `--on-primary` | `#FFFFFF` | `#0E131B` |
-| Acción de tarjeta (fondo) | `--tonal-bg` | `#E6F1FB` | `#24375A` |
-| Acción de tarjeta (texto) | `--tonal-fg` | `#004AAD` | `#FFFFFF` |
-| Gradiente de marca (navegación activa) | `--brand-grad` | `linear-gradient(90deg, #004AAD 0%, #001024 100%)` | igual |
-| Monto | `--amount` | `#004AAD` | `#B9D2FA` |
-| Enlace | `--link` | `#004AAD` | `#9CC0F5` |
-| Éxito | `--ok` | `#15803D` | `#6FD39A` |
-| Advertencia | `--warn` | `#B45309` | `#F2C46B` |
-| Error | `--bad` | `#B91C1C` | `#F29B9B` |
-| Información | `--info` | `#004AAD` | `#9CC0F5` |
+| Fondo de pantalla | `--background` / `--color-bg-soft` | `#F3F6FA` | `#0E131B` |
+| Superficie (tarjetas, hojas) | `--color-surface` | `#FFFFFF` | `#161D28` |
+| Superficie secundaria | `--color-surface-muted` | `#F7F9FC` | `#121923` |
+| Borde | `--color-border-light` | `#D7E0EA` | `#263142` |
+| Texto principal | `--color-text-main` | `#001024` | `#E7ECF3` |
+| Texto secundario | `--color-text-muted-fg` | `#475569` | `#B4BFCD` |
+| Texto tenue | `--color-text-muted` | `#64748B` | `#8C99AB` |
+| Acción principal | `--color-btn-primary` | `#0A3D8F` | `#EEF2F7` |
+| Texto sobre acción principal | `--color-on-btn-primary` | `#FFFFFF` | `#0E131B` |
+| Acción de tarjeta (fondo) | `--color-tonal-bg` | `#E6F1FB` | `#24375A` |
+| Acción de tarjeta (texto) | `--color-tonal-fg` | `#004AAD` | `#FFFFFF` |
+| Gradiente de marca (navegación activa) | `--gradient-primary` | `linear-gradient(90deg, #004AAD 0%, #001024 100%)` | igual |
+| Monto | `--color-amount` | `#004AAD` | `#B9D2FA` |
+| Enlace | `--color-link` | `#004AAD` | `#9CC0F5` |
+| Éxito | `--color-status-success-fg` | `#15803D` | `#6FD39A` |
+| Advertencia | `--color-status-warning-fg` | `#B45309` | `#F2C46B` |
+| Error | `--color-status-danger-fg` | `#B91C1C` | `#F29B9B` |
+| Información | `--color-status-info-fg` | `#004AAD` | `#9CC0F5` |
 
-Marca: base `#004AAD`, deep navy `#001024`, tinte `#E6F1FB`. Los fondos de estado (`--ok-bg`, `--warn-bg`, `--bad-bg`, `--info-bg`) son pasteles de bajo alfa con borde de alfa medio y texto/dot en el color sólido. Preferir neutros con tinte azul; no usar grises puros.
+Los nombres son los tokens de `src/app/globals.css`. Marca: base `#004AAD`, deep navy `#001024`, tinte `#E6F1FB`. Los fondos de estado (`--ok-bg`, `--warn-bg`, `--bad-bg`, `--info-bg`) son pasteles de bajo alfa con borde de alfa medio y texto/dot en el color sólido. Preferir neutros con tinte azul; no usar grises puros. Encabezado de documentos (`--doc-head-bg`): gradiente de marca en claro, gris tinta `#1B2433` sin gradiente en oscuro.
 
 ### Tipografía
 
@@ -76,12 +76,12 @@ Marca: base `#004AAD`, deep navy `#001024`, tinte `#E6F1FB`. Los fondos de estad
 | Token | Valor | Uso |
 |---|---|---|
 | `--space-xs` / `sm` / `md` / `lg` / `xl` | 4 / 8 / 16 / 24 / 32 px | Escala de espaciado. |
-| `--r-xs` | 8px | Elementos pequeños dentro de un control. |
-| `--r-sm` / `--r-md` | 12px | Todo lo que se toca. |
-| `--r-lg` | 16px | Contenedor del segmentado y superficies. |
-| `--r-sheet` | 24px | Esquinas superiores de las hojas. |
-| `--ctl-lg` / `--ctl` / `--ctl-sm` | 40 / 36 / 32 px | Escala de botones. |
-| `--hit` | 44px | Área táctil mínima (invisible si el control es menor). |
+| `--radius-sm` | 8px | Elementos pequeños dentro de un control. |
+| `--radius-md` | 12px | Todo lo que se toca. |
+| `--radius-lg` | 16px | Contenedor del segmentado y superficies. |
+| `--radius-sheet` | 24px | Esquinas superiores de las hojas. |
+| `--control-lg` / `--control-md` / `--control-sm` | 40 / 36 / 32 px | Escala de botones. |
+| `--tap-min-height` | 44px | Área táctil mínima (invisible si el control es menor). |
 | `--screen-padding-x` | 16px | Padding horizontal de pantalla. |
 
 ### Sombras
@@ -93,7 +93,7 @@ Marca: base `#004AAD`, deep navy `#001024`, tinte `#E6F1FB`. Los fondos de estad
 | `--shadow-card` | `0 1px 2px rgba(0,16,36,.05), 0 4px 14px rgba(0,16,36,.07)` | Tarjetas, listas, cifras sobre el fondo. |
 | `--shadow-card-hover` | `0 2px 4px rgba(0,16,36,.06), 0 8px 22px rgba(0,16,36,.1)` | Hover de tarjeta. |
 | `--shadow-action` | `0 2px 6px rgba(0,74,173,.25)` | Acción principal. |
-| `--ring` | `0 0 0 3px rgba(0,74,173,.25)` | Anillo de foco, ambos modos. |
+| `--shadow-focus` | `0 0 0 3px rgba(0,74,173,.25)` | Anillo de foco (en oscuro, `--color-focus-ring` más luminoso). |
 
 ## Piezas compartidas
 
