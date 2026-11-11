@@ -2,7 +2,17 @@
 
 import * as React from "react";
 import { Icon } from "@/components/ui/icon";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DialogDescription,
+  DialogMobileBody,
+  DialogMobileContent,
+  DialogMobileFooter,
+  DialogMobileHeader,
+  DialogTitle,
+  Sheet,
+} from "@/components/ui/dialog";
 import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
 import { PayrollPeriodNav } from "./payroll-period-nav";
@@ -23,28 +33,20 @@ interface PayrollViewProps {
 
 export function PayrollView({ report, period, role = "SUPER_ADMIN" }: PayrollViewProps) {
   const isAdmin = role === "ADMIN";
-  const [selectedWorkerId, setSelectedWorkerId] = React.useState<string | null>(null);
+  // The id stays set while the sheet closes, so its content does not blank out during the exit.
+  const [detailWorkerId, setDetailWorkerId] = React.useState<string | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = React.useState(false);
   const [isSigningSheetOpen, setIsSigningSheetOpen] = React.useState(false);
   const [envelopeWorker, setEnvelopeWorker] = React.useState<WorkerPayrollSummary | null>(null);
   const fixedPayHelpers = report.fixedPayHelpers ?? [];
   const hasPayrollEntries = report.workers.length > 0 || fixedPayHelpers.length > 0;
-
-  // Derive active worker ID during render without cascading useEffect
-  const activeWorkerId =
-    selectedWorkerId && report.workers.some((w) => w.workerId === selectedWorkerId)
-      ? selectedWorkerId
-      : (report.workers[0]?.workerId ?? "");
+  const detailWorker = report.workers.find((worker) => worker.workerId === detailWorkerId) ?? null;
 
   return (
     <div className="min-w-0 max-w-full space-y-4 sm:space-y-6">
-      {/* Period Navigation */}
       <PayrollPeriodNav
         mode={period.mode}
-        rangeLabel={period.rangeLabel}
         anchor={period.anchor}
-        prevAnchor={period.prevAnchor}
-        nextAnchor={period.nextAnchor}
-        isCurrentPeriod={period.isCurrentPeriod}
         isCurrentWeek={period.isCurrentWeek}
         hasData={hasPayrollEntries}
         weekStatus={report.weekStatus}
@@ -52,10 +54,9 @@ export function PayrollView({ report, period, role = "SUPER_ADMIN" }: PayrollVie
         role={role}
       />
 
-      {/* Metrics Overview */}
-        <PayrollMetrics
-          totalCommissionCents={report.totalCommissionCents}
-          totalPayableCents={report.totalPayableCents}
+      <PayrollMetrics
+        totalCommissionCents={report.totalCommissionCents}
+        totalPayableCents={report.totalPayableCents}
         totalClientLaborCents={report.totalClientLaborCents}
         totalPayrollBaseCents={report.totalPayrollBaseCents}
         totalCompletedOrders={report.totalCompletedOrders}
@@ -67,29 +68,19 @@ export function PayrollView({ report, period, role = "SUPER_ADMIN" }: PayrollVie
 
       {period.mode === "weekly" && hasPayrollEntries && <WeeklyPayrollSummary report={report} />}
 
-      {/* Content: Summary Table + Focused Worker Detail */}
       {hasPayrollEntries ? (
         <div className="min-w-0 max-w-full space-y-5">
-          {/* Level 1: General Executive Overview Table */}
           {report.workers.length > 0 && (
             <PayrollOverviewTable
               workers={report.workers}
-              selectedWorkerId={activeWorkerId}
-              onSelectWorker={setSelectedWorkerId}
+              onSelectWorker={(workerId) => {
+                setDetailWorkerId(workerId);
+                setIsDetailOpen(true);
+              }}
             />
           )}
 
           <FixedPayHelperTable helpers={fixedPayHelpers} weekStart={period.anchor} readOnly={isAdmin} />
-
-          {/* Level 2: Specific Detail per Selected Worker */}
-          {report.workers.length > 0 && (
-            <PayrollWorkerDetail
-              workers={report.workers}
-              selectedWorkerId={activeWorkerId}
-              onOpenEnvelope={isAdmin ? undefined : (worker) => setEnvelopeWorker(worker)}
-              readOnly={isAdmin}
-            />
-          )}
         </div>
       ) : (
         <Card className="p-8 sm:p-12 text-center">
@@ -106,6 +97,47 @@ export function PayrollView({ report, period, role = "SUPER_ADMIN" }: PayrollVie
           </CardContent>
         </Card>
       )}
+
+      {/* Sheet: detalle de mano de obra del trabajador */}
+      <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogMobileContent variant="sheet">
+          {detailWorker ? (
+            <>
+              <DialogMobileHeader>
+                <DialogTitle>{detailWorker.displayName}</DialogTitle>
+                <DialogDescription>
+                  Mano de obra · {detailWorker.completedOrderCount}{" "}
+                  {detailWorker.completedOrderCount === 1 ? "orden" : "órdenes"}
+                </DialogDescription>
+              </DialogMobileHeader>
+              <DialogMobileBody>
+                <PayrollWorkerDetail
+                  workers={report.workers}
+                  selectedWorkerId={detailWorker.workerId}
+                  readOnly={isAdmin}
+                />
+              </DialogMobileBody>
+              {!isAdmin ? (
+                <DialogMobileFooter>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="lg"
+                    onClick={() => {
+                      setIsDetailOpen(false);
+                      setEnvelopeWorker(detailWorker);
+                    }}
+                    className="gap-1.5"
+                  >
+                    <Icon name="mail" className="h-4 w-4" aria-hidden="true" />
+                    Recibo de Nómina
+                  </Button>
+                </DialogMobileFooter>
+              ) : null}
+            </>
+          ) : null}
+        </DialogMobileContent>
+      </Sheet>
 
       {/* Modal: Hoja de Firmas Confidencial */}
       {!isAdmin && (

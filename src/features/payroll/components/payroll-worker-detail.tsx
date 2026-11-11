@@ -5,7 +5,6 @@ import { Icon } from "@/components/ui/icon";
 import { formatCents } from "@/features/quotes/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -25,14 +24,13 @@ import { updatePayrollItemBase } from "../actions";
 interface PayrollWorkerDetailProps {
   workers: WorkerPayrollSummary[];
   selectedWorkerId: string;
-  onOpenEnvelope?: (worker: WorkerPayrollSummary) => void;
   readOnly?: boolean;
 }
 
+/** Body of the worker sheet: the total and the work orders. The sheet owns the title and the receipt action. */
 export function PayrollWorkerDetail({
   workers,
   selectedWorkerId,
-  onOpenEnvelope,
   readOnly = false,
 }: PayrollWorkerDetailProps) {
   const activeWorker = workers.find((w) => w.workerId === selectedWorkerId) || workers[0];
@@ -40,34 +38,14 @@ export function PayrollWorkerDetail({
   if (!activeWorker) return null;
 
   return (
-    <div className="space-y-2.5">
-      {/* Title with Active Worker Context and Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h2 className="text-sm sm:text-base font-semibold text-[var(--color-text-main)]">
-          Mano de obra - {activeWorker.displayName}
-        </h2>
-        <div className="flex items-center gap-3">
-          {onOpenEnvelope && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenEnvelope(activeWorker)}
-              className="h-7 text-xs px-2.5 gap-1.5"
-            >
-              <Icon name="mail" className="h-3.5 w-3.5 text-[var(--color-primary)]" />
-              Recibo de Nómina
-            </Button>
-            )}
-          <span className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
-            Total: {formatCents(activeWorker.totalCommissionCents)}
-          </span>
-        </div>
-      </div>
+    <div className="grid min-w-0 gap-3">
+      <p className="text-sm font-semibold tabular-nums text-[var(--color-amount)]">
+        Total: {formatCents(activeWorker.totalCommissionCents)}
+      </p>
 
-      {/* Accordion List of Work Orders */}
-      <Card className="overflow-hidden p-0">
-        <CardContent className="p-0 divide-y-2 divide-[var(--color-border-light)]/80">
+      {/* Accordion List of Work Orders: a bordered surface, no shadow, inside the sheet */}
+      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-light)]">
+        <div className="divide-y-2 divide-[var(--color-border-light)]/80">
           {activeWorker.workOrders.map((order) => (
             <PayrollOrderAccordionRow
               key={
@@ -79,8 +57,8 @@ export function PayrollWorkerDetail({
               readOnly={readOnly}
             />
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
@@ -369,7 +347,7 @@ function PayrollOrderAccordionRow({
                 return (
                   <div
                     key={`m-${item.id}`}
-                    className="rounded-[var(--radius-sm)] bg-[var(--color-surface)] border-2 border-[var(--color-primary)]/40 p-2.5 text-xs space-y-2.5 shadow-sm"
+                    className="rounded-[var(--radius-sm)] bg-[var(--color-surface)] border-2 border-[var(--color-primary)]/40 p-2.5 text-xs space-y-2.5"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-semibold text-[var(--color-text-main)] leading-snug">
