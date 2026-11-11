@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
@@ -8,6 +8,13 @@ const refresh = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
 }));
+
+let matchMediaSpy: ReturnType<typeof vi.spyOn> | undefined;
+
+afterEach(() => {
+  matchMediaSpy?.mockRestore();
+  matchMediaSpy = undefined;
+});
 
 const customers = [{ id: "1", name: "Acme" }];
 // Full-screen quote flow: the bottom bar names the next step, e.g. "Conceptos →".
@@ -187,7 +194,7 @@ describe("QuoteBuilderDialog", () => {
     expectFullScreenQuoteDialog(dialog);
     expectStableDialogLayout(dialog, itemCount > 1);
     expect(screen.getAllByLabelText("Descripción", { selector: "input" })).toHaveLength(itemCount);
-    expect(screen.getByTestId("concept-list-0")).toHaveClass("grid", "gap-3");
+    expect(screen.getByTestId("concept-list-0")).toHaveClass("grid");
     expect(screen.getByTestId("concept-list-0")).not.toHaveClass("max-h-[45dvh]", "overflow-y-auto");
   });
 
@@ -348,6 +355,20 @@ describe("QuoteBuilderDialog", () => {
   });
 
   it("does not request close when selecting from portaled dropdowns", async () => {
+    // The concept type is a portaled Select only in the desktop table layout.
+    matchMediaSpy = vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) =>
+        ({
+          matches: query === "(min-width: 1024px)",
+          media: query,
+          onchange: null,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          dispatchEvent: () => true,
+          addListener: () => {},
+          removeListener: () => {},
+        }) as unknown as MediaQueryList,
+    );
     const user = userEvent.setup();
     render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
 

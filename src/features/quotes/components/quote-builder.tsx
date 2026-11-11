@@ -177,8 +177,9 @@ export function QuoteBuilder({
 
   const [animatedItemRowId, setAnimatedItemRowId] = React.useState<string | null>(null);
   const pendingItemRowId = React.useRef<string | null>(null);
-  const itemRowRefs = React.useRef(new Map<string, HTMLDivElement>());
+  const itemRowRefs = React.useRef(new Map<string, HTMLElement>());
   const itemDescriptionRefs = React.useRef(new Map<string, HTMLInputElement>());
+  const itemTypeRefs = React.useRef(new Map<string, HTMLElement>());
 
   const [initialFormState] = React.useState(() =>
     serializeQuoteBuilderSnapshot(builderState, initialSelectedCustomer?.name ?? "", ["", "", ""]),
@@ -245,11 +246,12 @@ export function QuoteBuilder({
     if (!rowId) return;
 
     const row = itemRowRefs.current.get(rowId);
-    const descriptionInput = itemDescriptionRefs.current.get(rowId);
-    if (!row || !descriptionInput) return;
+    // The table layout's first field is the Tipo control; the mobile list focuses the description.
+    const firstField = itemTypeRefs.current.get(rowId) ?? itemDescriptionRefs.current.get(rowId);
+    if (!row || !firstField) return;
 
     row.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    descriptionInput.focus({ preventScroll: true });
+    firstField.focus({ preventScroll: true });
     pendingItemRowId.current = null;
   }, [sections]);
 
@@ -1126,6 +1128,10 @@ export function QuoteBuilder({
                 onRowRef: (rowId, node) => {
                   if (node) itemRowRefs.current.set(rowId, node);
                   else itemRowRefs.current.delete(rowId);
+                },
+                onTypeRef: (rowId, node) => {
+                  if (node) itemTypeRefs.current.set(rowId, node);
+                  else itemTypeRefs.current.delete(rowId);
                 },
                 onDescriptionRef: (rowId, node) => {
                   if (node) itemDescriptionRefs.current.set(rowId, node);
