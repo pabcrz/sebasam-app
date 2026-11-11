@@ -111,6 +111,7 @@ describe("CustomerStatementView", () => {
       address: "Batalla de Casa Blanca 1719B",
       contactPhone: "5556007675",
       contactWhatsapp: "5536239346",
+      bankAccounts: [],
     },
   };
 
@@ -229,7 +230,8 @@ describe("CustomerStatementView", () => {
 
     render(<CustomerStatementView statement={historyStatement} />);
 
-    const initialCard = screen.getByText("Saldo inicial").closest("div");
+    // The label sits in the tile header; the tile itself holds the figure.
+    const initialCard = screen.getByText("Saldo inicial").parentElement?.parentElement;
     expect(within(initialCard!).getByText("$500.00")).toBeInTheDocument();
     expect(screen.getByText("Cargos del período")).toBeInTheDocument();
     expect(screen.getByText("+$1,500.00")).toBeInTheDocument();

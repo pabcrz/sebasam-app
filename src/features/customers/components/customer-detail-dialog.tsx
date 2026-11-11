@@ -15,7 +15,19 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
-import type { CustomerCardListItem } from "./customer-card-list";
+
+/** The customer fields this dialog reads; kept local so the list row type can evolve separately. */
+type CustomerCardListItem = {
+  id: string;
+  name: string;
+  commercialName?: string | null;
+  legalName?: string | null;
+  email: string | null;
+  phone: string | null;
+  address?: string | null;
+  notes?: string | null;
+  status: string;
+};
 import { CustomerContactsManager, type CustomerContactItem } from "./customer-contacts-manager";
 import { CustomerEditDialog, type CustomerEditData } from "./customer-edit-dialog";
 import { updateCustomerAction } from "../actions";

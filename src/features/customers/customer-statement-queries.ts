@@ -1,7 +1,7 @@
 import { PaymentStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { getPaymentSettings } from "@/features/payment-settings/domain";
+import { getPaymentSettings, type BankAccountData } from "@/features/payment-settings/domain";
 import { getCustomerCreditSummary } from "@/features/payments/domain";
 import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
 import { derivePaymentState, type PaymentState } from "@/features/work-orders/payment-state";
@@ -119,6 +119,7 @@ export type CustomerDetailedStatement = {
     address: string;
     contactPhone: string;
     contactWhatsapp: string;
+    bankAccounts: BankAccountData[];
   };
 };
 
@@ -465,6 +466,7 @@ export async function getCustomerDetailedStatement(
       address: paymentSettings.address,
       contactPhone: paymentSettings.contactPhone,
       contactWhatsapp: paymentSettings.contactWhatsapp,
+      bankAccounts: paymentSettings.bankAccounts,
     },
   };
 }

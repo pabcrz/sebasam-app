@@ -4,8 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
 import { CustomerStatementView } from "./customer-statement-view";
 
+const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ refresh: vi.fn(), push: pushMock }),
 }));
 
 vi.mock("@/features/payments/actions", () => ({
@@ -27,7 +29,7 @@ describe("CustomerStatementView", () => {
     emissionDate: new Date("2026-08-15T18:00:00Z"),
     view: "pending",
     period: "month",
-    anchor: "2026-08",
+    anchor: "2026-08-01",
     rangeLabel: "Cartera pendiente",
     availableCreditCents: 15000, // $150.00
     availableCreditAtCutoffCents: 15000,
@@ -86,6 +88,7 @@ describe("CustomerStatementView", () => {
       address: "Calle Taller 100",
       contactPhone: "5550001122",
       contactWhatsapp: "5550001133",
+      bankAccounts: [],
     },
   };
 
@@ -456,7 +459,7 @@ describe("CustomerStatementView", () => {
     const mobileList = container.querySelector('[data-testid="statement-note-mobile-list"]');
     expect(mobileList).toHaveClass("md:hidden");
     const mobileCard = container.querySelector('[data-testid="statement-note-mobile-OT-001"]');
-    expect(mobileCard).toHaveClass("rounded-[var(--radius-sm)]");
+    expect(mobileCard).toHaveClass("rounded-[var(--radius-lg)]", "shadow-[var(--shadow-card)]");
     const mobile = within(mobileCard as HTMLElement);
     expect(mobile.getByText("OT-001")).toHaveClass("truncate");
     expect(mobile.getByText("OT-001")).toHaveAttribute("title", "OT-001");
@@ -482,5 +485,87 @@ describe("CustomerStatementView", () => {
     const row = container.querySelector('[data-testid="statement-note-OT-001"]');
     expect(row).toHaveClass("min-w-[64rem]");
     expect(row?.querySelectorAll('[role="cell"]')).toHaveLength(5);
+  });
+
+  it("switches between Pendientes and Por periodo as underlined tabs", async () => {
+    const user = userEvent.setup();
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    const tabs = screen.getByRole("tablist", { name: "Vista del estado de cuenta" });
+    expect(within(tabs).getByRole("tab", { name: "Pendientes" })).toHaveAttribute("aria-selected", "true");
+
+    await user.click(within(tabs).getByRole("tab", { name: "Por periodo" }));
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/admin/customers/cust-1/estado-de-cuenta?view=history&anchor=2026-08-01",
+      { scroll: false },
+    );
+  });
+
+  it("moves through periods with PeriodNavigator, using Monday to Sunday weeks", async () => {
+    const user = userEvent.setup();
+    const weekStatement: CustomerDetailedStatement = {
+      ...baseStatement,
+      view: "history",
+      period: "week",
+      anchor: "2026-08-10",
+      rangeLabel: "10–16 de agosto de 2026",
+    };
+    render(<CustomerStatementView statement={weekStatement} />);
+
+    expect(screen.getByRole("heading", { name: "10–16 de agosto de 2026" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Periodo siguiente" }));
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/admin/customers/cust-1/estado-de-cuenta?view=history&period=week&anchor=2026-08-17",
+      { scroll: false },
+    );
+  });
+
+  it("shows the statement figures as tinted tiles without colored borders", () => {
+    const { container } = render(<CustomerStatementView statement={baseStatement} />);
+
+    expect(screen.getByText("Total facturado")).toBeInTheDocument();
+    expect(screen.getByText("Saldo vencido")).toBeInTheDocument();
+    expect(container.querySelector(".border-l-4")).toBeNull();
+  });
+
+  it("shows each transfer account's CLABE masked, and copies the full number", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(
+      <CustomerStatementView
+        statement={{
+          ...baseStatement,
+          business: {
+            ...baseStatement.business,
+            bankAccounts: [
+              {
+                id: 1,
+                accountHolder: "SEBASAM",
+                bankName: "Santander",
+                accountNumber: "65500012345",
+                clabe: "014180655000123456",
+                isForInvoicing: true,
+                isPubliclyShareable: false,
+                publicToken: "token-1",
+                sortOrder: 0,
+              },
+            ],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Cuentas para transferencia" })).toBeInTheDocument();
+    expect(screen.getByText("Santander")).toBeInTheDocument();
+    expect(screen.getByText("•••• •••• •••• 3456")).toBeInTheDocument();
+    expect(screen.queryByText("014180655000123456")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Copiar CLABE de Santander" }));
+
+    expect(writeText).toHaveBeenCalledWith("014180655000123456");
   });
 });

@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Icon } from "@/components/ui/icon";
-import { createCustomerFromForm, getCustomerDetail } from "@/features/customers/actions";
-import { listCustomers } from "@/features/customers/queries";
+import { createCustomerFromForm } from "@/features/customers/actions";
+import { listCustomerRows } from "@/features/customers/queries";
 import { customerSearchSchema } from "@/features/customers/schemas";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
 import { CustomerCreateForm } from "@/features/customers/components/customer-create-form";
 import { CustomerCardList } from "@/features/customers/components/customer-card-list";
 import { CustomerSearch } from "@/features/customers/components/customer-search";
@@ -27,10 +25,10 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const params = await searchParams;
   const parsedSearch = customerSearchSchema.safeParse({ query: params.q });
   const query = parsedSearch.success ? parsedSearch.data.query : "";
-  const customers = await listCustomers({ query });
+  const customers = await listCustomerRows({ query });
 
   return (
-    <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 pb-28 sm:pb-10 md:gap-6 md:px-6 md:py-10">
+    <section className="mx-auto grid w-full min-w-0 max-w-6xl gap-4 px-4 py-6 pb-28 sm:pb-10 md:gap-6 md:px-6 md:py-10">
       {params.created ? (
         <p className="rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-4 py-3 text-sm text-[var(--color-status-success-fg)]" role="status">
           Cliente creado.
@@ -57,61 +55,33 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
         </p>
       ) : null}
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
-          Clientes
-        </h1>
-        <div className="hidden sm:block">
-          <CustomerCreateForm action={createCustomerFromForm} triggerVariant="primary" triggerSize="sm" triggerClassName="w-full sm:w-auto" />
-        </div>
-      </div>
+      <PageHeader
+        title="Clientes"
+        primaryAction={
+          <CustomerCreateForm action={createCustomerFromForm} triggerVariant="primary" triggerSize="lg" />
+        }
+      />
 
-      <Card className="min-w-0">
-        <CardHeader>
-          <CardTitle as="h2" className="flex items-center gap-2">
-            <Icon name="search" className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
-            Buscar clientes
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="min-w-0">
-          <CustomerSearch />
+      <CustomerSearch />
 
-          {customers.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-[var(--color-text-muted)]">
-                No se encontraron clientes.
-              </p>
-              {query ? (
-                <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                  <Link href="/admin/customers" className="text-[var(--color-primary)] hover:underline">
-                    Limpiar búsqueda
-                  </Link>{" "}
-                  o da de alta un nuevo cliente.
-                </p>
-              ) : (
-                <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                  Da de alta un nuevo cliente para comenzar.
-                </p>
-              )}
-            </div>
+      {customers.length === 0 ? (
+        <div className="py-8 text-center">
+          <p className="text-sm text-[var(--color-text-muted)]">
+            No se encontraron clientes.
+          </p>
+          {query ? (
+            <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+              Limpia la búsqueda o da de alta un nuevo cliente.
+            </p>
           ) : (
-            <CustomerCardList customers={customers} getCustomerDetail={getCustomerDetail} />
+            <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+              Da de alta un nuevo cliente para comenzar.
+            </p>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Mobile Floating Action Button */}
-      <div
-        className="fixed right-[calc(1rem+var(--removed-body-scroll-bar-size,0px))] z-40 sm:hidden"
-        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
-      >
-        <CustomerCreateForm
-          action={createCustomerFromForm}
-          triggerVariant="primary"
-          triggerSize="sm"
-          triggerClassName="h-11 px-4 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-1.5 border border-white/20"
-        />
-      </div>
+        </div>
+      ) : (
+        <CustomerCardList customers={customers} query={query} />
+      )}
     </section>
   );
 }

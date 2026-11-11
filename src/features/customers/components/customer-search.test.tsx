@@ -22,15 +22,15 @@ describe("CustomerSearch", () => {
     vi.useFakeTimers();
     const view = render(<CustomerSearch />);
 
-    fireEvent.change(screen.getByRole("textbox", { name: "Buscar clientes" }), { target: { value: "Ana" } });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar clientes" }), { target: { value: "Ana" } });
     vi.advanceTimersByTime(300);
-    fireEvent.change(screen.getByRole("textbox", { name: "Buscar clientes" }), { target: { value: "Ana Torres" } });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar clientes" }), { target: { value: "Ana Torres" } });
 
     currentSearch = "q=Ana";
     view.rerender(<CustomerSearch />);
     vi.advanceTimersByTime(300);
 
-    expect(screen.getByRole("textbox", { name: "Buscar clientes" })).toHaveValue("Ana Torres");
+    expect(screen.getByRole("searchbox", { name: "Buscar clientes" })).toHaveValue("Ana Torres");
     expect(replace).toHaveBeenCalledTimes(2);
     expect(replace).toHaveBeenNthCalledWith(1, "/admin/customers?q=Ana", { scroll: false });
     expect(replace).toHaveBeenCalledWith("/admin/customers?q=Ana+Torres", { scroll: false });
@@ -40,8 +40,8 @@ describe("CustomerSearch", () => {
     currentSearch = "created=1&q=Ana";
     render(<CustomerSearch />);
 
-    expect(screen.getByRole("textbox", { name: "Buscar clientes" })).toHaveValue("Ana");
-    fireEvent.click(screen.getByRole("button", { name: "Limpiar" }));
+    expect(screen.getByRole("searchbox", { name: "Buscar clientes" })).toHaveValue("Ana");
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar búsqueda" }));
 
     expect(replace).toHaveBeenCalledWith("/admin/customers?created=1", { scroll: false });
   });
