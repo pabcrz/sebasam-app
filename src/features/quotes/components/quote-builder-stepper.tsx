@@ -1,10 +1,49 @@
 "use client";
 
-import { Step, steps, stepLabels } from "./quote-builder-shared";
+import { flowStepLabels, Step, steps, stepLabels } from "./quote-builder-shared";
 
 export interface QuoteBuilderStepperProps {
   current: Step;
   onChange?: (step: Step) => void;
+}
+
+/** Full-screen quote flow: one bar per step; completed and current steps stay tappable (shortcuts back). */
+export function QuoteBuilderProgress({ current, onChange }: QuoteBuilderStepperProps) {
+  const currentIndex = steps.indexOf(current);
+
+  return (
+    <nav aria-label="Pasos de cotización">
+      <ol className="grid grid-cols-4 gap-2">
+        {steps.map((step, index) => {
+          const isActive = step === current;
+          const isReached = index <= currentIndex;
+
+          return (
+            <li key={step} className="min-w-0">
+              <button
+                type="button"
+                onClick={() => isReached && onChange?.(step)}
+                disabled={!isReached}
+                aria-current={isActive ? "step" : undefined}
+                aria-label={`Paso ${index + 1}: ${flowStepLabels[step]}`}
+                className="flex w-full flex-col gap-1.5 rounded-[var(--radius-sm)] py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`block h-1.5 w-full rounded-full transition-colors ${isReached ? "bg-[var(--color-primary)]" : "bg-[var(--color-border-light)]"}`}
+                />
+                <span
+                  className={`hidden truncate text-xs font-medium sm:block ${isActive ? "text-[var(--color-text-main)]" : "text-[var(--color-text-muted)]"}`}
+                >
+                  {flowStepLabels[step]}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
 }
 
 export function QuoteBuilderStepper({ current, onChange }: QuoteBuilderStepperProps) {
