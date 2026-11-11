@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -64,6 +64,18 @@ describe("QuotesPage", () => {
     expect(screen.getAllByRole("button", { name: "Nueva cotización" })[0]).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Cotizaciones" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Cotizaciones recientes" })).toBeInTheDocument();
+  });
+
+  it("keeps one primary create action at the end of the page header, with one search and the filter sheet", async () => {
+    render(await QuotesPage({ searchParams: Promise.resolve({}) }));
+
+    const header = screen.getByTestId("page-header");
+    expect(within(header).getByRole("heading", { level: 1, name: "Cotizaciones" })).toBeInTheDocument();
+    expect(header.lastElementChild?.lastElementChild).toHaveTextContent("Nueva cotización");
+    expect(screen.getAllByRole("button", { name: "Nueva cotización" })).toHaveLength(1);
+    expect(screen.getByRole("searchbox", { name: "Buscar por folio" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^filtros/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Más acciones de la página" })).toBeInTheDocument();
   });
 
   it("groups the list accessibly without an outer card or decorated filter panel", async () => {

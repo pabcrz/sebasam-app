@@ -134,17 +134,6 @@ export function QuoteListRow({
       <TableCell className="min-w-[230px]" onClick={(event) => event.stopPropagation()}>
           <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          <PrintActionButton
-            url={printHref}
-            variant="outline"
-            size="sm"
-            className="min-h-11 min-w-11"
-            title={`Imprimir cotización ${displayFolio}`}
-            aria-label={`Imprimir cotización ${displayFolio}`}
-          >
-            <Icon name="print" className="h-4 w-4" aria-hidden="true" />
-            <span className="sr-only">Imprimir cotización</span>
-          </PrintActionButton>
           {editable ? (
             <QuoteBuilderDialog
               customers={customers}
@@ -156,19 +145,29 @@ export function QuoteListRow({
               triggerVariant="outline"
             />
           ) : null}
-
-          <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} />
-
-          {quote.status === "DRAFT" || quote.status === "CANCELLED" ? (
-            <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
-          ) : null}
-
+          <PrintActionButton
+            url={printHref}
+            variant="outline"
+            size="sm"
+            className="min-h-11 min-w-11"
+            title={`Imprimir cotización ${displayFolio}`}
+            aria-label={`Imprimir cotización ${displayFolio}`}
+          >
+            <Icon name="print" className="h-4 w-4" aria-hidden="true" />
+            <span className="sr-only">Imprimir cotización</span>
+          </PrintActionButton>
           {quote.status !== "CANCELLED" ? (
             <ShareQuoteButton
               action={shareAction}
               quoteNumber={quote.number}
               variant={quote.status === "DRAFT" ? (isQuoteCommercialReady(quote) ? "primary" : "secondary") : "outline"}
             />
+          ) : null}
+
+          <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} />
+
+          {quote.status === "DRAFT" || quote.status === "CANCELLED" ? (
+            <QuoteDeleteForm action={deleteAction} quoteId={quote.id} quoteNumber={quote.number} />
           ) : null}
 
           {quote.status === "DRAFT" || quote.status === "SENT" ? (

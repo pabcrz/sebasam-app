@@ -21,11 +21,11 @@ export interface FilterSheetProps {
   title?: string;
   /** Filter fields. */
   children: React.ReactNode;
-  /** Number of results the current filters produce; shown in the apply button. */
-  resultCount: number;
+  /** Number of results the current filters produce; shown in the apply button when known. */
+  resultCount?: number;
   onClear: () => void;
-  /** Runs before the sheet closes from "Ver N resultados". */
-  onApply?: () => void;
+  /** Runs before the sheet closes from "Ver resultados". Return false to keep it open, e.g. for invalid fields. */
+  onApply?: () => boolean | void;
 }
 
 /** Advanced filters in a Sheet: fields, then "Limpiar" (left) and "Ver N resultados" (right). */
@@ -39,6 +39,7 @@ export function FilterSheet({
   onApply,
 }: FilterSheetProps) {
   const resultLabel = resultCount === 1 ? "resultado" : "resultados";
+  const applyLabel = resultCount === undefined ? "Ver resultados" : `Ver ${resultCount} ${resultLabel}`;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -56,11 +57,11 @@ export function FilterSheet({
           <Button
             type="button"
             onClick={() => {
-              onApply?.();
+              if (onApply?.() === false) return;
               onOpenChange(false);
             }}
           >
-            {`Ver ${resultCount} ${resultLabel}`}
+            {applyLabel}
           </Button>
         </DialogMobileFooter>
       </DialogContent>
