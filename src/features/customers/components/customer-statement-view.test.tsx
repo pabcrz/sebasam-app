@@ -362,7 +362,7 @@ describe("CustomerStatementView", () => {
 
     const printButton = screen.getByRole("button", { name: /imprimir estado de cuenta/i });
     expect(printButton).toBeInTheDocument();
-    expect(printButton).toHaveClass("min-h-[44px]");
+    expect(printButton).toHaveClass("relative");
   });
 
   it("renders a concise print projection with pending status and reconciled note amounts", () => {

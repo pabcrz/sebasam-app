@@ -58,8 +58,8 @@ describe("PrintControls", () => {
       "sm:translate-x-0",
     );
     expect(overlay).not.toHaveClass("sm:left-4", "sm:top-4");
-    expect(back).toHaveClass("min-h-11", "min-w-11");
-    expect(printButton).toHaveClass("min-h-11", "min-w-11");
+    expect(back).toHaveClass("relative");
+    expect(printButton).toHaveClass("relative");
     expect(overlay).not.toHaveClass("border-b", "mb-6", "mt-4");
 
     fireEvent.click(printButton);

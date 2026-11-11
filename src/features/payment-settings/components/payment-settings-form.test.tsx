@@ -111,7 +111,7 @@ describe("PaymentSettingsForm", () => {
     // Two accounts = two remove buttons
     const removeButtons = screen.getAllByRole("button", { name: /eliminar cuenta/i });
     expect(removeButtons).toHaveLength(2);
-    expect(removeButtons[0]).toHaveClass("bg-[var(--color-status-danger)]");
+    expect(removeButtons[0]).toHaveClass("border-[var(--color-status-danger-border)]");
     expect(removeButtons[0].querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   });
 

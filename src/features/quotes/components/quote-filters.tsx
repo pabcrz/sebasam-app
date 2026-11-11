@@ -82,7 +82,7 @@ export function QuoteFilters({ filters, customers, rejectedDateRange }: QuoteFil
 
         <div className="flex flex-wrap items-center gap-2">
           {hasFilters || rangeError ? (
-            <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={handleClear}>
+            <Button type="button" variant="outline" size="sm" onClick={handleClear}>
               <X className="h-4 w-4" aria-hidden="true" />
               Limpiar
             </Button>
@@ -91,7 +91,7 @@ export function QuoteFilters({ filters, customers, rejectedDateRange }: QuoteFil
             type="button"
             variant="secondary"
             size="sm"
-            className="min-h-11"
+           
             aria-expanded={open}
             aria-controls="quote-filter-fields"
             onClick={() => setOpen((current) => !current)}

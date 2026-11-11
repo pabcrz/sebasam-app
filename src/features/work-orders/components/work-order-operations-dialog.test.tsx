@@ -36,7 +36,7 @@ describe("WorkOrderOperationsDialog", () => {
     render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={null} actions={actions} triggerVariant="primary" />);
 
     const trigger = screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i });
-    expect(trigger).toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(trigger).toHaveClass("bg-[var(--color-btn-primary)]");
     await user.click(trigger);
 
     expect(screen.getByRole("dialog")).toHaveTextContent("Asignar trabajo");
@@ -118,7 +118,7 @@ describe("WorkOrderOperationsDialog", () => {
     render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="DRAFT" workOrder={null} actions={{ assign }} />);
 
     await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i }));
-    expect(screen.getByRole("button", { name: "Sí, aceptó" })).toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(screen.getByRole("button", { name: "Sí, aceptó" })).toHaveClass("bg-[var(--color-btn-primary)]");
     await user.click(screen.getByLabelText(/trabajo especial/i));
     await user.click(screen.getByRole("button", { name: /asignar e iniciar trabajo/i }));
 
@@ -165,7 +165,7 @@ describe("WorkOrderOperationsDialog", () => {
     await user.click(screen.getByRole("button", { name: "Cerrar diálogo de orden de trabajo" }));
     await user.click(trigger);
 
-    expect(screen.getByRole("button", { name: "Sí, aceptó" })).toHaveClass("bg-[image:var(--gradient-primary)]");
+    expect(screen.getByRole("button", { name: "Sí, aceptó" })).toHaveClass("bg-[var(--color-btn-primary)]");
   });
 
   it("keeps server validation feedback visible and leaves the draft dialog actionable", async () => {
