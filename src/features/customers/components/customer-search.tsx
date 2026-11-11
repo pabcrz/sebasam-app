@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Search, X } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button, Input } from "@/components/ui";
 
@@ -91,12 +91,12 @@ export function CustomerSearch() {
         className="flex-1"
       />
       <Button type="submit" variant="secondary" className="w-full sm:w-fit" disabled={isPending}>
-        <Search className="h-4 w-4" aria-hidden="true" />
+        <Icon name="search" className="h-4 w-4" aria-hidden="true" />
         Buscar
       </Button>
       {query ? (
         <Button type="button" variant="outline" className="w-full sm:w-fit" onClick={clearSearch} disabled={isPending}>
-          <X className="h-4 w-4" aria-hidden="true" />
+          <Icon name="close" className="h-4 w-4" aria-hidden="true" />
           Limpiar
         </Button>
       ) : null}

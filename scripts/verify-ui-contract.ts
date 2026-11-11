@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 function assertIncludes(source: string, substring: string, message: string) {
   assert(source.includes(substring), message);
@@ -10,6 +10,26 @@ function assertNoRadix(source: string, context: string) {
     !/from\s+["'](?:@radix-ui\/[^"']+|radix-ui)["']/.test(source),
     `${context} must import controlled wrappers from @/components/ui, not Radix directly`,
   );
+}
+
+const iconLibraryReference = /["'](?:lucide-react|@tabler\/icons-react)(?:\/[^"']*)?["']/;
+
+function assertNoIconLibrary(source: string, context: string) {
+  assert(
+    !iconLibraryReference.test(source),
+    `${context} must render icons through <Icon name="..."> from @/components/ui, not an icon library directly`,
+  );
+}
+
+function checkIconWrapperBoundary() {
+  const wrapperPath = "src/components/ui/icon.tsx";
+  const sourceFiles = readdirSync("src", { recursive: true })
+    .map((entry) => `src/${entry}`)
+    .filter((path) => /\.(?:ts|tsx)$/.test(path) && path !== wrapperPath);
+
+  for (const path of sourceFiles) {
+    assertNoIconLibrary(readFileSync(path, "utf8"), `Source file ${path}`);
+  }
 }
 
 function checkQuotesPage() {
@@ -732,6 +752,7 @@ checkCustomerPages();
 checkLoginPage();
 checkRootPage();
 checkPublicPaymentPage();
+checkIconWrapperBoundary();
 
 console.log(
   "UI contract verified for /, /admin/login, /admin/quotes, /admin/customers, /datos-de-pago/[token] and payment-request link generation.",

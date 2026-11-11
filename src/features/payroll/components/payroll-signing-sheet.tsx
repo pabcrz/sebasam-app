@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { FileSignature, Printer, Plus, Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -96,7 +96,7 @@ export function PayrollSigningSheetModal({
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto print:max-w-none print:w-full print:h-auto print:max-h-none print:p-0 print:border-none print:shadow-none print:overflow-visible print:static print:transform-none">
         <DialogHeader className="print:hidden">
           <div className="flex items-center gap-2">
-            <FileSignature className="h-5 w-5 text-[var(--color-primary-600)]" />
+            <Icon name="sign" className="h-5 w-5 text-[var(--color-primary-600)]" />
             <DialogTitle>Hoja de Firma de Nómina</DialogTitle>
           </div>
         </DialogHeader>
@@ -175,7 +175,7 @@ export function PayrollSigningSheetModal({
                             className="text-slate-400 hover:text-red-600 p-1 transition-colors"
                             title="Eliminar fila"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Icon name="trash" className="h-3.5 w-3.5" />
                           </button>
                         )}
                       </td>
@@ -213,7 +213,7 @@ export function PayrollSigningSheetModal({
               onClick={handleAddBlankRow}
               className="h-7 text-xs gap-1"
             >
-              <Plus className="h-3 w-3" />
+              <Icon name="plus" className="h-3 w-3" />
               + Fila en blanco
             </Button>
           </div>
@@ -237,7 +237,7 @@ export function PayrollSigningSheetModal({
             Cerrar
           </Button>
           <Button type="button" variant="primary" onClick={handlePrint} className="gap-1.5">
-            <Printer className="h-4 w-4" />
+            <Icon name="print" className="h-4 w-4" />
             Imprimir Hoja de Firmas
           </Button>
         </DialogFooter>

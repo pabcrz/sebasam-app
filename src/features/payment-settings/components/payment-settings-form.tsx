@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Building2, Check, Copy, ExternalLink, FileText, Hash, Key, Plus, Save, Share2, Trash2, User } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import toast from "react-hot-toast";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox } from "@/components/ui";
 import { Input } from "@/components/ui";
@@ -82,7 +82,7 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
             className="size-10"
             loading={pending}
           >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            <Icon name="trash" className="h-4 w-4" aria-hidden="true" />
             <span className="sr-only">Eliminar</span>
           </Button>
         </form>
@@ -96,7 +96,7 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
             disabled={sharePending}
             className="size-4"
           />
-          <Share2 className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
+          <Icon name="share" className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
           Compartir esta cuenta públicamente
         </label>
         {shareable && publicUrl ? (
@@ -111,7 +111,7 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline" size="sm">
                 <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  <Icon name="external-link" className="h-4 w-4" aria-hidden="true" />
                   <span>Abrir enlace</span>
                 </a>
               </Button>
@@ -122,7 +122,7 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
                 onClick={handleCopyLink}
                 aria-label="Copiar enlace público"
               >
-                {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+                {copied ? <Icon name="check" className="h-4 w-4" aria-hidden="true" /> : <Icon name="copy" className="h-4 w-4" aria-hidden="true" />}
                 <span>{copied ? "Copiado" : "Copiar enlace"}</span>
               </Button>
             </div>
@@ -131,7 +131,7 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className={fieldClass}>
-          <Label htmlFor={`accountHolder-${account.id}`} className="flex items-center gap-2"><User className="h-4 w-4" aria-hidden="true" />Titular</Label>
+          <Label htmlFor={`accountHolder-${account.id}`} className="flex items-center gap-2"><Icon name="user" className="h-4 w-4" aria-hidden="true" />Titular</Label>
           <Input
             id={`accountHolder-${account.id}`}
             value={account.accountHolder}
@@ -140,7 +140,7 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
           />
         </div>
         <div className={fieldClass}>
-          <Label htmlFor={`bankName-${account.id}`} className="flex items-center gap-2"><Building2 className="h-4 w-4" aria-hidden="true" />Banco</Label>
+          <Label htmlFor={`bankName-${account.id}`} className="flex items-center gap-2"><Icon name="company" className="h-4 w-4" aria-hidden="true" />Banco</Label>
           <Input
             id={`bankName-${account.id}`}
             value={account.bankName}
@@ -150,7 +150,7 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
         </div>
         {account.accountNumber.trim() ? (
           <div className={fieldClass}>
-            <Label htmlFor={`accountNumber-${account.id}`} className="flex items-center gap-2"><Hash className="h-4 w-4" aria-hidden="true" />No. de cuenta</Label>
+            <Label htmlFor={`accountNumber-${account.id}`} className="flex items-center gap-2"><Icon name="hash" className="h-4 w-4" aria-hidden="true" />No. de cuenta</Label>
             <Input
               id={`accountNumber-${account.id}`}
               value={account.accountNumber}
@@ -161,7 +161,7 @@ function BankAccountRow({ account }: { account: BankAccountData }) {
         ) : null}
         {account.clabe.trim() ? (
           <div className={fieldClass}>
-            <Label htmlFor={`clabe-${account.id}`} className="flex items-center gap-2"><Key className="h-4 w-4" aria-hidden="true" />CLABE</Label>
+            <Label htmlFor={`clabe-${account.id}`} className="flex items-center gap-2"><Icon name="key" className="h-4 w-4" aria-hidden="true" />CLABE</Label>
             <Input
               id={`clabe-${account.id}`}
               value={account.clabe}
@@ -237,7 +237,7 @@ export function PaymentSettingsForm({ settings, saveError }: PaymentSettingsForm
           loading={pending}
           className="w-full sm:w-auto"
         >
-          <Save className="h-4 w-4" aria-hidden="true" />
+          <Icon name="save" className="h-4 w-4" aria-hidden="true" />
           Guardar configuración
         </Button>
       </div>
@@ -325,26 +325,26 @@ export function PaymentSettingsForm({ settings, saveError }: PaymentSettingsForm
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className={fieldClass}>
-                <Label htmlFor="new-accountHolder" className="flex items-center gap-2"><User className="h-4 w-4" aria-hidden="true" />Titular</Label>
+                <Label htmlFor="new-accountHolder" className="flex items-center gap-2"><Icon name="user" className="h-4 w-4" aria-hidden="true" />Titular</Label>
                 <Input id="new-accountHolder" name="accountHolder" required />
               </div>
               <div className={fieldClass}>
-                <Label htmlFor="new-bankName" className="flex items-center gap-2"><Building2 className="h-4 w-4" aria-hidden="true" />Banco</Label>
+                <Label htmlFor="new-bankName" className="flex items-center gap-2"><Icon name="company" className="h-4 w-4" aria-hidden="true" />Banco</Label>
                 <Input id="new-bankName" name="bankName" required />
               </div>
               <div className={fieldClass}>
-                <Label htmlFor="new-accountNumber" className="flex items-center gap-2"><Hash className="h-4 w-4" aria-hidden="true" />No. de cuenta</Label>
+                <Label htmlFor="new-accountNumber" className="flex items-center gap-2"><Icon name="hash" className="h-4 w-4" aria-hidden="true" />No. de cuenta</Label>
                 <Input id="new-accountNumber" name="accountNumber" />
               </div>
               <div className={fieldClass}>
-                <Label htmlFor="new-clabe" className="flex items-center gap-2"><Key className="h-4 w-4" aria-hidden="true" />CLABE</Label>
+                <Label htmlFor="new-clabe" className="flex items-center gap-2"><Icon name="key" className="h-4 w-4" aria-hidden="true" />CLABE</Label>
                 <Input id="new-clabe" name="clabe" />
               </div>
             </div>
             <Checkbox
               id="new-isForInvoicing"
               name="isForInvoicing"
-              label={<span className="flex items-center gap-2"><FileText className="h-4 w-4" aria-hidden="true" />Usar esta cuenta para facturación</span>}
+              label={<span className="flex items-center gap-2"><Icon name="quotes" className="h-4 w-4" aria-hidden="true" />Usar esta cuenta para facturación</span>}
               className="mt-3"
             />
             <p className="mt-2 text-xs text-[var(--color-text-muted)]">
@@ -352,7 +352,7 @@ export function PaymentSettingsForm({ settings, saveError }: PaymentSettingsForm
             </p>
             <div className="mt-4 flex items-center gap-4">
               <Button type="submit" variant="outline" size="sm" loading={bankPending}>
-                <Plus className="h-4 w-4" aria-hidden="true" />
+                <Icon name="plus" className="h-4 w-4" aria-hidden="true" />
                 <span>Agregar cuenta</span>
               </Button>
             </div>

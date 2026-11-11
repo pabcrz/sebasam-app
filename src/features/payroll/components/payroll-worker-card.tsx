@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronUp, UserCheck, ShieldAlert } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { formatCents } from "@/features/quotes/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export function PayrollWorkerCard({ worker }: PayrollWorkerCardProps) {
       <div className="p-3 sm:p-4 flex items-center justify-between gap-3 bg-[var(--color-bg-soft)]/60 border-b border-[var(--color-border-light)]">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-            <UserCheck className="h-4 w-4 sm:h-5 sm:w-5" />
+            <Icon name="user-check" className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
@@ -63,7 +63,7 @@ export function PayrollWorkerCard({ worker }: PayrollWorkerCardProps) {
             aria-label={isOpen ? "Ocultar desglose" : "Ver desglose"}
             className="h-8 w-8 p-0 text-[var(--color-text-muted)]"
           >
-            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {isOpen ? <Icon name="chevron-up" className="h-4 w-4" /> : <Icon name="chevron-down" className="h-4 w-4" />}
           </Button>
         </div>
       </div>
@@ -219,7 +219,7 @@ export function PayrollUnassignedCard({ orders }: { orders: WorkOrderPayrollDeta
   return (
     <Card className="bg-amber-500/5 border-amber-500/30 p-3.5 sm:p-4 space-y-2.5">
       <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
-        <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+        <Icon name="shield-alert" className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
         <h3 className="font-semibold text-xs sm:text-sm">
           Órdenes completadas sin maestro asignado ({orders.length})
         </h3>

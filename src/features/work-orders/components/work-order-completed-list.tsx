@@ -22,7 +22,7 @@ import { ShareQuoteButton } from "@/features/quotes/components/share-quote-butto
 import { NoteArchiveRevocationAction } from "@/features/quotes/components/note-archive-revocation-actions";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { NotePaymentHistoryItem } from "@/features/payments/lib/payment-register";
-import { ClipboardList, Printer } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 
@@ -136,7 +136,7 @@ export function WorkOrderCompletedList({
                title={`Imprimir nota de remisión ${noteFolio}`}
                aria-label={`Imprimir nota de remisión ${noteFolio}`}
             >
-              <Printer className="h-5 w-5" aria-hidden="true" />
+              <Icon name="print" className="h-5 w-5" aria-hidden="true" />
               <span className="sr-only">Imprimir</span>
             </PrintActionButton>
             {correctWorkOrderAction ? (
@@ -218,7 +218,7 @@ export function WorkOrderCompletedList({
                         className="w-full justify-center"
                         onClick={() => setSelectedWorkOrderId(wo.id)}
                       >
-                        <ClipboardList className="h-5 w-5" aria-hidden="true" />
+                        <Icon name="clipboard" className="h-5 w-5" aria-hidden="true" />
                         Gestionar pagos
                       </Button>
                     )}

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, FileText, Users } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { notFound } from "next/navigation";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
@@ -31,13 +31,13 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
     <section className="mx-auto grid w-full max-w-4xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <Button asChild variant="ghost" className="w-fit">
         <Link href="/admin/customers">
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          <Icon name="arrow-left" className="h-4 w-4" aria-hidden="true" />
           Regresar a clientes
         </Link>
       </Button>
 
       <AdminPageHeader
-        icon={Users}
+        icon="users"
         title={displayName}
         description={subtitle ?? "Detalle de cliente"}
         variant="expanded"
@@ -45,7 +45,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild variant="outline">
               <Link href={`/admin/customers/${customer.id}/estado-de-cuenta`}>
-                <FileText className="h-4 w-4" aria-hidden="true" />
+                <Icon name="quotes" className="h-4 w-4" aria-hidden="true" />
                 Estado de cuenta
               </Link>
             </Button>

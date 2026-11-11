@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { clsx } from "clsx";
-import { X } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   ConfirmDialog,
   Dialog,
@@ -109,7 +109,7 @@ export function QuoteBuilderDialogShell({
             {header}
           </DialogHeader>
           <button type="button" onClick={requestClose} disabled={pending} aria-label={closeLabel} className="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50">
-            <X className="h-4 w-4" aria-hidden="true" />
+            <Icon name="close" className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
         {stepper != null ? <div className="shrink-0 border-b border-[var(--color-border-light)] p-2 sm:p-2" style={{ flexShrink: 0 }} data-testid="multi-step-dialog-stepper">{stepper}</div> : null}

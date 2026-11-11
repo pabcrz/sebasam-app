@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronUp, Lock, Mail } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { formatCents } from "@/features/quotes/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,7 @@ export function PayrollWorkerDetail({
               onClick={() => onOpenEnvelope(activeWorker)}
               className="h-7 text-xs px-2.5 gap-1.5"
             >
-              <Mail className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+              <Icon name="mail" className="h-3.5 w-3.5 text-[var(--color-primary)]" />
               Recibo de Nómina
             </Button>
             )}
@@ -267,7 +267,7 @@ function PayrollOrderAccordionRow({
             className="h-7 w-7 p-0 text-[var(--color-text-muted)]"
             aria-label={isOpen ? "Ocultar conceptos" : "Ver conceptos"}
           >
-            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {isOpen ? <Icon name="chevron-up" className="h-4 w-4" /> : <Icon name="chevron-down" className="h-4 w-4" />}
           </Button>
         </div>
       </div>
@@ -530,7 +530,7 @@ function PayrollOrderAccordionRow({
                           className="inline-flex items-center gap-1 text-[11px] text-[var(--color-text-muted)] italic px-1"
                           title="Este concepto tiene anticipos registrados y su configuración está congelada."
                         >
-                          <Lock className="h-3 w-3 text-amber-500 shrink-0" />
+                          <Icon name="lock" className="h-3 w-3 text-amber-500 shrink-0" />
                           Bloqueado
                         </span>
                       ) : !readOnly ? (
@@ -755,7 +755,7 @@ function PayrollOrderAccordionRow({
                             className="inline-flex items-center justify-end gap-1 text-[11px] text-[var(--color-text-muted)] italic"
                             title="Este concepto tiene anticipos registrados y su configuración está congelada."
                           >
-                            <Lock className="h-3 w-3 text-amber-500 shrink-0" />
+                            <Icon name="lock" className="h-3 w-3 text-amber-500 shrink-0" />
                             Bloqueado
                           </span>
                         ) : (

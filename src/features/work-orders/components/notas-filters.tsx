@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, FileText, Filter, Search, X } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Badge,
   Button,
@@ -289,7 +289,7 @@ function NotasFiltersContent({
               aria-disabled={Boolean(rejectedRange)}
               href={safeNavigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(-1) })}
             >
-              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+              <Icon name="chevron-left" className="h-5 w-5" aria-hidden="true" />
             </Link>
           </Button>
           <p className="min-w-0 text-base font-semibold text-slate-900 sm:text-lg">
@@ -301,7 +301,7 @@ function NotasFiltersContent({
               aria-disabled={Boolean(rejectedRange)}
               href={safeNavigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: shifted(1) })}
             >
-              <ChevronRight className="h-5 w-5" aria-hidden="true" />
+              <Icon name="chevron-right" className="h-5 w-5" aria-hidden="true" />
             </Link>
           </Button>
           {mode === "week" && isCurrentWeek ? <Badge variant="info">Semana en curso</Badge> : null}
@@ -329,7 +329,7 @@ function NotasFiltersContent({
                 anchor,
               })}
             >
-              <CalendarDays className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              <Icon name="calendar" className="mr-1.5 h-4 w-4" aria-hidden="true" />
               {mode === "week" ? "Vista mensual" : "Vista semanal"}
             </Link>
           </Button>
@@ -376,7 +376,7 @@ function NotasFiltersContent({
         {customerId ? (
           <Button asChild variant="outline" size="sm">
             <Link aria-disabled={Boolean(rejectedRange)} href={rejectedRange ? "#notas-date-error" : `/admin/customers/${customerId}/estado-de-cuenta`}>
-              <FileText className="mr-1 h-4 w-4" aria-hidden="true" />
+              <Icon name="quotes" className="mr-1 h-4 w-4" aria-hidden="true" />
               Estado de cuenta
             </Link>
           </Button>
@@ -390,7 +390,7 @@ function NotasFiltersContent({
               aria-label="Abrir filtros de cartera"
               className="relative ml-auto inline-flex items-center gap-1.5 px-3"
             >
-              <Filter className="h-4 w-4" aria-hidden="true" />
+              <Icon name="filter" className="h-4 w-4" aria-hidden="true" />
               <span>Filtros</span>
               {activeFilterCount > 0 ? (
                 <Badge variant="info" className="ml-1 h-5 min-w-5 px-1.5 text-xs font-semibold">
@@ -486,13 +486,13 @@ function NotasFiltersContent({
                         aria-label="Quitar filtro de cliente"
                         className="rounded p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
                       >
-                        <X className="h-4 w-4" aria-hidden="true" />
+                        <Icon name="close" className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </div>
                   ) : (
                     <div className="relative">
                       <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden="true" />
+                        <Icon name="search" className="absolute left-3 top-3 h-4 w-4 text-[var(--color-text-muted)]" aria-hidden="true" />
                         <Input
                           id="customer-remote-search"
                           type="search"
@@ -524,7 +524,7 @@ function NotasFiltersContent({
                             aria-label="Limpiar búsqueda de cliente"
                             className="absolute right-2.5 top-3 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
                           >
-                            <X className="h-4 w-4" aria-hidden="true" />
+                            <Icon name="close" className="h-4 w-4" aria-hidden="true" />
                           </button>
                         ) : null}
                       </div>

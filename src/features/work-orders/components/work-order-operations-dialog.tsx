@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckCircle2, ClipboardList, Coins, RotateCcw, UserCheck, X } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import type { QuoteOperationKind } from "@/generated/prisma/enums";
 import type { QuoteStatus, UserRole, WorkOrderStatus } from "@/generated/prisma/client";
 import {
@@ -272,7 +272,7 @@ export function WorkOrderOperationsDialog({
         disabled={triggerDisabled || isAssignmentBusy}
         loading={isAssignmentBusy}
       >
-        {!isAssignmentBusy ? <ClipboardList className="h-5 w-5" aria-hidden="true" /> : null}
+        {!isAssignmentBusy ? <Icon name="clipboard" className="h-5 w-5" aria-hidden="true" /> : null}
         {!isAssignmentBusy ? <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{triggerFlowLabel ?? (isCompleted ? "Gestionar orden" : isAssigned ? "Gestionar trabajo" : isSaleIntent ? "Crear nota de venta" : "Asignar trabajo")}</span> : null}
       </Button>
 
@@ -295,7 +295,7 @@ export function WorkOrderOperationsDialog({
               title="Cerrar"
               disabled={isAssignmentBusy}
             >
-              <X className="h-4 w-4" aria-hidden="true" />
+              <Icon name="close" className="h-4 w-4" aria-hidden="true" />
             </Button>
           </DialogClose>
           <DialogHeader>
@@ -399,7 +399,7 @@ export function WorkOrderOperationsDialog({
                  ) : null}
                  <p role="status" className="sr-only">{pendingAction === "assign" ? "Asignando..." : ""}</p>
                 <Button type="button" variant="primary" loading={pendingAction === "assign"} disabled={!actions.assign || isAssignmentBusy} onClick={handleAssign}>
-                  {pendingAction !== "assign" ? <UserCheck className="h-4 w-4" aria-hidden="true" /> : null}
+                  {pendingAction !== "assign" ? <Icon name="user-check" className="h-4 w-4" aria-hidden="true" /> : null}
                   {pendingAction === "assign" ? "Asignando..." : "Asignar e iniciar trabajo"}
                 </Button>
               </section>
@@ -465,7 +465,7 @@ export function WorkOrderOperationsDialog({
                     ) : null}
                     <div className="flex gap-2">
                       <Button type="button" variant="primary" size="sm" loading={pendingAction === "assign"} disabled={!actions.assign || isAssignmentBusy} onClick={handleReassign} className="flex-1">
-                        {pendingAction !== "assign" ? <UserCheck className="h-4 w-4" aria-hidden="true" /> : null}
+                        {pendingAction !== "assign" ? <Icon name="user-check" className="h-4 w-4" aria-hidden="true" /> : null}
                         {pendingAction === "assign" ? "Asignando..." : "Confirmar reasignación"}
                       </Button>
                       <Button type="button" variant="outline" size="sm" disabled={isAssignmentBusy} onClick={() => setReassigning(false)}>Cancelar</Button>
@@ -482,12 +482,12 @@ export function WorkOrderOperationsDialog({
                         disabled={isAssignmentBusy}
                         onClick={() => setAdvanceOpen(true)}
                       >
-                        <Coins className="h-4 w-4" aria-hidden="true" />
+                        <Icon name="coins" className="h-4 w-4" aria-hidden="true" />
                         Avance de mano de obra
                       </Button>
                     ) : null}
                     <Button type="button" variant="primary" disabled={isAssignmentBusy} onClick={() => setConfirmComplete(true)} className="flex-1">
-                      <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                      <Icon name="check-circle" className="h-4 w-4" aria-hidden="true" />
                       Finalizar trabajo
                     </Button>
                   </div>
@@ -521,7 +521,7 @@ export function WorkOrderOperationsDialog({
                 </div>
                 {!showRollback ? (
                   <Button type="button" variant="danger" disabled={!actions.rollback || isAssignmentBusy} onClick={() => setShowRollback(true)}>
-                    <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                    <Icon name="undo" className="h-4 w-4" aria-hidden="true" />
                     Cancelar orden y regresar cotización
                   </Button>
                 ) : (

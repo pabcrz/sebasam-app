@@ -1,4 +1,4 @@
-import { CheckCircle2, ClipboardList, FilePenLine, Send } from "lucide-react";
+
 import type { QueueMetrics } from "../types";
 import { QueueMetricCard } from "./queue-metric-card";
 
@@ -17,28 +17,28 @@ export function QueueSnapshotCards({ queues }: QueueSnapshotCardsProps) {
           label="Enviar cotizaciones borrador"
           value={queues.draftQuotesCount}
           href="/admin/quotes?status=DRAFT"
-          icon={FilePenLine}
+          icon="file-edit"
           accent="warning"
         />
         <QueueMetricCard
           label="Dar seguimiento a cotizaciones enviadas"
           value={queues.sentQuotesCount}
           href="/admin/quotes?status=SENT"
-          icon={Send}
+          icon="send"
           accent="info"
         />
         <QueueMetricCard
           label="Asignar o iniciar trabajos aprobados"
           value={queues.approvedQuotesCount}
           href="/admin/quotes?status=APPROVED"
-          icon={CheckCircle2}
+          icon="check-circle"
           accent="success"
         />
         <QueueMetricCard
           label="Completar trabajos activos"
           value={queues.activeExecutionCount}
           href="/admin/work-orders"
-          icon={ClipboardList}
+          icon="jobs"
           accent="primary"
         />
       </div>

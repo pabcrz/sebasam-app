@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@/components/ui";
 import { businessPaymentConfig } from "@/config/payment";
 
@@ -28,7 +28,7 @@ export function WhatsAppReceiptCta({ reference, whatsapp }: WhatsAppReceiptCtaPr
       <CardContent>
         <Button asChild variant="primary" className="w-full md:w-auto">
           <a href={href} target="_blank" rel="noopener noreferrer">
-            <MessageCircle className="h-4 w-4" aria-hidden="true" />
+            <Icon name="message-circle" className="h-4 w-4" aria-hidden="true" />
             Enviar WhatsApp
           </a>
         </Button>

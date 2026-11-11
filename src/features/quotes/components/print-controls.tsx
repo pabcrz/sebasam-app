@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Printer } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui";
@@ -71,12 +71,12 @@ export function PrintControls({ backLabel = "Volver" }: { backLabel?: string }) 
     <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom)+1rem)] left-1/2 z-50 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1 shadow-lg print:hidden sm:bottom-4 sm:left-auto sm:right-4 sm:translate-x-0">
       <Button asChild type="button" variant="ghost" size="icon" title={backLabel} aria-label={backLabel}>
         <Link href={returnTo}>
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          <Icon name="arrow-left" className="h-4 w-4" aria-hidden="true" />
           <span className="sr-only">{backLabel}</span>
         </Link>
       </Button>
       <Button type="button" variant="primary" size="icon" title="Imprimir / Guardar PDF" aria-label="Imprimir / Guardar PDF" onClick={() => window.print()}>
-        <Printer className="h-4 w-4" aria-hidden="true" />
+        <Icon name="print" className="h-4 w-4" aria-hidden="true" />
         <span className="sr-only">Imprimir / Guardar PDF</span>
       </Button>
     </div>

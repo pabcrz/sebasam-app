@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Banknote, Users } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCents } from "@/features/quotes/lib/format";
@@ -14,7 +14,7 @@ export function PayrollEstimateCard({ payroll }: PayrollEstimateCardProps) {
       <Card className="min-w-0 shadow-sm">
       <CardHeader className="flex flex-col items-start gap-2 pb-2">
         <div className="flex min-w-0 items-center gap-2">
-          <Banknote className="h-5 w-5 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
+          <Icon name="cash" className="h-5 w-5 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
           <CardTitle as="h2" className="min-w-0 break-words text-base font-semibold text-[var(--color-text-main)]">
             Nómina Semanal (Estimada)
           </CardTitle>
@@ -38,7 +38,7 @@ export function PayrollEstimateCard({ payroll }: PayrollEstimateCardProps) {
 
           <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-text-muted)]">
             <div className="flex items-center gap-1.5">
-              <Users className="h-4 w-4" aria-hidden="true" />
+              <Icon name="users" className="h-4 w-4" aria-hidden="true" />
               <span>
                 <span data-numeric-role="supporting-count" className="font-medium tabular-nums">
                   {payroll.totalWorkers}
@@ -50,7 +50,7 @@ export function PayrollEstimateCard({ payroll }: PayrollEstimateCardProps) {
               href="/admin/nomina"
               className="flex items-center font-medium text-[var(--color-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] rounded-sm"
             >
-              Ver liquidación <ArrowRight className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
+              Ver liquidación <Icon name="arrow-right" className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
             </Link>
           </div>
         </div>
