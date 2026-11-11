@@ -1698,7 +1698,7 @@ describe("getOrCreateSharedQuoteAction", () => {
 describe("completed Note archive and revocation", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("archives a completed Note without revoking its canonical link or payment requests", async () => {
+  it("archives a completed WORK Note without revoking its canonical link or payment requests", async () => {
     const tx = mockTx();
     vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: "admin-1" } } as never);
     tx.quote.findUnique.mockResolvedValue({
@@ -1706,6 +1706,7 @@ describe("completed Note archive and revocation", () => {
       isLocked: false,
       status: QuoteStatus.APPROVED,
       workOrder: { id: "work-order-1", status: WorkOrderStatus.COMPLETED },
+      payableNote: { id: "work-note-1", kind: "WORK", status: "ISSUED" },
     } as never);
     tx.quote.updateMany.mockResolvedValue({ count: 1 });
 
@@ -1717,6 +1718,33 @@ describe("completed Note archive and revocation", () => {
     });
     expect(tx.sharedQuote.updateMany).not.toHaveBeenCalled();
     expect(tx.paymentRequest.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("archives an issued SALE Note without work order by revoking active public links and preserving payment records", async () => {
+    const tx = mockTx();
+    vi.mocked(requireAdmin).mockResolvedValue({ profile: { id: "admin-1" } } as never);
+    tx.quote.findUnique.mockResolvedValue({
+      id: "quote-1",
+      isLocked: false,
+      status: QuoteStatus.SENT,
+      workOrder: null,
+      payableNote: { id: "sale-note-1", kind: "SALE", status: "ISSUED" },
+    } as never);
+    tx.quote.updateMany.mockResolvedValue({ count: 1 });
+
+    await archiveCompletedNote("quote-1", "Archivo administrativo");
+
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "quote-1", status: QuoteStatus.SENT },
+      data: { status: QuoteStatus.ARCHIVED, retentionStartedAt: null },
+    });
+    expect(tx.sharedQuote.updateMany).toHaveBeenCalledWith({
+      where: { quoteId: "quote-1", revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(tx.paymentRequest.updateMany).not.toHaveBeenCalled();
+    expect(tx.paymentApplication.update).not.toHaveBeenCalled();
+    expect(tx.paymentApplication.create).not.toHaveBeenCalled();
   });
 
   it("passes the admin and reason to the canonical link revocation audit", async () => {
