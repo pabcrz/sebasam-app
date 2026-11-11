@@ -9,8 +9,11 @@ describe("PrintNotFound", () => {
     expect(screen.getByRole("heading", { name: "A esta página se le zafó un tornillo" })).toBeInTheDocument();
     expect(screen.getByLabelText("404")).toBeInTheDocument();
     expect(screen.getByText("La nota que buscas no está disponible, consulta al taller")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /engranaje/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Visita SEBASAM" })).toHaveAttribute("href", "https://sebasam.online");
+    expect(screen.getByRole("img", { name: "Logo de SEBASAM" })).toHaveAttribute("src", expect.stringContaining("logo-white-short.png"));
+    expect(screen.getByRole("link", { name: "Ver información y contacto" })).toHaveAttribute(
+      "href",
+      "https://sebasam.online/info",
+    );
     expect(screen.queryByRole("link", { name: /inicio|home/i })).not.toBeInTheDocument();
   });
 });
