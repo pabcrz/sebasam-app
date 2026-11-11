@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/features/work-orders/queries", () => ({ listActiveWorkOrders: vi.fn().mockResolvedValue([]), listPaginatedActiveWorkOrders: vi.fn().mockResolvedValue({ workOrders: [], page: 1, hasNextPage: false }), listActiveWorkers: vi.fn().mockResolvedValue([]) }));
 vi.mock("@/features/customers/queries", () => ({ listCustomers: vi.fn().mockResolvedValue([]) }));
@@ -48,11 +48,12 @@ describe("WorkOrdersPage", () => {
 
   it("renders the workspace without a redundant page header card and with direct work order action", async () => {
     render(await page());
-    expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
+    expect(within(screen.getByTestId("page-header")).getByRole("heading", { level: 1, name: "Trabajos" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Trabajos en proceso" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Órdenes activas" })).toBeInTheDocument();
     expect(screen.getByText("No hay trabajos en proceso.")).toBeInTheDocument();
-    const actionButtons = screen.getAllByRole("button", { name: "Agregar trabajo" });
-    expect(actionButtons).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Agregar trabajo" })).toHaveLength(1);
+    expect(screen.getByTestId("page-header")).toContainElement(screen.getByRole("button", { name: "Agregar trabajo" }));
     expect(screen.getByText(/aun sin maestro asignado/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Anterior" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Siguiente" })).not.toBeInTheDocument();
@@ -94,14 +95,14 @@ describe("WorkOrdersPage", () => {
     expect(updateDraftQuoteFromWorkspace).toHaveBeenCalledWith("active-quote-1", {}, expect.any(FormData));
   });
 
-  it("distinguishes filtered-empty and retains both direct create entries with master choices", async () => {
+  it("distinguishes filtered-empty and keeps the single direct create entry with master choices", async () => {
     const master = { id: "11111111-1111-4111-8111-111111111111", role: "WORKER", workerKind: "MASTER", displayName: "Maestro" };
     vi.mocked(listActiveWorkers).mockResolvedValue([master, { ...master, id: "helper", workerKind: "HELPER" }] as never);
     render(await page({ concept: "sin coincidencias" }));
     expect(screen.getByText("No hay trabajos que coincidan con los filtros.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Limpiar filtros" })).toHaveAttribute("href", "/admin/work-orders");
     expect(screen.queryByText("No hay trabajos en proceso.")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Agregar trabajo" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Agregar trabajo" })).toHaveLength(1);
     for (const [props] of vi.mocked(QuoteBuilderDialog).mock.calls) {
       expect(props).toMatchObject({ mode: "direct-work-order", createAction: createDirectWorkOrderFromWorkspace, masters: [master] });
     }

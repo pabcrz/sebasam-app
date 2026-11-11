@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import toast from "react-hot-toast";
 import { WorkOrderActiveList } from "./work-order-active-list";
@@ -64,7 +64,7 @@ function renderActiveList(
 }
 
 async function openPreview(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Ver detalle de cotización COT-001" }));
+  await user.click(screen.getByRole("group", { name: "Ver detalle de cotización COT-001" }));
   expect(screen.getByRole("dialog")).toBeInTheDocument();
 }
 
@@ -98,7 +98,27 @@ describe("WorkOrderActiveList", () => {
     expect(screen.getByText("Taller")).not.toHaveClass("inline-flex");
     expect(screen.queryByText("Taller:", { exact: true })).not.toBeInTheDocument();
     expect(screen.getByText("En proceso")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ver detalle de cotización COT-001" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Ver detalle de cotización COT-001" })).toBeInTheDocument();
+  });
+
+  it("renders each work order on the shared EntityCard, with no card nested inside it", () => {
+    const { container } = render(<WorkOrderActiveList workOrders={[createWorkOrder({ isSpecial: true, assignments: [] })]} workers={[]} customers={[]} quoteMap={new Map()} saveQuoteActions={[]} searchCustomersAction={async () => []} duplicateQuoteAction={vi.fn()} shareAction={vi.fn()} workOrderActions={{}} />);
+
+    const card = screen.getByRole("group", { name: "Ver detalle de cotización COT-001" });
+    expect(card).toHaveClass("shadow-[var(--shadow-card)]");
+    expect(card.className).not.toMatch(/border/);
+    expect(card.querySelector("[class*='shadow-[var(--shadow-card)]']")).toBeNull();
+    expect(container.querySelector("[data-testid=operational-card-primary-action]")).toBeNull();
+    expect(within(card).getByTestId("entity-card-state")).toContainElement(screen.getByRole("button", { name: "Gestionar orden" }));
+  });
+
+  it("orders the footer tools Editar, Imprimir, Compartir and ⋯ before the state action", () => {
+    renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { withQuote: true });
+
+    const tools = within(screen.getByTestId("entity-card-tools"));
+    const names = tools.getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? button.textContent);
+    expect(names).toEqual(["Editar cotización", "Imprimir orden OT-001", "Compartir cotización", "Más acciones de orden OT-001"]);
+    expect(screen.getByTestId("entity-card-state")).toHaveTextContent("Gestionar orden");
   });
 
   it("shows the assigned master as plain text and retains useful helper context", () => {
@@ -132,15 +152,12 @@ describe("WorkOrderActiveList", () => {
     );
   });
 
-  it("uses accessible responsive action controls with primary CTA and secondary action row", async () => {
+  it("keeps the state action on the card footer and the tools as accessible controls", async () => {
     const user = userEvent.setup();
     renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }));
 
-    expect(screen.getByTestId("operational-card-primary-action")).toHaveClass("w-full");
     expect(screen.getByRole("button", { name: "Gestionar orden" })).toBeInTheDocument();
-
-    const secondaryActions = screen.getByTestId("operational-card-secondary-actions");
-    expect(secondaryActions).toHaveClass("flex", "w-full", "items-center", "gap-2");
+    expect(screen.getByTestId("entity-card-footer")).toContainElement(screen.getByRole("button", { name: "Gestionar orden" }));
 
     await user.click(screen.getByRole("button", { name: /más acciones/i }));
     const duplicate = screen.getByRole("button", { name: "Duplicar cotización" });
@@ -212,7 +229,7 @@ describe("WorkOrderActiveList", () => {
       "data-print-url",
       "/admin/quotes/quote-1/print?returnTo=/admin/work-orders",
     );
-    expect(print).toHaveClass("min-h-11", "min-w-11");
+    expect(print).toHaveClass("h-[var(--control-sm)]", "w-[var(--control-sm)]");
     expect(print.querySelector("svg")).toHaveClass("h-5", "w-5");
   });
 });

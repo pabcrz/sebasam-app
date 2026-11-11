@@ -112,7 +112,7 @@ export function EntityCard({
       </div>
 
       {customer != null ? (
-        <p className="mt-3 text-sm font-medium text-[var(--color-text-main)]">{customer}</p>
+        <p className="mt-3 truncate text-sm font-medium text-[var(--color-text-main)]">{customer}</p>
       ) : null}
       {unit ? (
         <p data-testid="entity-card-unit" className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
