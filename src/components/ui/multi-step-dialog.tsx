@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 import {
   Dialog,
@@ -166,7 +166,7 @@ export function MultiStepDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent
-        className={clsx(
+        className={cn(
           "!inset-0 !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none p-2 sm:!bottom-auto sm:!left-1/2 sm:!right-auto sm:!top-1/2 sm:!h-[min(90dvh,52rem)] sm:!max-h-[min(90dvh,52rem)] sm:!w-[min(92vw,64rem)] sm:!max-w-5xl sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-[var(--radius-lg)] sm:p-6",
           className,
         )}

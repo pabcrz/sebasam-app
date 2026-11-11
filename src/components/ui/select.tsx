@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import * as SelectPrimitive from "@radix-ui/react-select";
-import { clsx } from "clsx";
+import { Select as SelectPrimitive } from "radix-ui";
+import { cn } from "@/lib/utils";
 import { useDialogPointerDownOutsideGuard } from "./dialog";
 
 export const Select = SelectPrimitive.Root;
@@ -18,7 +18,7 @@ export const SelectTrigger = React.forwardRef<
   return (
     <SelectPrimitive.Trigger
       ref={ref}
-      className={clsx(
+      className={cn(
         "flex h-[var(--tap-min-height)] w-full items-center justify-between gap-[var(--space-sm)] rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-[var(--space-sm)] py-[var(--space-sm)] text-base text-[var(--color-text-main)] shadow-[var(--shadow-control)] transition-[border-color,box-shadow,background-color] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] focus-visible:shadow-[var(--shadow-focus)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
         className,
       )}
@@ -59,7 +59,7 @@ export const SelectContent = React.forwardRef<
             dialogPointerDownOutsideGuard?.registerPointerDownOutside(event.detail.originalEvent);
           }
         }}
-        className={clsx(
+        className={cn(
           "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] shadow-[var(--shadow-dialog)]",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
@@ -68,7 +68,7 @@ export const SelectContent = React.forwardRef<
         {...props}
       >
         <SelectPrimitive.Viewport
-          className={clsx(
+          className={cn(
             "p-[var(--space-2xs)]",
             position === "popper" && "w-full min-w-[var(--radix-select-trigger-width)] max-h-[var(--radix-select-content-available-height)]",
           )}
@@ -90,7 +90,7 @@ export const SelectItem = React.forwardRef<
   return (
     <SelectPrimitive.Item
       ref={ref}
-      className={clsx(
+      className={cn(
         "relative flex w-full cursor-default select-none items-center rounded-[var(--radius-sm)] py-2 pl-8 pr-2 text-sm text-[var(--color-text-main)] outline-none transition-colors focus:bg-[var(--color-bg-soft)] focus:text-[var(--color-text-main)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}

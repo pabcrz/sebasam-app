@@ -119,23 +119,26 @@ describe("DialogContent", () => {
     });
   });
 
-  it("passes the consumed Select interaction to the Dialog consumer", async () => {
+  it("does not report the Select-closing interaction to the Dialog consumer", async () => {
     const user = userEvent.setup();
     const onInteractOutside = vi.fn();
     render(<TestDialog onInteractOutside={onInteractOutside} />);
 
     await user.click(screen.getByRole("button", { name: "Open dialog" }));
     await user.click(screen.getByRole("combobox", { name: "Choose" }));
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
 
     const overlay = document.querySelector("[data-dialog-overlay]");
     expect(overlay).toBeInstanceOf(HTMLElement);
     if (!(overlay instanceof HTMLElement)) throw new Error("Dialog overlay not found");
 
+    // Select and Dialog share one Radix layer stack, so the open Select is the
+    // top layer and owns this outside interaction.
     await user.click(overlay);
     await waitFor(() => {
-      expect(onInteractOutside).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     });
-    expect(onInteractOutside.mock.calls[0][0].defaultPrevented).toBe(true);
+    expect(onInteractOutside).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
