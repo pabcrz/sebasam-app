@@ -8,43 +8,45 @@ const base = {
 };
 
 describe("resolveQuoteActionPresentation", () => {
-  it.each(["SENT", "APPROVED", "REJECTED", "CANCELLED", "ARCHIVED"] as const)(
-    "keeps the four mobile action slots stable for %s quotes",
-    (status) => {
-      const presentation = resolveQuoteActionPresentation({ ...base, status });
+  it.each([
+    { status: "DRAFT" as const, primary: "share", frequent: ["edit", "print"], overflow: ["authorize", "workOrder", "duplicate", "cancel", "archive"] },
+    { status: "SENT" as const, primary: "authorize", frequent: ["edit", "print", "share"], overflow: ["workOrder", "duplicate", "cancel", "archive"] },
+    { status: "APPROVED" as const, primary: "workOrder", frequent: ["edit", "print", "share"], overflow: ["correctDecision", "duplicate"] },
+    { status: "REJECTED" as const, primary: "correctDecision", frequent: ["edit", "print", "share"], overflow: ["duplicate", "archive"] },
+    { status: "ARCHIVED" as const, primary: "restore", frequent: ["edit", "print", "share"], overflow: ["duplicate"] },
+    { status: "CANCELLED" as const, primary: null, frequent: ["edit", "print"], overflow: ["duplicate", "archive"] },
+  ])("chooses $primary as the primary action for $status quotes", ({ status, primary, frequent, overflow }) => {
+    const presentation = resolveQuoteActionPresentation({ ...base, status });
 
-      expect(presentation).toMatchObject({
-        primary: "workOrder",
-        frequent: ["edit", "print", "share"],
-      });
-      expect(presentation.frequent).not.toContain("workOrder");
-      expect(presentation.overflow).not.toContain("print");
-    },
-  );
+    expect(presentation.primary).toBe(primary);
+    expect(presentation.frequent).toEqual(frequent);
+    expect(presentation.overflow).toEqual(overflow);
+    expect(presentation.frequent).not.toContain(primary);
+    expect(presentation.overflow).not.toContain(primary);
+  });
 
-  it("makes authorization primary for DRAFT while keeping flow actions in overflow", () => {
-    expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT" })).toMatchObject({
-      primary: "authorize",
-      overflow: ["workOrder", "duplicate", "cancel", "archive"],
+  it("never offers print or share as the primary action", () => {
+    for (const status of ["DRAFT", "SENT", "APPROVED", "REJECTED", "CANCELLED", "ARCHIVED"] as const) {
+      const { primary } = resolveQuoteActionPresentation({ ...base, status });
+      expect(primary).not.toBe("print");
+    }
+  });
+
+  it("does not offer a correction as primary once a work order exists", () => {
+    expect(resolveQuoteActionPresentation({ ...base, status: "REJECTED", hasWorkOrder: true })).toMatchObject({
+      primary: null,
     });
   });
 
-  it("uses the requested fixed compact action order", () => {
-    const presentation = resolveQuoteActionPresentation({ ...base, status: "SENT" });
-
-    expect(presentation.frequent).toEqual(["edit", "print", "share"]);
-  });
-
-  it("keeps authorization in overflow for SENT quotes", () => {
-    expect(resolveQuoteActionPresentation({ ...base, status: "SENT" }).overflow).toContain("authorize");
-  });
-
-  it("keeps quote-specific actions in overflow without altering the fixed mobile controls", () => {
-    expect(resolveQuoteActionPresentation({ ...base, status: "SENT" })).toMatchObject({
-      overflow: ["authorize", "duplicate", "cancel", "archive"],
-    });
+  it("keeps payment links in overflow for approved quotes", () => {
     expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED", paymentAvailable: true })).toMatchObject({
+      primary: "workOrder",
       overflow: ["paymentLink", "correctDecision", "duplicate"],
     });
+  });
+
+  it("keeps delete as the destructive action outside the primary and overflow slots", () => {
+    expect(resolveQuoteActionPresentation({ ...base, status: "DRAFT" })).toMatchObject({ destructive: "delete" });
+    expect(resolveQuoteActionPresentation({ ...base, status: "APPROVED" })).toMatchObject({ destructive: null });
   });
 });

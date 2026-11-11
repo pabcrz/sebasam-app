@@ -69,9 +69,20 @@ export function resolveQuoteActionPresentation({
   }
   if (status !== "APPROVED") available.add("delete");
 
-  // Keep the primary quote action and compact action slots stable on every card.
-  const primary: QuoteActionId = status === "DRAFT" && !hasWorkOrder ? "authorize" : "workOrder";
-  const frequent: QuoteActionId[] = ["edit", "print", "share"];
+  const primaryCandidates: Record<QuoteStatus, QuoteActionId[]> = {
+    DRAFT: ["share"],
+    SENT: ["authorize"],
+    APPROVED: ["workOrder"],
+    REJECTED: ["correctDecision"],
+    CANCELLED: [],
+    ARCHIVED: ["restore"],
+  };
+  const primary = primaryCandidates[status].find((action) => available.has(action)) ?? null;
+  // Print is always available, so it is always a frequent action. The order
+  // mirrors the card tiles: Edit, Print, then Share when it is available.
+  const frequent: QuoteActionId[] = (["edit", "print", "share"] as const).filter(
+    (action) => available.has(action) && action !== primary,
+  );
   const overflow = actionOrder.filter(
     (action) => available.has(action) && action !== primary && !frequent.includes(action),
   );
