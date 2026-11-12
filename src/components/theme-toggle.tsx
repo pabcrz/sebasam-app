@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { useThemeContext } from "./theme-provider";
 
@@ -48,9 +48,9 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       className={className}
     >
       {isDark ? (
-        <Sun className="h-5 w-5" aria-hidden="true" />
+        <Icon name="sun" className="h-5 w-5" aria-hidden="true" />
       ) : (
-        <Moon className="h-5 w-5" aria-hidden="true" />
+        <Icon name="moon" className="h-5 w-5" aria-hidden="true" />
       )}
     </Button>
   );

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Download, MessageCircle, Printer, Mail, Loader2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -143,7 +143,7 @@ export function PayrollWorkerEnvelopeModal({
       <DialogContent className="min-w-0 w-[calc(100vw-2rem)] max-w-[460px] max-h-[92vh] gap-3 p-2 sm:p-3 overflow-y-auto overflow-x-hidden print:max-w-none print:w-full print:h-auto print:max-h-none print:p-0 print:border-none print:shadow-none print:overflow-visible print:static print:transform-none">
         <DialogHeader className="print:hidden">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <Mail className="h-5 w-5 text-[var(--color-primary-600)]" />
+            <Icon name="mail" className="h-5 w-5 text-[var(--color-primary-600)]" />
             <DialogTitle className="min-w-0 break-words">Recibo de Nómina - {worker.displayName}</DialogTitle>
           </div>
         </DialogHeader>
@@ -260,7 +260,7 @@ export function PayrollWorkerEnvelopeModal({
               className="min-w-0 gap-1.5 text-xs w-full justify-center"
               title="Descargar imagen PNG para enviar"
             >
-              {isGeneratingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-[var(--color-primary)]" />}
+              {isGeneratingImage ? <Icon name="loader" className="h-3.5 w-3.5 animate-spin" /> : <Icon name="download" className="h-3.5 w-3.5 text-[var(--color-primary)]" />}
               <span>Imagen</span>
             </Button>
             <Button
@@ -273,9 +273,9 @@ export function PayrollWorkerEnvelopeModal({
               title="Compartir imagen por WhatsApp"
             >
               {isSharingWhatsApp ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Icon name="loader" className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <MessageCircle className="h-3.5 w-3.5" />
+                <Icon name="message-circle" className="h-3.5 w-3.5" />
               )}
               <span>WhatsApp</span>
             </Button>
@@ -289,7 +289,7 @@ export function PayrollWorkerEnvelopeModal({
             Cerrar
           </Button>
           <Button type="button" variant="primary" onClick={handlePrint} className="gap-1.5">
-            <Printer className="h-4 w-4" />
+            <Icon name="print" className="h-4 w-4" />
             Imprimir en hoja Carta
           </Button>
         </DialogFooter>

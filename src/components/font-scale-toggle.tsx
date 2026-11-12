@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { ALargeSmall } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { useFontScaleContext } from "./font-scale-provider";
 
@@ -51,7 +51,7 @@ export function FontScaleToggle({ className }: FontScaleToggleProps) {
       onClick={() => setFontScale(nextScale)}
       className={className}
     >
-      <ALargeSmall className="h-5 w-5" aria-hidden="true" />
+      <Icon name="font-size" className="h-5 w-5" aria-hidden="true" />
       <span className="sr-only">{label}</span>
     </Button>
   );

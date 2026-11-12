@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Boxes, CheckCircle2, CircleDollarSign, Coins, TrendingUp } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { StatCard, Tabs } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import type { DashboardPeriodKey, PeriodMetrics } from "../types";
@@ -38,7 +38,7 @@ export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
         header={
           <div>
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
+              <Icon name="trend-up" className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
               <h2 id="kpis-heading" className="text-lg font-semibold text-[var(--color-text-main)]">
                 Resumen del período
               </h2>
@@ -65,7 +65,7 @@ function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
           value={metrics.completedWorkOrdersCount}
           numericRole="count"
           description="Órdenes completadas"
-          icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
+          icon={<Icon name="check-circle" className="h-4 w-4" aria-hidden="true" />}
           iconVariant="success"
         />
         <StatCard
@@ -73,7 +73,7 @@ function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
           value={formatCents(metrics.completedLaborBilledCents)}
           numericRole="currency"
           description="Facturada finalizada"
-          icon={<Coins className="h-4 w-4" aria-hidden="true" />}
+          icon={<Icon name="coins" className="h-4 w-4" aria-hidden="true" />}
           iconVariant="info"
         />
         <StatCard
@@ -81,7 +81,7 @@ function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
           value={formatCents(metrics.completedMaterialsBilledCents)}
           numericRole="currency"
           description="Materiales y repuestos"
-          icon={<Boxes className="h-4 w-4" aria-hidden="true" />}
+          icon={<Icon name="boxes" className="h-4 w-4" aria-hidden="true" />}
           iconVariant="primary"
         />
         <StatCard
@@ -97,7 +97,7 @@ function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
               pago{metrics.collectedPaymentsCount === 1 ? "" : "s"}
             </>
           }
-          icon={<CircleDollarSign className="h-4 w-4" aria-hidden="true" />}
+          icon={<Icon name="money" className="h-4 w-4" aria-hidden="true" />}
           iconVariant="success"
         />
       </div>

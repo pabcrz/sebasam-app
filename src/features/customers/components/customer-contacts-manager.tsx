@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Phone, Edit2, Trash2, UserCheck, UserX, Users } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import toast from "react-hot-toast";
 import type { CustomerContactRole } from "@/generated/prisma/client";
 import {
@@ -187,7 +187,7 @@ export function CustomerContactsManager({
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle as="h2" className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-[var(--color-primary)]" />
+            <Icon name="users" className="h-5 w-5 text-[var(--color-primary)]" />
             Contactos operativos y choferes
           </CardTitle>
           <CardDescription>
@@ -197,7 +197,7 @@ export function CustomerContactsManager({
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
             <Button variant="primary" size="sm" className="w-full sm:w-auto shrink-0">
-              <Plus className="mr-1.5 h-4 w-4" />
+              <Icon name="plus" className="mr-1.5 h-4 w-4" />
               Agregar contacto
             </Button>
           </DialogTrigger>
@@ -301,7 +301,7 @@ export function CustomerContactsManager({
                   </div>
                   {contact.phone ? (
                     <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                      <Icon name="phone" className="h-3.5 w-3.5 shrink-0" />
                       <span>{formatPhone(contact.phone)}</span>
                     </div>
                   ) : null}
@@ -322,9 +322,9 @@ export function CustomerContactsManager({
                     title={contact.isActive ? "Desactivar contacto" : "Reactivar contacto"}
                   >
                     {contact.isActive ? (
-                      <UserX className="h-4 w-4 text-[var(--color-text-muted)] hover:text-[var(--color-status-danger-fg)]" />
+                      <Icon name="user-x" className="h-4 w-4 text-[var(--color-text-muted)] hover:text-[var(--color-status-danger-fg)]" />
                     ) : (
-                      <UserCheck className="h-4 w-4 text-[var(--color-status-success-fg)]" />
+                      <Icon name="user-check" className="h-4 w-4 text-[var(--color-status-success-fg)]" />
                     )}
                     <span className="sr-only">
                       {contact.isActive ? "Desactivar" : "Reactivar"}
@@ -339,7 +339,7 @@ export function CustomerContactsManager({
                     onClick={() => handleOpenEdit(contact)}
                     title="Editar contacto"
                   >
-                    <Edit2 className="h-4 w-4 text-[var(--color-text-muted)]" />
+                    <Icon name="edit" className="h-4 w-4 text-[var(--color-text-muted)]" />
                     <span className="sr-only">Editar</span>
                   </Button>
 
@@ -351,7 +351,7 @@ export function CustomerContactsManager({
                     onClick={() => handleDelete(contact.id)}
                     title="Eliminar contacto"
                   >
-                    <Trash2 className="h-4 w-4 text-[var(--color-status-danger-fg)]" />
+                    <Icon name="trash" className="h-4 w-4 text-[var(--color-status-danger-fg)]" />
                     <span className="sr-only">Eliminar</span>
                   </Button>
                 </div>

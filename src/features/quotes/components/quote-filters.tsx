@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Filter, X } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusFilterNav } from "@/components/ui";
 import type { QuoteFilterInput } from "@/features/quotes/schemas";
 import {
@@ -70,7 +70,7 @@ export function QuoteFilters({ filters, customers, rejectedDateRange }: QuoteFil
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
           <div className="flex items-center gap-2">
-            <Filter className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
+            <Icon name="filter" className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
             <h3 className="text-base font-medium text-[var(--color-text-main)]">Filtros</h3>
           </div>
           <p className="text-sm text-[var(--color-text-muted)]">
@@ -83,7 +83,7 @@ export function QuoteFilters({ filters, customers, rejectedDateRange }: QuoteFil
         <div className="flex flex-wrap items-center gap-2">
           {hasFilters || rangeError ? (
             <Button type="button" variant="outline" size="sm" onClick={handleClear}>
-              <X className="h-4 w-4" aria-hidden="true" />
+              <Icon name="close" className="h-4 w-4" aria-hidden="true" />
               Limpiar
             </Button>
           ) : null}
@@ -96,9 +96,9 @@ export function QuoteFilters({ filters, customers, rejectedDateRange }: QuoteFil
             aria-controls="quote-filter-fields"
             onClick={() => setOpen((current) => !current)}
           >
-            <Filter className="h-4 w-4" aria-hidden="true" />
+            <Icon name="filter" className="h-4 w-4" aria-hidden="true" />
             {open ? "Ocultar filtros" : "Mostrar filtros"}
-            <ChevronDown
+            <Icon name="chevron-down"
               className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
               aria-hidden="true"
             />

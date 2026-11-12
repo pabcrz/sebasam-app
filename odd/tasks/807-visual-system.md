@@ -20,7 +20,7 @@ Tracker #807 (children #793–#806). Branch `feature/807-work` from `develop`; o
 - T0 [S1] Adopt rules in `DESIGN.md` + commit the HTML reference. Route: inline. Commit: c96c5ea. Done.
 - T1 [S1,S4,S5,S8] #793 Tokens base (palette light/dark, radii, shadows, Inter tabular, no DM Mono). Route: inline. Commit: 86ebd50. Done.
 - T2 [S2,S3] #794 Button scale and action hierarchy. Route: inline. Commit: see git log "#794". Done.
-- T3 [S8] #795 Icon wrapper and Tabler outline migration. Pending.
+- T3 [S8] #795 Icon wrapper and Tabler outline migration. Route: worker (83 files). Done; short logo asset deferred.
 - T4 [S7] #796 Segmented, tabs, chips. Pending.
 - T5 [S6] #797 Sheets, panels, dialogs. Pending.
 - T6 #798 PageHeader, SearchBar+filters, PeriodNavigator. Pending.

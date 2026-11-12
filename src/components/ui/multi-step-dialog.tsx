@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { X } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Dialog,
   DialogContent,
@@ -199,7 +199,7 @@ export function MultiStepDialog({
             aria-label={closeLabel}
             className="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50"
           >
-            <X className="h-4 w-4" aria-hidden="true" />
+            <Icon name="close" className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
         {stepper != null ? (

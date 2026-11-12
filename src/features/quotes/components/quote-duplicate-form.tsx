@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui";
-import { Copy } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import toast from "react-hot-toast";
 
 export interface QuoteDuplicateFormProps {
@@ -50,7 +50,7 @@ export function QuoteDuplicateForm({ action, quoteId, iconOnly = false, actionLa
       disabled={isPending}
       onClick={handleDuplicate}
     >
-      {!isPending ? <Copy className="h-5 w-5" aria-hidden="true" /> : null}
+      {!isPending ? <Icon name="copy" className="h-5 w-5" aria-hidden="true" /> : null}
       {!iconOnly && !isPending ? <span className={actionLabelClassName}>Duplicar</span> : null}
     </Button>
   );

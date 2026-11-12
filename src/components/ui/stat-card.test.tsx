@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { Banknote } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { StatCard } from "./stat-card";
 
 describe("StatCard UI component", () => {
@@ -10,7 +10,7 @@ describe("StatCard UI component", () => {
         label="Total Ventas"
         value="$12,500.00"
         description="Monto acumulado del mes"
-        icon={<Banknote className="h-4 w-4" data-testid="banknote-icon" />}
+        icon={<Icon name="cash" className="h-4 w-4" data-testid="banknote-icon" />}
       />
     );
 
@@ -34,7 +34,7 @@ describe("StatCard UI component", () => {
       <StatCard
         label="Ventas"
         value="10"
-        icon={<Banknote className="h-4 w-4" data-testid="icon" aria-hidden="true" />}
+        icon={<Icon name="cash" className="h-4 w-4" data-testid="icon" aria-hidden="true" />}
         iconVariant="success"
       />
     );

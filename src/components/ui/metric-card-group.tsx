@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Inbox } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { Card } from "./card";
 import { Skeleton } from "./skeleton";
@@ -44,7 +44,7 @@ export function MetricCardGroup({
     return (
       <div className={cn(gridClasses, className)} {...props}>
         <Card className="flex flex-col items-center justify-center gap-2 p-8 text-center sm:col-span-full shadow-[var(--shadow-xs)]">
-          <Inbox className="h-6 w-6 text-[var(--color-text-muted)]" aria-hidden="true" />
+          <Icon name="inbox" className="h-6 w-6 text-[var(--color-text-muted)]" aria-hidden="true" />
           <p className="text-sm font-medium text-[var(--color-text-main)]">{emptyTitle}</p>
           {emptyDescription ? (
             <p className="max-w-sm text-xs text-[var(--color-text-muted)]">{emptyDescription}</p>

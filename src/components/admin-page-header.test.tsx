@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ClipboardList } from "lucide-react";
+
 import { AdminPageHeader } from "./admin-page-header";
 
 describe("AdminPageHeader", () => {
   it("renders only the shared icon and title", () => {
     const { container } = render(
       <AdminPageHeader
-        icon={ClipboardList}
+        icon="clipboard"
         title="Trabajos"
       />,
     );
@@ -21,7 +21,7 @@ describe("AdminPageHeader", () => {
   it("renders an expanded hierarchy with distinct composition spacing", () => {
     const { container } = render(
       <AdminPageHeader
-        icon={ClipboardList}
+        icon="clipboard"
         title="Configuración"
         description="Administra los datos visibles para clientes."
         actions={<button type="button">Guardar</button>}
@@ -43,7 +43,7 @@ describe("AdminPageHeader", () => {
   it("keeps actions and description available in the compact variant", () => {
     render(
       <AdminPageHeader
-        icon={ClipboardList}
+        icon="clipboard"
         title="Trabajos"
         description="Órdenes activas"
         actions={<button type="button">Nuevo</button>}
@@ -57,7 +57,7 @@ describe("AdminPageHeader", () => {
   });
 
   it("preserves compact alignment and spacing by default", () => {
-    const { container } = render(<AdminPageHeader icon={ClipboardList} title="Trabajos" />);
+    const { container } = render(<AdminPageHeader icon="clipboard" title="Trabajos" />);
     const header = container.querySelector('[data-testid="admin-page-header"]');
     expect(header).toHaveAttribute("data-variant", "compact");
     expect(header).toHaveClass("p-4");

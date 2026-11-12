@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Dialog,
@@ -48,7 +48,7 @@ export function OperationalActionsMenu({
           aria-label={triggerAriaLabel}
           title={triggerTitle ?? triggerAriaLabel}
         >
-          <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+          <Icon name="more" className="h-5 w-5" aria-hidden="true" />
           <span className={triggerIconOnly ? "sr-only" : undefined}>{triggerText}</span>
         </Button>
       </DialogTrigger>

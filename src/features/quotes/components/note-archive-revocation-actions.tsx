@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Archive, ShieldOff } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Dialog,
@@ -59,12 +59,12 @@ export function NoteArchiveRevocationAction({
     <>
       {isArchive ? (
         <Button type="button" variant="outline" size="sm" aria-label={`Archivar Nota ${quoteNumber}`} title={`Archivar Nota ${quoteNumber}`} onClick={() => { setError(null); setOpen(true); }} disabled={isPending}>
-          <Archive className="h-5 w-5" aria-hidden="true" />
+          <Icon name="archive" className="h-5 w-5" aria-hidden="true" />
           <span className="sr-only sm:not-sr-only">Archivar</span>
         </Button>
       ) : (
         <Button type="button" variant="outline" size="sm" aria-label={`Revocar enlace de Nota ${quoteNumber}`} title={`Revocar enlace de Nota ${quoteNumber}`} onClick={() => { setError(null); setOpen(true); }} disabled={isPending}>
-          <ShieldOff className="h-5 w-5" aria-hidden="true" />
+          <Icon name="shield-off" className="h-5 w-5" aria-hidden="true" />
           <span className="sr-only sm:not-sr-only">Revocar enlace</span>
         </Button>
       )}

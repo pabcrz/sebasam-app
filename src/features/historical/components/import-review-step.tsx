@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { QuoteItemType } from "@/generated/prisma/enums";
 import { ITEM_TYPE_LABELS } from "../types";
 import { hasQuantityConcept, isPayrollConcept } from "../domain";
@@ -129,7 +129,7 @@ export function ImportReviewStep({
                 onClick={() => removeWork(workIndex)}
                 aria-label={`Eliminar trabajo ${work.ref || workIndex + 1}`}
               >
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                <Icon name="trash" className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </CardHeader>
@@ -302,7 +302,7 @@ export function ImportReviewStep({
                         onClick={() => removeItem(workIndex, itemIndex)}
                         aria-label={`Eliminar concepto ${itemIndex + 1}`}
                       >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        <Icon name="trash" className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </div>
                     <div className="flex flex-wrap items-center gap-4">
@@ -328,7 +328,7 @@ export function ImportReviewStep({
               })}
 
               <Button type="button" variant="outline" size="sm" onClick={() => addItem(workIndex)}>
-                <Plus className="h-4 w-4" aria-hidden="true" />
+                <Icon name="plus" className="h-4 w-4" aria-hidden="true" />
                 Agregar concepto
               </Button>
             </div>

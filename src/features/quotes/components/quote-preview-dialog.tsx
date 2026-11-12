@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { resolveDocumentDates, type DocumentDateSource } from "@/features/quotes/lib/document-dates";
-import { Eye, X } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import {
   Button,
@@ -145,7 +145,7 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
             aria-label={`Ver vista previa de ${quote.number}`}
             onClick={(event) => event.stopPropagation()}
           >
-            <Eye className="h-4 w-4" aria-hidden="true" />
+            <Icon name="eye" className="h-4 w-4" aria-hidden="true" />
             <span>Ver</span>
           </Button>
         </DialogTrigger>
@@ -159,7 +159,7 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
             aria-label="Cerrar"
             className="absolute right-0 top-0 inline-flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] min-h-[40px] min-w-[40px]"
           >
-            <X className="h-4 w-4" aria-hidden="true" />
+            <Icon name="close" className="h-4 w-4" aria-hidden="true" />
           </button>
         </DialogHeader>
 

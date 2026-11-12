@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ShieldCheck } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui";
 import {
   Dialog,
@@ -154,7 +154,7 @@ export function QuoteAuthorizeForm({
         aria-label={`Autorizar cotización ${quoteNumber}`}
         title={`Autorizar cotización ${quoteNumber}`}
       >
-        <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+        <Icon name="shield-check" className="h-5 w-5" aria-hidden="true" />
         {!iconOnly && <span className={actionLabelClassName}>Autorizar</span>}
       </Button>
 

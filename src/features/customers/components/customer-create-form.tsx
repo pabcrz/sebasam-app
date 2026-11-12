@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { UserPlus } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Dialog,
@@ -56,7 +56,7 @@ export function CustomerCreateForm({ action, triggerVariant, triggerClassName, t
           title={triggerAriaLabel ?? (triggerIconOnly ? "Nuevo cliente" : undefined)}
           aria-label={triggerAriaLabel ?? (triggerIconOnly ? "Nuevo cliente" : undefined)}
         >
-          <UserPlus className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />
+          <Icon name="user-plus" className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />
           <span className={triggerIconOnly ? "sr-only" : undefined}>Nuevo cliente</span>
         </Button>
       </DialogTrigger>

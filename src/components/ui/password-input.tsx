@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { Input, type InputProps } from "./input";
 
@@ -21,7 +21,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
           aria-pressed={visible}
           onClick={() => setVisible((current) => !current)}
         >
-          {visible ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+          {visible ? <Icon name="eye-off" className="h-5 w-5" aria-hidden="true" /> : <Icon name="eye" className="h-5 w-5" aria-hidden="true" />}
         </button>
       </div>
     );
