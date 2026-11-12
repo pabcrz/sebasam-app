@@ -51,7 +51,7 @@ export function QuoteLifecycleForm({ action, mode, quoteNumber, iconOnly = false
     <>
       <Button
         type="button"
-        variant={archive ? "outline" : "primary"}
+        variant={archive ? "outline" : "tonal"}
         size={iconOnly ? "icon" : "sm"}
         ref={triggerRef}
         aria-label={`${label} cotización ${quoteNumber}`}
