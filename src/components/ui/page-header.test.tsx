@@ -5,6 +5,13 @@ import { Button } from "./button";
 import { PageHeader } from "./page-header";
 
 describe("PageHeader", () => {
+  it("renders an optional subtitle under the title", () => {
+    render(<PageHeader title="Trabajos" subtitle="3 activos · 9 completados" />);
+
+    expect(screen.getByRole("heading", { level: 1, name: "Trabajos" })).toBeInTheDocument();
+    expect(screen.getByText("3 activos · 9 completados")).toBeInTheDocument();
+  });
+
   it("renders the title as a level-one heading with its status beside it", () => {
     render(<PageHeader title="Notas" status={<Badge variant="info">Pendientes: 3</Badge>} />);
 

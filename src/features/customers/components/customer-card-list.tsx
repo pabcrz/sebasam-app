@@ -42,7 +42,7 @@ const filterOptions: Array<{ value: CustomerListFilter; label: string }> = [
 ];
 
 const selectableRowClassName =
-  "flex min-h-[var(--tap-min-height)] w-full min-w-0 cursor-pointer items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-3 text-left shadow-[var(--shadow-card)]";
+  "flex min-h-[var(--tap-min-height)] w-full min-w-0 cursor-pointer items-center gap-3 p-3 text-left";
 
 function unitCountLabel(count: number) {
   return `${count} unidad${count === 1 ? "" : "es"}`;
@@ -142,7 +142,7 @@ export function CustomerCardList({ customers, query = "", onDeleteBatch }: Custo
         </div>
       ) : null}
 
-      <ul className="grid min-w-0 gap-3">
+      <ul className="grid min-w-0 divide-y divide-[var(--color-border-light)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]">
         {visibleCustomers.map((customer) => {
           const blocker = getCustomerDeletionBlocker(customer);
           const isSelected = selectedIds.has(customer.id);
@@ -190,12 +190,13 @@ export function CustomerCardList({ customers, query = "", onDeleteBatch }: Custo
             </span>
           );
 
-          const decision = hasBalance ? (
-            <span className="font-semibold tabular-nums text-[var(--color-text-main)]">
-              {formatCents(customer.pendingBalanceCents)}
+          const decision = (
+            <span className="grid justify-items-end gap-0.5">
+              <span className="font-semibold tabular-nums text-[var(--color-text-main)]">
+                {formatCents(customer.pendingBalanceCents)}
+              </span>
+              <span className="text-xs text-[var(--color-text-muted)]">{hasBalance ? "Pendiente" : "Al corriente"}</span>
             </span>
-          ) : (
-            <span className="text-xs text-[var(--color-text-muted)]">Al corriente</span>
           );
 
           return (
@@ -224,6 +225,7 @@ export function CustomerCardList({ customers, query = "", onDeleteBatch }: Custo
                     openLabel={`Ver ficha de ${displayName}`}
                     href={`/admin/customers/${customer.id}`}
                     decision={decision}
+                    flat
                   >
                     {content}
                   </ListRow>

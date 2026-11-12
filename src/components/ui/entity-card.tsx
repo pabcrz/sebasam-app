@@ -12,11 +12,15 @@ export type EntityCardProps = {
   /** Status badge slot, shown next to the folio. */
   status?: React.ReactNode;
   amount?: React.ReactNode;
+  /** Small line under the amount, in the same column (e.g. the service of a work order). */
+  amountCaption?: React.ReactNode;
   customer?: React.ReactNode;
   /** Already-resolved unit identity (see formatUnitIdentity). Hidden when empty. */
   unit?: string | null;
-  /** Driver name, always on its own line with a steering-wheel icon. Hidden when empty. */
+  /** Driver name, always on its own line. Hidden when empty. */
   driver?: string | null;
+  /** Icon of the driver line: the steering wheel by default; Trabajos uses the person. */
+  driverIcon?: "driver-wheel" | "driver";
   keyData?: React.ReactNode;
   /** Footer tools, rendered in this fixed order: Editar · Imprimir · Compartir · ⋯. */
   editAction?: React.ReactNode;
@@ -59,9 +63,11 @@ export function EntityCard({
   folio,
   status,
   amount,
+  amountCaption,
   customer,
   unit,
   driver,
+  driverIcon = "driver-wheel",
   keyData,
   editAction,
   printAction,
@@ -123,7 +129,10 @@ export function EntityCard({
           </div>
         </div>
         {amount != null ? (
-          <p className="shrink-0 text-2xl font-extrabold tabular-nums text-[var(--color-amount)]">{amount}</p>
+          <div data-testid="entity-card-amount" className="flex min-w-0 max-w-[45%] shrink-0 flex-col items-end text-right">
+            <p className="text-2xl font-extrabold tabular-nums text-[var(--color-amount)]">{amount}</p>
+            {amountCaption != null ? <p className="max-w-full truncate text-xs text-[var(--color-text-muted)]">{amountCaption}</p> : null}
+          </div>
         ) : null}
       </div>
 
@@ -138,7 +147,7 @@ export function EntityCard({
       ) : null}
       {driver ? (
         <p data-testid="entity-card-driver" className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-          <Icon name="driver-wheel" className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <Icon name={driverIcon} className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="min-w-0 truncate">{driver}</span>
         </p>
       ) : null}

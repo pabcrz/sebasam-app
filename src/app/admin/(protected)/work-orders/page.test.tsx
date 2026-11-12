@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("@/features/work-orders/queries", () => ({ listActiveWorkOrders: vi.fn().mockResolvedValue([]), listPaginatedActiveWorkOrders: vi.fn().mockResolvedValue({ workOrders: [], page: 1, hasNextPage: false }), listActiveWorkers: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/features/work-orders/queries", () => ({ listActiveWorkOrders: vi.fn().mockResolvedValue([]), listPaginatedActiveWorkOrders: vi.fn().mockResolvedValue({ workOrders: [], page: 1, hasNextPage: false }), listActiveWorkers: vi.fn().mockResolvedValue([]), countActiveWorkOrders: vi.fn().mockResolvedValue(3), countCompletedWorkOrders: vi.fn().mockResolvedValue(9) }));
 vi.mock("@/features/customers/queries", () => ({ listCustomers: vi.fn().mockResolvedValue([]) }));
 vi.mock("@/features/quotes/queries", () => ({ listQuotesByIds: vi.fn().mockResolvedValue([]) }));
 vi.mock("@/features/customers/actions", () => ({
@@ -44,6 +44,18 @@ describe("WorkOrdersPage", () => {
     vi.mocked(listPaginatedActiveWorkOrders).mockResolvedValue({ workOrders: [], page: 1, hasNextPage: false });
     vi.mocked(listActiveWorkers).mockResolvedValue([]);
     vi.mocked(listQuotesByIds).mockResolvedValue([]);
+  });
+
+  it("shows the counts as the header subtitle and as Activos / Completados tabs in the search row, without En espera", async () => {
+    render(await page());
+
+    expect(screen.getByTestId("page-header")).toHaveTextContent("3 activos · 9 completados");
+    const nav = screen.getByRole("navigation", { name: "Secciones de trabajos" });
+    expect(within(nav).getByRole("link", { name: /Activos/ })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: /Activos/ })).toHaveTextContent("3");
+    expect(within(nav).getByRole("link", { name: /Completados/ })).toHaveTextContent("9");
+    expect(within(nav).queryByText(/En espera/)).not.toBeInTheDocument();
+    expect(nav.closest("[data-testid=work-order-search-row]")).toContainElement(screen.getByRole("search"));
   });
 
   it("renders the workspace without a redundant page header card and with direct work order action", async () => {

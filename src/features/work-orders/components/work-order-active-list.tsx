@@ -115,15 +115,16 @@ function ActiveWorkOrderCard({
         openLabel={`Ver detalle de cotización ${wo.quote.number}`}
         onOpen={() => panel.open("preview")}
         selected={panel.selected}
-        title={wo.quote.title || "Sin título"}
+        title={identity.displayName}
         folio={wo.number}
         status={<Badge variant="info">En proceso</Badge>}
         amount={formatCents(wo.quote.totalCents)}
-        customer={identity.displayName}
+        amountCaption={wo.quote.title || "Sin título"}
         unit={unitIdentityOf(wo)}
         driver={identity.operatorName ?? null}
+        driverIcon="driver"
         keyData={
-          <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] px-3 py-2">
             <span>Asignado a</span>
             <span className="min-w-0 font-medium text-[var(--color-text-main)]">
               <AssigneeText wo={wo} />
@@ -184,7 +185,7 @@ function ActiveWorkOrderCard({
           <WorkOrderOperationsDialog
             {...manageDialogProps}
             triggerVariant="tonal"
-            triggerClassName="w-full"
+            triggerClassName="w-auto"
             open={panel.isOpen("manage")}
             onOpenChange={(open) => (open ? panel.open("manage") : panel.close("manage"))}
           />

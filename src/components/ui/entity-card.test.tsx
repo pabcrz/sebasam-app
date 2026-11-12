@@ -5,7 +5,7 @@ import { Button } from "./button";
 import { EntityCard, EntityCardDataRow } from "./entity-card";
 import { Icon } from "./icon";
 
-function iconGlyph(name: "unit" | "driver-wheel") {
+function iconGlyph(name: "unit" | "driver-wheel" | "driver") {
   const { container, unmount } = render(<Icon name={name} />);
   const glyph = container.querySelector("svg")?.innerHTML;
   unmount();
@@ -63,6 +63,19 @@ describe("EntityCard", () => {
     expect(driver).not.toHaveTextContent("ECO");
     expect(screen.getByTestId("entity-card-unit")).not.toHaveTextContent("Juan Pérez");
     expect(driver.querySelector("svg")?.innerHTML).toBe(iconGlyph("driver-wheel"));
+  });
+
+  it("can show the driver with the person icon when the card asks for it", () => {
+    renderCard({ driver: "Juan Pérez", driverIcon: "driver" });
+
+    expect(screen.getByTestId("entity-card-driver").querySelector("svg")?.innerHTML).toBe(iconGlyph("driver"));
+  });
+
+  it("puts the optional amount caption under the amount, in the same column", () => {
+    renderCard({ amountCaption: "Presupuesto" });
+
+    expect(screen.getByTestId("entity-card-amount")).toHaveTextContent("$116.00");
+    expect(screen.getByTestId("entity-card-amount")).toContainElement(screen.getByText("Presupuesto"));
   });
 
   it("omits the unit and driver lines when they have no data", () => {

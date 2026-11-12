@@ -2,8 +2,8 @@ import type { ComponentProps } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { WorkerKind } from "@/generated/prisma/client";
-import { listPaginatedActiveWorkOrders, listActiveWorkers } from "@/features/work-orders/queries";
-import { PageHeader } from "@/components/ui";
+import { listPaginatedActiveWorkOrders, listActiveWorkers, countActiveWorkOrders, countCompletedWorkOrders } from "@/features/work-orders/queries";
+import { LinkTabs, PageHeader } from "@/components/ui";
 import { WorkOrderFilters } from "@/features/work-orders/components/work-order-filters";
 import { parseWorkOrderParams, workOrdersHref } from "@/features/work-orders/work-order-filter-model";
 import { WorkOrderActiveList } from "@/features/work-orders/components/work-order-active-list";
@@ -23,6 +23,10 @@ export const metadata: Metadata = {
   title: "Trabajos en proceso",
 };
 
+function countLabel(count: number, singular: string, plural: string) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 export default async function WorkOrdersPage({ searchParams }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
@@ -40,10 +44,12 @@ export default async function WorkOrdersPage({ searchParams }: {
       dates: Object.fromEntries(["dateFrom", "dateTo", "scheduledFrom", "scheduledTo"].map((key) => [key, typeof params[key] === "string" ? params[key] : ""])),
     };
   }
-  const [result, workers, customers] = await Promise.all([
+  const [result, workers, customers, activeCount, completedCount] = await Promise.all([
     rejectedRange ? Promise.resolve({ workOrders: [], page: 1, hasNextPage: false }) : listPaginatedActiveWorkOrders(params),
     listActiveWorkers(),
     listCustomers(),
+    countActiveWorkOrders(),
+    countCompletedWorkOrders(),
   ]);
 
   const { workOrders, page, hasNextPage } = result;
@@ -62,6 +68,7 @@ export default async function WorkOrdersPage({ searchParams }: {
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <PageHeader
         title="Trabajos"
+        subtitle={`${countLabel(activeCount, "activo", "activos")} · ${countLabel(completedCount, "completado", "completados")}`}
         primaryAction={
           <QuoteBuilderDialog
             customers={customers}
@@ -74,7 +81,23 @@ export default async function WorkOrdersPage({ searchParams }: {
           />
         }
       />
-      <WorkOrderFilters key={JSON.stringify(params)} filters={filters} customers={customers} workers={masters} rejectedRange={rejectedRange} />
+      <WorkOrderFilters
+        key={JSON.stringify(params)}
+        filters={filters}
+        customers={customers}
+        workers={masters}
+        rejectedRange={rejectedRange}
+        tabs={(
+          <LinkTabs
+            label="Secciones de trabajos"
+            className="shrink-0"
+            items={[
+              { href: "/admin/work-orders", label: "Activos", count: activeCount, current: true },
+              { href: "/admin/notas", label: "Completados", count: completedCount },
+            ]}
+          />
+        )}
+      />
       {!rejectedRange ? <section aria-labelledby="work-orders-heading" className="grid min-w-0 gap-4">
         <h2 id="work-orders-heading" className="sr-only">Órdenes activas</h2>
           {workOrders.length === 0 ? (

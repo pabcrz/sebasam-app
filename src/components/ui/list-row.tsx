@@ -17,17 +17,26 @@ export interface ListRowProps {
   decision?: React.ReactNode;
   /** Chevron that says the row opens. */
   chevron?: boolean;
+  /** Inside a shared surface (one list with dividers): no card fill, radius or shadow. */
+  flat?: boolean;
   className?: string;
 }
 
-const rowClassName =
-  "flex min-h-[var(--tap-min-height)] w-full min-w-0 cursor-pointer items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-3 text-left shadow-[var(--shadow-card)] transition-shadow duration-[var(--motion-fast)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]";
+const rowBaseClassName =
+  "flex min-h-[var(--tap-min-height)] w-full min-w-0 cursor-pointer items-center gap-3 p-3 text-left transition-shadow duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]";
+
+const cardSurfaceClassName =
+  "rounded-[var(--radius-md)] bg-[var(--color-surface)] shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]";
+
+const flatSurfaceClassName = "hover:bg-[var(--color-surface-muted)]";
 
 /**
  * Whole-row target for lists (clients, workers, users). The left content names
  * the row; the right side shows the figure that decides. Shadow only, no border.
  */
-export function ListRow({ openLabel, onOpen, href, children, decision, chevron = true, className }: ListRowProps) {
+export function ListRow({ openLabel, onOpen, href, children, decision, chevron = true, flat = false, className }: ListRowProps) {
+  const rowClassName = cn(rowBaseClassName, flat ? flatSurfaceClassName : cardSurfaceClassName);
+
   const content = (
     <>
       <span className="flex min-w-0 flex-1 items-center gap-3">{children}</span>

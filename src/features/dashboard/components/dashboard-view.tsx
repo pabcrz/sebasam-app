@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, SectionLabel } from "@/compon
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 import { buildInboxRows, prioritizeInbox } from "../inbox-priority";
+import { formatHomeDate, greetingFor, pendingLabel } from "../greeting";
 import type { OperationalDashboardSnapshot } from "../types";
 import { InboxRowsSection } from "./inbox-rows-section";
 import { NextWorkCard } from "./next-work-card";
@@ -30,6 +31,8 @@ interface DashboardViewProps {
   }>;
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
   role: UserRole;
+  /** Reading time for the greeting and date; defaults to the current instant. */
+  now?: Date;
 }
 
 type DashboardModule = {
@@ -82,6 +85,7 @@ export function DashboardView({
   createCustomerForQuoteAction,
   searchCustomersAction,
   role,
+  now = new Date(),
 }: DashboardViewProps) {
   const isPatron = role === "ADMIN";
   const quickAccessModules = isPatron ? patronModules : modules;
@@ -90,12 +94,14 @@ export function DashboardView({
   );
   const todayRows = inboxRows.filter((row) => row.key === "approved" || row.key === "active");
   const followUpRows = inboxRows.filter((row) => row.key === "sent" || row.key === "draft");
+  const pendingCount = inboxRows.reduce((total, row) => total + row.count, 0);
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">Inicio</h1>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">{greetingFor(now)}</h1>
+          <p className="text-sm text-[var(--color-text-muted)]">{`${formatHomeDate(now)} · ${pendingLabel(pendingCount)}`}</p>
         </div>
         <div>
           <QuoteBuilderDialog
@@ -115,15 +121,18 @@ export function DashboardView({
         {/* 1. Next job: the oldest approved quote waiting for a work order */}
         {snapshot.nextWork ? <NextWorkCard nextWork={snapshot.nextWork} /> : null}
 
-        {/* 2. Today: approved quotes to assign and active jobs to complete */}
-        <InboxRowsSection heading="Para hoy" rows={todayRows} emptyText="Nada pendiente para hoy." />
-
-        {/* 3. Commercial follow-up: sent without response and drafts */}
-        <InboxRowsSection
-          heading="Seguimiento de cotizaciones"
-          rows={followUpRows}
-          emptyText="Sin cotizaciones por dar seguimiento."
-        />
+        {/* 2 and 3. One list: today's operation first, then commercial follow-up, divided by rules */}
+        <section
+          aria-label="Pendientes"
+          className="divide-y divide-[var(--color-border-light)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]"
+        >
+          <InboxRowsSection heading="Para hoy" rows={todayRows} emptyText="Nada pendiente para hoy." />
+          <InboxRowsSection
+            heading="Seguimiento de cotizaciones"
+            rows={followUpRows}
+            emptyText="Sin cotizaciones por dar seguimiento."
+          />
+        </section>
 
         {!isPatron ? <ReceivablesSection customers={snapshot.receivables} /> : null}
 

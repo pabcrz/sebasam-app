@@ -11,6 +11,7 @@ export * from "./dialog";
 export * from "./entity-card";
 export * from "./icon";
 export * from "./info-tip";
+export * from "./link-tabs";
 export * from "./input";
 export * from "./label";
 export * from "./list-item-card";

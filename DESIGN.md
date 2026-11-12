@@ -117,7 +117,7 @@ Cada pieza se construye una vez en `src/components/ui`; las pantallas solo las c
 
 **Formato de periodos** (`src/lib/period-format.ts`, usado por `PeriodNavigator`): la semana va de lunes a sábado (Notas); Estado de cuenta usa lunes a domingo con `weekDays: 7`. Fechas en minúsculas: «9–14 de noviembre de 2026»; si la semana cruza meses, «30 de octubre – 4 de noviembre de 2023»; si cruza años, «28 de diciembre de 2026 – 2 de enero de 2027»; mes «noviembre de 2026»; año «2026». «En curso» marca el periodo actual y «Hoy» aparece solo si el usuario se movió de él. Nunca aplicar `capitalize` a una etiqueta de fecha: CSS convierte «de» en «De».
 
-**Encabezado de página** (`PageHeader`): sin subtítulo, porque los contadores ya se ven abajo. Las acciones secundarias van como iconos o en ⋯ y la primaria va al final.
+**Encabezado de página** (`PageHeader`): sin subtítulo que repita contadores visibles abajo; solo se admite un subtítulo corto con los conteos de la vista (p. ej. «3 activos · 9 completados» en Trabajos). Las acciones secundarias van como iconos o en ⋯ y la primaria va al final.
 
 ### Anatomía de hojas, diálogos y flujos
 

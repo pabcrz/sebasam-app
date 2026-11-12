@@ -22,6 +22,8 @@ import { dateValue, parseWorkOrderParams, workOrdersHref } from "../work-order-f
 
 type Props = {
   filters: ReturnType<typeof parseWorkOrderParams>;
+  /** Section tabs; they share the search row. */
+  tabs?: React.ReactNode;
   rejectedRange?: {
     kind: "operational" | "scheduled";
     dates: Partial<Record<"dateFrom" | "dateTo" | "scheduledFrom" | "scheduledTo", string>>;
@@ -122,7 +124,7 @@ function WorkOrderSearchField({ initialValue, onSearch }: { initialValue: string
   );
 }
 
-export function WorkOrderFilters({ filters, customers, workers, rejectedRange }: Props) {
+export function WorkOrderFilters({ filters, customers, workers, rejectedRange, tabs }: Props) {
   const router = useRouter();
   const effective = parseWorkOrderParams(filters);
   const [open, setOpen] = React.useState(Boolean(rejectedRange));
@@ -180,7 +182,8 @@ export function WorkOrderFilters({ filters, customers, workers, rejectedRange }:
 
   return (
     <section aria-label="Filtros de trabajos" className="grid min-w-0 gap-3">
-      <div className="flex min-w-0 items-center gap-2">
+      <div data-testid="work-order-search-row" className="flex min-w-0 items-center gap-2">
+        {tabs}
         <WorkOrderSearchField
           key={effective.number ?? ""}
           initialValue={effective.number ?? ""}

@@ -127,6 +127,30 @@ describe("CustomerCardList rows", () => {
     expect(line?.querySelector("svg")).not.toBeNull();
   });
 
+  it("shows the balance on every row: $0.00 with Al corriente at zero, the amount with Pendiente when owed", () => {
+    render(
+      <CustomerCardList
+        customers={[buildCustomer({ pendingBalanceCents: 450000 }), buildCustomer({ id: "cust-2", name: "Lx Automotriz", pendingBalanceCents: 0 })]}
+      />,
+    );
+
+    expect(screen.getByText("$4,500.00")).toBeInTheDocument();
+    expect(screen.getByText("Pendiente")).toBeInTheDocument();
+    expect(screen.getByText("$0.00")).toBeInTheDocument();
+    expect(screen.getByText("Al corriente")).toBeInTheDocument();
+  });
+
+  it("renders all rows inside one surface with dividers, not a card per row", () => {
+    render(<CustomerCardList customers={[buildCustomer(), buildCustomer({ id: "cust-2", name: "Lx Automotriz" })]} />);
+
+    const list = screen.getByRole("list");
+    expect(list).toHaveClass("divide-y", "shadow-[var(--shadow-card)]");
+    expect(within(list).getAllByRole("link")).toHaveLength(2);
+    for (const link of within(list).getAllByRole("link")) {
+      expect(link.className).not.toMatch(/shadow-\[var\(--shadow-card\)\]/);
+    }
+  });
+
   it("filters the loaded list with Con saldo and Inactivos", async () => {
     const user = userEvent.setup();
     render(

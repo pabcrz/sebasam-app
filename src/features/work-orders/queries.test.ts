@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
-import { getCompletedWorkOrderById, listPaginatedActiveWorkOrders, listActiveWorkOrders, listCompletedWorkOrders } from "./queries";
+import { countActiveWorkOrders, countCompletedWorkOrders, getCompletedWorkOrderById, listPaginatedActiveWorkOrders, listActiveWorkOrders, listCompletedWorkOrders } from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: { $queryRaw: vi.fn(), payableNote: { findMany: vi.fn(), findFirst: vi.fn() }, workOrder: { findMany: vi.fn(), findFirst: vi.fn() } },
@@ -571,4 +571,29 @@ it("filters partial collections on both operational note kinds without modifying
   for (const [raw] of vi.mocked(prisma.$queryRaw).mock.calls) {
     expect((raw as { strings: string[] }).strings.join("?")).toMatch(/HAVING .* > 0 AND COALESCE\(SUM/);
   }
+});
+
+describe("work order counters for Trabajos", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (prisma.workOrder as unknown as { count: ReturnType<typeof vi.fn> }).count = vi.fn();
+  });
+
+  it("counts active work orders with the same base as the Trabajos list, without filters", async () => {
+    (prisma.workOrder as unknown as { count: ReturnType<typeof vi.fn> }).count.mockResolvedValueOnce(3);
+    await expect(countActiveWorkOrders()).resolves.toBe(3);
+
+    expect((prisma.workOrder as unknown as { count: ReturnType<typeof vi.fn> }).count).toHaveBeenCalledWith({
+      where: { status: { in: ["PLANNED", "ASSIGNED", "IN_PROGRESS"] }, quote: { operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } } },
+    });
+  });
+
+  it("counts completed WORK orders on visible quotes, the same membership Notas uses by default", async () => {
+    (prisma.workOrder as unknown as { count: ReturnType<typeof vi.fn> }).count.mockResolvedValueOnce(9);
+    await expect(countCompletedWorkOrders()).resolves.toBe(9);
+
+    expect((prisma.workOrder as unknown as { count: ReturnType<typeof vi.fn> }).count).toHaveBeenCalledWith({
+      where: { status: "COMPLETED", quote: { operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } } },
+    });
+  });
 });
