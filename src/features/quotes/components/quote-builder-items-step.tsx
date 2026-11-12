@@ -64,6 +64,8 @@ export interface QuoteBuilderItemsStepProps {
   dispatch: (action: QuoteBuilderItemsAction) => void;
   focus: QuoteBuilderItemsFocus;
   allowedItemTypes?: QuoteItemType[];
+  /** Desktop full-screen flow: the summary column lives in the flow chrome, so it is not rendered here. */
+  summaryInShell?: boolean;
 }
 
 export function QuoteBuilderItemsStep({
@@ -72,6 +74,7 @@ export function QuoteBuilderItemsStep({
   dispatch,
   focus: { animatedRowId, expandedItemRowId, onToggleItem, onRowRef, onDescriptionRef, onTypeRef },
   allowedItemTypes = itemTypes,
+  summaryInShell = false,
 }: QuoteBuilderItemsStepProps) {
   // One layout at a time: the mobile list and the desktop table render different inputs, so
   // only one set of concept fields is mounted. State lives in the reducer, so resizing keeps it.
@@ -162,7 +165,7 @@ export function QuoteBuilderItemsStep({
   }
 
   return (
-    <section className="grid min-w-0 gap-3 px-1.5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
+    <section className={`grid min-w-0 gap-3 px-1.5 ${summaryInShell ? "" : "lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6"}`}>
       <div className="grid min-w-0 gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="min-w-0 font-semibold text-[var(--color-text-main)]">Conceptos</h3>
@@ -236,6 +239,7 @@ export function QuoteBuilderItemsStep({
         </Button>
       </div>
 
+      {summaryInShell ? null : (
       <aside data-testid="quote-summary-column" className="grid min-w-0 content-start gap-3 lg:sticky lg:top-0">
         <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
           <div className="grid gap-3">
@@ -273,6 +277,7 @@ export function QuoteBuilderItemsStep({
           />
         </div>
       </aside>
+      )}
     </section>
   );
 }

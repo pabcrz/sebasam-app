@@ -22,3 +22,8 @@ export const CONCEPT_TABLE_MEDIA_QUERY = "(min-width: 1024px)";
 export function useIsConceptTableLayout() {
   return useMediaQuery(CONCEPT_TABLE_MEDIA_QUERY);
 }
+
+/** Desktop quote flow (top step row, summary column) starts at the same `lg` breakpoint. */
+export function useIsDesktopLayout() {
+  return useMediaQuery(CONCEPT_TABLE_MEDIA_QUERY);
+}

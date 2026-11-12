@@ -25,7 +25,7 @@ import {
   Switch,
   Textarea,
 } from "@/components/ui";
-import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
+import { createQuoteValidUntil, QUOTE_VALIDITY_DAYS } from "@/features/quotes/lib/calculate";
 import {
   defaultOperationalCalendarDate,
   isSundayOperationalDate,
@@ -44,6 +44,9 @@ import {
 import { useQuoteCustomerSearch } from "./use-quote-customer-search";
 import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
 import { QuoteBuilderProgress, QuoteBuilderStepper } from "./quote-builder-stepper";
+import { QuoteBuilderSummaryColumn, type QuoteBuilderChecklistItem } from "./quote-builder-summary-column";
+import { useIsDesktopLayout } from "./use-media-query";
+import { formatUnitIdentity } from "@/lib/unit-identity";
 import type { QuotePreviewCardProps } from "./quote-preview-card";
 import { toDocumentPreviewProps } from "./document-preview-model";
 import { DocumentPreview } from "@/components/document-preview";
@@ -597,6 +600,7 @@ export function QuoteBuilder({
   // consumer re-renders the portals reactively, without any effect that could
   // miss the late-attached footer host.
   const chromeHosts = React.useContext(QuoteBuilderChromeContext);
+  const isDesktop = useIsDesktopLayout();
   // Unique per instance: the footer is rendered outside the form in the dialog
   // layout, so the submit button associates back to its form by id.
   const formId = React.useId();
@@ -606,8 +610,31 @@ export function QuoteBuilder({
   const scrollAreaClass = isDialogLayout
     ? "min-h-0 min-w-0"
     : "py-4 pr-1";
+  const sectionsForSummary = normalizeSections(sections);
+  const conceptCount = sectionsForSummary.reduce((count, section) => count + section.items.length, 0);
+  const sectionCount = sectionsForSummary.length;
+  const clientStateArgs = { customerId, vehicle, title, sections };
+  const clientReady = !(isSale && !customerId) && getStepError("client", clientStateArgs) === null;
+  const priceReady = getStepError("items", clientStateArgs, true) === null;
+  const unitLine = formatUnitIdentity({ economicNumber: vehicle.economicNumber, plates: vehicle.plate, model: vehicle.model });
+  const customerName = selectedCustomer ? selectedCustomer.commercialName || selectedCustomer.name : null;
+  const driverName = selectedCustomer?.contacts?.find((contact) => contact.id === customerContactId)?.name ?? null;
+  const stepSummaries: Record<Step, string> = {
+    client: [customerName, unitLine].filter(Boolean).join(" · ") || "Sin cliente ni unidad",
+    items: conceptCount === 0
+      ? "Sin conceptos"
+      : `${conceptCount} ${conceptCount === 1 ? "concepto" : "conceptos"} · ${sectionCount} ${sectionCount === 1 ? "sección" : "secciones"}`,
+    notes: title.trim() || "Sin título",
+    preview: "Vista previa del documento",
+  };
+  const stepCompleted: Record<Step, boolean> = {
+    client: clientReady,
+    items: priceReady,
+    notes: getStepError("notes", clientStateArgs) === null,
+    preview: false,
+  };
   const stepperContent = fullScreen
-    ? <QuoteBuilderProgress current={step} onChange={setStep} />
+    ? <QuoteBuilderProgress current={step} onChange={setStep} summaries={stepSummaries} completed={stepCompleted} />
     : <QuoteBuilderStepper current={step} onChange={setStep} />;
   const subtitleContent = fullScreen
     ? <p className="truncate text-xs text-[var(--color-text-muted)]">{`Paso ${currentStepIndex + 1} de ${steps.length} · ${flowStepLabels[step]}`}</p>
@@ -686,6 +713,37 @@ export function QuoteBuilder({
       )}
     </>
   );
+  // Desktop (≥ lg) full-screen flow: the summary column replaces the bottom bar and holds the primary action.
+  const desktopSummaryInShell = fullScreen && isDesktop;
+  const readinessChecklist: QuoteBuilderChecklistItem[] | null = step === "preview"
+    ? [
+      { label: "Cliente y unidad completos", done: clientReady },
+      { label: "Todos los conceptos tienen precio", done: priceReady },
+      { label: `Vigencia de ${QUOTE_VALIDITY_DAYS} días`, done: !Number.isNaN(validUntil.getTime()) },
+    ]
+    : null;
+  const summaryColumn = (
+    <QuoteBuilderSummaryColumn
+      formId={formId}
+      customerName={customerName}
+      unitLine={unitLine}
+      driverName={driverName}
+      taxEnabled={taxEnabled}
+      discount={discount}
+      subtotalCents={subtotalCents}
+      discountCents={discountCents}
+      taxCents={taxCents}
+      totalCents={totalCents}
+      onTaxEnabledChange={(checked) => dispatchItemsAction({ type: "setTaxEnabled", taxEnabled: checked })}
+      onDiscountChange={(value) => dispatchItemsAction({ type: "setDiscount", discount: value })}
+      checklist={readinessChecklist}
+      primaryAction={step === "preview" ? submitButton : (
+        <Button type="button" variant="primary" onClick={goToNext}>
+          {`${flowStepLabels[nextStep]} →`}
+        </Button>
+      )}
+    />
+  );
   // ← steps back and is disabled on the first step; ✕ (in the shell) is the only way out.
   const leadingContent = (
     <button
@@ -693,7 +751,7 @@ export function QuoteBuilder({
       onClick={goToPrevious}
       disabled={currentStepIndex === 0}
       aria-label="Paso anterior"
-      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-40"
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-40 lg:hidden"
     >
       <Icon name="chevron-left" className="h-5 w-5" aria-hidden="true" />
     </button>
@@ -702,7 +760,7 @@ export function QuoteBuilder({
     isDialogLayout &&
     chromeHosts != null &&
     chromeHosts.stepperHost != null &&
-    chromeHosts.footerHost != null &&
+    (desktopSummaryInShell ? chromeHosts.summaryHost != null : chromeHosts.footerHost != null) &&
     (!fullScreen || (chromeHosts.leadingHost != null && chromeHosts.subtitleHost != null));
 
   return (
@@ -1163,6 +1221,7 @@ export function QuoteBuilder({
                 },
               }}
               allowedItemTypes={isSale ? ["MATERIAL", "REFACCIONES"] : undefined}
+              summaryInShell={desktopSummaryInShell}
             />
           </div>
 
@@ -1309,7 +1368,7 @@ export function QuoteBuilder({
         {fullScreen ? createPortal(leadingContent, chromeHosts.leadingHost!) : null}
         {fullScreen ? createPortal(subtitleContent, chromeHosts.subtitleHost!) : null}
         {createPortal(stepperContent, chromeHosts.stepperHost!)}
-        {createPortal(footerContent, chromeHosts.footerHost!)}
+        {desktopSummaryInShell ? createPortal(summaryColumn, chromeHosts.summaryHost!) : createPortal(footerContent, chromeHosts.footerHost!)}
       </>
     ) : null}
     </>

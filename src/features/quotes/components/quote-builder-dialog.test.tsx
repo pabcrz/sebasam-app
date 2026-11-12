@@ -35,7 +35,9 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   const footer = screen.getByTestId("multi-step-dialog-footer");
   const footerHost = screen.getByTestId("quote-builder-footer-host");
 
-  expect(Array.from(dialog.children)).toEqual([header, stepper, body, footer]);
+  // The desktop summary slot exists only in the full-screen flow (hidden below 1024px).
+  const summary = screen.queryByTestId("multi-step-dialog-summary");
+  expect(Array.from(dialog.children)).toEqual([header, stepper, body, ...(summary ? [summary] : []), footer]);
 
   expect(header).toContainElement(screen.getByRole("heading", { name: /cotización/ }));
   expect(stepper).toContainElement(screen.getByRole("navigation", { name: "Pasos de cotización" }));
