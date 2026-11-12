@@ -6,9 +6,11 @@ import { Icon } from "@/components/ui/icon";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import {
   Button,
+  DialogClose,
   DialogContent,
   DialogMobileBody,
   DialogMobileClose,
+  DialogMobileFooter,
   DialogMobileHeader,
   DialogTitle,
   DialogTrigger,
@@ -56,6 +58,12 @@ interface QuotePreviewDialogProps {
   showTrigger?: boolean;
   noteReturnTo?: string;
   previewTitle?: string;
+  /** List panels pass folio, customer and badge: the title becomes "Folio · Cliente" plus the badge. */
+  folio?: string;
+  customerName?: string;
+  statusBadge?: React.ReactNode;
+  /** Footer of a list panel: "Cerrar" on the left and this primary action on the right. */
+  footerAction?: React.ReactNode;
 }
 
 export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePreviewCardProps {
@@ -139,7 +147,17 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
 }
 
 
-export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true, previewTitle }: QuotePreviewDialogProps) {
+export function QuotePreviewDialog({
+  quote,
+  open: openProp,
+  onOpenChange,
+  showTrigger = true,
+  previewTitle,
+  folio,
+  customerName,
+  statusBadge,
+  footerAction,
+}: QuotePreviewDialogProps) {
   const [openInternal, setOpenInternal] = React.useState(false);
   const open = openProp ?? openInternal;
   const setOpen = React.useCallback(
@@ -153,6 +171,10 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
   const documentProps = toDocumentPreviewProps(preview, {
     statusLabel: quote.status ? quoteStatusLabels[quote.status] : null,
   });
+  const isPanelTitle = folio !== undefined || customerName !== undefined;
+  const title = isPanelTitle
+    ? `${folio ?? quote.number} · ${customerName ?? quote.customer?.name ?? "Sin cliente"}`
+    : `Cotización ${quote.number}`;
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {showTrigger ? (
@@ -171,8 +193,11 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
       ) : null}
       <DialogContent variant="sheet">
         <DialogMobileHeader>
-          <DialogTitle>{previewTitle ?? `Cotización ${quote.number}`}</DialogTitle>
-          <DialogMobileClose />
+          <DialogTitle className="flex min-w-0 items-center gap-2">
+            <span className="truncate">{previewTitle ?? title}</span>
+            {statusBadge}
+          </DialogTitle>
+          <DialogMobileClose aria-label="Cerrar vista previa" />
         </DialogMobileHeader>
         <DialogMobileBody className="bg-[var(--background)]">
           <DocumentPreview
@@ -180,6 +205,14 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
             balance={<QuotePaymentBalanceIndicator paidCents={preview.paidCents} remainingCents={preview.remainingCents} />}
           />
         </DialogMobileBody>
+        {footerAction !== undefined ? (
+          <DialogMobileFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cerrar</Button>
+            </DialogClose>
+            {footerAction}
+          </DialogMobileFooter>
+        ) : null}
       </DialogContent>
     </Sheet>
   );

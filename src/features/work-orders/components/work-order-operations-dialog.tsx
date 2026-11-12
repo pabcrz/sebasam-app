@@ -80,6 +80,11 @@ type WorkOrderOperationsDialogProps = {
   alwaysRenderTrigger?: boolean;
   triggerDisabled?: boolean;
   triggerFlowLabel?: string;
+  /** Customer shown in the panel title ("Folio · Cliente"). */
+  customerName?: string;
+  /** Controlled open state for a list that marks the card; uncontrolled otherwise. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const noopActions: WorkOrderActions = {
@@ -102,9 +107,17 @@ export function WorkOrderOperationsDialog({
   alwaysRenderTrigger = false,
   triggerDisabled = false,
   triggerFlowLabel,
+  customerName,
+  open: openProp,
+  onOpenChange,
 }: WorkOrderOperationsDialogProps) {
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = openProp ?? internalOpen;
+  const setOpen = (next: boolean) => {
+    if (openProp === undefined) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [isPending, startTransition] = React.useTransition();
   const [pendingAction, setPendingAction] = React.useState<"assign" | "complete" | "rollback" | null>(null);
@@ -293,8 +306,11 @@ export function WorkOrderOperationsDialog({
           }}
         >
           <DialogMobileHeader>
-            <DialogTitle>
-              {workOrder ? `Orden de trabajo ${workOrder.number}` : quoteOperation === "SALE" ? `Crear nota de venta — Cotización ${quoteNumber}` : `Asignar trabajo — Cotización ${quoteNumber}`}
+            <DialogTitle className="flex min-w-0 items-center gap-2">
+              <span className="truncate">{`${workOrder?.number ?? quoteNumber} · ${customerName ?? "Sin cliente"}`}</span>
+              <Badge variant={isCompleted ? "success" : isAssigned ? "info" : "warning"} className="w-fit">
+                {isCompleted ? "Completada" : isAssigned ? "En proceso" : "Sin asignar"}
+              </Badge>
             </DialogTitle>
             <DialogDescription>
               {isCompleted
@@ -309,17 +325,6 @@ export function WorkOrderOperationsDialog({
           </DialogMobileHeader>
 
           <DialogMobileBody className="grid content-start gap-5">
-            {/* Status Header */}
-            <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
-              <span className="text-sm font-medium text-[var(--color-text-muted)]">Estado operativo</span>
-              <Badge
-                variant={isCompleted ? "success" : isAssigned ? "info" : "warning"}
-                className="w-fit"
-              >
-                {isCompleted ? "Completada" : isAssigned ? "En proceso" : "Sin asignar"}
-              </Badge>
-            </div>
-
             {quoteOperation === "SALE" && !workOrder && !hasPayableNote && quoteId && actions.convert ? (
               <section className="grid gap-4">
                 <p className="text-sm text-[var(--color-text-muted)]">La venta solo admite conceptos de material o refacciones y no crea una orden de trabajo.</p>
@@ -506,7 +511,7 @@ export function WorkOrderOperationsDialog({
                 {!showRollback ? (
                   <Button type="button" variant="danger" disabled={!actions.rollback || isAssignmentBusy} onClick={() => setShowRollback(true)}>
                     <Icon name="undo" className="h-4 w-4" aria-hidden="true" />
-                    Cancelar orden y regresar cotización
+                    Cancelar orden
                   </Button>
                 ) : (
                   <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-status-danger)] p-4">

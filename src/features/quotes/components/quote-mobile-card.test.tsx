@@ -204,10 +204,12 @@ describe("QuoteListCard", () => {
     const user = userEvent.setup();
     renderCard(createMockQuote());
 
+    const card = screen.getByRole("group", { name: /abrir vista previa de c-001/i });
     await user.click(screen.getByLabelText(/abrir vista previa de c-001/i));
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
+    expect(card).toHaveAttribute("aria-current", "true");
+    expect(screen.getByText("C-001 · Constructora del Norte")).toBeInTheDocument();
     expect(screen.getAllByText(/cambio de aceite/i)[0]).toBeInTheDocument();
   });
 
@@ -230,7 +232,7 @@ describe("QuoteListCard", () => {
     await user.keyboard("{Enter}");
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
+    expect(screen.getByText("C-001 · Constructora del Norte")).toBeInTheDocument();
   });
 
   it("uses the shared entity card: shadow only, focusable, with the actions footer at the bottom", () => {

@@ -98,6 +98,7 @@ describe("QuotesPage", () => {
       "grid",
       "auto-rows-fr",
       "lg:grid-cols-[repeat(2,minmax(0,1fr))]",
+      "side-panel-list",
     );
   });
 });

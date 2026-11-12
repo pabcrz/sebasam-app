@@ -43,6 +43,8 @@ type Props = {
   paymentDueDate?: Date | null;
   noteFolio: string;
   customerName: string;
+  /** Payment status badge shown in the panel title next to "Folio · Cliente". */
+  statusBadge?: React.ReactNode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   noteReturnTo: string;
@@ -61,6 +63,7 @@ export function NotaDetailDialog({
   paymentDueDate,
   noteFolio,
   customerName,
+  statusBadge,
   open,
   onOpenChange,
   noteReturnTo,
@@ -83,7 +86,10 @@ export function NotaDetailDialog({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <DialogContent variant="sheet" data-testid="nota-detail-dialog">
         <DialogMobileHeader>
-          <DialogTitle>Nota {noteFolio}</DialogTitle>
+          <DialogTitle className="flex min-w-0 items-center gap-2">
+            <span className="truncate">{`${noteFolio} · ${customerName}`}</span>
+            {statusBadge}
+          </DialogTitle>
           <DialogDescription>{customerName} · {quote.title}</DialogDescription>
           <DialogMobileClose aria-label="Cerrar detalle de nota" />
         </DialogMobileHeader>

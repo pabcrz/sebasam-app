@@ -104,13 +104,22 @@ describe("EntityCard", () => {
     expect(card.className).not.toMatch(/(^|\s)border(-|\s|$)/);
   });
 
-  it("shows a 2px blue border with blue title and folio when selected", () => {
+  it("marks the selected card with a 2px blue ring in its shadow, without a border or a padding shift", () => {
     renderCard({ selected: true });
 
     const card = screen.getByRole("group", { name: "Abrir C-001" });
-    expect(card).toHaveClass("border-2", "border-[color-mix(in_srgb,var(--color-amount)_55%,transparent)]");
+    expect(card).toHaveClass("shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)]", "p-4");
+    expect(card).not.toHaveClass("border-2");
+    expect(card.className).not.toMatch(/(^|\s)border(-|\s|$)/);
+    expect(card).toHaveAttribute("aria-current", "true");
     expect(screen.getByRole("heading", { level: 3 })).toHaveClass("text-[var(--color-amount)]");
     expect(screen.getByText("C-001")).toHaveClass("text-[var(--color-amount)]");
+  });
+
+  it("does not expose aria-current when the card is not selected", () => {
+    renderCard();
+
+    expect(screen.getByRole("group", { name: "Abrir C-001" })).not.toHaveAttribute("aria-current");
   });
 
   it("has no border and no blue title when not selected", () => {

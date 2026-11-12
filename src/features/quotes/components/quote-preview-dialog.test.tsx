@@ -129,7 +129,7 @@ describe("QuotePreviewDialog", () => {
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /cerrar/i }));
+    await user.click(screen.getByRole("button", { name: "Cerrar vista previa" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -379,7 +379,7 @@ describe("QuotePreviewDialog", () => {
     render(<QuotePreviewDialog quote={createMockQuote()} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    const closeButton = screen.getByRole("button", { name: /cerrar/i });
+    const closeButton = screen.getByRole("button", { name: "Cerrar vista previa" });
     expect(closeButton.closest("[data-dialog-header]")).not.toBeNull();
   });
 });

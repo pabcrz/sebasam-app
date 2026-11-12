@@ -577,3 +577,10 @@ button:hover .icon-copy-hover,
 html[data-font-scale="large"] {
   font-size: 118.75%; /* 19px base (1.1875rem * 16px) */
 }
+
+/* A desktop side panel (dialog.tsx marks <html>) takes 420px beside the list; the list gives that width back and keeps its 2 columns. */
+@media (min-width: 1024px) {
+  html[data-side-panel-open] .side-panel-list {
+    padding-right: 420px;
+  }
+}

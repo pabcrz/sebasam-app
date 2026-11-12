@@ -27,6 +27,32 @@ function isDesktopViewport() {
   return canMatchViewport() && window.matchMedia(SHEET_DESKTOP_QUERY).matches;
 }
 
+function useIsDesktopViewport() {
+  return React.useSyncExternalStore(subscribeToDesktopViewport, isDesktopViewport, () => false);
+}
+
+let mountedDesktopSidePanels = 0;
+
+/**
+ * Marks <html> while a desktop side panel is mounted, so the lists beside it
+ * reserve the panel's width (`.side-panel-list` in globals.css).
+ */
+function SidePanelMarker() {
+  const isDesktop = useIsDesktopViewport();
+
+  React.useEffect(() => {
+    if (!isDesktop) return;
+    mountedDesktopSidePanels += 1;
+    document.documentElement.setAttribute("data-side-panel-open", "");
+    return () => {
+      mountedDesktopSidePanels -= 1;
+      if (mountedDesktopSidePanels === 0) document.documentElement.removeAttribute("data-side-panel-open");
+    };
+  }, [isDesktop]);
+
+  return null;
+}
+
 /**
  * Root for `variant="sheet"` content. Below 1024px it is modal (focus trapped,
  * page inert, Esc and overlay dismiss). From 1024px it is non-modal, so the
@@ -34,7 +60,7 @@ function isDesktopViewport() {
  * returns to the trigger. Use it with `DialogContent variant="sheet"`.
  */
 export function Sheet(props: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  const isDesktop = React.useSyncExternalStore(subscribeToDesktopViewport, isDesktopViewport, () => false);
+  const isDesktop = useIsDesktopViewport();
   return <DialogPrimitive.Root modal={!isDesktop} {...props} />;
 }
 
@@ -229,6 +255,7 @@ export const DialogContent = React.forwardRef<
     );
 
     const isSheet = variant === "sheet";
+    const isDesktop = useIsDesktopViewport();
 
     return (
       <DialogPointerDownOutsideContext.Provider value={pointerDownOutsideGuard}>
@@ -252,6 +279,11 @@ export const DialogContent = React.forwardRef<
                 event.preventDefault();
                 return;
               }
+              // A desktop side panel is not modal: the list beside it stays usable, and only Esc or ✕ close it.
+              if (isSheet && isDesktop) {
+                event.preventDefault();
+                return;
+              }
               onInteractOutside?.(event);
             }}
             onPointerDownOutside={(event) => {
@@ -270,6 +302,7 @@ export const DialogContent = React.forwardRef<
             }}
             {...props}
           >
+            {isSheet ? <SidePanelMarker /> : null}
             {isSheet ? (
               <div
                 aria-hidden="true"

@@ -227,12 +227,15 @@ describe("WorkOrderCompletedList", () => {
     fireEvent.click(screen.getByRole("button", { name: /Compartir cotización/ }));
     expect(screen.queryByTestId("nota-detail-dialog")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("group", { name: "Ver vista previa de nota COT-001" }));
-    expect(screen.getByRole("heading", { name: "Nota COT-001" })).toBeInTheDocument();
+    const noteCard = screen.getByRole("group", { name: "Ver vista previa de nota COT-001" });
+    fireEvent.click(noteCard);
+    expect(noteCard).toHaveAttribute("aria-current", "true");
+    expect(noteCard.parentElement).toHaveClass("side-panel-list");
+    expect(screen.getByText(/^COT-001 · /)).toBeInTheDocument();
     expect(screen.getAllByText("Cambio de aceite")).toHaveLength(1);
     expect(screen.queryByTestId("nota-detail-dialog")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Cerrar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar vista previa" }));
     fireEvent.click(screen.getByRole("button", { name: "Registrar pago" }));
     expect(screen.queryByRole("heading", { name: "Acciones de nota" })).not.toBeInTheDocument();
     expect(screen.getByTestId("nota-detail-dialog")).toBeInTheDocument();

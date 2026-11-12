@@ -93,13 +93,14 @@ export function EntityCard({
       role="group"
       aria-label={openLabel}
       tabIndex={0}
+      aria-current={selected ? "true" : undefined}
       data-variant={variant}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
         "flex w-full min-w-0 cursor-pointer flex-col rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-card)] transition-shadow duration-[var(--motion-fast)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
         variant === "featured" && "shadow-[var(--shadow-card-hover)]",
-        selected && "border-2 border-[color-mix(in_srgb,var(--color-amount)_55%,transparent)] p-[14px]",
+        selected && "shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)]",
         className,
       )}
     >

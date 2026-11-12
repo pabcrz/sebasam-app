@@ -24,7 +24,7 @@ import { QuoteListCard } from "@/features/quotes/components/quote-mobile-card";
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
 import { QuoteFilters } from "@/features/quotes/components/quote-filters";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
-import { Button, Icon, PageHeader } from "@/components/ui";
+import { Button, CardPanelProvider, Icon, PageHeader } from "@/components/ui";
 import {
   quoteStatusLabels,
   quoteStatusBadgeVariant,
@@ -105,7 +105,8 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
         <h2 id="recent-quotes-heading" className="sr-only">Cotizaciones recientes</h2>
         <QuoteFilters filters={filters} customers={customers} />
 
-      <div className="grid auto-rows-fr gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
+      <CardPanelProvider>
+      <div className="side-panel-list grid auto-rows-fr gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
         {quotes.map((quote) => (
           <QuoteListCard
             key={quote.id}
@@ -156,6 +157,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
           </div>
         ) : null}
       </div>
+      </CardPanelProvider>
       {quotes.length > 0 || page > 1 ? (
         <nav aria-label="Paginación de cotizaciones" className="mt-6 flex items-center justify-between gap-3">
           {page > 1 ? (

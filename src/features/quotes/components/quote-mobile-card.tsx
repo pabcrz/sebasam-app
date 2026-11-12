@@ -8,7 +8,7 @@ import { PrintActionButton } from "./print-action-button";
 import { QuoteItemType } from "@/generated/prisma/enums";
 import type { PaymentRequest, QuoteStatus } from "@/generated/prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, EntityCard, EntityCardDataRow } from "@/components/ui";
+import { Badge, EntityCard, EntityCardDataRow, useCardPanel } from "@/components/ui";
 import { formatUnitIdentity } from "@/lib/unit-identity";
 import { formatCents, formatDate, formatOperationalDate } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
@@ -79,10 +79,9 @@ export function QuoteListCard({
   workers,
   workOrderActions,
 }: QuoteListCardProps) {
-  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const preview = useCardPanel(quote.id);
   const { paymentDueDate } = resolveDocumentDates(quote);
   const editable = isQuoteEditable(quote);
-  const openPreview = React.useCallback(() => setPreviewOpen(true), []);
   const canUsePaymentActions = quote.status === "APPROVED" && quote.workOrder?.status === "IN_PROGRESS";
   const paymentRequestContext = canUsePaymentActions && quote.customer &&
     quote.subtotalCents !== null && quote.taxCents !== null && quote.totalCents !== null
@@ -216,6 +215,7 @@ export function QuoteListCard({
             quoteOperation={quote.operation}
             hasPayableNote={Boolean(quote.payableNote)}
             quoteNumber={quote.number}
+            customerName={quote.customer?.name ?? undefined}
             quoteStatus={quote.status}
             workOrder={quote.workOrder}
             workers={workers}
@@ -247,11 +247,21 @@ export function QuoteListCard({
 
   return (
     <>
-      <QuotePreviewDialog quote={quote} open={previewOpen} onOpenChange={setPreviewOpen} showTrigger={false} />
+      <QuotePreviewDialog
+        quote={quote}
+        open={preview.isOpen("preview")}
+        onOpenChange={(open) => (open ? preview.open("preview") : preview.close("preview"))}
+        showTrigger={false}
+        folio={displayFolio}
+        customerName={quote.customer?.name ?? "Sin cliente"}
+        statusBadge={<Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>}
+        footerAction={primary ? renderAction(primary, "primary", "state") : null}
+      />
       <EntityCard
         className="h-full"
         openLabel={`Abrir vista previa de ${displayFolio}`}
-        onOpen={openPreview}
+        onOpen={() => preview.open("preview")}
+        selected={preview.selected}
         title={quote.title || "Sin título"}
         folio={displayFolio}
         status={

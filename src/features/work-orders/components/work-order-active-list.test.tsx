@@ -63,6 +63,20 @@ function renderActiveList(
   );
 }
 
+it("marks the card whose preview is open and titles the panel with the folio and customer", async () => {
+  const user = userEvent.setup();
+  renderActiveList(createWorkOrder({ isSpecial: false, assignments: [{ workerKind: "MASTER", displayName: "Maestro" }] }), { withQuote: true });
+
+  const card = screen.getByRole("group", { name: "Ver detalle de cotización COT-001" });
+  expect(card).not.toHaveAttribute("aria-current");
+  await user.click(card);
+
+  expect(card).toHaveAttribute("aria-current", "true");
+  expect(card.parentElement).toHaveClass("side-panel-list");
+  expect(screen.getByText("OT-001 · Cliente de prueba")).toBeInTheDocument();
+  expect(screen.queryByText(/^Cotización COT-001$/)).not.toBeInTheDocument();
+});
+
 async function openPreview(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("group", { name: "Ver detalle de cotización COT-001" }));
   expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -169,7 +183,7 @@ describe("WorkOrderActiveList", () => {
     renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { withQuote: true });
 
     await openPreview(user);
-    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar vista previa" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
@@ -203,7 +217,7 @@ describe("WorkOrderActiveList", () => {
 
     await openPreview(user);
     await user.click(screen.getAllByText("Cambio de aceite")[0]);
-    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar vista previa" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
