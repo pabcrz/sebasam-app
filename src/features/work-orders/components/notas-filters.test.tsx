@@ -23,10 +23,13 @@ describe("NotasFilters", () => {
   it("selects All, WORK, or SALE note kinds", () => {
     render(<NotasFilters mode="week" payment="all" assignee="all" kind="all" anchor="2026-08-05" rangeLabel="3–8 de agosto de 2026" isCurrentWeek={false} masters={masters} />);
 
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
     const kindSelector = screen.getByLabelText("Tipo de nota");
     expect(kindSelector).toHaveValue("all");
     expect(kindSelector).toHaveDisplayValue("Todas");
     fireEvent.change(kindSelector, { target: { value: "WORK" } });
+    expect(push).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Ver resultados" }));
     expect(push).toHaveBeenCalledWith(expect.stringContaining("kind=WORK"));
   });
 
@@ -36,7 +39,7 @@ describe("NotasFilters", () => {
     expect(screen.getByRole("group", { name: "Estado de pago" })).toBeInTheDocument();
     expect(screen.getByText("3–8 de agosto de 2026")).toBeVisible();
     expect(screen.getByText("En curso")).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Hoy" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hoy" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Periodo anterior" }));
     expect(push).toHaveBeenLastCalledWith("/admin/notas?mode=week&anchor=2026-07-27&payment=paid&assignee=workshop&kind=all");
@@ -81,7 +84,7 @@ describe("NotasFilters", () => {
     );
 
     // Active badge count should be 3 (assignee=workshop, customerId=cust-1, overdue=overdue)
-    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /abrir filtros de cartera/i })).toHaveTextContent("Filtros (3)");
     expect(screen.queryByText("Filtros aplicados:")).not.toBeInTheDocument();
 
     const statementLink = screen.getByRole("link", { name: /estado de cuenta/i });
@@ -202,7 +205,7 @@ describe("NotasFilters", () => {
     render(<NotasFilters mode="month" payment="all" assignee="all" anchor="2026-08-01" rangeLabel="agosto de 2026" isCurrentWeek={false} masters={masters} />);
 
     expect(screen.getByText("En curso")).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Hoy" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hoy" })).toBeDisabled();
   });
 
   it("does not label a non-current week", () => {
@@ -264,7 +267,9 @@ describe("operational Notes navigation opt-in", () => {
     renderOperational();
     fireEvent.click(screen.getByRole("button", { name: "Pagadas" }));
     expect(expectCommon(push.mock.lastCall![0]).get("payment")).toBe("paid");
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
     fireEvent.change(screen.getByLabelText("Tipo de nota"), { target: { value: "SALE" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ver resultados" }));
     const sale = expectCommon(push.mock.lastCall![0]);
     expect(sale.get("kind")).toBe("SALE");
     expect(sale.has("assignee")).toBe(false);
@@ -434,5 +439,42 @@ describe("Notes shared period navigator, segmented payment and filter sheet", ()
     expect(within(sheet).getByRole("tooltip")).toHaveTextContent("Fecha operativa: finalización WORK o emisión SALE (ambos días incluidos).");
     expect(within(sheet).getByRole("button", { name: "Ver resultados" })).toBeInTheDocument();
     expect(within(sheet).getByRole("button", { name: "Limpiar" })).toBeInTheDocument();
+  });
+});
+
+describe("Notes search, filter count and active chips", () => {
+  beforeEach(() => push.mockClear());
+
+  it("moves the Tipo de nota select into the filter sheet", () => {
+    renderOperational();
+    expect(screen.queryByLabelText("Tipo de nota")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /abrir filtros de cartera/i }));
+    expect(screen.getByRole("dialog", { name: "Filtros de cartera" })).toContainElement(screen.getByLabelText("Tipo de nota"));
+  });
+
+  it("searches by folio from a magnifier search field and counts the active filters in the Filtros button", () => {
+    renderOperational();
+    const search = screen.getByRole("searchbox", { name: "Buscar por folio" });
+    expect(search).toHaveValue("N-42");
+
+    fireEvent.change(search, { target: { value: "N-77" } });
+    fireEvent.submit(screen.getByRole("search"));
+    expect(new URL(push.mock.lastCall![0], "http://fixture").searchParams.get("number")).toBe("N-77");
+
+    expect(screen.getByRole("button", { name: /abrir filtros de cartera/i })).toHaveTextContent("Filtros (13)");
+  });
+
+  it("shows each active filter as a removable chip and clears them all with Limpiar", () => {
+    renderOperational();
+    const chips = screen.getByRole("group", { name: "Filtros activos" });
+
+    fireEvent.click(within(chips).getByRole("button", { name: "Quitar filtro: Concepto: aceite" }));
+    const afterRemove = new URL(push.mock.lastCall![0], "http://fixture").searchParams;
+    expect(afterRemove.has("concept")).toBe(false);
+    expect(afterRemove.get("number")).toBe("N-42");
+
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar" }));
+    expect(push).toHaveBeenLastCalledWith("/admin/notas?mode=week&anchor=2026-08-05&payment=all&kind=all");
   });
 });

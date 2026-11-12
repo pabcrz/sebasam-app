@@ -37,7 +37,7 @@ export function CustomerUnitsPanel({ vehicles }: CustomerUnitsPanelProps) {
         onValueChange={setQuery}
       />
 
-      <div role="group" aria-label="Filtros rápidos de unidades" className="flex min-w-0 gap-2 overflow-x-auto">
+      <div role="group" aria-label="Filtros rápidos de unidades" className="no-scrollbar flex min-w-0 gap-2 overflow-x-auto">
         <Chip pressed={inWorkshopOnly} onClick={() => setInWorkshopOnly((current) => !current)}>
           En taller
         </Chip>

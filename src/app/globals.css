@@ -303,6 +303,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Horizontal rows (chips, tabs, segmented) scroll without showing a scrollbar */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

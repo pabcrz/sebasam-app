@@ -28,6 +28,22 @@ describe("PageHeader", () => {
     expect(buttons).toEqual(["Imprimir lista", "Más acciones de la página", "Nueva cotización"]);
   });
 
+  it("keeps title and actions on one row in noWrap mode, so the header never breaks onto a second line", () => {
+    render(
+      <PageHeader
+        noWrap
+        title="Cotizaciones"
+        secondaryActions={<Button variant="ghost" size="icon" aria-label="Archivo y papelera">Icono</Button>}
+        primaryAction={<Button>Nueva cotización</Button>}
+      />,
+    );
+
+    const header = screen.getByTestId("page-header");
+    expect(header).toHaveClass("flex-nowrap");
+    expect(header).not.toHaveClass("flex-wrap");
+    expect(within(header).getByRole("button", { name: "Nueva cotización" }).parentElement).toHaveClass("flex-nowrap");
+  });
+
   it("renders the primary action alone when there are no secondary actions", () => {
     render(<PageHeader title="Clientes" primaryAction={<Button>Nuevo cliente</Button>} />);
 

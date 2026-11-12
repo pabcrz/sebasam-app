@@ -291,6 +291,29 @@ describe("AdminShell", () => {
     expect(current[0]).toHaveAttribute("href", "/admin/customers");
   });
 
+  it("styles the Más sheet with tonal active rows, borderless gray icons and 11px group titles, keeping the gradient in the bar only", () => {
+    mockPathname = "/admin/customers";
+    render(
+      <AdminShell displayName="Patron User" role="ADMIN">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const mobileNav = screen.getByRole("navigation", { name: "Navegación móvil" });
+    fireEvent.click(within(mobileNav).getByRole("button", { name: "Más" }));
+    const dialog = screen.getByRole("dialog", { name: "Más" });
+
+    const active = dialog.querySelector('[aria-current="page"]') as HTMLElement;
+    expect(active).toHaveClass("bg-[var(--color-tonal-bg)]", "text-[var(--color-tonal-fg)]", "rounded-[var(--radius-sm)]");
+    expect(active.className).not.toContain("bg-[image:var(--gradient-primary)]");
+    expect(active.querySelector("span")).not.toHaveClass("bg-[var(--color-blue-tint)]");
+    expect(dialog.querySelector(".bg-\\[var\\(--color-surface\\)\\]")).toBeNull();
+
+    const title = within(dialog).getByRole("heading", { name: "Operación" });
+    expect(title).toHaveClass("text-[11px]", "uppercase", "text-[var(--color-text-muted)]");
+    expect(dialog.querySelectorAll(".bg-\\[image\\:var\\(--gradient-primary\\)\\]")).toHaveLength(0);
+  });
+
   it("collapses the desktop rail to 64px by default with the short logo", () => {
     render(
       <AdminShell displayName="Admin User" role="SUPER_ADMIN">

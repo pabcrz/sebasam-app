@@ -24,7 +24,7 @@ import { QuoteListCard } from "@/features/quotes/components/quote-mobile-card";
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
 import { QuoteFilters } from "@/features/quotes/components/quote-filters";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
-import { PageHeader } from "@/components/ui";
+import { Button, Icon, PageHeader } from "@/components/ui";
 import {
   quoteStatusLabels,
   quoteStatusBadgeVariant,
@@ -80,8 +80,24 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <PageHeader
         title="Cotizaciones"
-        overflow={<Link href="/admin/quotes/retention" className="block rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">Archivo y papelera</Link>}
-        primaryAction={<QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />}
+        noWrap
+        secondaryActions={
+          <Button asChild variant="outline" size="icon" aria-label="Archivo y papelera">
+            <Link href="/admin/quotes/retention">
+              <Icon name="history" className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        }
+        primaryAction={
+          <QuoteBuilderDialog
+            customers={customers}
+            createAction={createQuoteFromWorkspace}
+            createCustomerAction={createOrReuseCustomerForQuote}
+            searchCustomersAction={searchCustomersForQuote}
+            triggerLabel="Nueva"
+            triggerAriaLabel="Nueva cotización"
+          />
+        }
       />
       <QuotePageToasts />
 

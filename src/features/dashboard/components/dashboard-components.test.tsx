@@ -137,6 +137,37 @@ describe("NextWorkCard", () => {
     expect(screen.getByText("$10,022.40")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Asignar" })).toHaveAttribute("href", "/admin/quotes?status=APPROVED");
   });
+
+  it("titles the section in the primary colour with a wrench icon", () => {
+    render(<NextWorkCard nextWork={nextWork} />);
+
+    const heading = screen.getByRole("heading", { name: "Siguiente trabajo" });
+    expect(heading).toHaveClass("text-[var(--color-primary)]");
+    expect(heading.querySelector("svg")).not.toBeNull();
+  });
+
+  it("shows the master as unassigned and Asignar as a tonal action with an icon", () => {
+    render(<NextWorkCard nextWork={nextWork} />);
+
+    expect(screen.getByText("Maestro")).toBeInTheDocument();
+    expect(screen.getByText("Sin asignar")).toBeInTheDocument();
+    const assign = screen.getByRole("link", { name: "Asignar" });
+    expect(assign).toHaveClass("bg-[var(--color-tonal-bg)]", "text-[var(--color-tonal-fg)]");
+    expect(assign.querySelector("svg")).not.toBeNull();
+  });
+
+  it("renders the footer tools in the EntityCard order", () => {
+    render(<NextWorkCard nextWork={nextWork} />);
+
+    const footer = screen.getByTestId("entity-card-footer");
+    expect(Array.from(footer.querySelectorAll("[aria-label]")).map((element) => element.getAttribute("aria-label"))).toEqual([
+      "Editar C-041126-01",
+      "Imprimir C-041126-01",
+      "Compartir C-041126-01",
+      "Más acciones C-041126-01",
+    ]);
+    expect(screen.getByRole("link", { name: "Imprimir C-041126-01" })).toHaveAttribute("href", "/admin/quotes/quote-oldest/print?returnTo=/admin");
+  });
 });
 
 describe("InboxRowsSection", () => {

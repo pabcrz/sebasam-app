@@ -116,15 +116,15 @@ function NavLink({ item, active, variant, expanded = false, onNavStart }: NavLin
       href={href}
       onClick={handleClick}
       aria-current={current}
-      className={`flex min-h-[var(--tap-min-height)] items-center gap-3 px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] ${
+      className={`flex min-h-[var(--tap-min-height)] items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] ${
         active
-          ? "bg-[image:var(--gradient-primary)] text-white"
+          ? "bg-[var(--color-tonal-bg)] font-semibold text-[var(--color-tonal-fg)]"
           : "text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]"
       } ${pendingClass}`}
     >
       <span
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] ${
-          active ? "bg-white/15" : "bg-[var(--color-blue-tint)] text-[var(--color-nav-active-text)]"
+        className={`flex h-8 w-8 shrink-0 items-center justify-center ${
+          active ? "text-[var(--color-tonal-fg)]" : "text-[var(--color-text-muted)]"
         }`}
       >
         <Icon name={icon} className="h-4 w-4" aria-hidden="true" />
@@ -132,14 +132,14 @@ function NavLink({ item, active, variant, expanded = false, onNavStart }: NavLin
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold leading-tight">{label}</span>
         {description ? (
-          <span className={`block truncate text-xs ${active ? "text-white/80" : "text-[var(--color-text-muted)]"}`}>
+          <span className="block truncate text-xs text-[var(--color-text-muted)]">
             {description}
           </span>
         ) : null}
       </span>
       <Icon
         name="chevron-right"
-        className={`h-4 w-4 shrink-0 ${active ? "text-white" : "text-[var(--color-text-muted)]"}`}
+        className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]"
         aria-hidden="true"
       />
     </Link>
@@ -352,11 +352,11 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
               >
                 <h3
                   id={`admin-nav-group-${group.id}`}
-                  className="px-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
+                  className="px-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]"
                 >
                   {group.title}
                 </h3>
-                <div className="divide-y divide-[var(--color-border-light)] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
+                <div className="grid gap-0.5">
                   {group.items.map((item) => (
                     <NavLink
                       key={item.href}

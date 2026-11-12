@@ -117,7 +117,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
           {workOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
               <p className="max-w-md text-sm text-[var(--color-text-muted)]">
-                No hay notas WORK o SALE que coincidan con este periodo y los filtros seleccionados.
+                No hay notas en este periodo con estos filtros.
               </p>
               <Button asChild variant="outline" size="sm">
                 <Link href={notasHref({ mode: filters.mode, anchor: filters.anchor, payment: "all", assignee: "all", kind: "all" }, { operationalFilters: true })}>Limpiar filtros</Link>

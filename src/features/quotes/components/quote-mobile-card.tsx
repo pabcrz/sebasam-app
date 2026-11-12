@@ -8,7 +8,7 @@ import { PrintActionButton } from "./print-action-button";
 import { QuoteItemType } from "@/generated/prisma/enums";
 import type { PaymentRequest, QuoteStatus } from "@/generated/prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
-import { Badge, EntityCard } from "@/components/ui";
+import { Badge, EntityCard, EntityCardDataRow } from "@/components/ui";
 import { formatUnitIdentity } from "@/lib/unit-identity";
 import { formatCents, formatDate, formatOperationalDate } from "@/features/quotes/lib/format";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
@@ -253,7 +253,7 @@ export function QuoteListCard({
         openLabel={`Abrir vista previa de ${displayFolio}`}
         onOpen={openPreview}
         title={quote.title || "Sin título"}
-        folio={`Folio ${displayFolio}`}
+        folio={displayFolio}
         status={
           <>
             <Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>
@@ -269,38 +269,16 @@ export function QuoteListCard({
         customer={quote.customer?.name ?? "Sin cliente"}
         unit={unitIdentity}
         keyData={
-          <>
-            <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-              <Icon name="clipboard" className="h-4 w-4 shrink-0" aria-hidden="true" />
-              {quote.workOrder ? (
-                <>
-                  <span>Orden de trabajo</span>
-                  <span className="min-w-0 break-all font-medium text-[var(--color-text-main)]">
-                    {quote.workOrder.number}
-                  </span>
-                </>
-              ) : (
-                <span>{quote.operation === "SALE" ? "Venta de refacciones" : "Sin orden de trabajo"}</span>
-              )}
-            </p>
-
-            <div data-testid="quote-dates" className="mt-3 flex min-h-12 flex-wrap gap-x-4 gap-y-1 border-t border-[var(--color-border-subtle)] pt-3">
-              <p className="flex items-center gap-1.5">
-                <Icon name="calendar" className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Fecha de cotización: {formatOperationalDate(quote.operationalDate)}</span>
-              </p>
-              <p className="flex items-center gap-1.5">
-                <Icon name="calendar" className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}</span>
-              </p>
-              {paymentDueDate ? (
-                <p className="flex items-center gap-1.5">
-                  <Icon name="calendar" className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>Vencimiento pago: {formatDate(paymentDueDate)}</span>
-                </p>
-              ) : null}
-            </div>
-          </>
+          <div data-testid="quote-key-data" className="mt-3 grid min-h-12">
+            {quote.workOrder ? (
+              <EntityCardDataRow label="Orden de trabajo" value={quote.workOrder.number} />
+            ) : quote.operation === "SALE" ? (
+              <EntityCardDataRow label="Operación" value="Venta de refacciones" />
+            ) : null}
+            <EntityCardDataRow label="Fecha de cotización" value={formatOperationalDate(quote.operationalDate)} />
+            <EntityCardDataRow label="Vigente hasta" value={quote.validUntil ? formatDate(quote.validUntil) : "—"} />
+            {paymentDueDate ? <EntityCardDataRow label="Vencimiento pago" value={formatDate(paymentDueDate)} /> : null}
+          </div>
         }
         editAction={toolActions.includes("edit") ? renderAction("edit", "outline", "tile") : null}
         printAction={toolActions.includes("print") ? renderAction("print", "outline", "tile") : null}

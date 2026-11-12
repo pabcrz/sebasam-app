@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Badge, Button, Checkbox, ConfirmDialog, ListRow, SegmentedControl } from "@/components/ui";
+import { Badge, Button, Checkbox, ConfirmDialog, Icon, ListRow, SegmentedControl } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import { cn } from "@/lib/utils";
 import { getCustomerDeletionBlocker } from "../domain";
@@ -173,12 +173,20 @@ export function CustomerCardList({ customers, query = "", onDeleteBatch }: Custo
               {match ? (
                 <span className="truncate text-xs font-medium text-[var(--color-tonal-fg)]">{`Coincide: ${match}`}</span>
               ) : null}
-              {shown.map((unit) => (
-                <span key={unit.id} className="flex min-w-0 items-center gap-2 text-sm text-[var(--color-text-main)]">
-                  <span className="truncate">{unitIdentity(unit) ?? "Unidad registrada"}</span>
-                  {unit.inWorkshop ? <Badge variant="info">En taller</Badge> : null}
+              {shown.length > 0 ? (
+                <span
+                  data-testid="customer-unit-list"
+                  className="mt-1 grid min-w-0 gap-1 border-t border-dashed border-[var(--color-border-light)] pt-1.5"
+                >
+                  {shown.map((unit) => (
+                    <span key={unit.id} className="flex min-w-0 items-center gap-1.5 text-sm text-[var(--color-text-main)]">
+                      <Icon name="unit" className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
+                      <span className="truncate">{unitIdentity(unit) ?? "Unidad registrada"}</span>
+                      {unit.inWorkshop ? <Badge variant="info">En taller</Badge> : null}
+                    </span>
+                  ))}
                 </span>
-              ))}
+              ) : null}
             </span>
           );
 

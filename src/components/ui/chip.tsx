@@ -65,7 +65,7 @@ export function ChipRow({ label, className, ...props }: ChipRowProps) {
     <div
       role="group"
       aria-label={label}
-      className={cn("flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto", className)}
+      className={cn("no-scrollbar flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto", className)}
       {...props}
     />
   );

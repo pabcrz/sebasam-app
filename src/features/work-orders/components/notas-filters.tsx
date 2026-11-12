@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import {
-  Badge,
+  ActiveFilterChips,
   Button,
   FilterSheet,
   InfoTip,
   Input,
   Label,
   PeriodNavigator,
+  SearchBar,
   SegmentedControl,
   Spinner,
 } from "@/components/ui";
@@ -67,6 +68,39 @@ function commonDraft(state?: NotasFiltersProps["operationalState"], rejected?: N
   };
 }
 
+/** Every filter that can be removed from the active chips; each id maps to the URL field it resets. */
+type NotasFilterChipId =
+  | "number" | "concept" | "plate" | "economicNumber" | "customerId" | "dateFrom" | "dateTo"
+  | "payment" | "kind" | "assignee" | "overdue" | "showArchived" | "showCancelled";
+
+/** Remounted per URL, so its text always starts from the applied folio. Enter or clearing applies it. */
+function NotasSearchField({ initialValue, disabled, onSearch }: { initialValue: string; disabled: boolean; onSearch: (value: string) => void }) {
+  const [value, setValue] = React.useState(initialValue);
+
+  return (
+    <form
+      role="search"
+      className="min-w-0 flex-1"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSearch(value.trim());
+      }}
+    >
+      <SearchBar
+        value={value}
+        disabled={disabled}
+        onValueChange={(next) => {
+          setValue(next);
+          if (next === "") onSearch("");
+        }}
+        placeholder="Buscar por folio"
+        aria-label="Buscar por folio"
+        enterKeyHint="search"
+      />
+    </form>
+  );
+}
+
 /** Opt-in consumes the same canonical URL contract as the page caller. */
 export function NotasFilters(props: NotasFiltersProps) {
   const operationalState = props.operationalState ? parseNotasParams(
@@ -97,6 +131,7 @@ function NotasFiltersContent({
   // Modal form draft state
   const [draftCommon, setDraftCommon] = React.useState(() => commonDraft(operationalState, rejectedRange));
   const [dateError, setDateError] = React.useState(Boolean(rejectedRange));
+  const [draftKind, setDraftKind] = React.useState<NotasKind>(selectedKind);
   const [draftAssignee, setDraftAssignee] = React.useState<NotasAssignee>(assignee);
   const [draftOverdue, setDraftOverdue] = React.useState<NotasOverdue>(overdue);
   const [draftCustomerId, setDraftCustomerId] = React.useState<string | undefined>(customerId);
@@ -116,6 +151,7 @@ function NotasFiltersContent({
     if (open) {
       setDraftCommon(commonDraft(operationalState, rejectedRange));
       setDateError(Boolean(rejectedRange));
+      setDraftKind(selectedKind);
       setDraftAssignee(assignee);
       setDraftOverdue(overdue);
       setDraftCustomerId(customerId);
@@ -156,20 +192,22 @@ function NotasFiltersContent({
     return () => window.clearTimeout(timer);
   }, [customerQuery, searchCustomersAction]);
 
-  const operationalSummary = operationalState ? [
-    ...([["number", "Folio"], ["concept", "Concepto"], ["plate", "Placas"], ["economicNumber", "ECO"]] as const)
-      .map(([key, label]) => operationalState[key] ? `${label}: ${operationalState[key]}` : ""),
-    customerId ? `Cliente: ${initialSelectedCustomer?.commercialName || initialSelectedCustomer?.name || customerId}` : "",
-    ...([["dateFrom", "Finalización/emisión desde"], ["dateTo", "Finalización/emisión hasta"]] as const)
-      .map(([key, label]) => operationalState[key] ? `${label}: ${dateValue(operationalState[key])}` : ""),
-    payment !== "all" ? `Cobro: ${{ pending: "Pendientes", partial: "Parciales", paid: "Pagadas" }[payment]}` : "",
-    selectedKind !== "all" ? `Tipo: ${selectedKind}` : "",
-    assignee !== "all" ? `Responsable: ${assignee === "workshop" ? "Taller" : masters.find((m) => m.id === assignee)?.displayName ?? assignee}` : "",
-    overdue !== "all" ? `Morosidad: ${overdue === "overdue" ? "Vencidas" : "Vigentes"}` : "",
-    operationalState.showArchived ? "Mostrar archivadas" : "",
-    operationalState.showCancelled ? "Mostrar canceladas" : "",
-  ].filter(Boolean) : [];
-  const activeFilterCount = operationalState ? operationalSummary.length :
+  // One chip per applied filter; the count on the Filtros button is the number of chips.
+  const activeChips: Array<{ id: NotasFilterChipId; label: string }> = operationalState ? [
+    ...(commonTextFields)
+      .filter(([key]) => operationalState[key])
+      .map(([key, label]) => ({ id: key, label: `${label}: ${operationalState[key]}` })),
+    ...(customerId ? [{ id: "customerId" as const, label: `Cliente: ${initialSelectedCustomer?.commercialName || initialSelectedCustomer?.name || customerId}` }] : []),
+    ...(operationalState.dateFrom ? [{ id: "dateFrom" as const, label: `Finalización/emisión desde: ${dateValue(operationalState.dateFrom)}` }] : []),
+    ...(operationalState.dateTo ? [{ id: "dateTo" as const, label: `Finalización/emisión hasta: ${dateValue(operationalState.dateTo)}` }] : []),
+    ...(payment !== "all" ? [{ id: "payment" as const, label: `Cobro: ${{ pending: "Pendientes", partial: "Parciales", paid: "Pagadas" }[payment]}` }] : []),
+    ...(selectedKind !== "all" ? [{ id: "kind" as const, label: `Tipo: ${selectedKind}` }] : []),
+    ...(assignee !== "all" ? [{ id: "assignee" as const, label: `Responsable: ${assignee === "workshop" ? "Taller" : masters.find((m) => m.id === assignee)?.displayName ?? assignee}` }] : []),
+    ...(overdue !== "all" ? [{ id: "overdue" as const, label: `Morosidad: ${overdue === "overdue" ? "Vencidas" : "Vigentes"}` }] : []),
+    ...(operationalState.showArchived ? [{ id: "showArchived" as const, label: "Mostrar archivadas" }] : []),
+    ...(operationalState.showCancelled ? [{ id: "showCancelled" as const, label: "Mostrar canceladas" }] : []),
+  ] : [];
+  const activeFilterCount = operationalState ? activeChips.length :
     (assignee !== "all" ? 1 : 0) +
     (customerId ? 1 : 0) +
     (overdue !== "all" ? 1 : 0);
@@ -182,7 +220,7 @@ function NotasFiltersContent({
   const handleApply = (): boolean => {
     if (operationalState) {
       try {
-        const current = navigationHref({ mode, payment, kind: selectedKind, anchor, assignee: draftAssignee, customerId: draftCustomerId, overdue: draftOverdue });
+        const current = navigationHref({ mode, payment, kind: draftKind, anchor, assignee: draftAssignee, customerId: draftCustomerId, overdue: draftOverdue });
         const next = parseNotasParams({
           ...Object.fromEntries(new URLSearchParams(current.split("?")[1])),
           ...draftCommon,
@@ -203,7 +241,7 @@ function NotasFiltersContent({
       navigationHref({
         mode,
         payment,
-        kind: selectedKind,
+        kind: draftKind,
         anchor,
         assignee: draftAssignee,
         customerId: draftCustomerId,
@@ -216,6 +254,7 @@ function NotasFiltersContent({
   const handleClear = () => {
     setDraftCommon(commonDraft());
     setDateError(false);
+    setDraftKind("all");
     setDraftAssignee("all");
     setDraftOverdue("all");
     setDraftCustomerId(undefined);
@@ -238,6 +277,33 @@ function NotasFiltersContent({
         overdue: "all",
       }),
     );
+  };
+
+  // Each chip resets only its own field; the rest of the URL contract stays as it is.
+  const clearedByChip: Record<NotasFilterChipId, Partial<NonNullable<typeof operationalState>>> = {
+    number: { number: "" },
+    concept: { concept: "" },
+    plate: { plate: "" },
+    economicNumber: { economicNumber: "" },
+    customerId: { customerId: undefined },
+    dateFrom: { dateFrom: undefined },
+    dateTo: { dateTo: undefined },
+    payment: { payment: "all" },
+    kind: { kind: "all" },
+    assignee: { assignee: "all" },
+    overdue: { overdue: "all" },
+    showArchived: { showArchived: false },
+    showCancelled: { showCancelled: false },
+  };
+
+  const removeChip = (id: string) => {
+    if (!operationalState || rejectedRange) return;
+    router.push(notasHref({ ...operationalState, ...clearedByChip[id as NotasFilterChipId], page: 1 }, { operationalFilters: true }));
+  };
+
+  const applySearch = (folio: string) => {
+    if (!operationalState || rejectedRange) return;
+    router.push(notasHref({ ...operationalState, number: folio || undefined, page: 1 }, { operationalFilters: true }));
   };
 
   const clearCustomerFilter = () => {
@@ -279,40 +345,6 @@ function NotasFiltersContent({
             router.push(navigationHref({ mode, anchor, payment: item as NotasPayment, assignee, customerId, overdue, kind: selectedKind }));
           }}
         />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          aria-label="Abrir filtros de cartera"
-          className="relative ml-auto gap-1.5 px-3"
-          onClick={() => handleOpenChange(true)}
-        >
-          <Icon name="filter" className="h-4 w-4" aria-hidden="true" />
-          <span>Filtros</span>
-          {activeFilterCount > 0 ? (
-            <Badge variant="info" className="ml-1 h-5 min-w-5 px-1.5 text-xs font-semibold">
-              {activeFilterCount}
-            </Badge>
-          ) : null}
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1.5 text-xs text-[var(--color-text-muted)]">
-          Tipo de nota
-          <select
-            aria-label="Tipo de nota"
-            disabled={Boolean(rejectedRange)}
-            value={selectedKind}
-            onChange={(event) => router.push(navigationHref({ mode, payment, assignee, customerId, overdue, kind: event.currentTarget.value as NotasKind, anchor }))}
-            className={`${operationalState ? "min-h-11 " : ""}h-[var(--control-md)] min-w-32 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm font-normal text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]`}
-          >
-            <option value="all">Todas</option>
-            <option value="WORK">WORK</option>
-            <option value="SALE">SALE</option>
-          </select>
-        </label>
-
         {customerId ? (
           <Button asChild variant="outline" size="sm">
             <Link aria-disabled={Boolean(rejectedRange)} href={rejectedRange ? "#notas-date-error" : `/admin/customers/${customerId}/estado-de-cuenta`}>
@@ -322,6 +354,37 @@ function NotasFiltersContent({
           </Button>
         ) : null}
       </div>
+
+      <div className="flex min-w-0 items-center gap-2">
+        <NotasSearchField
+          key={operationalState?.number ?? ""}
+          initialValue={operationalState?.number ?? ""}
+          disabled={Boolean(rejectedRange)}
+          onSearch={applySearch}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label="Abrir filtros de cartera"
+          className="shrink-0 gap-1.5 px-3"
+          onClick={() => handleOpenChange(true)}
+        >
+          <Icon name="filter" className="h-4 w-4" aria-hidden="true" />
+          <span>{activeFilterCount > 0 ? `Filtros (${activeFilterCount})` : "Filtros"}</span>
+        </Button>
+      </div>
+
+      {activeChips.length > 0 ? (
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <ActiveFilterChips filters={activeChips} onRemove={removeChip} />
+          </div>
+          <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={handleClear}>
+            Limpiar
+          </Button>
+        </div>
+      ) : null}
 
       <FilterSheet
         open={isDialogOpen}
@@ -361,6 +424,21 @@ function NotasFiltersContent({
             }}
           />
         </div>
+
+        <label className="flex flex-col gap-1.5 text-xs text-[var(--color-text-muted)]">
+          Tipo de nota
+          <select
+            aria-label="Tipo de nota"
+            disabled={Boolean(rejectedRange)}
+            value={draftKind}
+            onChange={(event) => setDraftKind(event.currentTarget.value as NotasKind)}
+            className="h-[var(--control-md)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm font-normal text-[var(--color-text-main)] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+          >
+            <option value="all">Todas</option>
+            <option value="WORK">WORK</option>
+            <option value="SALE">SALE</option>
+          </select>
+        </label>
 
         {operationalState ? <>
           <div className="grid min-w-0 gap-4 sm:grid-cols-2">
@@ -513,8 +591,8 @@ function NotasFiltersContent({
             id="dialog-notas-assignee"
             aria-label="Responsable"
             value={draftAssignee}
-            disabled={Boolean(operationalState && selectedKind !== "WORK")}
-            aria-describedby={operationalState && selectedKind !== "WORK" ? "notas-responsible-help" : undefined}
+            disabled={Boolean(operationalState && draftKind !== "WORK")}
+            aria-describedby={operationalState && draftKind !== "WORK" ? "notas-responsible-help" : undefined}
             onChange={(e) => setDraftAssignee(e.currentTarget.value as NotasAssignee)}
             className="h-[var(--control-md)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-main)] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
           >
@@ -528,7 +606,7 @@ function NotasFiltersContent({
               </option>
             ))}
           </select>
-          {operationalState && selectedKind !== "WORK" ? <p id="notas-responsible-help" className="text-sm text-[var(--color-text-muted)]">Solo aplica a notas WORK; todas y SALE conservan las ventas.</p> : null}
+          {operationalState && draftKind !== "WORK" ? <p id="notas-responsible-help" className="text-sm text-[var(--color-text-muted)]">Solo aplica a notas WORK; todas y SALE conservan las ventas.</p> : null}
         </div>
 
         {/* Selector de morosidad */}
@@ -549,10 +627,6 @@ function NotasFiltersContent({
           </select>
         </div>
       </FilterSheet>
-
-      {operationalState ? <div aria-label="Filtros activos" className="flex flex-wrap gap-2">
-        {operationalSummary.map((item) => <span key={item} className="rounded-full border border-[var(--color-border-light)] px-3 py-1 text-xs">{item}</span>)}
-      </div> : null}
     </section>
   );
 }

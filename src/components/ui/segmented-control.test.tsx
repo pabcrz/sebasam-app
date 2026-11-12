@@ -31,6 +31,7 @@ describe("SegmentedControl", () => {
 
     const group = screen.getByRole("group", { name: "Filtrar notas" });
     expect(group.className).toContain("rounded-[var(--radius-lg)]");
+    expect(group.className).toContain("no-scrollbar");
     expect(group.className).not.toMatch(/(?:^|\s)border(?:\s|$)/);
     expect(group.className).not.toMatch(/(?:^|\s)p[xytrbl]?-/);
 

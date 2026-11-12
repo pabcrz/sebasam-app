@@ -81,7 +81,7 @@ export function Tabs({
       role="tablist"
       aria-label={label}
       className={cn(
-        "inline-flex max-w-full overflow-x-auto border-b border-[var(--color-border-light)]",
+        "no-scrollbar inline-flex max-w-full overflow-x-auto border-b border-[var(--color-border-light)]",
         tabListClassName,
       )}
     >

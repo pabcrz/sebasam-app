@@ -188,7 +188,7 @@ export function WorkOrderFilters({ filters, customers, workers, rejectedRange }:
         />
         <Button
           type="button"
-          variant="secondary"
+          variant="outline"
           className="shrink-0"
           aria-haspopup="dialog"
           aria-expanded={open}
@@ -198,7 +198,7 @@ export function WorkOrderFilters({ filters, customers, workers, rejectedRange }:
           }}
         >
           <Icon name="filter" className="h-4 w-4" aria-hidden="true" />
-          {chips.length > 0 ? `Filtros · ${chips.length}` : "Filtros"}
+          {chips.length > 0 ? `Filtros (${chips.length})` : "Filtros"}
         </Button>
       </div>
 

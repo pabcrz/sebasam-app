@@ -114,6 +114,19 @@ describe("CustomerCardList rows", () => {
     expect(screen.getByText("Coincide: ECO 118 · Kenworth T800")).toBeInTheDocument();
   });
 
+  it("puts each unit on its own line with a car icon, under a dashed top rule", () => {
+    const customer = buildCustomer({
+      vehicles: [unit("v-1", { economicNumber: "042", brand: "International", model: "4400" })],
+    });
+
+    render(<CustomerCardList customers={[customer]} />);
+
+    const units = screen.getByTestId("customer-unit-list");
+    expect(units).toHaveClass("border-t", "border-dashed");
+    const line = within(units).getByText("ECO 042 · International 4400").parentElement;
+    expect(line?.querySelector("svg")).not.toBeNull();
+  });
+
   it("filters the loaded list with Con saldo and Inactivos", async () => {
     const user = userEvent.setup();
     render(

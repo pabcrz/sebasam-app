@@ -64,6 +64,7 @@ describe("ChipRow", () => {
     expect(row.className).toContain("flex-nowrap");
     expect(row.className).toContain("overflow-x-auto");
     expect(row.className).toContain("max-w-full");
+    expect(row.className).toContain("no-scrollbar");
     expect(row.className).not.toContain("flex-wrap");
   });
 });

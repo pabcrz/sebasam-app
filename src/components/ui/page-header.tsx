@@ -14,24 +14,30 @@ export interface PageHeaderProps {
   overflow?: React.ReactNode;
   /** The one primary action of the page. Always rendered last, on the right. */
   primaryAction?: React.ReactNode;
+  /** Keeps title and actions on one row; the title truncates instead of wrapping. */
+  noWrap?: boolean;
   className?: string;
 }
 
 /** Page title on the left; actions on the right with the primary last. */
-export function PageHeader({ title, status, secondaryActions, overflow, primaryAction, className }: PageHeaderProps) {
+export function PageHeader({ title, status, secondaryActions, overflow, primaryAction, noWrap = false, className }: PageHeaderProps) {
   const hasActions = Boolean(secondaryActions || overflow || primaryAction);
 
   return (
     <header
       data-testid="page-header"
-      className={cn("flex min-w-0 flex-wrap items-center justify-between gap-3", className)}
+      className={cn(
+        "flex min-w-0 items-center justify-between gap-3",
+        noWrap ? "flex-nowrap" : "flex-wrap",
+        className,
+      )}
     >
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className={cn("flex min-w-0 items-center gap-2", noWrap ? "flex-1" : "flex-wrap")}>
         <h1 className="min-w-0 truncate text-xl font-semibold text-[var(--color-text-main)]">{title}</h1>
         {status}
       </div>
       {hasActions ? (
-        <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+        <div className={cn("flex max-w-full items-center justify-end gap-2", noWrap ? "shrink-0 flex-nowrap" : "flex-wrap")}>
           {secondaryActions}
           {overflow ? (
             <OperationalActionsMenu
