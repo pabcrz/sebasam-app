@@ -33,7 +33,7 @@ describe("OperationalCard", () => {
     const body = screen.getByRole("button", { name: "Ver detalle" });
     const action = screen.getByRole("button", { name: "Acción" });
     expect(body.parentElement).toHaveClass("p-4");
-    expect(body).toHaveClass("rounded-[var(--radius-sm)]", "focus-visible:ring-offset-2");
+    expect(body).toHaveClass("rounded-[var(--radius-sm)]", "focus-visible:ring-inset");
     expect(action.parentElement).toHaveClass("mt-4");
     expect(action.parentElement).not.toHaveClass("border-t", "bg-[var(--color-bg-soft)]");
   });

@@ -693,7 +693,7 @@ export function QuoteBuilder({
       onClick={goToPrevious}
       disabled={currentStepIndex === 0}
       aria-label="Paso anterior"
-      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-40"
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-40"
     >
       <Icon name="chevron-left" className="h-5 w-5" aria-hidden="true" />
     </button>
@@ -921,7 +921,7 @@ export function QuoteBuilder({
                   <button
                     type="button"
                     onClick={() => setShowCreateCustomer(true)}
-                    className="justify-self-start rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-link)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+                    className="justify-self-start rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-link)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
                   >
                     + Crear cliente nuevo
                   </button>

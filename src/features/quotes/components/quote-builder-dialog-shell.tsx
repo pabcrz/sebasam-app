@@ -121,7 +121,7 @@ export function QuoteBuilderDialogShell({
               <DialogTitle className="truncate text-base font-bold">{title}</DialogTitle>
               {subtitle}
             </div>
-            <button type="button" onClick={requestClose} disabled={pending} aria-label={closeLabel} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50">
+            <button type="button" onClick={requestClose} disabled={pending} aria-label={closeLabel} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50">
               <Icon name="close" className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
@@ -132,7 +132,7 @@ export function QuoteBuilderDialogShell({
             {description ? <DialogDescription>{description}</DialogDescription> : null}
             {header}
           </DialogHeader>
-          <button type="button" onClick={requestClose} disabled={pending} aria-label={closeLabel} className="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50">
+          <button type="button" onClick={requestClose} disabled={pending} aria-label={closeLabel} className="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50">
             <Icon name="close" className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>

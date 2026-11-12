@@ -93,7 +93,7 @@ Los nombres son los tokens de `src/app/globals.css`. Marca: base `#004AAD`, deep
 | `--shadow-card` | `0 1px 2px rgba(0,16,36,.05), 0 4px 14px rgba(0,16,36,.07)` | Tarjetas, listas, cifras sobre el fondo. |
 | `--shadow-card-hover` | `0 2px 4px rgba(0,16,36,.06), 0 8px 22px rgba(0,16,36,.1)` | Hover de tarjeta. |
 | `--shadow-action` | `0 2px 6px rgba(0,74,173,.25)` | Acción principal. |
-| `--shadow-focus` | `0 0 0 3px rgba(0,74,173,.25)` | Anillo de foco (en oscuro, `--color-focus-ring` más luminoso). |
+| `--shadow-focus` | `0 0 0 3px rgba(0,74,173,.25)` | Referencia del anillo de foco. Los controles no la usan: su anillo de 3px es `focus-visible:ring-[3px] focus-visible:ring-inset` con `--color-focus-ring` (en oscuro, más luminoso), para que no se corte en contenedores con scroll. |
 
 ## Piezas compartidas
 
@@ -255,7 +255,8 @@ La dirección y `mapsUrl` permanecen como datos de ubicación del shell público
 - Una sola barra inferior para todos los roles: Inicio, Cotizaciones, Trabajos, Notas y «Más», solo iconos con nombre accesible (aria-label) y tooltip, sin etiquetas abreviadas; la activa es una pastilla con el gradiente de marca. El rol solo decide qué filas aparecen en la hoja «Más» (p. ej. Clientes y Nómina; para SUPER_ADMIN además Trabajadores, Herramientas y Administración).
 - Escritorio: barra lateral colapsada a 64 px (logo corto e iconos); al tocar el logo se expande a 220 px sobre el contenido, sin empujarlo, y recuerda la preferencia. El ítem activo lleva el gradiente de marca.
 - Crear/editar cotización oculta la barra de navegación.
-- Tap targets mínimos 44px; foco visible obligatorio.
+- Tap targets mínimos 44px; foco visible obligatorio. El anillo de foco va siempre inset (`focus-visible:ring-inset`): un anillo exterior se recorta dentro de cualquier contenedor con overflow sin padding (flujo de cotización, tablas, cuerpo de hojas y diálogos).
+- Barras de scroll: `scrollbar-color` usa `--color-scrollbar-thumb` y `--color-scrollbar-track` (claro: borde fuerte; oscuro: borde oscuro), y `color-scheme` sigue a la clase `light`/`dark` para que las barras nativas acompañen el tema. `.no-scrollbar` las oculta.
 - Rutas operativas protegidas; rutas públicas tokenizadas con `noindex`.
 
 ## Flujo de cotización y estados

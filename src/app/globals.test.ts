@@ -155,5 +155,33 @@ describe("global Tailwind theme", () => {
       expect(css).toMatch(/\.font-mono\s*\{[^}]*font-family: var\(--font-inter\)/);
       expect(css).toMatch(/\.font-mono\s*\{[^}]*font-variant-numeric: tabular-nums/);
     });
+
+    it("colors native scrollbars from theme tokens in light and dark", async () => {
+      const light = await block(":root");
+      const dark = await block(".dark");
+      const source = await readFile(resolve(projectRoot, "src/app/globals.css"), "utf8");
+
+      expect(light).toContain("--color-scrollbar-thumb: #b9c9da;");
+      expect(light).toContain("--color-scrollbar-track: transparent;");
+      expect(dark).toContain("--color-scrollbar-thumb: #34425a;");
+      expect(dark).toContain("--color-scrollbar-track: transparent;");
+      expect(source).toMatch(
+        /\n\*\s*\{\s*scrollbar-color: var\(--color-scrollbar-thumb\) var\(--color-scrollbar-track\);\s*\}/,
+      );
+    });
+
+    it("sets color-scheme so native scrollbars follow the theme", async () => {
+      const light = await block(":root");
+      const dark = await block(".dark");
+
+      expect(light).toContain("color-scheme: light;");
+      expect(dark).toContain("color-scheme: dark;");
+    });
+
+    it("keeps .no-scrollbar hiding the scrollbar over the global scrollbar-color", async () => {
+      const source = await readFile(resolve(projectRoot, "src/app/globals.css"), "utf8");
+
+      expect(source).toMatch(/\.no-scrollbar\s*\{\s*scrollbar-width: none;\s*scrollbar-color: transparent transparent;\s*\}/);
+    });
   });
 });

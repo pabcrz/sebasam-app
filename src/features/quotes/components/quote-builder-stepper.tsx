@@ -26,7 +26,7 @@ export function QuoteBuilderProgress({ current, onChange }: QuoteBuilderStepperP
                 disabled={!isReached}
                 aria-current={isActive ? "step" : undefined}
                 aria-label={`Paso ${index + 1}: ${flowStepLabels[step]}`}
-                className="flex w-full flex-col gap-1.5 rounded-[var(--radius-sm)] py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed lg:flex-row lg:items-center lg:gap-3 lg:py-2"
+                className="flex w-full flex-col gap-1.5 rounded-[var(--radius-sm)] py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed lg:flex-row lg:items-center lg:gap-3 lg:py-2"
               >
                 <span
                   aria-hidden="true"

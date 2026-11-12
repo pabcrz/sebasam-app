@@ -28,7 +28,7 @@ export function OperationalActionRow({ children }: React.PropsWithChildren) {
 }
 
 export function OperationalCard({ body, actions, onOpen, openLabel, className, bodyClassName, bodyHover = true, actionsClassName }: OperationalCardProps) {
-  const contentClassName = cn("w-full rounded-[var(--radius-sm)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2", bodyClassName);
+  const contentClassName = cn("w-full rounded-[var(--radius-sm)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]", bodyClassName);
 
   return (
     <div className={cn("rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]", className)}>

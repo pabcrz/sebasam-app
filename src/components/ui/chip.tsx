@@ -6,7 +6,7 @@ import { Icon } from "./icon";
 import { tapAreaClassName } from "./tap-area";
 
 const chipBaseClassName = cn(
-  "relative inline-flex h-[var(--control-sm)] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-md)] px-3 text-sm font-medium transition-[background-color,color,outline-color] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]",
+  "relative inline-flex h-[var(--control-sm)] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-md)] px-3 text-sm font-medium transition-[background-color,color,outline-color] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
   tapAreaClassName,
 );
 

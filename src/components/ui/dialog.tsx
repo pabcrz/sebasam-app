@@ -291,7 +291,7 @@ DialogContent.displayName = DialogPrimitive.Content.displayName;
  * touch area (the `before` pseudo-element), muted until hovered.
  */
 export const dialogIconButtonClassName =
-  "relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50 before:absolute before:left-1/2 before:top-1/2 before:h-[max(100%,var(--tap-min-height))] before:w-[max(100%,var(--tap-min-height))] before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
+  "relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50 before:absolute before:left-1/2 before:top-1/2 before:h-[max(100%,var(--tap-min-height))] before:w-[max(100%,var(--tap-min-height))] before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
 
 export const DialogMobileContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,

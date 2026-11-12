@@ -72,7 +72,7 @@ export function MobileConceptRow({
               aria-expanded={isExpanded}
               onClick={() => onToggle(rowId)}
               data-testid={`concept-summary-${displayIndex}`}
-              className="flex min-h-14 min-w-0 flex-1 items-center gap-2 rounded-[var(--radius-sm)] py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+              className="flex min-h-14 min-w-0 flex-1 items-center gap-2 rounded-[var(--radius-sm)] py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
             >
               <span className="grid min-w-0 flex-1 gap-0.5">
                 <span className="break-words text-[15px] font-semibold leading-5 text-[var(--color-text-main)]">

@@ -105,7 +105,7 @@ export function Tabs({
             onClick={() => selectTab(tab.value)}
             onKeyDown={(event) => handleKeyDown(event, index)}
             className={cn(
-              "relative shrink-0 min-h-[var(--tap-min-height)] px-3 text-sm transition-colors duration-[var(--motion-fast)] after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:rounded-full after:content-[''] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] focus-visible:shadow-[var(--shadow-focus)]",
+              "relative shrink-0 min-h-[var(--tap-min-height)] px-3 text-sm transition-colors duration-[var(--motion-fast)] after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:rounded-full after:content-[''] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
               selected
                 ? "font-semibold text-[var(--color-text-main)] after:bg-[image:var(--gradient-primary)]"
                 : "font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]",

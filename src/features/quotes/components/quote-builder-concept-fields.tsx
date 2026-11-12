@@ -200,7 +200,7 @@ export function ConceptQuantityField({
   return (
     <div className="grid min-w-0 gap-2">
       <FieldLabel mode={mode} htmlFor={`${fieldId}-quantity`}>Cantidad</FieldLabel>
-      <div className="flex w-full min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-[3px] focus-within:ring-[var(--color-focus-ring)]">
+      <div className="flex w-full min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-[3px] focus-within:ring-inset focus-within:ring-[var(--color-focus-ring)]">
         <button
           type="button"
           tabIndex={stepperTabIndex}
@@ -272,7 +272,7 @@ export function ConceptUnitPriceField({
       <span id={unitPriceCurrencyId} className="sr-only">
         Importe en pesos mexicanos.
       </span>
-      <div className="flex min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-[3px] focus-within:ring-[var(--color-focus-ring)]">
+      <div className="flex min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-[3px] focus-within:ring-inset focus-within:ring-[var(--color-focus-ring)]">
         <span
           className="flex items-center self-stretch pl-3 pr-1 text-[var(--color-text-muted)]"
           data-testid={`currency-prefix-${displayIndex}`}
@@ -469,7 +469,7 @@ export function ConceptAddChips({ sectionIndex, allowedItemTypes, dispatch }: Co
                 dispatch({ type: "addItem", sectionIndex, itemType: type });
                 setMoreOpen(false);
               }}
-              className="flex min-h-9 w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 text-left text-sm text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+              className="flex min-h-9 w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 text-left text-sm text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
             >
               + {itemTypeLabels[type]}
             </button>

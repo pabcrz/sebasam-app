@@ -26,7 +26,7 @@ const containerClassName =
   "no-scrollbar inline-flex max-w-full overflow-x-auto rounded-[var(--radius-lg)] bg-[var(--color-bg-soft)]";
 
 const optionClassName = cn(
-  "relative inline-flex h-[var(--control-md)] shrink-0 items-center justify-center self-stretch whitespace-nowrap rounded-[var(--radius-md)] px-3 text-sm font-medium transition-[background-color,color] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]",
+  "relative inline-flex h-[var(--control-md)] shrink-0 items-center justify-center self-stretch whitespace-nowrap rounded-[var(--radius-md)] px-3 text-sm font-medium transition-[background-color,color] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
   tapAreaClassName,
 );
 

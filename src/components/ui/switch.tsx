@@ -22,7 +22,7 @@ export const Switch = React.forwardRef<
       id={switchId}
       data-slot="switch"
       className={cn(
-        "peer inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-[var(--radius-md)] bg-[var(--color-border-light)] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-[var(--color-primary)]",
+        "peer inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-[var(--radius-md)] bg-[var(--color-border-light)] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-[var(--color-primary)]",
         !label && className,
       )}
       {...props}

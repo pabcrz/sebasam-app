@@ -21,7 +21,7 @@ export interface ListRowProps {
 }
 
 const rowClassName =
-  "flex min-h-[var(--tap-min-height)] w-full min-w-0 cursor-pointer items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-3 text-left shadow-[var(--shadow-card)] transition-shadow duration-[var(--motion-fast)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]";
+  "flex min-h-[var(--tap-min-height)] w-full min-w-0 cursor-pointer items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-3 text-left shadow-[var(--shadow-card)] transition-shadow duration-[var(--motion-fast)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]";
 
 /**
  * Whole-row target for lists (clients, workers, users). The left content names
