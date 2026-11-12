@@ -181,7 +181,7 @@ export function PaymentCorrectionDialog({
         onClick={handleOpen}
         aria-label={`Corregir pago de ${formatCents(originalAmountCents)}`}
         title={`Corregir pago de ${formatCents(originalAmountCents)}`}
-        className="h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3"
+        className="w-10 px-0 sm:w-auto sm:px-3"
       >
         <PenLine className="h-5 w-5" aria-hidden="true" />
         <span className="sr-only sm:not-sr-only">Corregir pago</span>

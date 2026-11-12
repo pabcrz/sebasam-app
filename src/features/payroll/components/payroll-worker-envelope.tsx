@@ -257,7 +257,7 @@ export function PayrollWorkerEnvelopeModal({
               size="sm"
               onClick={handleDownloadImage}
               disabled={isGeneratingImage || isSharingWhatsApp}
-              className="h-8 min-w-0 gap-1.5 text-xs w-full justify-center"
+              className="min-w-0 gap-1.5 text-xs w-full justify-center"
               title="Descargar imagen PNG para enviar"
             >
               {isGeneratingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-[var(--color-primary)]" />}
@@ -269,7 +269,7 @@ export function PayrollWorkerEnvelopeModal({
               size="sm"
               onClick={handleWhatsApp}
               disabled={isGeneratingImage || isSharingWhatsApp}
-              className="h-8 min-w-0 gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold w-full justify-center"
+              className="min-w-0 gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold w-full justify-center"
               title="Compartir imagen por WhatsApp"
             >
               {isSharingWhatsApp ? (

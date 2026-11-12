@@ -83,12 +83,12 @@ export function WorkOrderFilters({ filters, customers, workers, rejectedRange }:
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-[var(--color-text-muted)]">{summary.length ? `${summary.length} filtros activos` : "Sin filtros activos"}</p>
         <div className="flex flex-wrap gap-2">
-          {summary.length > 0 || error ? <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={() => {
+          {summary.length > 0 || error ? <Button type="button" variant="outline" size="sm" onClick={() => {
             setError("");
             setOpen(false);
             router.push("/admin/work-orders");
           }}>Limpiar</Button> : null}
-          <Button type="button" variant="secondary" size="sm" className="min-h-11" aria-expanded={open} aria-controls="work-filter-fields" onClick={() => setOpen(!open)}>
+          <Button type="button" variant="secondary" size="sm" aria-expanded={open} aria-controls="work-filter-fields" onClick={() => setOpen(!open)}>
             {open ? "Ocultar filtros" : "Mostrar filtros"}
           </Button>
         </div>
