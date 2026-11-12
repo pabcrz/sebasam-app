@@ -137,7 +137,7 @@ export function SwipeableRow({
           willChange: "transform",
           position: "relative",
           zIndex: 1,
-          backgroundColor: "var(--color-bg-soft)",
+          backgroundColor: "var(--color-surface)",
           touchAction: "pan-y",
         }}
         onTouchStart={handleTouchStart}

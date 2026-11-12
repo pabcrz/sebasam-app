@@ -37,6 +37,14 @@ export const stepLabels: Record<Step, string> = {
   preview: "Revisar",
 };
 
+/** Full-screen quote flow names (progress bar, bottom bar context and next-step action). */
+export const flowStepLabels: Record<Step, string> = {
+  client: "Cliente y unidad",
+  items: "Conceptos",
+  notes: "Notas",
+  preview: "Vista previa",
+};
+
 export const itemTypes: QuoteItemType[] = ["LABOR", "REFACCIONES", "MATERIAL", "OTHER"];
 export const maxQuantity = 100;
 export const maxUnitPrice = 50_000;

@@ -1,3 +1,4 @@
+import * as React from "react";
 import type { QuoteFormActionState } from "../actions";
 import type { QuoteOperationKind } from "@/generated/prisma/enums";
 import type { QuoteListSummary } from "../queries";
@@ -70,14 +71,23 @@ export type QuoteBuilderProps = {
   onDirtyChange?: (dirty: boolean) => void;
   onSuccess?: () => void;
   layout?: "page" | "dialog";
+  /** Full-screen quote flow: progress bar, ← ✕ top bar and context + next-step bottom bar. Dialog layout only. */
+  fullScreen?: boolean;
   mode?: "quote" | "direct" | "direct-work-order" | "direct-note" | "direct-sale";
   masters?: MasterOption[];
 };
 
 export type QuoteBuilderChromeHosts = {
+  leadingHost: HTMLDivElement | null;
   stepperHost: HTMLDivElement | null;
   footerHost: HTMLDivElement | null;
 };
+
+/**
+ * Leave-the-flow action (✕ and ← on the first step) provided by the dialog shell,
+ * which owns the discard guard. Null outside the shell, where ← does nothing.
+ */
+export const QuoteFlowCloseContext = React.createContext<(() => void) | null>(null);
 
 export type QuoteBuilderDialogProps = {
   customers: CustomerOption[];

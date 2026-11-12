@@ -26,6 +26,7 @@ import {
   setRailExpanded,
   subscribeRailExpanded,
 } from "./admin-nav";
+import { AdminFullScreenFlowContext } from "./admin-full-screen-flow";
 
 interface AdminShellProps {
   displayName: string;
@@ -148,6 +149,8 @@ function NavLink({ item, active, variant, expanded = false, onNavStart }: NavLin
 export function AdminShell({ displayName, role, children }: AdminShellProps) {
   const [isGlobalPending, setGlobalPending] = React.useState(false);
   const [isMoreOpen, setIsMoreOpen] = React.useState(false);
+  // Set by full-screen flows (quote builder): hides the bottom bar, rail and "Más" sheet.
+  const [isFullScreenFlowActive, setFullScreenFlowActive] = React.useState(false);
   const isRailExpanded = React.useSyncExternalStore(subscribeRailExpanded, readRailExpanded, railServerSnapshot);
   const profileMenuRef = React.useRef<HTMLDetailsElement>(null);
   const mobileNavRef = React.useRef<HTMLElement>(null);
@@ -184,7 +187,9 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
   const labelVisibility = isRailExpanded ? "opacity-100" : "opacity-0";
 
   return (
-    <div className="flex min-h-dvh bg-[var(--background)] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 print:min-h-0 print:bg-transparent print:pb-0 print:block print:w-full">
+    <AdminFullScreenFlowContext.Provider value={setFullScreenFlowActive}>
+    <div className={`flex min-h-dvh bg-[var(--background)] ${isFullScreenFlowActive ? "" : "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"} print:min-h-0 print:bg-transparent print:pb-0 print:block print:w-full`}>
+      {isFullScreenFlowActive ? null : (
       <aside className="sticky top-0 z-50 hidden h-dvh w-16 shrink-0 md:flex print:hidden">
         {/* Expands over the content: the aside keeps 64px, so the content never moves. */}
         <div
@@ -246,6 +251,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
           </div>
         </div>
       </aside>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col print:min-h-0 print:block print:w-full">
         <header className="sticky top-0 z-40 border-b border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] print:hidden">
@@ -370,8 +376,10 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         </DialogMobileContent>
       </Sheet>
 
+      {/* Hidden, not unmounted: removing the bar while a Radix layer is open dismisses the flow. */}
       <nav
         ref={mobileNavRef}
+        hidden={isFullScreenFlowActive}
         aria-label="Navegación móvil"
         className="fixed bottom-0 left-0 right-[var(--removed-body-scroll-bar-size,0px)] z-[60] border-t border-[var(--color-border-light)] bg-[var(--color-surface)] text-[var(--color-text-main)] md:hidden print:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
@@ -409,5 +417,6 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
         </div>
       </nav>
     </div>
+    </AdminFullScreenFlowContext.Provider>
   );
 }
