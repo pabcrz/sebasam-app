@@ -30,7 +30,7 @@ Tracker #807 (children #793–#806). Branch `feature/807-work` from `develop`; o
 - T10 #802 Create/edit quote flow. Route: 2 workers. Done; OPEN DECISION: today closing with data discards after confirm (no local/server draft) — issue says close never loses capture; Nóm. column keeps existing rule (Mano de obra auto, Otro opt-in).
 - T11 #803 Home as prioritized inbox. Route: worker. Done; OPEN: no "stopped" job state in data (amber branch inert), approved row links to status=APPROVED list.
 - T12 #804 Quotes, Work orders, Notes, Payroll. Part A Cotizaciones done (partial: search is folio-only and "Ver resultados" has no count because both need queries.ts changes; "Otros criterios" keeps cliente/concepto/ECO/placas; desktop row lacks ⋯ and dynamic primary). Part B Trabajos+Notas done (no chofer search on Trabajos: needs queries.ts; Gestionar sheet also affects Cotizaciones/rollback). Part C Nómina done (ListRow created; print is icon-only; ADMIN opens read-only worker sheet).
-- T13 #805 Customers, profile, statement. Pending.
+- T13 #805 Customers, profile, statement. Route: worker. Done; gaps: driver search shows contact not unit, N+1 balance per row (50 max), customer-detail-dialog.tsx dead (kept for admin-page-header test), 375px unverified.
 - T14 #806 Settings, Workers, Users. Pending.
 
 ## Log

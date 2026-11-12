@@ -12,6 +12,8 @@ export interface CustomerDeleteFormProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
   iconOnly?: boolean;
+  /** Blocked by history: the button stays visible but cannot start the flow. */
+  disabled?: boolean;
 }
 
 export function CustomerDeleteForm({
@@ -21,6 +23,7 @@ export function CustomerDeleteForm({
   variant = "danger",
   size = "default",
   iconOnly = false,
+  disabled = false,
 }: CustomerDeleteFormProps) {
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
@@ -50,7 +53,7 @@ export function CustomerDeleteForm({
         size={iconOnly ? "icon" : size}
         className={iconOnly ? "" : "w-full sm:w-fit"}
         loading={isPending}
-        disabled={isPending}
+        disabled={isPending || disabled}
         onClick={() => setOpen(true)}
         aria-label={`Eliminar cliente ${customerName}`}
       >
