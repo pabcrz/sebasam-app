@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const listUsers = vi.hoisted(() => vi.fn().mockResolvedValue([]));
@@ -15,14 +15,19 @@ vi.mock("@/features/user-management/components/user-list", () => ({ UserList: ()
 import UsersPage from "./page";
 
 describe("UsersPage", () => {
-  it("renders the production subtle heading, description, card title and create triggers", async () => {
+  it("renders the page header with the single create action and no subtitle card", async () => {
     render(await UsersPage());
 
-    expect(screen.getByRole("heading", { level: 1, name: "Gestión de Usuarios" })).toBeInTheDocument();
-    expect(
-      screen.getByText("Alta, roles, estado y contraseñas de usuarios. Exclusivo para Super Admin."),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Usuarios registrados" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Crear usuario" })).toHaveLength(2);
+    const header = screen.getByTestId("page-header");
+    expect(within(header).getByRole("heading", { level: 1, name: "Gestión de Usuarios" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Crear usuario" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Crear usuario" })).toHaveLength(1);
+    expect(screen.queryByText("Usuarios registrados")).not.toBeInTheDocument();
+  });
+
+  it("shows the empty state when there are no users", async () => {
+    render(await UsersPage());
+
+    expect(screen.getByText("No hay usuarios registrados.")).toBeInTheDocument();
   });
 });
