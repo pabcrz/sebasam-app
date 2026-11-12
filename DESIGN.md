@@ -117,6 +117,8 @@ Cada pieza se construye una vez en `src/components/ui`; las pantallas solo las c
 
 Título a la izquierda, ✕ arriba a la derecha, encabezado de 52 px que no se mueve con el scroll, contenido con scroll propio. Acciones fijas al pie: secundaria a la izquierda y primaria a la derecha. En flujos de varios pasos, ← (paso anterior) va a la izquierda y ✕ sigue a la derecha. Las confirmaciones cortas usan un diálogo centrado de 440 px con la misma anatomía. Los formularios largos van a página completa, nunca en modal.
 
+Implementación en `src/components/ui/dialog.tsx`: `DialogMobileHeader` (52 px; ✕ siempre a la derecha, `DialogMobileBack` a la izquierda en flujos de varios pasos), `DialogMobileBody` (único scroll), `DialogMobileFooter` (secundaria a la izquierda, primaria a la derecha) y `DialogDangerZone` al final del cuerpo. La forma por ancho es `variant="sheet"` en `DialogContent` con la raíz `Sheet`: modal bajo 1024 px (foco atrapado, con oscurecimiento) y no modal desde 1024 px (panel de 420 px sin oscurecer, la lista sigue interactiva). Esc cierra en todos los anchos.
+
 ## Patrones de pantalla
 
 - **Crear/editar cotización**: oculta la barra de navegación. Móvil: ← título ✕, progreso y acción fija abajo (contexto a la izquierda, botón compacto con el nombre del paso siguiente a la derecha). Escritorio: pasos a la izquierda, trabajo al centro, resumen fijo a la derecha. Solo hay borrador; salir nunca pierde lo capturado. El último paso es la misma vista previa que abren las tarjetas, sin scroll propio.
