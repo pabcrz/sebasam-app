@@ -7,6 +7,8 @@ import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/d
 import { calculateDefaultPaymentDueDate, isNoteOverdue } from "@/features/work-orders/receivables-policy";
 import type {
   DashboardPeriodKey,
+  NextWorkQuote,
+  NextWorkVehicle,
   OperationalDashboardSnapshot,
   PeriodMetrics,
   QueueMetrics,
@@ -80,12 +82,36 @@ export function aggregateReceivablesByCustomer(
   });
 }
 
+/** Quotes stored before a vehicle row existed keep their unit in the snapshot JSON. */
+function vehicleFromSnapshot(snapshot: unknown): NextWorkVehicle | null {
+  if (!snapshot || typeof snapshot !== "object") return null;
+  const data = snapshot as Record<string, unknown>;
+  const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value.trim() : null);
+  const vehicle = {
+    economicNumber: text(data.economicNumber),
+    plate: text(data.plate),
+    brand: text(data.brand),
+    model: text(data.model),
+  };
+  return Object.values(vehicle).some(Boolean) ? vehicle : null;
+}
+
 export async function getOperationalDashboardSnapshot(now = new Date()): Promise<OperationalDashboardSnapshot> {
   await requireOperationalRole();
 
   const ranges = getDashboardPeriodRanges(now);
 
-  const [draftQuotesCount, sentQuotesCount, approvedQuotesCount, activeExecutionCount, receivableWorkOrders] = await Promise.all([
+  // Approved quotes still waiting for a work order; shared by the count and the next-job lookup.
+  const approvedUnassignedWhere = {
+    deletedAt: null,
+    status: QuoteStatus.APPROVED,
+    OR: [
+      { workOrder: null },
+      { workOrder: { status: { notIn: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED] } } },
+    ],
+  };
+
+  const [draftQuotesCount, sentQuotesCount, approvedQuotesCount, activeExecutionCount, receivableWorkOrders, oldestApprovedQuote] = await Promise.all([
     prisma.quote.count({
       where: {
         deletedAt: null,
@@ -100,16 +126,7 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
       },
     }),
     prisma.quote.count({ where: { deletedAt: null, status: QuoteStatus.SENT } }),
-    prisma.quote.count({
-      where: {
-        deletedAt: null,
-        status: QuoteStatus.APPROVED,
-        OR: [
-          { workOrder: null },
-          { workOrder: { status: { notIn: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED] } } },
-        ],
-      },
-    }),
+    prisma.quote.count({ where: approvedUnassignedWhere }),
     prisma.workOrder.count({
       where: {
         status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
@@ -134,6 +151,20 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
           },
           select: { amountCents: true },
         },
+      },
+    }),
+    prisma.quote.findFirst({
+      where: approvedUnassignedWhere,
+      orderBy: [{ approvedAt: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        number: true,
+        title: true,
+        totalCents: true,
+        approvedAt: true,
+        customer: { select: { name: true } },
+        vehicle: { select: { economicNumber: true, plate: true, brand: true, model: true } },
+        vehicleSnapshot: true,
       },
     }),
   ]);
@@ -434,11 +465,24 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
     estimatedCommissionsCents: weeklyPayrollReport.totalCommissionCents,
   };
 
+  const nextWork: NextWorkQuote | null = oldestApprovedQuote
+    ? {
+        quoteId: oldestApprovedQuote.id,
+        number: oldestApprovedQuote.number,
+        title: oldestApprovedQuote.title,
+        customerName: oldestApprovedQuote.customer?.name ?? null,
+        totalCents: oldestApprovedQuote.totalCents,
+        approvedAt: oldestApprovedQuote.approvedAt,
+        vehicle: oldestApprovedQuote.vehicle ?? vehicleFromSnapshot(oldestApprovedQuote.vehicleSnapshot),
+      }
+    : null;
+
   return {
     generatedAt: now,
     queues,
     receivables,
     kpis,
     weeklyPayroll,
+    nextWork,
   };
 }

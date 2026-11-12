@@ -7,7 +7,7 @@ import { aggregateReceivablesByCustomer, getOperationalDashboardSnapshot } from 
 vi.mock("@/lib/auth/session", () => ({ requireOperationalRole: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    quote: { count: vi.fn() },
+    quote: { count: vi.fn(), findFirst: vi.fn() },
     workOrder: { count: vi.fn(), findMany: vi.fn() },
     payment: { aggregate: vi.fn() },
   },
@@ -85,6 +85,8 @@ describe("getOperationalDashboardSnapshot", () => {
     vi.clearAllMocks();
     vi.mocked(requireOperationalRole).mockResolvedValue({ user: { id: "u-1" } as never, profile: { id: "u-1", role: "ADMIN" } as never });
     vi.mocked(prisma.quote.count).mockResolvedValue(0);
+    vi.mocked(prisma.quote.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.workOrder.findMany).mockResolvedValue([] as never);
     vi.mocked(prisma.workOrder.count).mockResolvedValue(0);
     vi.mocked(prisma.payment.aggregate).mockResolvedValue({ _count: { _all: 0 }, _sum: { amountCents: null } } as never);
   });
@@ -115,6 +117,43 @@ describe("getOperationalDashboardSnapshot", () => {
       where: { status: WorkOrderStatus.COMPLETED, quote: { customerId: { not: null } } },
       include: expect.objectContaining({ paymentApplications: expect.objectContaining({ where: { reversedAt: null, payment: { status: PaymentStatus.PAID, reversedAt: null } } }) }),
     }));
+  });
+
+  it("returns the oldest approved quote without an active work order as the next job, using the same criteria as the approved count", async () => {
+    vi.mocked(prisma.quote.findFirst).mockResolvedValueOnce({
+      id: "quote-oldest",
+      number: "COT-041126-01",
+      folio: null,
+      title: "Refuerzo y hoja rota",
+      totalCents: 1_002_240,
+      approvedAt: new Date("2026-11-10T18:00:00.000Z"),
+      customer: { name: "Mónica Granados" },
+      vehicle: { economicNumber: "42", plate: null, brand: "Ford", model: "Transit" },
+      vehicleSnapshot: null,
+    } as never);
+
+    const snapshot = await getOperationalDashboardSnapshot(fixedNow);
+
+    const approvedCountWhere = vi.mocked(prisma.quote.count).mock.calls.find(([args]) => args?.where?.status === "APPROVED")?.[0]?.where;
+    expect(prisma.quote.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: approvedCountWhere,
+      orderBy: [{ approvedAt: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    }));
+    expect(snapshot.nextWork).toEqual(expect.objectContaining({
+      quoteId: "quote-oldest",
+      number: "COT-041126-01",
+      title: "Refuerzo y hoja rota",
+      customerName: "Mónica Granados",
+      totalCents: 1_002_240,
+      approvedAt: new Date("2026-11-10T18:00:00.000Z"),
+      vehicle: { economicNumber: "42", plate: null, brand: "Ford", model: "Transit" },
+    }));
+  });
+
+  it("has no next job when no approved quote is waiting for a work order", async () => {
+    const snapshot = await getOperationalDashboardSnapshot(fixedNow);
+
+    expect(snapshot.nextWork).toBeNull();
   });
 
   it("keeps a reversed application out of the returned balance", async () => {

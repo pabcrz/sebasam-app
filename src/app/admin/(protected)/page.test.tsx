@@ -41,6 +41,7 @@ describe("AdminHomePage", () => {
         approvedQuotesCount: 1,
         activeExecutionCount: 2,
       },
+      nextWork: null,
       receivables: [],
       kpis: {
         week: {
@@ -94,10 +95,12 @@ describe("AdminHomePage", () => {
     expect(screen.getByRole("heading", { name: "Inicio", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /nuevo cliente/i })).not.toBeInTheDocument();
-    const quotesQueueCard = screen.getByRole("link", { name: /enviar cotizaciones borrador · 4/i });
-    expect(within(quotesQueueCard).getByText("4")).toHaveAttribute("data-numeric-role", "count");
-    const activeExecutionCard = screen.getByRole("link", { name: /completar trabajos activos · 2/i });
-    expect(within(activeExecutionCard).getByText("2")).toHaveAttribute("data-numeric-role", "count");
+    const quotesQueueRow = screen.getByRole("link", { name: /enviar cotizaciones borrador/i });
+    expect(quotesQueueRow).toHaveAttribute("href", "/admin/quotes?status=DRAFT");
+    expect(within(quotesQueueRow).getByText("4")).toHaveAttribute("data-numeric-role", "count");
+    const activeExecutionRow = screen.getByRole("link", { name: /completar trabajos activos/i });
+    expect(activeExecutionRow).toHaveAttribute("href", "/admin/work-orders");
+    expect(within(activeExecutionRow).getByText("2")).toHaveAttribute("data-numeric-role", "count");
     expect(screen.getByText("Cuentas por cobrar")).toBeInTheDocument();
     expect(screen.getByText("Resumen del período")).toBeInTheDocument();
     expect(screen.getByText("Nómina Semanal (Estimada)")).toBeInTheDocument();
