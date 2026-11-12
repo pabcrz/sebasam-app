@@ -8,12 +8,13 @@ import {
   Badge,
   Button,
   Checkbox,
-  Dialog,
-  DialogClose,
   DialogContent,
+  DialogDangerZone,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
+  DialogMobileBody,
+  DialogMobileClose,
+  DialogMobileFooter,
+  DialogMobileHeader,
   DialogTitle,
   Input,
   Label,
@@ -22,6 +23,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Sheet,
 } from "@/components/ui";
 import type { ButtonVariant } from "@/components/ui";
 
@@ -249,6 +251,10 @@ export function WorkOrderOperationsDialog({
   const isSaleIntent = !workOrder && !hasPayableNote && quoteOperation === "SALE";
   const canRollback = workOrder && ["PLANNED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"].includes(workOrder.status);
   const isAssignmentBusy = pendingAction !== null || isPending;
+  // The one primary action of the sheet lives in its fixed footer, whichever state the work order is in.
+  const convertPrimary = quoteOperation === "SALE" && !workOrder && !hasPayableNote && Boolean(quoteId && actions.convert);
+  const assignPrimary = (!workOrder || workOrder.status === "PLANNED") && quoteOperation === "WORK";
+  const completePrimary = isAssigned && !reassigning && !confirmComplete;
 
   return (
     <>
@@ -276,9 +282,9 @@ export function WorkOrderOperationsDialog({
         {!isAssignmentBusy ? <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{triggerFlowLabel ?? (isCompleted ? "Gestionar orden" : isAssigned ? "Gestionar trabajo" : isSaleIntent ? "Crear nota de venta" : "Asignar trabajo")}</span> : null}
       </Button>
 
-      <Dialog open={open} onOpenChange={(nextOpen) => { if (!isAssignmentBusy) setOpen(nextOpen); }}>
+      <Sheet open={open} onOpenChange={(nextOpen) => { if (!isAssignmentBusy) setOpen(nextOpen); }}>
         <DialogContent
-          className="max-w-xl"
+          variant="sheet"
           onEscapeKeyDown={(event) => { if (isAssignmentBusy) event.preventDefault(); }}
           onPointerDownOutside={(event) => { if (isAssignmentBusy) event.preventDefault(); }}
           onCloseAutoFocus={(event) => {
@@ -286,19 +292,7 @@ export function WorkOrderOperationsDialog({
             triggerRef.current?.focus();
           }}
         >
-          <DialogClose asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-4 top-4"
-              aria-label="Cerrar diálogo de orden de trabajo"
-              title="Cerrar"
-              disabled={isAssignmentBusy}
-            >
-              <Icon name="close" className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </DialogClose>
-          <DialogHeader>
+          <DialogMobileHeader>
             <DialogTitle>
               {workOrder ? `Orden de trabajo ${workOrder.number}` : quoteOperation === "SALE" ? `Crear nota de venta — Cotización ${quoteNumber}` : `Asignar trabajo — Cotización ${quoteNumber}`}
             </DialogTitle>
@@ -311,9 +305,10 @@ export function WorkOrderOperationsDialog({
                 ? "Crea una nota de venta con esta cotización. Esta operación no crea una orden de trabajo."
                 : `Asigna un maestro o registra un trabajo especial para iniciar.`}
             </DialogDescription>
-          </DialogHeader>
+            <DialogMobileClose aria-label="Cerrar diálogo de orden de trabajo" disabled={isAssignmentBusy} />
+          </DialogMobileHeader>
 
-          <div className="grid gap-5">
+          <DialogMobileBody className="grid content-start gap-5">
             {/* Status Header */}
             <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
               <span className="text-sm font-medium text-[var(--color-text-muted)]">Estado operativo</span>
@@ -328,9 +323,6 @@ export function WorkOrderOperationsDialog({
             {quoteOperation === "SALE" && !workOrder && !hasPayableNote && quoteId && actions.convert ? (
               <section className="grid gap-4">
                 <p className="text-sm text-[var(--color-text-muted)]">La venta solo admite conceptos de material o refacciones y no crea una orden de trabajo.</p>
-                <Button type="button" variant="primary" loading={pendingAction === "assign"} disabled={isAssignmentBusy} onClick={handleConvert}>
-                  {pendingAction === "assign" ? "Creando nota de venta..." : "Crear nota de venta"}
-                </Button>
               </section>
             ) : null}
 
@@ -398,10 +390,6 @@ export function WorkOrderOperationsDialog({
                    </div>
                  ) : null}
                  <p role="status" className="sr-only">{pendingAction === "assign" ? "Asignando..." : ""}</p>
-                <Button type="button" variant="primary" loading={pendingAction === "assign"} disabled={!actions.assign || isAssignmentBusy} onClick={handleAssign}>
-                  {pendingAction !== "assign" ? <Icon name="user-check" className="h-4 w-4" aria-hidden="true" /> : null}
-                  {pendingAction === "assign" ? "Asignando..." : "Asignar e iniciar trabajo"}
-                </Button>
               </section>
             ) : null}
 
@@ -486,10 +474,6 @@ export function WorkOrderOperationsDialog({
                         Avance de mano de obra
                       </Button>
                     ) : null}
-                    <Button type="button" variant="primary" disabled={isAssignmentBusy} onClick={() => setConfirmComplete(true)} className="flex-1">
-                      <Icon name="check-circle" className="h-4 w-4" aria-hidden="true" />
-                      Finalizar trabajo
-                    </Button>
                   </div>
                 ) : !reassigning && confirmComplete ? (
                   <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
@@ -514,7 +498,7 @@ export function WorkOrderOperationsDialog({
             ) : null}
 
             {canRollback ? (
-              <section className="grid gap-3 border-t border-[var(--color-border-light)] pt-5">
+              <DialogDangerZone>
                 <div>
                   <h3 className="font-semibold text-[var(--color-text-main)]">Corregir operación</h3>
                   <p className="text-sm text-[var(--color-text-muted)]">Cancela la orden sin borrar su historial operativo. No está disponible si hay pagos o movimientos financieros.</p>
@@ -542,23 +526,40 @@ export function WorkOrderOperationsDialog({
                     </div>
                   </div>
                 )}
-              </section>
+              </DialogDangerZone>
             ) : null}
-          </div>
 
           {error ? (
             <p role="alert" className="text-sm text-[var(--color-status-danger-fg)]">
               {error}
             </p>
           ) : null}
+        </DialogMobileBody>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isAssignmentBusy}>
-              Cerrar
+        <DialogMobileFooter>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isAssignmentBusy}>
+            Cerrar
+          </Button>
+          {convertPrimary ? (
+            <Button type="button" variant="primary" loading={pendingAction === "assign"} disabled={isAssignmentBusy} onClick={handleConvert}>
+              {pendingAction === "assign" ? "Creando nota de venta..." : "Crear nota de venta"}
             </Button>
-          </DialogFooter>
+          ) : null}
+          {assignPrimary ? (
+            <Button type="button" variant="primary" loading={pendingAction === "assign"} disabled={!actions.assign || isAssignmentBusy} onClick={handleAssign}>
+              {pendingAction !== "assign" ? <Icon name="user-check" className="h-4 w-4" aria-hidden="true" /> : null}
+              {pendingAction === "assign" ? "Asignando..." : "Asignar e iniciar trabajo"}
+            </Button>
+          ) : null}
+          {completePrimary ? (
+            <Button type="button" variant="primary" disabled={isAssignmentBusy} onClick={() => setConfirmComplete(true)}>
+              <Icon name="check-circle" className="h-4 w-4" aria-hidden="true" />
+              Finalizar trabajo
+            </Button>
+          ) : null}
+        </DialogMobileFooter>
         </DialogContent>
-      </Dialog>
+      </Sheet>
       {workOrder && !workOrder.isSpecial ? (
         <WorkOrderAdvanceDialog
           workOrderId={workOrder.id}
