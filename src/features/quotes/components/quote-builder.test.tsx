@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteBuilder } from "./quote-builder";
 import { getStepError } from "./quote-builder-shared";
@@ -761,10 +761,10 @@ describe("QuoteBuilder", () => {
     expect(entries["sections.0.items.1.type"]).toBeUndefined();
     expect([...formData.keys()].some((key) => key.toLowerCase().includes("rowid"))).toBe(false);
     const conceptDescriptions = screen.getAllByText("Cambio de aceite");
-    // 1 hidden summary row in the items step + 2 visible preview surfaces:
-    // the desktop table and the mobile compact item cards (both in the DOM).
-    expect(conceptDescriptions).toHaveLength(3);
-    expect(conceptDescriptions.filter((description) => !description.closest("[hidden]"))).toHaveLength(2);
+    // 1 hidden summary row in the items step + 1 visible review surface: the
+    // shared document preview renders each concept once.
+    expect(conceptDescriptions).toHaveLength(2);
+    expect(conceptDescriptions.filter((description) => !description.closest("[hidden]"))).toHaveLength(1);
   }, 10_000);
 
   it("allows draft submission with a missing price without displaying a false zero", async () => {
@@ -1589,14 +1589,12 @@ describe("QuoteBuilder", () => {
     await user.type(notesDescription as HTMLTextAreaElement, "Notas de servicio");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByTestId("preview-customer-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-vehicle-icon")).toBeInTheDocument();
-    // Concepts must be visible in the review step on every breakpoint: the
-    // compact item cards render the filled concept even when the table is
-    // hidden on mobile.
-    expect(screen.getByTestId("quote-compact-items")).toBeInTheDocument();
-    expect(screen.getAllByText("Cambio de aceite").length).toBeGreaterThan(0);
-    expect(screen.getByTestId("quote-items-table")).toBeInTheDocument();
+    // The review step is the shared document preview: one render, no inner scroll.
+    const preview = screen.getByTestId("document-preview");
+    expect(preview).toBeInTheDocument();
+    expect(preview.className).not.toMatch(/overflow-y-/);
+    expect(within(preview).getByRole("region", { name: "Cliente y unidad" })).toBeInTheDocument();
+    expect(within(preview).getByRole("region", { name: "Conceptos" })).toHaveTextContent("Cambio de aceite");
   });
 
   it("keeps inactive item error slots stable and preserves price currency help", async () => {

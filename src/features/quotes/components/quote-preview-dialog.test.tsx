@@ -67,7 +67,6 @@ describe("QuotePreviewDialog", () => {
     expect(screen.getByRole("region", { name: "Totales" })).toHaveTextContent("$116.00");
     const customerGroup = screen.getByRole("region", { name: "Cliente y unidad" });
     expect(customerGroup.parentElement?.parentElement).not.toHaveClass("shadow-[var(--shadow-card)]");
-    expect(customerGroup).not.toHaveClass("rounded-[var(--radius-sm)]");
     expect(container).toBeInTheDocument();
   });
 
@@ -380,6 +379,6 @@ describe("QuotePreviewDialog", () => {
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
     const closeButton = screen.getByRole("button", { name: /cerrar/i });
-    expect(closeButton).toHaveClass("min-h-[40px]", "min-w-[40px]");
+    expect(closeButton.closest("[data-dialog-header]")).not.toBeNull();
   });
 });

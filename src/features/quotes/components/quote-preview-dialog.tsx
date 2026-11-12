@@ -6,19 +6,26 @@ import { Icon } from "@/components/ui/icon";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import {
   Button,
-  Dialog,
   DialogContent,
-  DialogHeader,
+  DialogMobileBody,
+  DialogMobileClose,
+  DialogMobileHeader,
   DialogTitle,
   DialogTrigger,
+  Sheet,
 } from "@/components/ui";
-import { QuotePreviewCard, type QuotePreviewCardProps } from "./quote-preview-card";
+import { DocumentPreview } from "@/components/document-preview";
+import type { QuotePreviewCardProps } from "./quote-preview-card";
+import { toDocumentPreviewProps } from "./document-preview-model";
+import { QuotePaymentBalanceIndicator } from "./quote-payment-balance-indicator";
+import { quoteStatusLabels } from "@/features/quotes/lib/status";
 import {
   resolveQuotePreviewContact,
   resolveQuotePreviewCustomer,
 } from "@/features/quotes/lib/quote-snapshot-display";
 
 export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & DocumentDateSource & {
+  status?: QuoteListSummary["status"];
   customer: (Pick<NonNullable<QuoteListSummary["customer"]>, "name"> & {
     commercialName?: string | null;
     legalName?: string | null;
@@ -134,8 +141,11 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
     [onOpenChange],
   );
   const preview = toQuotePreviewCardProps(quote);
+  const documentProps = toDocumentPreviewProps(preview, {
+    statusLabel: quote.status ? quoteStatusLabels[quote.status] : null,
+  });
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={setOpen}>
       {showTrigger ? (
         <DialogTrigger asChild>
           <Button
@@ -150,21 +160,18 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="max-w-2xl p-3 sm:p-6 gap-3 sm:gap-4 max-h-[calc(100dvh_-_1rem)] sm:max-h-[calc(100dvh_-_2rem)]">
-        <DialogHeader className="relative pr-10 sm:pr-0">
-          <DialogTitle className="text-base sm:text-lg font-bold">{previewTitle ?? `Cotización ${quote.number}`}</DialogTitle>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Cerrar"
-            className="absolute right-0 top-0 inline-flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] min-h-[40px] min-w-[40px]"
-          >
-            <Icon name="close" className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </DialogHeader>
-
-        <QuotePreviewCard {...preview} />
+      <DialogContent variant="sheet">
+        <DialogMobileHeader>
+          <DialogTitle>{previewTitle ?? `Cotización ${quote.number}`}</DialogTitle>
+          <DialogMobileClose />
+        </DialogMobileHeader>
+        <DialogMobileBody>
+          <DocumentPreview
+            {...documentProps}
+            balance={<QuotePaymentBalanceIndicator paidCents={preview.paidCents} remainingCents={preview.remainingCents} />}
+          />
+        </DialogMobileBody>
       </DialogContent>
-    </Dialog>
+    </Sheet>
   );
 }
