@@ -250,7 +250,7 @@ La dirección y `mapsUrl` permanecen como datos de ubicación del shell público
 
 ## Shell y navegación
 
-- Una sola barra inferior para todos los roles: Inicio, Cotizaciones, Trabajos, Notas y «Más», con etiquetas completas. El rol solo decide qué filas aparecen en la hoja «Más» (p. ej. Clientes y Nómina; para SUPER_ADMIN además Trabajadores, Herramientas y Administración).
+- Una sola barra inferior para todos los roles: Inicio, Cotizaciones, Trabajos, Notas y «Más», solo iconos con nombre accesible (aria-label) y tooltip, sin etiquetas abreviadas; la activa es una pastilla con el gradiente de marca. El rol solo decide qué filas aparecen en la hoja «Más» (p. ej. Clientes y Nómina; para SUPER_ADMIN además Trabajadores, Herramientas y Administración).
 - Escritorio: barra lateral colapsada a 64 px (logo corto e iconos); al tocar el logo se expande a 220 px sobre el contenido, sin empujarlo, y recuerda la preferencia. El ítem activo lleva el gradiente de marca.
 - Crear/editar cotización oculta la barra de navegación.
 - Tap targets mínimos 44px; foco visible obligatorio.
