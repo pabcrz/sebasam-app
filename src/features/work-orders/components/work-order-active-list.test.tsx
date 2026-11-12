@@ -1,12 +1,13 @@
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
+import { Icon } from "@/components/ui/icon";
 import userEvent from "@testing-library/user-event";
 import toast from "react-hot-toast";
 import { WorkOrderActiveList } from "./work-order-active-list";
 
 vi.mock("@/features/work-orders/components/work-order-operations-dialog", () => ({
-  WorkOrderOperationsDialog: () => <button type="button">Gestionar orden</button>,
+  WorkOrderOperationsDialog: ({ triggerClassName }: { triggerClassName?: string }) => <button type="button" className={triggerClassName}>Gestionar orden</button>,
 }));
 
 vi.mock("@/features/quotes/components/quote-builder-dialog", () => ({
@@ -62,6 +63,20 @@ function renderActiveList(
     />,
   );
 }
+
+it("marks the card whose preview is open and titles the panel with the folio and customer", async () => {
+  const user = userEvent.setup();
+  renderActiveList(createWorkOrder({ isSpecial: false, assignments: [{ workerKind: "MASTER", displayName: "Maestro" }] }), { withQuote: true });
+
+  const card = screen.getByRole("group", { name: "Ver detalle de cotización COT-001" });
+  expect(card).not.toHaveAttribute("aria-current");
+  await user.click(card);
+
+  expect(card).toHaveAttribute("aria-current", "true");
+  expect(card.parentElement).toHaveClass("side-panel-list");
+  expect(screen.getByText("OT-001 · Cliente de prueba")).toBeInTheDocument();
+  expect(screen.queryByText(/^Cotización COT-001$/)).not.toBeInTheDocument();
+});
 
 async function openPreview(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("group", { name: "Ver detalle de cotización COT-001" }));
@@ -169,7 +184,7 @@ describe("WorkOrderActiveList", () => {
     renderActiveList(createWorkOrder({ isSpecial: true, assignments: [] }), { withQuote: true });
 
     await openPreview(user);
-    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar vista previa" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
@@ -203,7 +218,7 @@ describe("WorkOrderActiveList", () => {
 
     await openPreview(user);
     await user.click(screen.getAllByText("Cambio de aceite")[0]);
-    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar vista previa" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
@@ -231,5 +246,80 @@ describe("WorkOrderActiveList", () => {
     );
     expect(print).toHaveClass("h-[var(--control-sm)]", "w-[var(--control-sm)]");
     expect(print.querySelector("svg")).toHaveClass("h-5", "w-5");
+  });
+});
+
+describe("Trabajos card", () => {
+  function createTrabajoOrder() {
+    return {
+      id: "work-order-2",
+      number: "T-1126-01",
+      status: "ASSIGNED",
+      isSpecial: false,
+      quote: {
+        id: "quote-2",
+        number: "C-041126-01",
+        customer: { name: "Oscar Méndez" },
+        customerContact: { name: "Juan Pérez", role: "DRIVER" },
+        vehicle: { economicNumber: "118", brand: "Kenworth", model: "T800", plate: "AB-1234" },
+        totalCents: 1528880,
+        title: "Muelles",
+      },
+      assignments: [{ id: "assignment-1", workerId: "worker-1", status: "ACTIVE", worker: { workerKind: "MASTER", displayName: "Alfadir Amaya" } }],
+    } as unknown as ActiveListProps["workOrders"][number];
+  }
+
+  function renderTrabajo() {
+    render(
+      <WorkOrderActiveList
+        workOrders={[createTrabajoOrder()]}
+        workers={[]}
+        customers={[]}
+        quoteMap={new Map()}
+        saveQuoteActions={[]}
+        searchCustomersAction={async () => []}
+        duplicateQuoteAction={vi.fn()}
+        shareAction={vi.fn()}
+        workOrderActions={{}}
+      />,
+    );
+    return screen.getByRole("group", { name: "Ver detalle de cotización C-041126-01" });
+  }
+
+  function glyphOf(name: "unit" | "driver") {
+    const { container, unmount } = render(<Icon name={name} />);
+    const glyph = container.querySelector("svg")?.innerHTML;
+    unmount();
+    return glyph;
+  }
+
+  it("titles the card with the customer and puts the service under the amount", () => {
+    const card = renderTrabajo();
+
+    expect(within(card).getByRole("heading", { level: 3, name: "Oscar Méndez" })).toBeInTheDocument();
+    const amount = within(card).getByTestId("entity-card-amount");
+    expect(amount).toHaveTextContent("$15,288.80");
+    expect(amount).toContainElement(within(card).getByText("Muelles"));
+  });
+
+  it("shows the unit with the car icon and the driver with the person icon", () => {
+    const card = renderTrabajo();
+
+    expect(within(card).getByTestId("entity-card-unit").querySelector("svg")?.innerHTML).toBe(glyphOf("unit"));
+    expect(within(card).getByTestId("entity-card-driver")).toHaveTextContent("Juan Pérez");
+    expect(within(card).getByTestId("entity-card-driver").querySelector("svg")?.innerHTML).toBe(glyphOf("driver"));
+  });
+
+  it("sets Asignado a in a muted gray block", () => {
+    const card = renderTrabajo();
+
+    expect(within(card).getByText("Asignado a").closest("p")).toHaveClass("bg-[var(--color-surface-muted)]");
+    expect(within(card).getByText("Alfadir Amaya")).toBeInTheDocument();
+  });
+
+  it("keeps the state action at its natural width, not stretched", () => {
+    const card = renderTrabajo();
+
+    expect(within(card).getByRole("button", { name: "Gestionar orden" }).className).not.toMatch(/w-full/);
   });
 });

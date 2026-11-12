@@ -154,15 +154,37 @@ export async function updateWorkerFromForm(workerId: string, formData: FormData)
   redirect(`${workersPath}?updated=1`);
 }
 
-export async function deleteWorker(workerId: string) {
+export type DeleteWorkerOutcome = { outcome: "deleted" | "deactivated" };
+
+/**
+ * Removes a worker without ever losing history: a worker with assignments or
+ * execution records (or any other record that references it) is only
+ * deactivated, so payroll and work-order history stay intact.
+ */
+export async function deleteWorker(workerId: string): Promise<DeleteWorkerOutcome> {
   await requireOperationalRole();
   await requireWorker(workerId);
 
-  return prisma.$transaction(async (tx) => {
-    await tx.workAssignment.deleteMany({ where: { workerId } });
-    await tx.executionRecord.deleteMany({ where: { workerId } });
-    return tx.userProfile.delete({ where: { id: workerId } });
-  });
+  const deactivate = async (): Promise<DeleteWorkerOutcome> => {
+    await prisma.userProfile.update({ where: { id: workerId }, data: { isActive: false } });
+    return { outcome: "deactivated" };
+  };
+
+  const [assignments, executions] = await Promise.all([
+    prisma.workAssignment.count({ where: { workerId } }),
+    prisma.executionRecord.count({ where: { workerId } }),
+  ]);
+  if (assignments + executions > 0) return deactivate();
+
+  try {
+    await prisma.userProfile.delete({ where: { id: workerId } });
+    return { outcome: "deleted" };
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2003") {
+      return deactivate();
+    }
+    throw error;
+  }
 }
 
 export async function setWorkerActiveFromForm(workerId: string, formData: FormData) {
@@ -184,8 +206,8 @@ export async function deleteWorkerFromForm(workerId: string, formData: FormData)
   await requireOperationalRole();
   const returnPath = getWorkerReturnPath(formData, `${workersPath}/${workerId}/edit`);
 
-  await deleteWorker(workerId);
+  const { outcome } = await deleteWorker(workerId);
   revalidatePath(workersPath);
   revalidatePath(returnPath);
-  redirect(`${workersPath}?deleted=1`);
+  redirect(`${workersPath}?${outcome === "deleted" ? "deleted" : "deactivated"}=1`);
 }

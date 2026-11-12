@@ -23,7 +23,7 @@ export function ListItemCard({
   actionsClassName,
 }: ListItemCardProps) {
   const contentClassName = cn(
-    "min-w-0 flex-1 rounded-[var(--radius-sm)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2",
+    "min-w-0 flex-1 rounded-[var(--radius-sm)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
     bodyClassName,
   );
 

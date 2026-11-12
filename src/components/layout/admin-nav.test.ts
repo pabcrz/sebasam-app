@@ -96,6 +96,11 @@ describe("getActiveNavHref", () => {
     expect(getActiveNavHref("/admin/quotes/new")).toBe("/admin/quotes");
   });
 
+  it("marks only the Clientes destination on the customer profile and its statement", () => {
+    expect(getActiveNavHref("/admin/customers/123")).toBe("/admin/customers");
+    expect(getActiveNavHref("/admin/customers/123/estado-de-cuenta")).toBe("/admin/customers");
+  });
+
   it("returns null for routes outside the navigation", () => {
     expect(getActiveNavHref("/admin/unknown")).toBeNull();
     expect(getActiveNavHref("/admin/quotesx")).toBeNull();

@@ -227,12 +227,15 @@ describe("WorkOrderCompletedList", () => {
     fireEvent.click(screen.getByRole("button", { name: /Compartir cotización/ }));
     expect(screen.queryByTestId("nota-detail-dialog")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("group", { name: "Ver vista previa de nota COT-001" }));
-    expect(screen.getByRole("heading", { name: "Nota COT-001" })).toBeInTheDocument();
+    const noteCard = screen.getByRole("group", { name: "Ver vista previa de nota COT-001" });
+    fireEvent.click(noteCard);
+    expect(noteCard).toHaveAttribute("aria-current", "true");
+    expect(noteCard.parentElement).toHaveClass("side-panel-list");
+    expect(screen.getByText(/^COT-001 · /)).toBeInTheDocument();
     expect(screen.getAllByText("Cambio de aceite")).toHaveLength(1);
     expect(screen.queryByTestId("nota-detail-dialog")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Cerrar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar vista previa" }));
     fireEvent.click(screen.getByRole("button", { name: "Registrar pago" }));
     expect(screen.queryByRole("heading", { name: "Acciones de nota" })).not.toBeInTheDocument();
     expect(screen.getByTestId("nota-detail-dialog")).toBeInTheDocument();
@@ -244,8 +247,8 @@ describe("WorkOrderCompletedList", () => {
     expect(cardPrintAction).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas");
     expect(within(screen.getByTestId("nota-payment-history")).getAllByRole("listitem")).toHaveLength(longPaymentHistory.length);
     expect(screen.getByTestId("quote-payment-balance-indicator")).toHaveTextContent(/Saldo pendiente\s*\$125\.00/);
-    expect(screen.getByTestId("note-due-date")).toHaveTextContent(/Fecha de vencimiento de pago: 21 de agosto de 2026\./);
-    expect(screen.queryByTestId("quote-validity")).not.toBeInTheDocument();
+    expect(screen.getByTestId("document-preview-dates")).toHaveTextContent(/Fecha de vencimiento de pago: 21 de agosto de 2026\./);
+    expect(screen.getByTestId("document-preview-dates")).not.toHaveTextContent("Vigente hasta");
     expect(screen.getByRole("button", { name: "Registrar pago para COT-001" })).toBeInTheDocument();
     expect(screen.getByTestId("nota-detail-actions").querySelector('[aria-label="Compartir cotización COT-001"]')).not.toBeNull();
     expect(within(screen.getByTestId("document-preview")).getByRole("region", { name: "Cliente y unidad" })).toHaveTextContent("Cliente de prueba");

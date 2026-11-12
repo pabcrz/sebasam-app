@@ -66,16 +66,18 @@ describe("QuotesPage", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Cotizaciones recientes" })).toBeInTheDocument();
   });
 
-  it("keeps one primary create action at the end of the page header, with one search and the filter sheet", async () => {
+  it("keeps the header on one row: title, archive icon link, and the primary create action last", async () => {
     render(await QuotesPage({ searchParams: Promise.resolve({}) }));
 
     const header = screen.getByTestId("page-header");
+    expect(header).toHaveClass("flex-nowrap");
     expect(within(header).getByRole("heading", { level: 1, name: "Cotizaciones" })).toBeInTheDocument();
+    expect(within(header).getByRole("link", { name: "Archivo y papelera" })).toHaveAttribute("href", "/admin/quotes/retention");
     expect(header.lastElementChild?.lastElementChild).toHaveTextContent("Nueva cotización");
     expect(screen.getAllByRole("button", { name: "Nueva cotización" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Más acciones de la página" })).not.toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "Buscar por folio" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^filtros/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Más acciones de la página" })).toBeInTheDocument();
   });
 
   it("groups the list accessibly without an outer card or decorated filter panel", async () => {
@@ -96,6 +98,7 @@ describe("QuotesPage", () => {
       "grid",
       "auto-rows-fr",
       "lg:grid-cols-[repeat(2,minmax(0,1fr))]",
+      "side-panel-list",
     );
   });
 });

@@ -204,10 +204,12 @@ describe("QuoteListCard", () => {
     const user = userEvent.setup();
     renderCard(createMockQuote());
 
+    const card = screen.getByRole("group", { name: /abrir vista previa de c-001/i });
     await user.click(screen.getByLabelText(/abrir vista previa de c-001/i));
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
+    expect(card).toHaveAttribute("aria-current", "true");
+    expect(screen.getByText("C-001 · Constructora del Norte")).toBeInTheDocument();
     expect(screen.getAllByText(/cambio de aceite/i)[0]).toBeInTheDocument();
   });
 
@@ -217,7 +219,8 @@ describe("QuoteListCard", () => {
       operationalDate: new Date("2026-06-15T00:00:00.000Z"),
     }));
 
-    expect(screen.getByText(/fecha de cotización: 15 de junio de 2026/i)).toBeInTheDocument();
+    expect(screen.getByText("Fecha de cotización")).toBeInTheDocument();
+    expect(screen.getByText(/15 de junio de 2026/i)).toBeInTheDocument();
     expect(screen.queryByText(/creada el/i)).not.toBeInTheDocument();
   });
 
@@ -229,7 +232,7 @@ describe("QuoteListCard", () => {
     await user.keyboard("{Enter}");
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
+    expect(screen.getByText("C-001 · Constructora del Norte")).toBeInTheDocument();
   });
 
   it("uses the shared entity card: shadow only, focusable, with the actions footer at the bottom", () => {
@@ -250,7 +253,7 @@ describe("QuoteListCard", () => {
     const title = screen.getByRole("heading", { level: 3 });
     expect(title).toHaveAttribute("title", fullTitle);
     expect(title).toHaveClass("line-clamp-2", "min-h-12");
-    expect(screen.getByTestId("quote-dates")).toHaveClass("min-h-12");
+    expect(screen.getByTestId("quote-key-data")).toHaveClass("min-h-12");
     expect(screen.queryByText(/vencimiento pago:/i)).not.toBeInTheDocument();
   });
 
@@ -259,8 +262,8 @@ describe("QuoteListCard", () => {
       paymentDueDate: new Date("2026-09-30T12:00:00Z"),
       workOrder: { number: "OT-001", status } as QuoteListItem["workOrder"],
     }));
-    expect(screen.queryByText(/vencimiento pago:/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/vigente hasta:/i)).toBeInTheDocument();
+    expect(screen.queryByText("Vencimiento pago")).not.toBeInTheDocument();
+    expect(screen.getByText("Vigente hasta")).toBeInTheDocument();
   });
 
   it("makes authorization the sent quote's tonal primary action with the tools in fixed order and the flow in More actions", async () => {
@@ -580,5 +583,30 @@ describe("QuoteListCard", () => {
 
     expect(screen.queryByTestId("entity-card-unit")).not.toBeInTheDocument();
     expect(screen.queryByText(/sin vehículo/i)).not.toBeInTheDocument();
+  });
+
+  it("does not print a work-order placeholder on a work quote without an order", () => {
+    renderCard(createMockQuote({ operation: "WORK", workOrder: null as QuoteListItem["workOrder"] }));
+
+    expect(screen.queryByText("Sin orden de trabajo")).not.toBeInTheDocument();
+  });
+
+  it("shows the folio as the bare number, without the word Folio", () => {
+    renderCard(createMockQuote());
+
+    expect(screen.getByText("C-001")).toBeInTheDocument();
+    expect(screen.queryByText(/^Folio/)).not.toBeInTheDocument();
+  });
+
+  it("lists the key data as label and value rows, each with a top line and no icon", () => {
+    renderCard(createMockQuote());
+
+    const keyData = screen.getByTestId("quote-key-data");
+    const rows = within(keyData).getAllByText(/^(Fecha de cotización|Vigente hasta)$/).map((label) => label.parentElement);
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row).toHaveClass("border-t");
+      expect(row?.querySelector("svg")).toBeNull();
+    }
   });
 });

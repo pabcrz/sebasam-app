@@ -46,10 +46,10 @@ export function PeriodNavigator({
     <div className="flex min-w-0 flex-col gap-3">
       <div className="flex min-w-0 flex-wrap items-center gap-3">
         {isNavigable ? (
-          <div role="group" aria-label="Cambiar periodo" className="inline-flex items-center gap-1">
+          <div role="group" aria-label="Cambiar periodo" className="inline-flex items-center rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="icon"
               aria-label="Periodo anterior"
               onClick={() => onAnchorChange(shiftPeriodAnchor(view, anchor, -1))}
@@ -58,7 +58,7 @@ export function PeriodNavigator({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="icon"
               aria-label="Periodo siguiente"
               onClick={() => onAnchorChange(shiftPeriodAnchor(view, anchor, 1))}
@@ -73,8 +73,15 @@ export function PeriodNavigator({
           {isCurrent && isNavigable ? <Badge variant="info">En curso</Badge> : null}
         </div>
 
-        {isNavigable && !isCurrent ? (
-          <Button type="button" variant="secondary" size="sm" onClick={() => onAnchorChange(mexicoCityDateKey(today))}>
+        {/* Always rendered while navigating, disabled on the current period, so the layout never shifts. */}
+        {isNavigable ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={isCurrent}
+            onClick={() => onAnchorChange(mexicoCityDateKey(today))}
+          >
             Hoy
           </Button>
         ) : null}

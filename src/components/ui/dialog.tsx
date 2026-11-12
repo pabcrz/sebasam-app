@@ -27,6 +27,32 @@ function isDesktopViewport() {
   return canMatchViewport() && window.matchMedia(SHEET_DESKTOP_QUERY).matches;
 }
 
+function useIsDesktopViewport() {
+  return React.useSyncExternalStore(subscribeToDesktopViewport, isDesktopViewport, () => false);
+}
+
+let mountedDesktopSidePanels = 0;
+
+/**
+ * Marks <html> while a desktop side panel is mounted, so the lists beside it
+ * reserve the panel's width (`.side-panel-list` in globals.css).
+ */
+function SidePanelMarker() {
+  const isDesktop = useIsDesktopViewport();
+
+  React.useEffect(() => {
+    if (!isDesktop) return;
+    mountedDesktopSidePanels += 1;
+    document.documentElement.setAttribute("data-side-panel-open", "");
+    return () => {
+      mountedDesktopSidePanels -= 1;
+      if (mountedDesktopSidePanels === 0) document.documentElement.removeAttribute("data-side-panel-open");
+    };
+  }, [isDesktop]);
+
+  return null;
+}
+
 /**
  * Root for `variant="sheet"` content. Below 1024px it is modal (focus trapped,
  * page inert, Esc and overlay dismiss). From 1024px it is non-modal, so the
@@ -34,7 +60,7 @@ function isDesktopViewport() {
  * returns to the trigger. Use it with `DialogContent variant="sheet"`.
  */
 export function Sheet(props: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  const isDesktop = React.useSyncExternalStore(subscribeToDesktopViewport, isDesktopViewport, () => false);
+  const isDesktop = useIsDesktopViewport();
   return <DialogPrimitive.Root modal={!isDesktop} {...props} />;
 }
 
@@ -171,8 +197,9 @@ export type DialogVariant = "dialog" | "sheet";
 const dialogShapeClassName =
   "left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-h-[calc(100dvh_-_2rem)] w-[calc(100vw_-_2rem)] overflow-y-auto rounded-[var(--radius-lg)] p-[var(--space-lg)] shadow-[var(--shadow-dialog)] gap-[var(--space-md)]";
 
+/* Rows: fixed header, the body takes the rest (min-h-0 lets it scroll), fixed footer. Mobile slides up; the desktop panel keeps its own direction. */
 const sheetShapeClassName =
-  "inset-x-0 bottom-0 top-auto w-full max-w-none max-h-[calc(100dvh_-_var(--space-xl))] translate-x-0 translate-y-0 gap-0 rounded-t-[var(--radius-sheet)] rounded-b-none p-0 shadow-[var(--shadow-md)] md:inset-y-0 md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-dvh md:max-h-none md:w-[420px] md:max-w-[420px] md:rounded-l-[var(--radius-sheet)] md:rounded-r-none md:rounded-t-none";
+  "inset-x-0 bottom-0 top-auto w-full max-w-none max-h-[calc(100dvh_-_var(--space-xl))] grid-rows-[auto_minmax(0,1fr)_auto] translate-x-0 translate-y-0 gap-0 rounded-t-[var(--radius-sheet)] rounded-b-none p-0 shadow-[var(--shadow-md)] max-md:data-[state=open]:animate-bottom-sheet md:inset-y-0 md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-dvh md:max-h-none md:w-[420px] md:max-w-[420px] md:rounded-l-[var(--radius-sheet)] md:rounded-r-none md:rounded-t-none";
 
 export interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
@@ -228,6 +255,7 @@ export const DialogContent = React.forwardRef<
     );
 
     const isSheet = variant === "sheet";
+    const isDesktop = useIsDesktopViewport();
 
     return (
       <DialogPointerDownOutsideContext.Provider value={pointerDownOutsideGuard}>
@@ -251,6 +279,11 @@ export const DialogContent = React.forwardRef<
                 event.preventDefault();
                 return;
               }
+              // A desktop side panel is not modal: the list beside it stays usable, and only Esc or ✕ close it.
+              if (isSheet && isDesktop) {
+                event.preventDefault();
+                return;
+              }
               onInteractOutside?.(event);
             }}
             onPointerDownOutside={(event) => {
@@ -269,6 +302,7 @@ export const DialogContent = React.forwardRef<
             }}
             {...props}
           >
+            {isSheet ? <SidePanelMarker /> : null}
             {isSheet ? (
               <div
                 aria-hidden="true"
@@ -290,7 +324,7 @@ DialogContent.displayName = DialogPrimitive.Content.displayName;
  * touch area (the `before` pseudo-element), muted until hovered.
  */
 export const dialogIconButtonClassName =
-  "relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50 before:absolute before:left-1/2 before:top-1/2 before:h-[max(100%,var(--tap-min-height))] before:w-[max(100%,var(--tap-min-height))] before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
+  "relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50 before:absolute before:left-1/2 before:top-1/2 before:h-[max(100%,var(--tap-min-height))] before:w-[max(100%,var(--tap-min-height))] before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
 
 export const DialogMobileContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,

@@ -4,11 +4,12 @@ import { InfoTip } from "./info-tip";
 
 export type StatTileTone = "neutral" | "warning" | "danger" | "success";
 
-const toneClassNames: Record<StatTileTone, { surface: string; value: string }> = {
-  neutral: { surface: "bg-[var(--color-bg-soft)]", value: "text-[var(--color-text-main)]" },
-  warning: { surface: "bg-[var(--color-status-warning-bg)]", value: "text-[var(--color-status-warning-fg)]" },
-  danger: { surface: "bg-[var(--color-status-danger-bg)]", value: "text-[var(--color-status-danger-fg)]" },
-  success: { surface: "bg-[var(--color-status-success-bg)]", value: "text-[var(--color-status-success-fg)]" },
+/** Only the figure takes the tone; the tile itself stays white with a 1px border. */
+const toneValueClassNames: Record<StatTileTone, string> = {
+  neutral: "text-[var(--color-text-main)]",
+  warning: "text-[var(--color-status-warning-fg)]",
+  danger: "text-[var(--color-status-danger-fg)]",
+  success: "text-[var(--color-status-success-fg)]",
 };
 
 export interface StatTileProps {
@@ -21,17 +22,15 @@ export interface StatTileProps {
   className?: string;
 }
 
-/** Key figure on a tinted surface. Tone colors the figure and its background, never a border. */
+/** Key figure on a white bordered surface. Tone colors only the figure; no shadow, no tinted background. */
 export function StatTile({ label, value, info, tone = "neutral", className }: StatTileProps) {
-  const classes = toneClassNames[tone];
-
   return (
-    <div className={cn("grid min-w-0 gap-1 rounded-[var(--radius-lg)] p-4", classes.surface, className)}>
+    <div className={cn("grid min-w-0 gap-1 rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4", className)}>
       <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-[var(--color-text-muted)]">
         <span className="min-w-0 truncate">{label}</span>
         {info ? <InfoTip label={`Qué incluye: ${label}`}>{info}</InfoTip> : null}
       </div>
-      <p className={cn("min-w-0 truncate text-xl font-semibold tabular-nums sm:text-2xl", classes.value)}>{value}</p>
+      <p className={cn("min-w-0 truncate text-xl font-semibold tabular-nums sm:text-2xl", toneValueClassNames[tone])}>{value}</p>
     </div>
   );
 }

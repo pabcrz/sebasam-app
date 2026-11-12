@@ -18,12 +18,13 @@ describe("Chip", () => {
     expect(chip.className).toContain("text-[var(--color-tonal-fg)]");
   });
 
-  it("uses a tonal hover with a thin outline instead of a border", () => {
+  it("uses a tonal hover with a thin inset ring (no outline, so no color flash) instead of a border", () => {
     render(<Chip pressed={false}>Frenos</Chip>);
 
     const chip = screen.getByRole("button", { name: "Frenos" });
     expect(chip.className).toContain("hover:bg-[var(--color-tonal-bg)]");
-    expect(chip.className).toContain("hover:outline");
+    expect(chip.className).toContain("hover:shadow-[inset_0_0_0_1px_");
+    expect(chip.className).not.toContain("hover:outline");
   });
 
   it("calls onClick and keeps a 44px invisible hit area without wrapping away from its row", () => {
@@ -64,6 +65,7 @@ describe("ChipRow", () => {
     expect(row.className).toContain("flex-nowrap");
     expect(row.className).toContain("overflow-x-auto");
     expect(row.className).toContain("max-w-full");
+    expect(row.className).toContain("no-scrollbar");
     expect(row.className).not.toContain("flex-wrap");
   });
 });

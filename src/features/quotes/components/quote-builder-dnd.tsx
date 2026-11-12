@@ -43,7 +43,7 @@ export function DragHandle({
   );
 }
 
-/** Concept rows render as `tr` inside the table layout; everything else is a `div`. */
+/** Concept rows render as a `tbody` (two `tr`) inside the table layout; everything else is a `div`. */
 export function SortableItem({
   id,
   children,
@@ -54,7 +54,7 @@ export function SortableItem({
 }: {
   id: string;
   children: React.ReactNode;
-  as?: "div" | "tr";
+  as?: "div" | "tbody";
   className?: string;
   rowRef?: (node: HTMLElement | null) => void;
   "data-testid"?: string;
@@ -84,10 +84,10 @@ export function SortableItem({
 
   return (
     <SortableItemContext.Provider value={{ attributes, listeners, setActivatorNodeRef }}>
-      {as === "tr" ? (
-        <tr ref={ref} style={style} data-testid={testId} className={`${dragging} ${className || ""}`}>
+      {as === "tbody" ? (
+        <tbody ref={ref} style={style} data-testid={testId} className={`${dragging} ${className || ""}`}>
           {children}
-        </tr>
+        </tbody>
       ) : (
         <div ref={ref} style={style} className={`min-w-0 ${dragging} ${className || ""}`}>
           {children}

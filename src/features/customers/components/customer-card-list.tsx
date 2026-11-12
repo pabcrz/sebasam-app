@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Badge, Button, Checkbox, ConfirmDialog, ListRow, SegmentedControl } from "@/components/ui";
+import { Badge, Button, Checkbox, ConfirmDialog, Icon, ListRow, SegmentedControl } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import { cn } from "@/lib/utils";
 import { getCustomerDeletionBlocker } from "../domain";
@@ -42,7 +42,7 @@ const filterOptions: Array<{ value: CustomerListFilter; label: string }> = [
 ];
 
 const selectableRowClassName =
-  "flex min-h-[var(--tap-min-height)] w-full min-w-0 cursor-pointer items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-3 text-left shadow-[var(--shadow-card)]";
+  "flex min-h-[var(--tap-min-height)] w-full min-w-0 cursor-pointer items-center gap-3 p-3 text-left";
 
 function unitCountLabel(count: number) {
   return `${count} unidad${count === 1 ? "" : "es"}`;
@@ -142,7 +142,7 @@ export function CustomerCardList({ customers, query = "", onDeleteBatch }: Custo
         </div>
       ) : null}
 
-      <ul className="grid min-w-0 gap-3">
+      <ul className="grid min-w-0 divide-y divide-[var(--color-border-light)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]">
         {visibleCustomers.map((customer) => {
           const blocker = getCustomerDeletionBlocker(customer);
           const isSelected = selectedIds.has(customer.id);
@@ -173,21 +173,30 @@ export function CustomerCardList({ customers, query = "", onDeleteBatch }: Custo
               {match ? (
                 <span className="truncate text-xs font-medium text-[var(--color-tonal-fg)]">{`Coincide: ${match}`}</span>
               ) : null}
-              {shown.map((unit) => (
-                <span key={unit.id} className="flex min-w-0 items-center gap-2 text-sm text-[var(--color-text-main)]">
-                  <span className="truncate">{unitIdentity(unit) ?? "Unidad registrada"}</span>
-                  {unit.inWorkshop ? <Badge variant="info">En taller</Badge> : null}
+              {shown.length > 0 ? (
+                <span
+                  data-testid="customer-unit-list"
+                  className="mt-1 grid min-w-0 gap-1 border-t border-dashed border-[var(--color-border-light)] pt-1.5"
+                >
+                  {shown.map((unit) => (
+                    <span key={unit.id} className="flex min-w-0 items-center gap-1.5 text-sm text-[var(--color-text-main)]">
+                      <Icon name="unit" className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
+                      <span className="truncate">{unitIdentity(unit) ?? "Unidad registrada"}</span>
+                      {unit.inWorkshop ? <Badge variant="info">En taller</Badge> : null}
+                    </span>
+                  ))}
                 </span>
-              ))}
+              ) : null}
             </span>
           );
 
-          const decision = hasBalance ? (
-            <span className="font-semibold tabular-nums text-[var(--color-text-main)]">
-              {formatCents(customer.pendingBalanceCents)}
+          const decision = (
+            <span className="grid justify-items-end gap-0.5">
+              <span className="font-semibold tabular-nums text-[var(--color-text-main)]">
+                {formatCents(customer.pendingBalanceCents)}
+              </span>
+              <span className="text-xs text-[var(--color-text-muted)]">{hasBalance ? "Pendiente" : "Al corriente"}</span>
             </span>
-          ) : (
-            <span className="text-xs text-[var(--color-text-muted)]">Al corriente</span>
           );
 
           return (
@@ -216,6 +225,7 @@ export function CustomerCardList({ customers, query = "", onDeleteBatch }: Custo
                     openLabel={`Ver ficha de ${displayName}`}
                     href={`/admin/customers/${customer.id}`}
                     decision={decision}
+                    flat
                   >
                     {content}
                   </ListRow>

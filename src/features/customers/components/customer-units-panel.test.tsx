@@ -64,4 +64,10 @@ describe("CustomerUnitsPanel", () => {
 
     expect(screen.getByText("Sin unidades registradas")).toBeInTheDocument();
   });
+
+  it("hides the scrollbar of the quick-filter row without losing horizontal scroll", () => {
+    render(<CustomerUnitsPanel vehicles={vehicles} />);
+
+    expect(screen.getByRole("group", { name: "Filtros rápidos de unidades" })).toHaveClass("no-scrollbar", "overflow-x-auto");
+  });
 });

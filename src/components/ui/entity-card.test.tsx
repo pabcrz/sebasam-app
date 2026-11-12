@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Button } from "./button";
-import { EntityCard } from "./entity-card";
+import { EntityCard, EntityCardDataRow } from "./entity-card";
 import { Icon } from "./icon";
 
-function iconGlyph(name: "unit" | "driver") {
+function iconGlyph(name: "unit" | "driver-wheel" | "driver") {
   const { container, unmount } = render(<Icon name={name} />);
   const glyph = container.querySelector("svg")?.innerHTML;
   unmount();
@@ -62,7 +62,20 @@ describe("EntityCard", () => {
     expect(driver).toHaveTextContent("Juan Pérez");
     expect(driver).not.toHaveTextContent("ECO");
     expect(screen.getByTestId("entity-card-unit")).not.toHaveTextContent("Juan Pérez");
-    expect(driver.querySelector("svg")?.innerHTML).toBe(iconGlyph("driver"));
+    expect(driver.querySelector("svg")?.innerHTML).toBe(iconGlyph("driver-wheel"));
+  });
+
+  it("can show the driver with the person icon when the card asks for it", () => {
+    renderCard({ driver: "Juan Pérez", driverIcon: "driver" });
+
+    expect(screen.getByTestId("entity-card-driver").querySelector("svg")?.innerHTML).toBe(iconGlyph("driver"));
+  });
+
+  it("puts the optional amount caption under the amount, in the same column", () => {
+    renderCard({ amountCaption: "Presupuesto" });
+
+    expect(screen.getByTestId("entity-card-amount")).toHaveTextContent("$116.00");
+    expect(screen.getByTestId("entity-card-amount")).toContainElement(screen.getByText("Presupuesto"));
   });
 
   it("omits the unit and driver lines when they have no data", () => {
@@ -104,13 +117,22 @@ describe("EntityCard", () => {
     expect(card.className).not.toMatch(/(^|\s)border(-|\s|$)/);
   });
 
-  it("shows a 2px blue border with blue title and folio when selected", () => {
+  it("marks the selected card with a 2px blue ring in its shadow, without a border or a padding shift", () => {
     renderCard({ selected: true });
 
     const card = screen.getByRole("group", { name: "Abrir C-001" });
-    expect(card).toHaveClass("border-2", "border-[color-mix(in_srgb,var(--color-amount)_55%,transparent)]");
+    expect(card).toHaveClass("shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)]", "p-4");
+    expect(card).not.toHaveClass("border-2");
+    expect(card.className).not.toMatch(/(^|\s)border(-|\s|$)/);
+    expect(card).toHaveAttribute("aria-current", "true");
     expect(screen.getByRole("heading", { level: 3 })).toHaveClass("text-[var(--color-amount)]");
     expect(screen.getByText("C-001")).toHaveClass("text-[var(--color-amount)]");
+  });
+
+  it("does not expose aria-current when the card is not selected", () => {
+    renderCard();
+
+    expect(screen.getByRole("group", { name: "Abrir C-001" })).not.toHaveAttribute("aria-current");
   });
 
   it("has no border and no blue title when not selected", () => {
@@ -195,13 +217,26 @@ describe("EntityCard", () => {
     expect(card).toHaveClass("focus-visible:ring-2", "focus-visible:ring-[var(--color-focus-ring)]");
   });
 
-  it("renders the featured variant with the same structure", () => {
+  it("renders the featured variant with the same structure, as a deeper shadow with no blue background", () => {
     renderCard({ variant: "featured" });
 
     const card = screen.getByRole("group", { name: "Abrir C-001" });
     expect(card).toHaveAttribute("data-variant", "featured");
+    expect(card).toHaveClass("shadow-[var(--shadow-card-hover)]");
+    expect(card).not.toHaveClass("shadow-[var(--shadow-card)]");
+    expect(card).not.toHaveClass("bg-[var(--color-blue-tint)]");
     expect(screen.getByTestId("entity-card-footer")).toBeInTheDocument();
     expect(screen.getByTestId("entity-card-unit")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Autorizar" })).toBeInTheDocument();
+  });
+
+  it("renders key data as label and value rows, each with a top line and no icon", () => {
+    const { container } = render(<EntityCardDataRow label="Maestro" value="Sin asignar" />);
+
+    const row = container.firstElementChild;
+    expect(screen.getByText("Maestro")).toBeInTheDocument();
+    expect(screen.getByText("Sin asignar")).toBeInTheDocument();
+    expect(row).toHaveClass("border-t");
+    expect(row?.querySelector("svg")).toBeNull();
   });
 });

@@ -59,6 +59,17 @@ describe("ListRow", () => {
     expect(row.className).not.toMatch(/(^|\s)border(-|\s|$)/);
   });
 
+  it("keeps the card surface by default; flat rows drop it and keep the tap target", () => {
+    const { unmount } = render(<ListRow openLabel="Card" href="/a">Fila</ListRow>);
+    expect(screen.getByRole("link", { name: "Card" })).toHaveClass("shadow-[var(--shadow-card)]", "rounded-[var(--radius-md)]");
+    unmount();
+
+    render(<ListRow openLabel="Flat" href="/b" flat>Fila</ListRow>);
+    const flat = screen.getByRole("link", { name: "Flat" });
+    expect(flat.className).not.toMatch(/shadow-\[|rounded-\[/);
+    expect(flat).toHaveClass("min-h-[var(--tap-min-height)]");
+  });
+
   it("shows a chevron by default and hides it when chevron is false", () => {
     const { rerender } = render(
       <ListRow openLabel="Ver detalle" onOpen={vi.fn()}>

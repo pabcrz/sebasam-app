@@ -207,3 +207,13 @@ describe("QuoteFilters active chips", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });
+
+describe("QuoteFilters count pattern", () => {
+  beforeEach(() => push.mockClear());
+
+  it("labels the Filtros button with the active count in parentheses, the same pattern as Notas", () => {
+    renderFilters({ concept: "aceite", plate: "ABC-123" });
+
+    expect(screen.getByRole("button", { name: "Filtros (2)" })).toBeInTheDocument();
+  });
+});

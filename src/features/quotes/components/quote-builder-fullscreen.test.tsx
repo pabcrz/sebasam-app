@@ -68,8 +68,9 @@ describe("quote builder full-screen flow", () => {
     await openFlow(user);
 
     const top = screen.getByTestId("multi-step-dialog-header");
-    const back = within(top).getByRole("button", { name: "Salir de la cotización" });
-    const title = within(top).getByRole("heading", { name: "Crear cotización" });
+    const back = within(top).getByRole("button", { name: "Paso anterior" });
+    expect(back).toBeDisabled();
+    const title = within(top).getByRole("heading", { name: "Nueva cotización" });
     const close = within(top).getByRole("button", { name: "Cerrar" });
 
     expect(back.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -121,11 +122,11 @@ describe("quote builder full-screen flow", () => {
 
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(screen.queryByRole("dialog", { name: "¿Descartar la cotización?" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("dialog", { name: "Crear cotización" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Nueva cotización" })).not.toBeInTheDocument();
 
     await openFlow(user);
     await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
-    await user.click(screen.getByRole("button", { name: "Salir de la cotización" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Seguir editando" }));
     expect(screen.getByRole("textbox", { name: "Placas (opcional)" })).toHaveValue("A");
@@ -154,5 +155,43 @@ describe("quote builder full-screen flow", () => {
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(bottomBar()).toBeVisible();
     expect(rail()).not.toBeNull();
+  });
+  it("titles the flow with the step number and name as a subtitle", async () => {
+    const user = userEvent.setup();
+    renderFlow();
+    await openFlow(user);
+
+    const top = screen.getByTestId("multi-step-dialog-header");
+    expect(within(top).getByText("Paso 1 de 4 · Cliente y unidad")).toBeInTheDocument();
+
+    await fillClientStep(user);
+    await user.click(screen.getByRole("button", { name: "Conceptos →" }));
+    expect(within(top).getByText("Paso 2 de 4 · Conceptos")).toBeInTheDocument();
+  });
+
+  it("shows the step number on the client step and the total with IVA on the items step", async () => {
+    const user = userEvent.setup();
+    renderFlow();
+    await openFlow(user);
+
+    const footer = screen.getByTestId("multi-step-dialog-footer");
+    expect(within(footer).getByText("Paso 1 de 4")).toBeInTheDocument();
+
+    await fillClientStep(user);
+    await user.click(within(footer).getByRole("button", { name: "Conceptos →" }));
+    expect(within(footer).getByText("Total con IVA")).toBeInTheDocument();
+    expect(within(footer).getByTestId("quote-builder-footer-total")).toHaveClass("text-[22px]", "font-bold", "text-[var(--color-amount)]");
+
+    await user.click(screen.getByRole("switch", { name: "Incluir IVA (16%)" }));
+    expect(within(footer).getByText("Total")).toBeInTheDocument();
+    expect(within(footer).queryByText("Total con IVA")).not.toBeInTheDocument();
+  });
+
+  it("uses the blue page background for the flow body", async () => {
+    const user = userEvent.setup();
+    renderFlow();
+    await openFlow(user);
+
+    expect(screen.getByTestId("multi-step-dialog-body")).toHaveClass("bg-[var(--background)]");
   });
 });

@@ -96,9 +96,9 @@ export function WorkerEditDialog({
 
             {deleteWorker ? (
               <div className="grid gap-2">
-                <p className="text-sm font-medium text-[var(--color-status-danger-fg)]">Eliminación permanente</p>
+                <p className="text-sm font-medium text-[var(--color-status-danger-fg)]">Baja del trabajador</p>
                 <p className="text-xs text-[var(--color-text-muted)]">
-                  Elimina definitivamente el registro de {worker.displayName} del sistema.
+                  Si {worker.displayName} tiene historial (asignaciones, ejecución o nómina), solo se desactiva y el historial se conserva. Si no tiene ninguno, se elimina el registro.
                 </p>
                 {!confirmDelete ? (
                   <Button
@@ -115,7 +115,7 @@ export function WorkerEditDialog({
                     <form action={deleteWorker}>
                       <input type="hidden" name="returnTo" value="/admin/workers" />
                       <Button type="submit" variant="danger">
-                        Sí, eliminar definitivamente
+                        Sí, eliminar
                       </Button>
                     </form>
                     <Button type="button" variant="outline" onClick={() => setConfirmDelete(false)}>

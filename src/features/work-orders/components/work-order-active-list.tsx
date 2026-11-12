@@ -1,12 +1,11 @@
 "use client";
 
-import * as React from "react";
 import { Icon } from "@/components/ui/icon";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { listActiveWorkOrders } from "@/features/work-orders/queries";
 
 import type { listQuotes } from "@/features/quotes/queries";
-import { Badge, EntityCard, OperationalActionsMenu } from "@/components/ui";
+import { Badge, CardPanelProvider, EntityCard, OperationalActionsMenu, useCardPanel } from "@/components/ui";
 import { formatUnitIdentity } from "@/lib/unit-identity";
 import { formatCents } from "@/features/quotes/lib/format";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
@@ -59,6 +58,143 @@ function AssigneeText({ wo }: { wo: WorkOrderItem }) {
   return <span className="text-[var(--color-text-muted)]">Sin asignar</span>;
 }
 
+type ActiveWorkOrderCardProps = Omit<WorkOrderActiveListProps, "workOrders" | "quoteMap" | "saveQuoteActions"> & {
+  wo: WorkOrderItem;
+  fullQuote: QuoteListItem | undefined;
+  saveAction: WorkOrderActiveListProps["saveQuoteActions"][number] | undefined;
+};
+
+function ActiveWorkOrderCard({
+  wo,
+  fullQuote,
+  saveAction,
+  workers,
+  customers,
+  searchCustomersAction,
+  duplicateQuoteAction,
+  shareAction,
+  workOrderActions,
+}: ActiveWorkOrderCardProps) {
+  const panel = useCardPanel(wo.id);
+  const identity = resolveCustomerDisplayIdentity(wo.quote);
+  const helperCount = wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length;
+  const manageActions: WorkOrderActions = {
+    ...workOrderActions,
+    assign: workOrderActions.assign
+      ? (input) => workOrderActions.assign!({ ...(input as Record<string, unknown>), workOrderId: wo.id })
+      : undefined,
+  };
+  const manageDialogProps = {
+    quoteNumber: wo.quote.number,
+    quoteStatus: wo.quote.status,
+    workOrder: wo,
+    workers,
+    customerName: identity.displayName,
+    actions: manageActions,
+    triggerIconOnlyMobile: false,
+  };
+
+  return (
+    <>
+      {fullQuote ? (
+        <QuotePreviewDialog
+          quote={fullQuote}
+          open={panel.isOpen("preview")}
+          onOpenChange={(open) => (open ? panel.open("preview") : panel.close("preview"))}
+          showTrigger={false}
+          folio={wo.number}
+          customerName={identity.displayName}
+          statusBadge={<Badge variant="info">En proceso</Badge>}
+          footerAction={
+            <WorkOrderOperationsDialog {...manageDialogProps} triggerVariant="primary" triggerClassName="shrink-0" />
+          }
+        />
+      ) : null}
+      <EntityCard
+        className="h-full"
+        openLabel={`Ver detalle de cotización ${wo.quote.number}`}
+        onOpen={() => panel.open("preview")}
+        selected={panel.selected}
+        title={identity.displayName}
+        folio={wo.number}
+        status={<Badge variant="info">En proceso</Badge>}
+        amount={formatCents(wo.quote.totalCents)}
+        amountCaption={wo.quote.title || "Sin título"}
+        unit={unitIdentityOf(wo)}
+        driver={identity.operatorName ?? null}
+        driverIcon="driver"
+        keyData={
+          <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] px-3 py-2">
+            <span>Asignado a</span>
+            <span className="min-w-0 font-medium text-[var(--color-text-main)]">
+              <AssigneeText wo={wo} />
+            </span>
+            {helperCount > 0 ? <span>+ {helperCount} ayudante(s)</span> : null}
+          </p>
+        }
+        editAction={fullQuote && saveAction ? (
+          <QuoteBuilderDialog
+            customers={customers}
+            saveAction={saveAction}
+            searchCustomersAction={searchCustomersAction}
+            quote={fullQuote}
+            quoteNumber={wo.quote.number}
+            triggerAriaLabel={`Editar cotización ${wo.quote.number}`}
+            triggerSize="sm"
+            triggerVariant="ghost"
+            triggerClassName={toolClassName}
+            triggerIconOnly
+          />
+        ) : undefined}
+        printAction={
+          <PrintActionButton
+            url={`/admin/quotes/${wo.quote.id}/print?returnTo=/admin/work-orders`}
+            variant="ghost"
+            size="sm"
+            className={toolClassName}
+            title={`Imprimir orden ${wo.number}`}
+            aria-label={`Imprimir orden ${wo.number}`}
+          >
+            <Icon name="print" className="h-5 w-5" aria-hidden="true" />
+            <span className="sr-only">Imprimir orden</span>
+          </PrintActionButton>
+        }
+        shareAction={
+          <ShareQuoteButton
+            action={shareAction.bind(null, wo.quote.id)}
+            quoteNumber={wo.quote.number}
+            variant="ghost"
+            className={toolClassName}
+            actionLabelClassName="sr-only"
+            iconOnly
+          />
+        }
+        overflowAction={
+          <OperationalActionsMenu
+            title="Acciones de trabajo"
+            description={`Opciones para la orden ${wo.number}.`}
+            triggerAriaLabel={`Más acciones de orden ${wo.number}`}
+            triggerTitle={`Más acciones de orden ${wo.number}`}
+            triggerClassName={toolClassName}
+            triggerIconOnly
+          >
+            <QuoteDuplicateForm action={duplicateQuoteAction} quoteId={wo.quote.id} />
+          </OperationalActionsMenu>
+        }
+        stateAction={
+          <WorkOrderOperationsDialog
+            {...manageDialogProps}
+            triggerVariant="tonal"
+            triggerClassName="w-auto"
+            open={panel.isOpen("manage")}
+            onOpenChange={(open) => (open ? panel.open("manage") : panel.close("manage"))}
+          />
+        }
+      />
+    </>
+  );
+}
+
 export function WorkOrderActiveList({
   workOrders,
   workers,
@@ -70,116 +206,24 @@ export function WorkOrderActiveList({
   shareAction,
   workOrderActions,
 }: WorkOrderActiveListProps) {
-  const [previewOpenId, setPreviewOpenId] = React.useState<string | null>(null);
-
   return (
-    <div className="grid auto-rows-fr gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
-      {workOrders.map((wo, index) => {
-        const fullQuote = quoteMap.get(wo.quote.id);
-        const saveAction = saveQuoteActions[index];
-        const identity = resolveCustomerDisplayIdentity(wo.quote);
-        const helperCount = wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length;
-
-        return (
-          <React.Fragment key={wo.id}>
-            {fullQuote ? (
-              <QuotePreviewDialog
-                quote={fullQuote}
-                open={previewOpenId === wo.quote.id}
-                onOpenChange={(open) => setPreviewOpenId(open ? wo.quote.id : null)}
-                showTrigger={false}
-              />
-            ) : null}
-            <EntityCard
-              className="h-full"
-              openLabel={`Ver detalle de cotización ${wo.quote.number}`}
-              onOpen={() => setPreviewOpenId(wo.quote.id)}
-              title={wo.quote.title || "Sin título"}
-              folio={wo.number}
-              status={<Badge variant="info">En proceso</Badge>}
-              amount={formatCents(wo.quote.totalCents)}
-              customer={identity.displayName}
-              unit={unitIdentityOf(wo)}
-              driver={identity.operatorName ?? null}
-              keyData={
-                <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                  <span>Asignado a</span>
-                  <span className="min-w-0 font-medium text-[var(--color-text-main)]">
-                    <AssigneeText wo={wo} />
-                  </span>
-                  {helperCount > 0 ? <span>+ {helperCount} ayudante(s)</span> : null}
-                </p>
-              }
-              editAction={fullQuote && saveAction ? (
-                <QuoteBuilderDialog
-                  customers={customers}
-                  saveAction={saveAction}
-                  searchCustomersAction={searchCustomersAction}
-                  quote={fullQuote}
-                  quoteNumber={wo.quote.number}
-                  triggerAriaLabel={`Editar cotización ${wo.quote.number}`}
-                  triggerSize="sm"
-                  triggerVariant="ghost"
-                  triggerClassName={toolClassName}
-                  triggerIconOnly
-                />
-              ) : undefined}
-              printAction={
-                <PrintActionButton
-                  url={`/admin/quotes/${wo.quote.id}/print?returnTo=/admin/work-orders`}
-                  variant="ghost"
-                  size="sm"
-                  className={toolClassName}
-                  title={`Imprimir orden ${wo.number}`}
-                  aria-label={`Imprimir orden ${wo.number}`}
-                >
-                  <Icon name="print" className="h-5 w-5" aria-hidden="true" />
-                  <span className="sr-only">Imprimir orden</span>
-                </PrintActionButton>
-              }
-              shareAction={
-                <ShareQuoteButton
-                  action={shareAction.bind(null, wo.quote.id)}
-                  quoteNumber={wo.quote.number}
-                  variant="ghost"
-                  className={toolClassName}
-                  actionLabelClassName="sr-only"
-                  iconOnly
-                />
-              }
-              overflowAction={
-                <OperationalActionsMenu
-                  title="Acciones de trabajo"
-                  description={`Opciones para la orden ${wo.number}.`}
-                  triggerAriaLabel={`Más acciones de orden ${wo.number}`}
-                  triggerTitle={`Más acciones de orden ${wo.number}`}
-                  triggerClassName={toolClassName}
-                  triggerIconOnly
-                >
-                  <QuoteDuplicateForm action={duplicateQuoteAction} quoteId={wo.quote.id} />
-                </OperationalActionsMenu>
-              }
-              stateAction={
-                <WorkOrderOperationsDialog
-                  quoteNumber={wo.quote.number}
-                  quoteStatus={wo.quote.status}
-                  workOrder={wo}
-                  workers={workers}
-                  triggerVariant="tonal"
-                  triggerClassName="w-full"
-                  triggerIconOnlyMobile={false}
-                  actions={{
-                    ...workOrderActions,
-                    assign: workOrderActions.assign
-                      ? (input) => workOrderActions.assign!({ ...(input as Record<string, unknown>), workOrderId: wo.id })
-                      : undefined,
-                  }}
-                />
-              }
-            />
-          </React.Fragment>
-        );
-      })}
-    </div>
+    <CardPanelProvider>
+      <div className="side-panel-list grid auto-rows-fr gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
+        {workOrders.map((wo, index) => (
+          <ActiveWorkOrderCard
+            key={wo.id}
+            wo={wo}
+            fullQuote={quoteMap.get(wo.quote.id)}
+            saveAction={saveQuoteActions[index]}
+            workers={workers}
+            customers={customers}
+            searchCustomersAction={searchCustomersAction}
+            duplicateQuoteAction={duplicateQuoteAction}
+            shareAction={shareAction}
+            workOrderActions={workOrderActions}
+          />
+        ))}
+      </div>
+    </CardPanelProvider>
   );
 }

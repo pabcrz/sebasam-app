@@ -92,7 +92,7 @@ describe("AdminHomePage", () => {
     const page = await AdminHomePage();
     render(page);
 
-    expect(screen.getByRole("heading", { name: "Inicio", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^(Buen día|Buenas tardes|Buenas noches)$/, level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /nuevo cliente/i })).not.toBeInTheDocument();
     const quotesQueueRow = screen.getByRole("link", { name: /enviar cotizaciones borrador/i });

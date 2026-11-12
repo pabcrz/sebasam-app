@@ -1,6 +1,7 @@
 import type { DocumentPreviewProps, DocumentPreviewSection } from "@/components/document-preview";
 import { formatUnitIdentity } from "@/lib/unit-identity";
-import { formatCents, formatDate } from "@/features/quotes/lib/format";
+import { formatDate } from "@/features/quotes/lib/format";
+import { DRIVER_CONTACT_ROLE_LABEL } from "@/features/quotes/lib/quote-snapshot-display";
 import { formatQuantity } from "./quote-builder-shared";
 import type { QuotePreviewCardProps } from "./quote-preview-card";
 import { resolveQuotePreviewFigures } from "./quote-preview-figures";
@@ -38,17 +39,12 @@ export function toDocumentPreviewProps(
     muted: !isSelected,
     rows: displayItems.map((item, itemIndex) => {
       const quantityNum = Number(item.quantity);
-      const unitPriceCents = item.unitPrice.trim() ? Number(item.unitPrice) * 100 : null;
-      const isServiceOrLaborSingle = item.type === "LABOR" && quantityNum === 1;
-      const showUnitDetail = quantityNum > 1 && unitPriceCents != null;
 
       return {
         id: String(itemIndex),
-        quantityLabel: isServiceOrLaborSingle || quantityNum === 0 ? "" : formatQuantity(item.quantity),
+        quantityLabel: formatQuantity(item.quantity),
         description: item.description,
-        unitDetailLabel: showUnitDetail
-          ? `${formatQuantity(item.quantity)} × ${formatCents(unitPriceCents)} c/u`
-          : null,
+        unitPriceCents: item.unitPrice.trim() ? Math.round(Number(item.unitPrice) * 100) : null,
         lineTotalCents: item.unitPrice.trim() ? Math.round(quantityNum * Number(item.unitPrice) * 100) : null,
       };
     }),
@@ -56,15 +52,14 @@ export function toDocumentPreviewProps(
 
   const vehicle = card.vehicle;
   const unitModel = [vehicle.brand, vehicle.model, vehicle.year].filter(Boolean).join(" ");
+  const isDriver = card.contactRole === DRIVER_CONTACT_ROLE_LABEL;
 
   return {
     typeLabel: options.typeLabel ?? (card.isNote ? "Nota" : "Cotización"),
     statusLabel: options.statusLabel ?? null,
     administrative: card.administrative,
-    customer: { name: card.customerName, legalName: card.legalName },
-    contactLine: card.contactName
-      ? `${card.contactRole ? `${card.contactRole}: ` : "Contacto: "}${card.contactName}`
-      : null,
+    customer: { name: card.customerName, phone: card.customerPhone ?? null },
+    driverName: isDriver ? card.contactName ?? null : null,
     unitLine: formatUnitIdentity({
       economicNumber: vehicle.economicNumber,
       plates: vehicle.plate,
@@ -72,7 +67,6 @@ export function toDocumentPreviewProps(
     }),
     service: card.title || null,
     sections,
-    showSectionHeaders: figures.hasMultipleSections || figures.visibleSections.some((s) => s.showsBadge),
     totals: {
       subtotalCents: figures.displaySubtotalCents,
       discountCents: card.discountCents ?? 0,
@@ -81,9 +75,8 @@ export function toDocumentPreviewProps(
       partialNotice: figures.partialNotice,
     },
     notes: card.description || null,
-    validityText: card.isNote
-      ? null
-      : `Vigente hasta el ${card.validUntil ? formatDate(card.validUntil) : "—"}. Los precios están sujetos a cambios imprevistos en el costo de materiales.`,
+    issuedText: card.createdAt ? `Cotizada el ${formatDate(card.createdAt)}` : null,
+    validityText: !card.isNote && card.validUntil ? `Vigente hasta ${formatDate(card.validUntil)}` : null,
     dueDateText: card.isNote && card.paymentDueDate
       ? `Fecha de vencimiento de pago: ${formatDate(card.paymentDueDate)}.`
       : null,

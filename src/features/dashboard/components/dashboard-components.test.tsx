@@ -137,6 +137,37 @@ describe("NextWorkCard", () => {
     expect(screen.getByText("$10,022.40")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Asignar" })).toHaveAttribute("href", "/admin/quotes?status=APPROVED");
   });
+
+  it("titles the section in the primary colour with a wrench icon", () => {
+    render(<NextWorkCard nextWork={nextWork} />);
+
+    const heading = screen.getByRole("heading", { name: "Siguiente trabajo" });
+    expect(heading).toHaveClass("text-[var(--color-primary)]");
+    expect(heading.querySelector("svg")).not.toBeNull();
+  });
+
+  it("shows the master as unassigned and Asignar as a tonal action with an icon", () => {
+    render(<NextWorkCard nextWork={nextWork} />);
+
+    expect(screen.getByText("Maestro")).toBeInTheDocument();
+    expect(screen.getByText("Sin asignar")).toBeInTheDocument();
+    const assign = screen.getByRole("link", { name: "Asignar" });
+    expect(assign).toHaveClass("bg-[var(--color-tonal-bg)]", "text-[var(--color-tonal-fg)]");
+    expect(assign.querySelector("svg")).not.toBeNull();
+  });
+
+  it("renders the footer tools in the EntityCard order", () => {
+    render(<NextWorkCard nextWork={nextWork} />);
+
+    const footer = screen.getByTestId("entity-card-footer");
+    expect(Array.from(footer.querySelectorAll("[aria-label]")).map((element) => element.getAttribute("aria-label"))).toEqual([
+      "Editar C-041126-01",
+      "Imprimir C-041126-01",
+      "Compartir C-041126-01",
+      "Más acciones C-041126-01",
+    ]);
+    expect(screen.getByRole("link", { name: "Imprimir C-041126-01" })).toHaveAttribute("href", "/admin/quotes/quote-oldest/print?returnTo=/admin");
+  });
 });
 
 describe("InboxRowsSection", () => {
@@ -152,13 +183,16 @@ describe("InboxRowsSection", () => {
     expect(screen.getByRole("link", { name: /completar trabajos activos/i })).toHaveTextContent("1");
   });
 
-  it("keeps every row free of border classes and icon boxes", () => {
+  it("renders the rows as one divided list, flat, with icons that carry no box", () => {
     const rows = prioritizeInbox(buildInboxRows(queues, { oldestApprovedAt: null }));
     render(<InboxRowsSection heading="Seguimiento de cotizaciones" rows={rows} emptyText="Sin seguimiento." />);
 
+    expect(screen.getByRole("list")).toHaveClass("divide-y");
     for (const link of screen.getAllByRole("link")) {
-      expect(link.className).not.toMatch(/border/);
-      expect(link.querySelector("svg")).toBeNull();
+      expect(link.className).not.toMatch(/border|shadow-\[/);
+      const icon = link.querySelector("svg");
+      expect(icon).not.toBeNull();
+      expect(icon?.parentElement?.className ?? "").not.toMatch(/(^|\s)bg-/);
     }
   });
 
@@ -169,6 +203,7 @@ describe("InboxRowsSection", () => {
     const stopped = screen.getByRole("link", { name: /completar trabajos activos/i });
     expect(stopped).toHaveTextContent("1 detenido");
     expect(within(stopped).getByText("1 detenido")).toHaveClass("text-[var(--color-status-warning-fg)]");
+    expect(stopped.querySelector("svg")).toHaveClass("text-[var(--color-status-warning-fg)]");
   });
 
   it("does not paint follow-up rows amber", () => {
@@ -267,10 +302,12 @@ describe("DashboardView", () => {
         customers={[]}
         createQuoteAction={vi.fn()}
         role="SUPER_ADMIN"
+        now={new Date("2026-11-11T17:00:00.000Z")}
       />
     );
 
-    expect(screen.getByRole("heading", { level: 1, name: "Inicio" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Buen día" })).toBeInTheDocument();
+    expect(screen.getByText("Miércoles 11 de noviembre · 31 pendientes")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /nuevo cliente/i })).not.toBeInTheDocument();
     expect(screen.getByText("Cuentas por cobrar")).toBeInTheDocument();
@@ -285,6 +322,11 @@ describe("DashboardView", () => {
 
   it("opens the inbox with Siguiente trabajo, then Para hoy, then seguimiento, before the finance blocks", () => {
     render(<DashboardView snapshot={sampleSnapshot} customers={[]} createQuoteAction={vi.fn()} role="SUPER_ADMIN" />);
+
+    const inbox = screen.getByRole("region", { name: "Pendientes" });
+    expect(inbox).toHaveClass("divide-y");
+    expect(within(inbox).getByRole("heading", { name: "Para hoy" })).toBeInTheDocument();
+    expect(within(inbox).getByRole("heading", { name: "Seguimiento de cotizaciones" })).toBeInTheDocument();
 
     const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
     expect(headings.indexOf("Siguiente trabajo")).toBeLessThan(headings.indexOf("Para hoy"));

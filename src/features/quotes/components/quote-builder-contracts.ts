@@ -79,8 +79,11 @@ export type QuoteBuilderProps = {
 
 export type QuoteBuilderChromeHosts = {
   leadingHost: HTMLDivElement | null;
+  subtitleHost: HTMLDivElement | null;
   stepperHost: HTMLDivElement | null;
   footerHost: HTMLDivElement | null;
+  /** Desktop (≥ lg) full-screen flow: the summary column slot, replacing the bottom bar. */
+  summaryHost: HTMLDivElement | null;
 };
 
 /**

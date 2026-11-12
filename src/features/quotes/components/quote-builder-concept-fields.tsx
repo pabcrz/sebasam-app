@@ -4,6 +4,7 @@ import * as React from "react";
 import { QuoteItemType } from "@/generated/prisma/enums";
 import { Icon } from "@/components/ui/icon";
 import {
+  Button,
   Chip,
   ChipAdd,
   ChipRow,
@@ -14,6 +15,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
 } from "@/components/ui";
 import {
   getMaxQuantityForType,
@@ -118,16 +120,14 @@ export function ConceptTypeSelect({
   model,
   allowedItemTypes,
   dispatch,
-  onTypeRef,
-}: { model: ConceptRowModel; allowedItemTypes: QuoteItemType[]; onTypeRef: (rowId: string, node: HTMLElement | null) => void } & Pick<ConceptRowHandlers, "dispatch">) {
-  const { rowId, item, fieldId, sectionIndex, itemIndex, displayIndex } = model;
+}: { model: ConceptRowModel; allowedItemTypes: QuoteItemType[] } & Pick<ConceptRowHandlers, "dispatch">) {
+  const { item, fieldId, sectionIndex, itemIndex, displayIndex } = model;
   return (
     <Select
       value={item.type}
       onValueChange={(value) => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { type: value as QuoteItemType } })}
     >
       <SelectTrigger
-        ref={(node) => onTypeRef(rowId, node)}
         id={`${fieldId}-type`}
         aria-label={`Tipo del concepto ${displayIndex + 1}`}
         className="h-9 w-full"
@@ -199,7 +199,7 @@ export function ConceptQuantityField({
   return (
     <div className="grid min-w-0 gap-2">
       <FieldLabel mode={mode} htmlFor={`${fieldId}-quantity`}>Cantidad</FieldLabel>
-      <div className="flex w-full min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-[3px] focus-within:ring-[var(--color-focus-ring)]">
+      <div className="flex w-full min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-[3px] focus-within:ring-inset focus-within:ring-[var(--color-focus-ring)]">
         <button
           type="button"
           tabIndex={stepperTabIndex}
@@ -271,7 +271,7 @@ export function ConceptUnitPriceField({
       <span id={unitPriceCurrencyId} className="sr-only">
         Importe en pesos mexicanos.
       </span>
-      <div className="flex min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-[3px] focus-within:ring-[var(--color-focus-ring)]">
+      <div className="flex min-w-0 items-center rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] focus-within:ring-[3px] focus-within:ring-inset focus-within:ring-[var(--color-focus-ring)]">
         <span
           className="flex items-center self-stretch pl-3 pr-1 text-[var(--color-text-muted)]"
           data-testid={`currency-prefix-${displayIndex}`}
@@ -323,37 +323,48 @@ export function ConceptPayrollField({
 }: { model: ConceptRowModel; mode: ConceptFieldMode } & Pick<ConceptRowHandlers, "dispatch">) {
   const { item, fieldId, errors, sectionIndex, itemIndex, displayIndex } = model;
   if (item.type === "LABOR") {
-    return mode === "table" ? <span className="text-sm font-medium text-[var(--color-text-main)]">Sí</span> : null;
+    return mode === "table" ? (
+      <span className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-status-success-bg)] px-2 text-sm text-[var(--color-status-success-fg)]">
+        <Icon name="cash" className="size-4" aria-hidden="true" />
+        Nómina
+      </span>
+    ) : null;
   }
   if (item.type !== "OTHER") {
     return mode === "table" ? <span className="text-sm text-[var(--color-text-muted)]">—</span> : null;
   }
 
   const rateErrorId = `${fieldId}-rate-error`;
-  const toggle = (
-    <label
-      htmlFor={`${fieldId}-includeInPayroll`}
-      className={`flex items-center gap-2.5 text-sm font-medium text-[var(--color-text-main)] cursor-pointer${mode === "table" ? " justify-center" : ""}`}
+  const payrollSwitchProps = {
+    id: `${fieldId}-includeInPayroll`,
+    name: `sections.${sectionIndex}.items.${itemIndex}.includeInPayroll`,
+    checked: Boolean(item.includeInPayroll),
+    onCheckedChange: (checked: boolean) => dispatch({
+      type: "updateItem",
+      sectionIndex,
+      itemIndex,
+      patch: {
+        includeInPayroll: checked === true,
+        customRatePercent: item.customRatePercent || "40",
+      },
+    }),
+  };
+  // Table: an icon toggle with aria-pressed. It has no form field of its own, so the hidden input below submits the flag.
+  const toggle = mode === "stacked" ? (
+    <Switch label="Incluir en nómina / comisión" {...payrollSwitchProps} />
+  ) : (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label="Incluir en nómina / comisión"
+      aria-pressed={Boolean(item.includeInPayroll)}
+      title="Incluir en nómina / comisión"
+      onClick={() => payrollSwitchProps.onCheckedChange(!item.includeInPayroll)}
+      className={item.includeInPayroll ? "bg-[var(--color-tonal-bg)] text-[var(--color-tonal-fg)]" : "text-[var(--color-text-muted)]"}
     >
-      <input
-        type="checkbox"
-        id={`${fieldId}-includeInPayroll`}
-        aria-label={mode === "table" ? "Incluir en nómina / comisión" : undefined}
-        name={`sections.${sectionIndex}.items.${itemIndex}.includeInPayroll`}
-        checked={Boolean(item.includeInPayroll)}
-        onChange={(e) => dispatch({
-          type: "updateItem",
-          sectionIndex,
-          itemIndex,
-          patch: {
-            includeInPayroll: e.target.checked,
-            customRatePercent: item.customRatePercent || "40",
-          },
-        })}
-        className="size-4 rounded border-[var(--color-border-input)] text-[var(--color-primary)] focus:ring-[var(--color-ring)]"
-      />
-      {mode === "stacked" ? <span>Incluir en nómina / comisión</span> : null}
-    </label>
+      <Icon name="cash" className="size-4" aria-hidden="true" />
+    </Button>
   );
   const rate = item.includeInPayroll ? (
     <div className={mode === "stacked" ? "grid gap-1.5 sm:max-w-xs" : "grid gap-1"}>
@@ -388,8 +399,9 @@ export function ConceptPayrollField({
 
   if (mode === "table") {
     return (
-      <div className="grid gap-1">
+      <div className="flex flex-wrap items-center gap-2">
         {toggle}
+        {item.includeInPayroll ? <input type="hidden" name={payrollSwitchProps.name} value="on" /> : null}
         {rate}
       </div>
     );
@@ -472,7 +484,7 @@ export function ConceptAddChips({ sectionIndex, allowedItemTypes, dispatch }: Co
                 dispatch({ type: "addItem", sectionIndex, itemType: type });
                 setMoreOpen(false);
               }}
-              className="flex min-h-9 w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 text-left text-sm text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+              className="flex min-h-9 w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 text-left text-sm text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
             >
               + {itemTypeLabels[type]}
             </button>

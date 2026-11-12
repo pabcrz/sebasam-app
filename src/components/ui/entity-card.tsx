@@ -12,11 +12,15 @@ export type EntityCardProps = {
   /** Status badge slot, shown next to the folio. */
   status?: React.ReactNode;
   amount?: React.ReactNode;
+  /** Small line under the amount, in the same column (e.g. the service of a work order). */
+  amountCaption?: React.ReactNode;
   customer?: React.ReactNode;
   /** Already-resolved unit identity (see formatUnitIdentity). Hidden when empty. */
   unit?: string | null;
   /** Driver name, always on its own line. Hidden when empty. */
   driver?: string | null;
+  /** Icon of the driver line: the steering wheel by default; Trabajos uses the person. */
+  driverIcon?: "driver-wheel" | "driver";
   keyData?: React.ReactNode;
   /** Footer tools, rendered in this fixed order: Editar · Imprimir · Compartir · ⋯. */
   editAction?: React.ReactNode;
@@ -34,6 +38,21 @@ export type EntityCardProps = {
 
 const interactiveSelector = "button, a, input, select, textarea, label, [role=menu], [role=menuitem], [role=dialog]";
 
+export type EntityCardDataRowProps = {
+  label: React.ReactNode;
+  value: React.ReactNode;
+};
+
+/** One label/value line of key data: a hairline above it and no icon. */
+export function EntityCardDataRow({ label, value }: EntityCardDataRowProps) {
+  return (
+    <p className="flex min-w-0 items-center justify-between gap-3 border-t border-[var(--color-border-subtle)] py-1.5">
+      <span>{label}</span>
+      <span className="min-w-0 break-words text-right font-medium text-[var(--color-text-main)]">{value}</span>
+    </p>
+  );
+}
+
 /**
  * Operational card for quotes, work orders and notes. Shadow only (no border),
  * with a single footer row: tools on the left and the state action on the right.
@@ -44,9 +63,11 @@ export function EntityCard({
   folio,
   status,
   amount,
+  amountCaption,
   customer,
   unit,
   driver,
+  driverIcon = "driver-wheel",
   keyData,
   editAction,
   printAction,
@@ -78,13 +99,14 @@ export function EntityCard({
       role="group"
       aria-label={openLabel}
       tabIndex={0}
+      aria-current={selected ? "true" : undefined}
       data-variant={variant}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "flex w-full min-w-0 cursor-pointer flex-col rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-card)] transition-shadow duration-[var(--motion-fast)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2",
-        variant === "featured" && "bg-[var(--color-blue-tint)] shadow-[var(--shadow-card-hover)]",
-        selected && "border-2 border-[color-mix(in_srgb,var(--color-amount)_55%,transparent)] p-[14px]",
+        "flex w-full min-w-0 cursor-pointer flex-col rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-card)] transition-shadow duration-[var(--motion-fast)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
+        variant === "featured" && "shadow-[var(--shadow-card-hover)]",
+        selected && "shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)]",
         className,
       )}
     >
@@ -107,7 +129,10 @@ export function EntityCard({
           </div>
         </div>
         {amount != null ? (
-          <p className="shrink-0 text-2xl font-extrabold tabular-nums text-[var(--color-amount)]">{amount}</p>
+          <div data-testid="entity-card-amount" className="flex min-w-0 max-w-[45%] shrink-0 flex-col items-end text-right">
+            <p className="text-2xl font-extrabold tabular-nums text-[var(--color-amount)]">{amount}</p>
+            {amountCaption != null ? <p className="max-w-full truncate text-xs text-[var(--color-text-muted)]">{amountCaption}</p> : null}
+          </div>
         ) : null}
       </div>
 
@@ -122,7 +147,7 @@ export function EntityCard({
       ) : null}
       {driver ? (
         <p data-testid="entity-card-driver" className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-          <Icon name="driver" className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <Icon name={driverIcon} className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="min-w-0 truncate">{driver}</span>
         </p>
       ) : null}
