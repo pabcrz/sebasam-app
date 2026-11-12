@@ -5,17 +5,37 @@ import { Icon } from "@/components/ui/icon";
 import { PayrollPeriodStatus } from "@/generated/prisma/enums";
 import toast from "react-hot-toast";
 import {
+  Badge,
   Button,
   Dialog,
-  DialogContent,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
+  DialogMobileBody,
+  DialogMobileContent,
+  DialogMobileFooter,
+  DialogMobileHeader,
   DialogTitle,
   Label,
-  Badge,
 } from "@/components/ui";
 import { reopenPayrollWeekAction, closePayrollWeekAction } from "../actions";
+
+/** Open or closed state of the week, shown in the page header. */
+export function PayrollWeekStatusBadge({ status = PayrollPeriodStatus.OPEN }: { status?: PayrollPeriodStatus }) {
+  if (status === PayrollPeriodStatus.CLOSED) {
+    return (
+      <Badge variant="default" className="gap-1">
+        <Icon name="lock" className="h-3 w-3" aria-hidden="true" />
+        Semana cerrada
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="success" className="gap-1">
+      <Icon name="unlock" className="h-3 w-3" aria-hidden="true" />
+      Semana abierta
+    </Badge>
+  );
+}
 
 interface PayrollWeekStatusControlsProps {
   weekStart: string;
@@ -23,6 +43,7 @@ interface PayrollWeekStatusControlsProps {
   isCurrentWeek?: boolean;
 }
 
+/** Close or reopen the week. Both confirmations use the dialog anatomy with an outlined danger confirm. */
 export function PayrollWeekStatusControls({
   weekStart,
   status = PayrollPeriodStatus.OPEN,
@@ -83,62 +104,28 @@ export function PayrollWeekStatusControls({
   return (
     <div className="flex items-center gap-2">
       {isClosed ? (
-        <>
-          <Badge
-            variant="default"
-            className="text-xs py-0.5 px-2 text-slate-700 bg-slate-100 border-slate-300 dark:text-slate-300 dark:bg-slate-800 dark:border-slate-700 gap-1 inline-flex items-center"
-          >
-            <Icon name="lock" className="h-3 w-3 text-slate-500" />
-            Semana Cerrada
-          </Badge>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setReopenOpen(true)}
-            className="h-7 text-xs px-2.5 gap-1.5 border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/40"
-          >
-            <Icon name="unlock" className="h-3 w-3" />
-            Reabrir semana
-          </Button>
-        </>
-      ) : (
-        <>
-          <Badge
-            variant="success"
-            className="text-xs py-0.5 px-2 text-emerald-700 bg-emerald-50 border-emerald-300 dark:text-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-800 gap-1 inline-flex items-center"
-          >
-            <Icon name="unlock" className="h-3 w-3 text-emerald-600" />
-            Semana Abierta
-          </Badge>
-          {!isCurrentWeek && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setCloseOpen(true)}
-              className="h-7 text-xs px-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
-            >
-              Cerrar semana
-            </Button>
-          )}
-        </>
-      )}
+        <Button type="button" variant="outline" size="sm" onClick={() => setReopenOpen(true)} className="gap-1.5">
+          <Icon name="unlock" className="h-4 w-4" aria-hidden="true" />
+          Reabrir semana
+        </Button>
+      ) : !isCurrentWeek ? (
+        <Button type="button" variant="outline" size="sm" onClick={() => setCloseOpen(true)} className="gap-1.5">
+          <Icon name="lock" className="h-4 w-4" aria-hidden="true" />
+          Cerrar semana
+        </Button>
+      ) : null}
 
       {/* Dialog Reabrir Semana */}
       <Dialog open={reopenOpen} onOpenChange={setReopenOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-              <Icon name="warning" className="h-5 w-5" />
-              Reabrir Semana de Nómina
-            </DialogTitle>
+        <DialogMobileContent className="sm:max-w-[440px]">
+          <DialogMobileHeader>
+            <DialogTitle>Reabrir semana de nómina</DialogTitle>
             <DialogDescription>
               Esta semana se encuentra cerrada para registro o eliminación de avances de mano de obra.
               Ingresa el motivo operativo para autorizar su reapertura.
             </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
+          </DialogMobileHeader>
+          <DialogMobileBody className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="reopen-reason" className="text-xs font-medium">
                 Motivo de reapertura <span className="text-red-500">*</span>
@@ -149,24 +136,18 @@ export function PayrollWeekStatusControls({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Ej. Ajuste de avance rezagado autorizado por gerencia..."
-                className="w-full rounded-md border border-[var(--color-border-light)] bg-transparent p-2 text-xs text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                className="w-full rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-transparent p-2 text-xs text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                 disabled={loading}
               />
             </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setReopenOpen(false)}
-              disabled={loading}
-            >
+          </DialogMobileBody>
+          <DialogMobileFooter>
+            <Button type="button" variant="outline" size="sm" onClick={() => setReopenOpen(false)} disabled={loading}>
               Cancelar
             </Button>
             <Button
               type="button"
-              variant="primary"
+              variant="danger"
               size="sm"
               onClick={handleReopen}
               disabled={loading || reason.trim().length < 5}
@@ -175,45 +156,31 @@ export function PayrollWeekStatusControls({
               {loading && <Icon name="loader" className="h-3.5 w-3.5 animate-spin" />}
               Autorizar reapertura
             </Button>
-          </DialogFooter>
-        </DialogContent>
+          </DialogMobileFooter>
+        </DialogMobileContent>
       </Dialog>
 
       {/* Dialog Cerrar Semana */}
       <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
-              <Icon name="lock" className="h-5 w-5 text-slate-500" />
-              Cerrar Semana de Nómina
-            </DialogTitle>
+        <DialogMobileContent className="sm:max-w-[440px]">
+          <DialogMobileHeader>
+            <DialogTitle>Cerrar semana de nómina</DialogTitle>
+          </DialogMobileHeader>
+          <DialogMobileBody>
             <DialogDescription>
               Al cerrar esta semana, quedará bloqueado el registro y eliminación de nuevos anticipos a menos que se realice una reapertura explícita.
             </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setCloseOpen(false)}
-              disabled={loading}
-            >
+          </DialogMobileBody>
+          <DialogMobileFooter>
+            <Button type="button" variant="outline" size="sm" onClick={() => setCloseOpen(false)} disabled={loading}>
               Cancelar
             </Button>
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              onClick={handleClose}
-              disabled={loading}
-              className="gap-1.5"
-            >
+            <Button type="button" variant="danger" size="sm" onClick={handleClose} disabled={loading} className="gap-1.5">
               {loading && <Icon name="loader" className="h-3.5 w-3.5 animate-spin" />}
               Confirmar cierre
             </Button>
-          </DialogFooter>
-        </DialogContent>
+          </DialogMobileFooter>
+        </DialogMobileContent>
       </Dialog>
     </div>
   );

@@ -103,7 +103,7 @@ Cada pieza se construye una vez en `src/components/ui`; las pantallas solo las c
 |---|---|
 | `PageHeader` | Título y estado a la izquierda; primaria al final; secundarias como iconos o en ⋯. |
 | `SearchBar` + `FilterSheet` | Una búsqueda que entiende folio, cliente, concepto, placas y ECO. Los filtros activos quedan visibles como chips. |
-| `PeriodNavigator` | Mismo en Notas, Nómina y Estado de cuenta (En curso, Hoy, Semana, Mes, Año, Todo); cada pantalla elige qué vistas ofrece. |
+| `PeriodNavigator` | Mismo en Notas, Nómina y Estado de cuenta (En curso, Hoy, Semana, Mes, Año, Todo); cada pantalla elige qué vistas ofrece; con una sola vista no muestra el segmentado (sin selector de una opción). |
 | `StatTile` | Cifra clave con fondo tinte, no borde de color; la explicación va en ⓘ. |
 | `InfoTip` (`src/components/ui/info-tip.tsx`) | ⓘ junto a una etiqueta corta; al activarlo muestra la explicación. Se cierra con Esc o al salir del foco. Lo usan `StatTile` y los filtros de Notas y Trabajos. |
 | `EntityCard` (cotización y trabajo; `src/components/ui/entity-card.tsx`, identidad en `src/lib/unit-identity.ts`) | Tocar la tarjeta fuera de los botones abre la vista previa; las acciones siguen en el pie. Identidad de la unidad: ECO + modelo; si no hay ECO, placas + modelo; si no, solo el modelo; el chofer va aparte con icono de persona; nunca "Sin ECO" de relleno. Primaria según estado (`resolveQuoteActionPresentation`): borrador → Compartir · enviada → Autorizar · aceptada → Crear orden · rechazada → Corregir · archivada → Restaurar. |

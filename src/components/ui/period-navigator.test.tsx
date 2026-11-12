@@ -71,6 +71,22 @@ describe("PeriodNavigator", () => {
     expect(screen.queryByRole("button", { name: "Semana" })).not.toBeInTheDocument();
   });
 
+  it("renders no view control when only one view is offered, so no single-option selector appears", () => {
+    render(
+      <PeriodNavigator
+        view="week"
+        views={["week"]}
+        anchor="2026-11-11"
+        today={today}
+        onViewChange={() => {}}
+        onAnchorChange={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "9–14 de noviembre de 2026" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Vista del periodo" })).not.toBeInTheDocument();
+  });
+
   it("hides arrows and Hoy in the all view, which has no period to move through", () => {
     render(
       <PeriodNavigator view="all" anchor="2026-11-11" today={today} onViewChange={() => {}} onAnchorChange={() => {}} />,
