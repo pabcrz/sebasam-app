@@ -1,6 +1,6 @@
 import type { DocumentPreviewProps, DocumentPreviewSection } from "@/components/document-preview";
 import { formatUnitIdentity } from "@/lib/unit-identity";
-import { formatCents, formatDate } from "@/features/quotes/lib/format";
+import { formatDate } from "@/features/quotes/lib/format";
 import { DRIVER_CONTACT_ROLE_LABEL } from "@/features/quotes/lib/quote-snapshot-display";
 import { formatQuantity } from "./quote-builder-shared";
 import type { QuotePreviewCardProps } from "./quote-preview-card";
@@ -39,16 +39,12 @@ export function toDocumentPreviewProps(
     muted: !isSelected,
     rows: displayItems.map((item, itemIndex) => {
       const quantityNum = Number(item.quantity);
-      const unitPriceCents = item.unitPrice.trim() ? Number(item.unitPrice) * 100 : null;
-      const showUnitDetail = quantityNum > 1 && unitPriceCents != null;
 
       return {
         id: String(itemIndex),
         quantityLabel: formatQuantity(item.quantity),
         description: item.description,
-        unitDetailLabel: showUnitDetail
-          ? `${formatQuantity(item.quantity)} × ${formatCents(unitPriceCents)} c/u`
-          : null,
+        unitPriceCents: item.unitPrice.trim() ? Math.round(Number(item.unitPrice) * 100) : null,
         lineTotalCents: item.unitPrice.trim() ? Math.round(quantityNum * Number(item.unitPrice) * 100) : null,
       };
     }),
@@ -71,7 +67,6 @@ export function toDocumentPreviewProps(
     }),
     service: card.title || null,
     sections,
-    showSectionHeaders: figures.hasMultipleSections || figures.visibleSections.some((s) => s.showsBadge),
     totals: {
       subtotalCents: figures.displaySubtotalCents,
       discountCents: card.discountCents ?? 0,

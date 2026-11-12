@@ -9,8 +9,8 @@ export interface DocumentPreviewRow {
   id: string;
   quantityLabel: string;
   description: string;
-  /** Shown under the description when the quantity is greater than one. */
-  unitDetailLabel: string | null;
+  /** Unit price column; null shows "Pendiente", like the line total. */
+  unitPriceCents: number | null;
   lineTotalCents: number | null;
 }
 
@@ -39,9 +39,8 @@ export interface DocumentPreviewProps {
   driverName?: string | null;
   unitLine?: string | null;
   service?: string | null;
+  /** Every section keeps its strip with name and subtotal, even when the quote has only one. */
   sections: DocumentPreviewSection[];
-  /** Section header strips and subtotals appear when there is more than one section or an authorization badge. */
-  showSectionHeaders: boolean;
   totals: {
     subtotalCents: number | null;
     discountCents?: number;
@@ -73,8 +72,8 @@ function noteItemsFrom(notes: string): string[] {
 /**
  * Read-only document shared by the in-app previews (quote, work order, note and
  * the last step of the quote builder). It has no workshop header and no scroll
- * of its own: the host's body scrolls. The document is a white card that sits
- * on the host's `--background`.
+ * of its own: the host's body scrolls. The document is a white card, centered at
+ * 760px at most, that sits on the host's `--background`.
  */
 export function DocumentPreview({
   typeLabel,
@@ -85,7 +84,6 @@ export function DocumentPreview({
   unitLine,
   service,
   sections,
-  showSectionHeaders,
   totals,
   notes,
   issuedText,
@@ -102,7 +100,7 @@ export function DocumentPreview({
   return (
     <div data-testid="document-preview" className="grid gap-3 text-[var(--color-text-main)]">
       {stepShortcuts && stepShortcuts.length > 0 ? (
-        <div data-testid="document-preview-step-shortcuts" className="flex flex-wrap gap-2">
+        <div data-testid="document-preview-step-shortcuts" className="mx-auto flex w-full max-w-[760px] flex-wrap gap-2">
           {stepShortcuts.map((shortcut) => (
             <Button key={shortcut.label} type="button" variant="outline" size="sm" onClick={shortcut.onSelect}>
               {`✎ ${shortcut.label}`}
@@ -113,7 +111,7 @@ export function DocumentPreview({
 
       <div
         data-testid="document-preview-card"
-        className="grid gap-4 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]"
+        className="mx-auto grid w-full max-w-[760px] gap-4 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]"
       >
         <div data-testid="document-preview-status" className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
           {statusLabel ? <Badge variant="default">{statusLabel}</Badge> : null}
@@ -121,7 +119,7 @@ export function DocumentPreview({
           {administrative ? <Badge variant="info">{typeLabel} administrativa</Badge> : null}
         </div>
 
-        <section aria-label="Cliente y unidad" className="grid grid-cols-2 gap-3">
+        <section aria-label="Cliente y unidad" className="grid grid-cols-2 gap-3 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] p-3">
           <div className="grid content-start gap-0.5">
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Cliente</p>
             <p className="text-sm font-semibold">{customer.name || "Sin cliente"}</p>
@@ -152,45 +150,40 @@ export function DocumentPreview({
             <>
               <div
                 data-testid="document-preview-table-head"
-                className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-2 px-3 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]"
+                className="grid grid-cols-[2.25rem_minmax(0,1fr)_5.5rem_5.5rem] items-center gap-2 px-3 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]"
               >
                 <span>CANT.</span>
                 <span>CONCEPTO</span>
+                <span className="text-right">UNITARIO</span>
                 <span className="text-right">IMPORTE</span>
               </div>
               {sections.map((section) => (
                 <div key={section.id} className={`grid gap-1 ${section.muted ? "opacity-40" : ""}`}>
-                  {showSectionHeaders ? (
-                    <div
-                      data-testid="document-preview-section-header"
-                      className="flex items-center justify-between gap-2 rounded-[var(--radius-xs)] bg-[var(--color-surface-muted)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider"
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="truncate">{section.name}</span>
-                        {section.badge ? (
-                          <span className="rounded-full border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[var(--color-status-success-fg)]">
-                            {section.badge}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span data-testid="document-preview-section-subtotal" className="tabular-nums normal-case tracking-normal">
-                        {formatCents(section.subtotalCents)}
-                      </span>
-                    </div>
-                  ) : null}
+                  <div
+                    data-testid="document-preview-section-header"
+                    className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">{section.name}</span>
+                      {section.badge ? (
+                        <span className="rounded-full border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[var(--color-status-success-fg)]">
+                          {section.badge}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span data-testid="document-preview-section-subtotal" className="tabular-nums normal-case tracking-normal">
+                      {formatCents(section.subtotalCents)}
+                    </span>
+                  </div>
                   <ul className="grid">
                     {section.rows.map((row) => (
                       <li
                         key={row.id}
-                        className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-2 border-b border-[var(--color-border-light)]/60 px-3 py-2 last:border-b-0"
+                        className="grid grid-cols-[2.25rem_minmax(0,1fr)_5.5rem_5.5rem] items-start gap-2 border-b border-[var(--color-border-light)]/60 px-3 py-2 last:border-b-0"
                       >
                         <span className="tabular-nums text-sm text-[var(--color-text-muted)]">{row.quantityLabel}</span>
-                        <span className="min-w-0">
-                          <span className="block break-words text-sm font-medium leading-snug">{row.description}</span>
-                          {row.unitDetailLabel ? (
-                            <span className="block text-xs text-[var(--color-text-muted)]">{row.unitDetailLabel}</span>
-                          ) : null}
-                        </span>
+                        <span className="block min-w-0 break-words text-sm font-medium leading-snug">{row.description}</span>
+                        <span className="whitespace-nowrap text-right text-sm tabular-nums text-[var(--color-text-muted)]">{formatCents(row.unitPriceCents)}</span>
                         <span className="whitespace-nowrap text-right text-sm font-bold tabular-nums">{formatCents(row.lineTotalCents)}</span>
                       </li>
                     ))}
@@ -202,37 +195,41 @@ export function DocumentPreview({
         </section>
 
         <section aria-label="Totales" data-testid="quote-totals-block" className="grid gap-3 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] p-3">
-          <dl className="grid gap-1.5 text-sm">
-            <div className="flex items-center justify-between">
-              <dt className="text-[var(--color-text-muted)]">Subtotal</dt>
-              <dd data-testid="quote-subtotal" className="tabular-nums">{formatCents(totals.subtotalCents)}</dd>
+          <div data-testid="document-preview-totals-row" className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+            <div className="grid min-w-0 flex-1 basis-48 content-end gap-2">
+              <p data-testid="quote-total-in-words" className="text-[11px] uppercase leading-snug tracking-wide text-[var(--color-text-muted)]">
+                {totals.totalCents === null ? "Pendiente" : formatAmountInWords(totals.totalCents)}
+              </p>
+              {totals.partialNotice ? (
+                <p className="text-[11px] italic text-[var(--color-text-muted)]">* {totals.partialNotice}</p>
+              ) : null}
+              {balance}
             </div>
-            {discountCents > 0 ? (
-              <div className="flex items-center justify-between text-[var(--color-status-success-fg)]">
-                <dt>Descuento</dt>
-                <dd data-testid="quote-discount" className="tabular-nums">-{formatCents(discountCents)}</dd>
+            <dl className="grid min-w-[13rem] gap-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <dt className="text-[var(--color-text-muted)]">Subtotal</dt>
+                <dd data-testid="quote-subtotal" className="tabular-nums">{formatCents(totals.subtotalCents)}</dd>
               </div>
-            ) : null}
-            <div className="flex items-center justify-between border-b border-[var(--color-border-light)] pb-2">
-              <dt className="text-[var(--color-text-muted)]">IVA (16%)</dt>
-              <dd data-testid="quote-tax" className="tabular-nums">{formatCents(totals.taxCents)}</dd>
-            </div>
-            <div className="flex items-baseline justify-between pt-1 text-xl font-bold text-[var(--color-total-emphasis)]">
-              <dt>Total</dt>
-              <dd data-testid="quote-total" className="tabular-nums">{formatCents(totals.totalCents)}</dd>
-            </div>
-          </dl>
-          <p data-testid="quote-total-in-words" className="text-[11px] uppercase leading-snug tracking-wide text-[var(--color-text-muted)]">
-            {totals.totalCents === null ? "Pendiente" : formatAmountInWords(totals.totalCents)}
-          </p>
-          {totals.partialNotice ? (
-            <p className="text-[11px] italic text-[var(--color-text-muted)]">* {totals.partialNotice}</p>
-          ) : null}
-          {balance}
+              {discountCents > 0 ? (
+                <div className="flex items-center justify-between text-[var(--color-status-success-fg)]">
+                  <dt>Descuento</dt>
+                  <dd data-testid="quote-discount" className="tabular-nums">-{formatCents(discountCents)}</dd>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between border-b border-[var(--color-border-light)] pb-2">
+                <dt className="text-[var(--color-text-muted)]">IVA (16%)</dt>
+                <dd data-testid="quote-tax" className="tabular-nums">{formatCents(totals.taxCents)}</dd>
+              </div>
+              <div className="flex items-baseline justify-between pt-1 text-xl font-bold text-[var(--color-total-emphasis)]">
+                <dt>Total</dt>
+                <dd data-testid="quote-total" className="tabular-nums">{formatCents(totals.totalCents)}</dd>
+              </div>
+            </dl>
+          </div>
         </section>
 
         {noteItems.length > 0 ? (
-          <section aria-label="Notas" data-testid="document-preview-notes" className="grid gap-1.5 border-t border-[var(--color-border-light)] pt-3">
+          <section aria-label="Notas" data-testid="document-preview-notes" className="grid gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] p-3">
             <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Notas</p>
             <ul className="grid list-disc gap-1 pl-5 text-sm text-[var(--color-text-muted)]">
               {noteItems.map((item, index) => (
@@ -243,7 +240,7 @@ export function DocumentPreview({
         ) : null}
 
         {paymentMethods.length > 0 ? (
-          <section aria-label="Formas de pago" data-testid="document-preview-payment-methods" className="grid gap-1.5 border-t border-[var(--color-border-light)] pt-3">
+          <section aria-label="Formas de pago" data-testid="document-preview-payment-methods" className="grid gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] p-3">
             <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Formas de pago</p>
             <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
               {paymentMethods.map((method) => (

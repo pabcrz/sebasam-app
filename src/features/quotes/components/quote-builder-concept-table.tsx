@@ -22,11 +22,13 @@ export type ConceptTableProps = ConceptRowHandlers & {
   rowIds: string[];
   models: ConceptRowModel[];
   allowedItemTypes: QuoteItemType[];
-  onTypeRef: (rowId: string, node: HTMLElement | null) => void;
   onRowRef: (rowId: string, node: HTMLElement | null) => void;
 };
 
-/** Desktop: one editable table per section. Columns follow the Tab order of the fields. */
+/**
+ * Desktop: one editable table per section. Each concept is two rows: what it is (Concepto, Tipo,
+ * Importe) and how much (Cant., P. unitario, nómina, actions). The rows follow the Tab order.
+ */
 export function ConceptTable({
   sectionIndex,
   rowIds,
@@ -34,48 +36,40 @@ export function ConceptTable({
   allowedItemTypes,
   dispatch,
   onDescriptionRef,
-  onTypeRef,
   onRowRef,
 }: ConceptTableProps) {
   return (
     <div className="min-w-0 overflow-x-auto">
-      <table aria-label={`Conceptos de la sección ${sectionIndex + 1}`} className="w-full min-w-[52rem] table-fixed border-collapse text-sm">
+      <table
+        aria-label={`Conceptos de la sección ${sectionIndex + 1}`}
+        data-testid={`concept-list-${sectionIndex}`}
+        className="w-full min-w-[34rem] table-fixed border-collapse text-sm"
+      >
         <colgroup>
           <col className="w-8" />
-          <col className="w-36" />
           <col />
-          <col className="w-36" />
-          <col className="w-36" />
-          <col className="w-16" />
-          <col className="w-28" />
-          <col className="w-24" />
+          <col className="w-[140px]" />
+          <col className="w-[110px]" />
         </colgroup>
         <thead>
-          <tr className="text-left text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">
+          <tr className="text-left text-xs font-medium tracking-wide text-[var(--color-text-muted)]">
             <th className="pb-2" />
-            <th scope="col" className="pb-2 font-medium">Tipo</th>
-            <th scope="col" className="pb-2 font-medium">Descripción</th>
-            <th scope="col" className="pb-2 font-medium">Cant.</th>
-            <th scope="col" className="pb-2 font-medium">Precio</th>
-            <th scope="col" className="pb-2 font-medium">Nóm.</th>
-            <th scope="col" className="pb-2 text-right font-medium">Importe</th>
-            <th scope="col" className="pb-2"><span className="sr-only">Acciones</span></th>
+            <th scope="col" className="pb-2 font-medium">CONCEPTO</th>
+            <th scope="col" className="pb-2 font-medium">TIPO</th>
+            <th scope="col" className="pb-2 text-right font-medium">IMPORTE</th>
           </tr>
         </thead>
         <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
-          <tbody data-testid={`concept-list-${sectionIndex}`}>
-            {models.map((model) => (
-              <ConceptTableRow
-                key={model.rowId}
-                model={model}
-                allowedItemTypes={allowedItemTypes}
-                dispatch={dispatch}
-                onDescriptionRef={onDescriptionRef}
-                onTypeRef={onTypeRef}
-                onRowRef={onRowRef}
-              />
-            ))}
-          </tbody>
+          {models.map((model) => (
+            <ConceptTableRow
+              key={model.rowId}
+              model={model}
+              allowedItemTypes={allowedItemTypes}
+              dispatch={dispatch}
+              onDescriptionRef={onDescriptionRef}
+              onRowRef={onRowRef}
+            />
+          ))}
         </SortableContext>
       </table>
     </div>
@@ -87,74 +81,83 @@ function ConceptTableRow({
   allowedItemTypes,
   dispatch,
   onDescriptionRef,
-  onTypeRef,
   onRowRef,
-}: Pick<ConceptTableProps, "allowedItemTypes" | "dispatch" | "onDescriptionRef" | "onTypeRef" | "onRowRef"> & { model: ConceptRowModel }) {
+}: Pick<ConceptTableProps, "allowedItemTypes" | "dispatch" | "onDescriptionRef" | "onRowRef"> & { model: ConceptRowModel }) {
   const { rowId, sectionIndex, itemIndex, displayIndex, item, lineTotalCents } = model;
   const handlers = { dispatch, onDescriptionRef };
 
   return (
     <SortableItem
       id={rowId}
-      as="tr"
-      className="align-top"
+      as="tbody"
       data-testid={`concept-row-${displayIndex}`}
       rowRef={(node) => onRowRef(rowId, node)}
     >
-      <td className="pt-2.5">
-        <DragHandle ariaLabel={`Reordenar concepto ${displayIndex + 1}`} focusable={false} className="size-8 shrink-0" />
-      </td>
-      <td className="py-2 pr-3">
-        <input type="hidden" name={`sections.${sectionIndex}.items.${itemIndex}.type`} value={item.type} />
-        <ConceptTypeSelect model={model} allowedItemTypes={allowedItemTypes} dispatch={dispatch} onTypeRef={onTypeRef} />
-      </td>
-      <td className="py-2 pr-3">
-        <ConceptDescriptionField model={model} mode="table" {...handlers} />
-      </td>
-      <td className="py-2 pr-3">
-        <ConceptQuantityField model={model} mode="table" dispatch={dispatch} />
-      </td>
-      <td className="py-2 pr-3">
-        <ConceptUnitPriceField
-          model={model}
-          mode="table"
-          dispatch={dispatch}
-          onEnter={() => dispatch({ type: "addItem", sectionIndex, itemType: item.type })}
-        />
-      </td>
-      <td className="py-2 pr-3 pt-3" data-testid={`payroll-cell-${displayIndex}`}>
-        <ConceptPayrollField model={model} mode="table" dispatch={dispatch} />
-      </td>
-      <td className="py-2 pr-3 pt-3 text-right">
-        <output className="font-medium tabular-nums" data-testid={`concept-total-${displayIndex}`} aria-label={`Importe del concepto ${displayIndex + 1}`}>
-          {lineTotalCents === null ? "Pendiente" : formatCents(lineTotalCents)}
-        </output>
-      </td>
-      <td className="py-2 pt-1.5">
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={`Duplicar concepto ${displayIndex + 1}`}
-            title="Duplicar"
-            onClick={() => dispatch({ type: "duplicateItem", sectionIndex, itemIndex })}
-          >
-            <Icon name="copy" className="size-4" aria-hidden="true" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={`Eliminar concepto ${displayIndex + 1}`}
-            title="Eliminar"
-            onClick={() => dispatch({ type: "removeItem", sectionIndex, itemIndex })}
-            className="text-[var(--color-status-danger-fg)] hover:bg-[var(--color-status-danger-bg)]"
-          >
-            <Icon name="trash" className="size-4" aria-hidden="true" />
-          </Button>
-        </div>
-      </td>
+      <tr className="border-t border-[var(--color-border-light)]">
+        <td className="pt-2.5 align-top">
+          <DragHandle ariaLabel={`Reordenar concepto ${displayIndex + 1}`} focusable={false} className="size-8 shrink-0" />
+        </td>
+        <td className="py-2 pr-3 align-top">
+          <ConceptDescriptionField model={model} mode="table" {...handlers} />
+        </td>
+        <td className="py-2 pr-3 align-top">
+          <input type="hidden" name={`sections.${sectionIndex}.items.${itemIndex}.type`} value={item.type} />
+          <ConceptTypeSelect model={model} allowedItemTypes={allowedItemTypes} dispatch={dispatch} />
+        </td>
+        <td className="py-2 align-top text-right">
+          <div className="flex h-9 items-center justify-end">
+            <output className="font-semibold tabular-nums" data-testid={`concept-total-${displayIndex}`} aria-label={`Importe del concepto ${displayIndex + 1}`}>
+              {formatCents(lineTotalCents ?? 0)}
+            </output>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td />
+        <td colSpan={3} className="pb-2.5">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+            <span className="text-xs text-[var(--color-text-muted)]">Cant.</span>
+            <div className="w-[7.5rem]">
+              <ConceptQuantityField model={model} mode="table" dispatch={dispatch} />
+            </div>
+            <span className="text-xs text-[var(--color-text-muted)]">P. unitario</span>
+            <div className="w-32">
+              <ConceptUnitPriceField
+                model={model}
+                mode="table"
+                dispatch={dispatch}
+                onEnter={() => dispatch({ type: "addItem", sectionIndex, itemType: item.type })}
+              />
+            </div>
+            <div className="flex items-center gap-2" data-testid={`payroll-cell-${displayIndex}`}>
+              <ConceptPayrollField model={model} mode="table" dispatch={dispatch} />
+            </div>
+            <div className="ml-auto flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Duplicar concepto ${displayIndex + 1}`}
+                title="Duplicar"
+                onClick={() => dispatch({ type: "duplicateItem", sectionIndex, itemIndex })}
+              >
+                <Icon name="copy" className="size-4" aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Eliminar concepto ${displayIndex + 1}`}
+                title="Eliminar"
+                onClick={() => dispatch({ type: "removeItem", sectionIndex, itemIndex })}
+                className="text-[var(--color-status-danger-fg)] hover:bg-[var(--color-status-danger-bg)]"
+              >
+                <Icon name="trash" className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
+        </td>
+      </tr>
     </SortableItem>
   );
 }

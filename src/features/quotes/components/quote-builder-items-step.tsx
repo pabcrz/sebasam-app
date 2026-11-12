@@ -54,8 +54,6 @@ export type QuoteBuilderItemsFocus = {
   onToggleItem: (rowId: string) => void;
   onRowRef: (rowId: string, node: HTMLElement | null) => void;
   onDescriptionRef: (rowId: string, node: HTMLInputElement | null) => void;
-  /** Table layout: the row's Tipo control is its first field, so new rows focus it. */
-  onTypeRef: (rowId: string, node: HTMLElement | null) => void;
 };
 
 export interface QuoteBuilderItemsStepProps {
@@ -72,7 +70,7 @@ export function QuoteBuilderItemsStep({
   state: { sections, taxEnabled, discount },
   summary: { completeItemsCount, subtotalCents, discountCents, taxCents, totalCents },
   dispatch,
-  focus: { animatedRowId, expandedItemRowId, onToggleItem, onRowRef, onDescriptionRef, onTypeRef },
+  focus: { animatedRowId, expandedItemRowId, onToggleItem, onRowRef, onDescriptionRef },
   allowedItemTypes = itemTypes,
   summaryInShell = false,
 }: QuoteBuilderItemsStepProps) {
@@ -137,7 +135,6 @@ export function QuoteBuilderItemsStep({
           allowedItemTypes={allowedItemTypes}
           dispatch={dispatch}
           onDescriptionRef={onDescriptionRef}
-          onTypeRef={onTypeRef}
           onRowRef={onRowRef}
         />
       );
@@ -164,14 +161,31 @@ export function QuoteBuilderItemsStep({
     );
   }
 
+  // Desktop puts it in the step header; the phone keeps it below the sections.
+  const addSectionButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => dispatch({ type: "addSection" })}
+      className="flex items-center gap-2 self-start"
+    >
+      <Icon name="plus-circle" className="size-4" aria-hidden="true" />
+      Agregar sección
+    </Button>
+  );
+
   return (
     <section className={`grid min-w-0 gap-3 px-1.5 ${summaryInShell ? "" : "lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6"}`}>
       <div className="grid min-w-0 gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="min-w-0 font-semibold text-[var(--color-text-main)]">Conceptos</h3>
-          {completeItemsCount > 0 ? (
-            <Badge variant="info">{completeItemsCount} completos</Badge>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {completeItemsCount > 0 ? (
+              <Badge variant="info">{completeItemsCount} completos</Badge>
+            ) : null}
+            {isTableLayout ? addSectionButton : null}
+          </div>
         </div>
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -179,7 +193,7 @@ export function QuoteBuilderItemsStep({
             {sections.map((section, sectionIndex) => (
               <SortableSection key={`section-${sectionIndex}`} id={`section-${sectionIndex}`}>
                 <div
-                  className="grid min-w-0 gap-3 lg:rounded-[var(--radius-lg)] lg:border lg:border-[var(--color-border-light)] lg:p-3"
+                  className="grid min-w-0 gap-3 lg:rounded-[var(--radius-lg)] lg:bg-[var(--color-surface)] lg:p-3 lg:shadow-[var(--shadow-card)]"
                   data-testid={`section-${sectionIndex}`}
                 >
                   <div className="flex flex-wrap items-center gap-2">
@@ -227,16 +241,7 @@ export function QuoteBuilderItemsStep({
           </SortableContext>
         </DndContext>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => dispatch({ type: "addSection" })}
-          className="flex items-center gap-2 self-start"
-        >
-          <Icon name="plus-circle" className="size-4" aria-hidden="true" />
-          Agregar sección
-        </Button>
+        {isTableLayout ? null : addSectionButton}
       </div>
 
       {summaryInShell ? null : (

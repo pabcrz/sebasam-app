@@ -6,7 +6,7 @@ import { Icon } from "./icon";
 import { tapAreaClassName } from "./tap-area";
 
 const chipBaseClassName = cn(
-  "relative inline-flex h-[var(--control-sm)] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-md)] px-3 text-sm font-medium transition-[background-color,color,outline-color] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
+  "relative inline-flex h-[var(--control-sm)] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-md)] px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
   tapAreaClassName,
 );
 
@@ -26,7 +26,7 @@ export const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
         chipBaseClassName,
         pressed
           ? "bg-[var(--color-tonal-bg)] text-[var(--color-tonal-fg)] hover:bg-[var(--color-tonal-bg-hover)]"
-          : "bg-[var(--color-bg-soft)] text-[var(--color-text-main)] hover:bg-[var(--color-tonal-bg)] hover:outline hover:outline-1 hover:-outline-offset-1 hover:outline-[var(--color-tonal-fg)]/40",
+          : "bg-[var(--color-bg-soft)] text-[var(--color-text-main)] hover:bg-[var(--color-tonal-bg)] hover:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-tonal-fg)_40%,transparent)]",
         className,
       )}
       {...props}

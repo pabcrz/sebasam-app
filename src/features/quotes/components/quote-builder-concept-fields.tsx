@@ -4,6 +4,7 @@ import * as React from "react";
 import { QuoteItemType } from "@/generated/prisma/enums";
 import { Icon } from "@/components/ui/icon";
 import {
+  Button,
   Chip,
   ChipAdd,
   ChipRow,
@@ -119,16 +120,14 @@ export function ConceptTypeSelect({
   model,
   allowedItemTypes,
   dispatch,
-  onTypeRef,
-}: { model: ConceptRowModel; allowedItemTypes: QuoteItemType[]; onTypeRef: (rowId: string, node: HTMLElement | null) => void } & Pick<ConceptRowHandlers, "dispatch">) {
-  const { rowId, item, fieldId, sectionIndex, itemIndex, displayIndex } = model;
+}: { model: ConceptRowModel; allowedItemTypes: QuoteItemType[] } & Pick<ConceptRowHandlers, "dispatch">) {
+  const { item, fieldId, sectionIndex, itemIndex, displayIndex } = model;
   return (
     <Select
       value={item.type}
       onValueChange={(value) => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { type: value as QuoteItemType } })}
     >
       <SelectTrigger
-        ref={(node) => onTypeRef(rowId, node)}
         id={`${fieldId}-type`}
         aria-label={`Tipo del concepto ${displayIndex + 1}`}
         className="h-9 w-full"
@@ -324,7 +323,12 @@ export function ConceptPayrollField({
 }: { model: ConceptRowModel; mode: ConceptFieldMode } & Pick<ConceptRowHandlers, "dispatch">) {
   const { item, fieldId, errors, sectionIndex, itemIndex, displayIndex } = model;
   if (item.type === "LABOR") {
-    return mode === "table" ? <span className="text-sm font-medium text-[var(--color-text-main)]">Sí</span> : null;
+    return mode === "table" ? (
+      <span className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius-sm)] bg-[var(--color-status-success-bg)] px-2 text-sm text-[var(--color-status-success-fg)]">
+        <Icon name="cash" className="size-4" aria-hidden="true" />
+        Nómina
+      </span>
+    ) : null;
   }
   if (item.type !== "OTHER") {
     return mode === "table" ? <span className="text-sm text-[var(--color-text-muted)]">—</span> : null;
@@ -345,12 +349,22 @@ export function ConceptPayrollField({
       },
     }),
   };
+  // Table: an icon toggle with aria-pressed. It has no form field of its own, so the hidden input below submits the flag.
   const toggle = mode === "stacked" ? (
     <Switch label="Incluir en nómina / comisión" {...payrollSwitchProps} />
   ) : (
-    <div className="flex justify-center">
-      <Switch aria-label="Incluir en nómina / comisión" {...payrollSwitchProps} />
-    </div>
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label="Incluir en nómina / comisión"
+      aria-pressed={Boolean(item.includeInPayroll)}
+      title="Incluir en nómina / comisión"
+      onClick={() => payrollSwitchProps.onCheckedChange(!item.includeInPayroll)}
+      className={item.includeInPayroll ? "bg-[var(--color-tonal-bg)] text-[var(--color-tonal-fg)]" : "text-[var(--color-text-muted)]"}
+    >
+      <Icon name="cash" className="size-4" aria-hidden="true" />
+    </Button>
   );
   const rate = item.includeInPayroll ? (
     <div className={mode === "stacked" ? "grid gap-1.5 sm:max-w-xs" : "grid gap-1"}>
@@ -385,8 +399,9 @@ export function ConceptPayrollField({
 
   if (mode === "table") {
     return (
-      <div className="grid gap-1">
+      <div className="flex flex-wrap items-center gap-2">
         {toggle}
+        {item.includeInPayroll ? <input type="hidden" name={payrollSwitchProps.name} value="on" /> : null}
         {rate}
       </div>
     );

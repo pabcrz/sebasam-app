@@ -16,8 +16,8 @@ const baseProps: DocumentPreviewProps = {
       name: "Lado izquierdo",
       subtotalCents: 200000,
       rows: [
-        { id: "r1", quantityLabel: "1", description: "Bajar muelle izquierda", lineTotalCents: 70000, unitDetailLabel: null },
-        { id: "r2", quantityLabel: "4", description: "Gomas de columpio", lineTotalCents: 130000, unitDetailLabel: "4 × $325.00 c/u" },
+        { id: "r1", quantityLabel: "1", description: "Bajar muelle izquierda", unitPriceCents: 70000, lineTotalCents: 70000 },
+        { id: "r2", quantityLabel: "4", description: "Gomas de columpio", unitPriceCents: 32500, lineTotalCents: 130000 },
       ],
     },
     {
@@ -25,12 +25,11 @@ const baseProps: DocumentPreviewProps = {
       name: "Lado derecho",
       subtotalCents: 135000,
       rows: [
-        { id: "r3", quantityLabel: "1", description: "Hoja 2a", lineTotalCents: 65000, unitDetailLabel: null },
-        { id: "r4", quantityLabel: "1", description: "Bajar muelle derecha", lineTotalCents: 70000, unitDetailLabel: null },
+        { id: "r3", quantityLabel: "1", description: "Hoja 2a", unitPriceCents: 65000, lineTotalCents: 65000 },
+        { id: "r4", quantityLabel: "1", description: "Bajar muelle derecha", unitPriceCents: 70000, lineTotalCents: 70000 },
       ],
     },
   ],
-  showSectionHeaders: true,
   totals: { subtotalCents: 335000, discountCents: 0, taxCents: 53600, totalCents: 388600, partialNotice: null },
   notes: "Cambio de hojas en ambos lados.\n- Se revisan bujes.\n- Precio sujeto a cambio.",
   issuedText: "Cotizada el 2 de noviembre de 2026",
@@ -46,20 +45,25 @@ describe("DocumentPreview", () => {
     expect(screen.getByTestId("document-preview").querySelector("header")).toBeNull();
   });
 
-  it("sits as a white card with the card radius and shadow, and no border", () => {
+  it("is a white card with the card radius and shadow, no border, centered at a 760px maximum width", () => {
     render(<DocumentPreview {...baseProps} />);
 
     const card = screen.getByTestId("document-preview-card");
-    expect(card).toHaveClass("bg-[var(--color-surface)]", "rounded-[var(--radius-lg)]", "shadow-[var(--shadow-card)]");
+    expect(card).toHaveClass(
+      "bg-[var(--color-surface)]",
+      "rounded-[var(--radius-lg)]",
+      "shadow-[var(--shadow-card)]",
+      "mx-auto",
+      "max-w-[760px]",
+    );
     expect(card.className).not.toMatch(/(^|\s)border(-|\s|$)/);
   });
 
-  it("shows client name and phone in one column and the unit with its driver in the other", () => {
+  it("shows client name and phone in one column and the unit with its driver in the other, on a gray block", () => {
     render(<DocumentPreview {...baseProps} />);
 
     const block = screen.getByRole("region", { name: "Cliente y unidad" });
-    expect(block).toHaveClass("grid-cols-2");
-    expect(block).not.toHaveClass("bg-[var(--color-surface-muted)]");
+    expect(block).toHaveClass("grid-cols-2", "bg-[var(--color-surface-muted)]", "rounded-[var(--radius-sm)]");
     expect(within(block).getByText("Cristian Del Toro")).toBeInTheDocument();
     expect(within(block).getByText("55 1234 5678")).toBeInTheDocument();
     expect(within(block).getByText("ECO 42 · Freightliner Cascadia 2020")).toBeInTheDocument();
@@ -80,13 +84,24 @@ describe("DocumentPreview", () => {
     expect(screen.getByTestId("document-preview-service")).toHaveClass("border-y");
   });
 
-  it("shows a CANT. · CONCEPTO · IMPORTE header above the rows", () => {
+  it("shows a CANT. · CONCEPTO · UNITARIO · IMPORTE header above the rows", () => {
     render(<DocumentPreview {...baseProps} />);
 
     const head = screen.getByTestId("document-preview-table-head");
     expect(within(head).getByText("CANT.")).toBeInTheDocument();
     expect(within(head).getByText("CONCEPTO")).toBeInTheDocument();
+    expect(within(head).getByText("UNITARIO")).toBeInTheDocument();
     expect(within(head).getByText("IMPORTE")).toBeInTheDocument();
+  });
+
+  it("shows the unit price next to the line total and drops the old per-unit detail line", () => {
+    render(<DocumentPreview {...baseProps} />);
+
+    const row = screen.getByText("Gomas de columpio").closest("li")!;
+    expect(within(row).getByText("4")).toBeInTheDocument();
+    expect(within(row).getByText("$325.00")).toBeInTheDocument();
+    expect(within(row).getByText("$1,300.00")).toBeInTheDocument();
+    expect(screen.queryByText(/c\/u/)).not.toBeInTheDocument();
   });
 
   it("turns every note line into a list item, dropping the leading dash", () => {
@@ -101,7 +116,7 @@ describe("DocumentPreview", () => {
     ]);
   });
 
-  it("gives notes and payment methods their own top rule and an 11px uppercase label", () => {
+  it("gives notes and payment methods each its own gray rounded block with an 11px uppercase label", () => {
     render(<DocumentPreview {...baseProps} />);
 
     for (const [testId, label] of [
@@ -109,7 +124,8 @@ describe("DocumentPreview", () => {
       ["document-preview-payment-methods", "Formas de pago"],
     ] as const) {
       const block = screen.getByTestId(testId);
-      expect(block).toHaveClass("border-t");
+      expect(block).toHaveClass("bg-[var(--color-surface-muted)]", "rounded-[var(--radius-sm)]");
+      expect(block).not.toHaveClass("border-t");
       expect(within(block).getByText(label)).toHaveClass("text-[11px]", "uppercase");
     }
   });
@@ -124,25 +140,30 @@ describe("DocumentPreview", () => {
     expect(within(strips[1]!).getByTestId("document-preview-section-subtotal")).toHaveTextContent("$1,350.00");
   });
 
-  it("omits section headers when a single unnamed section does not need them", () => {
-    render(<DocumentPreview {...baseProps} sections={[baseProps.sections[0]!]} showSectionHeaders={false} />);
+  it("always shows the strip and subtotal, including for a single section", () => {
+    render(<DocumentPreview {...baseProps} sections={[baseProps.sections[0]!]} />);
 
-    expect(screen.queryByTestId("document-preview-section-header")).not.toBeInTheDocument();
+    const strips = screen.getAllByTestId("document-preview-section-header");
+    expect(strips).toHaveLength(1);
+    expect(within(strips[0]!).getByTestId("document-preview-section-subtotal")).toHaveTextContent("$2,000.00");
     expect(screen.getByText("Bajar muelle izquierda")).toBeInTheDocument();
   });
 
-  it("renders totals with subtotal, IVA and the big total, and the amount in words directly under the total", () => {
+  it("puts the amount in words on the left and the figures on the right of one totals block", () => {
     render(<DocumentPreview {...baseProps} />);
 
     const totals = screen.getByRole("region", { name: "Totales" });
-    const total = within(totals).getByTestId("quote-total");
+    expect(totals).toHaveClass("bg-[var(--color-surface-muted)]");
+    const row = screen.getByTestId("document-preview-totals-row");
     const words = within(totals).getByTestId("quote-total-in-words");
+    const figures = totals.querySelector("dl")!;
+    expect(row).toContainElement(words);
+    expect(row).toContainElement(figures);
     expect(words).toHaveTextContent(/pesos 00\/100 M\.N\./i);
+    expect(words.compareDocumentPosition(figures) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(totals).getByTestId("quote-subtotal")).toHaveTextContent("$3,350.00");
     expect(within(totals).getByTestId("quote-tax")).toHaveTextContent("$536.00");
-    expect(total).toHaveTextContent("$3,886.00");
-    expect(words.previousElementSibling?.tagName).toBe("DL");
-    expect(total.compareDocumentPosition(words) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(totals).getByTestId("quote-total")).toHaveTextContent("$3,886.00");
   });
 
   it("renders the payment methods block with efectivo, transferencia and tarjeta de débito y crédito", () => {
