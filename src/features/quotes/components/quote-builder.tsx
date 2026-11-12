@@ -1264,6 +1264,7 @@ export function QuoteBuilder({
 
               const previewProps: QuotePreviewCardProps = {
                 customerName: customerDisplayName,
+                customerPhone: selectedCustomer?.phone ?? null,
                 legalName: legalDisplayName,
                 contactName: selectedContact?.name,
                 contactRole: contactRoleBadge,
@@ -1282,6 +1283,11 @@ export function QuoteBuilder({
               return (
                 <DocumentPreview
                   {...toDocumentPreviewProps(previewProps, { typeLabel, statusLabel: quoteStatusLabels.DRAFT })}
+                  stepShortcuts={[
+                    { label: "Cliente", onSelect: () => setStep("client") },
+                    { label: "Conceptos", onSelect: () => setStep("items") },
+                    { label: "Notas", onSelect: () => setStep("notes") },
+                  ]}
                 />
               );
             })()}

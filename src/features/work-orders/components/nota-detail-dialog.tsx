@@ -87,7 +87,7 @@ export function NotaDetailDialog({
           <DialogDescription>{customerName} · {quote.title}</DialogDescription>
           <DialogMobileClose aria-label="Cerrar detalle de nota" />
         </DialogMobileHeader>
-        <DialogMobileBody data-testid="nota-detail-body" className="grid content-start gap-4">
+        <DialogMobileBody data-testid="nota-detail-body" className="grid content-start gap-4 bg-[var(--background)]">
           <section className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--color-text-muted)]" data-testid="nota-detail-summary">
             <span>Folio {noteFolio}</span>
             <span>Referencia interna: {workOrderNumber}</span>

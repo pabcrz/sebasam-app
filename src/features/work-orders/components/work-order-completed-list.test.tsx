@@ -244,8 +244,8 @@ describe("WorkOrderCompletedList", () => {
     expect(cardPrintAction).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas");
     expect(within(screen.getByTestId("nota-payment-history")).getAllByRole("listitem")).toHaveLength(longPaymentHistory.length);
     expect(screen.getByTestId("quote-payment-balance-indicator")).toHaveTextContent(/Saldo pendiente\s*\$125\.00/);
-    expect(screen.getByTestId("note-due-date")).toHaveTextContent(/Fecha de vencimiento de pago: 21 de agosto de 2026\./);
-    expect(screen.queryByTestId("quote-validity")).not.toBeInTheDocument();
+    expect(screen.getByTestId("document-preview-dates")).toHaveTextContent(/Fecha de vencimiento de pago: 21 de agosto de 2026\./);
+    expect(screen.getByTestId("document-preview-dates")).not.toHaveTextContent("Vigente hasta");
     expect(screen.getByRole("button", { name: "Registrar pago para COT-001" })).toBeInTheDocument();
     expect(screen.getByTestId("nota-detail-actions").querySelector('[aria-label="Compartir cotización COT-001"]')).not.toBeNull();
     expect(within(screen.getByTestId("document-preview")).getByRole("region", { name: "Cliente y unidad" })).toHaveTextContent("Cliente de prueba");

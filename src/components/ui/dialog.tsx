@@ -171,8 +171,9 @@ export type DialogVariant = "dialog" | "sheet";
 const dialogShapeClassName =
   "left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-h-[calc(100dvh_-_2rem)] w-[calc(100vw_-_2rem)] overflow-y-auto rounded-[var(--radius-lg)] p-[var(--space-lg)] shadow-[var(--shadow-dialog)] gap-[var(--space-md)]";
 
+/* Rows: fixed header, the body takes the rest (min-h-0 lets it scroll), fixed footer. Mobile slides up; the desktop panel keeps its own direction. */
 const sheetShapeClassName =
-  "inset-x-0 bottom-0 top-auto w-full max-w-none max-h-[calc(100dvh_-_var(--space-xl))] translate-x-0 translate-y-0 gap-0 rounded-t-[var(--radius-sheet)] rounded-b-none p-0 shadow-[var(--shadow-md)] md:inset-y-0 md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-dvh md:max-h-none md:w-[420px] md:max-w-[420px] md:rounded-l-[var(--radius-sheet)] md:rounded-r-none md:rounded-t-none";
+  "inset-x-0 bottom-0 top-auto w-full max-w-none max-h-[calc(100dvh_-_var(--space-xl))] grid-rows-[auto_minmax(0,1fr)_auto] translate-x-0 translate-y-0 gap-0 rounded-t-[var(--radius-sheet)] rounded-b-none p-0 shadow-[var(--shadow-md)] max-md:data-[state=open]:animate-bottom-sheet md:inset-y-0 md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-dvh md:max-h-none md:w-[420px] md:max-w-[420px] md:rounded-l-[var(--radius-sheet)] md:rounded-r-none md:rounded-t-none";
 
 export interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {

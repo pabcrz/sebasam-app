@@ -12,6 +12,8 @@ import { resolveQuotePreviewFigures } from "./quote-preview-figures";
 
 export interface QuotePreviewCardProps {
   customerName: string;
+  /** Customer phone for the in-app preview; the print and public views do not read it. */
+  customerPhone?: string | null;
   contactName?: string | null;
   contactRole?: string | null;
   legalName?: string | null;
@@ -28,6 +30,8 @@ export interface QuotePreviewCardProps {
   remainingCents?: number | null;
   showPaymentStatus?: boolean;
   validUntil: Date | null;
+  /** Quote creation date for the in-app preview ("Cotizada el"); absent for drafts built in the builder. */
+  createdAt?: Date | null;
   paymentDueDate?: Date | null;
   isNote?: boolean;
   isPrint?: boolean;

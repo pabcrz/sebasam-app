@@ -1358,7 +1358,7 @@ describe("QuoteBuilder", () => {
     ]);
   }, 10_000);
 
-  it("shows the validity note in the preview step", async () => {
+  it("shows the validity date as the last line of the preview step", async () => {
     const user = userEvent.setup();
 
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
@@ -1370,8 +1370,25 @@ describe("QuoteBuilder", () => {
     await fillNotesStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByTestId("quote-validity")).toHaveTextContent(/vigente hasta/i);
-    expect(screen.getByTestId("quote-validity")).toHaveTextContent(/cambios imprevistos/i);
+    expect(screen.getByTestId("document-preview-dates")).toHaveTextContent(/vigente hasta/i);
+    expect(screen.getByTestId("document-preview-dates")).not.toHaveTextContent(/cambios imprevistos/i);
+  });
+
+  it("jumps back from the preview step to the concepts step with the ✎ shortcut", async () => {
+    const user = userEvent.setup();
+
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    await user.click(screen.getByRole("button", { name: "✎ Conceptos" }));
+
+    expect(screen.getByRole("button", { name: "Paso 2: Conceptos" })).toHaveAttribute("aria-current", "step");
   });
 
   it("limits the vehicle plate input to 10 characters", async () => {

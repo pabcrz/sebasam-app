@@ -272,7 +272,7 @@ describe("QuotePreviewDialog", () => {
     expect(screen.queryByText(/imprimir cotización/i)).not.toBeInTheDocument();
   });
 
-  it("renders contact with role 'Operador' when DRIVER is present in snapshot", async () => {
+  it("renders the driver from the snapshot as 'Chofer' under the unit", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote({
       contactSnapshot: {
@@ -285,10 +285,10 @@ describe("QuotePreviewDialog", () => {
     render(<QuotePreviewDialog quote={quote} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(screen.getByText("Operador: Roberto Chofer")).toBeInTheDocument();
+    expect(screen.getByText("Chofer: Roberto Chofer")).toBeInTheDocument();
   });
 
-  it("renders contact with role 'Contacto responsable' and 'Contacto de facturación'", async () => {
+  it("keeps non-driver contacts out of the in-app preview", async () => {
     const user = userEvent.setup();
     const contactQuote = createMockQuote({
       contactSnapshot: {
@@ -300,7 +300,8 @@ describe("QuotePreviewDialog", () => {
 
     const { unmount } = render(<QuotePreviewDialog quote={contactQuote} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
-    expect(screen.getByText("Contacto responsable: Maria Directora")).toBeInTheDocument();
+    expect(screen.queryByText(/Maria Directora/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Chofer:/)).not.toBeInTheDocument();
     unmount();
 
     const billingQuote = createMockQuote({
@@ -312,7 +313,7 @@ describe("QuotePreviewDialog", () => {
     });
     render(<QuotePreviewDialog quote={billingQuote} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
-    expect(screen.getByText("Contacto de facturación: Carlos Contador")).toBeInTheDocument();
+    expect(screen.queryByText(/Carlos Contador/)).not.toBeInTheDocument();
   });
 
   it("prioritizes contact snapshot over changed live customer contact", async () => {
@@ -334,18 +335,18 @@ describe("QuotePreviewDialog", () => {
     render(<QuotePreviewDialog quote={quote} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(screen.getByText("Operador: Chofer Histórico")).toBeInTheDocument();
+    expect(screen.getByText("Chofer: Chofer Histórico")).toBeInTheDocument();
     expect(screen.queryByText(/Nuevo Chofer Vivo/)).not.toBeInTheDocument();
   });
 
-  it("falls back to live customer contact when contactSnapshot is null", async () => {
+  it("falls back to the live customer driver when contactSnapshot is null", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote({
       contactSnapshot: null,
       customerContact: {
         id: "c-live",
-        name: "Contacto Vivo",
-        role: "CONTACT",
+        name: "Chofer Vivo",
+        role: "DRIVER",
         phone: "5511223344",
       },
     });
@@ -353,7 +354,7 @@ describe("QuotePreviewDialog", () => {
     render(<QuotePreviewDialog quote={quote} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(screen.getByText("Contacto responsable: Contacto Vivo")).toBeInTheDocument();
+    expect(screen.getByText("Chofer: Chofer Vivo")).toBeInTheDocument();
   });
 
   it("does not render a contact line when no contact is selected", async () => {

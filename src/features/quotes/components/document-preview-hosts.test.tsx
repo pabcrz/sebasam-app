@@ -39,6 +39,16 @@ describe("document preview hosts", () => {
     expect(screen.getByTestId("document-preview")).toHaveTextContent("Cambio de aceite");
   });
 
+  it("keeps the quote preview body on the page background as the only scroller", () => {
+    render(<QuotePreviewDialog quote={quote} open onOpenChange={() => {}} />);
+
+    const dialog = screen.getByRole("dialog");
+    const scrollers = dialog.querySelectorAll(".overflow-y-auto");
+    expect(scrollers).toHaveLength(1);
+    expect(scrollers[0]).toHaveClass("bg-[var(--background)]");
+    expect(scrollers[0]).toContainElement(screen.getByTestId("document-preview"));
+  });
+
   it("renders the note detail through the same shared DocumentPreview", () => {
     render(
       <NotaDetailDialog
