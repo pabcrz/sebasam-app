@@ -109,6 +109,9 @@ Cada pieza se construye una vez en `src/components/ui`; las pantallas solo las c
 | `ListRow` (clientes, trabajadores, usuarios) | Toda la fila abre el detalle; a la derecha va el dato que sirve para decidir (saldo, trabajos activos), no un botón. |
 | `Section` + `DangerZone` | Si el dato se explica solo (teléfono, correo, dirección) no lleva etiqueta: icono más dato, o "Sin teléfono" en gris. Leer primero, editar a demanda. Lo destructivo vive aparte, al final, con contorno rojo; nunca como botón sólido en medio del flujo. |
 | `Sheet` | Para filtrar, gestionar, editar y "Más". Sale desde abajo con asa y fondo oscurecido, se cierra tocando afuera. En escritorio se abre como panel derecho de 420 px sin oscurecer la lista. |
+| `Tabs` | Cambian de sección dentro de la página (Resumen / Vehículos). Pestaña subrayada: la activa va en negrita con línea de 2 px en gradiente de marca; las demás en gris. Nunca filtran una lista. |
+| `SegmentedControl` | Filtra una lista (Todas / Pendientes / Pagadas). Contenedor de 16 px sin borde ni margen interno; la opción elegida va en tonal y ocupa todo el alto. Con `href` cada opción es un enlace y la actual lleva `aria-current`. |
+| `Chip` / `ChipAdd` / `ChipRow` | Chip elige una opción: sin borde, elegido en tonal, hover tonal con contorno fino, `aria-pressed`. ChipAdd agrega algo ("+ Mano de obra"): borde punteado, hover tonal. ChipRow: una sola fila con scroll horizontal; nunca salta de renglón. |
 
 ### Anatomía de hojas, diálogos y flujos
 
