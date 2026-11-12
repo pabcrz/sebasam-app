@@ -46,6 +46,17 @@ describe("FilterSheet", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it("stays open when onApply refuses the fields, and omits the count when it is unknown", () => {
+    const onOpenChange = vi.fn();
+    render(
+      <FilterSheet open onOpenChange={onOpenChange} onClear={() => {}} onApply={() => false}>{null}</FilterSheet>,
+    );
+
+    expect(footerButtons()).toEqual(["Limpiar", "Ver resultados"]);
+    fireEvent.click(screen.getByRole("button", { name: "Ver resultados" }));
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
   it("renders nothing while closed", () => {
     render(<FilterSheet open={false} onOpenChange={() => {}} resultCount={0} onClear={() => {}}>{null}</FilterSheet>);
 

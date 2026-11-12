@@ -3,6 +3,15 @@ import { render, screen } from "@testing-library/react";
 import { Card, CardHeader, CardTitle } from "./card";
 
 describe("Card", () => {
+  it("separates from the page with shadow only, never a border", () => {
+    render(<Card data-testid="surface">Contenido</Card>);
+
+    const card = screen.getByTestId("surface");
+    expect(card.className).toContain("shadow-[var(--shadow-card)]");
+    expect(card.className).toContain("rounded-[var(--radius-lg)]");
+    expect(card.className).not.toMatch(/(^|\s)border(\s|$)/);
+  });
+
   it("fills the available width in a horizontal flex layout", () => {
     const styles = document.createElement("style");
     styles.textContent = ".w-full { width: 100%; }";

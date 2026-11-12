@@ -13,7 +13,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          "w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)]",
+          "w-full rounded-[var(--radius-lg)] bg-[var(--color-surface)]",
           !flush && "p-[var(--space-md)]",
           "shadow-[var(--shadow-card)]",
           className,
