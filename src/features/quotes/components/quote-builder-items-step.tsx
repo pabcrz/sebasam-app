@@ -6,11 +6,12 @@ import { Icon } from "@/components/ui/icon";
 import {
   Badge,
   Button,
-  Checkbox,
   Input,
   Label,
+  Switch,
 } from "@/components/ui";
-import { itemTypes, SectionFormValue } from "./quote-builder-shared";
+import { formatCents } from "@/features/quotes/lib/format";
+import { calculateTotals, itemTypes, SectionFormValue } from "./quote-builder-shared";
 import {
   DndContext,
   closestCenter,
@@ -189,10 +190,16 @@ export function QuoteBuilderItemsStep({
                         placeholder="Nombre de la sección (ej. Parte delantera)"
                         value={section.name}
                         onChange={(e) => dispatch({ type: "updateSectionName", sectionIndex, name: e.target.value })}
-                        className="min-w-0 flex-1 bg-transparent p-0 text-sm font-semibold text-[var(--color-text-main)] outline-none placeholder:text-[var(--color-text-muted)]"
+                        className="min-w-0 flex-1 bg-transparent p-0 text-sm font-bold text-[var(--color-text-main)] outline-none placeholder:text-[var(--color-text-muted)]"
                         name={`sections.${sectionIndex}.name`}
                       />
                     </div>
+                    <span
+                      data-testid={`section-subtotal-${sectionIndex}`}
+                      className="shrink-0 text-sm font-semibold tabular-nums text-[var(--color-text-main)]"
+                    >
+                      {formatCents(calculateTotals(section.items, false).subtotalCents)}
+                    </span>
 
                     {sections.length > 1 ? (
                       <Button
@@ -230,22 +237,18 @@ export function QuoteBuilderItemsStep({
       </div>
 
       <aside data-testid="quote-summary-column" className="grid min-w-0 content-start gap-3 lg:sticky lg:top-0">
-        <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h4 className="font-semibold text-[var(--color-text-main)]">Totales</h4>
-              <p className="text-sm text-[var(--color-text-muted)]">Ajusta el IVA o descuento y revisa su impacto antes de enviar.</p>
-            </div>
+        <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
+          <div className="grid gap-3">
+            <h4 className="font-semibold text-[var(--color-text-main)]">Totales</h4>
             <input type="hidden" name="taxEnabled" value={taxEnabled ? "on" : "off"} />
-            <Checkbox
+            <Switch
               label="Incluir IVA (16%)"
               checked={taxEnabled}
               onCheckedChange={(checked) => dispatch({ type: "setTaxEnabled", taxEnabled: checked === true })}
-              className="shrink-0"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="discount">Descuento Global (Opcional)</Label>
+            <Label htmlFor="discount">Descuento (opcional)</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--color-text-muted)]">$</span>
               <Input
@@ -261,9 +264,6 @@ export function QuoteBuilderItemsStep({
                 placeholder="0.00"
               />
             </div>
-            <p className="text-xs text-[var(--color-text-muted)]">
-              Este descuento se aplicará al subtotal, reduciendo el total sin alterar los costos individuales (ej. nómina).
-            </p>
           </div>
           <QuoteTotalsCard
             subtotalCents={subtotalCents}

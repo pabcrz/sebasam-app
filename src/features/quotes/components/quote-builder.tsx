@@ -8,13 +8,21 @@ import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Checkbox,
+  DialogMobileBody,
+  DialogMobileContent,
+  DialogMobileFooter,
+  DialogMobileHeader,
+  DialogTitle,
   Input,
   Label,
+  SegmentedControl,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Sheet,
+  Switch,
   Textarea,
 } from "@/components/ui";
 import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
@@ -56,7 +64,6 @@ import type {
   QuoteBuilderProps,
   QuoteCustomerActionResult,
 } from "./quote-builder-contracts";
-import { QuoteFlowCloseContext } from "./quote-builder-contracts";
 
 export type {
   CustomerOption,
@@ -234,7 +241,8 @@ export function QuoteBuilder({
       return;
     }
 
-    if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0;
+    const scroller = scrollAreaRef.current?.closest<HTMLElement>("[data-testid='multi-step-dialog-body']") ?? scrollAreaRef.current;
+    if (scroller) scroller.scrollTop = 0;
     const activeHeading = scrollAreaRef.current?.querySelector<HTMLElement>(
       `[data-step-heading="${step}"]`,
     );
@@ -601,8 +609,9 @@ export function QuoteBuilder({
   const stepperContent = fullScreen
     ? <QuoteBuilderProgress current={step} onChange={setStep} />
     : <QuoteBuilderStepper current={step} onChange={setStep} />;
-  // ← on the first step and ✕ leave the flow through the shell's discard guard.
-  const requestLeave = React.useContext(QuoteFlowCloseContext);
+  const subtitleContent = fullScreen
+    ? <p className="truncate text-xs text-[var(--color-text-muted)]">{`Paso ${currentStepIndex + 1} de ${steps.length} · ${flowStepLabels[step]}`}</p>
+    : null;
   const nextStep = steps[currentStepIndex + 1];
   const submitButton = (
     <Button
@@ -631,9 +640,19 @@ export function QuoteBuilder({
   );
   const footerContent = fullScreen ? (
     <>
-      <p className="min-w-0 truncate text-sm font-medium text-[var(--color-text-muted)]">
-        {step === "items" || step === "notes" ? `Total ${formatCents(totalCents)}` : flowStepLabels[step]}
-      </p>
+      {step === "items" || step === "notes" ? (
+        <div className="flex min-w-0 flex-col">
+          <span className="text-xs font-medium text-[var(--color-text-muted)]">{taxEnabled ? "Total con IVA" : "Total"}</span>
+          <span data-testid="quote-builder-footer-total" className="text-[22px] font-bold leading-tight tabular-nums text-[var(--color-amount)]">
+            {formatCents(totalCents)}
+          </span>
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-col">
+          <span className="text-xs font-medium text-[var(--color-text-muted)]">{`Paso ${currentStepIndex + 1} de ${steps.length}`}</span>
+          <span className="truncate text-sm font-semibold text-[var(--color-text-main)]">{flowStepLabels[step]}</span>
+        </div>
+      )}
       {step === "preview" ? submitButton : (
         <Button type="button" variant="primary" size="default" onClick={goToNext}>
           {`${flowStepLabels[nextStep]} →`}
@@ -667,12 +686,14 @@ export function QuoteBuilder({
       )}
     </>
   );
+  // ← steps back and is disabled on the first step; ✕ (in the shell) is the only way out.
   const leadingContent = (
     <button
       type="button"
-      onClick={step === "client" ? () => requestLeave?.() : goToPrevious}
-      aria-label={step === "client" ? "Salir de la cotización" : "Paso anterior"}
-      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+      onClick={goToPrevious}
+      disabled={currentStepIndex === 0}
+      aria-label="Paso anterior"
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-40"
     >
       <Icon name="chevron-left" className="h-5 w-5" aria-hidden="true" />
     </button>
@@ -682,7 +703,7 @@ export function QuoteBuilder({
     chromeHosts != null &&
     chromeHosts.stepperHost != null &&
     chromeHosts.footerHost != null &&
-    (!fullScreen || chromeHosts.leadingHost != null);
+    (!fullScreen || (chromeHosts.leadingHost != null && chromeHosts.subtitleHost != null));
 
   return (
     <>
@@ -697,7 +718,6 @@ export function QuoteBuilder({
         alignItems: "stretch",
          display: "flex",
          flexDirection: "column",
-         height: "100%",
         justifyContent: "flex-start",
         minHeight: 0,
         minWidth: 0,
@@ -714,13 +734,6 @@ export function QuoteBuilder({
             ref={scrollAreaRef}
             className={scrollAreaClass}
             data-testid="quote-builder-scroll-area"
-            style={isDialogLayout ? {
-              flex: "1 1 0%",
-              minHeight: 0,
-              minWidth: 0,
-              overflowY: "auto",
-              overscrollBehaviorY: "contain",
-            } : undefined}
           >
             <div className="grid content-start gap-6">
           {isUnifiedDirect || mode === "quote" ? (
@@ -752,26 +765,30 @@ export function QuoteBuilder({
               Cliente y unidad
             </h2>
             {isUnifiedDirect || mode === "quote" ? (
-              <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
-                <Label htmlFor="direct-operation">Tipo de operación</Label>
-                <Select value={operation} onValueChange={(value) => changeOperation(value as "WORK" | "SALE")}>
-                  <SelectTrigger id="direct-operation"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="WORK">Trabajo de taller</SelectItem>
-                    <SelectItem value="SALE">Venta de refacciones</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <SegmentedControl
+                label="Tipo de operación"
+                fullWidth
+                options={[
+                  { value: "WORK", label: "Trabajo de taller" },
+                  { value: "SALE", label: "Venta" },
+                ]}
+                value={operation}
+                onValueChange={(value) => changeOperation(value as "WORK" | "SALE")}
+              />
             ) : null}
             <div className="grid gap-2">
               <Label htmlFor="customerId">Cliente</Label>
               <input type="hidden" name="customerId" value={customerId} />
               <input type="hidden" name="customerContactId" value={customerContactId} />
               <input type="hidden" name="customerFiscalProfileId" value={customerFiscalProfileId} />
+              <div className="relative">
+                <span data-testid="customer-search-icon" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]">
+                  <Icon name="search" className="h-4 w-4" aria-hidden="true" />
+                </span>
               <Input
                 ref={customerInputRef}
                 id="customerId"
-                className="focus-visible:ring-inset"
+                className="pl-9 focus-visible:ring-inset"
                 role="combobox"
                 aria-controls="customer-results"
                 aria-expanded={isCustomerListOpen}
@@ -793,8 +810,9 @@ export function QuoteBuilder({
                 onFocus={() => setIsCustomerListOpen(true)}
                 onClick={() => setIsCustomerListOpen(true)}
                 onKeyDown={handleCustomerSearchKeyDown}
-                placeholder="Buscar por nombre, correo, teléfono, dirección, placas o notas"
+                placeholder="Nombre, teléfono o placas"
               />
+              </div>
               {isSearchingCustomers ? <p className="text-sm text-[var(--color-text-muted)]" role="status">Buscando clientes...</p> : null}
               {customerSearchError ? <p className="text-sm text-[var(--color-status-danger-fg)]" role="alert">{customerSearchError}</p> : null}
               {isCustomerListOpen && !customerSearchError ? createPortal(
@@ -818,7 +836,7 @@ export function QuoteBuilder({
                 document.body,
               ) : null}
               {selectedCustomer ? (
-                <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+                <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3">
                   <div>
                     <p className="text-sm text-[var(--color-text-muted)]">
                       Cliente seleccionado: <strong className="text-[var(--color-text-main)]">{selectedCustomer.name}</strong>
@@ -899,126 +917,128 @@ export function QuoteBuilder({
                 </div>
               ) : null}
               {createCustomerAction ? (
-                <div className="grid gap-3 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-[var(--color-text-main)]">¿No encuentras el cliente?</p>
-                      <p className="text-xs text-[var(--color-text-muted)]">Créalo sin salir de la cotización.</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowCreateCustomer((current) => !current)}
-                      aria-expanded={showCreateCustomer}
-                    >
-                      Crear cliente
-                    </Button>
-                  </div>
-
-                  {showCreateCustomer ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="grid gap-2 sm:col-span-2">
-                        <Label htmlFor="quoteCustomerName">Nombre</Label>
-                          <Input
-                            id="quoteCustomerName"
-                            value={newCustomerName}
-                            onChange={(event) => setNewCustomerName(event.target.value)}
-                            placeholder="Ej. Juan Pérez o Grúas Mejía"
-                            required
-                            aria-describedby={newCustomerNameError ? "quote-customer-name-error" : undefined}
-                            aria-invalid={newCustomerNameError ? true : undefined}
-                          />
-                          <span id="quote-customer-name-error" role={newCustomerNameError ? "alert" : undefined} className="min-h-4 text-xs text-[var(--color-status-danger-fg)]">
-                            {newCustomerNameError}
-                          </span>
-                      </div>
-                      <div className="grid gap-2 sm:col-span-2">
-                        <Label htmlFor="quoteCustomerLegalName">Razón social formal (opcional)</Label>
-                        <Input
-                          id="quoteCustomerLegalName"
-                          value={newCustomerLegalName}
-                          onChange={(event) => setNewCustomerLegalName(event.target.value)}
-                          placeholder="Ej. Grúas Mejía Cuautla S.A. de C.V."
-                        />
-                      </div>
-                      <div className="grid gap-3 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-light)] bg-[var(--color-surface)] p-2.5 sm:col-span-2 sm:grid-cols-2">
-                        <div className="grid gap-1.5">
-                          <Label htmlFor="quoteCustomerContactName" className="text-xs">
-                            Chofer u operador inicial (opcional)
-                          </Label>
-                          <Input
-                            id="quoteCustomerContactName"
-                            value={newCustomerContactName}
-                            onChange={(event) => setNewCustomerContactName(event.target.value)}
-                            placeholder="Ej. El Mariachi / Juanito"
-                          />
-                        </div>
-                        <div className="grid gap-1.5">
-                          <Label htmlFor="quoteCustomerContactPhone" className="text-xs">
-                            Teléfono del chofer (opcional)
-                          </Label>
-                          <Input
-                            id="quoteCustomerContactPhone"
-                            type="tel"
-                            inputMode="tel"
-                            maxLength={20}
-                            value={newCustomerContactPhone}
-                            onChange={(event) => setNewCustomerContactPhone(event.target.value)}
-                            placeholder="55 1234 5678"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="quoteCustomerEmail">Correo electrónico</Label>
-                        <Input
-                          id="quoteCustomerEmail"
-                          type="email"
-                          value={newCustomerEmail}
-                          onChange={(event) => setNewCustomerEmail(event.target.value)}
-                          placeholder="cliente@ejemplo.com"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="quoteCustomerPhone">Teléfono</Label>
-                        <Input
-                          id="quoteCustomerPhone"
-                          type="tel"
-                          inputMode="tel"
-                          maxLength={20}
-                          value={newCustomerPhone}
-                          onChange={(event) => setNewCustomerPhone(event.target.value)}
-                          placeholder="55 1234 5678"
-                        />
-                      </div>
-                      {createCustomerError ? (
-                        <p className="text-sm text-[var(--color-status-danger-fg)]" role="alert">
-                          {createCustomerError}
-                        </p>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="primary"
-                        className="w-full sm:w-fit"
-                        loading={isCreatingCustomer}
-                        disabled={newCustomerName.trim() === "" || Boolean(newCustomerNameError)}
-                        onClick={handleCreateCustomer}
-                      >
-                        Guardar y seleccionar
-                      </Button>
-                    </div>
-                  ) : null}
+                <div className="grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateCustomer(true)}
+                    className="justify-self-start rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-link)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+                  >
+                    + Crear cliente nuevo
+                  </button>
                   {createCustomerMessage ? (
                     <p className="text-sm text-[var(--color-status-success-fg)]" role="status">
                       {createCustomerMessage}
                     </p>
                   ) : null}
+                  <Sheet open={showCreateCustomer} onOpenChange={setShowCreateCustomer}>
+                    <DialogMobileContent variant="sheet" aria-describedby={undefined}>
+                      <DialogMobileHeader>
+                        <DialogTitle>Crear cliente nuevo</DialogTitle>
+                      </DialogMobileHeader>
+                      <DialogMobileBody>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="grid gap-2 sm:col-span-2">
+                            <Label htmlFor="quoteCustomerName">Nombre</Label>
+                            <Input
+                              id="quoteCustomerName"
+                              value={newCustomerName}
+                              onChange={(event) => setNewCustomerName(event.target.value)}
+                              placeholder="Ej. Juan Pérez o Grúas Mejía"
+                              required
+                              aria-describedby={newCustomerNameError ? "quote-customer-name-error" : undefined}
+                              aria-invalid={newCustomerNameError ? true : undefined}
+                            />
+                            <span id="quote-customer-name-error" role={newCustomerNameError ? "alert" : undefined} className="min-h-4 text-xs text-[var(--color-status-danger-fg)]">
+                              {newCustomerNameError}
+                            </span>
+                          </div>
+                          <div className="grid gap-2 sm:col-span-2">
+                            <Label htmlFor="quoteCustomerLegalName">Razón social formal (opcional)</Label>
+                            <Input
+                              id="quoteCustomerLegalName"
+                              value={newCustomerLegalName}
+                              onChange={(event) => setNewCustomerLegalName(event.target.value)}
+                              placeholder="Ej. Grúas Mejía Cuautla S.A. de C.V."
+                            />
+                          </div>
+                          <div className="grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] p-2.5 sm:col-span-2 sm:grid-cols-2">
+                            <div className="grid gap-1.5">
+                              <Label htmlFor="quoteCustomerContactName" className="text-xs">
+                                Chofer u operador inicial (opcional)
+                              </Label>
+                              <Input
+                                id="quoteCustomerContactName"
+                                value={newCustomerContactName}
+                                onChange={(event) => setNewCustomerContactName(event.target.value)}
+                                placeholder="Ej. El Mariachi / Juanito"
+                              />
+                            </div>
+                            <div className="grid gap-1.5">
+                              <Label htmlFor="quoteCustomerContactPhone" className="text-xs">
+                                Teléfono del chofer (opcional)
+                              </Label>
+                              <Input
+                                id="quoteCustomerContactPhone"
+                                type="tel"
+                                inputMode="tel"
+                                maxLength={20}
+                                value={newCustomerContactPhone}
+                                onChange={(event) => setNewCustomerContactPhone(event.target.value)}
+                                placeholder="55 1234 5678"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="quoteCustomerEmail">Correo electrónico</Label>
+                            <Input
+                              id="quoteCustomerEmail"
+                              type="email"
+                              value={newCustomerEmail}
+                              onChange={(event) => setNewCustomerEmail(event.target.value)}
+                              placeholder="cliente@ejemplo.com"
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="quoteCustomerPhone">Teléfono</Label>
+                            <Input
+                              id="quoteCustomerPhone"
+                              type="tel"
+                              inputMode="tel"
+                              maxLength={20}
+                              value={newCustomerPhone}
+                              onChange={(event) => setNewCustomerPhone(event.target.value)}
+                              placeholder="55 1234 5678"
+                            />
+                          </div>
+                          {createCustomerError ? (
+                            <p className="text-sm text-[var(--color-status-danger-fg)] sm:col-span-2" role="alert">
+                              {createCustomerError}
+                            </p>
+                          ) : null}
+                        </div>
+                      </DialogMobileBody>
+                      <DialogMobileFooter>
+                        <Button type="button" variant="outline" onClick={() => setShowCreateCustomer(false)}>
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="primary"
+                          loading={isCreatingCustomer}
+                          disabled={newCustomerName.trim() === "" || Boolean(newCustomerNameError)}
+                          onClick={handleCreateCustomer}
+                        >
+                          Guardar y seleccionar
+                        </Button>
+                      </DialogMobileFooter>
+                    </DialogMobileContent>
+                  </Sheet>
                 </div>
               ) : null}
             </div>
 
             {isWorkshopDirect ? (
-              <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
+              <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
                 <div className="grid gap-2">
                   <Label htmlFor="masterId">Maestro responsable *</Label>
                   <Select
@@ -1054,7 +1074,7 @@ export function QuoteBuilder({
               </div>
             ) : null}
 
-            {!isSaleNote ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
+            {!isSaleNote ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
               <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
@@ -1063,19 +1083,20 @@ export function QuoteBuilder({
                     id="plate"
                     name="plate"
                     maxLength={10}
+                    placeholder="Ej. ABC-123"
                     value={vehicle.plate}
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "plate", value: event.target.value })}
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="economicNumber">Número económico / ECO (opcional)</Label>
+                  <Label htmlFor="economicNumber">ECO (opcional)</Label>
                   <Input
                     id="economicNumber"
                     name="economicNumber"
                     maxLength={30}
                     value={vehicle.economicNumber}
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "economicNumber", value: event.target.value })}
-                    placeholder="Ej. ECO-104"
+                    placeholder="Ej. 42"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -1083,6 +1104,7 @@ export function QuoteBuilder({
                   <Input
                     id="brand"
                     name="brand"
+                    placeholder="Ej. Ford"
                     value={vehicle.brand}
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "brand", value: event.target.value })}
                   />
@@ -1092,6 +1114,7 @@ export function QuoteBuilder({
                   <Input
                     id="model"
                     name="model"
+                    placeholder="Ej. F-350"
                     value={vehicle.model}
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "model", value: event.target.value })}
                   />
@@ -1101,6 +1124,7 @@ export function QuoteBuilder({
                   <Input
                     id="year"
                     name="year"
+                    placeholder="Ej. 2015"
                     type="number"
                     min="1950"
                     max={new Date().getFullYear() + 1}
@@ -1213,7 +1237,7 @@ export function QuoteBuilder({
                 placeholder={isSaleNote || mode === "direct-note" ? "Detalles adicionales de la nota..." : mode === "direct-work-order" || mode === "direct" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
               />
             </div>
-            <Checkbox
+            <Switch
               name="administrative"
               label="Cotización administrativa"
               checked={administrative}
@@ -1277,6 +1301,7 @@ export function QuoteBuilder({
     {shouldPortalChrome && chromeHosts ? (
       <>
         {fullScreen ? createPortal(leadingContent, chromeHosts.leadingHost!) : null}
+        {fullScreen ? createPortal(subtitleContent, chromeHosts.subtitleHost!) : null}
         {createPortal(stepperContent, chromeHosts.stepperHost!)}
         {createPortal(footerContent, chromeHosts.footerHost!)}
       </>

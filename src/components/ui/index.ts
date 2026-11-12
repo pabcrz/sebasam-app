@@ -31,6 +31,7 @@ export * from "./spinner";
 export * from "./stat-tile";
 export * from "./stat-card";
 export * from "./status-filter-nav";
+export * from "./switch";
 export * from "./table";
 export * from "./tabs";
 export * from "./toaster";

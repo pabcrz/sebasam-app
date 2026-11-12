@@ -46,3 +46,12 @@ describe("QuoteTotalsCard", () => {
     expect(container.textContent).not.toMatch(/Mercado\s*Pago/i);
   });
 });
+
+describe("QuoteTotalsCard surface", () => {
+  it("separates the card with a border only, never a shadow", () => {
+    const { container } = render(<QuoteTotalsCard subtotalCents={100} taxCents={16} totalCents={116} />);
+
+    expect(container.firstElementChild).toHaveClass("border");
+    expect(container.firstElementChild?.className).not.toMatch(/(?:^|\s)shadow/);
+  });
+});

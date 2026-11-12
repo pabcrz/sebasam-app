@@ -35,6 +35,8 @@ type QuoteBuilderDialogShellProps = {
   fullScreen?: boolean;
   /** Full-screen only: slot at the top left of the bar (the ← control). */
   leading?: React.ReactNode;
+  /** Full-screen only: line under the title (the step number and name). */
+  subtitle?: React.ReactNode;
 };
 
 /** Quote-builder-only modal chrome with compact desktop spacing. */
@@ -58,6 +60,7 @@ export function QuoteBuilderDialogShell({
   discardCancelLabel = "Seguir editando",
   fullScreen = false,
   leading,
+  subtitle,
 }: QuoteBuilderDialogShellProps) {
   const [confirmDiscardOpen, setConfirmDiscardOpen] = React.useState(false);
   const closeRequestFocusRef = React.useRef<HTMLElement | null>(null);
@@ -114,7 +117,10 @@ export function QuoteBuilderDialogShell({
         {fullScreen ? (
           <div className="flex h-14 shrink-0 items-center gap-2 border-b border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 lg:col-span-2" style={{ flexShrink: 0 }} data-testid="multi-step-dialog-header">
             {leading}
-            <DialogTitle className="min-w-0 flex-1 truncate text-base font-bold">{title}</DialogTitle>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <DialogTitle className="truncate text-base font-bold">{title}</DialogTitle>
+              {subtitle}
+            </div>
             <button type="button" onClick={requestClose} disabled={pending} aria-label={closeLabel} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50">
               <Icon name="close" className="h-5 w-5" aria-hidden="true" />
             </button>
@@ -132,7 +138,7 @@ export function QuoteBuilderDialogShell({
         </div>
         )}
         {stepper != null ? <div className={fullScreen ? "shrink-0 border-b border-[var(--color-border-light)] bg-[var(--color-surface)] px-4 py-3 lg:col-start-1 lg:row-start-2 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-3 lg:py-5" : "shrink-0 border-b border-[var(--color-border-light)] p-2 sm:p-2"} style={{ flexShrink: 0 }} data-testid="multi-step-dialog-stepper">{stepper}</div> : null}
-        <section className={fullScreen ? "px-4 py-4 lg:col-start-2 lg:row-start-2" : "py-2"} style={{ flex: "1 1 0%", minHeight: 0, minWidth: 0, overflowY: "auto", overscrollBehaviorY: "contain" }} data-testid="multi-step-dialog-body">
+        <section className={fullScreen ? "bg-[var(--background)] px-4 py-4 lg:col-start-2 lg:row-start-2" : "py-2"} style={{ flex: "1 1 0%", minHeight: 0, minWidth: 0, overflowY: "auto", overscrollBehaviorY: "contain" }} data-testid="multi-step-dialog-body">
           {body}
         </section>
         {footer != null ? <div className={fullScreen ? "flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] px-4 py-3 lg:col-span-2 lg:row-start-3" : "flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-2 sm:pt-4"} style={{ flexShrink: 0, minWidth: 0 }} data-testid="multi-step-dialog-footer">{footer}</div> : null}

@@ -79,6 +79,7 @@ export type QuoteBuilderProps = {
 
 export type QuoteBuilderChromeHosts = {
   leadingHost: HTMLDivElement | null;
+  subtitleHost: HTMLDivElement | null;
   stepperHost: HTMLDivElement | null;
   footerHost: HTMLDivElement | null;
 };

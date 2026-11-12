@@ -67,10 +67,10 @@ describe("quote builder concept layout (mobile)", () => {
     const user = userEvent.setup();
     await openItemsStep(user);
 
-    expect(screen.queryByRole("checkbox", { name: "Incluir en nómina / comisión" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: "Incluir en nómina / comisión" })).not.toBeInTheDocument();
 
     await user.click(within(screen.getByRole("group", { name: "Tipo del concepto 1" })).getByRole("button", { name: "Otro" }));
-    expect(screen.getByRole("checkbox", { name: "Incluir en nómina / comisión" })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Incluir en nómina / comisión" })).toBeInTheDocument();
   });
 
   it("puts Duplicar, Eliminar and Listo in the editor; Listo collapses the row", async () => {
@@ -140,12 +140,12 @@ describe("quote builder concept layout (desktop)", () => {
     await openItemsStep(user);
 
     const table = screen.getByRole("table", { name: "Conceptos de la sección 1" });
-    expect(within(table).queryByRole("checkbox", { name: "Incluir en nómina / comisión" })).not.toBeInTheDocument();
+    expect(within(table).queryByRole("switch", { name: "Incluir en nómina / comisión" })).not.toBeInTheDocument();
     expect(screen.getByTestId("payroll-cell-0")).toHaveTextContent("Sí");
 
     await user.click(within(table).getByRole("combobox", { name: "Tipo del concepto 1" }));
     await user.click(screen.getByRole("option", { name: "Otro" }));
-    expect(within(table).getByRole("checkbox", { name: "Incluir en nómina / comisión" })).toBeEnabled();
+    expect(within(table).getByRole("switch", { name: "Incluir en nómina / comisión" })).toBeEnabled();
   });
 
   it("moves focus with Tab through the row fields in column order, skipping the stepper buttons", async () => {
@@ -183,5 +183,75 @@ describe("quote builder concept layout (desktop)", () => {
     const summary = screen.getByTestId("quote-summary-column");
     expect(summary).toHaveClass("lg:sticky", "lg:top-0");
     expect(within(summary).getByTestId("quote-total")).toBeInTheDocument();
+  });
+});
+
+describe("quote builder concept hierarchy (mobile, visual batch 3)", () => {
+  it("shows the empty concept as Nuevo concepto with $0.00 and no pending line", async () => {
+    const user = userEvent.setup();
+    await openItemsStep(user);
+    await user.click(screen.getByRole("button", { name: "Listo" }));
+
+    const summary = screen.getByTestId("concept-summary-0");
+    expect(summary).toHaveTextContent("Nuevo concepto");
+    expect(summary).toHaveTextContent("$0.00");
+    expect(summary).not.toHaveTextContent("Concepto sin descripción");
+    expect(summary).not.toHaveTextContent("Pendiente");
+  });
+
+  it("closes a concept with its type, a green Nómina marker when it counts, its amount and a chevron", async () => {
+    const user = userEvent.setup();
+    await openItemsStep(user);
+    await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Cambio de aceite");
+    await user.type(screen.getByRole("spinbutton", { name: "Precio unitario" }), "250");
+    await user.click(screen.getByRole("button", { name: "Listo" }));
+
+    const summary = screen.getByTestId("concept-summary-0");
+    expect(within(summary).getByText("Cambio de aceite")).toBeInTheDocument();
+    expect(within(summary).getByText("Mano de obra")).toBeInTheDocument();
+    expect(within(summary).getByText("Nómina")).toHaveClass("text-[var(--color-status-success-fg)]");
+    expect(within(summary).getByText("$250.00")).toBeInTheDocument();
+    expect(summary.querySelector('[data-slot="chevron"], svg')).toBeInTheDocument();
+  });
+
+  it("shows no Nómina marker for an Otro concept that is not in payroll", async () => {
+    const user = userEvent.setup();
+    await openItemsStep(user);
+    await user.click(within(screen.getByRole("group", { name: "Tipo del concepto 1" })).getByRole("button", { name: "Otro" }));
+    await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Permiso municipal");
+    await user.type(screen.getByRole("spinbutton", { name: "Precio unitario" }), "80");
+    await user.click(screen.getByRole("button", { name: "Listo" }));
+
+    const summary = screen.getByTestId("concept-summary-0");
+    expect(within(summary).getByText("Otro")).toBeInTheDocument();
+    expect(within(summary).queryByText("Nómina")).not.toBeInTheDocument();
+  });
+
+  it("shows each section subtotal to the right of its bold name", async () => {
+    const user = userEvent.setup();
+    await openItemsStep(user);
+
+    const section = screen.getByTestId("section-0");
+    expect(within(section).getByTestId("section-subtotal-0")).toHaveTextContent("$0.00");
+    expect(within(section).getByLabelText("Nombre de la sección 1")).toHaveClass("font-bold");
+
+    await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Aceite");
+    await user.type(screen.getByRole("spinbutton", { name: "Precio unitario" }), "100");
+    expect(within(section).getByTestId("section-subtotal-0")).toHaveTextContent("$100.00");
+  });
+
+  it("tints the open concept with the muted surface, back to surface when closed, and drops the editor's left indent", async () => {
+    const user = userEvent.setup();
+    await openItemsStep(user);
+
+    const row = screen.getByTestId("concept-row-0");
+    expect(row).toHaveClass("bg-[var(--color-surface-muted)]");
+
+    const editor = document.getElementById(screen.getByTestId("concept-summary-0").getAttribute("aria-controls") ?? "");
+    expect(editor).not.toHaveClass("pl-[52px]");
+
+    await user.click(screen.getByRole("button", { name: "Listo" }));
+    expect(row).toHaveClass("bg-[var(--color-surface)]");
+    expect(row).not.toHaveClass("bg-[var(--color-surface-muted)]");
   });
 });

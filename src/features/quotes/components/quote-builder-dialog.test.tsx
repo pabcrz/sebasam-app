@@ -57,7 +57,8 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   expect(formStyle.display).toBe("flex");
   expect(formStyle.flexDirection).toBe("column");
   expect(formStyle.justifyContent).toBe("flex-start");
-  expect(formStyle.height).toBe("100%");
+  // The shell body is the only scroll zone: the form and its scroll area keep natural height.
+  expect(form.style.height).toBe("");
   expect(formStyle.minHeight).toBe("0px");
   expect(formStyle.minWidth).toBe("0px");
 
@@ -69,19 +70,13 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   expect(bodyStyle.overflowY).toBe("auto");
   expect(bodyStyle.overscrollBehaviorY).toBe("contain");
 
-  const scrollAreaStyle = getComputedStyle(scrollArea);
-  expect(scrollAreaStyle.flexGrow).toBe("1");
-  expect(scrollAreaStyle.flexShrink).toBe("1");
-  expect(scrollAreaStyle.minHeight).toBe("0px");
-  expect(scrollAreaStyle.minWidth).toBe("0px");
-  expect(scrollAreaStyle.overflowY).toBe("auto");
-  expect(scrollAreaStyle.overscrollBehaviorY).toBe("contain");
+  expect(getComputedStyle(scrollArea).overflowY).not.toBe("auto");
 
-  Object.defineProperties(scrollArea, {
+  Object.defineProperties(body, {
     clientHeight: { configurable: true, value: 320 },
     scrollHeight: { configurable: true, value: overflowing ? 960 : 240 },
   });
-  expect(scrollArea.scrollHeight > scrollArea.clientHeight).toBe(overflowing);
+  expect(body.scrollHeight > body.clientHeight).toBe(overflowing);
 }
 
 function expectFullScreenQuoteDialog(dialog: HTMLElement) {
@@ -127,11 +122,11 @@ async function enterRepresentativeQuoteState(user: ReturnType<typeof userEvent.s
   await user.clear(screen.getByRole("textbox", { name: "Cantidad" }));
   await user.type(screen.getByRole("textbox", { name: "Cantidad" }), "3");
   await user.type(screen.getByRole("spinbutton", { name: "Precio unitario" }), "1250");
-  await user.click(screen.getByRole("checkbox", { name: "Incluir IVA (16%)" }));
+  await user.click(screen.getByRole("switch", { name: "Incluir IVA (16%)" }));
   await user.click(screen.getByRole("button", { name: NEXT_STEP }));
   await user.type(screen.getByRole("textbox", { name: "Título" }), "Servicio completo");
   await user.type(screen.getByLabelText("Descripción", { selector: "textarea" }), "Trabajo prioritario");
-  await user.click(screen.getByRole("checkbox", { name: "Cotización administrativa" }));
+  await user.click(screen.getByRole("switch", { name: "Cotización administrativa" }));
 }
 
 function expectRepresentativeQuoteState() {
@@ -233,7 +228,7 @@ describe("QuoteBuilderDialog", () => {
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Crear cotización" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nueva cotización" })).toBeInTheDocument();
     expectFullScreenQuoteDialog(dialog);
     expectStableDialogLayout(dialog, false);
     expect(screen.queryByText(/crear cotización en borrador/i)).not.toBeInTheDocument();
@@ -256,7 +251,7 @@ describe("QuoteBuilderDialog", () => {
     await user.click(closeButton);
 
     const confirmation = screen.getByRole("dialog", { name: "¿Descartar la cotización?" });
-    const hiddenBuilder = screen.getByRole("dialog", { name: /Crear cotización/i, hidden: true });
+    const hiddenBuilder = screen.getByRole("dialog", { name: /Nueva cotización/i, hidden: true });
     expect(hiddenBuilder).toHaveAttribute("data-state", "open");
     expect(confirmation).toContainElement(document.activeElement as HTMLElement);
     expect(hiddenBuilder).not.toContainElement(document.activeElement as HTMLElement);
@@ -270,7 +265,7 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Seguir editando" }));
     await waitFor(() => expect(closeButton).toHaveFocus());
-    expect(screen.getByRole("dialog", { name: "Crear cotización" })).not.toHaveAttribute("aria-hidden");
+    expect(screen.getByRole("dialog", { name: "Nueva cotización" })).not.toHaveAttribute("aria-hidden");
   });
 
   it("closes a pristine form immediately", async () => {
@@ -339,7 +334,7 @@ describe("QuoteBuilderDialog", () => {
     const trigger = screen.getByRole("button", { name: "Nueva cotización" });
     await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
     await user.click(trigger);
-    await screen.findByRole("dialog", { name: "Crear cotización" });
+    await screen.findByRole("dialog", { name: "Nueva cotización" });
     expect(screen.getByRole("button", { name: "Paso 1: Cliente y unidad" })).toHaveAttribute("aria-current", "step");
     expect(screen.getByLabelText("Cliente")).not.toHaveValue("Acme");
     expect(screen.getByLabelText("Placas (opcional)")).toHaveValue("");
@@ -388,7 +383,7 @@ describe("QuoteBuilderDialog", () => {
     }
     await user.click(await screen.findByRole("option", { name: "Material" }));
 
-    expect(screen.getByRole("dialog", { name: "Crear cotización" })).toHaveAttribute("data-state", "open");
+    expect(screen.getByRole("dialog", { name: "Nueva cotización" })).toHaveAttribute("data-state", "open");
     expect(itemTypeSelect).toHaveTextContent("Material");
     expect(screen.queryByRole("option", { name: "Material" })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "¿Descartar la cotización?" })).not.toBeInTheDocument();
@@ -449,7 +444,7 @@ describe("QuoteBuilderDialog", () => {
     expect(screen.getByLabelText("Título")).toHaveValue("Servicio completo");
 
     await user.click(screen.getByRole("button", { name: "Crear cotización" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Crear cotización" })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva cotización" })).not.toBeInTheDocument());
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 

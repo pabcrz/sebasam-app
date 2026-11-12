@@ -33,8 +33,7 @@ describe("NewQuoteForm", () => {
   it("lets a quotation choose SALE without changing the note creation action", async () => {
     const user = userEvent.setup();
     renderForm();
-    await user.click(screen.getByLabelText("Tipo de operación"));
-    await user.click(screen.getByRole("option", { name: /Venta de refacciones/ }));
+    await user.click(screen.getByRole("button", { name: "Venta" }));
 
     expect(screen.getByRole("button", { name: "Siguiente" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Crear nota" })).not.toBeInTheDocument();

@@ -45,11 +45,15 @@ export function QuoteBuilderDialog({
   // regardless of sibling commit ordering.
   const [chromeHosts, setChromeHosts] = React.useState<QuoteBuilderChromeHosts>({
     leadingHost: null,
+    subtitleHost: null,
     stepperHost: null,
     footerHost: null,
   });
   const attachLeadingHost = React.useCallback((el: HTMLDivElement | null) => {
     setChromeHosts((current) => (current.leadingHost === el ? current : { ...current, leadingHost: el }));
+  }, []);
+  const attachSubtitleHost = React.useCallback((el: HTMLDivElement | null) => {
+    setChromeHosts((current) => (current.subtitleHost === el ? current : { ...current, subtitleHost: el }));
   }, []);
   const attachStepperHost = React.useCallback((el: HTMLDivElement | null) => {
     setChromeHosts((current) => (current.stepperHost === el ? current : { ...current, stepperHost: el }));
@@ -101,7 +105,7 @@ export function QuoteBuilderDialog({
       ? "Nueva nota"
       : isDirectWorkOrder
         ? "Agregar trabajo"
-        : "Crear cotización";
+        : "Nueva cotización";
   const discardTitle = isEdit
     ? "¿Descartar los cambios?"
     : mode === "direct-note" || mode === "direct-sale"
@@ -138,6 +142,7 @@ export function QuoteBuilderDialog({
         }
         fullScreen={fullScreen}
         leading={<div ref={attachLeadingHost} className="shrink-0" />}
+        subtitle={<div ref={attachSubtitleHost} />}
         stepper={<div ref={attachStepperHost} />}
         footer={<div ref={attachFooterHost} className="contents" data-testid="quote-builder-footer-host" />}
         body={

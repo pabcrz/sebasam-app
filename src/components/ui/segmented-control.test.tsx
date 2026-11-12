@@ -26,6 +26,17 @@ describe("SegmentedControl", () => {
     expect(onValueChange).toHaveBeenCalledWith("paid");
   });
 
+  it("fills the full width with equal-width options when fullWidth is set", () => {
+    render(<SegmentedControl label="Tipo de operación" options={options} value="all" onValueChange={() => {}} fullWidth />);
+
+    const group = screen.getByRole("group", { name: "Tipo de operación" });
+    expect(group).toHaveClass("flex", "w-full");
+    expect(group).not.toHaveClass("inline-flex");
+    options.forEach((option) => {
+      expect(screen.getByRole("button", { name: option.label })).toHaveClass("flex-1");
+    });
+  });
+
   it("has a 16px container with no border or inner padding, and a tonal full-height chosen option", () => {
     render(<SegmentedControl label="Filtrar notas" options={options} value="pending" onValueChange={() => {}} />);
 

@@ -14,6 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
 } from "@/components/ui";
 import {
   getMaxQuantityForType,
@@ -330,30 +331,26 @@ export function ConceptPayrollField({
   }
 
   const rateErrorId = `${fieldId}-rate-error`;
-  const toggle = (
-    <label
-      htmlFor={`${fieldId}-includeInPayroll`}
-      className={`flex items-center gap-2.5 text-sm font-medium text-[var(--color-text-main)] cursor-pointer${mode === "table" ? " justify-center" : ""}`}
-    >
-      <input
-        type="checkbox"
-        id={`${fieldId}-includeInPayroll`}
-        aria-label={mode === "table" ? "Incluir en nómina / comisión" : undefined}
-        name={`sections.${sectionIndex}.items.${itemIndex}.includeInPayroll`}
-        checked={Boolean(item.includeInPayroll)}
-        onChange={(e) => dispatch({
-          type: "updateItem",
-          sectionIndex,
-          itemIndex,
-          patch: {
-            includeInPayroll: e.target.checked,
-            customRatePercent: item.customRatePercent || "40",
-          },
-        })}
-        className="size-4 rounded border-[var(--color-border-input)] text-[var(--color-primary)] focus:ring-[var(--color-ring)]"
-      />
-      {mode === "stacked" ? <span>Incluir en nómina / comisión</span> : null}
-    </label>
+  const payrollSwitchProps = {
+    id: `${fieldId}-includeInPayroll`,
+    name: `sections.${sectionIndex}.items.${itemIndex}.includeInPayroll`,
+    checked: Boolean(item.includeInPayroll),
+    onCheckedChange: (checked: boolean) => dispatch({
+      type: "updateItem",
+      sectionIndex,
+      itemIndex,
+      patch: {
+        includeInPayroll: checked === true,
+        customRatePercent: item.customRatePercent || "40",
+      },
+    }),
+  };
+  const toggle = mode === "stacked" ? (
+    <Switch label="Incluir en nómina / comisión" {...payrollSwitchProps} />
+  ) : (
+    <div className="flex justify-center">
+      <Switch aria-label="Incluir en nómina / comisión" {...payrollSwitchProps} />
+    </div>
   );
   const rate = item.includeInPayroll ? (
     <div className={mode === "stacked" ? "grid gap-1.5 sm:max-w-xs" : "grid gap-1"}>
