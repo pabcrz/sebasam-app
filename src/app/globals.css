@@ -19,6 +19,20 @@
   --color-on-navy-tint: #e6f1fb;
   --color-nav-active-text: #004aad;
 
+  /* Actions: flat page action, tonal card action, selection, amounts and links */
+  --color-btn-primary: #0a3d8f;
+  --color-btn-primary-hover: #08316f;
+  --color-on-btn-primary: #ffffff;
+  --color-tonal-bg: #e6f1fb;
+  --color-tonal-bg-hover: #d3e5f8;
+  --color-tonal-fg: #004aad;
+  --color-selected: #d6e6f8;
+  --color-amount: #004aad;
+  --color-link: #004aad;
+
+  /* Document header: brand gradient in light, flat ink gray in dark */
+  --doc-head-bg: var(--gradient-primary);
+
   /* Surfaces and boundaries */
   --color-bg-soft: #f3f6fa;
   --color-surface: #ffffff;
@@ -73,7 +87,8 @@
   /* Radii */
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 14px;
+  --radius-lg: 16px;
+  --radius-sheet: 24px;
   --radius-full: 9999px;
 
   /* Shadows */
@@ -82,13 +97,14 @@
   --shadow-md: 0 4px 12px rgba(0, 16, 36, 0.07), 0 2px 4px rgba(0, 16, 36, 0.03);
   --shadow-lg: 0 8px 24px rgba(0, 16, 36, 0.1), 0 4px 8px rgba(0, 16, 36, 0.04);
   --shadow-control: var(--shadow-xs);
-  --shadow-card: var(--shadow-sm);
+  --shadow-card: 0 1px 2px rgba(0, 16, 36, 0.05), 0 4px 14px rgba(0, 16, 36, 0.07);
+  --shadow-card-hover: 0 2px 4px rgba(0, 16, 36, 0.06), 0 8px 22px rgba(0, 16, 36, 0.1);
   --shadow-dialog: var(--shadow-lg);
-  --shadow-action: 0 2px 6px rgba(0, 44, 104, 0.2);
-  --shadow-focus: 0 0 0 3px rgba(30, 77, 140, 0.18);
+  --shadow-action: 0 2px 6px rgba(0, 74, 173, 0.25);
+  --shadow-focus: 0 0 0 3px rgba(0, 74, 173, 0.25);
 
   /* Focus ring */
-  --color-focus-ring: rgba(30, 77, 140, 0.18);
+  --color-focus-ring: rgba(0, 74, 173, 0.25);
 
   /* Motion */
   --motion-fast: 120ms;
@@ -96,50 +112,67 @@
   --motion-slow: 240ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
+  /* Control scale: large (page action), default, small (tools and rows) */
+  --control-lg: 40px;
+  --control-md: 36px;
+  --control-sm: 32px;
+
   /* Touch */
   --tap-min-height: 44px;
   --screen-padding-x: 16px;
 }
 
 .dark {
-  --background: #071a2f;
-  --foreground: #f8fafc;
+  --background: #0e131b;
+  --foreground: #e7ecf3;
 
-  /* Surfaces */
-  --color-bg-soft: #0a2038;
-  --color-surface: #0d2744;
-  --color-surface-muted: #102d4b;
-  --color-border-light: #1a4166;
-  --color-border-subtle: rgba(147, 197, 253, 0.2);
-  --color-border-strong: #2b5b85;
+  /* Surfaces: ink grays with a slight blue tint */
+  --color-bg-soft: #0e131b;
+  --color-surface: #161d28;
+  --color-surface-muted: #121923;
+  --color-border-light: #263142;
+  --color-border-subtle: rgba(180, 191, 205, 0.16);
+  --color-border-strong: #34425a;
   --color-overlay: rgba(0, 0, 0, 0.58);
-  --color-blue-tint: #123b62;
+  --color-blue-tint: #24375a;
   --color-nav-active-text: #e6f1fb;
 
-  /* Text */
-  --color-text-main: #ffffff;
-  --color-text-muted: #94a3b8;
-  --color-text-muted-fg: #cbd5e1;
+  /* Actions: near-white primary with dark text, less saturated blues */
+  --color-btn-primary: #eef2f7;
+  --color-btn-primary-hover: #ffffff;
+  --color-on-btn-primary: #0e131b;
+  --color-tonal-bg: #24375a;
+  --color-tonal-bg-hover: #2c4470;
+  --color-tonal-fg: #ffffff;
+  --color-selected: #24375a;
+  --color-amount: #b9d2fa;
+  --color-link: #9cc0f5;
+  --doc-head-bg: #1b2433;
 
-  /* Status foreground: brighter for dark navy surfaces */
-  --color-status-success-fg: #4ade80;
-  --color-status-warning-fg: #fcd34d;
-  --color-status-danger-fg: #fca5a5;
-  --color-status-info-fg: #93c5fd;
-  --color-total-emphasis: #93c5fd;
+  /* Text */
+  --color-text-main: #e7ecf3;
+  --color-text-muted: #8c99ab;
+  --color-text-muted-fg: #b4bfcd;
+
+  /* Status foreground: brighter for ink-gray surfaces */
+  --color-status-success-fg: #6fd39a;
+  --color-status-warning-fg: #f2c46b;
+  --color-status-danger-fg: #f29b9b;
+  --color-status-info-fg: #9cc0f5;
+  --color-total-emphasis: #b9d2fa;
 
   /* Status pastel backgrounds / borders: slightly stronger on dark */
-  --color-status-success-bg: rgba(74, 222, 128, 0.14);
-  --color-status-success-border: rgba(74, 222, 128, 0.4);
-  --color-status-warning-bg: rgba(252, 211, 77, 0.14);
-  --color-status-warning-border: rgba(252, 211, 77, 0.4);
-  --color-status-danger-bg: rgba(252, 165, 165, 0.14);
-  --color-status-danger-border: rgba(252, 165, 165, 0.4);
-  --color-status-info-bg: rgba(147, 197, 253, 0.14);
-  --color-status-info-border: rgba(147, 197, 253, 0.4);
+  --color-status-success-bg: rgba(111, 211, 154, 0.14);
+  --color-status-success-border: rgba(111, 211, 154, 0.4);
+  --color-status-warning-bg: rgba(242, 196, 107, 0.14);
+  --color-status-warning-border: rgba(242, 196, 107, 0.4);
+  --color-status-danger-bg: rgba(242, 155, 155, 0.14);
+  --color-status-danger-border: rgba(242, 155, 155, 0.4);
+  --color-status-info-bg: rgba(156, 192, 245, 0.14);
+  --color-status-info-border: rgba(156, 192, 245, 0.4);
 
-  /* Focus ring: stronger on deep navy surfaces so keyboard focus remains visible */
-  --color-focus-ring: rgba(147, 197, 253, 0.45);
+  /* Focus ring: stronger on dark surfaces so keyboard focus remains visible */
+  --color-focus-ring: rgba(156, 192, 245, 0.45);
   --shadow-action: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
@@ -147,7 +180,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
-  --font-mono: var(--font-dm-mono);
+  --font-mono: var(--font-inter);
 
   /* Brand */
   --color-primary: var(--color-primary);
@@ -162,6 +195,17 @@
   --color-blue-tint-strong: var(--color-blue-tint-strong);
   --color-on-navy-tint: var(--color-on-navy-tint);
   --color-nav-active-text: var(--color-nav-active-text);
+
+  /* Actions */
+  --color-btn-primary: var(--color-btn-primary);
+  --color-btn-primary-hover: var(--color-btn-primary-hover);
+  --color-on-btn-primary: var(--color-on-btn-primary);
+  --color-tonal-bg: var(--color-tonal-bg);
+  --color-tonal-bg-hover: var(--color-tonal-bg-hover);
+  --color-tonal-fg: var(--color-tonal-fg);
+  --color-selected: var(--color-selected);
+  --color-amount: var(--color-amount);
+  --color-link: var(--color-link);
 
   /* Surfaces */
   --color-bg-soft: var(--color-bg-soft);
@@ -205,6 +249,7 @@
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
+  --radius-sheet: var(--radius-sheet);
   --radius-full: var(--radius-full);
 
   /* Shadows */
@@ -214,6 +259,7 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-control: var(--shadow-control);
   --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
   --shadow-dialog: var(--shadow-dialog);
   --shadow-action: var(--shadow-action);
   --shadow-focus: var(--shadow-focus);
@@ -240,11 +286,21 @@
   --color-input: var(--color-border-light);
   --color-ring: var(--color-focus-ring);
 
+  /* Control scale */
+  --height-control-lg: var(--control-lg);
+  --height-control-md: var(--control-md);
+  --height-control-sm: var(--control-sm);
+
   /* Touch */
   --spacing-tap: var(--tap-min-height);
 
   /* Screen padding */
   --screen-padding-x: var(--screen-padding-x);
+}
+
+/* Monospace utilities render Inter with tabular figures (amounts, folios, plates) */
+.font-mono {
+  font-variant-numeric: tabular-nums;
 }
 
 body {
