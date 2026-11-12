@@ -111,6 +111,19 @@ describe("Payroll UI Components", () => {
     expect(screen.getByTestId("payroll-period-nav").querySelector("div.flex.flex-wrap")).toBeInTheDocument();
   });
 
+  it("does not force-capitalize the Spanish range label", () => {
+    render(
+      <PayrollPeriodNav
+        rangeLabel="9–14 de noviembre de 2026"
+        anchor="2026-11-09"
+        prevAnchor="2026-11-02"
+        nextAnchor="2026-11-16"
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "9–14 de noviembre de 2026" })).not.toHaveClass("capitalize");
+  });
+
   it("keeps ADMIN payroll weekly and read-only", () => {
     render(
       <PayrollPeriodNav
