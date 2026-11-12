@@ -104,7 +104,7 @@ describe("WorkerCardList", () => {
 
     await user.click(within(zone).getByRole("button", { name: "Eliminar trabajador" }));
 
-    expect(within(zone).getByRole("button", { name: "Sí, eliminar definitivamente" })).toBeInTheDocument();
+    expect(within(zone).getByRole("button", { name: "Sí, eliminar" })).toBeInTheDocument();
     expect(within(zone).getByRole("button", { name: "No, conservar" })).toBeInTheDocument();
   });
 
