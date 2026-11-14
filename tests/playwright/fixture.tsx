@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ResponsivePreviewFixture } from "./responsive-preview-fixture";
 import { createRoot } from "react-dom/client";
 import { WorkOrderOperationsDialog } from "../../src/features/work-orders/components/work-order-operations-dialog";
 import { WorkOrderFilters } from "../../src/features/work-orders/components/work-order-filters";
@@ -425,6 +426,7 @@ function OperationalNotesFixture() {
 }
 
 function Fixture() {
+  if (window.location.pathname === "/responsive-preview") return <ResponsivePreviewFixture />;
   if (window.location.pathname === "/notes-operational" || window.location.pathname === "/admin/notas") return <OperationalNotesFixture />;
   if (window.location.pathname === "/work-filters" || window.location.pathname === "/admin/work-orders") return <WorkFiltersFixture />;
   if (window.location.pathname === "/quote-filters" || window.location.pathname === "/admin/quotes") return <QuoteFiltersFixture />;

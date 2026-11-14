@@ -15,6 +15,8 @@ Tracker #807 (children #793–#806). Branch `feature/807-work` from `develop`; o
 - S9: "Identidad de la unidad: ECO + modelo, o placas + modelo, o modelo; el chofer aparte."
 - S10: Out of scope: public pages, printed documents/PDF, assistant, login/setup; no business-rule, state, calculation, permission or payroll changes.
 
+- S11: "si" — approval to correct the five browser findings reported immediately before: preview panel clipping, compact card overlap, mobile concept wrapping, truncated type, and payroll period/labels. No business-rule changes.
+
 ## Tasks
 
 - T0 [S1] Adopt rules in `DESIGN.md` + commit the HTML reference. Route: inline. Commit: c96c5ea. Done.
@@ -33,6 +35,8 @@ Tracker #807 (children #793–#806). Branch `feature/807-work` from `develop`; o
 - T13 #805 Customers, profile, statement. Route: worker. Done; gaps: driver search shows contact not unit, N+1 balance per row (50 max), customer-detail-dialog.tsx dead (kept for admin-page-header test), 375px unverified.
 - T14 #806 Part A Workers+Users done (OPEN: worker delete removes assignments+execution records, no history guard exists; user role now saves with Guardar). Part B Configuración done (nested routes datos-del-taller, contacto, cuentas-bancarias, apariencia; actions/domain untouched).
 
+- T15 [S1,S6,S10,S11] Correct browser-observed responsive regressions; route: inline; commit: see work-unit `fix(ui): prevent responsive preview clipping and card overlap (#807)`. Done for five findings: browser RED then GREEN 5/5, focused Vitest 71/71, independent shared-consumer tests 134/134, live SUPER_ADMIN captures. ADMIN coverage remains unavailable; independent geometry approval was not supplied.
+
 ## Log
 
 - L1: "hay un issue 807, que es El tracker ... vas a crear un nuevo working para que sobre ese vayamos haciendo todos los cambios ... lo visual va a ser la regla ... work Tree de 788 tiene algunos cambios entonces ya sé que los traigas"
@@ -42,3 +46,5 @@ Tracker #807 (children #793–#806). Branch `feature/807-work` from `develop`; o
 - L5: User review round 1 (visual fixes 0-16, verbatim list kept in the conversation): decisions: keep discard-on-close with confirmation (option A; local draft = future option B); skip unified search, chofer search in Trabajos, result count, Más subtitles. Fix batches 1-4 on `feature/807-work`, then propagate to the chained PRs.
 - L6: User desktop review (1366x768), items E1-E10 (verbatim list in the conversation). Skipped: "Guardar y salir"/"Borrador guardado" (need drafts), "Vence el pago (opcional)" unless the field exists. To check: Notas on desktop (real route is /admin/notas, /admin/notes is a 404 by design), Nómina, Configuración, expanded rail.
 - L7: Round 2 (desktop) implemented in commits b23b09a..2e80597; En espera tab blocked (undefined state), driver data absent; /admin/notes 404 is expected (route is /admin/notas).
+
+- L8: User: "si" (approval of the five findings from the read-only Playwright visual pass). Evidence: `.playwright-cli/` local-only captures contain customer data and must not be committed or published. SUPER_ADMIN tested; ADMIN still requires a separate login. No business data saved.

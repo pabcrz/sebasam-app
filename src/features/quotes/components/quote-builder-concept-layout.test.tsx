@@ -38,6 +38,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+it("keeps desktop concept type legible inside the 140px column", async () => {
+  setViewport(true);
+  const user = userEvent.setup();
+  await openItemsStep(user);
+  expect(screen.getByRole("combobox", { name: "Tipo del concepto 1" })).toHaveClass("text-xs", "px-2", "gap-1");
+});
+
 describe("quote builder concept layout (mobile)", () => {
   it("shows the concept types as one horizontally scrolling chip row in the editor", async () => {
     const user = userEvent.setup();

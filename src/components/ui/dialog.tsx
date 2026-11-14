@@ -199,7 +199,7 @@ const dialogShapeClassName =
 
 /* Rows: fixed header, the body takes the rest (min-h-0 lets it scroll), fixed footer. Mobile slides up; the desktop panel keeps its own direction. */
 const sheetShapeClassName =
-  "inset-x-0 bottom-0 top-auto w-full max-w-none max-h-[calc(100dvh_-_var(--space-xl))] grid-rows-[auto_minmax(0,1fr)_auto] translate-x-0 translate-y-0 gap-0 rounded-t-[var(--radius-sheet)] rounded-b-none p-0 shadow-[var(--shadow-md)] max-md:data-[state=open]:animate-bottom-sheet md:inset-y-0 md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-dvh md:max-h-none md:w-[420px] md:max-w-[420px] md:rounded-l-[var(--radius-sheet)] md:rounded-r-none md:rounded-t-none";
+  "inset-x-0 bottom-0 top-auto w-full min-w-0 grid-cols-[minmax(0,1fr)] max-w-none max-h-[calc(100dvh_-_var(--space-xl))] grid-rows-[auto_minmax(0,1fr)_auto] translate-x-0 translate-y-0 gap-0 rounded-t-[var(--radius-sheet)] rounded-b-none p-0 shadow-[var(--shadow-md)] max-md:data-[state=open]:animate-bottom-sheet md:inset-y-0 md:left-auto md:right-0 md:top-0 md:bottom-0 md:h-dvh md:max-h-none md:w-[420px] md:max-w-[420px] md:rounded-l-[var(--radius-sheet)] md:rounded-r-none md:rounded-t-none";
 
 export interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
@@ -428,7 +428,7 @@ export function DialogMobileBody({ className, padding = "default", ...props }: D
   return (
     <div
       className={cn(
-        "min-h-0 overflow-y-auto overscroll-contain",
+        "min-h-0 min-w-0 overflow-y-auto overscroll-contain",
         padding === "default" ? "px-4 py-4 sm:px-6 sm:py-6" : "p-0",
         className,
       )}

@@ -26,8 +26,8 @@ export interface StatTileProps {
 export function StatTile({ label, value, info, tone = "neutral", className }: StatTileProps) {
   return (
     <div className={cn("grid min-w-0 gap-1 rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4", className)}>
-      <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-[var(--color-text-muted)]">
-        <span className="min-w-0 truncate">{label}</span>
+      <div className="flex min-w-0 items-start gap-1.5 text-xs font-medium text-[var(--color-text-muted)]">
+        <span className="min-w-0 break-words">{label}</span>
         {info ? <InfoTip label={`Qué incluye: ${label}`}>{info}</InfoTip> : null}
       </div>
       <p className={cn("min-w-0 truncate text-xl font-semibold tabular-nums sm:text-2xl", toneValueClassNames[tone])}>{value}</p>

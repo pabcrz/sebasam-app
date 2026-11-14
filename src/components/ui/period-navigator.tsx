@@ -44,9 +44,9 @@ export function PeriodNavigator({
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <div className="flex min-w-0 flex-wrap items-center gap-3">
+      <div className="grid min-w-0 grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 sm:flex sm:flex-wrap sm:gap-3">
         {isNavigable ? (
-          <div role="group" aria-label="Cambiar periodo" className="inline-flex items-center rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
+          <div role="group" aria-label="Cambiar periodo" className="inline-flex justify-self-start items-center rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
             <Button
               type="button"
               variant="ghost"
@@ -68,7 +68,7 @@ export function PeriodNavigator({
           </div>
         ) : null}
 
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="col-span-2 row-start-2 flex min-w-0 flex-wrap items-center gap-2 sm:row-auto">
           <h2 className="min-w-0 text-base font-semibold text-[var(--color-text-main)]">{label}</h2>
           {isCurrent && isNavigable ? <Badge variant="info">En curso</Badge> : null}
         </div>
@@ -79,6 +79,7 @@ export function PeriodNavigator({
             type="button"
             variant="secondary"
             size="sm"
+            className="col-start-2 row-start-1 justify-self-end"
             disabled={isCurrent}
             onClick={() => onAnchorChange(mexicoCityDateKey(today))}
           >

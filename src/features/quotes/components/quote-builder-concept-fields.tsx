@@ -130,7 +130,7 @@ export function ConceptTypeSelect({
       <SelectTrigger
         id={`${fieldId}-type`}
         aria-label={`Tipo del concepto ${displayIndex + 1}`}
-        className="h-9 w-full"
+        className="h-9 w-full gap-1 px-2 text-xs"
       >
         <SelectValue />
       </SelectTrigger>

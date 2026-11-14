@@ -98,7 +98,7 @@ export function DocumentPreview({
   const dateParts = [issuedText, validityText, dueDateText].filter(Boolean);
 
   return (
-    <div data-testid="document-preview" className="grid gap-3 text-[var(--color-text-main)]">
+    <div data-testid="document-preview" className="@container/preview grid min-w-0 gap-3 text-[var(--color-text-main)]">
       {stepShortcuts && stepShortcuts.length > 0 ? (
         <div data-testid="document-preview-step-shortcuts" className="mx-auto flex w-full max-w-[760px] flex-wrap gap-2">
           {stepShortcuts.map((shortcut) => (
@@ -111,7 +111,7 @@ export function DocumentPreview({
 
       <div
         data-testid="document-preview-card"
-        className="mx-auto grid w-full max-w-[760px] gap-4 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]"
+        className="mx-auto grid w-full min-w-0 max-w-[760px] gap-4 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]"
       >
         <div data-testid="document-preview-status" className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
           {statusLabel ? <Badge variant="default">{statusLabel}</Badge> : null}
@@ -119,7 +119,7 @@ export function DocumentPreview({
           {administrative ? <Badge variant="info">{typeLabel} administrativa</Badge> : null}
         </div>
 
-        <section aria-label="Cliente y unidad" className="grid grid-cols-2 gap-3 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] p-3">
+        <section aria-label="Cliente y unidad" className="grid min-w-0 grid-cols-2 gap-3 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] p-3">
           <div className="grid content-start gap-0.5">
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Cliente</p>
             <p className="text-sm font-semibold">{customer.name || "Sin cliente"}</p>
@@ -150,10 +150,10 @@ export function DocumentPreview({
             <>
               <div
                 data-testid="document-preview-table-head"
-                className="grid grid-cols-[2.25rem_minmax(0,1fr)_5.5rem_5.5rem] items-center gap-2 px-3 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]"
+                className="grid min-w-0 grid-cols-3 items-center gap-1 px-3 @min-[28rem]/preview:grid-cols-[2.25rem_minmax(0,1fr)_5.5rem_5.5rem] @min-[28rem]/preview:gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]"
               >
-                <span>CANT.</span>
-                <span>CONCEPTO</span>
+                <span className="row-start-2 @min-[28rem]/preview:row-auto">CANT.</span>
+                <span className="col-span-3 col-start-1 row-start-1 @min-[28rem]/preview:col-span-1 @min-[28rem]/preview:col-start-auto @min-[28rem]/preview:row-auto">CONCEPTO</span>
                 <span className="text-right">UNITARIO</span>
                 <span className="text-right">IMPORTE</span>
               </div>
@@ -179,10 +179,10 @@ export function DocumentPreview({
                     {section.rows.map((row) => (
                       <li
                         key={row.id}
-                        className="grid grid-cols-[2.25rem_minmax(0,1fr)_5.5rem_5.5rem] items-start gap-2 border-b border-[var(--color-border-light)]/60 px-3 py-2 last:border-b-0"
+                        className="grid min-w-0 grid-cols-3 items-start gap-1 border-b @min-[28rem]/preview:grid-cols-[2.25rem_minmax(0,1fr)_5.5rem_5.5rem] @min-[28rem]/preview:gap-2 border-[var(--color-border-light)]/60 px-3 py-2 last:border-b-0"
                       >
-                        <span className="tabular-nums text-sm text-[var(--color-text-muted)]">{row.quantityLabel}</span>
-                        <span className="block min-w-0 break-words text-sm font-medium leading-snug">{row.description}</span>
+                        <span className="row-start-2 tabular-nums text-sm text-[var(--color-text-muted)] @min-[28rem]/preview:row-auto">{row.quantityLabel}</span>
+                        <span className="col-span-3 col-start-1 row-start-1 block min-w-0 break-words text-sm font-medium leading-snug @min-[28rem]/preview:col-span-1 @min-[28rem]/preview:col-start-auto @min-[28rem]/preview:row-auto">{row.description}</span>
                         <span className="whitespace-nowrap text-right text-sm tabular-nums text-[var(--color-text-muted)]">{formatCents(row.unitPriceCents)}</span>
                         <span className="whitespace-nowrap text-right text-sm font-bold tabular-nums">{formatCents(row.lineTotalCents)}</span>
                       </li>

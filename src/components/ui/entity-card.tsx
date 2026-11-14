@@ -110,12 +110,12 @@ export function EntityCard({
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 basis-32">
           <h3
             title={typeof title === "string" ? title : undefined}
             className={cn(
-              "line-clamp-2 min-h-12 text-lg font-semibold leading-6 text-[var(--color-text-main)]",
+              "line-clamp-2 min-h-12 break-words text-lg font-semibold leading-6 text-[var(--color-text-main)]",
               selected && "text-[var(--color-amount)]",
             )}
           >
@@ -129,7 +129,7 @@ export function EntityCard({
           </div>
         </div>
         {amount != null ? (
-          <div data-testid="entity-card-amount" className="flex min-w-0 max-w-[45%] shrink-0 flex-col items-end text-right">
+          <div data-testid="entity-card-amount" className="ml-auto flex min-w-0 max-w-full shrink-0 flex-col items-end text-right">
             <p className="text-2xl font-extrabold tabular-nums text-[var(--color-amount)]">{amount}</p>
             {amountCaption != null ? <p className="max-w-full truncate text-xs text-[var(--color-text-muted)]">{amountCaption}</p> : null}
           </div>
