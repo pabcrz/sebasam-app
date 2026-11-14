@@ -35,7 +35,7 @@ Tracker #807 (children #793–#806). Branch `feature/807-work` from `develop`; o
 - T13 #805 Customers, profile, statement. Route: worker. Done; gaps: driver search shows contact not unit, N+1 balance per row (50 max), customer-detail-dialog.tsx dead (kept for admin-page-header test), 375px unverified.
 - T14 #806 Part A Workers+Users done (OPEN: worker delete removes assignments+execution records, no history guard exists; user role now saves with Guardar). Part B Configuración done (nested routes datos-del-taller, contacto, cuentas-bancarias, apariencia; actions/domain untouched).
 
-- T15 [S1,S6,S10,S11] Correct browser-observed responsive regressions; route: inline; commit: see work-unit `fix(ui): prevent responsive preview clipping and card overlap (#807)`. Done for five findings: browser RED then GREEN 5/5, focused Vitest 71/71, independent shared-consumer tests 134/134, live SUPER_ADMIN captures. ADMIN coverage remains unavailable; independent geometry approval was not supplied.
+- T15 [S1,S6,S10,S11] Correct browser-observed responsive regressions; route: inline; commit: f1b8b06 (`fix(ui): prevent responsive preview clipping and card overlap (#807)`). Done for five findings: browser RED then GREEN 5/5, focused Vitest 71/71, independent shared-consumer tests 134/134, live SUPER_ADMIN captures. ADMIN coverage remains unavailable; independent geometry approval was not supplied.
 
 ## Log
 
