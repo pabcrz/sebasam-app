@@ -33,4 +33,26 @@ describe("Tabs", () => {
     expect(week).toHaveFocus();
     expect(week).toHaveAttribute("aria-selected", "true");
   });
+
+  it("marks the active tab bold with a 2px brand-gradient underline and leaves inactive tabs muted", () => {
+    render(<Tabs tabs={tabs} label="Período de métricas" />);
+
+    const week = screen.getByRole("tab", { name: "Esta semana" });
+    const month = screen.getByRole("tab", { name: "Este mes" });
+
+    expect(week.className).toContain("font-semibold");
+    expect(week.className).toContain("after:h-[2px]");
+    expect(week.className).toContain("after:bg-[image:var(--gradient-primary)]");
+    expect(week.className).not.toContain("bg-[var(--color-surface)]");
+
+    expect(month.className).not.toContain("font-semibold");
+    expect(month.className).toContain("text-[var(--color-text-muted)]");
+    expect(month.className).not.toContain("after:bg-[image:var(--gradient-primary)]");
+  });
+
+  it("gives every tab a 44px touch height so the list's overflow never clips its hit area", () => {
+    render(<Tabs tabs={tabs} label="Período de métricas" />);
+
+    expect(screen.getByRole("tab", { name: "Este año" }).className).toContain("min-h-[var(--tap-min-height)]");
+  });
 });
