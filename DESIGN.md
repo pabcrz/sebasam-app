@@ -1,71 +1,63 @@
-# SEBASAM — Sistema de diseño (Figma)
+# SEBASAM — Sistema de diseño
 
-> Referencia visual: Figma `b3TlGONh5fTCNUilSHf75b`.
-> Este documento conserva contratos visuales y criterios de diseño, no un inventario de funcionalidades ni una certificación de fidelidad a Figma. Los flujos de negocio viven en el [manual de producto](./docs/product-guide/index.md) y el estado implementado en [ARCHITECTURE](./docs/ARCHITECTURE.md).
+> Fuente de verdad visual: la propuesta [SEBASAM Consistencia Visual](./docs/SEBASAM%20Consistencia%20Visual.html) (v2, nov 2026), rastreada en el issue #807. Cuando este documento y el código difieran en reglas visuales, gana este documento y se corrige el código.
+> Este documento conserva contratos visuales y criterios de diseño, no un inventario de funcionalidades. Los flujos de negocio viven en el [manual de producto](./docs/product-guide/index.md) y el estado implementado en [ARCHITECTURE](./docs/ARCHITECTURE.md).
 
 ## Resumen
 
-- Producto: sistema de gestión para taller (cotizaciones, órdenes de trabajo, clientes, pagos, nómina, inventario). El acceso inmediato es admin-led: el admin gestiona trabajadores, asignaciones y ejecución desde el panel principal.
-- Prioridad: **web mobile-first**; el uso principal es en celular.
-- Tema: **Light por defecto** para operación y documentos; superficies **deep navy** para shell del dashboard, hero y estados de énfasis.
-- Tipografía base: **Inter**; monoespaciado para folios, montos y datos de pago: **DM Mono**.
-- Filosofía: los componentes nacen del flujo de negocio; no se inventan componentes genéricos sin contrato de datos.
+- Producto: sistema de gestión para taller (cotizaciones, órdenes de trabajo, clientes, pagos, nómina, inventario). El acceso inmediato es admin-led.
+- Prioridad: **web mobile-first** (verificar a 375 px) con escritorio a 1366 × 768, en modo claro y oscuro.
+- Tema: **claro por defecto**; el modo oscuro no invierte el claro (ver paleta).
+- Tipografía: **una sola familia, Inter**, con cifras tabulares para montos, folios, placas y CLABE. Sin DM Mono.
+- Iconos: **Tabler, set outline, trazo 2**, detrás de un wrapper propio `<Icon name>`.
+- Filosofía: se trabaja por **pieza**, no por pantalla. Una pantalla solo cambia porque cambia una pieza compartida de `src/components/ui`, nunca por un estilo suelto.
+
+## Reglas del sistema
+
+1. **Botones: 40 / 36 / 32 px** (`lg` / `default` / `sm`), todos con área táctil de 44 px. `lg` para la acción principal, `default` para todo lo demás, `sm` para herramientas y filas. El tamaño lo decide la jerarquía de la acción, no la pantalla.
+2. **Una acción primaria por superficie**, siempre en el mismo lugar: abajo o a la derecha.
+3. **Tres niveles de azul**, cada uno con un trabajo:
+   - Gradiente de marca: solo marca dónde estás (pestaña activa e ítem activo de la barra lateral).
+   - Azul plano `#0A3D8F`: acción principal de la página ("Nueva", "Agregar", "Siguiente", "Guardar").
+   - Tonal (fondo azul tenue, texto azul): acción de cada tarjeta.
+   Nada más lleva gradiente.
+4. **Radios múltiplos de 4**: 8 px para elementos pequeños dentro de un control; 12 px para todo lo que se toca (botones, campos, chips, opciones del segmentado, pestaña activa); 16 px para el contenedor del segmentado y para superficies (tarjetas, listas, secciones); 24 px arriba en las hojas. La pastilla queda solo para insignias de estado y el indicador de la pestaña activa.
+5. **Sombra o borde, nunca los dos.** Una superficie sobre el fondo de la página (tarjeta, lista, cifra) se separa con sombra y sin borde. Una superficie dentro de una hoja o panel, que ya es blanca, lleva borde fino y sin sombra.
+6. **Cerrar (✕) siempre arriba a la derecha** en hojas, diálogos y flujos; nunca a la izquierda ni abajo.
+7. **Pestañas para cambiar de sección, segmentado para filtrar.** Pestañas subrayadas: Resumen / Vehículos, Pendientes / Por periodo. Segmentado: Todas / Pendientes / Pagadas.
+8. **Estados y montos.** Un estado = una insignia. "Activo" no se muestra cuando es lo normal; solo se marca lo que se sale de lo normal (Inactivo). Los montos van en semibold con cifras tabulares.
+9. **Color semántico solo en el dato.** Sin bordes laterales de colores ni iconos dentro de cajitas.
+10. **Toda tarjeta abre su vista previa.** Cotizaciones, trabajos y notas muestran los conceptos en solo lectura al tocarlas, sin entrar a editar.
+11. **Un solo scroll por pantalla.** Sin cajas con scroll dentro de otra caja con scroll, salvo tablas anchas, que se desplazan solo de lado.
 
 ## Tokens fundamentales
 
-### Colores
+### Paleta · modo claro y modo oscuro
 
-| Token | Valor | Uso |
-|---|---|---|
-| `--color-primary` | `#004AAD` | Botones primarios, enlaces activos, énfasis operativo. |
-| `--color-primary-hover` | `#003E91` | Hover de elementos primarios. |
-| `--color-navy-700` | `#002B68` | Capas intermedias en modo oscuro/deep navy. |
-| `--color-navy-800` | `#001B3F` | Surface en modo oscuro/deep navy. |
-| `--color-navy-900` | `#001024` | Fondo deep navy, texto principal en light. |
-| `--color-white` | `#FFFFFF` | Surface light, texto sobre fondos oscuros. |
-| `--color-blue-tint` | `#E6F1FB` | Banners informativos, estados suaves, fondo de servicio en documento público. |
-| `--color-on-navy-tint` | `#E6F1FB` | Texto/acento claro sobre superficies navy fijas en ambos modos. |
-| `--color-bg-soft` | `#F3F6FA` | Fondo de pantalla en light. |
-| `--color-border-light` | `#D7E0EA` | Bordes sutiles en light. |
-| `--color-text-muted` | `#64748B` / `#6B7789` | Texto secundario, placeholders. |
-| `--color-text-muted-fg` | `#475569` | Texto pequeño sobre superficies suaves cuando se necesita contraste AA. |
-| `--gradient-primary` | `linear-gradient(90deg, #004AAD 0%, #001024 100%)` | Fondo oficial de botones primarios y acentos de marca. |
-| `--gradient-primary-hover` | `linear-gradient(90deg, #003E91 0%, #001024 100%)` | Estado hover del gradiente primario. |
+Los tokens semánticos cambian según la clase `light`/`dark` en `<html>`. El modo por defecto es **claro**. El oscuro usa grises tinta con un tinte azul leve, azules menos saturados y la acción principal en casi blanco con texto oscuro.
 
-El gradiente primario es el patrón oficial para acciones primarias y acentos de marca; reemplaza el azul plano en botones `primary` y en heroes de documentos públicos. La base primaria sigue siendo `#004AAD` y el deep navy `#001024`.
-
-### Modo claro y modo oscuro
-
-El producto soporta ambos modos. Los tokens semánticos (`--color-background`, `--color-foreground`, `--color-surface`, `--color-text-main`, etc.) cambian de valor según la clase `light`/`dark` en `<html>`. El modo por defecto es **claro**.
-
-| Token semántico | Modo claro | Modo oscuro | Uso |
+| Uso | Token | Claro | Oscuro |
 |---|---|---|---|
-| `--color-background` | `#F3F6FA` | `#001024` | Fondo de pantalla general. |
-| `--color-foreground` | `#001024` | `#FFFFFF` | Texto principal sobre fondo base. |
-| `--color-surface` | `#FFFFFF` | `#001B3F` | Tarjetas, paneles, inputs, diálogos. |
-| `--color-bg-soft` | `#F3F6FA` | `#001024` | Fondos suaves, hover de filas. |
-| `--color-border-light` | `#D7E0EA` | `#002B68` | Bordes y separadores sutiles. |
-| `--color-blue-tint` | `#E6F1FB` | `#002B68` | Fondos de estado suave y botones secundarios. |
-| `--color-text-main` | `#001024` | `#FFFFFF` | Títulos, labels, texto de alto énfasis. |
-| `--color-text-muted` | `#64748B` | `#94A3B8` | Texto secundario, placeholders. |
-| `--color-text-muted-fg` | `#475569` | `#CBD5E1` | Texto pequeño sobre superficies suaves. |
+| Fondo de pantalla | `--background` / `--color-bg-soft` | `#F3F6FA` | `#0E131B` |
+| Superficie (tarjetas, hojas) | `--color-surface` | `#FFFFFF` | `#161D28` |
+| Superficie secundaria | `--color-surface-muted` | `#F7F9FC` | `#121923` |
+| Borde | `--color-border-light` | `#D7E0EA` | `#263142` |
+| Texto principal | `--color-text-main` | `#001024` | `#E7ECF3` |
+| Texto secundario | `--color-text-muted-fg` | `#475569` | `#B4BFCD` |
+| Texto tenue | `--color-text-muted` | `#64748B` | `#8C99AB` |
+| Acción principal | `--color-btn-primary` | `#0A3D8F` | `#EEF2F7` |
+| Texto sobre acción principal | `--color-on-btn-primary` | `#FFFFFF` | `#0E131B` |
+| Acción de tarjeta (fondo) | `--color-tonal-bg` | `#E6F1FB` | `#24375A` |
+| Acción de tarjeta (texto) | `--color-tonal-fg` | `#004AAD` | `#FFFFFF` |
+| Gradiente de marca (navegación activa) | `--gradient-primary` | `linear-gradient(90deg, #004AAD 0%, #001024 100%)` | igual |
+| Monto | `--color-amount` | `#004AAD` | `#B9D2FA` |
+| Enlace | `--color-link` | `#004AAD` | `#9CC0F5` |
+| Éxito | `--color-status-success-fg` | `#15803D` | `#6FD39A` |
+| Advertencia | `--color-status-warning-fg` | `#B45309` | `#F2C46B` |
+| Error | `--color-status-danger-fg` | `#B91C1C` | `#F29B9B` |
+| Información | `--color-status-info-fg` | `#004AAD` | `#9CC0F5` |
 
-Reglas de contraste:
-- En modo claro el texto oscuro (`#001024`) se usa sobre superficies blancas o azul-tinte.
-- En modo oscuro el texto principal es blanco (`#FFFFFF`) y el texto secundario es gris azulado claro (`#94A3B8`).
-- Los acentos semánticos mantienen su color base, pero en modo oscuro se prefiere la versión más luminosa para primer plano cuando el badge descansa sobre superficie navy (p. ej. verde `#4ADE80`, amarillo `#FCD34D`, rojo `#FCA5A5`, azul `#93C5FD`).
-- Los estados de foco (`--shadow-focus`) se mantienen con el azul semitransparente para ambos modos.
-
-### Acentos semánticos (estados / pagos)
-
-| Token | Valor | Uso |
-|---|---|---|
-| `--color-status-success` | `#22C55E` | Pagado, completado, activo. |
-| `--color-status-warning` | `#F59E0B` | Pendiente, parcial, vencido próximo. |
-| `--color-status-danger` | `#EF4444` | Cancelado, error, vencido. |
-| `--color-status-info` | `#004AAD` | En proceso, informativo. |
-
-Regla de badges: fondo pastel con alpha bajo + borde con alpha medio + texto/dot en color sólido.
+Los nombres son los tokens de `src/app/globals.css`. Marca: base `#004AAD`, deep navy `#001024`, tinte `#E6F1FB`. Los fondos de estado (`--ok-bg`, `--warn-bg`, `--bad-bg`, `--info-bg`) son pasteles de bajo alfa con borde de alfa medio y texto/dot en el color sólido. Preferir neutros con tinte azul; no usar grises puros. Encabezado de documentos (`--doc-head-bg`): gradiente de marca en claro, gris tinta `#1B2433` sin gradiente en oscuro.
 
 ### Tipografía
 
@@ -77,32 +69,58 @@ Regla de badges: fondo pastel con alpha bajo + borde con alpha medio + texto/dot
 | Body | Inter | Regular 400 | 16px | 1.5em |
 | Body sm | Inter | Regular 400 | 14px | 1.5em |
 | Caption | Inter | Medium 500 | 12px | 1.2em |
-| Mono body | DM Mono | Regular 400 | 14–16px | 1.5em |
-| Mono display | DM Mono | Regular 400 | 18px | — |
+| Montos / folios / placas / CLABE | Inter, `font-variant-numeric: tabular-nums` | Semi Bold 600 | según contexto | — |
 
-### Espaciado y formas
+### Espaciado, formas y tamaños
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--space-xs` | 4px | Micro-ajustes. |
-| `--space-sm` | 8px | Gap pequeño entre elementos relacionados. |
-| `--space-md` | 16px | Padding de tarjetas, separación estándar. |
-| `--space-lg` | 24px | Separación de secciones. |
-| `--space-xl` | 32px | Separación de bloques grandes. |
-| `--radius-sm` | 8px | Inputs, badges, chips pequeños. |
-| `--radius-md` | 12–14px | Tarjetas, modales, bottom sheets. |
-| `--radius-full` | 9999px | Badges, pills, avatares. |
-| `--tap-min-height` | 44px | Altura mínima de controles tocables. |
+| `--space-xs` / `sm` / `md` / `lg` / `xl` | 4 / 8 / 16 / 24 / 32 px | Escala de espaciado. |
+| `--radius-sm` | 8px | Elementos pequeños dentro de un control. |
+| `--radius-md` | 12px | Todo lo que se toca. |
+| `--radius-lg` | 16px | Contenedor del segmentado y superficies. |
+| `--radius-sheet` | 24px | Esquinas superiores de las hojas. |
+| `--control-lg` / `--control-md` / `--control-sm` | 40 / 36 / 32 px | Escala de botones. |
+| `--tap-min-height` | 44px | Área táctil mínima (invisible si el control es menor). |
 | `--screen-padding-x` | 16px | Padding horizontal de pantalla. |
 
 ### Sombras
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--shadow-sm` | `0 1px 4px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)` | Tarjetas pequeñas, inputs enfocados. |
-| `--shadow-md` | `0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)` | Tarjetas, dropdowns. |
-| `--shadow-lg` | `0 8px 24px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.05)` | Modales, bottom sheets. |
-| `--shadow-focus` | `0 0 0 3px rgba(30,77,140,0.18)` | Anillo de foco. |
+| `--shadow-sm` | `0 1px 3px rgba(0,16,36,.06), 0 1px 2px rgba(0,16,36,.04)` | Elementos pequeños. |
+| `--shadow-md` | `0 4px 12px rgba(0,16,36,.07), 0 2px 4px rgba(0,16,36,.04)` | Dropdowns, hojas. |
+| `--shadow-card` | `0 1px 2px rgba(0,16,36,.05), 0 4px 14px rgba(0,16,36,.07)` | Tarjetas, listas, cifras sobre el fondo. |
+| `--shadow-card-hover` | `0 2px 4px rgba(0,16,36,.06), 0 8px 22px rgba(0,16,36,.1)` | Hover de tarjeta. |
+| `--shadow-action` | `0 2px 6px rgba(0,74,173,.25)` | Acción principal. |
+| `--shadow-focus` | `0 0 0 3px rgba(0,74,173,.25)` | Anillo de foco (en oscuro, `--color-focus-ring` más luminoso). |
+
+## Piezas compartidas
+
+Cada pieza se construye una vez en `src/components/ui`; las pantallas solo las combinan.
+
+| Pieza | Contrato |
+|---|---|
+| `PageHeader` | Título y estado a la izquierda; primaria al final; secundarias como iconos o en ⋯. |
+| `SearchBar` + `FilterSheet` | Una búsqueda que entiende folio, cliente, concepto, placas y ECO. Los filtros activos quedan visibles como chips. |
+| `PeriodNavigator` | Mismo en Notas, Nómina y Estado de cuenta (En curso, Hoy, Semana, Mes, Año, Todo); cada pantalla elige qué vistas ofrece. |
+| `StatTile` | Cifra clave con fondo tinte, no borde de color; la explicación va en ⓘ. |
+| `EntityCard` (cotización y trabajo) | Tocar la tarjeta fuera de los botones abre la vista previa; las acciones siguen en el pie. Identidad de la unidad: ECO + modelo; si no hay ECO, placas + modelo; si no, solo el modelo; el chofer va aparte con icono de persona; nunca "Sin ECO" de relleno. Primaria según estado (`resolveQuoteActionPresentation`): borrador → Compartir · enviada → Autorizar · aceptada → Crear orden · rechazada → Corregir · archivada → Restaurar. |
+| `ListRow` (clientes, trabajadores, usuarios) | Toda la fila abre el detalle; a la derecha va el dato que sirve para decidir (saldo, trabajos activos), no un botón. |
+| `Section` + `DangerZone` | Si el dato se explica solo (teléfono, correo, dirección) no lleva etiqueta: icono más dato, o "Sin teléfono" en gris. Leer primero, editar a demanda. Lo destructivo vive aparte, al final, con contorno rojo; nunca como botón sólido en medio del flujo. |
+| `Sheet` | Para filtrar, gestionar, editar y "Más". Sale desde abajo con asa y fondo oscurecido, se cierra tocando afuera. En escritorio se abre como panel derecho de 420 px sin oscurecer la lista. |
+
+### Anatomía de hojas, diálogos y flujos
+
+Título a la izquierda, ✕ arriba a la derecha, encabezado de 52 px que no se mueve con el scroll, contenido con scroll propio. Acciones fijas al pie: secundaria a la izquierda y primaria a la derecha. En flujos de varios pasos, ← (paso anterior) va a la izquierda y ✕ sigue a la derecha. Las confirmaciones cortas usan un diálogo centrado de 440 px con la misma anatomía. Los formularios largos van a página completa, nunca en modal.
+
+## Patrones de pantalla
+
+- **Crear/editar cotización**: oculta la barra de navegación. Móvil: ← título ✕, progreso y acción fija abajo (contexto a la izquierda, botón compacto con el nombre del paso siguiente a la derecha). Escritorio: pasos a la izquierda, trabajo al centro, resumen fijo a la derecha. Solo hay borrador; salir nunca pierde lo capturado. El último paso es la misma vista previa que abren las tarjetas, sin scroll propio.
+- **Inicio**: bandeja priorizada; primero la operación (siguiente trabajo aprobado listo para asignar), el seguimiento de cotizaciones después.
+- **Clientes**: lista que ayuda a decidir; la ficha es una página con pestañas y el estado de cuenta es una de ellas. Se muestran hasta 2 unidades por cliente (primero las que están en el taller).
+- **Configuración**: índice agrupado, cada ajuste en su pantalla, guardado por sección y vista previa de cómo lo ve el cliente. "Agregar" abre una hoja.
+- **Trabajadores y Usuarios**: `ListRow` y la misma hoja de edición.
 
 ## Componentes
 
@@ -120,14 +138,14 @@ Implementar como wrappers Tailwind sobre comportamiento nativo o Radix cuando se
 
 | Componente | Notas de implementación |
 |---|---|
-| `Button` | Variantes: `primary`, `secondary`, `outline`, `ghost`, `danger`. Estados: `default`, `hover`, `disabled`, `loading`. Altura mínima 44px; la variante compacta (`h-9 / 36px`) solo se usa en contextos restringidos. El `primary` usa el gradiente de marca oficial. |
-| `Input` | Label + input + helper + error. Bordes `#D7E0EA`, radio 10px, altura 44–48px. |
+| `Button` | Variantes: `primary`, `secondary`, `outline`, `ghost`, `danger`. Estados: `default`, `hover`, `disabled`, `loading`. Tamaños `lg` 40 / `default` 36 / `sm` 32 px, todos con área táctil de 44 px. El `primary` es azul plano `#0A3D8F` (sin gradiente); la acción de tarjeta usa el estilo tonal. |
+| `Input` | Label + input + helper + error. Borde `--border`, radio 12px, altura 36–40px con área táctil de 44px. |
 | `Textarea` | Mismo sistema que input; altura flexible. |
 | `Checkbox` | Checkbox nativo estilizado o Radix Checkbox; label alineada. |
 | `RadioGroup` | Radix RadioGroup; uso en listas cortas y filtros. |
 | `Switch` | Radix Switch; preferencias y estados binarios. |
-| `Badge` | Pill con fondo pastel; usado para estados. Tipografía Caption. |
-| `Card` | Fondo blanco, borde sutil, radio 12–14px, padding 16–20px. |
+| `Badge` | Pastilla con fondo pastel; solo para estados (una insignia por estado). Tipografía Caption. |
+| `Card` | Superficie sobre el fondo: sombra, sin borde. Radio 16px, padding 16–20px. Dentro de hojas y paneles: borde fino, sin sombra. |
 
 ### Wrappers sobre Radix
 
@@ -148,7 +166,7 @@ Estos componentes viven bajo `src/components/ui` y nunca exponen Radix directame
 | `Select` | Listas desplegables de clientes, vehículos, estados, tipos de ítem. |
 | `Dialog` | Confirmaciones, edición rápida, detalles. |
 | `DropdownMenu` | Menús de acciones en tablas y tarjetas. |
-| `Tabs` | Navegación de detalle de cotización: Resumen / Historial / Costos. |
+| `Tabs` | Cambio de sección dentro de una página (subrayadas; la activa lleva el gradiente de marca). El filtrado usa el control segmentado, no pestañas. |
 | `Popover` | Paneles flotantes de filtros y ayuda. |
 | `Tooltip` | Información contextual (p. ej. "ⓘ" en saldos). |
 | `Accordion` | FAQ, secciones colapsables de documento público. |
@@ -222,8 +240,9 @@ La dirección y `mapsUrl` permanecen como datos de ubicación del shell público
 
 ## Shell y navegación
 
-- Mobile-first: bottom navigation de 3–5 items en móvil; sidebar colapsable en desktop.
-- El shell es deep navy (`#001024`) con iconos y texto blanco/gris claro.
+- Una sola barra inferior para todos los roles: Inicio, Cotizaciones, Trabajos, Notas y «Más», con etiquetas completas. El rol solo decide qué filas aparecen en la hoja «Más» (p. ej. Clientes y Nómina; para SUPER_ADMIN además Trabajadores, Herramientas y Administración).
+- Escritorio: barra lateral colapsada a 64 px (logo corto e iconos); al tocar el logo se expande a 220 px sobre el contenido, sin empujarlo, y recuerda la preferencia. El ítem activo lleva el gradiente de marca.
+- Crear/editar cotización oculta la barra de navegación.
 - Tap targets mínimos 44px; foco visible obligatorio.
 - Rutas operativas protegidas; rutas públicas tokenizadas con `noindex`.
 
@@ -303,6 +322,8 @@ Criterios de diseño por audiencia, no checklist de implementación. Para rutas 
 
 ## Documento público de cotización
 
+Fuera de la fase #807: páginas públicas y documentos impresos conservan esta plantilla propia (incluido su gradiente de marca) hasta una fase 2. El mapa de rutas y las piezas que usa cada una está en la propuesta de consistencia visual (sección «Todas las rutas»).
+
 - Header con gradiente de marca, logo/nombre y folio.
 - Botones outline: "Contactar taller" y "Descargar".
 - Bloque cliente/vehículo en grid de 2 columnas.
@@ -320,7 +341,8 @@ Criterios de diseño por audiencia, no checklist de implementación. Para rutas 
 - **Do** respetar límites de visibilidad por rol.
 - **Do** diseñar mobile-first y verificar tap targets ≥ 44px.
 - **Don't** mostrar caja/pagos/ledger/factura al empleado.
-- **Don't** inventar estilos visuales que no estén en Figma; si falta algo, agregar UI neutral funcional y anotar la discrepancia.
+- **Don't** inventar estilos visuales fuera de este documento y la propuesta de consistencia visual; si falta algo, agregar UI neutral funcional y anotar la discrepancia.
+- **Don't** usar gradiente fuera de la navegación activa, ni sombra y borde a la vez, ni bordes laterales de color, ni DM Mono.
 - **Don't** usar grises puros; preferir neutros con tinte azul.
 
 ## Notas de implementación
