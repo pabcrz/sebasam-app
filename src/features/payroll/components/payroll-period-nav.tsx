@@ -88,7 +88,7 @@ export function PayrollPeriodNav({
       <div className="flex min-w-0 max-w-full flex-col flex-wrap gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="break-words text-base font-semibold capitalize text-[var(--color-text-main)] sm:text-lg">
+            <h2 className="break-words text-base font-semibold text-[var(--color-text-main)] sm:text-lg">
               {rangeLabel}
             </h2>
             {isCurrent && (

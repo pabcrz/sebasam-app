@@ -113,6 +113,10 @@ Cada pieza se construye una vez en `src/components/ui`; las pantallas solo las c
 | `SegmentedControl` | Filtra una lista (Todas / Pendientes / Pagadas). Contenedor de 16 px sin borde ni margen interno; la opción elegida va en tonal y ocupa todo el alto. Con `href` cada opción es un enlace y la actual lleva `aria-current`. |
 | `Chip` / `ChipAdd` / `ChipRow` | Chip elige una opción: sin borde, elegido en tonal, hover tonal con contorno fino, `aria-pressed`. ChipAdd agrega algo ("+ Mano de obra"): borde punteado, hover tonal. ChipRow: una sola fila con scroll horizontal; nunca salta de renglón. |
 
+**Formato de periodos** (`src/lib/period-format.ts`, usado por `PeriodNavigator`): la semana va de lunes a sábado (Notas); Estado de cuenta usa lunes a domingo con `weekDays: 7`. Fechas en minúsculas: «9–14 de noviembre de 2026»; si la semana cruza meses, «30 de octubre – 4 de noviembre de 2023»; si cruza años, «28 de diciembre de 2026 – 2 de enero de 2027»; mes «noviembre de 2026»; año «2026». «En curso» marca el periodo actual y «Hoy» aparece solo si el usuario se movió de él. Nunca aplicar `capitalize` a una etiqueta de fecha: CSS convierte «de» en «De».
+
+**Encabezado de página** (`PageHeader`): sin subtítulo, porque los contadores ya se ven abajo. Las acciones secundarias van como iconos o en ⋯ y la primaria va al final.
+
 ### Anatomía de hojas, diálogos y flujos
 
 Título a la izquierda, ✕ arriba a la derecha, encabezado de 52 px que no se mueve con el scroll, contenido con scroll propio. Acciones fijas al pie: secundaria a la izquierda y primaria a la derecha. En flujos de varios pasos, ← (paso anterior) va a la izquierda y ✕ sigue a la derecha. Las confirmaciones cortas usan un diálogo centrado de 440 px con la misma anatomía. Los formularios largos van a página completa, nunca en modal.
