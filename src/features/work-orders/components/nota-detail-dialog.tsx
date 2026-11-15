@@ -2,20 +2,23 @@
 
 import * as React from "react";
 import {
-  Dialog,
+  DialogContent,
   DialogDescription,
   DialogMobileBody,
   DialogMobileClose,
-  DialogMobileContent,
   DialogMobileHeader,
   DialogTitle,
+  Sheet,
 } from "@/components/ui";
-import type { QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
+import { DocumentPreview } from "@/components/document-preview";
+import { toQuotePreviewCardProps, type QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
+import { toDocumentPreviewProps } from "@/features/quotes/components/document-preview-model";
 import { CashPaymentDialog, PaymentBalanceSummary } from "@/features/payments/components/cash-payment-dialog";
 import { NotePaymentHistory } from "@/features/payments/components/note-payment-history";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
 import { formatDate } from "@/features/quotes/lib/format";
+import { quoteStatusLabels } from "@/features/quotes/lib/status";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 import type { NotePaymentHistoryItem } from "@/features/payments/lib/payment-register";
@@ -71,26 +74,29 @@ export function NotaDetailDialog({
   const totalCents = quote.effectiveTotalCents ?? Number(quote.totalCents ?? 0);
   const paidCents = quote.paidCents ?? 0;
   const remainingCents = quote.remainingCents ?? Math.max(0, totalCents - paidCents);
+  const documentProps = toDocumentPreviewProps(toQuotePreviewCardProps(quote), {
+    typeLabel: "Nota",
+    statusLabel: quote.status ? quoteStatusLabels[quote.status] : null,
+  });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogMobileContent
-        data-testid="nota-detail-dialog"
-        className="h-dvh min-w-0 w-screen max-h-dvh rounded-none sm:h-auto sm:max-h-[calc(100dvh_-_2rem)] sm:w-[calc(100vw_-_2rem)] sm:max-w-2xl sm:rounded-[var(--radius-md)]"
-      >
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <DialogContent variant="sheet" data-testid="nota-detail-dialog">
         <DialogMobileHeader>
           <DialogTitle>Nota {noteFolio}</DialogTitle>
           <DialogDescription>{customerName} · {quote.title}</DialogDescription>
           <DialogMobileClose aria-label="Cerrar detalle de nota" />
         </DialogMobileHeader>
-        <DialogMobileBody data-testid="nota-detail-body" padding="none" className="grid content-start gap-4">
-          <section className="grid gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4" data-testid="nota-detail-summary">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Nota de remisión</p>
-            <h2 className="text-xl font-bold text-[var(--color-text-main)]">{quote.title}</h2>
-            <p className="text-sm text-[var(--color-text-muted)]">{customerName} · Folio {noteFolio}</p>
-            <p className="text-xs text-[var(--color-text-muted)]">Referencia interna: {workOrderNumber}</p>
-            {paymentDueDate ? <p data-testid="note-due-date" className="text-xs text-[var(--color-text-muted)]">Fecha de vencimiento de pago: {formatDate(paymentDueDate)}.</p> : null}
+        <DialogMobileBody data-testid="nota-detail-body" className="grid content-start gap-4">
+          <section className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--color-text-muted)]" data-testid="nota-detail-summary">
+            <span>Folio {noteFolio}</span>
+            <span>Referencia interna: {workOrderNumber}</span>
           </section>
+          <DocumentPreview
+            {...documentProps}
+            validityText={null}
+            dueDateText={paymentDueDate ? `Fecha de vencimiento de pago: ${formatDate(paymentDueDate)}.` : null}
+          />
           <section className="grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3" data-testid="nota-detail-actions">
             <div data-testid="quote-payment-balance-indicator">
               <PaymentBalanceSummary totalCents={totalCents} paidCents={paidCents} remainingCents={remainingCents} />
@@ -135,7 +141,7 @@ export function NotaDetailDialog({
            payments={paymentHistory?.payments ?? []}
           />
         </DialogMobileBody>
-      </DialogMobileContent>
-    </Dialog>
+      </DialogContent>
+    </Sheet>
   );
 }

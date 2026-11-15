@@ -106,6 +106,7 @@ Cada pieza se construye una vez en `src/components/ui`; las pantallas solo las c
 | `PeriodNavigator` | Mismo en Notas, Nómina y Estado de cuenta (En curso, Hoy, Semana, Mes, Año, Todo); cada pantalla elige qué vistas ofrece. |
 | `StatTile` | Cifra clave con fondo tinte, no borde de color; la explicación va en ⓘ. |
 | `EntityCard` (cotización y trabajo; `src/components/ui/entity-card.tsx`, identidad en `src/lib/unit-identity.ts`) | Tocar la tarjeta fuera de los botones abre la vista previa; las acciones siguen en el pie. Identidad de la unidad: ECO + modelo; si no hay ECO, placas + modelo; si no, solo el modelo; el chofer va aparte con icono de persona; nunca "Sin ECO" de relleno. Primaria según estado (`resolveQuoteActionPresentation`): borrador → Compartir · enviada → Autorizar · aceptada → Crear orden · rechazada → Corregir · archivada → Restaurar. |
+| `DocumentPreview` (`src/components/document-preview.tsx`) | Vista previa única de cotización, trabajo y nota: se abre al tocar una tarjeta y es el último paso de crear o editar. Estado y tipo; cliente y unidad en un bloque; servicio; conceptos por sección con franja y subtotal, líneas sutiles y sin marco; totales con importe en letra, subtotal, IVA y total grande; notas (líneas que empiezan con "-" son lista); formas de pago. Sin encabezado del taller y sin scroll propio: el contenedor (`Sheet` / `DialogMobileBody`) hace el scroll. El PDF, la impresión y el enlace público conservan su plantilla. |
 | `ListRow` (clientes, trabajadores, usuarios) | Toda la fila abre el detalle; a la derecha va el dato que sirve para decidir (saldo, trabajos activos), no un botón. |
 | `Section` + `DangerZone` | Si el dato se explica solo (teléfono, correo, dirección) no lleva etiqueta: icono más dato, o "Sin teléfono" en gris. Leer primero, editar a demanda. Lo destructivo vive aparte, al final, con contorno rojo; nunca como botón sólido en medio del flujo. |
 | `Sheet` | Para filtrar, gestionar, editar y "Más". Sale desde abajo con asa y fondo oscurecido, se cierra tocando afuera. En escritorio se abre como panel derecho de 420 px sin oscurecer la lista. |
@@ -244,7 +245,7 @@ La dirección y `mapsUrl` permanecen como datos de ubicación del shell público
 | `ServicioExternoForm` | Formulario rápido de servicio externo. |
 | `QuoteTotalsCard` | Subtotal / IVA / Total con toggle de IVA. |
 | `QuoteNotesSection` | Notas internas y visibles para cliente. |
-| `QuotePreviewCard` | Vista previa de cotización para compartir. |
+| `QuotePreviewCard` | Vista previa de cotización solo para el enlace público y la impresión (las vistas internas usan `DocumentPreview`). |
 | `PaymentLinkCard` | Tarjeta opcional de instrucciones para transferencia (importe, cuenta elegible, contacto y comprobante). |
 
 ## Shell y navegación
