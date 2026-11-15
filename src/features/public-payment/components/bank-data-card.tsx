@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Copy, Check } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from "@/components/ui";
 import { businessPaymentConfig } from "@/config/payment";
 
@@ -41,7 +41,7 @@ function CopyButton({ value }: { value: string }) {
       aria-label={copied ? "Copiado" : "Copiar al portapapeles"}
       className="px-3 print:hidden"
     >
-      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+      {copied ? <Icon name="check" className="h-4 w-4" /> : <Icon name="copy" className="h-4 w-4" />}
       <span className="sr-only">{copied ? "Copiado" : "Copiar"}</span>
       <span aria-hidden="true">{copied ? "Copiado" : "Copiar"}</span>
     </Button>

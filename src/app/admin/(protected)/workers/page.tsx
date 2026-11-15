@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, X } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@/components/ui";
 import {
   createWorkerFromForm,
@@ -75,7 +75,7 @@ export default async function WorkersPage({ searchParams }: WorkersPageProps) {
       <Card>
         <CardHeader>
           <CardTitle as="h2" className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
+            <Icon name="search" className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
             Buscar trabajadores
           </CardTitle>
         </CardHeader>
@@ -105,7 +105,7 @@ export default async function WorkersPage({ searchParams }: WorkersPageProps) {
               {search.query || search.status !== "ALL" ? (
                 <Button asChild variant="outline">
                   <Link href="/admin/workers">
-                    <X className="h-4 w-4" aria-hidden="true" />
+                    <Icon name="close" className="h-4 w-4" aria-hidden="true" />
                     Limpiar
                   </Link>
                 </Button>

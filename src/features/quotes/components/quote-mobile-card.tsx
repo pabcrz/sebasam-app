@@ -3,7 +3,7 @@
 import { resolveDocumentDates } from "@/features/quotes/lib/document-dates";
 
 import * as React from "react";
-import { CalendarDays, Car, ClipboardList, Printer } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { PrintActionButton } from "./print-action-button";
 import { QuoteItemType } from "@/generated/prisma/enums";
 import type { PaymentRequest, QuoteStatus } from "@/generated/prisma/client";
@@ -144,7 +144,7 @@ export function QuoteListCard({
             aria-label={`Imprimir cotización ${quote.number}`}
             title={`Imprimir cotización ${quote.number}`}
           >
-            <Printer className="h-5 w-5" aria-hidden="true" />
+            <Icon name="print" className="h-5 w-5" aria-hidden="true" />
             <span className="sr-only">Imprimir</span>
           </PrintActionButton>
         );
@@ -260,12 +260,12 @@ export function QuoteListCard({
             {quote.customer?.name ?? "Sin cliente"}
           </p>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-            <Car className="h-3.5 w-3.5" aria-hidden="true" />
+            <Icon name="unit" className="h-3.5 w-3.5" aria-hidden="true" />
             <span>{vehicleDescription || "Sin vehículo"}</span>
           </p>
 
           <p className="mt-3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)]">
-            <ClipboardList className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <Icon name="clipboard" className="h-4 w-4 shrink-0" aria-hidden="true" />
             {quote.workOrder ? (
               <>
                 <span>Orden de trabajo</span>
@@ -280,16 +280,16 @@ export function QuoteListCard({
 
           <div data-testid="quote-dates" className="mt-3 flex min-h-12 flex-wrap gap-x-4 gap-y-1 border-t border-[var(--color-border-subtle)] pt-3 text-xs text-[var(--color-text-muted)]">
             <p className="flex items-center gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+              <Icon name="calendar" className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Fecha de cotización: {formatOperationalDate(quote.operationalDate)}</span>
             </p>
             <p className="flex items-center gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+              <Icon name="calendar" className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Vigente hasta: {quote.validUntil ? formatDate(quote.validUntil) : "—"}</span>
             </p>
             {paymentDueDate ? (
               <p className="flex items-center gap-1.5">
-                <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                <Icon name="calendar" className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>Vencimiento pago: {formatDate(paymentDueDate)}</span>
               </p>
             ) : null}

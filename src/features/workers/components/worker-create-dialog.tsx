@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { UserPlus } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Dialog,
@@ -39,7 +39,7 @@ export function WorkerCreateDialog({ action, triggerVariant = "primary", trigger
           title={triggerAriaLabel ?? (triggerIconOnly ? "Crear trabajador" : undefined)}
           aria-label={triggerAriaLabel ?? (triggerIconOnly ? "Crear trabajador" : undefined)}
         >
-          <UserPlus className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />
+          <Icon name="user-plus" className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />
           <span className={triggerIconOnly ? "sr-only" : undefined}>Crear trabajador</span>
         </Button>
       </DialogTrigger>

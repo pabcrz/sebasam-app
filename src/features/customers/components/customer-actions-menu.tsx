@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MoreHorizontal, Pencil, FileText, Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Dialog,
@@ -54,7 +54,7 @@ export function CustomerActionsMenu({
           title={`Más acciones de ${customer.name}`}
           onClick={(e) => e.stopPropagation()}
         >
-          <MoreHorizontal className="h-5 w-5 text-[var(--color-text-muted)]" aria-hidden="true" />
+          <Icon name="more" className="h-5 w-5 text-[var(--color-text-muted)]" aria-hidden="true" />
           <span className="sr-only">Más acciones</span>
         </Button>
       </DialogTrigger>
@@ -72,7 +72,7 @@ export function CustomerActionsMenu({
               className="w-full justify-start gap-2"
               onClick={() => handleAction(onEdit)}
             >
-              <Pencil className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden="true" />
+              <Icon name="edit" className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden="true" />
               Editar datos
             </Button>
             <Button
@@ -81,7 +81,7 @@ export function CustomerActionsMenu({
               className="w-full justify-start gap-2"
               onClick={() => handleAction(onViewStatement)}
             >
-              <FileText className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden="true" />
+              <Icon name="quotes" className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden="true" />
               Ver estado de cuenta
             </Button>
 
@@ -93,7 +93,7 @@ export function CustomerActionsMenu({
                 disabled={!blocker.canDelete}
                 onClick={() => handleAction(onDelete)}
               >
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                <Icon name="trash" className="h-4 w-4" aria-hidden="true" />
                 Eliminar cliente
               </Button>
               {!blocker.canDelete && blocker.reason ? (

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { computeHistoricalCommissionCents, computeUnitPriceCents } from "@/features/historical/domain";
 import type { AssistantSource } from "@/features/assistant/service";
 import { formatCents } from "@/features/quotes/lib/format";
@@ -25,7 +25,7 @@ export function SourcePanel({ source }: SourcePanelProps) {
       <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)]">
         <Button type="button" variant="ghost" size="sm" className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
           <span className="min-w-0 flex-1 truncate text-sm"><span className="font-semibold text-[var(--color-text-main)]">Trabajo completado</span><span className="text-[var(--color-text-muted)]"> — {source.description}</span></span>
-          <span className="text-[var(--color-text-muted)]" aria-hidden="true">{open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</span>
+          <span className="text-[var(--color-text-muted)]" aria-hidden="true">{open ? <Icon name="chevron-down" className="h-4 w-4" /> : <Icon name="chevron-right" className="h-4 w-4" />}</span>
         </Button>
         {open ? <dl className="space-y-1.5 border-t border-[var(--color-border-light)] px-3 py-3 text-sm">
           <div className="flex justify-between gap-3"><dt className="text-[var(--color-text-muted)]">Orden completada</dt><dd className="text-right font-medium">{source.workOrderNumber}</dd></div>
@@ -67,7 +67,7 @@ export function SourcePanel({ source }: SourcePanelProps) {
           <span className="text-[var(--color-text-muted)]"> — {source.description}</span>
         </span>
         <span className="text-[var(--color-text-muted)]" aria-hidden="true">
-          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          {open ? <Icon name="chevron-down" className="h-4 w-4" /> : <Icon name="chevron-right" className="h-4 w-4" />}
         </span>
       </Button>
 

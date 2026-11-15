@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, UserCog } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { notFound } from "next/navigation";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { Button, Card, CardContent, CardHeader } from "@/components/ui";
@@ -35,12 +35,12 @@ export default async function EditWorkerPage({ params, searchParams }: EditWorke
     <section className="mx-auto grid w-full max-w-3xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <Button asChild variant="ghost" className="w-fit">
         <Link href="/admin/workers">
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          <Icon name="arrow-left" className="h-4 w-4" aria-hidden="true" />
           Regresar a trabajadores
         </Link>
       </Button>
 
-      <AdminPageHeader icon={UserCog} title={worker.displayName} description="Actualiza los datos del perfil operativo." variant="expanded" />
+      <AdminPageHeader icon="workers" title={worker.displayName} description="Actualiza los datos del perfil operativo." variant="expanded" />
       <Card>
         <CardHeader>
           {query.error === "invalid" ? (

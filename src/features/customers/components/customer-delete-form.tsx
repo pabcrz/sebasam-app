@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button, ConfirmDialog } from "@/components/ui";
-import { Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import type { ButtonVariant, ButtonSize } from "@/components/ui";
 
 export interface CustomerDeleteFormProps {
@@ -54,7 +54,7 @@ export function CustomerDeleteForm({
         onClick={() => setOpen(true)}
         aria-label={`Eliminar cliente ${customerName}`}
       >
-        {!isPending ? <Trash2 className="h-4 w-4" aria-hidden="true" /> : null}
+        {!isPending ? <Icon name="trash" className="h-4 w-4" aria-hidden="true" /> : null}
         {!iconOnly && !isPending ? <span>Eliminar cliente</span> : null}
       </Button>
 

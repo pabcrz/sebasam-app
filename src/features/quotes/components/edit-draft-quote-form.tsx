@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { X, Printer, FileText } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { PrintActionButton } from "./print-action-button";
@@ -33,13 +33,13 @@ export function EditDraftQuoteForm({
 
   return (
     <section className="mx-auto flex min-h-[calc(100dvh-5rem)] w-full max-w-6xl flex-col gap-4 px-4 py-6 md:px-6 md:py-10">
-      <AdminPageHeader icon={FileText} title={`Editar cotización ${quoteNumber}`} variant="expanded" actions={<>
+      <AdminPageHeader icon="quotes" title={`Editar cotización ${quoteNumber}`} variant="expanded" actions={<>
           <PrintActionButton
             url={`/admin/quotes/${quoteId}/print?returnTo=/admin/quotes`}
             variant="outline"
             size="sm"
           >
-            <Printer className="mr-2 h-4 w-4" aria-hidden="true" />
+            <Icon name="print" className="mr-2 h-4 w-4" aria-hidden="true" />
             Imprimir PDF
           </PrintActionButton>
           <Button
@@ -49,7 +49,7 @@ export function EditDraftQuoteForm({
             onClick={() => setShowConfirmClose(true)}
             aria-label="Cerrar edición"
           >
-            <X className="h-5 w-5" aria-hidden="true" />
+            <Icon name="close" className="h-5 w-5" aria-hidden="true" />
           </Button>
         </>} />
       <QuoteBuilder

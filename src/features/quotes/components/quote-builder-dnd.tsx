@@ -3,7 +3,7 @@
 import React, { createContext, useContext } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 
 type SortableContextType = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -17,7 +17,7 @@ const SortableItemContext = createContext<SortableContextType | null>(null);
 
 export function DragHandle({ ariaLabel, className }: { ariaLabel?: string; className?: string }) {
   const ctx = useContext(SortableItemContext);
-  if (!ctx) return <GripVertical className={`size-4 shrink-0 text-[var(--color-text-muted)] ${className || ""}`} aria-hidden="true" />;
+  if (!ctx) return <Icon name="grip-vertical" className={`size-4 shrink-0 text-[var(--color-text-muted)] ${className || ""}`} aria-hidden="true" />;
   
   const { setActivatorNodeRef, attributes, listeners } = ctx;
   return (
@@ -28,7 +28,7 @@ export function DragHandle({ ariaLabel, className }: { ariaLabel?: string; class
       aria-label={ariaLabel}
       className={`flex items-center justify-center touch-none cursor-grab text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] ${className || ""}`}
     >
-      <GripVertical className="size-4 shrink-0" aria-hidden="true" />
+      <Icon name="grip-vertical" className="size-4 shrink-0" aria-hidden="true" />
     </div>
   );
 }

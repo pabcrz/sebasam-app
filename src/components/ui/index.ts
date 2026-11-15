@@ -5,6 +5,7 @@ export * from "./checkbox";
 export * from "./confirm-dialog";
 export * from "./destructive-action";
 export * from "./dialog";
+export * from "./icon";
 export * from "./input";
 export * from "./label";
 export * from "./list-item-card";

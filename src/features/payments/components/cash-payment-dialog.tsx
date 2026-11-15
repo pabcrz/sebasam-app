@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CreditCard, Download } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Dialog,
@@ -231,7 +231,7 @@ export function CashPaymentDialog({
       title={`${triggerLabel} para ${quoteNumber}`}
       className={triggerClassName ?? (triggerIconOnlyMobile ? "h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" : "w-full")}
     >
-      <CreditCard className="h-5 w-5" aria-hidden="true" />
+      <Icon name="credit-card" className="h-5 w-5" aria-hidden="true" />
       <span className={triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{triggerLabel}</span>
     </Button>
   );
@@ -380,7 +380,7 @@ export function CashPaymentDialog({
                     size="sm"
                     onClick={() => downloadPaymentFile(createPaymentReceiptFile(receipt))}
                   >
-                    <Download className="h-4 w-4" aria-hidden="true" /> Descargar PNG
+                    <Icon name="download" className="h-4 w-4" aria-hidden="true" /> Descargar PNG
                   </Button>
                 </div>
                 {receiptError ? <p role="alert" className="text-xs text-[var(--color-status-danger-fg)]">{receiptError}</p> : null}

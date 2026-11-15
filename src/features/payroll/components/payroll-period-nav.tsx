@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, FileSignature } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { PayrollPeriodStatus } from "@/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,7 +77,7 @@ export function PayrollPeriodNav({
               title={!hasData ? "No hay trabajos registrados en este período" : "Imprimir hoja de firmas de nómina"}
               className="text-xs px-3 gap-1.5"
             >
-              <FileSignature className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+              <Icon name="sign" className="h-3.5 w-3.5 text-[var(--color-primary)]" />
               Hoja de Firmas
             </Button>
           )}
@@ -117,7 +117,7 @@ export function PayrollPeriodNav({
               href={payrollHref({ mode, anchor: prevAnchor })}
               aria-label={mode === "monthly" ? "Mes anterior" : "Semana anterior"}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <Icon name="chevron-left" className="h-4 w-4 mr-1" />
               Anterior
             </Link>
           </Button>
@@ -134,7 +134,7 @@ export function PayrollPeriodNav({
               aria-label={mode === "monthly" ? "Mes siguiente" : "Semana siguiente"}
             >
               Siguiente
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <Icon name="chevron-right" className="h-4 w-4 ml-1" />
             </Link>
           </Button>
         </div>

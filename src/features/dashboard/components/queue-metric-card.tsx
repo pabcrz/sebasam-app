@@ -1,6 +1,7 @@
 import Link from "next/link";
-import * as React from "react";
 import { clsx } from "clsx";
+
+import { Icon, type IconName } from "@/components/ui/icon";
 
 export type QueueAccent = "primary" | "warning" | "success" | "danger" | "info";
 
@@ -8,7 +9,7 @@ export interface QueueMetricCardProps {
   label: string;
   value: number;
   href: string;
-  icon: React.ElementType;
+  icon: IconName;
   accent?: QueueAccent;
   className?: string;
 }
@@ -29,7 +30,7 @@ export function QueueMetricCard({
   label,
   value,
   href,
-  icon: Icon,
+  icon,
   accent = "primary",
   className,
 }: QueueMetricCardProps) {
@@ -56,7 +57,7 @@ export function QueueMetricCard({
               : "bg-[var(--color-blue-tint)] text-[var(--color-primary)]",
           )}
         >
-          <Icon className="h-4 w-4" aria-hidden="true" />
+          <Icon name={icon} className="h-4 w-4" aria-hidden="true" />
         </div>
       </div>
       <div className="mt-2 flex items-baseline gap-1.5">

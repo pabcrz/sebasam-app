@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Coins, Trash2, AlertCircle } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Dialog,
@@ -212,7 +212,7 @@ export function WorkOrderAdvanceDialog({
       ) : !isControlled ? (
         <DialogTrigger asChild>
           <Button type="button" variant="outline" size="sm">
-            <Coins className="h-4 w-4" aria-hidden="true" />
+            <Icon name="coins" className="h-4 w-4" aria-hidden="true" />
             Avance de mano de obra
           </Button>
         </DialogTrigger>
@@ -301,7 +301,7 @@ export function WorkOrderAdvanceDialog({
 
                 {selectedConcept.currentWeekAdvance ? (
                   <div className="rounded-[var(--radius-md)] border border-[var(--color-status-warning)] bg-[var(--color-bg-soft)] p-3 text-xs text-[var(--color-text-muted)] flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 text-[var(--color-status-warning)] shrink-0 mt-0.5" />
+                    <Icon name="alert" className="h-4 w-4 text-[var(--color-status-warning)] shrink-0 mt-0.5" />
                     <div>
                       <strong>Ya registraste un avance para este concepto esta semana:</strong>{" "}
                       Base {formatCents(selectedConcept.currentWeekAdvance.advanceBaseCents)} (Comisión{" "}
@@ -413,7 +413,7 @@ export function WorkOrderAdvanceDialog({
                         disabled={deletingId === adv.id || submitting}
                         onClick={() => handleDeleteAdvance(adv.id)}
                       >
-                        <Trash2 className="h-3.5 w-3.5 text-[var(--color-status-danger)]" />
+                        <Icon name="trash" className="h-3.5 w-3.5 text-[var(--color-status-danger)]" />
                       </Button>
                     </div>
                   ))}

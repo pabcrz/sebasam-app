@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
-import { X } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 
 export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
@@ -286,7 +286,7 @@ export const DialogMobileClose = React.forwardRef<
         )}
         {...props}
       >
-        {children ?? <X className="h-4 w-4" aria-hidden="true" />}
+        {children ?? <Icon name="close" className="h-4 w-4" aria-hidden="true" />}
       </button>
     </DialogClose>
   );

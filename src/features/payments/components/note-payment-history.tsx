@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Download, Share2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Badge, Button } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import {
@@ -65,11 +65,11 @@ export function NotePaymentHistory({
         </div>
           <div className="flex min-w-0 flex-wrap gap-2">
           <Button type="button" variant="outline" size="sm" className="max-w-full" onClick={shareStatement}>
-          <Share2 className="h-4 w-4" aria-hidden="true" />
+          <Icon name="share" className="h-4 w-4" aria-hidden="true" />
           Compartir estado de cuenta
          </Button>
           <Button type="button" variant="outline" size="sm" className="max-w-full" onClick={() => downloadPaymentFile(createNotePaymentRegisterFile(register))}>
-           <Download className="h-4 w-4" aria-hidden="true" /> Descargar PNG
+           <Icon name="download" className="h-4 w-4" aria-hidden="true" /> Descargar PNG
          </Button>
          </div>
       </div>
@@ -93,10 +93,10 @@ export function NotePaymentHistory({
                    {!payment.isReversed && (payment.paymentStatus === undefined || payment.paymentStatus === "PAID") ? (
                      <>
                        <Button type="button" variant="ghost" size="sm" onClick={() => shareReceipt(payment)} aria-label={`Compartir recibo ${formatCents(payment.amountCents)}`}>
-                         <Share2 className="h-4 w-4" aria-hidden="true" /><span className="sr-only">Compartir recibo</span>
+                         <Icon name="share" className="h-4 w-4" aria-hidden="true" /><span className="sr-only">Compartir recibo</span>
                        </Button>
                        <Button type="button" variant="ghost" size="sm" onClick={() => downloadPaymentFile(createPaymentReceiptFile({ title, folio, totalCents, customerName, paymentCents: payment.amountCents, paidCents: payment.paidCentsAtPayment, remainingCents: payment.remainingCentsAtPayment, method: payment.method, paymentDate: payment.date, isReversed: payment.isReversed, sequence: index + 1 }))} aria-label={`Descargar recibo ${formatCents(payment.amountCents)}`}>
-                         <Download className="h-4 w-4" aria-hidden="true" /><span className="sr-only">Descargar PNG</span>
+                         <Icon name="download" className="h-4 w-4" aria-hidden="true" /><span className="sr-only">Descargar PNG</span>
                        </Button>
                      </>
                    ) : null}

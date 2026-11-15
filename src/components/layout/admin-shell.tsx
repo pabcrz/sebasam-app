@@ -3,25 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Banknote,
-  Bolt,
-  CircleUserRound,
-  ClipboardList,
-  FileCheck,
-  FileText,
-  History,
-  Home,
-  Loader2,
-  LogOut,
-  MessageCircleQuestion,
-  MoreHorizontal,
-  UserCog,
-  Users,
-  Shield,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { logoutAdmin } from "@/features/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { FontScaleToggle } from "@/components/font-scale-toggle";
@@ -37,22 +19,22 @@ type NavItem = {
   href: string;
   label: string;
   mobileLabel?: string;
-  icon: LucideIcon;
+  icon: IconName;
 };
 
 /** All nav items shown in the desktop sidebar. */
 const navItems: NavItem[] = [
-  { href: "/admin", label: "Inicio", icon: Home },
-  { href: "/admin/customers", label: "Clientes", icon: Users },
-  { href: "/admin/workers", label: "Trabajadores", icon: UserCog },
-  { href: "/admin/quotes", label: "Cotizaciones", icon: FileText },
-  { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
-  { href: "/admin/notas", label: "Notas", icon: FileCheck },
-  { href: "/admin/nomina", label: "Nómina", icon: Banknote },
-  { href: "/admin/historical", label: "Histórico", icon: History },
-  { href: "/asistente", label: "Asistente", icon: MessageCircleQuestion },
-  { href: "/admin/configuracion-pago", label: "Configuración", icon: Bolt },
-  { href: "/admin/users", label: "Usuarios", icon: Shield }, // Added for SUPER_ADMIN
+  { href: "/admin", label: "Inicio", icon: "home" },
+  { href: "/admin/customers", label: "Clientes", icon: "users" },
+  { href: "/admin/workers", label: "Trabajadores", icon: "workers" },
+  { href: "/admin/quotes", label: "Cotizaciones", icon: "quotes" },
+  { href: "/admin/work-orders", label: "Trabajos", icon: "jobs" },
+  { href: "/admin/notas", label: "Notas", icon: "notes" },
+  { href: "/admin/nomina", label: "Nómina", icon: "cash" },
+  { href: "/admin/historical", label: "Histórico", icon: "history" },
+  { href: "/asistente", label: "Asistente", icon: "assistant" },
+  { href: "/admin/configuracion-pago", label: "Configuración", icon: "settings" },
+  { href: "/admin/users", label: "Usuarios", icon: "shield" }, // Added for SUPER_ADMIN
 ];
 
 const patronNavHrefs = new Set([
@@ -66,21 +48,21 @@ const patronNavHrefs = new Set([
 
 /** Primary operational destinations shown directly in the 5-item mobile bottom nav bar. */
 export const primaryMobileNavItems: NavItem[] = [
-  { href: "/admin", label: "Inicio", icon: Home },
-  { href: "/admin/quotes", label: "Cotizaciones", mobileLabel: "Cotiz.", icon: FileText },
-  { href: "/admin/work-orders", label: "Trabajos", icon: ClipboardList },
-  { href: "/admin/notas", label: "Notas", icon: FileCheck },
+  { href: "/admin", label: "Inicio", icon: "home" },
+  { href: "/admin/quotes", label: "Cotizaciones", mobileLabel: "Cotiz.", icon: "quotes" },
+  { href: "/admin/work-orders", label: "Trabajos", icon: "jobs" },
+  { href: "/admin/notas", label: "Notas", icon: "notes" },
 ];
 
 /** Secondary destinations accessible via the 'Más' bottom sheet. */
 export const secondaryMobileNavItems: NavItem[] = [
-  { href: "/admin/customers", label: "Clientes", icon: Users },
-  { href: "/admin/nomina", label: "Nómina", icon: Banknote },
-  { href: "/admin/historical", label: "Histórico", mobileLabel: "Hist.", icon: History },
-  { href: "/asistente", label: "Asistente", mobileLabel: "IA", icon: MessageCircleQuestion },
-  { href: "/admin/workers", label: "Trabajadores", icon: UserCog },
-  { href: "/admin/configuracion-pago", label: "Configuración", icon: Bolt },
-  { href: "/admin/users", label: "Usuarios", icon: Shield },
+  { href: "/admin/customers", label: "Clientes", icon: "users" },
+  { href: "/admin/nomina", label: "Nómina", icon: "cash" },
+  { href: "/admin/historical", label: "Histórico", mobileLabel: "Hist.", icon: "history" },
+  { href: "/asistente", label: "Asistente", mobileLabel: "IA", icon: "assistant" },
+  { href: "/admin/workers", label: "Trabajadores", icon: "workers" },
+  { href: "/admin/configuracion-pago", label: "Configuración", icon: "settings" },
+  { href: "/admin/users", label: "Usuarios", icon: "shield" },
 ];
 
 const patronMobileNavItems: NavItem[] = [
@@ -96,7 +78,7 @@ function NavLink({
   href,
   label,
   mobileLabel,
-  icon: Icon,
+  icon: iconName,
   mobile = false,
   onNavStart,
 }: NavItem & { mobile?: boolean; onNavStart?: () => void }) {
@@ -142,6 +124,7 @@ function NavLink({
       aria-current={active ? "page" : undefined}
     >
       <Icon
+        name={iconName}
         className={`transition-transform duration-200 ease-out will-change-transform ${
           mobile ? "h-5 w-5" : "h-4 w-4"
         } ${active ? "scale-110" : "group-hover:scale-110 group-active:scale-95"}`}
@@ -241,7 +224,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
             <div className="flex items-center gap-2">
               {isGlobalPending ? (
                 <span className="flex items-center gap-1 text-xs text-[var(--color-primary)] font-medium">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  <Icon name="loader" className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                   Cargando…
                 </span>
               ) : null}
@@ -250,7 +233,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
             <div className="flex items-center gap-1">
               <details ref={profileMenuRef} className="relative">
                 <summary className="flex min-h-[var(--tap-min-height)] cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-[var(--color-bg-soft)] [&::-webkit-details-marker]:hidden">
-                  <CircleUserRound className="h-5 w-5" aria-hidden="true" />
+                  <Icon name="user" className="h-5 w-5" aria-hidden="true" />
                   <span className="hidden text-right sm:flex sm:flex-col">
                     <span className="text-sm font-semibold leading-tight">{displayName}</span>
                     <span className="text-xs text-[var(--color-text-muted)]">{role}</span>
@@ -267,7 +250,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
                       href="/admin/configuracion-pago"
                       className="flex min-h-[var(--tap-min-height)] w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]"
                     >
-                      <Bolt className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden="true" />
+                      <Icon name="settings" className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden="true" />
                       <span>Configuración</span>
                     </Link>
                   </div>
@@ -283,7 +266,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
                   <div className="border-t border-[var(--color-border-light)] pt-1">
                     <form action={logoutAdmin}>
                       <Button type="submit" variant="ghost" className="w-full justify-start gap-2 text-[var(--color-status-danger-fg)] hover:bg-[var(--color-status-danger-bg)]">
-                        <LogOut className="h-4 w-4" aria-hidden="true" />
+                        <Icon name="logout" className="h-4 w-4" aria-hidden="true" />
                         Salir
                       </Button>
                     </form>
@@ -321,7 +304,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
                 className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-on-navy-tint)] hover:bg-white/10 hover:text-white"
                 aria-label="Cerrar menú"
               >
-                <X className="h-4 w-4" aria-hidden="true" />
+                <Icon name="close" className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
             <div className="grid grid-cols-4 gap-2 pt-3">
@@ -366,7 +349,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
                   : "text-[var(--color-on-navy-tint)] hover:bg-white/8 hover:text-white"
               }`}
             >
-              <MoreHorizontal
+              <Icon name="more"
                 className={`h-5 w-5 transition-transform duration-200 ease-out will-change-transform ${
                   isSecondaryActive || isMoreOpen ? "scale-110" : "group-hover:scale-110 group-active:scale-95"
                 }`}

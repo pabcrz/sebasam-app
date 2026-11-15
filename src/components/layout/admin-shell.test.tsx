@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import type { SVGProps } from "react";
 import { AdminShell } from "./admin-shell";
 
 let mockPathname = "/admin";
@@ -12,14 +11,6 @@ vi.mock("next/navigation", () => ({
     push: vi.fn(),
   }),
 }));
-
-vi.mock("lucide-react", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("lucide-react")>();
-  return {
-    ...actual,
-    Banknote: (props: SVGProps<SVGSVGElement>) => <svg data-testid="payroll-icon" {...props} />,
-  };
-});
 
 vi.mock("@/features/auth/actions", () => ({
   logoutAdmin: vi.fn(),

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Share2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui";
@@ -87,7 +87,7 @@ export function ShareQuoteButton({
       disabled={disabled || isPending}
       onClick={handleShare}
     >
-      {!isPending ? <Share2 className="h-5 w-5" aria-hidden="true" /> : null}
+      {!isPending ? <Icon name="share" className="h-5 w-5" aria-hidden="true" /> : null}
       {!iconOnly && !isPending ? (
         <span className={actionLabelClassName}>{label}</span>
       ) : null}

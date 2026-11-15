@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Banknote, Check, Copy, ExternalLink, FileText, LinkIcon } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import type { PaymentRequest, PaymentRequestStatus } from "@/generated/prisma/client";
 import {
   Badge,
@@ -101,7 +101,7 @@ export function PaymentRequestLinkDialog({ action, context, actionLabelClassName
         aria-label="Link de pago"
         title="Link de pago"
       >
-        <LinkIcon className="h-5 w-5" aria-hidden="true" />
+        <Icon name="link" className="h-5 w-5" aria-hidden="true" />
         <span className={actionLabelClassName}>Link de pago</span>
       </Button>
 
@@ -162,7 +162,7 @@ export function PaymentRequestLinkDialog({ action, context, actionLabelClassName
             {context.requiresInvoice ? (
               <section className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
                 <div className="flex items-start gap-3">
-                  <FileText className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
+                  <Icon name="quotes" className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
                     <h3 className="font-semibold text-[var(--color-text-main)]">Datos fiscales</h3>
                     {context.fiscalProfile ? (
@@ -187,7 +187,7 @@ export function PaymentRequestLinkDialog({ action, context, actionLabelClassName
             {context.bankAccount ? (
               <section className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
                 <div className="mb-3 flex items-center gap-2">
-                  <Banknote className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
+                  <Icon name="cash" className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
                   <h3 className="font-semibold text-[var(--color-text-main)]">Cuenta bancaria</h3>
                 </div>
                 <div className="grid gap-2">
@@ -234,7 +234,7 @@ export function PaymentRequestLinkDialog({ action, context, actionLabelClassName
                 aria-label={`Copiar y abrir link de ${quoteNumber}`}
                 className="w-full"
               >
-                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                <Icon name="external-link" className="h-4 w-4" aria-hidden="true" />
                 <span>Copiar y abrir</span>
               </Button>
               <CopyButton value={absoluteUrl} className="w-full" />
@@ -329,7 +329,7 @@ function CopyButton({
       aria-label={copied ? "Copiado" : `${label} al portapapeles`}
       className={className ?? "shrink-0"}
     >
-      {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+      {copied ? <Icon name="check" className="h-4 w-4" aria-hidden="true" /> : <Icon name="copy" className="h-4 w-4" aria-hidden="true" />}
       <span>{copied ? "Copiado" : label}</span>
     </Button>
   );

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { QuoteItemType } from "@/generated/prisma/enums";
-import { ChevronDown, ChevronUp, Copy, Minus, Plus, PlusCircle, Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Badge,
   Button,
@@ -173,7 +173,7 @@ export function QuoteBuilderItemsStep({
                 onClick={() => dispatch({ type: "removeSection", sectionIndex })}
                 className="size-8 shrink-0 text-[var(--color-status-danger-fg)] hover:bg-[var(--color-status-danger-bg)]"
               >
-                <Trash2 className="size-3.5" aria-hidden="true" />
+                <Icon name="trash" className="size-3.5" aria-hidden="true" />
               </Button>
             ) : null}
           </div>
@@ -259,7 +259,7 @@ export function QuoteBuilderItemsStep({
                             className="shrink-0 text-[var(--color-text-muted)] transition-transform duration-200"
                             aria-hidden="true"
                           >
-                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {isExpanded ? <Icon name="chevron-up" className="h-4 w-4" /> : <Icon name="chevron-down" className="h-4 w-4" />}
                           </span>
                         </button>
                         <button
@@ -268,7 +268,7 @@ export function QuoteBuilderItemsStep({
                           onClick={() => dispatch({ type: "duplicateItem", sectionIndex, itemIndex })}
                           className="group inline-flex size-[var(--tap-min-height)] shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:h-8 sm:w-8"
                         >
-                          <Copy className="size-4 icon-copy-hover" aria-hidden="true" />
+                          <Icon name="copy" className="size-4 icon-copy-hover" aria-hidden="true" />
                         </button>
                         <button
                           type="button"
@@ -276,7 +276,7 @@ export function QuoteBuilderItemsStep({
                           onClick={() => dispatch({ type: "removeItem", sectionIndex, itemIndex })}
                           className="group hidden h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-status-danger-fg)] transition-colors hover:bg-[var(--color-status-danger-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] sm:inline-flex"
                         >
-                          <Trash2 className="size-4 icon-trash-hover" aria-hidden="true" />
+                          <Icon name="trash" className="size-4 icon-trash-hover" aria-hidden="true" />
                         </button>
                       </div>
                       <div id={`concept-editor-${rowId}`} hidden={!isExpanded} className="grid gap-2.5 border-t border-[var(--color-border-light)] px-1 pt-2.5">
@@ -341,7 +341,7 @@ export function QuoteBuilderItemsStep({
                           disabled={Number(item.quantity) <= 1}
                           className="inline-flex h-[var(--tap-min-height)] w-10 shrink-0 cursor-pointer items-center justify-center rounded-l-[calc(var(--radius-sm)-1px)] border-r border-[var(--color-border-light)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] active-press-subtle focus-visible:outline-none focus-visible:bg-[var(--color-bg-soft)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-11"
                         >
-                          <Minus className="h-4 w-4" aria-hidden="true" />
+                          <Icon name="minus" className="h-4 w-4" aria-hidden="true" />
                         </button>
                         <input
                           id={`${fieldId}-quantity`}
@@ -373,7 +373,7 @@ export function QuoteBuilderItemsStep({
                           disabled={Number(item.quantity) >= typeQuantityLimit}
                           className="inline-flex h-[var(--tap-min-height)] w-10 shrink-0 cursor-pointer items-center justify-center rounded-r-[calc(var(--radius-sm)-1px)] border-l border-[var(--color-border-light)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] active-press-subtle focus-visible:outline-none focus-visible:bg-[var(--color-bg-soft)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-11"
                         >
-                          <Plus className="h-4 w-4" aria-hidden="true" />
+                          <Icon name="plus" className="h-4 w-4" aria-hidden="true" />
                         </button>
                       </div>
                       <span
@@ -548,7 +548,7 @@ export function QuoteBuilderItemsStep({
         onClick={() => dispatch({ type: "addSection" })}
         className="flex items-center gap-2 self-start"
       >
-        <PlusCircle className="size-4" aria-hidden="true" />
+        <Icon name="plus-circle" className="size-4" aria-hidden="true" />
         Agregar sección
       </Button>
 

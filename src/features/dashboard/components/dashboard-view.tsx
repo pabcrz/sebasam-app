@@ -1,14 +1,8 @@
 import Link from "next/link";
 import type { UserRole } from "@/generated/prisma/client";
-import {
-  Banknote,
-  ClipboardList,
-  FileCheck,
-  FileText,
-  UserCog,
-  Users,
-} from "lucide-react";
+
 import { Card, CardContent, CardHeader, CardTitle, SectionLabel } from "@/components/ui";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 import type { OperationalDashboardSnapshot } from "../types";
@@ -37,46 +31,53 @@ interface DashboardViewProps {
   role: UserRole;
 }
 
-const modules = [
+type DashboardModule = {
+  href: string;
+  title: string;
+  description: string;
+  icon: IconName;
+};
+
+const modules: DashboardModule[] = [
   {
     href: "/admin/customers",
     title: "Clientes",
     description: "Alta, búsqueda y edición de clientes.",
-    icon: Users,
+    icon: "users",
   },
   {
     href: "/admin/nomina",
     title: "Nómina",
     description: "Cálculo y liquidación semanal de mano de obra.",
-    icon: Banknote,
+    icon: "cash",
   },
   {
     href: "/admin/workers",
     title: "Trabajadores",
     description: "Gestionar maestros y ayudantes operativos.",
-    icon: UserCog,
+    icon: "workers",
   },
 ];
 
-const patronModules = [
+const patronModules: DashboardModule[] = [
   modules[0],
   {
     href: "/admin/quotes",
     title: "Cotizaciones",
     description: "Crear y dar seguimiento a cotizaciones.",
-    icon: FileText,
+    icon: "quotes",
   },
   {
     href: "/admin/work-orders",
     title: "Trabajos",
     description: "Revisar y gestionar trabajos operativos.",
-    icon: ClipboardList,
+    icon: "jobs",
   },
   {
     href: "/admin/notas",
     title: "Notas",
     description: "Consultar y gestionar notas de trabajo y venta.",
-    icon: FileCheck,
+    icon: "notes",
   },
 ];
 
@@ -136,7 +137,7 @@ export function DashboardView({
                   <CardHeader>
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-blue-tint)] text-[var(--color-primary)]">
-                        <module.icon className="h-5 w-5" aria-hidden="true" />
+                        <Icon name={module.icon} className="h-5 w-5" aria-hidden="true" />
                       </div>
                       <CardTitle as="h3">{module.title}</CardTitle>
                     </div>

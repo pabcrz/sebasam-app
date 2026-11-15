@@ -1,6 +1,6 @@
 "use client";
 
-import { UserCheck, ChevronRight } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { formatCents } from "@/features/quotes/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,7 @@ export function PayrollOverviewTable({
               >
                 <div className="flex min-w-0 flex-1 items-center gap-2.5">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-                    <UserCheck className="h-4 w-4" />
+                    <Icon name="user-check" className="h-4 w-4" />
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <div className="flex min-w-0 max-w-full flex-col items-start">
@@ -83,7 +83,7 @@ export function PayrollOverviewTable({
                       {formatCents(worker.totalCommissionCents)}
                     </span>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-[var(--color-text-muted)]" />
+                  <Icon name="chevron-right" className="h-4 w-4 text-[var(--color-text-muted)]" />
                 </div>
               </div>
             );
@@ -116,7 +116,7 @@ export function PayrollOverviewTable({
                     <TableCell className="py-2.5">
                       <div className="flex items-center gap-2.5">
                         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-                          <UserCheck className="h-3.5 w-3.5" />
+                          <Icon name="user-check" className="h-3.5 w-3.5" />
                         </div>
                         <span className="font-semibold text-xs text-[var(--color-text-main)]">
                           {worker.displayName}

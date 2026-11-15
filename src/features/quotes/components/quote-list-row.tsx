@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { PaymentRequest, QuoteStatus } from "@/generated/prisma/client";
-import { Printer } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { PrintActionButton } from "./print-action-button";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, TableCell, TableRow } from "@/components/ui";
@@ -142,7 +142,7 @@ export function QuoteListRow({
             title={`Imprimir cotización ${displayFolio}`}
             aria-label={`Imprimir cotización ${displayFolio}`}
           >
-            <Printer className="h-4 w-4" aria-hidden="true" />
+            <Icon name="print" className="h-4 w-4" aria-hidden="true" />
             <span className="sr-only">Imprimir cotización</span>
           </PrintActionButton>
           {editable ? (

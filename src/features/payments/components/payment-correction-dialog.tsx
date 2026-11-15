@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { PenLine } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Dialog,
@@ -183,7 +183,7 @@ export function PaymentCorrectionDialog({
         title={`Corregir pago de ${formatCents(originalAmountCents)}`}
         className="w-10 px-0 sm:w-auto sm:px-3"
       >
-        <PenLine className="h-5 w-5" aria-hidden="true" />
+        <Icon name="edit" className="h-5 w-5" aria-hidden="true" />
         <span className="sr-only sm:not-sr-only">Corregir pago</span>
       </Button>
 

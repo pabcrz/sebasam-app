@@ -1,7 +1,8 @@
 import * as React from "react";
-import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { Card } from "./card";
+import { Icon, type IconName } from "./icon";
 
 export type StatIconVariant =
   | "neutral"
@@ -49,10 +50,10 @@ const numericRoleClasses: Record<StatNumericRole, string> = {
   currency: "min-w-0 font-mono text-xl leading-tight tabular-nums sm:text-2xl",
 };
 
-const trendIcons: Record<StatTrend["direction"], React.ElementType> = {
-  up: ArrowUpRight,
-  down: ArrowDownRight,
-  flat: Minus,
+const trendIcons: Record<StatTrend["direction"], IconName> = {
+  up: "arrow-up-right",
+  down: "arrow-down-right",
+  flat: "minus",
 };
 
 const trendClasses: Record<StatTrend["direction"], string> = {
@@ -80,7 +81,7 @@ export function StatCard({
     valueClassName ?? "text-[var(--color-text-main)]",
   );
 
-  const TrendIcon = trend ? trendIcons[trend.direction] : null;
+  const trendIcon = trend ? trendIcons[trend.direction] : null;
 
   return (
     <Card className={cn("min-w-0 p-4", className)} {...props}>
@@ -105,14 +106,14 @@ export function StatCard({
         {action ? <span className="shrink-0">{action}</span> : null}
       </div>
 
-      {trend && TrendIcon ? (
+      {trend && trendIcon ? (
         <p
           className={cn(
             "mt-1.5 inline-flex items-center gap-1 text-xs font-medium",
             trendClasses[trend.direction],
           )}
         >
-          <TrendIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <Icon name={trendIcon} className="h-3.5 w-3.5" aria-hidden="true" />
           <span>{trend.label}</span>
         </p>
       ) : null}

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Dialog,
@@ -83,7 +83,7 @@ export function WorkerEditDialog({ worker, updateAction, setActiveAction, delete
                   className="mt-3"
                   onClick={() => setConfirmDelete(true)}
                 >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  <Icon name="trash" className="h-4 w-4" aria-hidden="true" />
                   Eliminar trabajador
                 </Button>
               ) : (

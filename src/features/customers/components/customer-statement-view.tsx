@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Printer } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog, type QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
@@ -128,7 +128,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Button asChild variant="ghost" size="sm" className="w-fit px-3.5">
           <Link href={`/admin/customers/${customer.id}`}>
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            <Icon name="arrow-left" className="h-4 w-4" aria-hidden="true" />
             Regresar al cliente
           </Link>
         </Button>
@@ -142,7 +142,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
             aria-label="Imprimir estado de cuenta"
             className="flex items-center gap-1.5 px-3.5"
           >
-            <Printer className="h-4 w-4" aria-hidden="true" />
+            <Icon name="print" className="h-4 w-4" aria-hidden="true" />
             <span>Imprimir / PDF</span>
           </Button>
         </div>
@@ -262,7 +262,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
                           anchor: shiftStatementAnchor(period, anchor, -1),
                         })}
                       >
-                        <ChevronLeft className="h-4 w-4" />
+                        <Icon name="chevron-left" className="h-4 w-4" />
                       </Link>
                     </Button>
                     <span className="px-2 text-xs font-medium text-[var(--color-text-main)] min-w-28 text-center">
@@ -283,7 +283,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
                           anchor: shiftStatementAnchor(period, anchor, 1),
                         })}
                       >
-                        <ChevronRight className="h-4 w-4" />
+                        <Icon name="chevron-right" className="h-4 w-4" />
                       </Link>
                     </Button>
                   </div>
@@ -499,7 +499,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
                         aria-label={`Imprimir nota ${note.number}`}
                         title={`Imprimir nota ${note.number}`}
                       >
-                        <Printer className="h-4 w-4" aria-hidden="true" />
+                        <Icon name="print" className="h-4 w-4" aria-hidden="true" />
                         <span className="sr-only">Imprimir nota</span>
                       </PrintActionButton>
                     </div>
@@ -589,7 +589,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
                             aria-label={`Imprimir nota ${note.number}`}
                             title={`Imprimir nota ${note.number}`}
                           >
-                            <Printer className="h-4 w-4" aria-hidden="true" />
+                            <Icon name="print" className="h-4 w-4" aria-hidden="true" />
                             <span className="sr-only">Imprimir nota</span>
                           </PrintActionButton>
                         </div>

@@ -1,4 +1,3 @@
-import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -11,22 +10,6 @@ const push = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
-
-vi.mock("lucide-react", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("lucide-react")>();
-  return {
-    ...actual,
-    ChevronDown: ({ ...props }: React.SVGAttributes<SVGSVGElement>) => (
-      <svg data-testid="chevron-down-icon" {...props} />
-    ),
-    Filter: ({ ...props }: React.SVGAttributes<SVGSVGElement>) => (
-      <svg data-testid="filter-icon" {...props} />
-    ),
-    X: ({ ...props }: React.SVGAttributes<SVGSVGElement>) => (
-      <svg data-testid="x-icon" {...props} />
-    ),
-  };
-});
 
 const customers = [
   { id: "cust-1", name: "Constructora del Norte" },

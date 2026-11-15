@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Inbox } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Card, CardContent } from "@/components/ui/card";
 import type { WeeklyPayrollReport, WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
@@ -95,7 +95,7 @@ export function PayrollView({ report, period, role = "SUPER_ADMIN" }: PayrollVie
         <Card className="p-8 sm:p-12 text-center">
           <CardContent className="space-y-2 p-0">
             <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[var(--color-bg-soft)] flex items-center justify-center text-[var(--color-text-muted)] mb-3">
-              <Inbox className="h-5 w-5 sm:h-6 sm:w-6" />
+              <Icon name="inbox" className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <h3 className="text-sm sm:text-base font-medium text-[var(--color-text-main)]">
               No hay órdenes completadas en este período

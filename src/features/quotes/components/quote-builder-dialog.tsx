@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { useRouter } from "next/navigation";
 import {
   Button,
@@ -124,7 +124,7 @@ export function QuoteBuilderDialog({
             aria-label={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : effectiveButtonLabel) : undefined)}
             disabled={triggerDisabled}
           >
-            {isEdit ? <Pencil className={triggerIconOnly ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" /> : <Plus className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />}
+            {isEdit ? <Icon name="edit" className={triggerIconOnly ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" /> : <Icon name="plus" className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />}
             <span className={triggerIconOnly ? "sr-only" : triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{effectiveButtonLabel}</span>
           </Button>
         }

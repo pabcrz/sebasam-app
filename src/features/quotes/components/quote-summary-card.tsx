@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui";
-import { ListChecks, NotebookText, Truck, UserRound } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { formatCents } from "@/features/quotes/lib/format";
 import { formatQuantity, itemTypeLabels, ItemFormValue, SectionFormValue } from "./quote-builder-shared";
 import { QuoteTotalsCard } from "./quote-totals-card";
@@ -61,14 +61,14 @@ export function QuoteSummaryCard({
     <div className="grid gap-4">
       <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
         <div className="flex items-start gap-3">
-          <UserRound className="mt-0.5 size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-customer-icon" />
+          <Icon name="driver" className="mt-0.5 size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-customer-icon" />
           <div>
             <h3 className="font-semibold text-[var(--color-text-main)]">Cliente</h3>
             <p data-testid="summary-customer" className="text-sm text-[var(--color-text-main)]">{customerName || "Sin cliente seleccionado"}</p>
           </div>
         </div>
         <div className="flex items-start gap-3">
-          <Truck className="mt-0.5 size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-vehicle-icon" />
+          <Icon name="jobs" className="mt-0.5 size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-vehicle-icon" />
           <div>
             <h3 className="font-semibold text-[var(--color-text-main)]">Unidad</h3>
             <p data-testid="summary-vehicle" className="text-sm text-[var(--color-text-muted)]">
@@ -80,7 +80,7 @@ export function QuoteSummaryCard({
 
       <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
         <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]">
-          <ListChecks className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-items-icon" />
+          <Icon name="list-checks" className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-items-icon" />
           Conceptos
         </h3>
 
@@ -115,7 +115,7 @@ export function QuoteSummaryCard({
 
       <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
         <h3 className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]">
-          <NotebookText className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-notes-icon" />
+          <Icon name="notes" className="size-5 text-[var(--color-primary)]" aria-hidden="true" data-testid="summary-notes-icon" />
           Notas
         </h3>
         <p className="text-sm text-[var(--color-text-main)]">{title || "Sin título"}</p>

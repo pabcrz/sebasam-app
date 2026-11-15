@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CircleDollarSign, CheckCircle2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Card, SectionLabel } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import type { ReceivableCustomer } from "../types";
@@ -12,7 +12,7 @@ export function ReceivablesSection({ customers }: ReceivablesSectionProps) {
   return (
     <section aria-labelledby="receivables-heading">
       <div className="mb-3 flex items-center gap-2">
-        <CircleDollarSign className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
+        <Icon name="money" className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
         <div>
           <SectionLabel>Finanzas</SectionLabel>
           <h2 id="receivables-heading" className="text-base font-semibold text-[var(--color-text-main)]">
@@ -23,7 +23,7 @@ export function ReceivablesSection({ customers }: ReceivablesSectionProps) {
 
       {customers.length === 0 ? (
         <Card className="flex flex-col items-center justify-center border-dashed p-6 text-center">
-          <CheckCircle2 className="mb-2 h-8 w-8 text-[var(--color-status-success)]" aria-hidden="true" />
+          <Icon name="check-circle" className="mb-2 h-8 w-8 text-[var(--color-status-success)]" aria-hidden="true" />
           <p className="text-sm font-semibold text-[var(--color-text-main)]">No hay saldos pendientes por cobrar</p>
         </Card>
       ) : (
@@ -46,7 +46,7 @@ export function ReceivablesSection({ customers }: ReceivablesSectionProps) {
                 <span className="font-mono text-sm font-bold tabular-nums text-[var(--color-total-emphasis)]">
                   {formatCents(customer.pendingBalanceCents)}
                 </span>
-                <ArrowRight className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]" aria-hidden="true" />
+                <Icon name="arrow-right" className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]" aria-hidden="true" />
               </div>
             </Link>
           ))}

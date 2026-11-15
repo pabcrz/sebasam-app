@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { Badge } from "@/components/ui";
-import { Truck, UserRound } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { formatQuantity, SectionFormValue } from "./quote-builder-shared";
 import { QuoteTotalsCard } from "./quote-totals-card";
@@ -164,7 +164,7 @@ export function QuotePreviewCard({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-4 print:grid-cols-2">
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-0.5 sm:mb-1">
-                  <UserRound data-testid="preview-customer-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Cliente
+                  <Icon name="driver" data-testid="preview-customer-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Cliente
                 </p>
                 <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
                   {customerName || "Sin cliente"}
@@ -182,7 +182,7 @@ export function QuotePreviewCard({
               </div>
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] print:text-gray-500 mb-0.5 sm:mb-1">
-                  <Truck data-testid="preview-vehicle-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Unidad
+                  <Icon name="jobs" data-testid="preview-vehicle-icon" className="h-3.5 w-3.5 text-[var(--color-primary)] print:text-blue-700" /> Unidad
                 </p>
                 <p className="text-sm font-semibold text-[var(--color-text-main)] print:text-black">
                   {vehicleDescription || "Sin vehículo"}

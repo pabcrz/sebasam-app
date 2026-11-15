@@ -1,4 +1,4 @@
-import { Banknote, CheckCircle2, DollarSign, Users } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { formatCents } from "@/features/quotes/lib/format";
 import { Card } from "@/components/ui/card";
 import { MetricCardGroup } from "@/components/ui/metric-card-group";
@@ -38,7 +38,7 @@ export function PayrollMetrics({
             </span>
           </div>
           <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-            <Banknote className="h-5 w-5" aria-hidden="true" />
+            <Icon name="cash" className="h-5 w-5" aria-hidden="true" />
           </div>
         </div>
 
@@ -72,7 +72,7 @@ export function PayrollMetrics({
             value={formatCents(payableCents)}
             numericRole="currency"
             description="Comisiones y sueldos fijos a liquidar"
-            icon={<Banknote className="h-4 w-4" aria-hidden="true" />}
+            icon={<Icon name="cash" className="h-4 w-4" aria-hidden="true" />}
             iconVariant="success"
           />
 
@@ -85,7 +85,7 @@ export function PayrollMetrics({
                 ? `Base nómina: ${formatCents(totalPayrollBaseCents)}`
                 : "Cobrado a clientes por mano de obra"
             }
-            icon={<DollarSign className="h-4 w-4" aria-hidden="true" />}
+            icon={<Icon name="money" className="h-4 w-4" aria-hidden="true" />}
             iconVariant="info"
           />
 
@@ -94,7 +94,7 @@ export function PayrollMetrics({
             value={totalCompletedOrders}
             numericRole="count"
             description="Trabajos concluidos en la semana"
-            icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
+            icon={<Icon name="check-circle" className="h-4 w-4" aria-hidden="true" />}
             iconVariant="violet"
           />
 
@@ -103,7 +103,7 @@ export function PayrollMetrics({
             value={totalWorkers}
             numericRole="count"
             description="Personal con trabajos liquidados"
-            icon={<Users className="h-4 w-4" aria-hidden="true" />}
+            icon={<Icon name="users" className="h-4 w-4" aria-hidden="true" />}
             iconVariant="warning"
           />
         </MetricCardGroup>

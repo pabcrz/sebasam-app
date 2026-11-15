@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Lock, Unlock, AlertTriangle, Loader2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { PayrollPeriodStatus } from "@/generated/prisma/enums";
 import toast from "react-hot-toast";
 import {
@@ -88,7 +88,7 @@ export function PayrollWeekStatusControls({
             variant="default"
             className="text-xs py-0.5 px-2 text-slate-700 bg-slate-100 border-slate-300 dark:text-slate-300 dark:bg-slate-800 dark:border-slate-700 gap-1 inline-flex items-center"
           >
-            <Lock className="h-3 w-3 text-slate-500" />
+            <Icon name="lock" className="h-3 w-3 text-slate-500" />
             Semana Cerrada
           </Badge>
           <Button
@@ -98,7 +98,7 @@ export function PayrollWeekStatusControls({
             onClick={() => setReopenOpen(true)}
             className="h-7 text-xs px-2.5 gap-1.5 border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/40"
           >
-            <Unlock className="h-3 w-3" />
+            <Icon name="unlock" className="h-3 w-3" />
             Reabrir semana
           </Button>
         </>
@@ -108,7 +108,7 @@ export function PayrollWeekStatusControls({
             variant="success"
             className="text-xs py-0.5 px-2 text-emerald-700 bg-emerald-50 border-emerald-300 dark:text-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-800 gap-1 inline-flex items-center"
           >
-            <Unlock className="h-3 w-3 text-emerald-600" />
+            <Icon name="unlock" className="h-3 w-3 text-emerald-600" />
             Semana Abierta
           </Badge>
           {!isCurrentWeek && (
@@ -130,7 +130,7 @@ export function PayrollWeekStatusControls({
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="h-5 w-5" />
+              <Icon name="warning" className="h-5 w-5" />
               Reabrir Semana de Nómina
             </DialogTitle>
             <DialogDescription>
@@ -172,7 +172,7 @@ export function PayrollWeekStatusControls({
               disabled={loading || reason.trim().length < 5}
               className="gap-1.5"
             >
-              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {loading && <Icon name="loader" className="h-3.5 w-3.5 animate-spin" />}
               Autorizar reapertura
             </Button>
           </DialogFooter>
@@ -184,7 +184,7 @@ export function PayrollWeekStatusControls({
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
-              <Lock className="h-5 w-5 text-slate-500" />
+              <Icon name="lock" className="h-5 w-5 text-slate-500" />
               Cerrar Semana de Nómina
             </DialogTitle>
             <DialogDescription>
@@ -209,7 +209,7 @@ export function PayrollWeekStatusControls({
               disabled={loading}
               className="gap-1.5"
             >
-              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {loading && <Icon name="loader" className="h-3.5 w-3.5 animate-spin" />}
               Confirmar cierre
             </Button>
           </DialogFooter>

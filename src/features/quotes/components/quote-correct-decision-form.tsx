@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RefreshCcw, CheckCircle2, FileEdit, XCircle } from "lucide-react";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { Button } from "@/components/ui";
 import {
   Dialog,
@@ -81,7 +81,7 @@ export function QuoteCorrectDecisionForm({
     value: CorrectableStatus;
     title: string;
     description: string;
-    icon: typeof CheckCircle2;
+    icon: IconName;
   }> =
     currentStatus === "REJECTED"
       ? [
@@ -89,13 +89,13 @@ export function QuoteCorrectDecisionForm({
             value: "DRAFT",
             title: "Regresar a Borrador",
             description: "Permite volver a editar conceptos, montos o reenviarla si el cliente declinó por accidente.",
-            icon: FileEdit,
+            icon: "file-edit",
           },
           {
             value: "APPROVED",
             title: "Aceptar cotización",
             description: "Marca la cotización como aceptada y autoriza todas sus secciones.",
-            icon: CheckCircle2,
+            icon: "check-circle",
           },
         ]
       : [
@@ -103,13 +103,13 @@ export function QuoteCorrectDecisionForm({
             value: "REJECTED",
             title: "Declinar cotización",
             description: "Marca la cotización como declinada por el cliente.",
-            icon: XCircle,
+            icon: "x-circle",
           },
           {
             value: "DRAFT",
             title: "Regresar a Borrador",
             description: "Regresa la cotización a borrador para realizar modificaciones antes de continuar.",
-            icon: FileEdit,
+            icon: "file-edit",
           },
         ];
 
@@ -128,7 +128,7 @@ export function QuoteCorrectDecisionForm({
         aria-label={`Corregir decisión de cotización ${quoteNumber}`}
         title={`Corregir decisión de cotización ${quoteNumber}`}
       >
-        <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+        <Icon name="refresh" className="h-4 w-4" aria-hidden="true" />
         {!iconOnly && <span className={actionLabelClassName}>Corregir decisión</span>}
       </Button>
 
@@ -156,7 +156,6 @@ export function QuoteCorrectDecisionForm({
           <DialogMobileBody>
             <div className="grid gap-3 py-2" role="radiogroup" aria-label="Nuevo estado">
             {options.map((opt) => {
-              const Icon = opt.icon;
               const isSelected = selectedStatus === opt.value;
               return (
                 <label
@@ -177,7 +176,7 @@ export function QuoteCorrectDecisionForm({
                   />
                   <div className="flex-1 text-sm">
                     <div className="flex items-center gap-1.5 font-medium text-[var(--color-text-main)]">
-                      <Icon className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
+                      <Icon name={opt.icon} className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
                       <span>{opt.title}</span>
                     </div>
                     <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{opt.description}</p>

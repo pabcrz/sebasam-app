@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Printer } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { listActiveWorkOrders } from "@/features/work-orders/queries";
 
@@ -115,7 +115,7 @@ export function WorkOrderActiveList({
                         title={`Imprimir orden ${wo.number}`}
                         aria-label={`Imprimir orden ${wo.number}`}
                       >
-                        <Printer className="h-5 w-5" aria-hidden="true" />
+                        <Icon name="print" className="h-5 w-5" aria-hidden="true" />
                         <span className="sr-only">Imprimir orden</span>
                       </PrintActionButton>
 

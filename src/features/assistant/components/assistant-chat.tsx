@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Send } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import type { AssistantSource } from "@/features/assistant/service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -136,7 +136,7 @@ export function AssistantChat() {
           className="min-h-[var(--tap-min-height)]"
         />
         <Button type="submit" disabled={pending || input.trim() === ""} aria-label="Enviar pregunta">
-          <Send className="h-4 w-4" aria-hidden="true" />
+          <Icon name="send" className="h-4 w-4" aria-hidden="true" />
           <span className="hidden sm:inline">Enviar</span>
         </Button>
       </form>
