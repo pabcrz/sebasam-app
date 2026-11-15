@@ -62,7 +62,7 @@ const quoteFlowFixture = {
 } as const;
 
 const devices = [
-  { name: "desktop quote row", value: "desktop", viewport: { width: 1280, height: 900 } },
+  { name: "desktop quote card", value: "desktop", viewport: { width: 1280, height: 900 } },
   { name: "mobile quote card", value: "mobile", viewport: { width: 390, height: 900 } },
 ] as const;
 

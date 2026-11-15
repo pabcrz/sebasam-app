@@ -8,7 +8,6 @@ import { QuoteFilters } from "../../src/features/quotes/components/quote-filters
 import { parseOperationalQuoteParams } from "../../src/features/quotes/quote-filter-model";
 import { parseNotasParams } from "../../src/features/work-orders/notas-period";
 import { NotasFilters } from "../../src/features/work-orders/components/notas-filters";
-import { QuoteListRow } from "../../src/features/quotes/components/quote-list-row";
 import { QuoteListCard } from "../../src/features/quotes/components/quote-mobile-card";
 import "../../src/app/globals.css";
 
@@ -91,7 +90,7 @@ const quoteStatusBadgeVariant = {
   ARCHIVED: "default",
 } as const;
 
-type QuoteFlowProps = React.ComponentProps<typeof QuoteListRow> & React.ComponentProps<typeof QuoteListCard>;
+type QuoteFlowProps = React.ComponentProps<typeof QuoteListCard>;
 
 type QuoteFlowQuote = QuoteFlowProps["quote"];
 
@@ -197,7 +196,7 @@ function createQuote(operation: ConversionOperation, stage?: "unassigned" | "ass
     payableNote: null,
   };
 
-  // The browser fixture only renders fields exercised by QuoteListRow/QuoteListCard;
+  // The browser fixture only renders fields exercised by QuoteListCard;
   // the full Prisma-backed QuoteListSummary includes unrelated relation metadata.
   return quote as unknown as QuoteFlowQuote;
 }
@@ -301,21 +300,9 @@ function QuoteFlowFixture() {
     workOrderActions,
   } as unknown as QuoteFlowProps;
 
-  if (device === "mobile") {
-    return (
-      <main className="mx-auto w-full max-w-md p-4">
-        <QuoteListCard {...commonProps} />
-      </main>
-    );
-  }
-
   return (
-    <main className="mx-auto w-full max-w-screen-xl p-4 md:p-6">
-      <table className="w-full">
-        <tbody>
-          <QuoteListRow {...commonProps} />
-        </tbody>
-      </table>
+    <main className={device === "mobile" ? "mx-auto w-full max-w-md p-4" : "mx-auto w-full max-w-screen-xl p-4 md:p-6"}>
+      <QuoteListCard {...commonProps} />
     </main>
   );
 }
