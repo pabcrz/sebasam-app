@@ -40,6 +40,9 @@ function checkQuotesPage() {
     builderPath,
     "src/features/quotes/components/quote-builder-stepper.tsx",
     "src/features/quotes/components/quote-builder-items-step.tsx",
+    "src/features/quotes/components/quote-builder-concept-table.tsx",
+    "src/features/quotes/components/quote-builder-concept-mobile.tsx",
+    "src/features/quotes/components/quote-builder-concept-fields.tsx",
     "src/features/quotes/components/quote-summary-card.tsx",
     "src/features/quotes/components/quote-preview-card.tsx",
     "src/features/quotes/components/quote-totals-card.tsx",
@@ -124,14 +127,14 @@ function checkQuotesPage() {
     "setOpen(true);",
     "Quote builder dialog must ignore outside/Escape-driven close requests",
   );
-  const recentQuotesStart = pageSource.indexOf('<CardTitle as="h2">Cotizaciones recientes</CardTitle>');
+  const recentQuotesStart = pageSource.indexOf('<h2 id="recent-quotes-heading"');
   assert(recentQuotesStart >= 0, "Quotes page must render the recent quotes section");
-  const recentQuotesEnd = pageSource.indexOf("{/* Mobile cards */}", recentQuotesStart);
+  const recentQuotesEnd = pageSource.indexOf("</section>", recentQuotesStart);
   const recentQuotesSource = pageSource.slice(Math.max(0, recentQuotesStart - 200), recentQuotesEnd);
   assertIncludes(
     recentQuotesSource,
     "min-w-0",
-    "Recent quotes desktop table container must be allowed to shrink inside the page container",
+    "Recent quotes list container must be allowed to shrink inside the page container",
   );
   assertIncludes(
     tableSource,
@@ -201,10 +204,16 @@ function checkQuotesPage() {
   );
   assertIncludes(
     mobileCardSource,
-    "setPreviewOpen(true)",
+    'preview.open("preview")',
     "Mobile quote card click must open the preview dialog",
   );
-  if (mobileCardSource.includes("<OperationalCard")) {
+  if (mobileCardSource.includes("<EntityCard")) {
+    assertIncludes(
+      mobileCardSource,
+      "footerAction=",
+      "Mobile quote primary action must be passed to the footerAction prop of EntityCard",
+    );
+  } else if (mobileCardSource.includes("<OperationalCard")) {
     assertIncludes(
       mobileCardSource,
       "actions=",
@@ -354,7 +363,7 @@ function checkQuotesPage() {
 
   assertIncludes(
     confirmDialogSource,
-    "max-w-2xl",
+    "max-w-[440px]",
     "Confirm dialog must have a reasonable desktop width",
   );
 
@@ -415,12 +424,12 @@ function checkQuotesPage() {
   );
   assertIncludes(
     previewDialogSource,
-    "<QuotePreviewCard {...preview} />",
-    "Quote preview dialog must delegate quote rendering to QuotePreviewCard",
+    "<DocumentPreview",
+    "Quote preview dialog must delegate quote rendering to the shared DocumentPreview",
   );
   assertIncludes(
     previewDialogSource,
-    'aria-label="Cerrar"',
+    'aria-label="Cerrar vista previa"',
     "Quote preview dialog must expose an explicit close button",
   );
 
@@ -453,14 +462,13 @@ function checkQuotesPage() {
   );
 
   // Heading hierarchy: section headings must be h2.
-  assertIncludes(pageSource, 'as="h2"', "Section headings must be h2");
+  assertIncludes(pageSource, "<h2", "Section headings must be h2");
 
   // Quote filters must be wired to URL params and render the filter controls.
   assertIncludes(pageSource, "QuoteFilters", "Quotes page must render QuoteFilters");
-  assertIncludes(pageSource, "quoteFilterSchema", "Quotes page must parse filters via quoteFilterSchema");
   assertIncludes(
     pageSource,
-    'listPaginatedQuotes(params, { operationalQueue: "quotes" })',
+    'listPaginatedQuotes(params, { operationalQueue: "quotes", operationalFilters: true })',
     "Quotes page must pass search params to the paginated quotes query",
   );
 
@@ -468,7 +476,7 @@ function checkQuotesPage() {
     "src/features/quotes/components/quote-filters.tsx",
     "utf8",
   );
-  for (const field of ["status", "customerId", "number", "plate", "dateFrom", "dateTo"]) {
+  for (const field of ["filter", "dateFrom", "dateTo", "concept", "plate", "economicNumber"]) {
     assertIncludes(
       quoteFiltersSource,
       `name="${field}"`,
@@ -477,13 +485,8 @@ function checkQuotesPage() {
   }
   assertIncludes(
     quoteFiltersSource,
-    'router.push(`/admin/quotes?${params.toString()}`)',
+    "router.push(quotesHref(next)",
     "Quote filters must push filter params to the URL",
-  );
-  assertIncludes(
-    quoteFiltersSource,
-    'router.push("/admin/quotes")',
-    "Quote filters must offer a clear action",
   );
   assertIncludes(
     quoteFiltersSource,
@@ -525,7 +528,7 @@ function checkAdminPageHeaders() {
   );
 
   const adminPageHeaderSource = readFileSync("src/components/admin-page-header.tsx", "utf8");
-  assertIncludes(adminPageHeaderSource, "icon: LucideIcon", "Shared header must accept an icon");
+  assertIncludes(adminPageHeaderSource, "icon: IconName", "Shared header must accept an icon");
   assertIncludes(adminPageHeaderSource, "title: string", "Shared header must accept a title");
   assert(!adminPageHeaderSource.includes("eyebrow"), "Shared header must not accept or render an eyebrow");
   assertIncludes(adminPageHeaderSource, "description?: ReactNode", "Shared header must accept a truthful description");
@@ -605,8 +608,8 @@ function checkCustomerPages() {
     "Customer search placeholder must mention vehicle plates",
   );
   assertIncludes(
-    createPageSource,
-    "Limpiar búsqueda",
+    customerSearchSource,
+    "clearSearch",
     "Customer empty state must offer to clear the search",
   );
   assertIncludes(

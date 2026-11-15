@@ -1335,6 +1335,7 @@ describe("QuoteBuilder", () => {
     expect(formData.get("discount")).toBe("100");
     expect(formData.get("taxEnabled")).toBe("on");
     expect([...formData.keys()]).toEqual([
+      "operation",
       "customerId",
       "customerContactId",
       "customerFiscalProfileId",

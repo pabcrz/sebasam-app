@@ -57,7 +57,6 @@ type Props = {
 };
 
 export function NotaDetailDialog({
-  workOrderId,
   workOrderNumber,
   quote,
   paymentDueDate,
@@ -66,7 +65,6 @@ export function NotaDetailDialog({
   statusBadge,
   open,
   onOpenChange,
-  noteReturnTo,
   paymentHistory,
   paymentAction,
   correctWorkOrderAction,
