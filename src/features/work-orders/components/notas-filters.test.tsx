@@ -191,7 +191,7 @@ describe("NotasFilters", () => {
       "href",
       `/admin/notas?mode=${mode}&anchor=${expectedAnchor}&payment=paid&assignee=workshop&customerId=cust-1&overdue=overdue&kind=SALE`,
     );
-    expect(todayLink).toHaveClass(isCurrentPeriod ? "bg-[var(--color-blue-tint)]" : "border");
+    expect(todayLink).toHaveClass(isCurrentPeriod ? "bg-[var(--color-tonal-bg)]" : "border");
   });
 
   it("does not label a non-current week", () => {

@@ -49,7 +49,7 @@ export function PayrollPeriodNav({
             variant={mode === "weekly" ? "secondary" : "ghost"}
             size="sm"
             asChild
-            className="h-8 text-xs px-3 font-medium"
+            className="text-xs px-3 font-medium"
           >
             <Link href={payrollHref({ mode: "weekly" })}>Semanal</Link>
           </Button>
@@ -58,7 +58,7 @@ export function PayrollPeriodNav({
               variant={mode === "monthly" ? "secondary" : "ghost"}
               size="sm"
               asChild
-              className="h-8 text-xs px-3 font-medium"
+              className="text-xs px-3 font-medium"
             >
               <Link href={payrollHref({ mode: "monthly" })}>Mensual</Link>
             </Button>
@@ -75,7 +75,7 @@ export function PayrollPeriodNav({
               onClick={onOpenSigningSheet}
               disabled={!hasData}
               title={!hasData ? "No hay trabajos registrados en este período" : "Imprimir hoja de firmas de nómina"}
-              className="h-8 text-xs px-3 gap-1.5"
+              className="text-xs px-3 gap-1.5"
             >
               <FileSignature className="h-3.5 w-3.5 text-[var(--color-primary)]" />
               Hoja de Firmas
@@ -112,7 +112,7 @@ export function PayrollPeriodNav({
         </div>
 
         <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
-          <Button variant="outline" size="sm" asChild className="h-9 text-xs px-3">
+          <Button variant="outline" size="sm" asChild className="text-xs px-3">
             <Link
               href={payrollHref({ mode, anchor: prevAnchor })}
               aria-label={mode === "monthly" ? "Mes anterior" : "Semana anterior"}
@@ -123,12 +123,12 @@ export function PayrollPeriodNav({
           </Button>
 
           {!isCurrent && (
-            <Button variant="secondary" size="sm" asChild className="h-9 text-xs px-3">
+            <Button variant="secondary" size="sm" asChild className="text-xs px-3">
               <Link href={payrollHref({ mode })}>Hoy</Link>
             </Button>
           )}
 
-          <Button variant="outline" size="sm" asChild className="h-9 text-xs px-3">
+          <Button variant="outline" size="sm" asChild className="text-xs px-3">
             <Link
               href={payrollHref({ mode, anchor: nextAnchor })}
               aria-label={mode === "monthly" ? "Mes siguiente" : "Semana siguiente"}

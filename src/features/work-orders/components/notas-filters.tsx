@@ -283,7 +283,7 @@ function NotasFiltersContent({
     <Card aria-label="Filtros de notas" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-none md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Button asChild variant="outline" size="icon" className="h-10 w-10">
+          <Button asChild variant="outline" size="icon" className="w-10">
             <Link
               aria-label={mode === "week" ? "Semana anterior" : "Mes anterior"}
               aria-disabled={Boolean(rejectedRange)}
@@ -295,7 +295,7 @@ function NotasFiltersContent({
           <p className="min-w-0 text-base font-semibold text-slate-900 sm:text-lg">
             {rangeLabel.replace(/\s*–\s*/u, " – ")}
           </p>
-          <Button asChild variant="outline" size="icon" className="h-10 w-10">
+          <Button asChild variant="outline" size="icon" className="w-10">
             <Link
               aria-label={mode === "week" ? "Semana siguiente" : "Mes siguiente"}
               aria-disabled={Boolean(rejectedRange)}
@@ -308,7 +308,7 @@ function NotasFiltersContent({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant={isCurrentPeriod ? "secondary" : "outline"} size="sm" className="h-10">
+          <Button asChild variant={isCurrentPeriod ? "secondary" : "outline"} size="sm">
             <Link
               aria-disabled={Boolean(rejectedRange)}
               href={safeNavigationHref({ mode, payment, assignee, customerId, overdue, kind: selectedKind, anchor: today })}
@@ -316,7 +316,7 @@ function NotasFiltersContent({
               Hoy
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="h-10">
+          <Button asChild variant="outline" size="sm">
             <Link
               aria-disabled={Boolean(rejectedRange)}
               href={safeNavigationHref({
@@ -374,7 +374,7 @@ function NotasFiltersContent({
         </fieldset>
 
         {customerId ? (
-          <Button asChild variant="outline" size="sm" className="h-10">
+          <Button asChild variant="outline" size="sm">
             <Link aria-disabled={Boolean(rejectedRange)} href={rejectedRange ? "#notas-date-error" : `/admin/customers/${customerId}/estado-de-cuenta`}>
               <FileText className="mr-1 h-4 w-4" aria-hidden="true" />
               Estado de cuenta
@@ -388,7 +388,7 @@ function NotasFiltersContent({
               variant="outline"
               size="sm"
               aria-label="Abrir filtros de cartera"
-              className="relative ml-auto inline-flex h-10 items-center gap-1.5 px-3"
+              className="relative ml-auto inline-flex items-center gap-1.5 px-3"
             >
               <Filter className="h-4 w-4" aria-hidden="true" />
               <span>Filtros</span>
@@ -622,10 +622,10 @@ function NotasFiltersContent({
               </DialogMobileBody>
               {operationalState && dateError ? <p id="notas-date-error" role="alert" className="px-4 py-2 text-sm text-[var(--color-status-danger)]">La fecha de finalización/emisión desde no puede ser posterior a hasta. Corrige el rango o limpia los filtros.</p> : null}
               <DialogFooter className="flex flex-row items-center justify-between border-t border-[var(--color-border-light)] p-4 sm:justify-between">
-                <Button type="button" variant="ghost" size="sm" className="h-10" onClick={handleClear}>
+                <Button type="button" variant="ghost" size="sm" onClick={handleClear}>
                   Limpiar filtros
                 </Button>
-                <Button type="button" variant="primary" size="sm" className="h-10" onClick={handleApply}>
+                <Button type="button" variant="primary" size="sm" onClick={handleApply}>
                   Aplicar filtros
                 </Button>
               </DialogFooter>

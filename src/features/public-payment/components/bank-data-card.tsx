@@ -39,7 +39,7 @@ function CopyButton({ value }: { value: string }) {
       size="sm"
       onClick={handleCopy}
       aria-label={copied ? "Copiado" : "Copiar al portapapeles"}
-      className="h-9 px-3 print:hidden"
+      className="px-3 print:hidden"
     >
       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
       <span className="sr-only">{copied ? "Copiado" : "Copiar"}</span>

@@ -126,7 +126,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
       <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-6 md:px-6 md:py-8 print:hidden">
       {/* Screen navigation & header */}
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Button asChild variant="ghost" size="sm" className="w-fit min-h-[44px] px-3.5">
+        <Button asChild variant="ghost" size="sm" className="w-fit px-3.5">
           <Link href={`/admin/customers/${customer.id}`}>
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Regresar al cliente
@@ -140,7 +140,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
             size="sm"
             onClick={handlePrint}
             aria-label="Imprimir estado de cuenta"
-            className="flex min-h-[44px] items-center gap-1.5 px-3.5"
+            className="flex items-center gap-1.5 px-3.5"
           >
             <Printer className="h-4 w-4" aria-hidden="true" />
             <span>Imprimir / PDF</span>
@@ -201,7 +201,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
               asChild
               variant={view === "pending" ? "primary" : "ghost"}
               size="sm"
-              className="min-h-[44px] px-3 text-xs font-medium shrink"
+              className="px-3 text-xs font-medium shrink"
             >
               <Link href={customerStatementHref(customer.id, { view: "pending" })}>Notas con saldo pendiente</Link>
             </Button>
@@ -209,7 +209,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
               asChild
               variant={view === "history" ? "primary" : "ghost"}
               size="sm"
-              className="min-h-[44px] px-3 text-xs font-medium shrink"
+              className="px-3 text-xs font-medium shrink"
             >
               <Link href={customerStatementHref(customer.id, { view: "history", period: "month", anchor })}>
                 Historial por período
@@ -235,7 +235,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
                         asChild
                         variant={period === p ? "primary" : "ghost"}
                         size="sm"
-                        className="min-h-[44px] px-3 text-xs font-medium"
+                        className="px-3 text-xs font-medium"
                       >
                         <Link href={customerStatementHref(customer.id, { view: "history", period: p, anchor })}>
                           {labels[p]}
@@ -251,7 +251,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
                       asChild
                       variant="outline"
                       size="sm"
-                      className="min-h-[44px] min-w-[44px] p-0 flex items-center justify-center"
+                      className="min-w-[44px] p-0 flex items-center justify-center"
                       aria-label="Período anterior"
                       title="Período anterior"
                     >
@@ -272,7 +272,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
                       asChild
                       variant="outline"
                       size="sm"
-                      className="min-h-[44px] min-w-[44px] p-0 flex items-center justify-center"
+                      className="min-w-[44px] p-0 flex items-center justify-center"
                       aria-label="Período siguiente"
                       title="Período siguiente"
                     >

@@ -225,7 +225,7 @@ export function PayrollSigningSheetModal({
               onChange={(e) => setNewWorkerName(e.target.value)}
               className="h-8 text-xs flex-1"
             />
-            <Button type="submit" variant="secondary" size="sm" className="h-8 text-xs shrink-0">
+            <Button type="submit" variant="secondary" size="sm" className="text-xs shrink-0">
               Agregar
             </Button>
           </form>
