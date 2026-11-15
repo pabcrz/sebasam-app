@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 
@@ -507,5 +507,47 @@ describe("WorkOrderOperationsDialog", () => {
     await user.click(screen.getByRole("option", { name: "Borrador" }));
     await user.click(screen.getByRole("button", { name: /confirmar corrección/i }));
     expect(rollback).toHaveBeenCalledWith({ workOrderId: "wo-1", targetQuoteStatus: "DRAFT", reason: "Se registró por error" });
+  });
+});
+
+describe("WorkOrderOperationsDialog as the Gestionar sheet", () => {
+  const assignedWorkOrder = {
+    id: "wo-1",
+    number: "T-001",
+    status: "ASSIGNED" as const,
+    assignments: [{ id: "assignment-1", workerId: "master-1", status: "ASSIGNED", worker: workers[0] }],
+  };
+
+  it("opens as a sheet with the one primary action in the fixed footer and cancellation at the end of the body", async () => {
+    const user = userEvent.setup();
+    const rollback = vi.fn(() => Promise.resolve({ success: true }));
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={assignedWorkOrder} workers={workers} actions={{ ...actions, rollback }} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo t-001/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("data-dialog-variant", "sheet");
+    const footer = dialog.querySelector<HTMLElement>("[data-dialog-footer]");
+    expect(footer).not.toBeNull();
+    expect(within(footer!).getByRole("button", { name: /finalizar trabajo/i })).toBeInTheDocument();
+    expect(within(footer!).queryByRole("button", { name: /cancelar orden/i })).not.toBeInTheDocument();
+
+    const dangerZone = dialog.querySelector<HTMLElement>("[data-dialog-danger-zone]");
+    expect(dangerZone).not.toBeNull();
+    expect(within(dangerZone!).getByRole("button", { name: /cancelar orden y regresar cotización/i })).toHaveClass("border-[var(--color-status-danger-border)]");
+    expect(within(dangerZone!).queryByRole("button", { name: /finalizar trabajo/i })).not.toBeInTheDocument();
+  });
+
+  it("puts the assignment submit in the footer for an unassigned work and keeps ✕ in the header", async () => {
+    const user = userEvent.setup();
+    render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={null} workers={workers} actions={actions} />);
+
+    await user.click(screen.getByRole("button", { name: /gestionar trabajo de cotización c-001/i }));
+
+    const dialog = screen.getByRole("dialog");
+    const footer = dialog.querySelector<HTMLElement>("[data-dialog-footer]");
+    expect(within(footer!).getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
+    const header = dialog.querySelector<HTMLElement>("[data-dialog-header]");
+    expect(within(header!).getByRole("button", { name: "Cerrar diálogo de orden de trabajo" })).toBeInTheDocument();
   });
 });

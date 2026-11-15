@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 const quoteBuilderDialogProps = vi.hoisted(() => vi.fn());
@@ -63,21 +63,27 @@ describe("NotasPage", () => {
   });
   it("renders the workspace without a redundant page header card and with Nueva nota trigger", async () => {
     render(await NotasPage({ searchParams: Promise.resolve({}) }));
-    expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
+    expect(within(screen.getByTestId("page-header")).getByRole("heading", { level: 1, name: "Notas" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Notas emitidas (WORK y SALE)" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /nueva nota/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /nueva nota/i })).toHaveLength(1);
+    expect(screen.getByTestId("page-header")).toContainElement(screen.getByRole("button", { name: /nueva nota/i }));
   });
 
   it("renders financial totals cards for pending, overdue, and paid amounts", async () => {
     render(await NotasPage({ searchParams: Promise.resolve({}) }));
-    expect(screen.getByText("Pendiente de notas seleccionadas")).toBeInTheDocument();
-    expect(screen.getByText("Vencido de notas seleccionadas")).toBeInTheDocument();
-    expect(screen.getByText("Cobrado acumulado de notas")).toBeInTheDocument();
+    expect(screen.getByText("Por cobrar")).toBeInTheDocument();
+    expect(screen.getByText("Vencido")).toBeInTheDocument();
+    expect(screen.getByText("Cobrado")).toBeInTheDocument();
+    expect(screen.queryByText(/de notas seleccionadas/)).not.toBeInTheDocument();
     expect(screen.getByText("$2,500.00")).toBeInTheDocument();
     expect(screen.getByText("$500.00")).toBeInTheDocument();
     expect(screen.getByText("$1,500.00")).toBeInTheDocument();
     expect(screen.queryByText("Cobrado en periodo")).not.toBeInTheDocument();
-    expect(screen.getByText(/no representan toda la cartera ni movimientos de cobro del periodo/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Qué incluye: Por cobrar" }));
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Saldo de las notas del periodo y filtros elegidos; no es toda la cartera ni cobro del periodo.");
+    fireEvent.click(screen.getByRole("button", { name: "Qué incluye: Por cobrar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Qué incluye: Cobrado" }));
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Pagos acumulados de las notas seleccionadas; no son cobros del periodo.");
   });
 
   it("renders actionable empty state with Limpiar filtros button when no work orders exist", async () => {
@@ -92,7 +98,7 @@ describe("NotasPage", () => {
 
     const dialogProps = quoteBuilderDialogProps.mock.calls.map(([props]) => props);
     const noteDialogs = dialogProps.filter((props) => props.mode === "direct-note");
-    expect(noteDialogs).toHaveLength(2);
+    expect(noteDialogs).toHaveLength(1);
     expect(noteDialogs.every((props) => props.createAction === createDirectOperationFromWorkspace)).toBe(true);
   });
 
@@ -145,16 +151,16 @@ describe("NotasPage", () => {
   it("rejects incoming reversed dates without note/history queries or false metrics/results", async () => {
     const view = render(await NotasPage({ searchParams: Promise.resolve({ ...raw, dateFrom: "2026-09-01" }) }));
     expect(screen.getByRole("dialog")).toContainElement(screen.getByRole("alert"));
-    expect(screen.getByLabelText("Finalización/emisión desde")).toHaveValue("2026-09-01");
-    expect(screen.getByLabelText("Finalización/emisión hasta")).toHaveValue("2026-08-31");
+    expect(screen.getByLabelText("Desde")).toHaveValue("2026-09-01");
+    expect(screen.getByLabelText("Hasta")).toHaveValue("2026-08-31");
     expect(screen.getByLabelText("Concepto")).toHaveValue("aceite");
-    expect(screen.queryByText("Cobrado acumulado de notas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cobrado")).not.toBeInTheDocument();
     expect(screen.queryByText(/No hay notas/)).not.toBeInTheDocument();
     expect(listCompletedWorkOrders).not.toHaveBeenCalled();
     expect(getNotePaymentHistory).not.toHaveBeenCalled();
     expect(WorkOrderCompletedList).not.toHaveBeenCalled();
     view.rerender(await NotasPage({ searchParams: Promise.resolve({ ...raw, dateFrom: "2026-10-01", concept: "nuevo rango" }) }));
-    expect(screen.getByLabelText("Finalización/emisión desde")).toHaveValue("2026-10-01");
+    expect(screen.getByLabelText("Desde")).toHaveValue("2026-10-01");
     expect(screen.getByLabelText("Concepto")).toHaveValue("nuevo rango");
     expect(listCompletedWorkOrders).not.toHaveBeenCalled();
     expect(getNotePaymentHistory).not.toHaveBeenCalled();
