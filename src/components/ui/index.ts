@@ -7,6 +7,7 @@ export * from "./confirm-dialog";
 export * from "./destructive-action";
 export * from "./filter-sheet";
 export * from "./dialog";
+export * from "./entity-card";
 export * from "./icon";
 export * from "./input";
 export * from "./label";

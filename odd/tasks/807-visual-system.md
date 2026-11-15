@@ -24,7 +24,7 @@ Tracker #807 (children #793–#806). Branch `feature/807-work` from `develop`; o
 - T4 [S7] #796 Segmented, tabs, chips. Route: worker. Done; segmented/chip 44px hit area clipped vertically by scroll containers (known).
 - T5 [S6] #797 Sheets, panels, dialogs. Route: worker. Done; no feature adopts variant="sheet" yet (screen issues do); 1024px panel is non-modal.
 - T6 #798 PageHeader, SearchBar+filters, PeriodNavigator. Route: worker. Pieces done; screen adoption in #804/#805 (Estado de cuenta needs weekDays=7; Notas 6). Nómina "De Noviembre De" fixed.
-- T7 [S9] #799 Unified operational card (restore dynamic primary). Pending.
+- T7 [S9] #799 Unified operational card. Route: worker. Done for quotes (primary restored: draft->share per HTML, main had none); work orders/notes adopt EntityCard in #804; search by driver pending (#804).
 - T8 #800 Single document preview. Pending.
 - T9 #801 Unified mobile/side navigation. Pending.
 - T10 #802 Create/edit quote flow. Pending.
