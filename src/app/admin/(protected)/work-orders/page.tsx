@@ -90,7 +90,7 @@ export default async function WorkOrdersPage({ searchParams }: {
         tabs={(
           <LinkTabs
             label="Secciones de trabajos"
-            className="shrink-0"
+            className="w-full shrink-0 md:w-auto"
             items={[
               { href: "/admin/work-orders", label: "Activos", count: activeCount, current: true },
               { href: "/admin/notas", label: "Completados", count: completedCount },
