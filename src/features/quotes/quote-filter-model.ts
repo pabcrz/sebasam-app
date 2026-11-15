@@ -128,3 +128,112 @@ export function quotesHref(state: ReturnType<typeof parseOperationalQuoteParams>
   if (filters.page > 1) params.set("page", String(filters.page));
   return `/admin/quotes${params.size ? `?${params}` : ""}`;
 }
+
+/** Shortcuts for the sheet's date choice; weeks run Monday to Sunday. */
+export const quoteDateShortcuts = ["today", "week", "month", "previousMonth"] as const;
+export type QuoteDateShortcut = (typeof quoteDateShortcuts)[number];
+
+export const quoteDateShortcutLabels: Record<QuoteDateShortcut, string> = {
+  today: "Hoy",
+  week: "Esta semana",
+  month: "Este mes",
+  previousMonth: "Mes pasado",
+};
+
+export type QuoteFilterState = ReturnType<typeof parseOperationalQuoteParams>;
+
+export type QuoteFilterChipId =
+  | "number"
+  | "dates"
+  | "hasWorkOrder"
+  | "kind"
+  | "customerId"
+  | "concept"
+  | "plate"
+  | "economicNumber"
+  | "showCancelled"
+  | "showArchived";
+
+export type QuoteFilterChip = { id: QuoteFilterChipId; label: string };
+
+/** Calendar day in the operational time zone as YYYY-MM-DD, independent of the server or browser zone. */
+export function todayInOperationalTimeZone(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+function shiftDateValue(value: string, days: number): string {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+function monthRange(value: string, monthOffset: number) {
+  const [year, month] = value.split("-").map(Number);
+  return {
+    dateFrom: new Date(Date.UTC(year, month - 1 + monthOffset, 1)).toISOString().slice(0, 10),
+    dateTo: new Date(Date.UTC(year, month + monthOffset, 0)).toISOString().slice(0, 10),
+  };
+}
+
+export function quoteDateShortcutRange(shortcut: QuoteDateShortcut, today: string): { dateFrom: string; dateTo: string } {
+  if (shortcut === "today") return { dateFrom: today, dateTo: today };
+  if (shortcut === "month") return monthRange(today, 0);
+  if (shortcut === "previousMonth") return monthRange(today, -1);
+  const [year, month, day] = today.split("-").map(Number);
+  const daysSinceMonday = (new Date(Date.UTC(year, month - 1, day)).getUTCDay() + 6) % 7;
+  return { dateFrom: shiftDateValue(today, -daysSinceMonday), dateTo: shiftDateValue(today, 6 - daysSinceMonday) };
+}
+
+export function matchDateShortcut(range: { dateFrom?: Date; dateTo?: Date }, today: string): QuoteDateShortcut | undefined {
+  const from = formatDateValue(range.dateFrom);
+  const to = formatDateValue(range.dateTo);
+  if (!from || !to) return undefined;
+  return quoteDateShortcuts.find((shortcut) => {
+    const expected = quoteDateShortcutRange(shortcut, today);
+    return expected.dateFrom === from && expected.dateTo === to;
+  });
+}
+
+/**
+ * Removable chips for every criterion except the status, which the tabs already show.
+ * The explicit cancelled/archived inclusions only exist while no status is selected.
+ */
+export function getQuoteFilterChips(filters: QuoteFilterState, customers: QuoteFiltersCustomer[], today: string): QuoteFilterChip[] {
+  const chips: QuoteFilterChip[] = [];
+  if (filters.number) chips.push({ id: "number", label: `Folio: ${filters.number}` });
+  if (filters.dateFrom || filters.dateTo) {
+    const shortcut = matchDateShortcut(filters, today);
+    const from = formatDateValue(filters.dateFrom);
+    const to = formatDateValue(filters.dateTo);
+    let label = `Desde: ${from}`;
+    if (shortcut) label = `Fecha: ${quoteDateShortcutLabels[shortcut]}`;
+    else if (from && to) label = `Fecha: ${from} – ${to}`;
+    else if (!from) label = `Hasta: ${to}`;
+    chips.push({ id: "dates", label });
+  }
+  if (filters.hasWorkOrder !== undefined) chips.push({ id: "hasWorkOrder", label: filters.hasWorkOrder ? "Con orden de trabajo" : "Sin orden de trabajo" });
+  if (filters.kind !== "all") chips.push({ id: "kind", label: `Tipo: ${filters.kind === "WORK" ? "Trabajo" : "Venta"}` });
+  if (filters.customerId) chips.push({ id: "customerId", label: `Cliente: ${customers.find((customer) => customer.id === filters.customerId)?.name ?? filters.customerId}` });
+  if (filters.concept) chips.push({ id: "concept", label: `Concepto: ${filters.concept}` });
+  if (filters.plate) chips.push({ id: "plate", label: `Placas: ${filters.plate}` });
+  if (filters.economicNumber) chips.push({ id: "economicNumber", label: `ECO: ${filters.economicNumber}` });
+  if (!filters.status && filters.showCancelled) chips.push({ id: "showCancelled", label: "Incluye canceladas" });
+  if (!filters.status && filters.showArchived) chips.push({ id: "showArchived", label: "Incluye archivadas" });
+  return chips;
+}
+
+/** Clears one criterion and returns to the first page; the status and every other criterion stay. */
+export function removeQuoteFilterChip(state: QuoteFilterState, id: QuoteFilterChipId): QuoteFilterState {
+  const next: QuoteFilterState = { ...state, page: 1 };
+  switch (id) {
+    case "number": return { ...next, number: undefined };
+    case "dates": return { ...next, dateFrom: undefined, dateTo: undefined };
+    case "hasWorkOrder": return { ...next, hasWorkOrder: undefined };
+    case "kind": return { ...next, kind: "all" };
+    case "customerId": return { ...next, customerId: undefined };
+    case "concept": return { ...next, concept: undefined };
+    case "plate": return { ...next, plate: undefined };
+    case "economicNumber": return { ...next, economicNumber: undefined };
+    case "showCancelled": return { ...next, showCancelled: false };
+    case "showArchived": return { ...next, showArchived: false };
+  }
+}

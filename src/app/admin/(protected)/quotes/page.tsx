@@ -24,6 +24,7 @@ import { QuoteListCard } from "@/features/quotes/components/quote-mobile-card";
 import { QuotePageToasts } from "@/features/quotes/components/quote-page-toasts";
 import { QuoteFilters } from "@/features/quotes/components/quote-filters";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
+import { PageHeader } from "@/components/ui";
 import {
   quoteStatusLabels,
   quoteStatusBadgeVariant,
@@ -56,7 +57,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
     const customers = await listCustomers();
     return (
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:px-6 md:py-10">
-        <h1 className="text-xl font-bold text-[var(--color-text-main)]">Cotizaciones</h1>
+        <PageHeader title="Cotizaciones" />
         <QuoteFilters
           customers={customers}
           filters={parseOperationalQuoteParams({ ...params, dateFrom: undefined, dateTo: undefined })}
@@ -77,15 +78,11 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">
-          Cotizaciones
-        </h1>
-        <div className="hidden sm:block">
-          <QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />
-        </div>
-        <Link href="/admin/quotes/retention" className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">Archivo y papelera</Link>
-      </div>
+      <PageHeader
+        title="Cotizaciones"
+        overflow={<Link href="/admin/quotes/retention" className="block rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)]">Archivo y papelera</Link>}
+        primaryAction={<QuoteBuilderDialog customers={customers} createAction={createQuoteFromWorkspace} createCustomerAction={createOrReuseCustomerForQuote} searchCustomersAction={searchCustomersForQuote} />}
+      />
       <QuotePageToasts />
 
       <section aria-labelledby="recent-quotes-heading" className="grid min-w-0 gap-4">
@@ -168,21 +165,6 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
       ) : null}
       </section>
 
-      {/* Mobile Floating Action Button */}
-      <div
-        className="fixed right-[calc(1rem+var(--removed-body-scroll-bar-size,0px))] z-40 sm:hidden"
-        style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))" }}
-      >
-        <QuoteBuilderDialog
-          customers={customers}
-          createAction={createQuoteFromWorkspace}
-          createCustomerAction={createOrReuseCustomerForQuote}
-          searchCustomersAction={searchCustomersForQuote}
-          triggerVariant="primary"
-          triggerSize="sm"
-          triggerClassName="h-11 px-4 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-1.5 border border-white/20"
-        />
-      </div>
     </section>
   );
 }
