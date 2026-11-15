@@ -68,9 +68,10 @@ describe("UserCreateDialog", () => {
     await user.type(screen.getByLabelText("Nombre a mostrar"), "Carlos Ruiz");
     await user.type(screen.getByLabelText("Contraseña inicial"), "password123");
 
-    const submitBtn = within(screen.getByTestId("user-create-form")).getByRole("button", {
+    const submitBtn = within(screen.getByRole("dialog")).getByRole("button", {
       name: "Crear usuario",
     });
+    expect(submitBtn).toHaveAttribute("form", screen.getByTestId("user-create-form").id);
     await user.click(submitBtn);
 
     await waitFor(() => {

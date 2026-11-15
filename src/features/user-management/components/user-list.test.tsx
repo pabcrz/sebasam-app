@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { UserProfile } from "@/generated/prisma/client";
 import { UserList } from "./user-list";
-import { resetUserPassword } from "../actions";
+import { resetUserPassword, toggleUserStatus, updateUserRole } from "../actions";
 
 // Mock server actions to avoid direct dependencies
 vi.mock("../actions", () => ({
@@ -43,9 +43,11 @@ if (typeof global.ResizeObserver === "undefined") {
 
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
+const CURRENT_USER_ID = "00000000-0000-0000-0000-000000000001";
+
 const mockUsers: UserProfile[] = [
   {
-    id: "00000000-0000-0000-0000-000000000001",
+    id: CURRENT_USER_ID,
     username: "admin1",
     email: "admin1@sebasam.local",
     displayName: "Admin One",
@@ -74,60 +76,102 @@ const mockUsers: UserProfile[] = [
   },
 ];
 
+function renderList() {
+  return render(<UserList users={mockUsers} currentUserId={CURRENT_USER_ID} />);
+}
+
+async function openSheet(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole("button", { name: `Editar a ${name}` }));
+  return screen.getByRole("dialog", { name: "Editar usuario" });
+}
+
 describe("UserList", () => {
-  it("renders the list of users", () => {
-    render(<UserList users={mockUsers} currentUserId="00000000-0000-0000-0000-000000000001" />);
+  it("renders each user as a row with role and username, and marks only inactive users", () => {
+    renderList();
 
     expect(screen.getByText("Admin One")).toBeInTheDocument();
-    expect(screen.getByText("admin1")).toBeInTheDocument();
-
+    expect(screen.getByText("Super Admin · @admin1")).toBeInTheDocument();
     expect(screen.getByText("Worker One")).toBeInTheDocument();
-    expect(screen.getByText("worker1")).toBeInTheDocument();
-
-    expect(screen.getByText("Activo")).toBeInTheDocument();
-    expect(screen.getByText("Inactivo")).toBeInTheDocument();
+    expect(screen.getByText("Trabajador · @worker1")).toBeInTheDocument();
+    expect(screen.getAllByText("Inactivo")).toHaveLength(1);
+    expect(screen.queryByText("Activo")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Resetear Pass" })).not.toBeInTheDocument();
   });
 
-  it("disables state toggle and role change for the current user if SUPER_ADMIN", () => {
-    render(<UserList users={mockUsers} currentUserId="00000000-0000-0000-0000-000000000001" />);
+  it("opens an edit sheet from the whole row with Cancelar left and Guardar right", async () => {
+    const user = userEvent.setup();
+    renderList();
 
-    const buttons = screen.getAllByRole("button");
-    const deactivateButton = buttons.find((b) => b.textContent === "Desactivar");
-    expect(deactivateButton).toBeDisabled();
+    const sheet = await openSheet(user, "Worker One");
 
-    // The select trigger for the current user's role should also be disabled
-    const roleSelect = screen.getByLabelText("Rol de admin1");
-    expect(roleSelect).toBeDisabled();
+    const footer = sheet.querySelector("[data-dialog-footer]") as HTMLElement;
+    expect(within(footer).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Cancelar",
+      "Guardar",
+    ]);
   });
 
-  it("enables actions for other users", () => {
-    render(<UserList users={mockUsers} currentUserId="00000000-0000-0000-0000-000000000001" />);
+  it("keeps Desactivar in the danger zone, disabled for the current user", async () => {
+    const user = userEvent.setup();
+    renderList();
 
-    const buttons = screen.getAllByRole("button");
-    const activateButton = buttons.find((b) => b.textContent === "Activar");
-    expect(activateButton).not.toBeDisabled();
+    const sheet = await openSheet(user, "Admin One");
 
-    const roleSelect = screen.getByLabelText("Rol de worker1");
-    expect(roleSelect).not.toBeDisabled();
+    const zone = sheet.querySelector("[data-dialog-danger-zone]") as HTMLElement;
+    const deactivate = within(zone).getByRole("button", { name: "Desactivar" });
+    expect(deactivate).toBeDisabled();
+    expect(deactivate).toHaveClass("bg-transparent", "border-[var(--color-status-danger-border)]");
+    expect(within(sheet).getByLabelText("Rol de admin1")).toBeDisabled();
   });
 
-  it("opens password reset dialog and calls resetUserPassword", async () => {
+  it("offers activation for inactive users outside the danger zone", async () => {
+    const user = userEvent.setup();
+    renderList();
+
+    const sheet = await openSheet(user, "Worker One");
+
+    const zone = sheet.querySelector("[data-dialog-danger-zone]");
+    expect(zone).toBeNull();
+    expect(within(sheet).getByRole("button", { name: "Activar" })).not.toBeDisabled();
+    expect(within(sheet).getByLabelText("Rol de worker1")).not.toBeDisabled();
+  });
+
+  it("saves a changed role from Guardar and leaves the sheet", async () => {
+    const user = userEvent.setup();
+    vi.mocked(updateUserRole).mockResolvedValue({ success: true } as never);
+    renderList();
+
+    const sheet = await openSheet(user, "Worker One");
+    await user.click(within(sheet).getByLabelText("Rol de worker1"));
+    await user.click(await screen.findByRole("option", { name: "Admin" }));
+    await user.click(within(sheet).getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => {
+      expect(updateUserRole).toHaveBeenCalledWith({
+        userId: "00000000-0000-0000-0000-000000000002",
+        role: "ADMIN",
+      });
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
+  it("resets the password from the sheet with its own button and the 8-character rule", async () => {
     const user = userEvent.setup();
     vi.mocked(resetUserPassword).mockResolvedValue(undefined as never);
+    renderList();
 
-    render(<UserList users={mockUsers} currentUserId="00000000-0000-0000-0000-000000000001" />);
+    const sheet = await openSheet(user, "Worker One");
 
-    const resetButtons = screen.getAllByRole("button", { name: "Resetear Pass" });
-    await user.click(resetButtons[1]); // worker1
+    await user.type(within(sheet).getByLabelText("Nueva contraseña"), "corta");
+    await user.click(within(sheet).getByRole("button", { name: "Restablecer contraseña" }));
+    expect(within(sheet).getByRole("alert")).toHaveTextContent("La contraseña debe tener al menos 8 caracteres.");
+    expect(resetUserPassword).not.toHaveBeenCalled();
 
-    const dialog = screen.getByRole("dialog", { name: "Restablecer contraseña" });
-    expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getByText("Worker One")).toBeInTheDocument();
-
-    const passInput = screen.getByLabelText("Nueva contraseña");
-    await user.type(passInput, "newpassword123");
-
-    await user.click(screen.getByRole("button", { name: "Guardar contraseña" }));
+    await user.clear(within(sheet).getByLabelText("Nueva contraseña"));
+    await user.type(within(sheet).getByLabelText("Nueva contraseña"), "newpassword123");
+    await user.click(within(sheet).getByRole("button", { name: "Restablecer contraseña" }));
 
     await waitFor(() => {
       expect(resetUserPassword).toHaveBeenCalledWith({
@@ -135,7 +179,22 @@ describe("UserList", () => {
         newPassword: "newpassword123",
       });
     });
+  });
 
+  it("deactivates a user from the danger zone and closes the sheet", async () => {
+    const user = userEvent.setup();
+    vi.mocked(toggleUserStatus).mockResolvedValue({ success: true } as never);
+    render(<UserList users={[{ ...mockUsers[1], isActive: true }]} currentUserId={CURRENT_USER_ID} />);
+
+    const sheet = await openSheet(user, "Worker One");
+    await user.click(within(sheet).getByRole("button", { name: "Desactivar" }));
+
+    await waitFor(() => {
+      expect(toggleUserStatus).toHaveBeenCalledWith({
+        userId: "00000000-0000-0000-0000-000000000002",
+        isActive: false,
+      });
+    });
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });

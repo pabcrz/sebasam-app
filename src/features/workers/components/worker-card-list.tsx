@@ -1,6 +1,7 @@
 "use client";
 
-import { Badge, ListItemCard, type BadgeVariant } from "@/components/ui";
+import * as React from "react";
+import { Badge, ListRow } from "@/components/ui";
 import { WorkerEditDialog } from "./worker-edit-dialog";
 
 type WorkerCardListWorker = {
@@ -10,6 +11,7 @@ type WorkerCardListWorker = {
   email: string;
   workerKind: "MASTER" | "HELPER" | null;
   isActive: boolean;
+  _count?: { assignments: number } | null;
 };
 
 type WorkerCardListProps = {
@@ -24,40 +26,58 @@ const kindLabels = {
   HELPER: "Ayudante",
 } as const;
 
+function workloadLabel(activeJobs: number) {
+  if (activeJobs === 0) return "Sin trabajos";
+  return `${activeJobs} trabajo${activeJobs === 1 ? "" : "s"} activo${activeJobs === 1 ? "" : "s"}`;
+}
+
+/** One whole-row button per worker; the workload sits on the right. Tapping a row opens its edit sheet. */
 export function WorkerCardList({ workers, updateAction, setActiveAction, deleteAction }: WorkerCardListProps) {
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const editing = workers.find((worker) => worker.id === editingId) ?? null;
+
   return (
     <div className="grid gap-3" data-testid="worker-card-list">
       {workers.map((worker) => {
-        const statusLabel = worker.isActive ? "Activo" : "Inactivo";
-        const statusVariant: BadgeVariant = worker.isActive ? "success" : "default";
+        const activeJobs = worker._count?.assignments;
 
         return (
-          <ListItemCard
+          <ListRow
             key={worker.id}
-            body={
-              <>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium text-[var(--color-text-main)]">{worker.displayName}</p>
-                  <Badge variant={statusVariant}>{statusLabel}</Badge>
-                </div>
-                <div className="mt-1 grid gap-0.5 text-sm text-[var(--color-text-muted)]">
-                  <p>{kindLabels[worker.workerKind ?? "HELPER"]}</p>
-                  <p className="truncate">@{worker.username}</p>
-                  <p className="truncate">{worker.email}</p>
-                </div>
-              </>
+            openLabel={`Editar a ${worker.displayName}`}
+            onOpen={() => setEditingId(worker.id)}
+            decision={
+              activeJobs === undefined ? null : (
+                <span className="text-sm tabular-nums text-[var(--color-text-muted)]">{workloadLabel(activeJobs)}</span>
+              )
             }
-            actions={
-              <WorkerEditDialog
-                worker={worker}
-                updateAction={updateAction}
-                setActiveAction={setActiveAction}
-                deleteAction={deleteAction}
-              />
-            }
-          />
+          >
+            <span className="grid min-w-0 gap-0.5">
+              <span className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="truncate font-medium text-[var(--color-text-main)]">{worker.displayName}</span>
+                {worker.isActive ? null : <Badge variant="default">Inactivo</Badge>}
+              </span>
+              <span className="truncate text-sm text-[var(--color-text-muted)]">
+                {kindLabels[worker.workerKind ?? "HELPER"]} · @{worker.username}
+              </span>
+            </span>
+          </ListRow>
         );
       })}
+
+      {editing ? (
+        <WorkerEditDialog
+          key={editing.id}
+          worker={editing}
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditingId(null);
+          }}
+          updateAction={updateAction}
+          setActiveAction={setActiveAction}
+          deleteAction={deleteAction}
+        />
+      ) : null}
 
       {workers.length === 0 ? (
         <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">

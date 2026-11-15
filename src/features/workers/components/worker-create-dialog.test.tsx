@@ -28,7 +28,22 @@ describe("WorkerCreateDialog", () => {
     });
   });
 
-  it("opens the create form from a modal trigger with a derived read-only email", async () => {
+  it("opens the create form in a sheet with Cancelar left and Crear trabajador right in the footer", async () => {
+    const user = userEvent.setup();
+    render(<WorkerCreateDialog action={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Crear trabajador" }));
+
+    const sheet = screen.getByRole("dialog");
+    expect(sheet).toHaveAttribute("data-dialog-variant", "sheet");
+    const footer = sheet.querySelector("[data-dialog-footer]") as HTMLElement;
+    expect(within(footer).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Cancelar",
+      "Crear trabajador",
+    ]);
+  });
+
+  it("derives a read-only email and submits through the footer button linked to the form", async () => {
     const user = userEvent.setup();
 
     render(<WorkerCreateDialog action={vi.fn()} />);
@@ -45,11 +60,8 @@ describe("WorkerCreateDialog", () => {
 
     expect(email).toHaveValue("ana.lopez@sebasam.local");
     expect(email).toHaveAttribute("readonly");
-    expect(
-      within(screen.getByTestId("worker-create-form")).getByRole("button", {
-        name: "Crear trabajador",
-      }),
-    ).toBeInTheDocument();
+    const submit = within(screen.getByRole("dialog")).getByRole("button", { name: "Crear trabajador" });
+    expect(submit).toHaveAttribute("form", screen.getByTestId("worker-create-form").id);
   });
 
   it("keeps the form action, preserves its payload, and locks dismissal while pending", async () => {
@@ -62,7 +74,7 @@ describe("WorkerCreateDialog", () => {
     await user.type(screen.getByLabelText("Usuario interno"), "ana.lopez");
 
     expect(screen.getByTestId("worker-create-form")).toHaveAttribute("action");
-    await user.click(screen.getByRole("button", { name: "Crear trabajador" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Crear trabajador" }));
 
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
     expect(Object.fromEntries((action.mock.calls[0][0] as FormData).entries())).toEqual({

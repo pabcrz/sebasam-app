@@ -4,7 +4,6 @@ import { useTransition, useState } from "react";
 import { UserRole } from "@/generated/prisma/enums";
 import toast from "react-hot-toast";
 import {
-  Button,
   Input,
   Label,
   Select,
@@ -18,10 +17,11 @@ import { PasswordInput } from "@/components/ui/password-input";
 export interface UserCreateFormProps {
   action: (formData: FormData) => Promise<{ success?: boolean; error?: string }>;
   onSuccess?: () => void;
-  onCancel?: () => void;
+  /** The dialog footer submits this form through `form={formId}`. */
+  formId?: string;
 }
 
-export function UserCreateForm({ action, onSuccess, onCancel }: UserCreateFormProps) {
+export function UserCreateForm({ action, onSuccess, formId }: UserCreateFormProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole>("WORKER");
@@ -53,7 +53,7 @@ export function UserCreateForm({ action, onSuccess, onCancel }: UserCreateFormPr
   };
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4" data-testid="user-create-form">
+    <form id={formId} onSubmit={handleSubmit} className="grid gap-4" data-testid="user-create-form">
       {error ? (
         <p
           className="rounded-[var(--radius-sm)] border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-bg)] px-4 py-3 text-sm text-[var(--color-status-danger-fg)]"
@@ -106,29 +106,6 @@ export function UserCreateForm({ action, onSuccess, onCancel }: UserCreateFormPr
       <div className="grid gap-2">
         <Label htmlFor="password">Contraseña inicial</Label>
         <PasswordInput id="password" name="password" placeholder="Contraseña segura" required minLength={8} disabled={isPending} />
-      </div>
-
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        {onCancel ? (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={isPending}
-            className="w-full sm:w-fit"
-          >
-            Cancelar
-          </Button>
-        ) : null}
-        <Button
-          type="submit"
-          variant="primary"
-          className="w-full sm:w-fit"
-          disabled={isPending}
-          loading={isPending}
-        >
-          {isPending ? "Creando..." : "Crear usuario"}
-        </Button>
       </div>
     </form>
   );

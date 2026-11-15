@@ -1,4 +1,4 @@
-import { UserRole, WorkerKind } from "@/generated/prisma/client";
+import { AssignmentStatus, UserRole, WorkerKind } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { workerSearchSchema } from "./schemas";
@@ -24,6 +24,16 @@ export async function listWorkers(input: unknown = {}) {
         : {}),
     },
     orderBy: [{ isActive: "desc" }, { displayName: "asc" }],
+    // Workload per row: assignments still open (not done or cancelled).
+    include: {
+      _count: {
+        select: {
+          assignments: {
+            where: { status: { in: [AssignmentStatus.ASSIGNED, AssignmentStatus.ACCEPTED] } },
+          },
+        },
+      },
+    },
   });
 }
 
