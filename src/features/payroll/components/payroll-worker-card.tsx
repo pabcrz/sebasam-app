@@ -217,7 +217,7 @@ export function PayrollUnassignedCard({ orders }: { orders: WorkOrderPayrollDeta
   if (orders.length === 0) return null;
 
   return (
-    <Card className="bg-amber-500/5 border-amber-500/30 p-3.5 sm:p-4 space-y-2.5">
+    <Card data-testid="payroll-unassigned-card" className="bg-[var(--color-status-warning-bg)] p-3.5 sm:p-4 space-y-2.5">
       <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
         <Icon name="shield-alert" className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
         <h3 className="font-semibold text-xs sm:text-sm">

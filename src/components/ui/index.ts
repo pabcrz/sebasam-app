@@ -13,6 +13,7 @@ export * from "./info-tip";
 export * from "./input";
 export * from "./label";
 export * from "./list-item-card";
+export * from "./list-row";
 export * from "./metric-card-group";
 export * from "./multi-step-dialog";
 export * from "./operational-actions-menu";

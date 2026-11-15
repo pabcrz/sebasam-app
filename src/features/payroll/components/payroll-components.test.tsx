@@ -16,6 +16,11 @@ import type { ParsedPayrollParams } from "../period";
 import toast from "react-hot-toast";
 import { updatePayrollItemBase } from "../actions";
 
+const pushMock = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock, replace: vi.fn(), refresh: vi.fn() }),
+}));
+
 vi.mock("react-hot-toast", () => {
   const toastMock = {
     success: vi.fn(),
@@ -86,65 +91,104 @@ const sampleWorkers: WorkerPayrollSummary[] = [
 ];
 
 describe("Payroll UI Components", () => {
-  it("renders period navigation with range label and buttons", () => {
-    render(
-      <PayrollPeriodNav
-        rangeLabel="17–22 de agosto de 2026"
-        anchor="2026-08-17"
-        prevAnchor="2026-08-10"
-        nextAnchor="2026-08-24"
-        isCurrentWeek={true}
-      />
-    );
+  it("renders the period with the Spanish label, marks the current week and navigates by URL", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-08-19T12:00:00Z"));
+    try {
+      render(<PayrollPeriodNav mode="weekly" anchor="2026-08-17" isCurrentWeek={true} onOpenSigningSheet={vi.fn()} />);
 
-    expect(screen.getByText("17–22 de agosto de 2026")).toBeInTheDocument();
-    expect(screen.getByText("Semana en curso")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /semana anterior/i })).toHaveAttribute(
-      "href",
-      "/admin/nomina?anchor=2026-08-10"
-    );
-    expect(screen.getByRole("link", { name: /semana siguiente/i })).toHaveAttribute(
-      "href",
-      "/admin/nomina?anchor=2026-08-24"
-    );
-    expect(screen.getByTestId("payroll-period-nav")).toHaveClass("min-w-0", "max-w-full");
-    expect(screen.getByTestId("payroll-period-nav").querySelector("div.flex.flex-wrap")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Nómina", level: 1 })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "17–22 de agosto de 2026" })).toBeInTheDocument();
+      expect(screen.getByText("En curso")).toBeInTheDocument();
+      expect(screen.getByTestId("payroll-period-nav")).toHaveClass("min-w-0", "max-w-full");
+
+      fireEvent.click(screen.getByRole("button", { name: "Periodo anterior" }));
+      expect(pushMock).toHaveBeenLastCalledWith("/admin/nomina?anchor=2026-08-10");
+      fireEvent.click(screen.getByRole("button", { name: "Periodo siguiente" }));
+      expect(pushMock).toHaveBeenLastCalledWith("/admin/nomina?anchor=2026-08-24");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not force-capitalize the Spanish range label", () => {
-    render(
-      <PayrollPeriodNav
-        rangeLabel="9–14 de noviembre de 2026"
-        anchor="2026-11-09"
-        prevAnchor="2026-11-02"
-        nextAnchor="2026-11-16"
-      />,
-    );
+    render(<PayrollPeriodNav mode="weekly" anchor="2026-11-09" onOpenSigningSheet={vi.fn()} />);
 
     expect(screen.getByRole("heading", { name: "9–14 de noviembre de 2026" })).not.toHaveClass("capitalize");
   });
 
-  it("keeps ADMIN payroll weekly and read-only", () => {
+  it("keeps ADMIN payroll weekly and read-only, with no mode selector, print action or week status", () => {
     render(
       <PayrollPeriodNav
         role="ADMIN"
         mode="weekly"
-        rangeLabel="17–22 de agosto de 2026"
         anchor="2026-08-17"
-        prevAnchor="2026-08-10"
-        nextAnchor="2026-08-24"
         weekStatus={PayrollPeriodStatus.OPEN}
         onOpenSigningSheet={vi.fn()}
       />,
     );
 
-    expect(screen.getByRole("link", { name: /semana anterior/i })).toHaveAttribute(
-      "href",
-      "/admin/nomina?anchor=2026-08-10",
-    );
+    expect(screen.queryByRole("group", { name: "Vista del periodo" })).not.toBeInTheDocument();
     expect(screen.queryByText("Mensual")).not.toBeInTheDocument();
-    expect(screen.queryByText("Hoja de Firmas")).not.toBeInTheDocument();
-    expect(screen.queryByText("Semana Abierta")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /hoja de firmas/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Semana abierta")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cerrar semana" })).not.toBeInTheDocument();
+  });
+
+  it("shows the open or closed week status in the page header for non-admin roles", () => {
+    const { unmount } = render(
+      <PayrollPeriodNav mode="weekly" anchor="2026-08-17" isCurrentWeek weekStatus={PayrollPeriodStatus.OPEN} hasData onOpenSigningSheet={vi.fn()} />,
+    );
+    expect(within(screen.getByTestId("page-header")).getByText("Semana abierta")).toBeInTheDocument();
+    unmount();
+
+    render(
+      <PayrollPeriodNav mode="weekly" anchor="2026-08-10" weekStatus={PayrollPeriodStatus.CLOSED} hasData onOpenSigningSheet={vi.fn()} />,
+    );
+    expect(within(screen.getByTestId("page-header")).getByText("Semana cerrada")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reabrir semana" })).toBeInTheDocument();
+  });
+
+  it("puts the signing sheet print action in the page header and disables it without data", () => {
+    const onOpen = vi.fn();
+    const { unmount } = render(<PayrollPeriodNav mode="weekly" anchor="2026-08-17" hasData={false} onOpenSigningSheet={onOpen} />);
+    expect(within(screen.getByTestId("page-header")).getByRole("button", { name: /hoja de firmas/i })).toBeDisabled();
+    unmount();
+
+    render(<PayrollPeriodNav mode="weekly" anchor="2026-08-17" hasData onOpenSigningSheet={onOpen} />);
+    fireEvent.click(within(screen.getByTestId("page-header")).getByRole("button", { name: /hoja de firmas/i }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers weekly and monthly views to non-admin roles and navigates to the monthly URL", () => {
+    render(<PayrollPeriodNav mode="weekly" anchor="2026-08-17" onOpenSigningSheet={vi.fn()} />);
+
+    fireEvent.click(within(screen.getByRole("group", { name: "Vista del periodo" })).getByRole("button", { name: "Mes" }));
+    expect(pushMock).toHaveBeenLastCalledWith("/admin/nomina?mode=monthly&anchor=2026-08-17");
+  });
+
+  it("opens the week confirmations with the Sheet anatomy and an outlined danger confirm", () => {
+    render(
+      <PayrollPeriodNav mode="weekly" anchor="2026-08-10" isCurrentWeek={false} weekStatus={PayrollPeriodStatus.OPEN} hasData onOpenSigningSheet={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar semana" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.querySelector("[data-dialog-header]")).not.toBeNull();
+    expect(dialog.querySelector("[data-dialog-footer]")).not.toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Confirmar cierre" })).toHaveClass("border-[var(--color-status-danger-border)]");
+  });
+
+  it("opens the reopen confirmation with the same anatomy and an outlined danger confirm", () => {
+    render(
+      <PayrollPeriodNav mode="weekly" anchor="2026-08-10" weekStatus={PayrollPeriodStatus.CLOSED} hasData onOpenSigningSheet={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Reabrir semana" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.querySelector("[data-dialog-footer]")).not.toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Autorizar reapertura" })).toHaveClass("border-[var(--color-status-danger-border)]");
   });
 
   it("renders metrics with formatted amounts", () => {
@@ -162,44 +206,33 @@ describe("Payroll UI Components", () => {
     expect(screen.getAllByText("$3,000.00").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("4").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("$3,000.00")[0]).toHaveClass("break-words");
-    expect(screen.getByTestId("payroll-metrics-desktop")).toHaveClass("min-w-0", "max-w-full");
+    expect(screen.getByTestId("payroll-metrics")).toHaveClass("min-w-0", "max-w-full");
+    expect(screen.getByText("Total a pagar")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Qué incluye: Total a pagar" })).toBeInTheDocument();
   });
 
-  it("renders overview table and allows worker selection", () => {
+  it("renders each worker as a whole-row button with the amount to pay on the right", () => {
     const onSelect = vi.fn();
-    render(
-      <PayrollOverviewTable
-        workers={sampleWorkers}
-        selectedWorkerId="w-1"
-        onSelectWorker={onSelect}
-      />
-    );
+    render(<PayrollOverviewTable workers={sampleWorkers} onSelectWorker={onSelect} />);
 
     expect(screen.getByText("Resumen General de Nómina")).toBeInTheDocument();
     expect(screen.getByTestId("payroll-overview-table")).toHaveClass("min-w-0", "max-w-full");
     expect(screen.getAllByText("Maestro Pedro").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Maestro Juan").length).toBeGreaterThanOrEqual(1);
 
-    const juanButtons = screen.getAllByRole("button", { name: /ver detalle/i });
-    fireEvent.click(juanButtons[0]);
+    const juanRow = screen.getByRole("button", { name: "Ver detalle de Maestro Juan" });
+    expect(within(juanRow).getByText("$1,000.00")).toBeInTheDocument();
+    fireEvent.click(juanRow);
     expect(onSelect).toHaveBeenCalledWith("w-2");
   });
 
   it("keeps long worker names untruncated with the worker-kind badge below", () => {
     const longName = "Refugio Antonio Hernández de la Cruz";
 
-    render(
-      <PayrollOverviewTable
-        workers={[{ ...sampleWorkers[0], displayName: longName }]}
-        selectedWorkerId={null}
-        onSelectWorker={vi.fn()}
-      />
-    );
+    render(<PayrollOverviewTable workers={[{ ...sampleWorkers[0], displayName: longName }]} onSelectWorker={vi.fn()} />);
 
-    const mobileCards = screen.getByTestId("payroll-overview-mobile-cards");
-    const name = within(mobileCards).getByText(longName);
-    const badge = within(mobileCards).getByText("Maestro");
+    const table = screen.getByTestId("payroll-overview-table");
+    const name = within(table).getByText(longName);
+    const badge = within(table).getByText("Maestro");
 
     expect(name).toHaveClass("max-w-full", "break-words");
     expect(name).not.toHaveClass("truncate");
@@ -215,7 +248,7 @@ describe("Payroll UI Components", () => {
       />
     );
 
-    expect(screen.getByText("Mano de obra - Maestro Pedro")).toBeInTheDocument();
+    expect(screen.getByText("Total: $400.00")).toBeInTheDocument();
     expect(screen.getByText("Reparación de chasis")).toBeInTheDocument();
     expect(screen.getByText("Folio OT-010 · COT-010")).toBeInTheDocument();
     expect(screen.queryByText("Soldadura chasis")).not.toBeInTheDocument();
@@ -631,8 +664,8 @@ describe("Payroll UI Components", () => {
 
     render(<PayrollView report={fullReport} period={period} />);
 
-    const envelopeBtn = screen.getByRole("button", { name: /recibo de nómina/i });
-    fireEvent.click(envelopeBtn);
+    fireEvent.click(screen.getByRole("button", { name: "Ver detalle de Maestro Pedro" }));
+    fireEvent.click(screen.getByRole("button", { name: /recibo de nómina/i }));
 
     expect(screen.getByText(/Recibo de Nómina - Maestro Pedro/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /imagen/i })).toBeInTheDocument();
@@ -684,6 +717,77 @@ describe("Payroll UI Components", () => {
     for (const envelope of envelopes) {
       expect(envelope).toHaveClass("print:w-[7.9cm]", "print:max-w-[7.9cm]", "print:mx-auto");
     }
+  });
+
+  describe("Payroll worker sheet and unassigned card", () => {
+    const weeklyPeriod: ParsedPayrollParams = {
+      mode: "weekly",
+      anchor: "2026-08-17",
+      prevAnchor: "2026-08-10",
+      nextAnchor: "2026-08-24",
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      isCurrentPeriod: true,
+      start: new Date("2026-08-17T06:00:00Z"),
+      end: new Date("2026-08-23T06:00:00Z"),
+    };
+
+    const weeklyReport: WeeklyPayrollReport = {
+      mode: "weekly",
+      startDate: new Date("2026-08-17T06:00:00Z"),
+      endDate: new Date("2026-08-23T06:00:00Z"),
+      rangeLabel: "17 al 22 de agosto de 2026",
+      isCurrentWeek: true,
+      totalWorkers: 2,
+      totalCompletedOrders: 3,
+      totalClientLaborCents: 300000,
+      totalPayrollBaseCents: 300000,
+      totalCommissionCents: 140000,
+      workers: sampleWorkers,
+      unassignedOrders: [],
+    };
+
+    it("opens a worker row as a sheet whose only footer action is the receipt", () => {
+      render(<PayrollView report={weeklyReport} period={weeklyPeriod} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Ver detalle de Maestro Pedro" }));
+
+      const sheet = screen.getByRole("dialog");
+      expect(sheet).toHaveAttribute("data-dialog-variant", "sheet");
+      expect(within(sheet).getByRole("heading", { name: "Maestro Pedro" })).toBeInTheDocument();
+      const footer = sheet.querySelector("[data-dialog-footer]") as HTMLElement;
+      expect(within(footer).getAllByRole("button")).toHaveLength(1);
+      expect(within(footer).getByRole("button", { name: /recibo de nómina/i })).toBeInTheDocument();
+    });
+
+    it("closes the worker sheet before the receipt opens, so only one dialog is visible", () => {
+      render(<PayrollView report={weeklyReport} period={weeklyPeriod} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Ver detalle de Maestro Pedro" }));
+      fireEvent.click(screen.getByRole("button", { name: /recibo de nómina/i }));
+
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
+      expect(screen.getByText(/Recibo de Nómina - Maestro Pedro/i)).toBeInTheDocument();
+    });
+
+    it("keeps the ADMIN worker sheet read-only, with no receipt, no footer and no base adjustment", () => {
+      render(<PayrollView report={weeklyReport} period={weeklyPeriod} role="ADMIN" />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Ver detalle de Maestro Pedro" }));
+
+      const sheet = screen.getByRole("dialog");
+      expect(within(sheet).queryByRole("button", { name: /recibo de nómina/i })).not.toBeInTheDocument();
+      expect(within(sheet).queryByRole("button", { name: /ajustar/i })).not.toBeInTheDocument();
+      expect(sheet.querySelector("[data-dialog-footer]")).toBeNull();
+    });
+
+    it("renders the unassigned-orders card as a tinted surface without a border", () => {
+      render(<PayrollUnassignedCard orders={sampleWorkers[0].workOrders} />);
+
+      const card = screen.getByTestId("payroll-unassigned-card");
+      expect(card.className).not.toMatch(/(^|\s)border(-|\s|$)/);
+      expect(card).toHaveClass("bg-[var(--color-status-warning-bg)]");
+    });
   });
 
   describe("Inline Payroll Base Adjustment", () => {

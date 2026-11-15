@@ -80,12 +80,15 @@ export function PeriodNavigator({
         ) : null}
       </div>
 
-      <SegmentedControl
-        label="Vista del periodo"
-        options={segmentedOptions}
-        value={view}
-        onValueChange={(value) => onViewChange(value as PeriodView)}
-      />
+      {/* One view has nothing to choose between, so no single-option selector is shown. */}
+      {views.length > 1 ? (
+        <SegmentedControl
+          label="Vista del periodo"
+          options={segmentedOptions}
+          value={view}
+          onValueChange={(value) => onViewChange(value as PeriodView)}
+        />
+      ) : null}
     </div>
   );
 }
