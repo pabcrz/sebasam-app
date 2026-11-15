@@ -108,7 +108,7 @@ export function CustomerCardList({ customers, query = "", onDeleteBatch }: Custo
           onValueChange={(value) => setFilter(value as CustomerListFilter)}
         />
         {customers.length > 0 && !isSelectionMode ? (
-          <Button type="button" variant="ghost" size="sm" onClick={() => setIsSelectionMode(true)}>
+          <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectionMode(true)}>
             Seleccionar
           </Button>
         ) : null}
@@ -182,7 +182,7 @@ export function CustomerCardList({ customers, query = "", onDeleteBatch }: Custo
                     <span key={unit.id} className="flex min-w-0 items-center gap-1.5 text-sm text-[var(--color-text-main)]">
                       <Icon name="unit" className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
                       <span className="truncate">{unitIdentity(unit) ?? "Unidad registrada"}</span>
-                      {unit.inWorkshop ? <Badge variant="info">En taller</Badge> : null}
+                      {unit.inWorkshop ? <Badge variant="info" className="shrink-0 whitespace-nowrap">En taller</Badge> : null}
                     </span>
                   ))}
                 </span>

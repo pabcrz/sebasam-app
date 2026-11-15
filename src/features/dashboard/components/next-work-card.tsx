@@ -40,7 +40,7 @@ export function NextWorkCard({ nextWork }: NextWorkCardProps) {
 
   return (
     <section aria-labelledby="next-work-heading" className="grid gap-3">
-      <SectionLabel as="h2" id="next-work-heading" className="flex items-center gap-2 text-[var(--color-primary)]">
+      <SectionLabel as="h2" id="next-work-heading" className="flex items-center gap-2 text-[var(--color-link)]">
         <Icon name="wrench" className="h-4 w-4" aria-hidden="true" />
         Siguiente trabajo
       </SectionLabel>

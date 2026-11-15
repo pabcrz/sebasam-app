@@ -97,7 +97,7 @@ export function DashboardView({
   const pendingCount = inboxRows.reduce((total, row) => total + row.count, 0);
 
   return (
-    <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
+    <section className="mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)] gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">{greetingFor(now)}</h1>

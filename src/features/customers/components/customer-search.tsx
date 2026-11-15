@@ -85,7 +85,7 @@ export function CustomerSearch() {
       <SearchBar
         aria-label="Buscar clientes"
         name="q"
-        placeholder="Buscar por nombre, teléfono, correo, placas, ECO o chofer"
+        placeholder="Buscar cliente, teléfono, placas o ECO"
         value={query}
         onValueChange={(value) => (value === "" ? clearSearch() : handleChange(value))}
       />

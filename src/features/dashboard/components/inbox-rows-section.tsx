@@ -24,7 +24,7 @@ const ROW_COPY: Record<InboxRowKey, { label: string; caption: string; icon: Icon
  */
 export function InboxRowsSection({ heading, rows, emptyText }: InboxRowsSectionProps) {
   return (
-    <section aria-label={heading} className="grid gap-1 px-4 py-3">
+    <section aria-label={heading} className="grid grid-cols-[minmax(0,1fr)] gap-1 px-4 py-3">
       <SectionLabel as="h2">{heading}</SectionLabel>
       {rows.length === 0 ? (
         <p className="py-2 text-sm text-[var(--color-text-muted)]">{emptyText}</p>

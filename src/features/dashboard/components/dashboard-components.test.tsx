@@ -142,7 +142,7 @@ describe("NextWorkCard", () => {
     render(<NextWorkCard nextWork={nextWork} />);
 
     const heading = screen.getByRole("heading", { name: "Siguiente trabajo" });
-    expect(heading).toHaveClass("text-[var(--color-primary)]");
+    expect(heading).toHaveClass("text-[var(--color-link)]");
     expect(heading.querySelector("svg")).not.toBeNull();
   });
 
