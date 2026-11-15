@@ -77,12 +77,10 @@ describe("AdminPageHeader", () => {
       "@/features/quotes/components/quote-lifecycle-form",
        "@/features/quotes/components/quote-correct-decision-form",
        "@/features/quotes/components/quote-authorize-form",
-       "@/features/quotes/components/quote-approval-form",
        "@/features/payments/components/cash-payment-dialog",
       "@/features/payment-requests/components/payment-request-link-dialog",
       "@/features/work-orders/components/work-order-operations-dialog",
     ];
-    // MultiStepDialog is intentionally future scope: no current owner source exists.
 
     vi.resetModules();
     vi.doMock("@/components/admin-page-header", () => {

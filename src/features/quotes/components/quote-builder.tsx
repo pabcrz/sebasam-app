@@ -80,7 +80,7 @@ export type {
  * Host elements for the dialog chrome slots (stepper + footer). The dialog
  * shell owns them as state and provides them through
  * `QuoteBuilderChromeContext`; consumed only when `layout === "dialog"` so the
- * stepper and footer render into `MultiStepDialog`'s fixed slots instead of
+ * stepper and footer render into the dialog shell's fixed slots instead of
  * inside the form. Reactivity is driven by the provider's host ref callbacks,
  * so the consumer re-renders the portals once both hosts are attached — no
  * effect ordering involved.

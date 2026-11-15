@@ -252,7 +252,7 @@ describe("QuoteListCard", () => {
 
     const title = screen.getByRole("heading", { level: 3 });
     expect(title).toHaveAttribute("title", fullTitle);
-    expect(title).toHaveClass("line-clamp-2", "min-h-12");
+    expect(title).toHaveClass("line-clamp-2", "lg:min-h-12");
     expect(screen.getByTestId("quote-key-data")).toHaveClass("min-h-12");
     expect(screen.queryByText(/vencimiento pago:/i)).not.toBeInTheDocument();
   });

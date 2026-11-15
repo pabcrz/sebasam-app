@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
-import { ActiveFilterChips, Button, Chip, FilterSheet, Input, Label, SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatusFilterNav } from "@/components/ui";
+import { ActiveFilterChips, Button, Chip, FilterSheet, Input, Label, SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SegmentedControl } from "@/components/ui";
 import type { QuoteFilterInput } from "@/features/quotes/schemas";
 import {
   formatDateValue,
@@ -154,15 +154,17 @@ export function QuoteFilters({ filters, customers, rejectedDateRange }: QuoteFil
     pushState(removeQuoteFilterChip(effectiveFilters, id as QuoteFilterChipId));
   }
 
+  const statusOptions = statusChips.map((chip) => {
+    const href = quotesHref({ ...effectiveFilters, status: chip.key === "ALL" ? undefined : chip.key, page: 1 });
+    return { value: href, label: chip.label, href, current: (effectiveFilters.status ?? "ALL") === chip.key };
+  });
+
   return (
     <div className="grid gap-3">
-      <StatusFilterNav
+      <SegmentedControl
         label="Filtros directos por estado"
-        items={statusChips.map((chip) => ({
-          href: quotesHref({ ...effectiveFilters, status: chip.key === "ALL" ? undefined : chip.key, page: 1 }),
-          label: chip.label,
-          current: (effectiveFilters.status ?? "ALL") === chip.key,
-        }))}
+        options={statusOptions}
+        value={statusOptions.find((option) => option.current)?.value}
       />
 
       <div className="flex items-center gap-2">

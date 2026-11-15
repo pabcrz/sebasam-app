@@ -98,13 +98,14 @@ export function EntityCard({
     <div
       role="group"
       aria-label={openLabel}
-      tabIndex={0}
+      tabIndex={onOpen ? 0 : undefined}
       aria-current={selected ? "true" : undefined}
       data-variant={variant}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "flex w-full min-w-0 cursor-pointer flex-col rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-card)] transition-shadow duration-[var(--motion-fast)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
+        "flex w-full min-w-0 flex-col rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-card)] transition-shadow duration-[var(--motion-fast)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
+        onOpen && "cursor-pointer",
         variant === "featured" && "shadow-[var(--shadow-card-hover)]",
         selected && "shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)]",
         className,
@@ -115,7 +116,7 @@ export function EntityCard({
           <h3
             title={typeof title === "string" ? title : undefined}
             className={cn(
-              "line-clamp-2 min-h-12 break-words text-lg font-semibold leading-6 text-[var(--color-text-main)]",
+              "line-clamp-2 break-words lg:min-h-12 text-lg font-semibold leading-6 text-[var(--color-text-main)]",
               selected && "text-[var(--color-amount)]",
             )}
           >

@@ -19,18 +19,23 @@ export interface StatTileProps {
   /** Explanation shown behind the ⓘ next to the label. */
   info?: React.ReactNode;
   tone?: StatTileTone;
+  /** Supporting line under the figure. */
+  description?: React.ReactNode;
+  /** Marks the figure as a count or an amount for assistive and test hooks. */
+  numericRole?: "count" | "currency";
   className?: string;
 }
 
 /** Key figure on a white bordered surface. Tone colors only the figure; no shadow, no tinted background. */
-export function StatTile({ label, value, info, tone = "neutral", className }: StatTileProps) {
+export function StatTile({ label, value, info, tone = "neutral", description, numericRole, className }: StatTileProps) {
   return (
     <div className={cn("grid min-w-0 gap-1 rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4", className)}>
       <div className="flex min-w-0 items-start gap-1.5 text-xs font-medium text-[var(--color-text-muted)]">
         <span className="min-w-0 break-words">{label}</span>
         {info ? <InfoTip label={`Qué incluye: ${label}`}>{info}</InfoTip> : null}
       </div>
-      <p className={cn("min-w-0 truncate text-xl font-semibold tabular-nums sm:text-2xl", toneValueClassNames[tone])}>{value}</p>
+      <p data-numeric-role={numericRole} className={cn("min-w-0 truncate text-xl font-semibold tabular-nums sm:text-2xl", toneValueClassNames[tone])}>{value}</p>
+      {description != null ? <p className="min-w-0 text-xs text-[var(--color-text-muted)]">{description}</p> : null}
     </div>
   );
 }
