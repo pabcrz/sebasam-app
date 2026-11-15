@@ -72,7 +72,6 @@ describe("AdminPageHeader", () => {
       "@/features/quotes/components/quote-builder-dialog",
       "@/features/workers/components/worker-edit-dialog",
       "@/features/customers/components/customer-create-form",
-      "@/features/customers/components/customer-detail-dialog",
       "@/features/workers/components/worker-create-dialog",
       "@/features/quotes/components/quote-preview-dialog",
       "@/features/quotes/components/quote-lifecycle-form",
