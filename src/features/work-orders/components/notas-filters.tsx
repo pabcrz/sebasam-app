@@ -318,7 +318,7 @@ function NotasFiltersContent({
   }));
 
   return (
-    <section aria-label="Filtros de notas" className="grid min-w-0 gap-3">
+    <section aria-label="Filtros de notas" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
       <PeriodNavigator
         view={mode}
         anchor={anchor}
@@ -432,7 +432,7 @@ function NotasFiltersContent({
             disabled={Boolean(rejectedRange)}
             value={draftKind}
             onChange={(event) => setDraftKind(event.currentTarget.value as NotasKind)}
-            className="h-[var(--control-md)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm font-normal text-[var(--color-text-main)] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
+            className="min-h-11 h-[var(--control-md)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm font-normal text-[var(--color-text-main)] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
           >
             <option value="all">Todas</option>
             <option value="WORK">WORK</option>
@@ -594,7 +594,7 @@ function NotasFiltersContent({
             disabled={Boolean(operationalState && draftKind !== "WORK")}
             aria-describedby={operationalState && draftKind !== "WORK" ? "notas-responsible-help" : undefined}
             onChange={(e) => setDraftAssignee(e.currentTarget.value as NotasAssignee)}
-            className="h-[var(--control-md)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-main)] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
+            className="min-h-11 h-[var(--control-md)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-main)] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
           >
             <option value="all">Todos los responsables</option>
             <option value="workshop">Taller</option>
@@ -619,7 +619,7 @@ function NotasFiltersContent({
             aria-label="Morosidad"
             value={draftOverdue}
             onChange={(e) => setDraftOverdue(e.currentTarget.value as NotasOverdue)}
-            className="h-[var(--control-md)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-main)] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
+            className="min-h-11 h-[var(--control-md)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 text-sm text-[var(--color-text-main)] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
           >
             <option value="all">Todas las notas</option>
             <option value="overdue">Sólo vencidas</option>

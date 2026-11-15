@@ -181,7 +181,7 @@ export function WorkOrderFilters({ filters, customers, workers, rejectedRange, t
   }
 
   return (
-    <section aria-label="Filtros de trabajos" className="grid min-w-0 gap-3">
+    <section aria-label="Filtros de trabajos" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
       <div data-testid="work-order-search-row" className="flex min-w-0 flex-wrap items-center gap-2 md:flex-nowrap">
         {tabs}
         <WorkOrderSearchField
