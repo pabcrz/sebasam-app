@@ -142,7 +142,7 @@ Implementación en `src/components/ui/dialog.tsx`: `DialogMobileHeader` (52 px; 
 |---|---|---|
 | `AdminPageHeader` | `src/components/admin-page-header.tsx` | `icon: LucideIcon`, `title: string`, `description?: ReactNode`, `actions?: ReactNode`, `children?: ReactNode`, `variant?: "compact" | "expanded"`. Compact (default) conserva Card, icono 40px, gap 12px, padding 16px y título 18px. Expanded presenta Card con padding 24px, icono 48px, gap 16px, separación de composición 24px y título 20px; descripción, acciones y children mantienen una jerarquía explícita. La variante es solo visual. |
 
-**Contrato de uso:** `AdminPageHeader` se reserva para superficies completas del panel, no para diálogos, modales, previews, workspaces ni impresión, que conservan sus headers propios. La implementación actual se consulta en los usos del componente, no en una lista fija de rutas de esta guía. En Configuración de pago, preservar la relación externa entre `Guardar configuración` en `actions` y `#payment-settings-form`.
+**Contrato de uso:** `AdminPageHeader` se reserva para superficies completas del panel, no para diálogos, modales, previews, workspaces ni impresión, que conservan sus headers propios. La implementación actual se consulta en los usos del componente, no en una lista fija de rutas de esta guía. En Configuración, cada ajuste es su propia pantalla y guarda solo su sección: la barra de cambios («Cancelar» / «Guardar») aparece solo con cambios, y los campos de otras secciones viajan como ocultos con su valor guardado, para que la acción compartida no los borre.
 
 ### Base UI
 
