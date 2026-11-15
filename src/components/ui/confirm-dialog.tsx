@@ -4,10 +4,12 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
+  DialogMobileBody,
+  DialogMobileClose,
+  DialogMobileContent,
+  DialogMobileFooter,
+  DialogMobileHeader,
   DialogTitle,
 } from "./dialog";
 import { Button } from "./button";
@@ -50,26 +52,31 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={cn("max-w-2xl", className)}
+      <DialogMobileContent
+        className={cn("max-w-[440px]", className)}
         onEscapeKeyDown={onEscapeKeyDown}
         onPointerDownOutside={onPointerDownOutside}
         onCloseAutoFocus={onCloseAutoFocus}
       >
-        <DialogHeader>
+        <DialogMobileHeader>
           <DialogTitle>{title}</DialogTitle>
-          {description ? <DialogDescription>{description}</DialogDescription> : null}
-        </DialogHeader>
-        {children ? <div className="grid gap-2">{children}</div> : null}
-        <DialogFooter>
+          <DialogMobileClose disabled={loading} />
+        </DialogMobileHeader>
+        {description || children ? (
+          <DialogMobileBody>
+            {description ? <DialogDescription>{description}</DialogDescription> : null}
+            {children ? <div className="mt-2 grid gap-2">{children}</div> : null}
+          </DialogMobileBody>
+        ) : null}
+        <DialogMobileFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             {cancelLabel}
           </Button>
           <Button variant={variant === "danger" ? "danger" : "primary"} loading={loading} onClick={onConfirm}>
             {confirmLabel}
           </Button>
-        </DialogFooter>
-      </DialogContent>
+        </DialogMobileFooter>
+      </DialogMobileContent>
     </Dialog>
   );
 }

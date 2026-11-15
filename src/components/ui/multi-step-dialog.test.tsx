@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as React from "react";
 import { MultiStepDialog, type MultiStepDialogProps } from "./multi-step-dialog";
@@ -267,5 +267,55 @@ describe("MultiStepDialog", () => {
     rerender(<TestMultiStepDialog pending={false} dirty onOpenChange={onOpenChange} />);
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(screen.getByRole("dialog", { name: "¿Descartar los cambios?" })).toBeInTheDocument();
+  });
+
+  it("puts ← on the left and ✕ last in a 52px bar when a multi-step flow passes onBack", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    render(<TestMultiStepDialog onBack={onBack} />);
+
+    await user.click(screen.getByRole("button", { name: "Abrir" }));
+    const bar = screen.getByTestId("multi-step-dialog-bar");
+    const controls = within(bar).getAllByRole("button");
+
+    expect(bar).toHaveClass("h-[52px]");
+    expect(controls.map((control) => control.getAttribute("aria-label"))).toEqual(["Volver", "Cerrar"]);
+    expect(bar).toContainElement(screen.getByRole("heading", { name: "Nueva cotización" }));
+
+    await user.click(within(bar).getByRole("button", { name: "Volver" }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("dialog", { name: "Nueva cotización" })).toHaveAttribute("data-state", "open");
+  });
+
+  it("renders only the ✕ in the bar when no onBack is passed", async () => {
+    const user = userEvent.setup();
+    render(<TestMultiStepDialog />);
+
+    await user.click(screen.getByRole("button", { name: "Abrir" }));
+    const controls = within(screen.getByTestId("multi-step-dialog-bar")).getAllByRole("button");
+
+    expect(controls.map((control) => control.getAttribute("aria-label"))).toEqual(["Cerrar"]);
+  });
+
+  it("orders footer actions with the secondary first and the primary last, pushed right", () => {
+    render(
+      <MultiStepDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Nueva cotización"
+        body={<div>Contenido</div>}
+        footer={
+          <>
+            <button type="button">Anterior</button>
+            <button type="button">Siguiente</button>
+          </>
+        }
+      />,
+    );
+
+    const footer = screen.getByTestId("multi-step-dialog-footer");
+
+    expect(Array.from(footer.children).map((child) => child.textContent)).toEqual(["Anterior", "Siguiente"]);
+    expect(footer).toHaveClass("[&>:last-child]:ml-auto");
   });
 });

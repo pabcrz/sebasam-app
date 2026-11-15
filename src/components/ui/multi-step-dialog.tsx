@@ -8,8 +8,10 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogMobileBack,
   DialogTitle,
   DialogTrigger,
+  dialogIconButtonClassName,
 } from "./dialog";
 import { ConfirmDialog } from "./confirm-dialog";
 
@@ -36,6 +38,10 @@ export interface MultiStepDialogProps {
   trigger?: React.ReactNode;
   /** Extra content rendered in the fixed header, under the title. */
   header?: React.ReactNode;
+  /** Renders the ← button on the left of the header bar; the ✕ stays on the right. Multi-step flows only. */
+  onBack?: () => void;
+  /** Aria-label of the ← button. */
+  backLabel?: string;
   /** Fixed stepper/navigation region rendered between header and body. */
   stepper?: React.ReactNode;
   /** Scrollable body region. */
@@ -76,6 +82,8 @@ export function MultiStepDialog({
   onDiscard,
   trigger,
   header,
+  onBack,
+  backLabel = "Volver",
   stepper,
   body,
   footer,
@@ -187,20 +195,27 @@ export function MultiStepDialog({
           style={{ flexShrink: 0 }}
           data-testid="multi-step-dialog-header"
         >
-          <DialogHeader className="pr-12 sm:pr-14">
-            <DialogTitle>{title}</DialogTitle>
-            {description ? <DialogDescription>{description}</DialogDescription> : null}
-            {header}
-          </DialogHeader>
-          <button
-            type="button"
-            onClick={requestClose}
-            disabled={pending}
-            aria-label={closeLabel}
-            className="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50"
-          >
-            <Icon name="close" className="h-4 w-4" aria-hidden="true" />
-          </button>
+          <div className="flex h-[52px] items-center gap-2" data-testid="multi-step-dialog-bar">
+            {onBack ? <DialogMobileBack aria-label={backLabel} onClick={onBack} /> : null}
+            <div className="flex min-w-0 flex-1 items-center">
+              <DialogTitle className="truncate">{title}</DialogTitle>
+            </div>
+            <button
+              type="button"
+              onClick={requestClose}
+              disabled={pending}
+              aria-label={closeLabel}
+              className={dialogIconButtonClassName}
+            >
+              <Icon name="close" className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+          {description || header ? (
+            <DialogHeader className="pb-3 text-left">
+              {description ? <DialogDescription>{description}</DialogDescription> : null}
+              {header}
+            </DialogHeader>
+          ) : null}
         </div>
         {stepper != null ? (
           <div
@@ -220,7 +235,7 @@ export function MultiStepDialog({
         </div>
         {footer != null ? (
           <div
-            className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-2 sm:pt-4"
+            className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-2 sm:pt-4 [&>:last-child]:ml-auto"
             style={{ flexShrink: 0, minWidth: 0 }}
             data-testid="multi-step-dialog-footer"
           >
