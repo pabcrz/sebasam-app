@@ -1,24 +1,25 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { Badge, BadgeVariant, Button, Checkbox, ConfirmDialog, ListItemCard } from "@/components/ui";
-import { CustomerDetailDialog, type CustomerDetailLoader } from "./customer-detail-dialog";
-import { CustomerActionsMenu } from "./customer-actions-menu";
-import { CustomerEditDialog, type CustomerEditData } from "./customer-edit-dialog";
+import Link from "next/link";
+import { Badge, Button, Checkbox, ConfirmDialog, ListRow, SegmentedControl } from "@/components/ui";
+import { formatCents } from "@/features/quotes/lib/format";
+import { cn } from "@/lib/utils";
 import { getCustomerDeletionBlocker } from "../domain";
-import { deleteCustomerAction, deleteCustomersBatchAction, updateCustomerAction } from "../actions";
+import {
+  filterCustomerRows,
+  findSearchMatch,
+  summarizeUnits,
+  unitIdentity,
+  type CustomerListFilter,
+  type CustomerListRow,
+} from "../customer-list";
+import { deleteCustomersBatchAction } from "../actions";
 
-export type CustomerCardListItem = {
-  id: string;
-  name: string;
-  commercialName?: string | null;
-  legalName?: string | null;
-  email: string | null;
+export type CustomerCardListItem = CustomerListRow & {
+  email?: string | null;
   phone: string | null;
-  address?: string | null;
-  notes?: string | null;
-  status: string;
+  legalName?: string | null;
   _count?: {
     quotes?: number;
     payments?: number;
@@ -29,37 +30,32 @@ export type CustomerCardListItem = {
 
 export type CustomerCardListProps = {
   customers: CustomerCardListItem[];
-  getCustomerDetail: CustomerDetailLoader;
-  onDeleteCustomer?: (customerId: string) => Promise<{ success: boolean; error?: string }>;
+  /** The search text from the URL; names the unit or driver that matched. */
+  query?: string;
   onDeleteBatch?: (customerIds: string[]) => Promise<{ success: boolean; deletedCount: number; error?: string }>;
-  onUpdateCustomer?: (data: CustomerEditData) => Promise<{ success: boolean; error?: string }>;
 };
 
-const statusLabels: Record<string, string> = {
-  ACTIVE: "Activo",
-  INACTIVE: "Inactivo",
-};
+const filterOptions: Array<{ value: CustomerListFilter; label: string }> = [
+  { value: "all", label: "Todos" },
+  { value: "withBalance", label: "Con saldo" },
+  { value: "inactive", label: "Inactivos" },
+];
 
-const statusBadgeVariant: Record<string, BadgeVariant> = {
-  ACTIVE: "success",
-  INACTIVE: "default",
-};
+const selectableRowClassName =
+  "flex min-h-[var(--tap-min-height)] w-full min-w-0 cursor-pointer items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-3 text-left shadow-[var(--shadow-card)]";
 
-export function CustomerCardList({
-  customers,
-  getCustomerDetail,
-  onDeleteCustomer,
-  onDeleteBatch,
-  onUpdateCustomer,
-}: CustomerCardListProps) {
-  const router = useRouter();
+function unitCountLabel(count: number) {
+  return `${count} unidad${count === 1 ? "" : "es"}`;
+}
+
+export function CustomerCardList({ customers, query = "", onDeleteBatch }: CustomerCardListProps) {
+  const [filter, setFilter] = React.useState<CustomerListFilter>("all");
   const [isSelectionMode, setIsSelectionMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
-  const [editingCustomer, setEditingCustomer] = React.useState<CustomerCardListItem | null>(null);
-  const [customerToDelete, setCustomerToDelete] = React.useState<CustomerCardListItem | null>(null);
   const [batchDeleteOpen, setBatchDeleteOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
-  const [activeDetailId, setActiveDetailId] = React.useState<string | null>(null);
+
+  const visibleCustomers = filterCustomerRows(customers, filter);
 
   const eligibleCustomers = React.useMemo(
     () => customers.filter((c) => getCustomerDeletionBlocker(c).canDelete),
@@ -92,15 +88,6 @@ export function CustomerCardList({
     setSelectedIds(new Set());
   };
 
-  const handleSingleDelete = () => {
-    if (!customerToDelete) return;
-    startTransition(async () => {
-      const deleteFn = onDeleteCustomer ?? deleteCustomerAction;
-      await deleteFn(customerToDelete.id);
-      setCustomerToDelete(null);
-    });
-  };
-
   const handleBatchDelete = () => {
     if (selectedIds.size === 0) return;
     startTransition(async () => {
@@ -112,174 +99,146 @@ export function CustomerCardList({
   };
 
   return (
-    <div className="mt-4 grid gap-3">
-      {customers.length > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] bg-[var(--color-bg-soft)] p-2">
-          {!isSelectionMode ? (
-            <div className="flex w-full items-center justify-between">
-              <span className="text-xs font-medium text-[var(--color-text-muted)]">
-                {customers.length} cliente{customers.length === 1 ? "" : "s"}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsSelectionMode(true)}
-              >
-                Seleccionar
-              </Button>
-            </div>
-          ) : (
-            <div className="flex w-full flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={toggleSelectAll}>
-                  {allEligibleSelected ? "Deseleccionar todos" : "Seleccionar todos"}
-                </Button>
-                <span className="text-xs font-semibold text-[var(--color-text-main)]">
-                  {selectedIds.size} seleccionado{selectedIds.size === 1 ? "" : "s"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  disabled={selectedIds.size === 0 || isPending}
-                  loading={isPending}
-                  onClick={() => setBatchDeleteOpen(true)}
-                >
-                  Eliminar seleccionados
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={exitSelectionMode}
-                  disabled={isPending}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          )}
+    <div className="grid min-w-0 gap-3">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <SegmentedControl
+          label="Filtrar clientes"
+          options={filterOptions}
+          value={filter}
+          onValueChange={(value) => setFilter(value as CustomerListFilter)}
+        />
+        {customers.length > 0 && !isSelectionMode ? (
+          <Button type="button" variant="ghost" size="sm" onClick={() => setIsSelectionMode(true)}>
+            Seleccionar
+          </Button>
+        ) : null}
+      </div>
+
+      {isSelectionMode ? (
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={toggleSelectAll}>
+              {allEligibleSelected ? "Deseleccionar todos" : "Seleccionar todos"}
+            </Button>
+            <span className="text-xs font-semibold text-[var(--color-text-main)]">
+              {selectedIds.size} seleccionado{selectedIds.size === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              disabled={selectedIds.size === 0 || isPending}
+              loading={isPending}
+              onClick={() => setBatchDeleteOpen(true)}
+            >
+              Eliminar seleccionados
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={exitSelectionMode} disabled={isPending}>
+              Cancelar
+            </Button>
+          </div>
         </div>
       ) : null}
 
-      <div className="grid gap-3">
-        {customers.map((customer) => {
+      <ul className="grid min-w-0 gap-3">
+        {visibleCustomers.map((customer) => {
           const blocker = getCustomerDeletionBlocker(customer);
           const isSelected = selectedIds.has(customer.id);
+          const displayName = customer.commercialName || customer.name;
+          const { shown, hiddenCount } = summarizeUnits(customer.vehicles);
+          const match = findSearchMatch(customer, query);
+          const hasBalance = customer.pendingBalanceCents > 0;
+
+          const content = (
+            <span className="grid min-w-0 flex-1 gap-0.5">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="truncate font-semibold text-[var(--color-text-main)]">{displayName}</span>
+                {customer.status === "INACTIVE" ? <Badge variant="default">Inactivo</Badge> : null}
+              </span>
+              <span className="flex min-w-0 items-center gap-1.5 text-sm text-[var(--color-text-muted)]">
+                {customer.phone ? (
+                  <span className="truncate">{customer.phone}</span>
+                ) : (
+                  <span className="truncate">Sin teléfono</span>
+                )}
+                {customer.vehicles.length > 0 ? (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="shrink-0">{unitCountLabel(customer.vehicles.length)}</span>
+                  </>
+                ) : null}
+              </span>
+              {match ? (
+                <span className="truncate text-xs font-medium text-[var(--color-tonal-fg)]">{`Coincide: ${match}`}</span>
+              ) : null}
+              {shown.map((unit) => (
+                <span key={unit.id} className="flex min-w-0 items-center gap-2 text-sm text-[var(--color-text-main)]">
+                  <span className="truncate">{unitIdentity(unit) ?? "Unidad registrada"}</span>
+                  {unit.inWorkshop ? <Badge variant="info">En taller</Badge> : null}
+                </span>
+              ))}
+            </span>
+          );
+
+          const decision = hasBalance ? (
+            <span className="font-semibold tabular-nums text-[var(--color-text-main)]">
+              {formatCents(customer.pendingBalanceCents)}
+            </span>
+          ) : (
+            <span className="text-xs text-[var(--color-text-muted)]">Al corriente</span>
+          );
 
           return (
-            <ListItemCard
-              key={customer.id}
-              bodyClassName="relative"
-              className={isSelected ? "border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]" : ""}
-              body={
+            <li key={customer.id} className="grid min-w-0 gap-1">
+              {isSelectionMode ? (
                 <div
-                  className="flex items-start gap-3"
-                  onClick={
-                    isSelectionMode
-                      ? () => toggleSelectCustomer(customer.id, blocker.canDelete)
-                      : undefined
-                  }
+                  className={cn(selectableRowClassName, isSelected && "ring-1 ring-[var(--color-primary)]")}
+                  onClick={() => toggleSelectCustomer(customer.id, blocker.canDelete)}
                 >
-                  {isSelectionMode ? (
-                    <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={isSelected}
-                        disabled={!blocker.canDelete}
-                        onCheckedChange={() =>
-                          toggleSelectCustomer(customer.id, blocker.canDelete)
-                        }
-                        aria-label={`Seleccionar ${customer.name}`}
-                      />
-                    </div>
-                  ) : (
-                    <CustomerDetailDialog
-                      customer={customer}
-                      getCustomerDetail={getCustomerDetail}
-                      open={activeDetailId === customer.id}
-                      onOpenChange={(open) => setActiveDetailId(open ? customer.id : null)}
-                      onUpdateCustomer={onUpdateCustomer}
+                  <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected}
+                      disabled={!blocker.canDelete}
+                      onCheckedChange={() => toggleSelectCustomer(customer.id, blocker.canDelete)}
+                      aria-label={`Seleccionar ${customer.name}`}
                     />
-                  )}
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-[var(--color-text-main)]">
-                      {customer.commercialName ? (
-                        <>
-                          <span>{customer.commercialName}</span>
-                          <span className="ml-2 text-xs font-normal text-[var(--color-text-muted)]">({customer.name})</span>
-                        </>
-                      ) : (
-                        customer.name
-                      )}
-                    </p>
-                    <div className="mt-0.5 grid gap-0.5 text-sm text-[var(--color-text-muted)]">
-                      {customer.email ? <p className="truncate">{customer.email}</p> : null}
-                      {customer.phone ? <p className="truncate">{customer.phone}</p> : null}
-                      {!customer.email && !customer.phone ? <p>Sin contacto</p> : null}
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Badge variant={statusBadgeVariant[customer.status] ?? "default"}>
-                        {statusLabels[customer.status] ?? customer.status}
-                      </Badge>
-                      {isSelectionMode && !blocker.canDelete ? (
-                        <span className="text-xs text-[var(--color-status-danger-fg)]">
-                          No eliminable: tiene historial
-                        </span>
-                      ) : null}
-                    </div>
                   </div>
+                  {content}
+                  {!blocker.canDelete ? (
+                    <span className="shrink-0 text-xs text-[var(--color-status-danger-fg)]">No eliminable: tiene historial</span>
+                  ) : null}
                 </div>
-              }
-              actions={
-                !isSelectionMode ? (
-                  <CustomerActionsMenu
-                    customer={customer}
-                    blocker={blocker}
-                    onEdit={() => setEditingCustomer(customer)}
-                    onViewStatement={() => router.push(`/admin/customers/${customer.id}/estado-de-cuenta`)}
-                    onDelete={() => setCustomerToDelete(customer)}
-                  />
-                ) : null
-              }
-            />
+              ) : (
+                <>
+                  <ListRow
+                    openLabel={`Ver ficha de ${displayName}`}
+                    href={`/admin/customers/${customer.id}`}
+                    decision={decision}
+                  >
+                    {content}
+                  </ListRow>
+                  {hiddenCount > 0 ? (
+                    <Link
+                      href={`/admin/customers/${customer.id}?tab=vehiculos`}
+                      className="w-fit px-3 text-sm font-medium text-[var(--color-link)] hover:underline"
+                    >
+                      {`+${hiddenCount} ${hiddenCount === 1 ? "unidad" : "unidades"} más`}
+                    </Link>
+                  ) : null}
+                </>
+              )}
+            </li>
           );
         })}
-      </div>
+      </ul>
 
-      {customers.length === 0 ? (
+      {visibleCustomers.length === 0 ? (
         <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">
           No se encontraron clientes.
         </p>
       ) : null}
-
-      {/* Quick Edit Dialog */}
-      <CustomerEditDialog
-        open={editingCustomer !== null}
-        onOpenChange={(open) => {
-          if (!open) setEditingCustomer(null);
-        }}
-        customer={editingCustomer}
-        onSave={onUpdateCustomer ?? updateCustomerAction}
-      />
-
-      {/* Single Delete Confirmation */}
-      <ConfirmDialog
-        open={customerToDelete !== null}
-        onOpenChange={(open) => {
-          if (!open) setCustomerToDelete(null);
-        }}
-        title="Eliminar cliente"
-        description={`¿Confirmas eliminar permanentemente a "${customerToDelete?.name}"? Esta acción no se puede deshacer.`}
-        confirmLabel="Eliminar cliente"
-        cancelLabel="Cancelar"
-        variant="danger"
-        loading={isPending}
-        onConfirm={handleSingleDelete}
-      />
 
       {/* Batch Delete Confirmation */}
       <ConfirmDialog

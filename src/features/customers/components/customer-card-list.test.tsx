@@ -1,12 +1,11 @@
 import type React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { CustomerCardList, CustomerCardListItem } from "./customer-card-list";
+import { CustomerCardList, type CustomerCardListItem } from "./customer-card-list";
 
-const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock }),
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 vi.mock("next/link", () => ({
@@ -21,125 +20,128 @@ function buildCustomer(overrides: Partial<CustomerCardListItem> = {}): CustomerC
   return {
     id: "cust-1",
     name: "Constructora del Norte",
+    commercialName: null,
+    legalName: null,
     email: "contacto@cdn.mx",
     phone: "55 1234 5678",
     status: "ACTIVE",
+    pendingBalanceCents: 0,
+    vehicles: [],
+    contacts: [],
     ...overrides,
   };
 }
 
-describe("CustomerCardList contact display", () => {
-  const getCustomerDetail = vi.fn();
+function unit(id: string, overrides: Partial<CustomerCardListItem["vehicles"][number]> = {}) {
+  return {
+    id,
+    economicNumber: null,
+    plate: null,
+    brand: null,
+    model: null,
+    year: null,
+    inWorkshop: false,
+    ...overrides,
+  };
+}
 
-  it("opens the customer account from the body while keeping actions menu outside the detail trigger", async () => {
-    const user = userEvent.setup();
-    getCustomerDetail.mockResolvedValue(null);
-    render(<CustomerCardList customers={[buildCustomer()]} getCustomerDetail={getCustomerDetail} />);
+describe("CustomerCardList rows", () => {
+  it("links each row to its ficha page with the balance on the right", () => {
+    render(
+      <CustomerCardList
+        customers={[buildCustomer({ pendingBalanceCents: 450000 }), buildCustomer({ id: "cust-2", name: "Lx Automotriz", pendingBalanceCents: 0 })]}
+      />,
+    );
 
-    const detailTrigger = screen.getByRole("button", { name: "Ver cuenta de Constructora del Norte" });
-    const menuTrigger = screen.getByRole("button", { name: /más acciones de constructora del norte/i });
-
-    expect(detailTrigger).toBeInTheDocument();
-    expect(menuTrigger).toBeInTheDocument();
-    expect(detailTrigger).not.toContainElement(menuTrigger);
-
-    await user.click(detailTrigger);
-
-    expect(getCustomerDetail).toHaveBeenCalledWith("cust-1");
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver ficha de Constructora del Norte" })).toHaveAttribute(
+      "href",
+      "/admin/customers/cust-1",
+    );
+    expect(screen.getByText("$4,500.00")).toBeInTheDocument();
+    expect(screen.getByText("Al corriente")).toBeInTheDocument();
   });
 
-  it("navigates to canonical statement page when selecting Ver estado de cuenta from menu", async () => {
-    const user = userEvent.setup();
-    render(<CustomerCardList customers={[buildCustomer()]} getCustomerDetail={getCustomerDetail} />);
+  it("never shows Activo, and marks only inactive customers", () => {
+    render(
+      <CustomerCardList
+        customers={[buildCustomer(), buildCustomer({ id: "cust-2", name: "Sergio Hiedra", status: "INACTIVE" })]}
+      />,
+    );
 
-    const menuTrigger = screen.getByRole("button", { name: /más acciones de constructora del norte/i });
-    await user.click(menuTrigger);
-
-    const statementAction = screen.getByRole("button", { name: /ver estado de cuenta/i });
-    await user.click(statementAction);
-
-    expect(pushMock).toHaveBeenCalledWith("/admin/customers/cust-1/estado-de-cuenta");
+    expect(screen.queryByText("Activo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sin contacto")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Inactivo")).toHaveLength(1);
   });
 
-  it("renders email and phone when both exist", () => {
-    render(<CustomerCardList customers={[buildCustomer()]} getCustomerDetail={getCustomerDetail} />);
-
-    expect(screen.getByText("contacto@cdn.mx")).toBeInTheDocument();
+  it("shows the phone, or Sin teléfono in muted text when it is missing", () => {
+    const { rerender } = render(<CustomerCardList customers={[buildCustomer()]} />);
     expect(screen.getByText("55 1234 5678")).toBeInTheDocument();
-    expect(screen.queryByText("Sin contacto")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sin teléfono")).not.toBeInTheDocument();
+
+    rerender(<CustomerCardList customers={[buildCustomer({ phone: null })]} />);
+    expect(screen.getByText("Sin teléfono")).toBeInTheDocument();
   });
 
-  it("renders only email when phone is missing", () => {
-    render(<CustomerCardList customers={[buildCustomer({ phone: null })]} getCustomerDetail={getCustomerDetail} />);
+  it("shows up to two units in full lines, workshop ones first, with En taller and the count of the rest", () => {
+    const customer = buildCustomer({
+      vehicles: [
+        unit("v-1", { economicNumber: "042", brand: "International", model: "4400" }),
+        unit("v-2", { economicNumber: "118", brand: "Kenworth", model: "T800", inWorkshop: true }),
+        unit("v-3", { plate: "LX-5520", brand: "Isuzu", model: "ELF" }),
+      ],
+    });
 
-    expect(screen.getByText("contacto@cdn.mx")).toBeInTheDocument();
-    expect(screen.queryByText("55 1234 5678")).not.toBeInTheDocument();
-    expect(screen.queryByText("Sin contacto")).not.toBeInTheDocument();
+    render(<CustomerCardList customers={[customer]} />);
+
+    const link = screen.getByRole("link", { name: "Ver ficha de Constructora del Norte" });
+    expect(within(link).getByText("ECO 118 · Kenworth T800")).toBeInTheDocument();
+    expect(within(link).getByText("En taller")).toBeInTheDocument();
+    expect(within(link).getByText("ECO 042 · International 4400")).toBeInTheDocument();
+    expect(within(link).queryByText("LX-5520 · Isuzu ELF")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "+1 unidad más" })).toHaveAttribute(
+      "href",
+      "/admin/customers/cust-1?tab=vehiculos",
+    );
   });
 
-  it("renders only phone when email is missing", () => {
-    render(<CustomerCardList customers={[buildCustomer({ email: null })]} getCustomerDetail={getCustomerDetail} />);
+  it("names the unit that matches the search", () => {
+    const customer = buildCustomer({
+      vehicles: [unit("v-1", { economicNumber: "118", brand: "Kenworth", model: "T800" })],
+    });
 
-    expect(screen.getByText("55 1234 5678")).toBeInTheDocument();
-    expect(screen.queryByText("contacto@cdn.mx")).not.toBeInTheDocument();
-    expect(screen.queryByText("Sin contacto")).not.toBeInTheDocument();
+    render(<CustomerCardList customers={[customer]} query="118" />);
+
+    expect(screen.getByText("Coincide: ECO 118 · Kenworth T800")).toBeInTheDocument();
   });
 
-  it("renders Sin contacto when neither email nor phone exist", () => {
-    render(<CustomerCardList customers={[buildCustomer({ email: null, phone: null })]} getCustomerDetail={getCustomerDetail} />);
+  it("filters the loaded list with Con saldo and Inactivos", async () => {
+    const user = userEvent.setup();
+    render(
+      <CustomerCardList
+        customers={[
+          buildCustomer({ id: "cust-1", name: "Con deuda", pendingBalanceCents: 100 }),
+          buildCustomer({ id: "cust-2", name: "Al corriente" }),
+          buildCustomer({ id: "cust-3", name: "Dado de baja", status: "INACTIVE" }),
+        ]}
+      />,
+    );
+    const filters = screen.getByRole("group", { name: "Filtrar clientes" });
 
-    expect(screen.getByText("Sin contacto")).toBeInTheDocument();
-    expect(screen.queryByText("contacto@cdn.mx")).not.toBeInTheDocument();
-    expect(screen.queryByText("55 1234 5678")).not.toBeInTheDocument();
+    await user.click(within(filters).getByRole("button", { name: "Con saldo" }));
+    expect(screen.queryByText("Al corriente")).not.toBeInTheDocument();
+    expect(screen.getByText("Con deuda")).toBeInTheDocument();
+    expect(screen.queryByText("Dado de baja")).not.toBeInTheDocument();
+
+    await user.click(within(filters).getByRole("button", { name: "Inactivos" }));
+    expect(screen.queryByText("Con deuda")).not.toBeInTheDocument();
+    expect(screen.getByText("Dado de baja")).toBeInTheDocument();
   });
 });
 
-describe("CustomerCardList quick actions and multi-select", () => {
-  const getCustomerDetail = vi.fn();
-  const onDeleteSingle = vi.fn();
+describe("CustomerCardList selection and batch delete", () => {
   const onDeleteBatch = vi.fn();
-  const onUpdate = vi.fn();
 
-  it("renders actions menu with edit and delete for each customer", async () => {
-    const user = userEvent.setup();
-    render(
-      <CustomerCardList
-        customers={[buildCustomer()]}
-        getCustomerDetail={getCustomerDetail}
-        onDeleteCustomer={onDeleteSingle}
-        onUpdateCustomer={onUpdate}
-      />,
-    );
-
-    const menuTrigger = screen.getByRole("button", { name: /más acciones de constructora del norte/i });
-    expect(menuTrigger).toBeInTheDocument();
-
-    await user.click(menuTrigger);
-    expect(screen.getByRole("button", { name: /editar datos/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /eliminar cliente/i })).toBeEnabled();
-  });
-
-  it("shows disabled delete with inline reason when customer has history", async () => {
-    const user = userEvent.setup();
-    const customerWithQuotes = buildCustomer({
-      _count: { quotes: 2, payments: 0, paymentRequests: 0, ledgerEntries: 0 },
-    });
-
-    render(
-      <CustomerCardList
-        customers={[customerWithQuotes]}
-        getCustomerDetail={getCustomerDetail}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: /más acciones/i }));
-    const deleteBtn = screen.getByRole("button", { name: /eliminar cliente/i });
-    expect(deleteBtn).toBeDisabled();
-    expect(screen.getByText(/tiene 2 cotizaciones asociadas/i)).toBeInTheDocument();
-  });
-
-  it("supports entering selection mode, selecting eligible cards, and canceling", async () => {
+  it("supports entering selection mode, selecting eligible rows, and canceling", async () => {
     const user = userEvent.setup();
     const cust1 = buildCustomer({ id: "c-1", name: "Cliente 1" });
     const cust2 = buildCustomer({
@@ -148,31 +150,20 @@ describe("CustomerCardList quick actions and multi-select", () => {
       _count: { quotes: 1, payments: 0, paymentRequests: 0, ledgerEntries: 0 },
     });
 
-    render(
-      <CustomerCardList
-        customers={[cust1, cust2]}
-        getCustomerDetail={getCustomerDetail}
-        onDeleteBatch={onDeleteBatch}
-      />,
-    );
+    render(<CustomerCardList customers={[cust1, cust2]} onDeleteBatch={onDeleteBatch} />);
 
-    // Enter selection mode
-    const selectBtn = screen.getByRole("button", { name: /^seleccionar$/i });
-    await user.click(selectBtn);
+    await user.click(screen.getByRole("button", { name: /^seleccionar$/i }));
 
-    // Checkboxes should appear
     const checkbox1 = screen.getByRole("checkbox", { name: /seleccionar cliente 1/i });
     const checkbox2 = screen.getByRole("checkbox", { name: /seleccionar cliente 2/i });
 
     expect(checkbox1).toBeEnabled();
-    expect(checkbox2).toBeDisabled(); // has quotes, not deletable
+    expect(checkbox2).toBeDisabled();
 
-    // Select cust1
     await user.click(checkbox1);
     expect(checkbox1).toBeChecked();
     expect(screen.getByText(/1 seleccionado/i)).toBeInTheDocument();
 
-    // Cancel selection mode
     await user.click(screen.getByRole("button", { name: /cancelar/i }));
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
@@ -183,28 +174,17 @@ describe("CustomerCardList quick actions and multi-select", () => {
     const cust1 = buildCustomer({ id: "c-1", name: "Cliente 1" });
     const cust2 = buildCustomer({ id: "c-2", name: "Cliente 2" });
 
-    render(
-      <CustomerCardList
-        customers={[cust1, cust2]}
-        getCustomerDetail={getCustomerDetail}
-        onDeleteBatch={onDeleteBatch}
-      />,
-    );
+    render(<CustomerCardList customers={[cust1, cust2]} onDeleteBatch={onDeleteBatch} />);
 
     await user.click(screen.getByRole("button", { name: /^seleccionar$/i }));
     await user.click(screen.getByRole("button", { name: /seleccionar todos/i }));
 
     expect(screen.getByText(/2 seleccionados/i)).toBeInTheDocument();
 
-    const deleteBatchBtn = screen.getByRole("button", { name: /eliminar seleccionados/i });
-    await user.click(deleteBatchBtn);
-
-    // Confirmation dialog appears
+    await user.click(screen.getByRole("button", { name: /eliminar seleccionados/i }));
     expect(screen.getByRole("dialog", { name: /eliminar clientes/i })).toBeInTheDocument();
 
-    // Confirm deletion
     await user.click(screen.getByRole("button", { name: /confirmar eliminación/i }));
-
     expect(onDeleteBatch).toHaveBeenCalledWith(["c-1", "c-2"]);
   });
 });

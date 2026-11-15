@@ -1,19 +1,24 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-const listCustomers = vi.hoisted(() => vi.fn().mockResolvedValue([]));
-vi.mock("@/features/customers/queries", () => ({ listCustomers }));
+const listCustomerRows = vi.hoisted(() => vi.fn().mockResolvedValue([]));
+vi.mock("@/features/customers/queries", () => ({ listCustomerRows }));
 vi.mock("@/features/customers/actions", () => ({ createCustomerFromForm: vi.fn(), getCustomerDetail: vi.fn() }));
 vi.mock("@/features/customers/components/customer-create-form", () => ({ CustomerCreateForm: () => null }));
 vi.mock("@/features/customers/components/customer-card-list", () => ({ CustomerCardList: () => null }));
 vi.mock("@/features/customers/components/customer-search", () => ({ CustomerSearch: () => null }));
 import CustomersPage from "./page";
 describe("CustomersPage", () => {
-  it("renders the workspace without a redundant page header card", async () => {
+  it("renders the list on the shared page header, without a card around the search", async () => {
     render(await CustomersPage({ searchParams: Promise.resolve({}) }));
-    expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Buscar clientes" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Buscar clientes" }).closest("[class~='min-w-0']")).toBeInTheDocument();
-    expect(screen.getByText("No se encontraron clientes.").closest("[class~='min-w-0']")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Clientes" })).toBeInTheDocument();
+    expect(screen.getByTestId("page-header")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2, name: "Buscar clientes" })).not.toBeInTheDocument();
     expect(screen.getByText("No se encontraron clientes.")).toBeInTheDocument();
+    expect(listCustomerRows).toHaveBeenCalledWith({ query: "" });
+  });
+
+  it("passes the search text from the URL to the loader", async () => {
+    render(await CustomersPage({ searchParams: Promise.resolve({ q: "Ana" }) }));
+    expect(listCustomerRows).toHaveBeenCalledWith({ query: "Ana" });
   });
 });

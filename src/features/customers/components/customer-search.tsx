@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Icon } from "@/components/ui/icon";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Button, Input } from "@/components/ui";
+import { SearchBar } from "@/components/ui";
 
 const searchDebounceMs = 300;
 const localChangeMarker = Symbol("local customer search change");
@@ -62,10 +61,10 @@ export function CustomerSearch() {
     return () => window.clearTimeout(timeoutId);
   }, [query, queryFromUrl, replaceSearch]);
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (value: string) => {
     pendingQueryRef.current = localChangeMarker;
-    latestQueryRef.current = event.target.value;
-    setQuery(event.target.value);
+    latestQueryRef.current = value;
+    setQuery(value);
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -73,6 +72,7 @@ export function CustomerSearch() {
     replaceSearch(query);
   };
 
+  // Clearing (the bar's ✕) applies at once; typing waits for the debounce.
   const clearSearch = () => {
     pendingQueryRef.current = localChangeMarker;
     latestQueryRef.current = "";
@@ -81,25 +81,14 @@ export function CustomerSearch() {
   };
 
   return (
-    <form className="flex flex-col gap-3 sm:flex-row" role="search" onSubmit={handleSubmit} aria-busy={isPending}>
-      <Input
+    <form className="grid min-w-0 gap-2" role="search" onSubmit={handleSubmit} aria-busy={isPending}>
+      <SearchBar
         aria-label="Buscar clientes"
         name="q"
+        placeholder="Buscar por nombre, teléfono, correo, placas, ECO o chofer"
         value={query}
-        onChange={handleChange}
-        placeholder="Buscar por nombre, teléfono, correo, dirección, placas o notas"
-        className="flex-1"
+        onValueChange={(value) => (value === "" ? clearSearch() : handleChange(value))}
       />
-      <Button type="submit" variant="secondary" className="w-full sm:w-fit" disabled={isPending}>
-        <Icon name="search" className="h-4 w-4" aria-hidden="true" />
-        Buscar
-      </Button>
-      {query ? (
-        <Button type="button" variant="outline" className="w-full sm:w-fit" onClick={clearSearch} disabled={isPending}>
-          <Icon name="close" className="h-4 w-4" aria-hidden="true" />
-          Limpiar
-        </Button>
-      ) : null}
       <p className="sr-only" role="status">
         {isPending ? "Actualizando resultados..." : ""}
       </p>

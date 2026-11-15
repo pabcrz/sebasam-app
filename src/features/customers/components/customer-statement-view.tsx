@@ -2,19 +2,27 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  PeriodNavigator,
+  SegmentedControl,
+  StatTile,
+  Tabs,
+} from "@/components/ui";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog, type QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import { ApplyCreditDialog } from "@/features/payments/components/apply-credit-dialog";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
-import {
-  customerStatementHref,
-  shiftStatementAnchor,
-  type StatementPeriodUnit,
-} from "../customer-statement";
+import { customerStatementHref, type StatementPeriodUnit, type StatementView } from "../customer-statement";
 
 type CustomerStatementViewProps = {
   statement: CustomerDetailedStatement;
@@ -60,9 +68,33 @@ function filterStatementNotes(
   return filter === "all" ? notes : notes.filter((note) => getStatementNoteFilter(note) === filter);
 }
 
+function maskClabe(clabe: string): string {
+  return `•••• •••• •••• ${clabe.replace(/\s/g, "").slice(-4)}`;
+}
+
+function ClabeCopyButton({ bankName, clabe }: { bankName: string; clabe: string }) {
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(clabe.replace(/\s/g, ""));
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <Button type="button" variant="tonal" size="sm" aria-label={`Copiar CLABE de ${bankName}`} onClick={handleCopy}>
+      {copied ? "Copiado" : "Copiar"}
+    </Button>
+  );
+}
+
 export function CustomerStatementView({ statement, recordPaymentAction }: CustomerStatementViewProps) {
   const [selectedQuote, setSelectedQuote] = React.useState<QuotePreviewSummary | null>(null);
   const [noteFilter, setNoteFilter] = React.useState<StatementNoteFilter>("all");
+  const router = useRouter();
 
   const {
     customer,
@@ -90,6 +122,10 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
     ? customer.legalName || customer.name
     : customer.legalName || undefined;
   const statementHref = customerStatementHref(customer.id, { view, period, anchor });
+
+  const go = (state: { view?: StatementView; period?: StatementPeriodUnit; anchor?: string }) => {
+    router.push(customerStatementHref(customer.id, state), { scroll: false });
+  };
   const noteCounts = getStatementNoteCounts(notes);
   const visibleNotes = filterStatementNotes(notes, noteFilter);
 
@@ -149,7 +185,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
       </div>
 
       {/* Printable / Document Header */}
-      <div className="rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-6 shadow-sm print:border-none print:shadow-none print:p-0 print:break-inside-avoid">
+      <div className="rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)] print:shadow-none print:p-0 print:break-inside-avoid">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-border-light)] pb-4 print:pb-3">
           <div>
             <div className="flex items-center gap-2">
@@ -192,177 +228,44 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
         </div>
       </div>
 
-      {/* Screen-only Controls: View Switcher and Period Selector */}
-      <div className="grid gap-3 print:hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-light)] pb-3">
-          {/* Main View Mode */}
-          <div className="flex flex-wrap items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-bg-soft)] p-1">
-            <Button
-              asChild
-              variant={view === "pending" ? "primary" : "ghost"}
-              size="sm"
-              className="px-3 text-xs font-medium shrink"
-            >
-              <Link href={customerStatementHref(customer.id, { view: "pending" })}>Notas con saldo pendiente</Link>
-            </Button>
-            <Button
-              asChild
-              variant={view === "history" ? "primary" : "ghost"}
-              size="sm"
-              className="px-3 text-xs font-medium shrink"
-            >
-              <Link href={customerStatementHref(customer.id, { view: "history", period: "month", anchor })}>
-                Historial por período
-              </Link>
-            </Button>
-          </div>
-
-          {/* Granularity Selector when in History Mode */}
-          <div className="min-h-[44px] flex items-center">
-            {view === "history" ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex flex-wrap items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--color-bg-soft)] p-1">
-                  {(["week", "month", "year", "all"] as const).map((p) => {
-                    const labels: Record<StatementPeriodUnit, string> = {
-                      week: "Semana",
-                      month: "Mes",
-                      year: "Año",
-                      all: "Todo",
-                    };
-                    return (
-                      <Button
-                        key={p}
-                        asChild
-                        variant={period === p ? "primary" : "ghost"}
-                        size="sm"
-                        className="px-3 text-xs font-medium"
-                      >
-                        <Link href={customerStatementHref(customer.id, { view: "history", period: p, anchor })}>
-                          {labels[p]}
-                        </Link>
-                      </Button>
-                    );
-                  })}
-                </div>
-
-                {period !== "all" ? (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="min-w-[44px] p-0 flex items-center justify-center"
-                      aria-label="Período anterior"
-                      title="Período anterior"
-                    >
-                      <Link
-                        href={customerStatementHref(customer.id, {
-                          view: "history",
-                          period,
-                          anchor: shiftStatementAnchor(period, anchor, -1),
-                        })}
-                      >
-                        <Icon name="chevron-left" className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <span className="px-2 text-xs font-medium text-[var(--color-text-main)] min-w-28 text-center">
-                      {rangeLabel}
-                    </span>
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="min-w-[44px] p-0 flex items-center justify-center"
-                      aria-label="Período siguiente"
-                      title="Período siguiente"
-                    >
-                      <Link
-                        href={customerStatementHref(customer.id, {
-                          view: "history",
-                          period,
-                          anchor: shiftStatementAnchor(period, anchor, 1),
-                        })}
-                      >
-                        <Icon name="chevron-right" className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </div>
+      {/* Screen-only controls: tabs switch the section, PeriodNavigator moves through the history period */}
+      <div className="grid min-w-0 gap-4 print:hidden">
+        <Tabs
+          label="Vista del estado de cuenta"
+          value={view}
+          onValueChange={(next) => go({ view: next as StatementView, period, anchor })}
+          tabs={[
+            { value: "pending", label: "Pendientes", panel: null },
+            { value: "history", label: "Por periodo", panel: null },
+          ]}
+        />
+        {view === "history" ? (
+          <PeriodNavigator
+            view={period}
+            anchor={anchor}
+            today={emissionDate}
+            weekDays={7}
+            onViewChange={(next) => go({ view: "history", period: next, anchor })}
+            onAnchorChange={(nextAnchor) => go({ view: "history", period, anchor: nextAnchor })}
+          />
+        ) : null}
       </div>
 
-      {/* Financial Summary Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4 print:break-inside-avoid">
+      {/* Financial Summary: tinted tiles, the explanation sits behind ⓘ */}
+      <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4 print:break-inside-avoid">
         {view === "history" ? (
           <>
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Saldo inicial</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-[var(--color-text-main)]">
-                {formatCents(summary.initialBalanceCents)}
-              </p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Antes del inicio del período</p>
-            </div>
-
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Cargos del período</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-[var(--color-text-main)]">
-                +{formatCents(summary.periodChargesCents)}
-              </p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Notas completadas en el rango</p>
-            </div>
-
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Abonos del período</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-[var(--color-status-success-fg)]">
-                -{formatCents(summary.periodPaymentsCents)}
-              </p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Pagos aplicados en el rango</p>
-            </div>
-
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3 shadow-sm border-l-4 border-l-[var(--color-primary)]">
-              <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-primary)]">Saldo final</p>
-              <p className="mt-1 text-lg font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
-                {formatCents(summary.finalBalanceCents)}
-              </p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Saldo total a la fecha</p>
-            </div>
+            <StatTile label="Saldo inicial" value={formatCents(summary.initialBalanceCents)} info="Antes del inicio del período" />
+            <StatTile label="Cargos del período" value={`+${formatCents(summary.periodChargesCents)}`} info="Notas completadas en el rango" />
+            <StatTile label="Abonos del período" value={`-${formatCents(summary.periodPaymentsCents)}`} tone="success" info="Pagos aplicados en el rango" />
+            <StatTile label="Saldo final" value={formatCents(summary.finalBalanceCents)} info="Saldo total a la fecha" />
           </>
         ) : (
           <>
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Total facturado</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-[var(--color-text-main)]">
-                {formatCents(summary.periodChargesCents)}
-              </p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Notas vivas pendientes</p>
-            </div>
-
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">Total abonado</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-[var(--color-status-success-fg)]">
-                {formatCents(summary.periodPaymentsCents)}
-              </p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Abonos aplicados a la fecha</p>
-            </div>
-
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3 shadow-sm border-l-4 border-l-[var(--color-status-warning)]">
-              <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-status-warning-fg)]">Saldo pendiente</p>
-              <p className="mt-1 text-lg font-extrabold tabular-nums text-[var(--color-total-emphasis)]">
-                {formatCents(summary.finalBalanceCents)}
-              </p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Saldo neto por cobrar</p>
-            </div>
-
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3 shadow-sm border-l-4 border-l-[var(--color-status-danger)]">
-              <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-status-danger-fg)]">Saldo vencido</p>
-              <p className="mt-1 text-lg font-extrabold tabular-nums text-[var(--color-status-danger-fg)]">
-                {formatCents(summary.overdueBalanceCents)}
-              </p>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Superó fecha límite en CDMX</p>
-            </div>
+            <StatTile label="Total facturado" value={formatCents(summary.periodChargesCents)} info="Notas vivas pendientes" />
+            <StatTile label="Total abonado" value={formatCents(summary.periodPaymentsCents)} tone="success" info="Abonos aplicados a la fecha" />
+            <StatTile label="Saldo pendiente" value={formatCents(summary.finalBalanceCents)} tone="warning" info="Saldo neto por cobrar" />
+            <StatTile label="Saldo vencido" value={formatCents(summary.overdueBalanceCents)} tone="danger" info="Superó fecha límite en CDMX" />
           </>
         )}
       </div>
@@ -371,7 +274,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
       {availableCreditCents > 0 ? (
         <div
           data-testid="customer-available-credit-banner"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] p-3 text-xs text-[var(--color-status-success-fg)] shadow-sm print:hidden"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] p-3 text-xs text-[var(--color-status-success-fg)] print:hidden"
         >
           <div className="flex items-center gap-2">
             <span className="font-bold uppercase tracking-wider">Saldo a favor disponible:</span>
@@ -385,20 +288,15 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
         </div>
       ) : null}
 
-      <div role="group" aria-label="Filtrar notas por estado" className="flex flex-wrap gap-2">
-        {statementNoteFilters.map((filter) => (
-          <Button
-            key={filter.key}
-            type="button"
-            variant={noteFilter === filter.key ? "primary" : "outline"}
-            size="sm"
-            aria-pressed={noteFilter === filter.key}
-            onClick={() => setNoteFilter(filter.key)}
-          >
-            {filter.label} ({noteCounts[filter.key]})
-          </Button>
-        ))}
-      </div>
+      <SegmentedControl
+        label="Filtrar notas por estado"
+        options={statementNoteFilters.map((filter) => ({
+          value: filter.key,
+          label: `${filter.label} (${noteCounts[filter.key]})`,
+        }))}
+        value={noteFilter}
+        onValueChange={(value) => setNoteFilter(value as StatementNoteFilter)}
+      />
 
       {/* Notes Table */}
       <Card className="overflow-hidden print:overflow-visible print:border-none print:shadow-none">
@@ -427,7 +325,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
                     key={note.id}
                     data-testid={`statement-note-mobile-${note.number}`}
                     onClick={() => setSelectedQuote(note.previewQuote)}
-                    className="grid min-w-0 cursor-pointer gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3 shadow-sm transition-colors hover:bg-[var(--color-bg-soft)]"
+                    className="grid min-w-0 cursor-pointer gap-3 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)] transition-colors hover:bg-[var(--color-bg-soft)]"
                   >
                     <div className="flex min-w-0 items-start justify-between gap-3">
                       <span
@@ -602,6 +500,34 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
           )}
         </CardContent>
       </Card>
+
+      {business.bankAccounts.length > 0 ? (
+        <section aria-labelledby="statement-transfer-accounts" className="grid gap-3 print:hidden">
+          <h2 id="statement-transfer-accounts" className="text-base font-semibold text-[var(--color-text-main)]">
+            Cuentas para transferencia
+          </h2>
+          <ul className="grid gap-3">
+            {business.bankAccounts.map((account) => (
+              <li
+                key={account.id}
+                className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-4 shadow-[var(--shadow-card)]"
+              >
+                <div className="grid min-w-0 gap-0.5">
+                  <p className="font-semibold text-[var(--color-text-main)]">{account.bankName}</p>
+                  <p className="truncate text-xs text-[var(--color-text-muted)]">
+                    {account.isForInvoicing ? `${account.accountHolder} · Facturación` : account.accountHolder}
+                  </p>
+                  <p className="text-sm text-[var(--color-text-main)]">
+                    <span className="text-[var(--color-text-muted)]">CLABE </span>
+                    <span className="font-semibold tabular-nums">{maskClabe(account.clabe)}</span>
+                  </p>
+                </div>
+                <ClabeCopyButton bankName={account.bankName} clabe={account.clabe} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {/* Interactive Note Preview Modal */}
       {selectedQuote ? (

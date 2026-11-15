@@ -1,4 +1,4 @@
-import { LedgerEntryType, LedgerMovementType, PaymentMethod, type Prisma } from "@/generated/prisma/client";
+import { LedgerEntryType, LedgerMovementType, PaymentMethod, WorkOrderStatus, type Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { getCustomerBalanceSummary } from "@/features/payments/domain";
@@ -50,6 +50,13 @@ export {
   type CustomerDeletionBlocker,
   getCustomerDeletionBlocker,
 } from "./domain";
+
+// A unit is "En taller" while its work order is assigned or in progress.
+const workshopWorkOrderStatuses = [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS];
+
+function withWorkshopFlag<T extends { quotes: Array<{ id: string }> }>({ quotes, ...vehicle }: T) {
+  return { ...vehicle, inWorkshop: quotes.length > 0 };
+}
 
 export async function listCustomers(input: unknown = {}) {
   await requireOperationalRole();
@@ -109,7 +116,7 @@ export async function listCustomers(input: unknown = {}) {
     }
   }
 
-  return prisma.customer.findMany({
+  const customers = await prisma.customer.findMany({
     where: search ? { OR: orConditions } : undefined,
     include: {
       contacts: {
@@ -117,6 +124,16 @@ export async function listCustomers(input: unknown = {}) {
       },
       fiscalProfiles: {
         orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+      },
+      vehicles: {
+        orderBy: [{ createdAt: "desc" }],
+        include: {
+          quotes: {
+            where: { workOrder: { status: { in: workshopWorkOrderStatuses } } },
+            select: { id: true },
+            take: 1,
+          },
+        },
       },
       _count: {
         select: {
@@ -130,12 +147,30 @@ export async function listCustomers(input: unknown = {}) {
     orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
     take: 50,
   });
+
+  return customers.map((customer) => ({ ...customer, vehicles: customer.vehicles.map(withWorkshopFlag) }));
+}
+
+/** The list rows: each customer with the balance rule from payments/domain (pending and credit). */
+export async function listCustomerRows(input: unknown = {}) {
+  const customers = await listCustomers(input);
+
+  return Promise.all(
+    customers.map(async (customer) => {
+      const balance = await getCustomerBalanceSummary(prisma, customer.id);
+      return {
+        ...customer,
+        pendingBalanceCents: balance.pendingBalanceCents,
+        availableCreditCents: balance.availableCreditCents,
+      };
+    }),
+  );
 }
 
 export async function getCustomerById(customerId: string) {
   await requireOperationalRole();
 
-  return prisma.customer.findUnique({
+  const customer = await prisma.customer.findUnique({
     where: { id: customerId },
     include: {
       contacts: {
@@ -146,9 +181,41 @@ export async function getCustomerById(customerId: string) {
       },
       vehicles: {
         orderBy: [{ createdAt: "desc" }],
+        include: {
+          quotes: {
+            where: { workOrder: { status: { in: workshopWorkOrderStatuses } } },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      },
+      _count: {
+        select: {
+          quotes: true,
+          payments: true,
+          paymentRequests: true,
+          ledgerEntries: true,
+        },
       },
     },
   });
+
+  return customer && { ...customer, vehicles: customer.vehicles.map(withWorkshopFlag) };
+}
+
+/** The ficha: the customer with units and counts, plus the same balance the list shows. */
+export async function getCustomerProfile(customerId: string) {
+  const customer = await getCustomerById(customerId);
+  if (!customer) return null;
+
+  const balance = await getCustomerBalanceSummary(prisma, customer.id);
+  return {
+    customer,
+    balance: {
+      pendingBalanceCents: balance.pendingBalanceCents,
+      availableCreditCents: balance.availableCreditCents,
+    },
+  };
 }
 
 export async function getCustomerAccountStatement(customerId: string): Promise<CustomerAccountStatement> {
