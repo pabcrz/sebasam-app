@@ -27,6 +27,13 @@ async function openSheet() {
 describe("WorkOrderFilters", () => {
   beforeEach(() => push.mockClear());
 
+  it("counts the applied criteria as Filtros (N) on an outline button, like the quote filters", () => {
+    render(view(criteria));
+
+    const button = screen.getByRole("button", { name: "Filtros (11)" });
+    expect(button).toHaveClass("border", "bg-[var(--color-surface)]");
+  });
+
   it("keeps the folio in the search field and every other criterion as a removable chip", () => {
     render(view(criteria));
 

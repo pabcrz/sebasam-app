@@ -72,18 +72,15 @@ describe("AdminPageHeader", () => {
       "@/features/quotes/components/quote-builder-dialog",
       "@/features/workers/components/worker-edit-dialog",
       "@/features/customers/components/customer-create-form",
-      "@/features/customers/components/customer-detail-dialog",
       "@/features/workers/components/worker-create-dialog",
       "@/features/quotes/components/quote-preview-dialog",
       "@/features/quotes/components/quote-lifecycle-form",
        "@/features/quotes/components/quote-correct-decision-form",
        "@/features/quotes/components/quote-authorize-form",
-       "@/features/quotes/components/quote-approval-form",
        "@/features/payments/components/cash-payment-dialog",
       "@/features/payment-requests/components/payment-request-link-dialog",
       "@/features/work-orders/components/work-order-operations-dialog",
     ];
-    // MultiStepDialog is intentionally future scope: no current owner source exists.
 
     vi.resetModules();
     vi.doMock("@/components/admin-page-header", () => {

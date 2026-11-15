@@ -55,4 +55,12 @@ describe("Tabs", () => {
 
     expect(screen.getByRole("tab", { name: "Este año" }).className).toContain("min-h-[var(--tap-min-height)]");
   });
+
+  it("hides the horizontal scrollbar of the tab list while keeping it scrollable", () => {
+    render(<Tabs tabs={tabs} label="Período de métricas" />);
+
+    const list = screen.getByRole("tablist", { name: "Período de métricas" });
+    expect(list.className).toContain("overflow-x-auto");
+    expect(list.className).toContain("no-scrollbar");
+  });
 });

@@ -73,8 +73,10 @@ import {
   IconShieldExclamation,
   IconShieldOff,
   IconSignature,
+  IconSteeringWheel,
   IconSun,
   IconTextSize,
+  IconTool,
   IconTrash,
   IconTrendingUp,
   IconTruck,
@@ -116,6 +118,7 @@ const iconMap = {
   "credit-card": IconCreditCard,
   "download": IconDownload,
   "driver": IconUser,
+  "driver-wheel": IconSteeringWheel,
   "edit": IconPencil,
   "external-link": IconExternalLink,
   "eye": IconEye,
@@ -175,6 +178,7 @@ const iconMap = {
   "users": IconUsers,
   "warning": IconAlertTriangle,
   "workers": IconUserCog,
+  "wrench": IconTool,
   "x-circle": IconCircleX,
 } satisfies Record<string, TablerIcon>;
 

@@ -89,7 +89,7 @@ describe("NotasPage", () => {
   it("renders actionable empty state with Limpiar filtros button when no work orders exist", async () => {
     render(await NotasPage({ searchParams: Promise.resolve({ anchor: "2026-08-05" }) }));
     expect(screen.getByText("Limpiar filtros")).toBeInTheDocument();
-    expect(screen.getByText("No hay notas WORK o SALE que coincidan con este periodo y los filtros seleccionados.")).toBeInTheDocument();
+    expect(screen.getByText("No hay notas en este periodo con estos filtros.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Limpiar filtros" })).toHaveAttribute("href", "/admin/notas?mode=week&anchor=2026-08-05&payment=all&kind=all");
   });
 

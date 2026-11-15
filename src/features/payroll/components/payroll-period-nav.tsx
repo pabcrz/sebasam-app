@@ -41,6 +41,7 @@ export function PayrollPeriodNav({
     <div data-testid="payroll-period-nav" className="grid min-w-0 max-w-full gap-3">
       <PageHeader
         title="Nómina"
+        subtitle="Mano de obra a liquidar"
         status={showWeekStatus ? <PayrollWeekStatusBadge status={weekStatus} /> : null}
         secondaryActions={
           !isAdmin && onOpenSigningSheet ? (

@@ -101,12 +101,15 @@ export function resolveOptionalCustomerName(source: CustomerDisplayIdentitySourc
   );
 }
 
+/** Label of the contact role that is the vehicle's driver ("Chofer" in the in-app preview). */
+export const DRIVER_CONTACT_ROLE_LABEL = "Operador";
+
 export function formatQuoteContactRole(role?: string | null): string | null {
   if (!role) return null;
   const trimmed = role.trim();
   if (!trimmed) return null;
   const normalized = trimmed.toUpperCase();
-  if (["DRIVER", "CHOFER", "OPERADOR"].includes(normalized)) return "Operador";
+  if (["DRIVER", "CHOFER", "OPERADOR"].includes(normalized)) return DRIVER_CONTACT_ROLE_LABEL;
   if (
     [
       "BILLING",
@@ -154,6 +157,18 @@ export function resolveQuotePreviewContact(source: QuotePreviewContactSource): {
   }
 
   return { contactName: null, contactRole: null };
+}
+
+/** Customer phone for the in-app preview: the snapshot first, then the live customer, like the name. */
+export function resolveQuotePreviewCustomerPhone(source: {
+  customerSnapshot?: unknown;
+  customer?: { phone?: string | null } | null;
+}): string | null {
+  const parsedSnapshot = quoteCustomerSnapshotSchema.safeParse(source.customerSnapshot);
+  if (parsedSnapshot.success && parsedSnapshot.data.phone?.trim()) {
+    return parsedSnapshot.data.phone.trim();
+  }
+  return source.customer?.phone?.trim() || null;
 }
 
 export type QuotePreviewCustomerSource = {

@@ -39,7 +39,7 @@ describe("WorkOrderOperationsDialog", () => {
     expect(trigger).toHaveClass("bg-[var(--color-btn-primary)]");
     await user.click(trigger);
 
-    expect(screen.getByRole("dialog")).toHaveTextContent("Asignar trabajo");
+    expect(screen.getByRole("dialog")).toHaveTextContent("C-001 · Sin cliente");
     expect(screen.getByRole("button", { name: /asignar e iniciar trabajo/i })).toBeInTheDocument();
   });
 
@@ -188,7 +188,7 @@ describe("WorkOrderOperationsDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
 
-    expect(screen.getByRole("button", { name: /cancelar orden y regresar cotización/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancelar orden" })).toBeInTheDocument();
   });
 
   it("keeps work actions icon-only on mobile and labeled on desktop", async () => {
@@ -496,7 +496,7 @@ describe("WorkOrderOperationsDialog", () => {
     render(<WorkOrderOperationsDialog quoteNumber="C-001" quoteStatus="APPROVED" workOrder={{ id: "wo-1", number: "T-001", status: "COMPLETED" }} actions={{ rollback }} />);
 
     await user.click(screen.getByRole("button", { name: /gestionar orden de trabajo/i }));
-    await user.click(screen.getByRole("button", { name: /cancelar orden y regresar cotización/i }));
+    await user.click(screen.getByRole("button", { name: "Cancelar orden" }));
     await user.click(screen.getByRole("button", { name: /confirmar corrección/i }));
     expect(screen.getByRole("alert")).toHaveTextContent("Indica el motivo");
 
@@ -534,7 +534,7 @@ describe("WorkOrderOperationsDialog as the Gestionar sheet", () => {
 
     const dangerZone = dialog.querySelector<HTMLElement>("[data-dialog-danger-zone]");
     expect(dangerZone).not.toBeNull();
-    expect(within(dangerZone!).getByRole("button", { name: /cancelar orden y regresar cotización/i })).toHaveClass("border-[var(--color-status-danger-border)]");
+    expect(within(dangerZone!).getByRole("button", { name: "Cancelar orden" })).toHaveClass("border-[var(--color-status-danger-border)]");
     expect(within(dangerZone!).queryByRole("button", { name: /finalizar trabajo/i })).not.toBeInTheDocument();
   });
 

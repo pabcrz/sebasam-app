@@ -60,6 +60,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <PageHeader
         title="Notas"
+        subtitle="Trabajo y venta"
         primaryAction={
           <QuoteBuilderDialog
             customers={customers}
@@ -73,19 +74,21 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         }
       />
 
-      {result ? <div className="grid gap-3 sm:grid-cols-3">
+      {result ? <div className={`grid grid-cols-2 gap-3 ${result.totals.totalOverdueCents > 0 ? "sm:grid-cols-3" : ""}`}>
         <StatTile
           label="Por cobrar"
           value={formatCents(result.totals.totalPendingCents)}
           tone="warning"
           info="Saldo de las notas del periodo y filtros elegidos; no es toda la cartera ni cobro del periodo."
         />
-        <StatTile
-          label="Vencido"
-          value={formatCents(result.totals.totalOverdueCents)}
-          tone="danger"
-          info="Saldo de las notas seleccionadas cuya fecha de vencimiento ya pasó."
-        />
+        {result.totals.totalOverdueCents > 0 ? (
+          <StatTile
+            label="Vencido"
+            value={formatCents(result.totals.totalOverdueCents)}
+            tone="danger"
+            info="Saldo de las notas seleccionadas cuya fecha de vencimiento ya pasó."
+          />
+        ) : null}
         <StatTile
           label="Cobrado"
           value={formatCents(result.totals.totalPaidCents)}
@@ -117,7 +120,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
           {workOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
               <p className="max-w-md text-sm text-[var(--color-text-muted)]">
-                No hay notas WORK o SALE que coincidan con este periodo y los filtros seleccionados.
+                No hay notas en este periodo con estos filtros.
               </p>
               <Button asChild variant="outline" size="sm">
                 <Link href={notasHref({ mode: filters.mode, anchor: filters.anchor, payment: "all", assignee: "all", kind: "all" }, { operationalFilters: true })}>Limpiar filtros</Link>

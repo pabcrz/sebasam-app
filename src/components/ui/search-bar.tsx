@@ -37,7 +37,7 @@ export const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
         placeholder={searchHint}
         aria-label={searchHint}
         onChange={(event) => onValueChange(event.target.value)}
-        className="h-[var(--control-md)] w-full min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] pl-9 pr-9 text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] [&::-webkit-search-cancel-button]:appearance-none"
+        className="h-[var(--control-md)] w-full min-w-0 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] pl-9 pr-9 text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] [&::-webkit-search-cancel-button]:appearance-none"
         {...props}
       />
       {value ? (
@@ -46,7 +46,7 @@ export const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
           aria-label="Limpiar búsqueda"
           onClick={() => onValueChange("")}
           className={cn(
-            "absolute right-0 top-1/2 flex h-[var(--control-sm)] w-[var(--control-sm)] -translate-y-1/2 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]",
+            "absolute right-0 top-1/2 flex h-[var(--control-sm)] w-[var(--control-sm)] -translate-y-1/2 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
             tapAreaClassName,
           )}
         >

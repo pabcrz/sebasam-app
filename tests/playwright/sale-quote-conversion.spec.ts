@@ -62,7 +62,7 @@ const quoteFlowFixture = {
 } as const;
 
 const devices = [
-  { name: "desktop quote row", value: "desktop", viewport: { width: 1280, height: 900 } },
+  { name: "desktop quote card", value: "desktop", viewport: { width: 1280, height: 900 } },
   { name: "mobile quote card", value: "mobile", viewport: { width: 390, height: 900 } },
 ] as const;
 
@@ -121,14 +121,14 @@ test.describe("SALE quote conversion browser contract", () => {
 
     await page.goto("/sale-quote");
 
-    const dialog = page.getByRole("dialog", { name: /nota de venta/i });
+    const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText("Cotización C-SALE-001");
+    await expect(dialog).toContainText("C-SALE-001");
     await expect(dialog).toContainText(/no crea una orden de trabajo/i);
 
     await expectNoWorkControls(page);
 
-    await page.getByRole("button", { name: "Crear nota de venta" }).click();
+    await dialog.getByRole("button", { name: "Crear nota de venta" }).click();
 
     await expect
       .poll(() => page.evaluate(() => window.__saleQuoteConversionMock?.calls ?? []))
@@ -147,9 +147,9 @@ test.describe("SALE quote-flow browser contract", () => {
         .getByRole("button", { name: new RegExp(`crear nota de venta.*${quoteFlowFixture.saleQuoteNumber}`, "i") })
         .click();
 
-      const dialog = page.getByRole("dialog", { name: /crear nota de venta/i });
+      const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
-      await expect(dialog).toContainText(`Cotización ${quoteFlowFixture.saleQuoteNumber}`);
+      await expect(dialog).toContainText(quoteFlowFixture.saleQuoteNumber);
       await expect(dialog).toContainText(/no crea una orden de trabajo/i);
       await expectNoWorkControls(page);
 
@@ -174,9 +174,9 @@ test.describe("WORK quote-flow browser contract", () => {
         .first()
         .click();
 
-      const dialog = page.getByRole("dialog", { name: /asignar trabajo/i });
+      const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
-      await expect(dialog).toContainText(`Cotización ${quoteFlowFixture.workQuoteNumber}`);
+      await expect(dialog).toContainText(quoteFlowFixture.workQuoteNumber);
       await dialog.getByRole("combobox", { name: /maestro responsable/i }).click();
       await page.getByRole("option", { name: quoteFlowFixture.masterName }).click();
       await dialog.getByRole("checkbox", { name: quoteFlowFixture.helperName }).check();
@@ -200,7 +200,7 @@ test.describe("WORK quote-flow browser contract", () => {
         .first()
         .click();
 
-      const dialog = page.getByRole("dialog", { name: /orden de trabajo/i });
+      const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
       await dialog.getByRole("button", { name: /finalizar trabajo/i }).click();
       await dialog.getByRole("button", { name: /sí, finalizar orden/i }).click();

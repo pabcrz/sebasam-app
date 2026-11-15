@@ -6,9 +6,11 @@ import { Icon } from "@/components/ui/icon";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import {
   Button,
+  DialogClose,
   DialogContent,
   DialogMobileBody,
   DialogMobileClose,
+  DialogMobileFooter,
   DialogMobileHeader,
   DialogTitle,
   DialogTrigger,
@@ -22,13 +24,16 @@ import { quoteStatusLabels } from "@/features/quotes/lib/status";
 import {
   resolveQuotePreviewContact,
   resolveQuotePreviewCustomer,
+  resolveQuotePreviewCustomerPhone,
 } from "@/features/quotes/lib/quote-snapshot-display";
 
 export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & DocumentDateSource & {
+  createdAt?: Date | null;
   status?: QuoteListSummary["status"];
   customer: (Pick<NonNullable<QuoteListSummary["customer"]>, "name"> & {
     commercialName?: string | null;
     legalName?: string | null;
+    phone?: string | null;
   }) | null;
   customerSnapshot?: unknown;
   contactSnapshot?: unknown;
@@ -40,7 +45,7 @@ export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehi
   customerFiscalProfile?: {
     businessName?: string | null;
   } | null;
-  vehicle: Pick<NonNullable<QuoteListSummary["vehicle"]>, "plate" | "brand" | "model" | "year"> | null;
+  vehicle: (Pick<NonNullable<QuoteListSummary["vehicle"]>, "plate" | "brand" | "model" | "year"> & { economicNumber?: string | null }) | null;
   workOrder?: Pick<NonNullable<QuoteListSummary["workOrder"]>, "id" | "status"> | null;
   items: Array<{ sectionId: string | null; type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }>;
   sections: Array<{ name: string; items: Array<{ type: QuoteListSummary["items"][number]["type"]; description: string; quantity: unknown; unitPriceCents: unknown }> }>;
@@ -53,6 +58,12 @@ interface QuotePreviewDialogProps {
   showTrigger?: boolean;
   noteReturnTo?: string;
   previewTitle?: string;
+  /** List panels pass folio, customer and badge: the title becomes "Folio · Cliente" plus the badge. */
+  folio?: string;
+  customerName?: string;
+  statusBadge?: React.ReactNode;
+  /** Footer of a list panel: "Cerrar" on the left and this primary action on the right. */
+  footerAction?: React.ReactNode;
 }
 
 export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePreviewCardProps {
@@ -102,10 +113,15 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
   return {
     customerName: customer.customerName,
     legalName: customer.legalName,
+    customerPhone: resolveQuotePreviewCustomerPhone({
+      customerSnapshot: quote.customerSnapshot,
+      customer: quote.customer,
+    }),
     contactName: contact.contactName,
     contactRole: contact.contactRole,
     vehicle: {
       plate: quote.vehicle?.plate ?? snapshotValue("plate"),
+      economicNumber: quote.vehicle?.economicNumber ?? snapshotValue("economicNumber"),
       brand: quote.vehicle?.brand ?? snapshotValue("brand"),
       model: quote.vehicle?.model ?? snapshotValue("model"),
       year: quote.vehicle?.year != null ? String(quote.vehicle.year) : snapshotValue("year"),
@@ -121,6 +137,7 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
     paidCents: quote.paidCents,
     remainingCents: quote.remainingCents,
     validUntil: quote.validUntil,
+    createdAt: quote.createdAt ?? null,
     isNote: dates.isIssuedNote,
     paymentDueDate: dates.paymentDueDate,
     compactItems: true,
@@ -130,7 +147,17 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
 }
 
 
-export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTrigger = true, previewTitle }: QuotePreviewDialogProps) {
+export function QuotePreviewDialog({
+  quote,
+  open: openProp,
+  onOpenChange,
+  showTrigger = true,
+  previewTitle,
+  folio,
+  customerName,
+  statusBadge,
+  footerAction,
+}: QuotePreviewDialogProps) {
   const [openInternal, setOpenInternal] = React.useState(false);
   const open = openProp ?? openInternal;
   const setOpen = React.useCallback(
@@ -144,6 +171,10 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
   const documentProps = toDocumentPreviewProps(preview, {
     statusLabel: quote.status ? quoteStatusLabels[quote.status] : null,
   });
+  const isPanelTitle = folio !== undefined || customerName !== undefined;
+  const title = isPanelTitle
+    ? `${folio ?? quote.number} · ${customerName ?? quote.customer?.name ?? "Sin cliente"}`
+    : `Cotización ${quote.number}`;
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {showTrigger ? (
@@ -162,15 +193,26 @@ export function QuotePreviewDialog({ quote, open: openProp, onOpenChange, showTr
       ) : null}
       <DialogContent variant="sheet">
         <DialogMobileHeader>
-          <DialogTitle>{previewTitle ?? `Cotización ${quote.number}`}</DialogTitle>
-          <DialogMobileClose />
+          <DialogTitle className="flex min-w-0 items-center gap-2">
+            <span className="truncate">{previewTitle ?? title}</span>
+            {statusBadge}
+          </DialogTitle>
+          <DialogMobileClose aria-label="Cerrar vista previa" />
         </DialogMobileHeader>
-        <DialogMobileBody>
+        <DialogMobileBody className="bg-[var(--background)]">
           <DocumentPreview
             {...documentProps}
             balance={<QuotePaymentBalanceIndicator paidCents={preview.paidCents} remainingCents={preview.remainingCents} />}
           />
         </DialogMobileBody>
+        {footerAction !== undefined ? (
+          <DialogMobileFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cerrar</Button>
+            </DialogClose>
+            {footerAction}
+          </DialogMobileFooter>
+        ) : null}
       </DialogContent>
     </Sheet>
   );

@@ -4,6 +4,7 @@
 :root {
   --background: #f3f6fa;
   --foreground: #001024;
+  color-scheme: light;
 
   /* Brand */
   --color-primary: #004aad;
@@ -41,6 +42,10 @@
   --color-border-subtle: rgba(148, 163, 184, 0.28);
   --color-border-strong: #b9c9da;
   --color-overlay: rgba(0, 16, 36, 0.42);
+
+  /* Native scrollbars: thumb follows the strong border, track stays transparent */
+  --color-scrollbar-thumb: #b9c9da;
+  --color-scrollbar-track: transparent;
 
   /* Text */
   --color-text-main: #001024;
@@ -125,6 +130,7 @@
 .dark {
   --background: #0e131b;
   --foreground: #e7ecf3;
+  color-scheme: dark;
 
   /* Surfaces: ink grays with a slight blue tint */
   --color-bg-soft: #0e131b;
@@ -134,6 +140,8 @@
   --color-border-subtle: rgba(180, 191, 205, 0.16);
   --color-border-strong: #34425a;
   --color-overlay: rgba(0, 0, 0, 0.58);
+  --color-scrollbar-thumb: #34425a;
+  --color-scrollbar-track: transparent;
   --color-blue-tint: #24375a;
   --color-nav-active-text: #e6f1fb;
 
@@ -303,6 +311,21 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Native scrollbars follow the theme (light and dark tokens; color-scheme drives the rest) */
+* {
+  scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+}
+
+/* Horizontal rows (chips, tabs, segmented) scroll without showing a scrollbar */
+.no-scrollbar {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -457,8 +480,12 @@ body {
   animation: slideInLeft 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.animate-bottom-sheet {
-  animation: sheetSlideUp 280ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+@utility animate-bottom-sheet {
+  animation: sheetSlideUp var(--motion-base) var(--ease-standard) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 }
 
 /* Shimmer Skeleton */
@@ -494,8 +521,16 @@ body {
   transform: scale(0.975);
 }
 
+/* Unlayered, so it beats Tailwind's transition utilities: it must list every property
+   interactive controls animate, or colors/borders/rings would change abruptly. */
 .active-press-subtle {
-  transition: transform 100ms cubic-bezier(0.2, 0, 0, 1);
+  transition:
+    transform 100ms cubic-bezier(0.2, 0, 0, 1),
+    background-color var(--motion-fast),
+    border-color var(--motion-fast),
+    color var(--motion-fast),
+    box-shadow var(--motion-fast),
+    opacity var(--motion-fast);
   will-change: transform;
 }
 
@@ -541,4 +576,11 @@ button:hover .icon-copy-hover,
 
 html[data-font-scale="large"] {
   font-size: 118.75%; /* 19px base (1.1875rem * 16px) */
+}
+
+/* A desktop side panel (dialog.tsx marks <html>) takes 420px beside the list; the list gives that width back and keeps its 2 columns. */
+@media (min-width: 1024px) {
+  html[data-side-panel-open] .side-panel-list {
+    padding-right: 420px;
+  }
 }

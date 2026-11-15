@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { cn } from "@/lib/utils";
 import { isCurrentPeriod, formatPeriodLabel, mexicoCityDateKey, shiftPeriodAnchor, type PeriodOptions, type PeriodView } from "@/lib/period-format";
 import { Badge } from "./badge";
 import { Button } from "./button";
@@ -44,12 +45,12 @@ export function PeriodNavigator({
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <div className="flex min-w-0 flex-wrap items-center gap-3">
+      <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 sm:flex sm:flex-wrap sm:gap-3">
         {isNavigable ? (
-          <div role="group" aria-label="Cambiar periodo" className="inline-flex items-center gap-1">
+          <div role="group" aria-label="Cambiar periodo" className="inline-flex justify-self-start items-center rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)]">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="icon"
               aria-label="Periodo anterior"
               onClick={() => onAnchorChange(shiftPeriodAnchor(view, anchor, -1))}
@@ -58,7 +59,7 @@ export function PeriodNavigator({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="icon"
               aria-label="Periodo siguiente"
               onClick={() => onAnchorChange(shiftPeriodAnchor(view, anchor, 1))}
@@ -68,13 +69,21 @@ export function PeriodNavigator({
           </div>
         ) : null}
 
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h2 className="min-w-0 text-base font-semibold text-[var(--color-text-main)]">{label}</h2>
+        <div className={cn("flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2", !isNavigable && "col-span-3")}>
+          <h2 className="min-w-0 text-sm font-semibold sm:text-base text-[var(--color-text-main)]">{label}</h2>
           {isCurrent && isNavigable ? <Badge variant="info">En curso</Badge> : null}
         </div>
 
-        {isNavigable && !isCurrent ? (
-          <Button type="button" variant="secondary" size="sm" onClick={() => onAnchorChange(mexicoCityDateKey(today))}>
+        {/* Always rendered while navigating, disabled on the current period, so the layout never shifts. */}
+        {isNavigable ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="justify-self-end"
+            disabled={isCurrent}
+            onClick={() => onAnchorChange(mexicoCityDateKey(today))}
+          >
             Hoy
           </Button>
         ) : null}

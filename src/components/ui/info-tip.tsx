@@ -37,7 +37,7 @@ export function InfoTip({ label, children, className }: InfoTipProps) {
         aria-describedby={open ? id : undefined}
         onClick={() => setOpen((current) => !current)}
         className={cn(
-          "relative inline-flex h-5 w-5 items-center justify-center rounded-full text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]",
+          "relative inline-flex h-5 w-5 items-center justify-center rounded-full text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
           tapAreaClassName,
         )}
       >

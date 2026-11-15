@@ -90,6 +90,11 @@ export async function listWorkOrders() {
   return workOrders.map(serializeWorkOrder);
 }
 
+/** Quote scope shared by the Trabajos list and its counters, so the counts never disagree with the list. */
+function workQuoteScope(): Prisma.QuoteWhereInput {
+  return { operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } };
+}
+
 /** Returns active work orders shown in the Trabajos section. */
 export async function listActiveWorkOrders() {
   await requireOperationalRole();
@@ -97,13 +102,32 @@ export async function listActiveWorkOrders() {
   const workOrders = await prisma.workOrder.findMany({
     where: {
       status: { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
-      quote: { operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } },
+      quote: workQuoteScope(),
     },
     include: workOrderInclude,
     orderBy: { createdAt: "desc" },
   });
 
   return workOrders.map(serializeWorkOrder);
+}
+
+/** Unfiltered count of the Trabajos "Activos" tab. */
+export async function countActiveWorkOrders() {
+  await requireOperationalRole();
+  return prisma.workOrder.count({
+    where: {
+      status: { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
+      quote: workQuoteScope(),
+    },
+  });
+}
+
+/** Unfiltered count of completed work orders, the "Completados" tab; Notas lists the same work orders. */
+export async function countCompletedWorkOrders() {
+  await requireOperationalRole();
+  return prisma.workOrder.count({
+    where: { status: WorkOrderStatus.COMPLETED, quote: workQuoteScope() },
+  });
 }
 
 /** Opt-in bounded Trabajos query; legacy listActiveWorkOrders remains unchanged. */

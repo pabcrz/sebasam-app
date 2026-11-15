@@ -5,14 +5,25 @@ import { PeriodNavigator } from "./period-navigator";
 const today = new Date("2026-11-11T18:00:00Z");
 
 describe("PeriodNavigator", () => {
-  it("shows the Spanish label and the En curso badge for the current week, without Hoy", () => {
+  it("shows the Spanish label and the En curso badge for the current week, with a disabled Hoy", () => {
     render(
       <PeriodNavigator view="week" anchor="2026-11-11" today={today} onViewChange={() => {}} onAnchorChange={() => {}} />,
     );
 
     expect(screen.getByRole("heading", { name: "9–14 de noviembre de 2026" })).toBeInTheDocument();
     expect(screen.getByText("En curso")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Hoy" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hoy" })).toBeDisabled();
+  });
+
+  it("groups the arrows in one bordered group with the label and the badge outside it", () => {
+    render(
+      <PeriodNavigator view="week" anchor="2026-11-11" today={today} onViewChange={() => {}} onAnchorChange={() => {}} />,
+    );
+
+    const group = screen.getByRole("group", { name: "Cambiar periodo" });
+    expect(group).toHaveClass("border", "border-[var(--color-border-light)]");
+    expect(group).not.toContainElement(screen.getByRole("heading", { name: "9–14 de noviembre de 2026" }));
+    expect(group).not.toContainElement(screen.getByText("En curso"));
   });
 
   it("moves to the previous and next period through the grouped arrows", () => {
@@ -29,7 +40,7 @@ describe("PeriodNavigator", () => {
     expect(onAnchorChange).toHaveBeenNthCalledWith(2, "2026-11-16");
   });
 
-  it("shows Hoy only after the user has moved away from the current period, and it returns to today", () => {
+  it("keeps Hoy visible and enabled away from the current period, and it returns to today", () => {
     const onAnchorChange = vi.fn();
     render(
       <PeriodNavigator view="week" anchor="2026-11-02" today={today} onViewChange={() => {}} onAnchorChange={onAnchorChange} />,

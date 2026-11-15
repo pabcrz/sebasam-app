@@ -17,7 +17,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 export const buttonVariants = cva(
-  "relative inline-flex max-w-full min-w-0 cursor-pointer items-center justify-center gap-[var(--space-sm)] whitespace-nowrap rounded-[var(--radius-md)] font-medium before:absolute before:left-1/2 before:top-1/2 before:h-[max(100%,var(--tap-min-height))] before:w-[max(100%,var(--tap-min-height))] before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--motion-fast)] active-press-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] focus-visible:shadow-[var(--shadow-focus)] disabled:cursor-not-allowed disabled:opacity-50",
+  "relative inline-flex max-w-full min-w-0 cursor-pointer items-center justify-center gap-[var(--space-sm)] whitespace-nowrap rounded-[var(--radius-md)] font-medium before:absolute before:left-1/2 before:top-1/2 before:h-[max(100%,var(--tap-min-height))] before:w-[max(100%,var(--tap-min-height))] before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--motion-fast)] active-press-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       variant: {
