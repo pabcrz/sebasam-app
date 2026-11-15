@@ -10,6 +10,7 @@ import { QuoteBuilder, QuoteBuilderChromeContext } from "./quote-builder";
 import type { QuoteBuilderChromeHosts, QuoteBuilderDialogProps } from "./quote-builder-contracts";
 import { QuoteBuilderDialogShell } from "./quote-builder-dialog-shell";
 import { mapPersistedQuoteToBuilderInitialData } from "./quote-builder-mapper";
+import { useAdminFullScreenFlow } from "@/components/layout/admin-full-screen-flow";
 
 export type { QuoteBuilderDialogProps } from "./quote-builder-contracts";
 
@@ -43,9 +44,13 @@ export function QuoteBuilderDialog({
   // context reactive: the builder portals its chrome once both hosts exist,
   // regardless of sibling commit ordering.
   const [chromeHosts, setChromeHosts] = React.useState<QuoteBuilderChromeHosts>({
+    leadingHost: null,
     stepperHost: null,
     footerHost: null,
   });
+  const attachLeadingHost = React.useCallback((el: HTMLDivElement | null) => {
+    setChromeHosts((current) => (current.leadingHost === el ? current : { ...current, leadingHost: el }));
+  }, []);
   const attachStepperHost = React.useCallback((el: HTMLDivElement | null) => {
     setChromeHosts((current) => (current.stepperHost === el ? current : { ...current, stepperHost: el }));
   }, []);
@@ -53,6 +58,9 @@ export function QuoteBuilderDialog({
     setChromeHosts((current) => (current.footerHost === el ? current : { ...current, footerHost: el }));
   }, []);
   const isEdit = saveAction != null;
+  // Quote create/edit is the full-screen flow; direct work order and note creation keep the modal.
+  const fullScreen = mode === "quote";
+  useAdminFullScreenFlow(open && fullScreen);
   const isDirectWorkOrder = mode === "direct-work-order" || mode === "direct";
   const initialData = initialDataProp ?? (quote ? mapPersistedQuoteToBuilderInitialData(quote) : undefined);
 
@@ -128,6 +136,8 @@ export function QuoteBuilderDialog({
             <span className={triggerIconOnly ? "sr-only" : triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{effectiveButtonLabel}</span>
           </Button>
         }
+        fullScreen={fullScreen}
+        leading={<div ref={attachLeadingHost} className="shrink-0" />}
         stepper={<div ref={attachStepperHost} />}
         footer={<div ref={attachFooterHost} className="contents" data-testid="quote-builder-footer-host" />}
         body={
@@ -140,6 +150,7 @@ export function QuoteBuilderDialog({
             createCustomerAction={createCustomerAction}
             searchCustomersAction={searchCustomersAction}
             layout="dialog"
+            fullScreen={fullScreen}
             onDirtyChange={setDirty}
             onSuccess={handleSuccess}
             mode={mode}

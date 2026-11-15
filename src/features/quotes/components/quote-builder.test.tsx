@@ -92,13 +92,11 @@ describe("QuoteBuilder", () => {
     const description = screen.getByLabelText("Descripción", { selector: "input" });
     expect(description).toHaveAttribute("placeholder", "Ej. Bajar dos muelles");
 
-    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
-    await user.click(screen.getByRole("option", { name: "Material" }));
+    await user.click(within(screen.getByRole("group", { name: "Tipo del concepto 1" })).getByRole("button", { name: "Material" }));
     expect(description).toHaveAttribute("placeholder", "Ej. Bujes o perchas");
     expect(description).not.toHaveAttribute("placeholder", "Ej. Bajar dos muelles");
 
-    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
-    await user.click(screen.getByRole("option", { name: "Refacciones" }));
+    await user.click(within(screen.getByRole("group", { name: "Tipo del concepto 1" })).getByRole("button", { name: "Refacciones" }));
     expect(description).toHaveAttribute("placeholder", "Ej. Tensores o balancines");
     expect(description).not.toHaveAttribute("placeholder", "Ej. Bajar dos muelles");
   });
@@ -865,24 +863,20 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue(type);
   });
 
-  it("renders compact add labels only below the responsive breakpoint", async () => {
+  it("shows the add chips with full type labels in one horizontally scrolling row", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    const laborButton = screen.getByRole("button", { name: /Agregar Mano de obra a la sección/ });
-    const partsButton = screen.getByRole("button", { name: /Agregar Refacciones a la sección/ });
-    const materialsButton = screen.getByRole("button", { name: /Agregar Materiales a la sección/ });
+    const addRow = screen.getByRole("group", { name: "Agregar concepto a sección 1" });
+    expect(addRow).toHaveClass("flex-nowrap", "overflow-x-auto");
 
-    expect(laborButton.querySelector("span.sm\\:hidden")).toHaveTextContent("+ M. O.");
-    expect(laborButton.querySelector("span.hidden.sm\\:inline")).toHaveTextContent("+ Mano de obra");
-    expect(partsButton.querySelector("span.sm\\:hidden")).toHaveTextContent("+ Refac.");
-    expect(partsButton.querySelector("span.hidden.sm\\:inline")).toHaveTextContent("+ Refacciones");
-    expect(materialsButton.querySelector("span.sm\\:hidden")).toHaveTextContent("+ Mat.");
-    expect(materialsButton.querySelector("span.hidden.sm\\:inline")).toHaveTextContent("+ Materiales");
-    expect(materialsButton).toHaveAccessibleName("Agregar Materiales a la sección 1");
-    expect(materialsButton).toHaveAttribute("title", "Materiales");
+    const laborButton = within(addRow).getByRole("button", { name: "Agregar Mano de obra a la sección 1" });
+    expect(laborButton).toHaveTextContent("Mano de obra");
+    expect(laborButton).toHaveClass("border-dashed");
+    expect(within(addRow).getByRole("button", { name: "Agregar Refacciones a la sección 1" })).toHaveTextContent("Refacciones");
+    expect(within(addRow).getByRole("button", { name: "Agregar Materiales a la sección 1" })).toHaveTextContent("Materiales");
   });
 
   it.each([
@@ -900,7 +894,7 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue(type);
   });
 
-  it("aligns the other concept menu to the trigger's right edge", async () => {
+  it("opens the other concept menu below the add chips", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
     await fillClientStep(user)();
@@ -910,13 +904,12 @@ describe("QuoteBuilder", () => {
     await user.click(trigger);
 
     const menu = screen.getByRole("menu", { name: "Otros tipos de concepto" });
-    expect(menu).toHaveClass("right-0");
-    expect(menu).not.toHaveClass("left-0");
+    expect(menu.previousElementSibling).toBe(trigger.closest('[role="group"]'));
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(trigger).toHaveAttribute("aria-haspopup", "menu");
   });
 
-  it("shows an always-visible delete icon in the collapsed row on desktop", async () => {
+  it("keeps Eliminar in the editor of the expanded concept", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
     await fillClientStep(user)();
@@ -925,11 +918,7 @@ describe("QuoteBuilder", () => {
 
     const deleteButton = screen.getByRole("button", { name: "Eliminar concepto 1" });
     expect(deleteButton).toBeInTheDocument();
-    // The base Button component injects `inline-flex`, which conflicts with the
-    // breakpoint `hidden`. This icon must NOT carry a conflicting display that
-    // would make it visible on mobile. It should only be inline-flex at sm+.
-    expect(deleteButton).toHaveClass("hidden");
-    expect(deleteButton).toHaveClass("sm:inline-flex");
+    expect(deleteButton.closest("[id^='concept-editor-']")).not.toHaveAttribute("hidden");
   });
 
   it("renders the section name as title text without an input box", async () => {
@@ -1080,8 +1069,7 @@ describe("QuoteBuilder", () => {
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
-    await user.click(screen.getByRole("option", { name: "Material" }));
+    await user.click(within(screen.getByRole("group", { name: "Tipo del concepto 1" })).getByRole("button", { name: "Material" }));
 
     const [quantityInput] = screen.getAllByLabelText(/cantidad/i);
 
@@ -1329,8 +1317,7 @@ describe("QuoteBuilder", () => {
 
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
-    await user.click(screen.getByRole("option", { name: "Otro" }));
+    await user.click(within(screen.getByRole("group", { name: "Tipo del concepto 1" })).getByRole("button", { name: "Otro" }));
     await fillItemsStep(user)();
     await user.click(screen.getByRole("checkbox", { name: "Incluir en nómina / comisión" }));
     await user.clear(screen.getByRole("spinbutton", { name: "Porcentaje de comisión" }));
@@ -1443,6 +1430,7 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue("LABOR");
     expect(document.querySelector('[name*="rowId"]')).not.toBeInTheDocument();
 
+    await user.click(screen.getByTestId("concept-summary-0"));
     await user.click(screen.getByRole("button", { name: "Eliminar concepto 1" }));
     expect(screen.getByTestId("concept-row-0")).toBe(duplicatedRow);
     expect(document.querySelector('input[name="sections.0.items.0.description"]')).toHaveValue("Cambio de aceite");
@@ -1518,8 +1506,7 @@ describe("QuoteBuilder", () => {
     const summary = screen.getByTestId("concept-summary-0");
 
     expect(summary).toHaveTextContent("Cambio de aceite");
-    expect(summary).toHaveTextContent("1 unidad");
-    expect(summary).toHaveTextContent("Mano de obra");
+    expect(summary).toHaveTextContent("1 × $850.00");
     expect(document.querySelector('input[name="sections.0.items.0.description"]')).toHaveValue("cambio de aceite");
     expect(screen.getByRole("button", { name: "Reordenar concepto 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Duplicar concepto 1" })).toBeInTheDocument();

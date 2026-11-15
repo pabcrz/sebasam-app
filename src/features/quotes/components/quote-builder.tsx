@@ -4,6 +4,7 @@ import * as React from "react";
 import { QuoteItemType } from "@/generated/prisma/enums";
 import { getMeaningfulTextError } from "@/lib/meaningful-text";
 import { createPortal } from "react-dom";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Checkbox,
@@ -23,16 +24,18 @@ import {
   mexicoCityCalendarDate,
 } from "@/features/quotes/lib/operational-date";
 import { formatQuoteContactRole } from "@/features/quotes/lib/quote-snapshot-display";
+import { formatCents } from "@/features/quotes/lib/format";
 import {
   getStepError,
   normalizeSections,
   Step,
   steps,
+  flowStepLabels,
   validateItemValue,
 } from "./quote-builder-shared";
 import { useQuoteCustomerSearch } from "./use-quote-customer-search";
 import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
-import { QuoteBuilderStepper } from "./quote-builder-stepper";
+import { QuoteBuilderProgress, QuoteBuilderStepper } from "./quote-builder-stepper";
 import type { QuotePreviewCardProps } from "./quote-preview-card";
 import { toDocumentPreviewProps } from "./document-preview-model";
 import { DocumentPreview } from "@/components/document-preview";
@@ -53,6 +56,7 @@ import type {
   QuoteBuilderProps,
   QuoteCustomerActionResult,
 } from "./quote-builder-contracts";
+import { QuoteFlowCloseContext } from "./quote-builder-contracts";
 
 export type {
   CustomerOption,
@@ -87,6 +91,7 @@ export function QuoteBuilder({
   onDirtyChange,
   onSuccess,
   layout = "page",
+  fullScreen = false,
   mode = "quote",
   masters = [],
 }: QuoteBuilderProps) {
@@ -172,8 +177,9 @@ export function QuoteBuilder({
 
   const [animatedItemRowId, setAnimatedItemRowId] = React.useState<string | null>(null);
   const pendingItemRowId = React.useRef<string | null>(null);
-  const itemRowRefs = React.useRef(new Map<string, HTMLDivElement>());
+  const itemRowRefs = React.useRef(new Map<string, HTMLElement>());
   const itemDescriptionRefs = React.useRef(new Map<string, HTMLInputElement>());
+  const itemTypeRefs = React.useRef(new Map<string, HTMLElement>());
 
   const [initialFormState] = React.useState(() =>
     serializeQuoteBuilderSnapshot(builderState, initialSelectedCustomer?.name ?? "", ["", "", ""]),
@@ -240,11 +246,12 @@ export function QuoteBuilder({
     if (!rowId) return;
 
     const row = itemRowRefs.current.get(rowId);
-    const descriptionInput = itemDescriptionRefs.current.get(rowId);
-    if (!row || !descriptionInput) return;
+    // The table layout's first field is the Tipo control; the mobile list focuses the description.
+    const firstField = itemTypeRefs.current.get(rowId) ?? itemDescriptionRefs.current.get(rowId);
+    if (!row || !firstField) return;
 
     row.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    descriptionInput.focus({ preventScroll: true });
+    firstField.focus({ preventScroll: true });
     pendingItemRowId.current = null;
   }, [sections]);
 
@@ -591,8 +598,49 @@ export function QuoteBuilder({
   const scrollAreaClass = isDialogLayout
     ? "min-h-0 min-w-0"
     : "py-4 pr-1";
-  const stepperContent = <QuoteBuilderStepper current={step} onChange={setStep} />;
-  const footerContent = (
+  const stepperContent = fullScreen
+    ? <QuoteBuilderProgress current={step} onChange={setStep} />
+    : <QuoteBuilderStepper current={step} onChange={setStep} />;
+  // ← on the first step and ✕ leave the flow through the shell's discard guard.
+  const requestLeave = React.useContext(QuoteFlowCloseContext);
+  const nextStep = steps[currentStepIndex + 1];
+  const submitButton = (
+    <Button
+      ref={submitButtonRef}
+      type="submit"
+      variant="primary"
+      size={fullScreen ? "default" : undefined}
+      loading={isSubmitting}
+      form={formId}
+      onClick={() => {
+        hasExplicitSubmitRequest.current = true;
+      }}
+      className={fullScreen ? undefined : "min-w-[160px]"}
+      aria-live="polite"
+    >
+      {isSubmitting
+        ? (isEdit ? "Guardando..." : "Creando...")
+        : isEdit
+          ? "Guardar cambios"
+        : isSaleNote || mode === "direct-note"
+            ? "Crear nota"
+        : mode === "direct-work-order" || mode === "direct"
+              ? "Crear trabajo"
+              : "Crear cotización"}
+    </Button>
+  );
+  const footerContent = fullScreen ? (
+    <>
+      <p className="min-w-0 truncate text-sm font-medium text-[var(--color-text-muted)]">
+        {step === "items" || step === "notes" ? `Total ${formatCents(totalCents)}` : flowStepLabels[step]}
+      </p>
+      {step === "preview" ? submitButton : (
+        <Button type="button" variant="primary" size="default" onClick={goToNext}>
+          {`${flowStepLabels[nextStep]} →`}
+        </Button>
+      )}
+    </>
+  ) : (
     <>
       <div className="flex items-center gap-2">
         {step !== "client" ? (
@@ -607,30 +655,7 @@ export function QuoteBuilder({
         ) : null}
       </div>
 
-      {step === "preview" ? (
-        <Button
-          ref={submitButtonRef}
-          type="submit"
-          variant="primary"
-          loading={isSubmitting}
-          form={formId}
-          onClick={() => {
-            hasExplicitSubmitRequest.current = true;
-          }}
-          className="min-w-[160px]"
-          aria-live="polite"
-        >
-          {isSubmitting
-            ? (isEdit ? "Guardando..." : "Creando...")
-            : isEdit
-              ? "Guardar cambios"
-            : isSaleNote || mode === "direct-note"
-                ? "Crear nota"
-            : mode === "direct-work-order" || mode === "direct"
-                  ? "Crear trabajo"
-                  : "Crear cotización"}
-        </Button>
-      ) : (
+      {step === "preview" ? submitButton : (
         <Button
           type="button"
           variant="primary"
@@ -642,11 +667,22 @@ export function QuoteBuilder({
       )}
     </>
   );
+  const leadingContent = (
+    <button
+      type="button"
+      onClick={step === "client" ? () => requestLeave?.() : goToPrevious}
+      aria-label={step === "client" ? "Salir de la cotización" : "Paso anterior"}
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+    >
+      <Icon name="chevron-left" className="h-5 w-5" aria-hidden="true" />
+    </button>
+  );
   const shouldPortalChrome =
     isDialogLayout &&
     chromeHosts != null &&
     chromeHosts.stepperHost != null &&
-    chromeHosts.footerHost != null;
+    chromeHosts.footerHost != null &&
+    (!fullScreen || chromeHosts.leadingHost != null);
 
   return (
     <>
@@ -1093,6 +1129,10 @@ export function QuoteBuilder({
                   if (node) itemRowRefs.current.set(rowId, node);
                   else itemRowRefs.current.delete(rowId);
                 },
+                onTypeRef: (rowId, node) => {
+                  if (node) itemTypeRefs.current.set(rowId, node);
+                  else itemTypeRefs.current.delete(rowId);
+                },
                 onDescriptionRef: (rowId, node) => {
                   if (node) itemDescriptionRefs.current.set(rowId, node);
                   else itemDescriptionRefs.current.delete(rowId);
@@ -1236,6 +1276,7 @@ export function QuoteBuilder({
     </form>
     {shouldPortalChrome && chromeHosts ? (
       <>
+        {fullScreen ? createPortal(leadingContent, chromeHosts.leadingHost!) : null}
         {createPortal(stepperContent, chromeHosts.stepperHost!)}
         {createPortal(footerContent, chromeHosts.footerHost!)}
       </>
