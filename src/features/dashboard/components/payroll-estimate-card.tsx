@@ -11,7 +11,7 @@ interface PayrollEstimateCardProps {
 
 export function PayrollEstimateCard({ payroll }: PayrollEstimateCardProps) {
   return (
-      <Card className="min-w-0 shadow-sm">
+      <Card className="min-w-0 border-0 shadow-[var(--shadow-card)]">
       <CardHeader className="flex flex-col items-start gap-2 pb-2">
         <div className="flex min-w-0 items-center gap-2">
           <Icon name="cash" className="h-5 w-5 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
@@ -27,7 +27,7 @@ export function PayrollEstimateCard({ payroll }: PayrollEstimateCardProps) {
           <div className="min-w-0">
             <div
               data-numeric-role="currency"
-              className="break-words font-mono text-xl font-bold leading-tight tabular-nums text-[var(--color-text-main)] sm:text-2xl"
+              className="break-words text-xl font-bold leading-tight tabular-nums text-[var(--color-text-main)] sm:text-2xl"
             >
               {formatCents(payroll.estimatedCommissionsCents)}
             </div>
