@@ -60,6 +60,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <PageHeader
         title="Notas"
+        subtitle="Trabajo y venta"
         primaryAction={
           <QuoteBuilderDialog
             customers={customers}
@@ -73,19 +74,21 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         }
       />
 
-      {result ? <div className="grid gap-3 sm:grid-cols-3">
+      {result ? <div className={`grid grid-cols-2 gap-3 ${result.totals.totalOverdueCents > 0 ? "sm:grid-cols-3" : ""}`}>
         <StatTile
           label="Por cobrar"
           value={formatCents(result.totals.totalPendingCents)}
           tone="warning"
           info="Saldo de las notas del periodo y filtros elegidos; no es toda la cartera ni cobro del periodo."
         />
-        <StatTile
-          label="Vencido"
-          value={formatCents(result.totals.totalOverdueCents)}
-          tone="danger"
-          info="Saldo de las notas seleccionadas cuya fecha de vencimiento ya pasó."
-        />
+        {result.totals.totalOverdueCents > 0 ? (
+          <StatTile
+            label="Vencido"
+            value={formatCents(result.totals.totalOverdueCents)}
+            tone="danger"
+            info="Saldo de las notas seleccionadas cuya fecha de vencimiento ya pasó."
+          />
+        ) : null}
         <StatTile
           label="Cobrado"
           value={formatCents(result.totals.totalPaidCents)}

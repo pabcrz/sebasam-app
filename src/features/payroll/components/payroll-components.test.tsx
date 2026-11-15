@@ -204,8 +204,8 @@ describe("Payroll UI Components", () => {
 
     expect(screen.getAllByText("$1,500.00").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("$3,000.00").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("4").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("4 órdenes")).toBeInTheDocument();
+    expect(screen.getByText("2 maestros")).toBeInTheDocument();
     expect(screen.getByTestId("payroll-metrics")).toHaveClass("min-w-0", "max-w-full");
     expect(screen.getByText("Total a pagar")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Qué incluye: Total a pagar" })).toBeInTheDocument();

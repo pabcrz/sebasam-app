@@ -22,19 +22,19 @@ export function PayrollMetrics({
   const payableCents = totalPayableCents ?? totalCommissionCents;
 
   return (
-    <div data-testid="payroll-metrics" className="grid min-w-0 max-w-full grid-cols-2 gap-3 lg:grid-cols-4">
+    <div data-testid="payroll-metrics" className="grid min-w-0 max-w-full grid-cols-2 gap-3">
       <StatTile
         label="Total a pagar"
         value={formatCents(payableCents)}
+        description={`${totalWorkers} ${totalWorkers === 1 ? "maestro" : "maestros"}`}
         info="Comisiones y sueldos fijos a liquidar"
       />
       <StatTile
-        label="Mano de obra facturada"
+        label="Mano de obra"
         value={formatCents(totalClientLaborCents)}
+        description={`${totalCompletedOrders} ${totalCompletedOrders === 1 ? "orden" : "órdenes"}`}
         info={hasBaseAdjustment ? `Base nómina: ${formatCents(totalPayrollBaseCents)}` : "Cobrado a clientes por mano de obra"}
       />
-      <StatTile label="Órdenes completadas" value={totalCompletedOrders} info="Trabajos concluidos en la semana" />
-      <StatTile label="Maestros / asignados" value={totalWorkers} info="Personal con trabajos liquidados" />
     </div>
   );
 }
