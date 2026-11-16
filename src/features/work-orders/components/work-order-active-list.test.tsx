@@ -293,13 +293,12 @@ describe("Trabajos card", () => {
     return glyph;
   }
 
-  it("titles the card with the customer and puts the service under the amount", () => {
+  it("titles the card with the service and shows the customer as subtitle", () => {
     const card = renderTrabajo();
 
-    expect(within(card).getByRole("heading", { level: 3, name: "Oscar Méndez" })).toBeInTheDocument();
-    const amount = within(card).getByTestId("entity-card-amount");
-    expect(amount).toHaveTextContent("$15,288.80");
-    expect(amount).toContainElement(within(card).getByText("Muelles"));
+    expect(within(card).getByRole("heading", { level: 3, name: "Muelles" })).toBeInTheDocument();
+    expect(within(card).getByText("Oscar Méndez")).toBeInTheDocument();
+    expect(within(card).getByTestId("entity-card-amount")).toHaveTextContent("$15,288.80");
   });
 
   it("shows the unit with the car icon and the driver with the person icon", () => {
