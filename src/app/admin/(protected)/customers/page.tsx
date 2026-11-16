@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createCustomerFromForm } from "@/features/customers/actions";
 import { listCustomerRows } from "@/features/customers/queries";
+import { filterCustomerRows } from "@/features/customers/customer-list";
 import { customerSearchSchema } from "@/features/customers/schemas";
 import { PageHeader } from "@/components/ui";
 import { CustomerCreateForm } from "@/features/customers/components/customer-create-form";
@@ -26,6 +27,8 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const parsedSearch = customerSearchSchema.safeParse({ query: params.q });
   const query = parsedSearch.success ? parsedSearch.data.query : "";
   const customers = await listCustomerRows({ query });
+  const activeCount = customers.filter((customer) => customer.status !== "INACTIVE").length;
+  const withBalanceCount = filterCustomerRows(customers, "withBalance").length;
 
   return (
     <section className="mx-auto grid w-full min-w-0 max-w-6xl gap-4 px-4 py-6 pb-28 sm:pb-10 md:gap-6 md:px-6 md:py-10">
@@ -57,6 +60,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
 
       <PageHeader
         title="Clientes"
+        subtitle={`${activeCount} ${activeCount === 1 ? "activo" : "activos"} · ${withBalanceCount} con saldo`}
         primaryAction={
           <CustomerCreateForm action={createCustomerFromForm} triggerVariant="primary" triggerSize="lg" />
         }

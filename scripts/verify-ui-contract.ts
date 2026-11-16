@@ -403,7 +403,7 @@ function checkQuotesPage() {
   assertIncludes(pageSource, "QuoteFilters", "Quotes page must render QuoteFilters");
   assertIncludes(
     pageSource,
-    'listPaginatedQuotes(params, { operationalQueue: "quotes", operationalFilters: true })',
+    "listPaginatedQuotes(params, quoteListOptions)",
     "Quotes page must pass search params to the paginated quotes query",
   );
 

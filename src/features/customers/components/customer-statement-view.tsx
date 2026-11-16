@@ -14,7 +14,6 @@ import {
   PeriodNavigator,
   SegmentedControl,
   StatTile,
-  Tabs,
 } from "@/components/ui";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog, type QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
@@ -230,13 +229,13 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
 
       {/* Screen-only controls: tabs switch the section, PeriodNavigator moves through the history period */}
       <div className="grid min-w-0 gap-4 print:hidden">
-        <Tabs
+        <SegmentedControl
           label="Vista del estado de cuenta"
           value={view}
           onValueChange={(next) => go({ view: next as StatementView, period, anchor })}
-          tabs={[
-            { value: "pending", label: "Pendientes", panel: null },
-            { value: "history", label: "Por periodo", panel: null },
+          options={[
+            { value: "pending", label: "Pendientes" },
+            { value: "history", label: "Por periodo" },
           ]}
         />
         {view === "history" ? (
@@ -252,7 +251,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
       </div>
 
       {/* Financial Summary: tinted tiles, the explanation sits behind ⓘ */}
-      <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4 print:break-inside-avoid">
+      <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4 print:grid-cols-4 print:break-inside-avoid">
         {view === "history" ? (
           <>
             <StatTile label="Saldo inicial" value={formatCents(summary.initialBalanceCents)} info="Antes del inicio del período" />

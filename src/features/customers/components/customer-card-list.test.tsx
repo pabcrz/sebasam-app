@@ -164,12 +164,12 @@ describe("CustomerCardList rows", () => {
     );
     const filters = screen.getByRole("group", { name: "Filtrar clientes" });
 
-    await user.click(within(filters).getByRole("button", { name: "Con saldo" }));
+    await user.click(within(filters).getByRole("button", { name: "Con saldo · 1" }));
     expect(screen.queryByText("Al corriente")).not.toBeInTheDocument();
     expect(screen.getByText("Con deuda")).toBeInTheDocument();
     expect(screen.queryByText("Dado de baja")).not.toBeInTheDocument();
 
-    await user.click(within(filters).getByRole("button", { name: "Inactivos" }));
+    await user.click(within(filters).getByRole("button", { name: "Inactivos · 1" }));
     expect(screen.queryByText("Con deuda")).not.toBeInTheDocument();
     expect(screen.getByText("Dado de baja")).toBeInTheDocument();
   });

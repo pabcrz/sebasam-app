@@ -103,7 +103,10 @@ export function CustomerCardList({ customers, query = "", onDeleteBatch }: Custo
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <SegmentedControl
           label="Filtrar clientes"
-          options={filterOptions}
+          options={filterOptions.map((option) => ({
+            ...option,
+            label: `${option.label} · ${filterCustomerRows(customers, option.value).length}`,
+          }))}
           value={filter}
           onValueChange={(value) => setFilter(value as CustomerListFilter)}
         />
