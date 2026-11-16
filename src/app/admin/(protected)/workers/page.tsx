@@ -11,7 +11,7 @@ import {
 
 import { WorkerCreateDialog } from "@/features/workers/components/worker-create-dialog";
 import { WorkerCardList } from "@/features/workers/components/worker-card-list";
-import { listWorkers } from "@/features/workers/queries";
+import { countWorkersByStatus, listWorkers } from "@/features/workers/queries";
 import { workerSearchSchema } from "@/features/workers/schemas";
 
 export const metadata: Metadata = {
@@ -45,7 +45,7 @@ export default async function WorkersPage({ searchParams }: WorkersPageProps) {
   const params = await searchParams;
   const parsedSearch = workerSearchSchema.safeParse({ query: params.q, status: params.status });
   const search = parsedSearch.success ? parsedSearch.data : { query: "", status: "ALL" as const };
-  const workers = await listWorkers(search);
+  const [workers, counts] = await Promise.all([listWorkers(search), countWorkersByStatus()]);
 
   return (
     <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
@@ -72,6 +72,7 @@ export default async function WorkersPage({ searchParams }: WorkersPageProps) {
 
       <PageHeader
         title="Trabajadores"
+        subtitle={`${counts.ACTIVE} ${counts.ACTIVE === 1 ? "activo" : "activos"}`}
         primaryAction={
           <WorkerCreateDialog action={createWorkerFromForm} triggerVariant="primary" triggerSize="lg" />
         }
@@ -87,9 +88,6 @@ export default async function WorkersPage({ searchParams }: WorkersPageProps) {
             aria-label="Buscar trabajadores"
             className="min-w-0 flex-1"
           />
-          <Button type="submit" variant="secondary" size="sm">
-            Buscar
-          </Button>
         </form>
 
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -98,7 +96,7 @@ export default async function WorkersPage({ searchParams }: WorkersPageProps) {
             value={search.status}
             options={Object.entries(statusLabels).map(([value, label]) => ({
               value,
-              label,
+              label: `${label} · ${counts[value as keyof typeof counts]}`,
               href: workersHref(value, search.query),
             }))}
           />

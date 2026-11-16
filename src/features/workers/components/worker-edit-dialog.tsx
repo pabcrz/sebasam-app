@@ -55,8 +55,8 @@ export function WorkerEditDialog({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <DialogMobileContent variant="sheet">
         <DialogMobileHeader>
-          <DialogTitle>Editar trabajador</DialogTitle>
-          <DialogDescription>Actualiza los datos operativos de {worker.displayName}.</DialogDescription>
+          <DialogTitle>Editar a {worker.displayName}</DialogTitle>
+          <DialogDescription>Actualiza sus datos operativos.</DialogDescription>
         </DialogMobileHeader>
 
         <DialogMobileBody className="grid content-start gap-6">

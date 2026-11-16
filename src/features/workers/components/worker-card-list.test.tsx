@@ -58,7 +58,7 @@ describe("WorkerCardList", () => {
 
     await user.click(openSheet("Ana López"));
 
-    const sheet = screen.getByRole("dialog", { name: "Editar trabajador" });
+    const sheet = screen.getByRole("dialog", { name: "Editar a Ana López" });
     expect(sheet).toHaveAttribute("data-dialog-variant", "sheet");
     expect(within(sheet).getByTestId("worker-edit-form")).toBeInTheDocument();
     expect(within(sheet).getByLabelText("Correo interno")).toHaveValue("ana.lopez@sebasam.local");
@@ -70,7 +70,7 @@ describe("WorkerCardList", () => {
 
     await user.click(openSheet("Ana López"));
 
-    const sheet = screen.getByRole("dialog", { name: "Editar trabajador" });
+    const sheet = screen.getByRole("dialog", { name: "Editar a Ana López" });
     const footer = sheet.querySelector("[data-dialog-footer]") as HTMLElement;
     expect(within(footer).getAllByRole("button").map((button) => button.textContent)).toEqual([
       "Cancelar",
@@ -84,7 +84,7 @@ describe("WorkerCardList", () => {
 
     await user.click(openSheet("Ana López"));
 
-    const sheet = screen.getByRole("dialog", { name: "Editar trabajador" });
+    const sheet = screen.getByRole("dialog", { name: "Editar a Ana López" });
     const zone = sheet.querySelector("[data-dialog-danger-zone]") as HTMLElement;
     const deactivate = within(zone).getByRole("button", { name: "Desactivar trabajador" });
     const remove = within(zone).getByRole("button", { name: "Eliminar trabajador" });
@@ -114,7 +114,7 @@ describe("WorkerCardList", () => {
 
     await user.click(openSheet("Luis Pérez"));
 
-    const sheet = screen.getByRole("dialog", { name: "Editar trabajador" });
+    const sheet = screen.getByRole("dialog", { name: "Editar a Luis Pérez" });
     const zone = sheet.querySelector("[data-dialog-danger-zone]") as HTMLElement;
     expect(within(sheet).getByRole("button", { name: "Activar trabajador" })).toBeInTheDocument();
     expect(within(zone).queryByRole("button", { name: "Activar trabajador" })).not.toBeInTheDocument();

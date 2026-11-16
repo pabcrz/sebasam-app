@@ -37,6 +37,19 @@ export async function listWorkers(input: unknown = {}) {
   });
 }
 
+export async function countWorkersByStatus() {
+  await requireOperationalRole();
+
+  const rows = await prisma.userProfile.groupBy({
+    by: ["isActive"],
+    where: { role: UserRole.WORKER },
+    _count: { _all: true },
+  });
+  const active = rows.find((row) => row.isActive)?._count._all ?? 0;
+  const inactive = rows.find((row) => !row.isActive)?._count._all ?? 0;
+  return { ALL: active + inactive, ACTIVE: active, INACTIVE: inactive };
+}
+
 export async function getWorkerById(workerId: string) {
   await requireOperationalRole();
 
