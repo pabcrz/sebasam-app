@@ -77,7 +77,7 @@ describe("quote builder desktop flow (≥ 1024px)", () => {
     const top = screen.getByTestId("multi-step-dialog-header");
     await user.click(within(top).getByRole("button", { name: "← Cotizaciones" }));
 
-    expect(await screen.findByText("¿Descartar la cotización?")).toBeInTheDocument();
+    expect(await screen.findByText("¿Salir de la cotización?")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Seguir editando" }));
     expect(screen.getByRole("heading", { name: "Nueva cotización" })).toBeInTheDocument();
   });

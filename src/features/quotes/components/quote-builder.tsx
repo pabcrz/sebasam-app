@@ -61,6 +61,8 @@ import {
   serializeQuoteBuilderSnapshot,
   type QuoteBuilderItemsAction,
 } from "./quote-builder-state";
+import toast from "react-hot-toast";
+import { clearQuoteDraft, loadQuoteDraft, saveQuoteDraft } from "./quote-builder-draft";
 import type {
   CustomerOption,
   QuoteBuilderChromeHosts,
@@ -99,6 +101,7 @@ export function QuoteBuilder({
   searchCustomersAction,
   initialData,
   onDirtyChange,
+  draftKey,
   onSuccess,
   layout = "page",
   fullScreen = false,
@@ -111,7 +114,10 @@ export function QuoteBuilder({
     async (state: QuoteFormActionState, formData: FormData) => (await action?.(state, formData)) ?? {},
     {},
   );
-  const initialSelectedCustomer = customers.find((customer) => customer.id === initialData?.customerId);
+  // Read once on mount: the builder only mounts while its dialog is open, so this runs on the client.
+  const [draft] = React.useState(() => (draftKey ? loadQuoteDraft(draftKey) : null));
+  const originalSelectedCustomer = customers.find((customer) => customer.id === initialData?.customerId);
+  const initialSelectedCustomer = draft?.customer ?? originalSelectedCustomer;
   const [isCustomerListOpen, setIsCustomerListOpen] = React.useState(false);
   const [activeCustomerIndex, setActiveCustomerIndex] = React.useState(-1);
   const isDirect = mode === "direct" || mode === "direct-work-order" || mode === "direct-note" || mode === "direct-sale";
@@ -147,7 +153,7 @@ export function QuoteBuilder({
   const [builderState, dispatch] = React.useReducer(
     quoteBuilderReducer,
     undefined,
-    () => initializeQuoteBuilderState(initialData, defaultOperationalCalendarDate()),
+    () => draft?.state ?? initializeQuoteBuilderState(initialData, defaultOperationalCalendarDate()),
   );
   const {
     customerId,
@@ -191,7 +197,11 @@ export function QuoteBuilder({
   const itemDescriptionRefs = React.useRef(new Map<string, HTMLInputElement>());
 
   const [initialFormState] = React.useState(() =>
-    serializeQuoteBuilderSnapshot(builderState, initialSelectedCustomer?.name ?? "", ["", "", ""]),
+    serializeQuoteBuilderSnapshot(
+      draft ? initializeQuoteBuilderState(initialData, defaultOperationalCalendarDate()) : builderState,
+      originalSelectedCustomer?.name ?? "",
+      ["", "", ""],
+    ),
   );
 
   const currentStepIndex = steps.indexOf(step);
@@ -203,14 +213,24 @@ export function QuoteBuilder({
   const newCustomerNameError = newCustomerName === "" ? null : getMeaningfulTextError(newCustomerName, "nombre");
 
   React.useEffect(() => {
+    if (draft) toast("Borrador recuperado");
+  }, [draft]);
+
+  React.useEffect(() => {
     if (actionState.success) onSuccess?.();
   }, [actionState.success, onSuccess]);
 
   React.useEffect(() => {
     const current = serializeQuoteBuilderSnapshot(builderState, customerSearch, [newCustomerName, newCustomerEmail, newCustomerPhone]);
     const isDirectDirty = isUnifiedDirect ? Boolean(masterId || paymentDueDate) : false;
-    onDirtyChange?.(current !== initialFormState || isDirectDirty || operation !== initialOperation);
-  }, [builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, initialOperation, isUnifiedDirect, masterId, operation, paymentDueDate]);
+    const isDirty = current !== initialFormState || isDirectDirty || operation !== initialOperation;
+    onDirtyChange?.(isDirty);
+    // After a successful save the dialog clears the draft; do not write it back.
+    if (draftKey && !actionState.success) {
+      if (isDirty) saveQuoteDraft(draftKey, { state: builderState, customer: customerOptions.find((option) => option.id === builderState.customerId) ?? null });
+      else clearQuoteDraft(draftKey);
+    }
+  }, [actionState.success, customerOptions, draftKey, builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, initialOperation, isUnifiedDirect, masterId, operation, paymentDueDate]);
 
   function changeOperation(next: "WORK" | "SALE") {
     if (next === operation) return;
