@@ -411,7 +411,7 @@ function checkQuotesPage() {
     "src/features/quotes/components/quote-filters.tsx",
     "utf8",
   );
-  for (const field of ["filter", "dateFrom", "dateTo", "concept", "plate", "economicNumber"]) {
+  for (const field of ["dateFrom", "dateTo", "concept", "plate", "economicNumber"]) {
     assertIncludes(
       quoteFiltersSource,
       `name="${field}"`,

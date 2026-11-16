@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Icon } from "@/components/ui/icon";
-import { ActiveFilterChips, Button, Chip, FilterSheet, Input, Label, SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SegmentedControl } from "@/components/ui";
+import { ActiveFilterChips, Button, Chip, FilterButton, FilterSheet, Input, Label, SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SegmentedControl } from "@/components/ui";
 import type { QuoteFilterInput } from "@/features/quotes/schemas";
 import {
   formatDateValue,
@@ -173,17 +172,7 @@ export function QuoteFilters({ filters, customers, rejectedDateRange }: QuoteFil
           initialValue={effectiveFilters.number ?? ""}
           onSearch={(value) => navigate({ number: value || undefined })}
         />
-        <Button
-          type="button"
-          variant="outline"
-          className="shrink-0"
-          aria-haspopup="dialog"
-          aria-expanded={sheetOpen}
-          onClick={openSheet}
-        >
-          <Icon name="filter" className="h-4 w-4" aria-hidden="true" />
-          {chips.length > 0 ? `Filtros (${chips.length})` : "Filtros"}
-        </Button>
+        <FilterButton count={chips.length} aria-expanded={sheetOpen} onClick={openSheet} />
       </div>
 
       {chips.length > 0 ? (

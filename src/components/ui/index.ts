@@ -30,3 +30,4 @@ export * from "./table";
 export * from "./tabs";
 export * from "./toaster";
 export * from "./textarea";
+export * from "./filter-button";

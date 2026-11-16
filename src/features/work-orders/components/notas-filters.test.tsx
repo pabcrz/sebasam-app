@@ -84,7 +84,7 @@ describe("NotasFilters", () => {
     );
 
     // Active badge count should be 3 (assignee=workshop, customerId=cust-1, overdue=overdue)
-    expect(screen.getByRole("button", { name: /abrir filtros de cartera/i })).toHaveTextContent("Filtros (3)");
+    expect(screen.getByRole("button", { name: "Abrir filtros de cartera (3)" })).toBeInTheDocument();
     expect(screen.queryByText("Filtros aplicados:")).not.toBeInTheDocument();
 
     const statementLink = screen.getByRole("link", { name: /estado de cuenta/i });
@@ -462,7 +462,7 @@ describe("Notes search, filter count and active chips", () => {
     fireEvent.submit(screen.getByRole("search"));
     expect(new URL(push.mock.lastCall![0], "http://fixture").searchParams.get("number")).toBe("N-77");
 
-    expect(screen.getByRole("button", { name: /abrir filtros de cartera/i })).toHaveTextContent("Filtros (13)");
+    expect(screen.getByRole("button", { name: "Abrir filtros de cartera (13)" })).toBeInTheDocument();
   });
 
   it("shows each active filter as a removable chip and clears them all with Limpiar", () => {

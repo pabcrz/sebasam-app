@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/icon";
 import {
   ActiveFilterChips,
   Button,
+  FilterButton,
   FilterSheet,
   InfoTip,
   Input,
@@ -362,17 +363,7 @@ function NotasFiltersContent({
           disabled={Boolean(rejectedRange)}
           onSearch={applySearch}
         />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          aria-label="Abrir filtros de cartera"
-          className="shrink-0 gap-1.5 px-3"
-          onClick={() => handleOpenChange(true)}
-        >
-          <Icon name="filter" className="h-4 w-4" aria-hidden="true" />
-          <span>{activeFilterCount > 0 ? `Filtros (${activeFilterCount})` : "Filtros"}</span>
-        </Button>
+        <FilterButton label="Abrir filtros de cartera" count={activeFilterCount} onClick={() => handleOpenChange(true)} />
       </div>
 
       {activeChips.length > 0 ? (

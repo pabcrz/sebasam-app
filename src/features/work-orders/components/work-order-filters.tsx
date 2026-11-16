@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   ActiveFilterChips,
   Button,
+  FilterButton,
   FilterSheet,
-  Icon,
   InfoTip,
   Input,
   Label,
@@ -189,20 +189,14 @@ export function WorkOrderFilters({ filters, customers, workers, rejectedRange, t
           initialValue={effective.number ?? ""}
           onSearch={(value) => navigate({ number: value || undefined })}
         />
-        <Button
-          type="button"
-          variant="outline"
-          className="shrink-0"
-          aria-haspopup="dialog"
+        <FilterButton
+          count={chips.length}
           aria-expanded={open}
           onClick={() => {
             setDraft(draftFrom(effective, rejectedRange));
             setOpen(true);
           }}
-        >
-          <Icon name="filter" className="h-4 w-4" aria-hidden="true" />
-          {chips.length > 0 ? `Filtros (${chips.length})` : "Filtros"}
-        </Button>
+        />
       </div>
 
       {chips.length > 0 || error ? (
