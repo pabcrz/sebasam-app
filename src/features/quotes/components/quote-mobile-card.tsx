@@ -253,8 +253,6 @@ export function QuoteListCard({
         onOpenChange={(open) => (open ? preview.open("preview") : preview.close("preview"))}
         showTrigger={false}
         folio={displayFolio}
-        customerName={quote.customer?.name ?? "Sin cliente"}
-        statusBadge={<Badge variant={quoteStatusBadgeVariant[quote.status]}>{quoteStatusLabels[quote.status]}</Badge>}
         footerAction={primary ? renderAction(primary, "primary", "state") : null}
       />
       <EntityCard

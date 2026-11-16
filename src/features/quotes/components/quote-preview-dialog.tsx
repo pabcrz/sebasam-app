@@ -58,9 +58,9 @@ interface QuotePreviewDialogProps {
   showTrigger?: boolean;
   noteReturnTo?: string;
   previewTitle?: string;
-  /** List panels pass folio, customer and badge: the title becomes "Folio · Cliente" plus the badge. */
+  /** List panels pass the folio: it becomes the title; customer and status already show in the body. */
   folio?: string;
-  customerName?: string;
+  /** Only for states the body does not show (e.g. payment state on a work note). */
   statusBadge?: React.ReactNode;
   /** Footer of a list panel: "Cerrar" on the left and this primary action on the right. */
   footerAction?: React.ReactNode;
@@ -154,7 +154,6 @@ export function QuotePreviewDialog({
   showTrigger = true,
   previewTitle,
   folio,
-  customerName,
   statusBadge,
   footerAction,
 }: QuotePreviewDialogProps) {
@@ -171,10 +170,7 @@ export function QuotePreviewDialog({
   const documentProps = toDocumentPreviewProps(preview, {
     statusLabel: quote.status ? quoteStatusLabels[quote.status] : null,
   });
-  const isPanelTitle = folio !== undefined || customerName !== undefined;
-  const title = isPanelTitle
-    ? `${folio ?? quote.number} · ${customerName ?? quote.customer?.name ?? "Sin cliente"}`
-    : `Cotización ${quote.number}`;
+  const title = folio ?? `Cotización ${quote.number}`;
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {showTrigger ? (

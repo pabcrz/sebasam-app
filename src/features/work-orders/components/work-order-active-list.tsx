@@ -103,7 +103,6 @@ function ActiveWorkOrderCard({
           onOpenChange={(open) => (open ? panel.open("preview") : panel.close("preview"))}
           showTrigger={false}
           folio={wo.number}
-          customerName={identity.displayName}
           statusBadge={<Badge variant="info">En proceso</Badge>}
           footerAction={
             <WorkOrderOperationsDialog {...manageDialogProps} triggerVariant="primary" triggerClassName="shrink-0" />

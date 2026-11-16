@@ -74,7 +74,7 @@ it("marks the card whose preview is open and titles the panel with the folio and
 
   expect(card).toHaveAttribute("aria-current", "true");
   expect(card.parentElement).toHaveClass("side-panel-list");
-  expect(screen.getByText("OT-001 · Cliente de prueba")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: /^OT-001/ })).toBeInTheDocument();
   expect(screen.queryByText(/^Cotización COT-001$/)).not.toBeInTheDocument();
 });
 

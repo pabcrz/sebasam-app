@@ -209,7 +209,7 @@ describe("QuoteListCard", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(card).toHaveAttribute("aria-current", "true");
-    expect(screen.getByText("C-001 · Constructora del Norte")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "C-001" })).toBeInTheDocument();
     expect(screen.getAllByText(/cambio de aceite/i)[0]).toBeInTheDocument();
   });
 
@@ -232,7 +232,7 @@ describe("QuoteListCard", () => {
     await user.keyboard("{Enter}");
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("C-001 · Constructora del Norte")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "C-001" })).toBeInTheDocument();
   });
 
   it("uses the shared entity card: shadow only, focusable, with the actions footer at the bottom", () => {

@@ -205,7 +205,7 @@ export function DocumentPreview({
               ) : null}
               {balance}
             </div>
-            <dl className="grid min-w-[13rem] gap-1.5 text-sm">
+            <dl className="grid w-full min-w-[13rem] gap-1.5 text-sm @lg/preview:w-auto">
               <div className="flex items-center justify-between">
                 <dt className="text-[var(--color-text-muted)]">Subtotal</dt>
                 <dd data-testid="quote-subtotal" className="tabular-nums">{formatCents(totals.subtotalCents)}</dd>
