@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
   Sheet,
-  Switch,
   Textarea,
 } from "@/components/ui";
 import { createQuoteValidUntil, QUOTE_VALIDITY_DAYS } from "@/features/quotes/lib/calculate";
@@ -1225,7 +1224,7 @@ export function QuoteBuilder({
               Notas
             </h2>
             <div className="grid gap-2">
-              <Label htmlFor="title">Título</Label>
+              <Label htmlFor="title">Descripción breve</Label>
               <Input
                 id="title"
                 name="title"
@@ -1240,7 +1239,7 @@ export function QuoteBuilder({
                       : null,
                   );
                 }}
-                placeholder="Ej. Servicio general"
+                placeholder="Ej. Muelles delanteros, cambiar percha"
                 aria-describedby={titleError ? "quote-title-error" : undefined}
                 aria-invalid={titleError ? true : undefined}
               />
@@ -1280,7 +1279,7 @@ export function QuoteBuilder({
               </div>
             ) : null}
             <div className="grid gap-2">
-              <Label htmlFor="description">Descripción</Label>
+              <Label htmlFor="description">Detalles (opcional)</Label>
               <Textarea
                 id="description"
                 name="description"
@@ -1290,12 +1289,6 @@ export function QuoteBuilder({
                 placeholder={isSaleNote || mode === "direct-note" ? "Detalles adicionales de la nota..." : mode === "direct-work-order" || mode === "direct" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
               />
             </div>
-            <Switch
-              name="administrative"
-              label="Cotización administrativa"
-              checked={administrative}
-              onCheckedChange={(checked) => dispatch({ type: "setAdministrative", administrative: checked === true })}
-            />
           </section>
 
           {/* Step 4: Review and submit */}

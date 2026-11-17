@@ -115,7 +115,7 @@ function ActiveWorkOrderCard({
         openLabel={`Ver detalle de cotización ${wo.quote.number}`}
         onOpen={() => panel.open("preview")}
         selected={panel.selected}
-        title={wo.quote.title || "Sin título"}
+        title={wo.quote.title || identity.displayName || "Sin título"}
         folio={wo.number}
         status={<Badge variant="info">En proceso</Badge>}
         amount={formatCents(wo.quote.totalCents)}

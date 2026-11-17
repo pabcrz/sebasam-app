@@ -42,7 +42,7 @@ function fillItemsStep(user: ReturnType<typeof userEvent.setup>) {
 
 function fillNotesStep(user: ReturnType<typeof userEvent.setup>) {
   return async () => {
-    await user.type(screen.getByLabelText("Título"), "Servicio general");
+    await user.type(screen.getByLabelText("Descripción breve"), "Servicio general");
   };
 }
 
@@ -962,7 +962,7 @@ describe("QuoteBuilder", () => {
     await fillItemsStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByLabelText("Título")).toBeInTheDocument();
+    expect(screen.getByLabelText("Descripción breve")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Paso 1: Cliente / Unidad" }));
 
@@ -1222,7 +1222,7 @@ describe("QuoteBuilder", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
 
-    const titleInput = screen.getByLabelText("Título");
+    const titleInput = screen.getByLabelText("Descripción breve");
     await user.type(titleInput, "   ");
 
     expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
@@ -1700,7 +1700,7 @@ describe("QuoteBuilder", () => {
     expect(document.getElementById("sections-0-items-0-description-error")).toBeEmptyDOMElement();
 
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    const title = screen.getByLabelText("Título");
+    const title = screen.getByLabelText("Descripción breve");
     await user.type(title, "xyz");
     expect(screen.getByRole("alert")).toHaveTextContent("El título debe incluir texto significativo.");
     await user.clear(title);

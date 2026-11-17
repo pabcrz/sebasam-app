@@ -166,7 +166,7 @@ function CompletedNoteCard({
         openLabel={`Ver vista previa de nota ${noteFolio}`}
         onOpen={() => panel.open("preview")}
         selected={panel.selected}
-        title={wo.quote.title || "Sin título"}
+        title={wo.quote.title || identity.displayName || "Sin título"}
         folio={noteFolio}
         status={paymentBadge}
         amount={formatCents(totalCents)}

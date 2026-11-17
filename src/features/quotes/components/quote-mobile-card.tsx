@@ -262,7 +262,7 @@ export function QuoteListCard({
         openLabel={`Abrir vista previa de ${displayFolio}`}
         onOpen={() => preview.open("preview")}
         selected={preview.selected}
-        title={quote.title || "Sin título"}
+        title={quote.title || quote.customer?.name || "Sin título"}
         folio={displayFolio}
         status={
           <>
