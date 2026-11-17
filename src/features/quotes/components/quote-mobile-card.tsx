@@ -279,7 +279,7 @@ export function QuoteListCard({
         customer={quote.customer?.name ?? "Sin cliente"}
         unit={unitIdentity}
         keyData={
-          <div data-testid="quote-key-data" className="mt-3 grid min-h-12">
+          <div data-testid="quote-key-data" className="mt-3 grid">
             {quote.workOrder ? (
               <EntityCardDataRow label="Orden de trabajo" value={quote.workOrder.number} />
             ) : quote.operation === "SALE" ? (

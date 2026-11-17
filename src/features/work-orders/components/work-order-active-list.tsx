@@ -208,7 +208,7 @@ export function WorkOrderActiveList({
 }: WorkOrderActiveListProps) {
   return (
     <CardPanelProvider>
-      <div className="side-panel-list grid auto-rows-fr gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
+      <div className="side-panel-list grid gap-3 lg:auto-rows-fr lg:grid-cols-[repeat(2,minmax(0,1fr))]">
         {workOrders.map((wo, index) => (
           <ActiveWorkOrderCard
             key={wo.id}

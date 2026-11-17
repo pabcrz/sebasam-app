@@ -111,30 +111,30 @@ export function EntityCard({
         className,
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1 basis-32">
-          <h3
-            title={typeof title === "string" ? title : undefined}
-            className={cn(
-              "line-clamp-2 break-words lg:min-h-12 text-lg font-semibold leading-6 text-[var(--color-text-main)]",
-              selected && "text-[var(--color-amount)]",
-            )}
-          >
-            {title}
-          </h3>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
+      <div className="grid min-w-0 gap-1.5">
+        <h3
+          title={typeof title === "string" ? title : undefined}
+          className={cn(
+            "line-clamp-2 break-words text-lg font-semibold leading-6 text-[var(--color-text-main)]",
+            selected && "text-[var(--color-amount)]",
+          )}
+        >
+          {title}
+        </h3>
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
             {folio != null ? (
               <span className={cn(selected && "text-[var(--color-amount)]")}>{folio}</span>
             ) : null}
             {status}
           </div>
+          {amount != null ? (
+            <div data-testid="entity-card-amount" className="ml-auto flex min-w-0 shrink-0 flex-col items-end text-right">
+              <p className="text-xl font-extrabold tabular-nums text-[var(--color-amount)] sm:text-2xl">{amount}</p>
+              {amountCaption != null ? <p className="max-w-full truncate text-xs text-[var(--color-text-muted)]">{amountCaption}</p> : null}
+            </div>
+          ) : null}
         </div>
-        {amount != null ? (
-          <div data-testid="entity-card-amount" className="ml-auto flex min-w-0 max-w-full shrink-0 flex-col items-end text-right">
-            <p className="text-2xl font-extrabold tabular-nums text-[var(--color-amount)]">{amount}</p>
-            {amountCaption != null ? <p className="max-w-full truncate text-xs text-[var(--color-text-muted)]">{amountCaption}</p> : null}
-          </div>
-        ) : null}
       </div>
 
       {customer != null ? (

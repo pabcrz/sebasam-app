@@ -91,12 +91,12 @@ describe("QuotesPage", () => {
     )).toBe(false);
   });
 
-  it("uses equal-height quote cards in a two-column grid", async () => {
+  it("uses equal-height quote cards in a two-column grid on desktop only", async () => {
     render(await QuotesPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByText("No se encontraron cotizaciones.").parentElement?.parentElement).toHaveClass(
       "grid",
-      "auto-rows-fr",
+      "lg:auto-rows-fr",
       "lg:grid-cols-[repeat(2,minmax(0,1fr))]",
       "side-panel-list",
     );

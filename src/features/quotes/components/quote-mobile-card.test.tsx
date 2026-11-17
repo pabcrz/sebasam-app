@@ -246,14 +246,13 @@ describe("QuoteListCard", () => {
     expect(screen.getByTestId("entity-card-footer")).toHaveClass("mt-auto");
   });
 
-  it("keeps the title and date area at stable heights and exposes the full title", () => {
+  it("clamps the title to two lines and exposes the full title", () => {
     const fullTitle = "A long title that should be clamped after two lines while preserving its full accessible title";
     renderCard(createMockQuote({ title: fullTitle, paymentDueDate: null }));
 
     const title = screen.getByRole("heading", { level: 3 });
     expect(title).toHaveAttribute("title", fullTitle);
-    expect(title).toHaveClass("line-clamp-2", "lg:min-h-12");
-    expect(screen.getByTestId("quote-key-data")).toHaveClass("min-h-12");
+    expect(title).toHaveClass("line-clamp-2");
     expect(screen.queryByText(/vencimiento pago:/i)).not.toBeInTheDocument();
   });
 
