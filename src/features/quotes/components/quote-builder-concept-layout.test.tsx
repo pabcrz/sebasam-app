@@ -175,14 +175,14 @@ describe("quote builder concept layout (desktop)", () => {
     expect(screen.getAllByRole("button", { name: "Agregar sección" })).toHaveLength(1);
   });
 
-  it("gives each desktop section a card surface with shadow and no border", async () => {
+  it("gives each section a card surface with shadow and no border", async () => {
     setViewport(true);
     const user = userEvent.setup();
     await openItemsStep(user);
 
     const section = screen.getByTestId("section-0");
-    expect(section).toHaveClass("lg:bg-[var(--color-surface)]", "lg:shadow-[var(--shadow-card)]");
-    expect(section).not.toHaveClass("lg:border");
+    expect(section).toHaveClass("bg-[var(--color-surface)]", "shadow-[var(--shadow-card)]");
+    expect(section).not.toHaveClass("border");
   });
 
   it("shows a green Nómina label for Mano de obra and an aria-pressed billete toggle only for Otro", async () => {
