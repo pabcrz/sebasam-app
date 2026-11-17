@@ -11,6 +11,7 @@ import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, EntityCard, EntityCardDataRow, useCardPanel } from "@/components/ui";
 import { formatUnitIdentity } from "@/lib/unit-identity";
 import { formatCents, formatDate, formatOperationalDate } from "@/features/quotes/lib/format";
+import { quoteValidityHint } from "@/features/quotes/lib/validity-hint";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
 import { QuoteCancelForm } from "./quote-cancel-form";
@@ -244,6 +245,7 @@ export function QuoteListCard({
   };
 
   const displayFolio = quote.folio ?? quote.number;
+  const validityHint = quote.validUntil && (quote.status === "DRAFT" || quote.status === "SENT") ? quoteValidityHint(quote.validUntil) : null;
 
   return (
     <>
@@ -286,7 +288,27 @@ export function QuoteListCard({
               <EntityCardDataRow label="Operación" value="Venta de refacciones" />
             ) : null}
             <EntityCardDataRow label="Fecha de cotización" value={formatOperationalDate(quote.operationalDate)} />
-            <EntityCardDataRow label="Vigente hasta" value={quote.validUntil ? formatDate(quote.validUntil) : "—"} />
+            <EntityCardDataRow
+              label="Vigente hasta"
+              value={
+                quote.validUntil ? (
+                  <>
+                    {formatDate(quote.validUntil)}
+                    {validityHint ? (
+                      <>
+                        {" · "}
+                        <span
+                          data-tone={validityHint.tone}
+                          className={validityHint.tone === "muted" ? "text-[var(--color-text-muted)]" : validityHint.tone === "warning" ? "text-[var(--color-status-warning-fg)]" : "text-[var(--color-status-danger-fg)]"}
+                        >
+                          {validityHint.label}
+                        </span>
+                      </>
+                    ) : null}
+                  </>
+                ) : "—"
+              }
+            />
             {paymentDueDate ? <EntityCardDataRow label="Vencimiento pago" value={formatDate(paymentDueDate)} /> : null}
           </div>
         }
