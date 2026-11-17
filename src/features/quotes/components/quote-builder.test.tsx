@@ -1210,7 +1210,7 @@ describe("QuoteBuilder", () => {
     expect(screen.queryByText(/necesita un precio unitario/i)).not.toBeInTheDocument();
   });
 
-  it("keeps and then clears the missing-title error as the title becomes valid", async () => {
+  it("lets the user continue without a brief description", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -1218,16 +1218,9 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await fillItemsStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByLabelText("Descripción breve")).not.toBeRequired();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
-
-    const titleInput = screen.getByLabelText("Descripción breve");
-    await user.type(titleInput, "   ");
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
-
-    await user.type(titleInput, "Servicio general");
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -1685,7 +1678,7 @@ describe("QuoteBuilder", () => {
     expect(unitPrice).not.toHaveAttribute("aria-invalid");
   });
 
-  it("rejects placeholder item descriptions and titles until they are corrected", async () => {
+  it("rejects placeholder item descriptions until they are corrected", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -1699,13 +1692,6 @@ describe("QuoteBuilder", () => {
     await user.type(description, "Cambio de aceite");
     expect(document.getElementById("sections-0-items-0-description-error")).toBeEmptyDOMElement();
 
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    const title = screen.getByLabelText("Descripción breve");
-    await user.type(title, "xyz");
-    expect(screen.getByRole("alert")).toHaveTextContent("El título debe incluir texto significativo.");
-    await user.clear(title);
-    await user.type(title, "Servicio general");
-    expect(document.getElementById("quote-title-error")).toBeEmptyDOMElement();
   });
 
   it("revalidates items in the final action before calling the server action", async () => {

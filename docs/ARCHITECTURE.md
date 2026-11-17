@@ -59,7 +59,7 @@ La navegación implementada **sí usa `/admin`**. [`getRootRedirectPath`](../src
 | `/admin/login`, `/admin/change-password`, `/admin/setup-required` | Acceso y resolución de perfil/contraseña |
 | `/admin` | Dashboard interno |
 | `/admin/customers`, `/admin/customers/[id]` | Clientes y detalle; `/estado-de-cuenta` agrega su cuenta |
-| `/admin/quotes`, `/admin/quotes/nueva`, `/admin/quotes/[id]/edit` | Cotizador; `/admin/quotes/[id]/print` es su salida imprimible; `/admin/quotes/retention` consulta retención |
+| `/admin/quotes`, `/admin/quotes/[id]/edit` | Cotizador; `/admin/quotes/[id]/print` es su salida imprimible; `/admin/quotes/retention` consulta retención |
 | `/admin/work-orders`, `/admin/work-orders/[id]` | Gestión operativa |
 | `/admin/notas`, `/admin/notas/[id]/print` | Notas y salida imprimible |
 | `/admin/workers`, `/admin/workers/[id]/edit` | Trabajadores administrados internamente |

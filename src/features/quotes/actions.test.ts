@@ -555,7 +555,7 @@ describe("updateDraftQuoteFromForm", () => {
   });
 
   it("returns an error when form data is malformed", async () => {
-    await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData({ title: "" }) as unknown as FormData))
+    await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData({ title: "a".repeat(161) }) as unknown as FormData))
       .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
   });
 
@@ -696,7 +696,7 @@ describe.each([
   });
 
   it("returns the validation error for invalid form data", async () => {
-    await expect(action(buildFormData({ title: "" }) as unknown as FormData))
+    await expect(action(buildFormData({ title: "a".repeat(161) }) as unknown as FormData))
       .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
   });
 

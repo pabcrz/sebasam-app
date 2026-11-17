@@ -27,8 +27,8 @@ describe("quote meaningful text validation", () => {
     }).success).toBe(false);
   });
 
-  it.each(["xyz", "..."])("rejects placeholder %s in titles", (title) => {
-    expect(quoteFormInputSchema.safeParse({ ...validQuote, title }).success).toBe(false);
+  it.each(["xyz", "."])("accepts the quick title %s", (title) => {
+    expect(quoteFormInputSchema.safeParse({ ...validQuote, title }).success).toBe(true);
   });
 });
 

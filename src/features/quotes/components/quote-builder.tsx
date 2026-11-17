@@ -3,6 +3,7 @@
 import * as React from "react";
 import { QuoteItemType } from "@/generated/prisma/enums";
 import { getMeaningfulTextError } from "@/lib/meaningful-text";
+import { resolveQuoteTitle } from "../quote-title";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -198,7 +199,6 @@ export function QuoteBuilder({
     selectQuoteBuilderSummary(builderState);
   const selectedCustomer = customerOptions.find((customer) => customer.id === customerId);
   const validUntil = createQuoteValidUntil();
-  const titleError = title.trim() === "" ? null : getMeaningfulTextError(title, "título");
   const newCustomerNameError = newCustomerName === "" ? null : getMeaningfulTextError(newCustomerName, "nombre");
 
   React.useEffect(() => {
@@ -621,7 +621,7 @@ export function QuoteBuilder({
     items: conceptCount === 0
       ? "Sin conceptos"
       : `${conceptCount} ${conceptCount === 1 ? "concepto" : "conceptos"} · ${sectionCount} ${sectionCount === 1 ? "sección" : "secciones"}`,
-    notes: title.trim() || "Sin título",
+    notes: resolveQuoteTitle(title, sections),
     preview: "Vista previa del documento",
   };
   const stepCompleted: Record<Step, boolean> = {
@@ -1228,7 +1228,6 @@ export function QuoteBuilder({
               <Input
                 id="title"
                 name="title"
-                required
                 value={title}
                 onChange={(event) => {
                   const nextTitle = event.target.value;
@@ -1240,11 +1239,10 @@ export function QuoteBuilder({
                   );
                 }}
                 placeholder="Ej. Muelles delanteros, cambiar percha"
-                aria-describedby={titleError ? "quote-title-error" : undefined}
-                aria-invalid={titleError ? true : undefined}
+                maxLength={160}
               />
-              <span id="quote-title-error" role={titleError ? "alert" : undefined} className="min-h-4 text-xs text-[var(--color-status-danger-fg)]">
-                {titleError}
+              <span className="text-xs text-[var(--color-text-muted)]">
+                Si lo dejas vacío usamos el primer concepto.
               </span>
             </div>
             <div className="grid gap-2">
@@ -1315,7 +1313,7 @@ export function QuoteBuilder({
                 contactName: selectedContact?.name,
                 contactRole: contactRoleBadge,
                 vehicle,
-                title,
+                title: resolveQuoteTitle(title, sections),
                 description,
                 administrative,
                 sections,
