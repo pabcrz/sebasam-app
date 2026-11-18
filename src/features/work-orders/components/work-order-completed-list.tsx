@@ -165,7 +165,7 @@ function CompletedNoteCard({
         openLabel={`Ver vista previa de nota ${noteFolio}`}
         onOpen={() => panel.open("preview")}
         selected={panel.selected}
-        title={wo.quote.title || "Sin título"}
+        title={wo.quote.title || identity.displayName || "Sin título"}
         folio={noteFolio}
         status={paymentBadge}
         amount={formatCents(totalCents)}
@@ -296,7 +296,7 @@ export function WorkOrderCompletedList({
 
   return (
     <CardPanelProvider>
-      <div className="side-panel-list grid auto-rows-fr gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
+      <div className="side-panel-list grid gap-3 lg:auto-rows-fr lg:grid-cols-[repeat(2,minmax(0,1fr))]">
         {workOrders.map((wo) => (
           <CompletedNoteCard
             key={wo.id}

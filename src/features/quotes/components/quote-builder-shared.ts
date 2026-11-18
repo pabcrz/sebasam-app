@@ -1,5 +1,5 @@
 import { QuoteItemType } from "@/generated/prisma/enums";
-import { getMeaningfulTextError, isMeaningfulText } from "@/lib/meaningful-text";
+import { isMeaningfulText } from "@/lib/meaningful-text";
 
 export type Step = "client" | "items" | "notes" | "preview";
 
@@ -267,7 +267,7 @@ export function getStepError(
   }
 
   if (step === "notes") {
-    return state.title.trim() ? getMeaningfulTextError(state.title, "título") : "Ingresa el título de la cotización.";
+    return null;
   }
 
   return null;

@@ -193,15 +193,15 @@ export function QuoteBuilderItemsStep({
             {sections.map((section, sectionIndex) => (
               <SortableSection key={`section-${sectionIndex}`} id={`section-${sectionIndex}`}>
                 <div
-                  className="grid min-w-0 gap-3 lg:rounded-[var(--radius-lg)] lg:bg-[var(--color-surface)] lg:p-3 lg:shadow-[var(--shadow-card)]"
+                  className="grid min-w-0 gap-3 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)]"
                   data-testid={`section-${sectionIndex}`}
                 >
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2 border-b border-[var(--color-border-light)] pb-3">
                     <DragHandle
                       ariaLabel={`Reordenar sección ${sectionIndex + 1}`}
                       className="size-4 shrink-0 text-[var(--color-text-muted)] touch-none cursor-grab"
                     />
-                    <div className="flex min-w-0 flex-1 basis-48 items-center gap-2">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
                       <input
                         aria-label={`Nombre de la sección ${sectionIndex + 1}`}
                         placeholder="Nombre de la sección (ej. Parte delantera)"

@@ -394,7 +394,7 @@ describe("WorkOrderCompletedList", () => {
 
     render(<WorkOrderCompletedList workOrders={[longWorkOrder]} shareAction={vi.fn()} />);
 
-    expect(screen.getByRole("heading", { level: 3, name: "Servicio" })).toHaveClass("line-clamp-2");
+    expect(screen.getByRole("heading", { level: 3, name: "Servicio" })).toHaveClass("break-words");
     expect(screen.getByText("Cliente con una razón social extremadamente larga para probar el ajuste")).toHaveClass("truncate");
     expect(screen.getByText(/Cot\. C-20260915-01-THIS-FOLIO-IS-INTENTIONALLY-LONG/)).toBeInTheDocument();
   });

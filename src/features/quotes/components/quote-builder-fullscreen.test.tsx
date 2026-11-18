@@ -109,7 +109,7 @@ describe("quote builder full-screen flow", () => {
     expect(within(footer).getByText(/^Total/)).toBeInTheDocument();
     expect(within(footer).getByRole("button", { name: "Vista previa →" })).toBeInTheDocument();
 
-    await user.type(screen.getByRole("textbox", { name: "Título" }), "Servicio general");
+    await user.type(screen.getByRole("textbox", { name: "Descripción breve" }), "Servicio general");
     await user.click(within(footer).getByRole("button", { name: "Vista previa →" }));
     expect(within(footer).getByText("Vista previa")).toBeInTheDocument();
     expect(within(footer).getByRole("button", { name: "Crear cotización" })).toHaveAttribute("type", "submit");

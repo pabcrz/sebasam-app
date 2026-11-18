@@ -1,5 +1,6 @@
 import { calculateConfirmedQuoteTotals } from "./lib/calculate";
 import type { QuoteVehicleInput } from "./schemas";
+import { resolveQuoteTitle } from "./quote-title";
 import type { VehicleInput } from "@/features/vehicles/schemas";
 
 type QuoteItemFormInput = {
@@ -69,7 +70,7 @@ export function quoteFormDataToInput(formData: FormData) {
       color: undefined,
       year: formData.get("year"),
     },
-    title: String(formData.get("title") ?? ""),
+    title: resolveQuoteTitle(String(formData.get("title") ?? ""), sections),
     description: formData.get("description"),
     administrative: formData.get("administrative"),
     taxEnabled: formData.get("taxEnabled") === "on",

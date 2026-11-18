@@ -126,9 +126,8 @@ async function enterRepresentativeQuoteState(user: ReturnType<typeof userEvent.s
   await user.type(screen.getByRole("spinbutton", { name: "Precio unitario" }), "1250");
   await user.click(screen.getByRole("switch", { name: "Incluir IVA (16%)" }));
   await user.click(screen.getByRole("button", { name: NEXT_STEP }));
-  await user.type(screen.getByRole("textbox", { name: "Título" }), "Servicio completo");
-  await user.type(screen.getByLabelText("Descripción", { selector: "textarea" }), "Trabajo prioritario");
-  await user.click(screen.getByRole("switch", { name: "Cotización administrativa" }));
+  await user.type(screen.getByRole("textbox", { name: "Descripción breve" }), "Servicio completo");
+  await user.type(screen.getByLabelText("Detalles (opcional)"), "Trabajo prioritario");
 }
 
 function expectRepresentativeQuoteState() {
@@ -140,9 +139,8 @@ function expectRepresentativeQuoteState() {
   expect(screen.getByLabelText("Descripción", { selector: "input" })).toHaveValue("Cambio de frenos");
   expect(screen.getByLabelText("Cantidad")).toHaveValue("3");
   expect(screen.getByLabelText("Precio unitario")).toHaveValue(1250);
-  expect(screen.getByLabelText("Título")).toHaveValue("Servicio completo");
-  expect(screen.getByLabelText("Descripción", { selector: "textarea" })).toHaveValue("Trabajo prioritario");
-  expect(screen.getByLabelText("Cotización administrativa")).toBeChecked();
+  expect(screen.getByLabelText("Descripción breve")).toHaveValue("Servicio completo");
+  expect(screen.getByLabelText("Detalles (opcional)")).toHaveValue("Trabajo prioritario");
   expect(screen.getByLabelText("Incluir IVA (16%)")).not.toBeChecked();
 }
 
@@ -361,9 +359,8 @@ describe("QuoteBuilderDialog", () => {
     expect(screen.getByLabelText("Descripción", { selector: "input" })).toHaveValue("");
     expect(screen.getByLabelText("Cantidad")).toHaveValue("1");
     expect(screen.getByLabelText("Precio unitario")).toHaveValue(null);
-    expect(screen.getByLabelText("Título")).toHaveValue("");
-    expect(screen.getByLabelText("Descripción", { selector: "textarea" })).toHaveValue("");
-    expect(screen.getByLabelText("Cotización administrativa")).not.toBeChecked();
+    expect(screen.getByLabelText("Descripción breve")).toHaveValue("");
+    expect(screen.getByLabelText("Detalles (opcional)")).toHaveValue("");
     expect(screen.getByLabelText("Incluir IVA (16%)")).toBeChecked();
   });
 
@@ -426,7 +423,7 @@ describe("QuoteBuilderDialog", () => {
     await user.click(screen.getByRole("button", { name: "Editar" }));
     await user.click(screen.getByRole("button", { name: NEXT_STEP }));
     await user.click(screen.getByRole("button", { name: NEXT_STEP }));
-    const title = screen.getByRole("textbox", { name: "Título" });
+    const title = screen.getByRole("textbox", { name: "Descripción breve" });
     await user.clear(title);
     await user.type(title, "Servicio editado");
     await user.click(screen.getByRole("button", { name: NEXT_STEP }));
@@ -444,7 +441,7 @@ describe("QuoteBuilderDialog", () => {
     await user.click(screen.getByRole("button", { name: "Editar" }));
     await user.click(screen.getByRole("button", { name: NEXT_STEP }));
     await user.click(screen.getByRole("button", { name: NEXT_STEP }));
-    expect(screen.getByRole("textbox", { name: "Título" })).toHaveValue("Servicio");
+    expect(screen.getByRole("textbox", { name: "Descripción breve" })).toHaveValue("Servicio");
   });
 
   it("closes on success and keeps state open on a server error", async () => {
@@ -459,7 +456,7 @@ describe("QuoteBuilderDialog", () => {
     await user.click(screen.getByRole("button", { name: "Crear cotización" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Error del servidor");
-    expect(screen.getByLabelText("Título")).toHaveValue("Servicio completo");
+    expect(screen.getByLabelText("Descripción breve")).toHaveValue("Servicio completo");
 
     await user.click(screen.getByRole("button", { name: "Crear cotización" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva cotización" })).not.toBeInTheDocument());

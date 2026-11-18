@@ -59,7 +59,7 @@ export function MobileConceptRow({
         <div
           ref={(node) => onRowRef(rowId, node)}
           data-testid={`concept-row-${displayIndex}`}
-          className={`grid ${isExpanded ? "bg-[var(--color-surface-muted)]" : "bg-[var(--color-surface)]"}${animated ? " motion-safe:animate-fade-in motion-safe:animate-duration-200" : ""}`}
+          className={`grid ${isExpanded ? "rounded-[var(--radius-sm)] border-l-4 border-[var(--color-amount)] bg-[var(--color-surface-muted)] pl-1" : "bg-[var(--color-surface)]"}${animated ? " motion-safe:animate-fade-in motion-safe:animate-duration-200" : ""}`}
         >
           <div className="flex items-center gap-1">
             <DragHandle

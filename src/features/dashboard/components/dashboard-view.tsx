@@ -98,7 +98,7 @@ export function DashboardView({
 
   return (
     <section className="mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)] gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-main)] sm:text-2xl">{greetingFor(now)}</h1>
           <p className="text-sm text-[var(--color-text-muted)]">{`${formatHomeDate(now)} · ${pendingLabel(pendingCount)}`}</p>
@@ -111,7 +111,7 @@ export function DashboardView({
             searchCustomersAction={searchCustomersAction}
             triggerVariant="primary"
             triggerSize="sm"
-            triggerClassName="w-full sm:w-auto"
+            triggerIconOnlyMobile
           />
         </div>
       </div>

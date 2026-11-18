@@ -116,7 +116,7 @@ const quoteInputBaseSchema = z.object({
   customerContactId: optionalTrimmedString,
   customerFiscalProfileId: optionalTrimmedString,
   vehicle: quoteVehicleInputSchema,
-  title: z.string().trim().min(1, "Quote title is required").max(160).refine(isMeaningfulText, "El título debe incluir texto significativo."),
+  title: z.string().trim().min(1, "Quote title is required").max(160),
   operation: z.nativeEnum(QuoteOperationKind).default(QuoteOperationKind.WORK),
   description: optionalTrimmedString,
   administrative: z.boolean().default(false),
