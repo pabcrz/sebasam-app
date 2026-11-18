@@ -863,14 +863,14 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue(type);
   });
 
-  it("shows the add chips with full type labels in one horizontally scrolling row", async () => {
+  it("shows the add chips with full type labels wrapped, without scrolling", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     const addRow = screen.getByRole("group", { name: "Agregar concepto a sección 1" });
-    expect(addRow).toHaveClass("flex-nowrap", "overflow-x-auto");
+    expect(addRow).toHaveClass("flex-wrap", "overflow-visible");
 
     const laborButton = within(addRow).getByRole("button", { name: "Agregar Mano de obra a la sección 1" });
     expect(laborButton).toHaveTextContent("Mano de obra");
@@ -881,32 +881,16 @@ describe("QuoteBuilder", () => {
 
   it.each([
     ["Otro", "OTHER"],
-  ])("adds %s from the ⋯ popover with type %s", async (label, type) => {
+  ])("adds %s directly from its chip with type %s", async (label, type) => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await fillItemsStep(user)();
 
-    await user.click(screen.getByRole("button", { name: "Más tipos de concepto" }));
-    await user.click(screen.getByRole("menuitem", { name: `+ ${label}` }));
+    await user.click(screen.getByRole("button", { name: `Agregar ${label} a la sección 1` }));
 
     expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue(type);
-  });
-
-  it("opens the other concept menu below the add chips", async () => {
-    const user = userEvent.setup();
-    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
-    await fillClientStep(user)();
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    const trigger = screen.getByRole("button", { name: "Más tipos de concepto" });
-
-    await user.click(trigger);
-
-    const menu = screen.getByRole("menu", { name: "Otros tipos de concepto" });
-    expect(menu.previousElementSibling).toBe(trigger.closest('[role="group"]'));
-    expect(trigger).toHaveAttribute("aria-expanded", "true");
-    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
   });
 
   it("keeps Eliminar in the editor of the expanded concept", async () => {
@@ -1570,7 +1554,7 @@ describe("QuoteBuilder", () => {
     expect(screen.getByRole("button", { name: /Agregar Materiales a la sección/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Agregar Refacciones a la sección/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Agregar Mano de obra a la sección/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Más tipos de concepto" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Agregar Otro a la sección/ })).toBeInTheDocument();
   });
 
   it("renders the final preview after the notes step", async () => {
