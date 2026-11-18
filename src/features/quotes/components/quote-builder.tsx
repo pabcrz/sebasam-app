@@ -644,13 +644,13 @@ export function QuoteBuilder({
     items: conceptCount === 0
       ? "Sin conceptos"
       : `${conceptCount} ${conceptCount === 1 ? "concepto" : "conceptos"} · ${sectionCount} ${sectionCount === 1 ? "sección" : "secciones"}`,
-    notes: resolveQuoteTitle(title, sections),
+    notes: title.trim() || "Internas y para el cliente",
     preview: "Vista previa del documento",
   };
   const stepCompleted: Record<Step, boolean> = {
     client: clientReady,
     items: priceReady,
-    notes: getStepError("notes", clientStateArgs) === null,
+    notes: step === "preview" && getStepError("notes", clientStateArgs) === null,
     preview: false,
   };
   const stepperContent = fullScreen
