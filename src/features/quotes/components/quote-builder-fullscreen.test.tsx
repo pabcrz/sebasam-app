@@ -166,7 +166,7 @@ describe("quote builder full-screen flow", () => {
 
     await fillClientStep(user);
     await user.click(screen.getByRole("button", { name: "Conceptos →" }));
-    expect(within(top).getByText("Paso 2 de 4 · Conceptos")).toBeInTheDocument();
+    expect(within(top).getByText("Paso 2 de 4 · Conceptos · Borrador guardado")).toBeInTheDocument();
   });
 
   it("marks the subtitle as a saved draft once the form has changes", async () => {
