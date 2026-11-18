@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
 const listWorkersMock = vi.hoisted(() => vi.fn());
+const countWorkersByStatusMock = vi.hoisted(() => vi.fn());
 const createWorkerFromFormMock = vi.hoisted(() => vi.fn());
 const updateWorkerFromFormMock = vi.hoisted(() => vi.fn());
 const setWorkerActiveFromFormMock = vi.hoisted(() => vi.fn());
@@ -9,6 +10,7 @@ const deleteWorkerFromFormMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/workers/queries", () => ({
   listWorkers: listWorkersMock,
+  countWorkersByStatus: countWorkersByStatusMock,
 }));
 
 vi.mock("@/features/workers/actions", () => ({
@@ -23,6 +25,7 @@ import WorkersPage from "./page";
 
 describe("WorkersPage", () => {
   it("renders the page header with the single create action and the active/inactive catalog", async () => {
+    countWorkersByStatusMock.mockResolvedValue({ ALL: 2, ACTIVE: 1, INACTIVE: 1 });
     listWorkersMock.mockResolvedValue([
       {
         id: "worker-1",
@@ -53,7 +56,9 @@ describe("WorkersPage", () => {
     expect(screen.getAllByRole("button", { name: "Crear trabajador" })).toHaveLength(1);
     expect(screen.queryByTestId("worker-create-form")).not.toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Filtrar trabajadores" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Activos" })).toHaveAttribute("href", "/admin/workers?status=ACTIVE");
+    expect(within(header).getByText("1 activo")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Buscar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Activos · 1" })).toHaveAttribute("href", "/admin/workers?status=ACTIVE");
     expect(screen.getByText("Ana López")).toBeInTheDocument();
     expect(screen.getByText("Luis Pérez")).toBeInTheDocument();
     expect(screen.getByText("2 trabajos activos")).toBeInTheDocument();
