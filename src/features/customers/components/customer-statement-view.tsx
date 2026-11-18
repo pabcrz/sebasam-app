@@ -205,7 +205,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
             ) : null}
           </div>
 
-          <div className="text-right text-sm print:text-xs">
+          <div className="text-sm sm:text-right print:text-right print:text-xs">
             <p className="font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Fecha de emisión</p>
             <p className="font-medium text-[var(--color-text-main)]">{formatDate(emissionDate)}</p>
             <p className="mt-2 font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Período</p>
@@ -221,7 +221,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
             {customer.email ? <span>{customer.email}</span> : null}
             {customer.address ? <p className="mt-0.5">{customer.address}</p> : null}
           </div>
-          <div className="text-right">
+          <div className="sm:text-right print:text-right">
             <p>{business.fullName}</p>
             <p>{business.address}</p>
           </div>

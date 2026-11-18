@@ -231,7 +231,7 @@ describe("WorkOrderCompletedList", () => {
     fireEvent.click(noteCard);
     expect(noteCard).toHaveAttribute("aria-current", "true");
     expect(noteCard.parentElement).toHaveClass("side-panel-list");
-    expect(screen.getByText(/^COT-001 · /)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^COT-001/ })).toBeInTheDocument();
     expect(screen.getAllByText("Cambio de aceite")).toHaveLength(1);
     expect(screen.queryByTestId("nota-detail-dialog")).not.toBeInTheDocument();
 

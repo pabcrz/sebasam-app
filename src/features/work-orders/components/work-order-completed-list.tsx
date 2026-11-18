@@ -136,7 +136,6 @@ function CompletedNoteCard({
       <QuotePreviewDialog
         quote={quoteDetail as never}
         folio={noteFolio}
-        customerName={identity.displayName}
         statusBadge={paymentBadge}
         open={panel.isOpen("preview")}
         onOpenChange={(open) => (open ? panel.open("preview") : panel.close("preview"))}
