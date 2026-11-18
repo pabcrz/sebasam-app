@@ -15,7 +15,7 @@ import {
   restoreArchivedQuote,
 } from "@/features/quotes/actions";
 import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
-import { listPaginatedQuotes } from "@/features/quotes/queries";
+import { countQuotesByStatus, listPaginatedQuotes } from "@/features/quotes/queries";
 import { listCustomers } from "@/features/customers/queries";
 import { getOrCreatePaymentRequestForQuote } from "@/features/payment-requests/actions";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
@@ -67,9 +67,11 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
     );
   }
   const hasFilters = quotesHref({ ...filters, page: 1 }) !== "/admin/quotes";
-  const [customers, quotePage, paymentSettings, workers] = await Promise.all([
+  const quoteListOptions = { operationalQueue: "quotes", operationalFilters: true } as const;
+  const [customers, quotePage, statusCounts, paymentSettings, workers] = await Promise.all([
     listCustomers(),
-    listPaginatedQuotes(params, { operationalQueue: "quotes", operationalFilters: true }),
+    listPaginatedQuotes(params, quoteListOptions),
+    countQuotesByStatus(params, quoteListOptions),
     getPaymentSettings(),
     listActiveWorkers(),
   ]);
@@ -103,7 +105,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
       <section aria-labelledby="recent-quotes-heading" className="grid min-w-0 gap-4">
         <h2 id="recent-quotes-heading" className="sr-only">Cotizaciones recientes</h2>
-        <QuoteFilters filters={filters} customers={customers} />
+        <QuoteFilters filters={filters} customers={customers} statusCounts={statusCounts} />
 
       <CardPanelProvider>
       <div className="side-panel-list grid auto-rows-fr gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">

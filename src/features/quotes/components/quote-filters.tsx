@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import type { QuoteStatus } from "@/generated/prisma/client";
 import { ActiveFilterChips, Button, Chip, FilterButton, FilterSheet, Input, Label, SearchBar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SegmentedControl } from "@/components/ui";
 import type { QuoteFilterInput } from "@/features/quotes/schemas";
 import {
@@ -26,6 +27,8 @@ type QuoteFiltersProps = {
   filters: QuoteFilterInput & Partial<Pick<ReturnType<typeof parseOperationalQuoteParams>, "concept" | "kind" | "page">>;
   rejectedDateRange?: { from: string; to: string };
   customers: QuoteFiltersCustomer[];
+  /** Quotes per status under the other filters; shown on the status tabs when given. */
+  statusCounts?: Partial<Record<QuoteStatus | "ALL", number>>;
 };
 
 type DateChoice = QuoteDateShortcut | "all" | "custom";
@@ -102,7 +105,7 @@ function QuoteSearchField({ initialValue, onSearch }: { initialValue: string; on
   );
 }
 
-export function QuoteFilters({ filters, customers, rejectedDateRange }: QuoteFiltersProps) {
+export function QuoteFilters({ filters, customers, rejectedDateRange, statusCounts }: QuoteFiltersProps) {
   const router = useRouter();
   const today = todayInOperationalTimeZone();
   const effectiveFilters = parseOperationalQuoteParams(filters);
@@ -155,7 +158,8 @@ export function QuoteFilters({ filters, customers, rejectedDateRange }: QuoteFil
 
   const statusOptions = statusChips.map((chip) => {
     const href = quotesHref({ ...effectiveFilters, status: chip.key === "ALL" ? undefined : chip.key, page: 1 });
-    return { value: href, label: chip.label, href, current: (effectiveFilters.status ?? "ALL") === chip.key };
+    const count = statusCounts?.[chip.key];
+    return { value: href, label: count === undefined ? chip.label : `${chip.label} · ${count}`, href, current: (effectiveFilters.status ?? "ALL") === chip.key };
   });
 
   return (

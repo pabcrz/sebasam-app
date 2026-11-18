@@ -91,6 +91,7 @@ export default async function NotasPage({ searchParams }: { searchParams: Promis
         ) : null}
         <StatTile
           label="Cobrado"
+          className={result.totals.totalOverdueCents > 0 ? "col-span-2 sm:col-span-1" : undefined}
           value={formatCents(result.totals.totalPaidCents)}
           tone="success"
           info="Pagos acumulados de las notas seleccionadas; no son cobros del periodo."

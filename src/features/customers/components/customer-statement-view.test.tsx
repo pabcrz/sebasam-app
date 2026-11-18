@@ -487,14 +487,14 @@ describe("CustomerStatementView", () => {
     expect(row?.querySelectorAll('[role="cell"]')).toHaveLength(5);
   });
 
-  it("switches between Pendientes and Por periodo as underlined tabs", async () => {
+  it("switches between Pendientes and Por periodo with a full-width segmented control", async () => {
     const user = userEvent.setup();
     render(<CustomerStatementView statement={baseStatement} />);
 
-    const tabs = screen.getByRole("tablist", { name: "Vista del estado de cuenta" });
-    expect(within(tabs).getByRole("tab", { name: "Pendientes" })).toHaveAttribute("aria-selected", "true");
+    const views = screen.getByRole("group", { name: "Vista del estado de cuenta" });
+    expect(within(views).getByRole("button", { name: "Pendientes" })).toHaveAttribute("aria-pressed", "true");
 
-    await user.click(within(tabs).getByRole("tab", { name: "Por periodo" }));
+    await user.click(within(views).getByRole("button", { name: "Por periodo" }));
 
     expect(pushMock).toHaveBeenCalledWith(
       "/admin/customers/cust-1/estado-de-cuenta?view=history&anchor=2026-08-01",

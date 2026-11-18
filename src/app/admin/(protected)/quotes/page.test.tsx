@@ -9,7 +9,8 @@ const publishSharedQuote = vi.hoisted(() => vi.fn());
 const getOrCreateSharedQuoteAction = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/customers/queries", () => ({ listCustomers }));
-vi.mock("@/features/quotes/queries", () => ({ listPaginatedQuotes }));
+const countQuotesByStatus = vi.hoisted(() => vi.fn().mockResolvedValue({ ALL: 3, DRAFT: 2, SENT: 1 }));
+vi.mock("@/features/quotes/queries", () => ({ listPaginatedQuotes, countQuotesByStatus }));
 vi.mock("@/features/payment-settings/domain", () => ({ getPaymentSettings }));
 vi.mock("@/features/work-orders/queries", () => ({ listActiveWorkers: vi.fn().mockResolvedValue([]) }));
 vi.mock("@/features/customers/actions", () => ({ createOrReuseCustomerForQuote: vi.fn(), searchCustomersForQuote: vi.fn() }));

@@ -283,6 +283,26 @@ export async function listPaginatedQuotes(input: unknown = {}, options: QuoteLis
   };
 }
 
+/** Quotes per status under the current filters, ignoring the status itself: the counts on the status tabs. */
+export async function countQuotesByStatus(input: unknown = {}, options: QuoteListOptions = {}) {
+  await requireOperationalRole();
+  const base = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
+  const { showCancelled, showArchived } = parseOperationalQuoteParams(base);
+  const groups = await prisma.quote.groupBy({
+    by: ["status"],
+    // Every status is counted so the Canceladas and Archivadas tabs show their number even while hidden from Todas.
+    where: buildQuoteWhere({ ...base, status: undefined, showCancelled: "true", showArchived: "true" }, options),
+    _count: { _all: true },
+  });
+  const counts: Partial<Record<QuoteStatus | "ALL", number>> = {};
+  for (const group of groups) counts[group.status] = group._count._all;
+  const inAll: QuoteStatus[] = [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.APPROVED];
+  if (showCancelled) inAll.push(QuoteStatus.CANCELLED);
+  if (showArchived) inAll.push(QuoteStatus.ARCHIVED);
+  counts.ALL = inAll.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
+  return counts;
+}
+
 export async function listArchivedEligibleQuotes() {
   await requireOperationalRole();
   return serializeQuotes(await findQuotes({

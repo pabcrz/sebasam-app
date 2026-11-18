@@ -196,6 +196,13 @@ describe("QuoteFilters active chips", () => {
     expect(push).toHaveBeenCalledExactlyOnceWith("/admin/quotes?number=C-001&status=APPROVED");
   });
 
+  it("shows the count of each status on its tab when counts are given", () => {
+    render(<QuoteFilters filters={parseOperationalQuoteParams({})} customers={customers} statusCounts={{ ALL: 5, DRAFT: 2, SENT: 3 }} />);
+    expect(screen.getByText("Todas · 5")).toBeInTheDocument();
+    expect(screen.getByText("Borrador · 2")).toBeInTheDocument();
+    expect(screen.getByText("Aceptadas")).toBeInTheDocument();
+  });
+
   it("shows no chip row when nothing is active", () => {
     renderFilters();
     expect(screen.queryByRole("group", { name: "Filtros activos" })).not.toBeInTheDocument();
