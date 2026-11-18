@@ -168,6 +168,9 @@ export function QuoteBuilder({
     operationalDate,
     sections,
   } = builderState;
+  const [unitDetailsOpen, setUnitDetailsOpen] = React.useState(() =>
+    Boolean(vehicle.economicNumber || vehicle.brand || vehicle.model || vehicle.year),
+  );
   const onCustomerSearchResults = React.useCallback((results: CustomerOption[]) => {
     setActiveCustomerIndex(results.length ? 0 : -1);
   }, []);
@@ -1151,7 +1154,7 @@ export function QuoteBuilder({
 
             {!isSaleNote ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
               <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3">
                 <div className="grid gap-2">
                   <Label htmlFor="plate">Placas (opcional)</Label>
                   <Input
@@ -1163,6 +1166,16 @@ export function QuoteBuilder({
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "plate", value: event.target.value })}
                   />
                 </div>
+                <details
+                  open={unitDetailsOpen}
+                  onToggle={(event) => setUnitDetailsOpen(event.currentTarget.open)}
+                  className="group grid gap-3"
+                >
+                  <summary className="flex min-h-[var(--tap-min-height)] cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-[var(--color-primary)] [&::-webkit-details-marker]:hidden">
+                    Más datos de la unidad
+                    <span className="text-xs font-normal text-[var(--color-text-muted)]">ECO, marca, modelo, año</span>
+                  </summary>
+                  <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="economicNumber">ECO (opcional)</Label>
                   <Input
@@ -1207,6 +1220,8 @@ export function QuoteBuilder({
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "year", value: event.target.value })}
                   />
                 </div>
+                  </div>
+                </details>
               </div>
             </div> : null}
           </section>
