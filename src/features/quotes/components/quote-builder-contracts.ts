@@ -69,6 +69,8 @@ export type QuoteBuilderProps = {
   initialData?: QuoteBuilderInitialData;
   onCancel?: () => void;
   onDirtyChange?: (dirty: boolean) => void;
+  /** Full-screen quote flow: localStorage key that keeps unsent captures so closing never loses them. */
+  draftKey?: string;
   onSuccess?: () => void;
   layout?: "page" | "dialog";
   /** Full-screen quote flow: progress bar, ← ✕ top bar and context + next-step bottom bar. Dialog layout only. */

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Icon } from "@/components/ui/icon";
 import {
+  Button,
   ConfirmDialog,
   Dialog,
   DialogContent,
@@ -21,6 +22,8 @@ type QuoteBuilderDialogShellProps = {
   pending?: boolean;
   dirty?: boolean;
   onDiscard?: () => void;
+  /** When set, leaving a dirty flow offers "Guardar y salir" (the capture is already kept) next to discarding. */
+  onSaveDraft?: () => void;
   trigger?: React.ReactNode;
   header?: React.ReactNode;
   stepper?: React.ReactNode;
@@ -52,6 +55,7 @@ export function QuoteBuilderDialogShell({
   pending = false,
   dirty = false,
   onDiscard,
+  onSaveDraft,
   trigger,
   header,
   stepper,
@@ -105,6 +109,11 @@ export function QuoteBuilderDialogShell({
     onOpenChange(false);
   }, [onDiscard, onOpenChange]);
 
+  const handleSaveDraft = React.useCallback(() => {
+    setConfirmDiscardOpen(false);
+    onSaveDraft?.();
+  }, [onSaveDraft]);
+
   const contentClassName = fullScreen
     ? "!inset-0 !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none !gap-0 p-0 lg:!grid lg:!grid-cols-[minmax(0,1fr)_20rem] lg:!grid-rows-[auto_auto_minmax(0,1fr)] sm:!inset-0 sm:!h-dvh sm:!max-h-none sm:!w-screen sm:!max-w-none sm:!translate-x-0 sm:!translate-y-0 sm:!rounded-none sm:!p-0"
     : "!inset-0 !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none !gap-0 p-3 sm:!bottom-auto sm:!left-1/2 sm:!right-auto sm:!top-1/2 sm:!h-dvh sm:!max-h-none sm:!w-[min(92vw,64rem)] sm:!max-w-5xl sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-[var(--radius-lg)] sm:!p-3";
@@ -155,7 +164,21 @@ export function QuoteBuilderDialogShell({
         {fullScreen && summary != null ? <div className="hidden min-h-0 border-l border-[var(--color-border-light)] bg-[var(--color-surface)] px-4 py-4 lg:col-start-2 lg:row-start-3 lg:block" data-testid="multi-step-dialog-summary">{summary}</div> : null}
         {footer != null ? <div className={fullScreen ? "flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] px-4 py-3 lg:hidden" : "flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-2 sm:pt-4"} style={{ flexShrink: 0, minWidth: 0 }} data-testid="multi-step-dialog-footer">{footer}</div> : null}
       </DialogContent>
-      <ConfirmDialog open={confirmDiscardOpen} onOpenChange={handleConfirmDiscardOpenChange} title={discardTitle} description={discardDescription} confirmLabel={discardConfirmLabel} cancelLabel={discardCancelLabel} variant="danger" onConfirm={handleDiscard} />
+      {onSaveDraft ? (
+        <ConfirmDialog
+          open={confirmDiscardOpen}
+          onOpenChange={handleConfirmDiscardOpenChange}
+          title="¿Salir de la cotización?"
+          description="Guarda un borrador en este dispositivo para retomarlo después, o descarta lo capturado."
+          confirmLabel="Guardar y salir"
+          cancelLabel="Seguir editando"
+          onConfirm={handleSaveDraft}
+        >
+          <Button type="button" variant="ghost" className="text-[var(--color-status-danger-fg)]" onClick={handleDiscard}>{discardConfirmLabel}</Button>
+        </ConfirmDialog>
+      ) : (
+        <ConfirmDialog open={confirmDiscardOpen} onOpenChange={handleConfirmDiscardOpenChange} title={discardTitle} description={discardDescription} confirmLabel={discardConfirmLabel} cancelLabel={discardCancelLabel} variant="danger" onConfirm={handleDiscard} />
+      )}
     </Dialog>
     </QuoteFlowCloseContext.Provider>
   );

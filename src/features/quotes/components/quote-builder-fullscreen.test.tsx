@@ -121,18 +121,18 @@ describe("quote builder full-screen flow", () => {
     await openFlow(user);
 
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
-    expect(screen.queryByRole("dialog", { name: "¿Descartar la cotización?" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "¿Salir de la cotización?" })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Nueva cotización" })).not.toBeInTheDocument();
 
     await openFlow(user);
     await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
-    expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Seguir editando" }));
     expect(screen.getByRole("textbox", { name: "Placas (opcional)" })).toHaveValue("A");
 
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
-    expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
   });
 
   it("hides the admin bottom bar and desktop rail while the flow is open and restores them after", async () => {

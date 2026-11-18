@@ -10,6 +10,8 @@ import { QuoteBuilder, QuoteBuilderChromeContext } from "./quote-builder";
 import type { QuoteBuilderChromeHosts, QuoteBuilderDialogProps } from "./quote-builder-contracts";
 import { QuoteBuilderDialogShell } from "./quote-builder-dialog-shell";
 import { mapPersistedQuoteToBuilderInitialData } from "./quote-builder-mapper";
+import { clearQuoteDraft, quoteDraftKey } from "./quote-builder-draft";
+import toast from "react-hot-toast";
 import { useAdminFullScreenFlow } from "@/components/layout/admin-full-screen-flow";
 
 export type { QuoteBuilderDialogProps } from "./quote-builder-contracts";
@@ -82,18 +84,27 @@ export function QuoteBuilderDialog({
     }
   }, [dirty]);
 
+  const draftKey = fullScreen ? quoteDraftKey(quote?.id) : undefined;
+
+  const saveDraftAndExit = React.useCallback(() => {
+    setOpen(false);
+    toast.success("Borrador guardado");
+  }, []);
+
   const discardChanges = React.useCallback(() => {
+    if (draftKey) clearQuoteDraft(draftKey);
     setOpen(false);
     setDirty(false);
     setBuilderKey((current) => current + 1);
-  }, []);
+  }, [draftKey]);
 
   const handleSuccess = React.useCallback(() => {
+    if (draftKey) clearQuoteDraft(draftKey);
     setDirty(false);
     setOpen(false);
     setBuilderKey((current) => current + 1);
     router.refresh();
-  }, [router]);
+  }, [draftKey, router]);
 
   const defaultButtonLabel = isEdit
     ? "Editar"
@@ -126,6 +137,7 @@ export function QuoteBuilderDialog({
         title={dialogTitle}
         dirty={dirty}
         onDiscard={discardChanges}
+        onSaveDraft={draftKey ? saveDraftAndExit : undefined}
         discardTitle={discardTitle}
         discardDescription={isEdit ? "Si sales sin guardar, perderás las modificaciones hechas a esta cotización." : "Se perderá todo el progreso que no hayas guardado."}
         discardCancelLabel="Seguir editando"
@@ -163,6 +175,7 @@ export function QuoteBuilderDialog({
             layout="dialog"
             fullScreen={fullScreen}
             onDirtyChange={setDirty}
+            draftKey={draftKey}
             onSuccess={handleSuccess}
             mode={mode}
             masters={masters}

@@ -237,8 +237,8 @@ describe("QuoteBuilderDialog", () => {
 
     await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
-    expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
-    expect(screen.getByText("Se perderá todo el progreso que no hayas guardado.")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar y salir" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Seguir editando" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Descartar cambios" })).toBeInTheDocument();
   });
@@ -252,7 +252,7 @@ describe("QuoteBuilderDialog", () => {
     await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
     await user.click(closeButton);
 
-    const confirmation = screen.getByRole("dialog", { name: "¿Descartar la cotización?" });
+    const confirmation = screen.getByRole("dialog", { name: "¿Salir de la cotización?" });
     const hiddenBuilder = screen.getByRole("dialog", { name: /Nueva cotización/i, hidden: true });
     expect(hiddenBuilder).toHaveAttribute("data-state", "open");
     expect(confirmation).toContainElement(document.activeElement as HTMLElement);
@@ -295,7 +295,7 @@ describe("QuoteBuilderDialog", () => {
       await user.click(overlay);
     }
 
-    expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Nueva cotización", hidden: true })).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -307,7 +307,7 @@ describe("QuoteBuilderDialog", () => {
     await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
     await user.keyboard("{Escape}");
 
-    expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Nueva cotización", hidden: true })).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -321,7 +321,23 @@ describe("QuoteBuilderDialog", () => {
     await user.click(screen.getByRole("button", { name: "Seguir editando" }));
 
     expectRepresentativeQuoteState();
-    expect(screen.queryByRole("dialog", { name: "¿Descartar la cotización?" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "¿Salir de la cotización?" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the capture on Guardar y salir and restores it when reopened", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
+    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "ABC123");
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+    await user.click(screen.getByRole("button", { name: "Guardar y salir" }));
+
+    const trigger = screen.getByRole("button", { name: "Nueva cotización" });
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
+    await user.click(trigger);
+    await screen.findByRole("dialog", { name: "Nueva cotización" });
+    expect(screen.getByLabelText("Placas (opcional)")).toHaveValue("ABC123");
   });
 
   it("discards state and starts fresh when reopened", async () => {
@@ -388,7 +404,7 @@ describe("QuoteBuilderDialog", () => {
     expect(screen.getByRole("dialog", { name: "Nueva cotización" })).toHaveAttribute("data-state", "open");
     expect(itemTypeSelect).toHaveTextContent("Material");
     expect(screen.queryByRole("option", { name: "Material" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("dialog", { name: "¿Descartar la cotización?" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "¿Salir de la cotización?" })).not.toBeInTheDocument();
   });
 
   it("opens edit with the existing state", async () => {
