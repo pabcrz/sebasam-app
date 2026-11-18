@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 function assertIncludes(source: string, substring: string, message: string) {
   assert(source.includes(substring), message);
@@ -7,9 +7,29 @@ function assertIncludes(source: string, substring: string, message: string) {
 
 function assertNoRadix(source: string, context: string) {
   assert(
-    !source.includes("@radix-ui"),
+    !/from\s+["'](?:@radix-ui\/[^"']+|radix-ui)["']/.test(source),
     `${context} must import controlled wrappers from @/components/ui, not Radix directly`,
   );
+}
+
+const iconLibraryReference = /["'](?:lucide-react|@tabler\/icons-react)(?:\/[^"']*)?["']/;
+
+function assertNoIconLibrary(source: string, context: string) {
+  assert(
+    !iconLibraryReference.test(source),
+    `${context} must render icons through <Icon name="..."> from @/components/ui, not an icon library directly`,
+  );
+}
+
+function checkIconWrapperBoundary() {
+  const wrapperPath = "src/components/ui/icon.tsx";
+  const sourceFiles = readdirSync("src", { recursive: true })
+    .map((entry) => `src/${entry}`)
+    .filter((path) => /\.(?:ts|tsx)$/.test(path) && path !== wrapperPath);
+
+  for (const path of sourceFiles) {
+    assertNoIconLibrary(readFileSync(path, "utf8"), `Source file ${path}`);
+  }
 }
 
 function checkQuotesPage() {
@@ -20,7 +40,9 @@ function checkQuotesPage() {
     builderPath,
     "src/features/quotes/components/quote-builder-stepper.tsx",
     "src/features/quotes/components/quote-builder-items-step.tsx",
-    "src/features/quotes/components/quote-summary-card.tsx",
+    "src/features/quotes/components/quote-builder-concept-table.tsx",
+    "src/features/quotes/components/quote-builder-concept-mobile.tsx",
+    "src/features/quotes/components/quote-builder-concept-fields.tsx",
     "src/features/quotes/components/quote-preview-card.tsx",
     "src/features/quotes/components/quote-totals-card.tsx",
   ];
@@ -29,12 +51,8 @@ function checkQuotesPage() {
     .join("\n");
   const builderDialogPath = "src/features/quotes/components/quote-builder-dialog.tsx";
   const builderDialogSource = readFileSync(builderDialogPath, "utf8");
-  const approvalFormPath = "src/features/quotes/components/quote-approval-form.tsx";
-  const approvalFormSource = readFileSync(approvalFormPath, "utf8");
   const cancelFormPath = "src/features/quotes/components/quote-cancel-form.tsx";
   const cancelFormSource = readFileSync(cancelFormPath, "utf8");
-  const listRowPath = "src/features/quotes/components/quote-list-row.tsx";
-  const listRowSource = readFileSync(listRowPath, "utf8");
   const mobileCardPath = "src/features/quotes/components/quote-mobile-card.tsx";
   const mobileCardSource = readFileSync(mobileCardPath, "utf8");
   const tableSource = readFileSync("src/components/ui/table.tsx", "utf8");
@@ -46,7 +64,6 @@ function checkQuotesPage() {
     assertNoRadix(readFileSync(path, "utf8"), `Quote builder component ${path}`);
   }
   assertNoRadix(builderDialogSource, "Quote builder dialog");
-  assertNoRadix(approvalFormSource, "Quote approval form");
 
   // Server-action wiring must remain intact.
   assertIncludes(
@@ -68,11 +85,6 @@ function checkQuotesPage() {
     pageSource,
     "getOrCreatePaymentRequestForQuote",
     "Quotes page must wire payment-link server action",
-  );
-  assertIncludes(
-    listRowSource,
-    "PaymentRequestLinkDialog",
-    "Desktop quote list row must render PaymentRequestLinkDialog",
   );
   assertIncludes(
     mobileCardSource,
@@ -104,44 +116,22 @@ function checkQuotesPage() {
     "setOpen(true);",
     "Quote builder dialog must ignore outside/Escape-driven close requests",
   );
-  const recentQuotesStart = pageSource.indexOf('<CardTitle as="h2">Cotizaciones recientes</CardTitle>');
+  const recentQuotesStart = pageSource.indexOf('<h2 id="recent-quotes-heading"');
   assert(recentQuotesStart >= 0, "Quotes page must render the recent quotes section");
-  const recentQuotesEnd = pageSource.indexOf("{/* Mobile cards */}", recentQuotesStart);
+  const recentQuotesEnd = pageSource.indexOf("</section>", recentQuotesStart);
   const recentQuotesSource = pageSource.slice(Math.max(0, recentQuotesStart - 200), recentQuotesEnd);
   assertIncludes(
     recentQuotesSource,
     "min-w-0",
-    "Recent quotes desktop table container must be allowed to shrink inside the page container",
+    "Recent quotes list container must be allowed to shrink inside the page container",
   );
   assertIncludes(
     tableSource,
     "overflow-x-auto",
     "Desktop table overflow must stay inside the table scroll wrapper",
   );
-  // Approval no longer uses a hidden form/requestSubmit; it calls the server
-  // action directly with a FormData containing the quoteId.
-  assertIncludes(
-    approvalFormSource,
-    "new FormData()",
-    "Approval form must build a FormData for the server action",
-  );
-  assertIncludes(
-    approvalFormSource,
-    'formData.set("quoteId"',
-    "Approval form must set quoteId in the FormData",
-  );
-  assertIncludes(
-    approvalFormSource,
-    "useTransition",
-    "Approval form must use a transition for the async server action",
-  );
 
   // Draft quotes must expose a visible cancel action.
-  assertIncludes(
-    listRowSource,
-    "QuoteCancelForm",
-    "Desktop quote list row must render QuoteCancelForm for draft quotes",
-  );
   assertIncludes(
     mobileCardSource,
     "QuoteCancelForm",
@@ -170,36 +160,15 @@ function checkQuotesPage() {
     "Quotes page must render QuoteListCard for recent quotes",
   );
   assertIncludes(
-    listRowSource,
-    "setPreviewOpen(true)",
-    "Desktop quote row click must open the preview dialog",
-  );
-  assertIncludes(
-    listRowSource,
-    "event.stopPropagation()",
-    "Desktop quote action cells must stop propagation to avoid triggering preview",
+    mobileCardSource,
+    'preview.open("preview")',
+    "Mobile quote card click must open the preview dialog",
   );
   assertIncludes(
     mobileCardSource,
-    "setPreviewOpen(true)",
-    "Mobile quote card click must open the preview dialog",
+    "stateAction=",
+    "Mobile quote primary action must be passed to the stateAction prop of EntityCard",
   );
-  if (mobileCardSource.includes("<OperationalCard")) {
-    assertIncludes(
-      mobileCardSource,
-      "actions=",
-      "Mobile quote action row must be passed to actions prop of OperationalCard",
-    );
-  } else {
-    const mobilePreviewButtonEnd = mobileCardSource.indexOf("</button>");
-    const mobileActionRowStart = mobileCardSource.includes('data-testid="quote-secondary-actions"')
-      ? mobileCardSource.indexOf('data-testid="quote-secondary-actions"')
-      : mobileCardSource.indexOf("<OperationalActionRow>");
-    assert(
-      mobilePreviewButtonEnd >= 0 && mobileActionRowStart > mobilePreviewButtonEnd,
-      "Mobile quote action row must remain outside the preview button",
-    );
-  }
 
   // Required form field names must survive wrapper refactors.
   // Vehicle fields are optional; only customer is required to create a quote.
@@ -211,7 +180,6 @@ function checkQuotesPage() {
     'name="brand"',
     'name="model"',
     'name="year"',
-    'name="administrative"',
     "sections.${sectionIndex}.items.${itemIndex}.type",
     "sections.${sectionIndex}.items.${itemIndex}.description",
     "sections.${sectionIndex}.items.${itemIndex}.quantity",
@@ -334,7 +302,7 @@ function checkQuotesPage() {
 
   assertIncludes(
     confirmDialogSource,
-    "max-w-2xl",
+    "max-w-[440px]",
     "Confirm dialog must have a reasonable desktop width",
   );
 
@@ -375,11 +343,6 @@ function checkQuotesPage() {
     "Desktop quotes table must not include a concepts column",
   );
   assertIncludes(
-    listRowSource,
-    "QuotePreviewDialog",
-    "Desktop quote list row must render a preview dialog",
-  );
-  assertIncludes(
     mobileCardSource,
     "QuotePreviewDialog",
     "Mobile quote card must render a preview dialog",
@@ -395,12 +358,12 @@ function checkQuotesPage() {
   );
   assertIncludes(
     previewDialogSource,
-    "<QuotePreviewCard {...preview} />",
-    "Quote preview dialog must delegate quote rendering to QuotePreviewCard",
+    "<DocumentPreview",
+    "Quote preview dialog must delegate quote rendering to the shared DocumentPreview",
   );
   assertIncludes(
     previewDialogSource,
-    'aria-label="Cerrar"',
+    'aria-label="Cerrar vista previa"',
     "Quote preview dialog must expose an explicit close button",
   );
 
@@ -433,14 +396,13 @@ function checkQuotesPage() {
   );
 
   // Heading hierarchy: section headings must be h2.
-  assertIncludes(pageSource, 'as="h2"', "Section headings must be h2");
+  assertIncludes(pageSource, "<h2", "Section headings must be h2");
 
   // Quote filters must be wired to URL params and render the filter controls.
   assertIncludes(pageSource, "QuoteFilters", "Quotes page must render QuoteFilters");
-  assertIncludes(pageSource, "quoteFilterSchema", "Quotes page must parse filters via quoteFilterSchema");
   assertIncludes(
     pageSource,
-    'listPaginatedQuotes(params, { operationalQueue: "quotes" })',
+    "listPaginatedQuotes(params, quoteListOptions)",
     "Quotes page must pass search params to the paginated quotes query",
   );
 
@@ -448,7 +410,7 @@ function checkQuotesPage() {
     "src/features/quotes/components/quote-filters.tsx",
     "utf8",
   );
-  for (const field of ["status", "customerId", "number", "plate", "dateFrom", "dateTo"]) {
+  for (const field of ["dateFrom", "dateTo", "concept", "plate", "economicNumber"]) {
     assertIncludes(
       quoteFiltersSource,
       `name="${field}"`,
@@ -457,13 +419,8 @@ function checkQuotesPage() {
   }
   assertIncludes(
     quoteFiltersSource,
-    'router.push(`/admin/quotes?${params.toString()}`)',
+    "router.push(quotesHref(next)",
     "Quote filters must push filter params to the URL",
-  );
-  assertIncludes(
-    quoteFiltersSource,
-    'router.push("/admin/quotes")',
-    "Quote filters must offer a clear action",
   );
   assertIncludes(
     quoteFiltersSource,
@@ -482,9 +439,8 @@ function checkQuotesPage() {
     { label: "Crear cotización", source: combinedBuilderSource },
     { label: "Conceptos", source: combinedBuilderSource },
     { label: "Cliente", source: combinedBuilderSource },
-    { label: "Título", source: combinedBuilderSource },
+    { label: "Descripción breve", source: combinedBuilderSource },
     { label: "Descripción", source: combinedBuilderSource },
-    { label: "Aprobar y crear orden de trabajo", source: approvalFormSource },
     { label: "Link de pago", source: paymentLinkDialogSource },
     { label: "Genera o recupera el enlace de pago", source: paymentLinkDialogSource },
     { label: "URL para el cliente", source: paymentLinkDialogSource },
@@ -505,7 +461,7 @@ function checkAdminPageHeaders() {
   );
 
   const adminPageHeaderSource = readFileSync("src/components/admin-page-header.tsx", "utf8");
-  assertIncludes(adminPageHeaderSource, "icon: LucideIcon", "Shared header must accept an icon");
+  assertIncludes(adminPageHeaderSource, "icon: IconName", "Shared header must accept an icon");
   assertIncludes(adminPageHeaderSource, "title: string", "Shared header must accept a title");
   assert(!adminPageHeaderSource.includes("eyebrow"), "Shared header must not accept or render an eyebrow");
   assertIncludes(adminPageHeaderSource, "description?: ReactNode", "Shared header must accept a truthful description");
@@ -531,10 +487,6 @@ function checkCustomerPages() {
     "src/features/customers/components/customer-create-form.tsx",
     "utf8",
   );
-  const editFormSource = readFileSync(
-    "src/features/customers/components/customer-edit-form.tsx",
-    "utf8",
-  );
   const editDialogSource = readFileSync(
     "src/features/customers/components/customer-edit-dialog.tsx",
     "utf8",
@@ -542,7 +494,6 @@ function checkCustomerPages() {
 
   assertNoRadix(createPageSource, "Customer create page");
   assertNoRadix(detailPageSource, "Customer detail page");
-  assertNoRadix(editFormSource, "Customer edit form");
   assertNoRadix(editDialogSource, "Customer edit dialog");
 
   // Server-action wiring must remain intact.
@@ -585,8 +536,8 @@ function checkCustomerPages() {
     "Customer search placeholder must mention vehicle plates",
   );
   assertIncludes(
-    createPageSource,
-    "Limpiar búsqueda",
+    customerSearchSource,
+    "clearSearch",
     "Customer empty state must offer to clear the search",
   );
   assertIncludes(
@@ -604,26 +555,7 @@ function checkCustomerPages() {
     );
   }
 
-  // Required edit form field names must survive wrapper refactors.
-  assertIncludes(
-    editFormSource,
-    'name="customerId"',
-    "Customer edit form must carry hidden customerId field",
-  );
-  for (const field of ["name", "email", "phone", "address", "notes"]) {
-    assertIncludes(
-      editFormSource,
-      `name="${field}"`,
-      `Customer edit form must expose field: ${field}`,
-    );
-  }
 
-  // Status must be a Radix Select wrapper that still serializes name="status".
-  assertIncludes(
-    editFormSource,
-    '<Select name="status"',
-    "Customer edit form must use a Select wrapper named status",
-  );
 }
 
 function checkLoginPage() {
@@ -732,6 +664,7 @@ checkCustomerPages();
 checkLoginPage();
 checkRootPage();
 checkPublicPaymentPage();
+checkIconWrapperBoundary();
 
 console.log(
   "UI contract verified for /, /admin/login, /admin/quotes, /admin/customers, /datos-de-pago/[token] and payment-request link generation.",

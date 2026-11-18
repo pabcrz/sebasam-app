@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { QuoteStatus } from "@prisma/client";
+import { QuoteStatus } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { processQuoteRetention } from "./retention";
 

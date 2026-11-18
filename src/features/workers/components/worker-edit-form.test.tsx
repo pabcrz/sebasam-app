@@ -22,4 +22,18 @@ describe("WorkerEditForm", () => {
     expect(screen.getByLabelText("Correo interno")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Tipo de trabajador" })).toBeInTheDocument();
   });
+
+  it("can leave submission to a footer outside the form, linked by its id", () => {
+    render(
+      <WorkerEditForm
+        action={vi.fn()}
+        formId="worker-edit-form-1"
+        showSubmit={false}
+        worker={{ displayName: "Ana", username: "ana", email: "ana@sebasam.local", workerKind: "MASTER" }}
+      />,
+    );
+
+    expect(screen.getByTestId("worker-edit-form")).toHaveAttribute("id", "worker-edit-form-1");
+    expect(screen.queryByRole("button", { name: "Guardar trabajador" })).not.toBeInTheDocument();
+  });
 });

@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { Prisma, QuoteDecisionOrigin, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { Prisma, QuoteDecisionOrigin, QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   DOCUMENT_SLUG_SUFFIX_LENGTH,
@@ -114,7 +114,8 @@ const sharedQuoteInclude = {
         include: { items: { orderBy: { sortOrder: "asc" } } },
         orderBy: { sortOrder: "asc" } 
       },
-      workOrder: { select: { id: true, status: true, folio: true } },
+      workOrder: { select: { id: true, status: true, folio: true, paymentDueDate: true } },
+      payableNote: { select: { kind: true, status: true, paymentDueDate: true } },
     },
   },
 } as const;

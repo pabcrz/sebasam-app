@@ -1,15 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { UserPlus } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
-  Dialog,
-  DialogContent,
+  DialogClose,
   DialogDescription,
-  DialogHeader,
+  DialogMobileBody,
+  DialogMobileContent,
+  DialogMobileFooter,
+  DialogMobileHeader,
   DialogTitle,
   DialogTrigger,
+  Sheet,
 } from "@/components/ui";
 import type { ButtonVariant } from "@/components/ui";
 import { UserCreateForm } from "./user-create-form";
@@ -31,11 +34,12 @@ export function UserCreateDialog({
   triggerIconOnly = false,
   triggerAriaLabel,
 }: UserCreateDialogProps) {
+  const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [isPending, setIsPending] = React.useState(false);
 
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(nextOpen) => {
         if (!isPending) setOpen(nextOpen);
@@ -51,12 +55,12 @@ export function UserCreateDialog({
           title={triggerAriaLabel ?? (triggerIconOnly ? "Crear usuario" : undefined)}
           aria-label={triggerAriaLabel ?? (triggerIconOnly ? "Crear usuario" : undefined)}
         >
-          <UserPlus className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />
+          <Icon name="user-plus" className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />
           <span className={triggerIconOnly ? "sr-only" : undefined}>Crear usuario</span>
         </Button>
       </DialogTrigger>
-      <DialogContent
-        className="max-w-lg"
+      <DialogMobileContent
+        variant="sheet"
         onEscapeKeyDown={(event) => {
           if (isPending) event.preventDefault();
         }}
@@ -64,26 +68,38 @@ export function UserCreateDialog({
           if (isPending) event.preventDefault();
         }}
       >
-        <DialogHeader>
+        <DialogMobileHeader>
           <DialogTitle>Crear usuario</DialogTitle>
           <DialogDescription>
             Registra un nuevo usuario con credenciales de acceso y asignación de rol.
           </DialogDescription>
-        </DialogHeader>
-        <UserCreateForm
-          action={async (formData) => {
-            setIsPending(true);
-            try {
-              const res = await action(formData);
-              return res;
-            } finally {
-              setIsPending(false);
-            }
-          }}
-          onSuccess={() => setOpen(false)}
-          onCancel={() => setOpen(false)}
-        />
-      </DialogContent>
-    </Dialog>
+        </DialogMobileHeader>
+        <DialogMobileBody>
+          <UserCreateForm
+            formId={formId}
+            action={async (formData) => {
+              setIsPending(true);
+              try {
+                const res = await action(formData);
+                return res;
+              } finally {
+                setIsPending(false);
+              }
+            }}
+            onSuccess={() => setOpen(false)}
+          />
+        </DialogMobileBody>
+        <DialogMobileFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline" disabled={isPending}>
+              Cancelar
+            </Button>
+          </DialogClose>
+          <Button type="submit" form={formId} variant="primary" size="lg" loading={isPending} disabled={isPending}>
+            {isPending ? "Creando..." : "Crear usuario"}
+          </Button>
+        </DialogMobileFooter>
+      </DialogMobileContent>
+    </Sheet>
   );
 }

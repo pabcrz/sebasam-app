@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Dialog,
@@ -40,7 +40,7 @@ export function QuoteActionsMenu({
           aria-label={`Más acciones de cotización ${quoteNumber}`}
           title={`Más acciones de cotización ${quoteNumber}`}
         >
-          <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+          <Icon name="more" className="h-5 w-5" aria-hidden="true" />
           <span className={triggerIconOnly ? "sr-only" : undefined}>Más acciones</span>
         </Button>
       </DialogTrigger>

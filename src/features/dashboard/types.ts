@@ -37,6 +37,24 @@ export interface ReceivableCustomer {
   isOverdue: boolean;
 }
 
+export interface NextWorkVehicle {
+  economicNumber: string | null;
+  plate: string | null;
+  brand: string | null;
+  model: string | null;
+}
+
+/** Oldest approved quote without a work order: the featured "Siguiente trabajo". */
+export interface NextWorkQuote {
+  quoteId: string;
+  number: string;
+  title: string;
+  customerName: string | null;
+  totalCents: number | null;
+  approvedAt: Date | null;
+  vehicle: NextWorkVehicle | null;
+}
+
 export interface OperationalDashboardSnapshot {
   generatedAt: Date;
   queues: QueueMetrics;
@@ -47,4 +65,5 @@ export interface OperationalDashboardSnapshot {
     year: PeriodMetrics;
   };
   weeklyPayroll: WeeklyPayrollEstimate;
+  nextWork: NextWorkQuote | null;
 }

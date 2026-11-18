@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SettlementAgreementStatus } from "@prisma/client";
+import { SettlementAgreementStatus } from "@/generated/prisma/client";
 import { calculateSettlementTotals, getEffectiveSettlementTotals, SettlementAgreementError } from "./domain";
 
 const nominalWithoutTax = { subtotalCents: 50_000, taxCents: 0, totalCents: 50_000, taxEnabled: false };

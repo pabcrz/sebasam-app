@@ -1,12 +1,12 @@
 generator client {
-  provider        = "prisma-client-js"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
   previewFeatures = ["relationJoins"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 enum UserRole {
@@ -39,6 +39,11 @@ enum QuoteStatus {
   REJECTED
   CANCELLED
   ARCHIVED
+}
+
+enum QuoteOperationKind {
+  WORK
+  SALE
 }
 
 enum QuoteItemType {
@@ -278,6 +283,7 @@ model Quote {
   folio                   String?     @unique
   issuedAt                DateTime?
   status                  QuoteStatus @default(DRAFT)
+  operation               QuoteOperationKind @default(WORK)
   title                   String
   description             String?
   vehicleSnapshot         Json?

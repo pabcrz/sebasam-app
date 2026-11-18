@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { useRouter } from "next/navigation";
 import {
   Button,
@@ -10,6 +10,9 @@ import { QuoteBuilder, QuoteBuilderChromeContext } from "./quote-builder";
 import type { QuoteBuilderChromeHosts, QuoteBuilderDialogProps } from "./quote-builder-contracts";
 import { QuoteBuilderDialogShell } from "./quote-builder-dialog-shell";
 import { mapPersistedQuoteToBuilderInitialData } from "./quote-builder-mapper";
+import { clearQuoteDraft, quoteDraftKey } from "./quote-builder-draft";
+import toast from "react-hot-toast";
+import { useAdminFullScreenFlow } from "@/components/layout/admin-full-screen-flow";
 
 export type { QuoteBuilderDialogProps } from "./quote-builder-contracts";
 
@@ -26,6 +29,7 @@ export function QuoteBuilderDialog({
   triggerVariant,
   triggerIconOnlyMobile = false,
   triggerIconOnly = false,
+  triggerDisabled = false,
   triggerLabel,
   createCustomerAction,
   searchCustomersAction,
@@ -42,16 +46,31 @@ export function QuoteBuilderDialog({
   // context reactive: the builder portals its chrome once both hosts exist,
   // regardless of sibling commit ordering.
   const [chromeHosts, setChromeHosts] = React.useState<QuoteBuilderChromeHosts>({
+    leadingHost: null,
+    subtitleHost: null,
     stepperHost: null,
     footerHost: null,
+    summaryHost: null,
   });
+  const attachLeadingHost = React.useCallback((el: HTMLDivElement | null) => {
+    setChromeHosts((current) => (current.leadingHost === el ? current : { ...current, leadingHost: el }));
+  }, []);
+  const attachSubtitleHost = React.useCallback((el: HTMLDivElement | null) => {
+    setChromeHosts((current) => (current.subtitleHost === el ? current : { ...current, subtitleHost: el }));
+  }, []);
   const attachStepperHost = React.useCallback((el: HTMLDivElement | null) => {
     setChromeHosts((current) => (current.stepperHost === el ? current : { ...current, stepperHost: el }));
   }, []);
   const attachFooterHost = React.useCallback((el: HTMLDivElement | null) => {
     setChromeHosts((current) => (current.footerHost === el ? current : { ...current, footerHost: el }));
   }, []);
+  const attachSummaryHost = React.useCallback((el: HTMLDivElement | null) => {
+    setChromeHosts((current) => (current.summaryHost === el ? current : { ...current, summaryHost: el }));
+  }, []);
   const isEdit = saveAction != null;
+  // Quote create/edit is the full-screen flow; direct work order and note creation keep the modal.
+  const fullScreen = mode === "quote";
+  useAdminFullScreenFlow(open && fullScreen);
   const isDirectWorkOrder = mode === "direct-work-order" || mode === "direct";
   const initialData = initialDataProp ?? (quote ? mapPersistedQuoteToBuilderInitialData(quote) : undefined);
 
@@ -65,18 +84,27 @@ export function QuoteBuilderDialog({
     }
   }, [dirty]);
 
+  const draftKey = fullScreen ? quoteDraftKey(quote?.id) : undefined;
+
+  const saveDraftAndExit = React.useCallback(() => {
+    setOpen(false);
+    toast.success("Borrador guardado");
+  }, []);
+
   const discardChanges = React.useCallback(() => {
+    if (draftKey) clearQuoteDraft(draftKey);
     setOpen(false);
     setDirty(false);
     setBuilderKey((current) => current + 1);
-  }, []);
+  }, [draftKey]);
 
   const handleSuccess = React.useCallback(() => {
+    if (draftKey) clearQuoteDraft(draftKey);
     setDirty(false);
     setOpen(false);
     setBuilderKey((current) => current + 1);
     router.refresh();
-  }, [router]);
+  }, [draftKey, router]);
 
   const defaultButtonLabel = isEdit
     ? "Editar"
@@ -92,7 +120,7 @@ export function QuoteBuilderDialog({
       ? "Nueva nota"
       : isDirectWorkOrder
         ? "Agregar trabajo"
-        : "Crear cotización";
+        : "Nueva cotización";
   const discardTitle = isEdit
     ? "¿Descartar los cambios?"
     : mode === "direct-note" || mode === "direct-sale"
@@ -109,6 +137,7 @@ export function QuoteBuilderDialog({
         title={dialogTitle}
         dirty={dirty}
         onDiscard={discardChanges}
+        onSaveDraft={draftKey ? saveDraftAndExit : undefined}
         discardTitle={discardTitle}
         discardDescription={isEdit ? "Si sales sin guardar, perderás las modificaciones hechas a esta cotización." : "Se perderá todo el progreso que no hayas guardado."}
         discardCancelLabel="Seguir editando"
@@ -121,11 +150,17 @@ export function QuoteBuilderDialog({
             className={triggerIconOnlyMobile ? `h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3 ${triggerClassName ?? ""}` : (triggerClassName ?? "w-full sm:w-fit")}
             title={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : effectiveButtonLabel) : undefined)}
             aria-label={triggerAriaLabel ?? ((triggerIconOnly || triggerIconOnlyMobile) ? (isEdit ? `Editar cotización ${quoteNumber}` : effectiveButtonLabel) : undefined)}
+            disabled={triggerDisabled}
           >
-            {isEdit ? <Pencil className={triggerIconOnly ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" /> : <Plus className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />}
+            {isEdit ? <Icon name="edit" className={triggerIconOnly ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" /> : <Icon name="plus" className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />}
             <span className={triggerIconOnly ? "sr-only" : triggerIconOnlyMobile ? "sr-only sm:not-sr-only" : undefined}>{effectiveButtonLabel}</span>
           </Button>
         }
+        fullScreen={fullScreen}
+        exitLabel={fullScreen ? "← Cotizaciones" : undefined}
+        leading={<div ref={attachLeadingHost} className="shrink-0" />}
+        subtitle={<div ref={attachSubtitleHost} className="lg:hidden" />}
+        summary={fullScreen ? <div ref={attachSummaryHost} className="grid gap-5" /> : undefined}
         stepper={<div ref={attachStepperHost} />}
         footer={<div ref={attachFooterHost} className="contents" data-testid="quote-builder-footer-host" />}
         body={
@@ -138,7 +173,9 @@ export function QuoteBuilderDialog({
             createCustomerAction={createCustomerAction}
             searchCustomersAction={searchCustomersAction}
             layout="dialog"
+            fullScreen={fullScreen}
             onDirtyChange={setDirty}
+            draftKey={draftKey}
             onSuccess={handleSuccess}
             mode={mode}
             masters={masters}

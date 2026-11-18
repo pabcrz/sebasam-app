@@ -1,5 +1,4 @@
-import { createHash } from "node:crypto";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/enums";
 import {
   computeCommissionCents,
   detectLaborCategory,
@@ -85,40 +84,6 @@ export function computeHistoricalCommissionCents(
   return computeCommissionCents(payrollBaseCents, ratePercent);
 }
 
-/**
- * Stable content hash for idempotency. It includes the batch and work ref so
- * identical concepts in different works never collide on the global unique
- * constraint, while an accidentally repeated line inside one work is detected.
- */
-export function computeItemContentHash(
-  batchId: string,
-  workRef: string,
-  item: {
-    type: QuoteItemType;
-    description: string;
-    quantity: number | null;
-    customerPriceCents: number | null;
-    payrollBaseCents: number | null;
-    ratePercent: number | null;
-    includeInPayroll: boolean;
-    isKit: boolean;
-  },
-): string {
-  const canonical = JSON.stringify({
-    batchId,
-    workRef,
-    type: item.type,
-    description: item.description.trim().toLowerCase(),
-    quantity: item.quantity ?? null,
-    customerPriceCents: item.customerPriceCents ?? null,
-    payrollBaseCents: item.payrollBaseCents ?? null,
-    ratePercent: item.ratePercent ?? null,
-    includeInPayroll: item.includeInPayroll,
-    isKit: item.isKit,
-  });
-  return createHash("sha256").update(canonical).digest("hex");
-}
-
 export interface EmbeddingTextContext {
   workRef: string;
   customerName: string | null;
@@ -190,22 +155,5 @@ export function normalizeHistoricalItem(
     embeddingText: "",
     embedding: [],
     metadata: {},
-  };
-}
-
-/**
- * Applies the batch/work identity to a normalized item: computes the final
- * content hash (batch + work ref) and the embedding text.
- */
-export function finalizeHistoricalItem(
-  item: NormalizedHistoricalItem,
-  batchId: string,
-  workRef: string,
-  workContext: EmbeddingTextContext,
-): NormalizedHistoricalItem {
-  return {
-    ...item,
-    contentHash: computeItemContentHash(batchId, workRef, item),
-    embeddingText: buildItemEmbeddingText(workContext, item),
   };
 }

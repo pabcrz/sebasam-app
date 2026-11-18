@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { UserRole, WorkerKind } from "@prisma/client";
+import { UserRole, WorkerKind } from "@/generated/prisma/client";
 
 export const createUserSchema = z.object({
   username: z.string().min(3).max(50),

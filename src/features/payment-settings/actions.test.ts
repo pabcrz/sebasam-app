@@ -113,6 +113,18 @@ it("maps the invoicing checkbox when adding a bank account", async () => {
   expect(addBankAccount).toHaveBeenCalledWith(expect.objectContaining({ isForInvoicing: true }));
 });
 
+it("rejects a bank account without account number or CLABE and writes nothing", async () => {
+  addBankAccount.mockClear();
+  const formData = new FormData();
+  formData.set("accountHolder", "Juan Pérez");
+  formData.set("bankName", "BBVA");
+
+  const result = await addBankAccountAction(formData);
+
+  expect(result).toEqual({ success: false, error: "Ingresa No. de cuenta o CLABE." });
+  expect(addBankAccount).not.toHaveBeenCalled();
+});
+
 it("maps an unchecked invoicing checkbox to false", async () => {
   const formData = new FormData();
   formData.set("accountHolder", "Juan Pérez");

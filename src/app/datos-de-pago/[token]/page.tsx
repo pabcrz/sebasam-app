@@ -7,7 +7,7 @@ import {
 import { PublicPaymentPage } from "@/features/public-payment/components/public-payment-page";
 import { PaymentRequestErrorState } from "@/features/public-payment/components/payment-request-error-state";
 import { getPaymentSettings } from "@/features/payment-settings/domain";
-import { type PaymentRequest } from "@prisma/client";
+import { type PaymentRequest } from "@/generated/prisma/client";
 import { toPublicBusinessIdentity } from "@/features/public-branding/domain";
 
 export const metadata: Metadata = {

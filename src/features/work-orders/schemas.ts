@@ -26,6 +26,11 @@ export const assignWorkOrderInputSchema = z
     }),
   ]);
 
+export const workOrderAcceptanceInputSchema = z.object({
+  customerAccepted: z.boolean().optional(),
+  acceptanceReason: z.string().trim().min(3, "El motivo debe incluir al menos 3 caracteres.").max(500).optional(),
+});
+
 export const completeWorkOrderInputSchema = z.object({
   workOrderId: z.string().min(1),
 });
@@ -58,19 +63,20 @@ export const workAssignmentInputSchema = z.object({
 
 export type WorkOrderInput = z.infer<typeof workOrderInputSchema>;
 export type AssignWorkOrderInput = z.infer<typeof assignWorkOrderInputSchema>;
+export type WorkOrderAcceptanceInput = z.infer<typeof workOrderAcceptanceInputSchema>;
 export type CompleteWorkOrderInput = z.infer<typeof completeWorkOrderInputSchema>;
 export type RollbackWorkOrderInput = z.infer<typeof rollbackWorkOrderInputSchema>;
 export type StartWorkOrderInput = z.infer<typeof startWorkOrderInputSchema>;
 export type ExecutionRecordInput = z.infer<typeof executionRecordInputSchema>;
 export type WorkAssignmentInput = z.infer<typeof workAssignmentInputSchema>;
 
-export const directWorkOrderInputSchema = quoteDraftInputSchema.extend({
+export const directWorkOrderInputSchema = quoteDraftInputSchema.safeExtend({
   masterId: z.string("El maestro responsable es obligatorio.").uuid("El maestro responsable es obligatorio."),
   isCompleted: z.boolean().default(false),
   paymentDueDate: z.preprocess((val) => (val ? new Date(String(val)) : undefined), z.date().optional()),
 });
 
-export const directWorkOrderFormInputSchema = quoteDraftFormInputSchema.extend({
+export const directWorkOrderFormInputSchema = quoteDraftFormInputSchema.safeExtend({
   masterId: z.preprocess(
     (val) => (typeof val === "string" && val.trim() !== "" ? val : undefined),
     z.string("El maestro responsable es obligatorio.").uuid("El maestro responsable es obligatorio."),
@@ -79,7 +85,7 @@ export const directWorkOrderFormInputSchema = quoteDraftFormInputSchema.extend({
   paymentDueDate: z.preprocess((val) => (typeof val === "string" && val.trim() !== "" ? new Date(val) : undefined), z.date().optional()),
 });
 
-export const directMaterialSaleInputSchema = quoteDraftInputSchema.extend({
+export const directMaterialSaleInputSchema = quoteDraftInputSchema.safeExtend({
   paymentDueDate: z.preprocess((val) => (val ? new Date(String(val)) : undefined), z.date().optional()),
 }).superRefine((input, ctx) => {
   if (input.sections.some((section) => section.items.some((item) => item.type !== "MATERIAL" && item.type !== "REFACCIONES"))) {
@@ -87,7 +93,7 @@ export const directMaterialSaleInputSchema = quoteDraftInputSchema.extend({
   }
 });
 
-export const directMaterialSaleFormInputSchema = quoteDraftFormInputSchema.extend({
+export const directMaterialSaleFormInputSchema = quoteDraftFormInputSchema.safeExtend({
   paymentDueDate: z.preprocess((val) => (typeof val === "string" && val.trim() !== "" ? new Date(val) : undefined), z.date().optional()),
 }).superRefine((input, ctx) => {
   if (input.sections.some((section) => section.items.some((item) => item.type !== "MATERIAL" && item.type !== "REFACCIONES"))) {
@@ -96,13 +102,13 @@ export const directMaterialSaleFormInputSchema = quoteDraftFormInputSchema.exten
 });
 
 export const directOperationInputSchema = z.discriminatedUnion("operation", [
-  directWorkOrderInputSchema.extend({ operation: z.literal("WORK") }),
-  directMaterialSaleInputSchema.extend({ operation: z.literal("SALE") }),
+  directWorkOrderInputSchema.safeExtend({ operation: z.literal("WORK") }),
+  directMaterialSaleInputSchema.safeExtend({ operation: z.literal("SALE") }),
 ]);
 
 export const directOperationFormInputSchema = z.discriminatedUnion("operation", [
-  directWorkOrderFormInputSchema.extend({ operation: z.literal("WORK") }),
-  directMaterialSaleFormInputSchema.extend({ operation: z.literal("SALE") }),
+  directWorkOrderFormInputSchema.safeExtend({ operation: z.literal("WORK") }),
+  directMaterialSaleFormInputSchema.safeExtend({ operation: z.literal("SALE") }),
 ]);
 
 export type DirectWorkOrderInput = z.infer<typeof directWorkOrderInputSchema>;
@@ -112,6 +118,7 @@ export type DirectMaterialSaleFormInput = z.infer<typeof directMaterialSaleFormI
 
 export const convertQuoteToNoteInputSchema = z.object({
   quoteId: z.string().min(1),
+  operation: z.enum(["WORK", "SALE"]).optional(),
   masterId: z.string().uuid("El maestro responsable es obligatorio.").optional(),
   paymentDueDate: z.preprocess((val) => (val ? new Date(String(val)) : undefined), z.date().optional()),
   reason: z.string().trim().optional(),

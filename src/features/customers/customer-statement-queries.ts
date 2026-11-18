@@ -1,7 +1,7 @@
-import { PaymentStatus, WorkOrderStatus } from "@prisma/client";
+import { PaymentStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { getPaymentSettings } from "@/features/payment-settings/domain";
+import { getPaymentSettings, type BankAccountData } from "@/features/payment-settings/domain";
 import { getCustomerCreditSummary } from "@/features/payments/domain";
 import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";
 import { derivePaymentState, type PaymentState } from "@/features/work-orders/payment-state";
@@ -19,6 +19,7 @@ export type StatementNoteItem = {
   vehicleLabel: string;
   totalCents: number;
   paidCents: number;
+  paidCentsAtCutoff: number;
   remainingCents: number;
   paymentState: PaymentState;
   previewQuote: QuotePreviewSummary;
@@ -31,6 +32,65 @@ export type CustomerStatementSummary = {
   finalBalanceCents: number;
   overdueBalanceCents: number;
 };
+
+export type CustomerStatementPaymentActivity =
+  | { type: "application"; date: Date; amountCents: number; noteNumber: string }
+  | { type: "credit"; date: Date; availableCents: number };
+
+type CustomerStatementPaymentCapture = {
+  amountCents: number;
+  createdAt: Date;
+  applications: Array<{
+    amountCents: number;
+    createdAt: Date;
+    reversedAt: Date | null;
+    workOrderId: string | null;
+    workOrder: { number: string } | null;
+  }>;
+};
+
+function buildStatementPaymentActivity(
+  payments: CustomerStatementPaymentCapture[],
+  notes: StatementNoteItem[],
+  cutoff: Date,
+): { paymentActivity: CustomerStatementPaymentActivity[]; availableCreditAtCutoffCents: number } {
+  const selectedNoteNumbers = new Map(notes.map((note) => [note.workOrderId, note.number]));
+  const paymentActivity: CustomerStatementPaymentActivity[] = [];
+  let availableCreditAtCutoffCents = 0;
+
+  payments.forEach((payment) => {
+    if (payment.createdAt > cutoff) return;
+
+    const activeApplications = payment.applications.filter(
+      (application) => application.reversedAt === null && application.createdAt <= cutoff,
+    );
+    const appliedCents = activeApplications.reduce((total, application) => total + application.amountCents, 0);
+    availableCreditAtCutoffCents += Math.max(0, payment.amountCents - appliedCents);
+
+    const appliedAtCaptureCents = activeApplications
+      .filter((application) => application.createdAt <= payment.createdAt)
+      .reduce((total, application) => total + application.amountCents, 0);
+    const generatedCreditCents = Math.max(0, payment.amountCents - appliedAtCaptureCents);
+
+    if (generatedCreditCents > 0) {
+      paymentActivity.push({ type: "credit", date: payment.createdAt, availableCents: generatedCreditCents });
+    }
+
+    activeApplications.forEach((application) => {
+      const noteNumber = selectedNoteNumbers.get(application.workOrderId ?? "");
+      if (!noteNumber) return;
+      paymentActivity.push({
+        type: "application",
+        date: application.createdAt,
+        amountCents: application.amountCents,
+        noteNumber: application.workOrder?.number ?? noteNumber,
+      });
+    });
+  });
+
+  paymentActivity.sort((first, second) => first.date.getTime() - second.date.getTime());
+  return { paymentActivity, availableCreditAtCutoffCents };
+}
 
 export type CustomerDetailedStatement = {
   customer: {
@@ -49,21 +109,17 @@ export type CustomerDetailedStatement = {
   anchor: string;
   rangeLabel: string;
   availableCreditCents: number;
+  availableCreditAtCutoffCents: number;
   summary: CustomerStatementSummary;
   notes: StatementNoteItem[];
-  bankAccounts: Array<{
-    id: number;
-    bankName: string;
-    accountHolder: string;
-    accountNumber: string;
-    clabe: string;
-  }>;
+  paymentActivity: CustomerStatementPaymentActivity[];
   business: {
     name: string;
     fullName: string;
     address: string;
     contactPhone: string;
     contactWhatsapp: string;
+    bankAccounts: BankAccountData[];
   };
 };
 
@@ -136,7 +192,7 @@ export async function getCustomerDetailedStatement(
   }
 
   // Fetch all completed work orders for this customer and customer credit summary in parallel
-  const [allCompletedOrders, creditSummary] = await Promise.all([
+  const [allCompletedOrders, creditSummary, customerPayments] = await Promise.all([
     prisma.workOrder.findMany({
       where: {
         status: WorkOrderStatus.COMPLETED,
@@ -169,9 +225,34 @@ export async function getCustomerDetailedStatement(
       },
     },
     orderBy: [{ completedAt: "asc" }, { id: "asc" }],
-  }),
-  getCustomerCreditSummary(prisma, customerId),
-]);
+    }),
+    getCustomerCreditSummary(prisma, customerId),
+    prisma.payment.findMany({
+      where: {
+        customerId,
+        status: PaymentStatus.PAID,
+        reversedAt: null,
+        createdAt: { lte: now },
+        correctionsOriginal: { none: {} },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: {
+        amountCents: true,
+        createdAt: true,
+        applications: {
+          where: { reversedAt: null, createdAt: { lte: now } },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          select: {
+            amountCents: true,
+            createdAt: true,
+            reversedAt: true,
+            workOrderId: true,
+            workOrder: { select: { number: true } },
+          },
+        },
+      },
+    }),
+  ]);
 
   const { view, period, anchor, rangeLabel, start, end } = periodParams;
 
@@ -219,6 +300,9 @@ export async function getCustomerDetailedStatement(
   allCompletedOrders.forEach((wo) => {
     const totalCents = getEffectiveSettlementTotals(wo.quote, wo.quote.settlementAgreement).totalCents;
     const paidCents = wo.paymentApplications.reduce((sum, pa) => sum + pa.amountCents, 0);
+    const paidCentsAtCutoff = wo.paymentApplications
+      .filter((pa) => pa.createdAt <= now)
+      .reduce((sum, pa) => sum + pa.amountCents, 0);
     const remainingCents = Math.max(0, totalCents - paidCents);
     const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
 
@@ -291,6 +375,7 @@ export async function getCustomerDetailedStatement(
       vehicleLabel,
       totalCents,
       paidCents,
+      paidCentsAtCutoff,
       remainingCents,
       paymentState,
       previewQuote,
@@ -314,6 +399,12 @@ export async function getCustomerDetailedStatement(
       }
     }
   });
+
+  const { paymentActivity, availableCreditAtCutoffCents } = buildStatementPaymentActivity(
+    customerPayments,
+    statementNotes,
+    now,
+  );
 
   // Calculate final totals based on view
   let finalBalanceCents = 0;
@@ -359,6 +450,7 @@ export async function getCustomerDetailedStatement(
     anchor,
     rangeLabel,
     availableCreditCents: creditSummary.availableCreditCents,
+    availableCreditAtCutoffCents,
     summary: {
       initialBalanceCents,
       periodChargesCents,
@@ -367,19 +459,14 @@ export async function getCustomerDetailedStatement(
       overdueBalanceCents,
     },
     notes: statementNotes,
-    bankAccounts: paymentSettings.bankAccounts.map((acc) => ({
-      id: acc.id,
-      bankName: acc.bankName,
-      accountHolder: acc.accountHolder,
-      accountNumber: acc.accountNumber,
-      clabe: acc.clabe,
-    })),
+    paymentActivity,
     business: {
       name: paymentSettings.name,
       fullName: paymentSettings.fullName,
       address: paymentSettings.address,
       contactPhone: paymentSettings.contactPhone,
       contactWhatsapp: paymentSettings.contactWhatsapp,
+      bankAccounts: paymentSettings.bankAccounts,
     },
   };
 }

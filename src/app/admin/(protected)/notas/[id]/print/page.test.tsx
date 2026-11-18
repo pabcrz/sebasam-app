@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 vi.mock("next/navigation", () => ({
@@ -7,21 +7,44 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-const { getCompletedWorkOrderById, getPaymentSettings } = vi.hoisted(() => ({
+const { getCompletedWorkOrderById, getIssuedSaleNoteById, getPaymentSettings } = vi.hoisted(() => ({
   getCompletedWorkOrderById: vi.fn(),
+  getIssuedSaleNoteById: vi.fn(),
   getPaymentSettings: vi.fn(),
 }));
 
-vi.mock("@/features/work-orders/queries", () => ({ getCompletedWorkOrderById, getIssuedSaleNoteById: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/features/work-orders/queries", () => ({ getCompletedWorkOrderById, getIssuedSaleNoteById }));
 vi.mock("@/features/payment-settings/domain", () => ({ getPaymentSettings }));
 vi.mock("@/features/quotes/components/print-controls", () => ({ PrintControls: () => <button type="button">Imprimir</button> }));
 
 import WorkOrderPrintPage, { generateMetadata } from "./page";
 
 describe("WorkOrderPrintPage", () => {
+  beforeEach(() => getIssuedSaleNoteById.mockResolvedValue(null));
+
+  it.each([new Date("2026-09-30T12:00:00Z"), null])("preserves the issued sale deadline (%s) without an OT", async (paymentDueDate) => {
+    getCompletedWorkOrderById.mockResolvedValue(null);
+    getIssuedSaleNoteById.mockResolvedValue({ kind: "SALE", status: "ISSUED", paymentDueDate,
+      quote: { id: "q-sale", number: "V-001", status: "APPROVED", title: "Refacciones",
+        customer: null, vehicle: null, workOrder: null, items: [], sections: [],
+        subtotalCents: 0, discountCents: 0, taxCents: 0, totalCents: 0, taxEnabled: false,
+        operationalDate: new Date("2026-09-20T12:00:00Z"), paymentDueDate: new Date("2026-10-01T12:00:00Z"),
+      },
+    });
+    getPaymentSettings.mockResolvedValue({ name: "SEBASAM", fullName: "Servicio", address: "CDMX",
+      contactPhone: "5555555555", contactWhatsapp: "5555555555", bankAccounts: [],
+    });
+    render(await WorkOrderPrintPage({ params: Promise.resolve({ id: "pn-sale" }) }));
+    if (paymentDueDate) expect(screen.getByTestId("note-due-date")).toHaveTextContent("30 de septiembre");
+    else expect(screen.queryByTestId("note-due-date")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("quote-validity")).not.toBeInTheDocument();
+  });
+
   it("identifies legacy special work as Taller in the printed note", async () => {
     getCompletedWorkOrderById.mockResolvedValue({
       number: "T-001",
+      status: "COMPLETED",
+      paymentDueDate: new Date("2026-08-21T12:00:00Z"),
       isSpecial: true,
       specialAssigneeName: "Nombre heredado",
       completedAt: new Date("2026-08-14T12:00:00Z"),
@@ -52,6 +75,7 @@ describe("WorkOrderPrintPage", () => {
     const { container } = render(await WorkOrderPrintPage({ params: Promise.resolve({ id: "wo-1" }) }));
 
     expect(screen.getByText("Taller")).toBeInTheDocument();
+    expect(screen.getByTestId("note-due-date")).toHaveTextContent("21 de agosto");
     expect(screen.queryByText("Nombre heredado")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
     expect(screen.getByText("Nota administrativa")).toBeInTheDocument();

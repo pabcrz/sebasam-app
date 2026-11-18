@@ -2,13 +2,37 @@
 
 This is the canonical workflow for AI assistants working in this private repository. Tool-specific instruction files should point here instead of duplicating these rules.
 
+## Workflow selection
+
+ODD is the default execution and issue-tracking workflow for this repository. SDD is a complementary requirements-and-design workflow, not a replacement for the repository's issue, Gitflow, or ODD execution rules.
+
+| Situation | Workflow |
+|-----------|----------|
+| Routine issue-backed implementation | **ODD**: track the issue and implement in scoped work units. |
+| The user explicitly requests SDD, or requirements and architecture need agreement through artifacts before implementation | Add the relevant **SDD** proposal/spec/design artifacts, then execute and verify the issue under ODD. |
+| It is unclear whether requirements or architecture need those artifacts and the choice would materially change the work | Ask one focused question before creating the SDD artifacts. |
+
+Keep the GitHub issue as the execution tracker. Use SDD artifacts to clarify requirements and design; use ODD task tracking to manage implementation when the work is substantial. Avoid copying the same decisions or task detail into both: keep one execution checklist and link the relevant SDD artifacts from it. An explicit SDD request does not disable ODD, issue-first, or Gitflow requirements.
+
+## Issue lifecycle
+
+GitHub Issues are the execution tracker for SEBASAM work.
+
+- Before implementation or PR work, use an approved GitHub issue.
+- For new planned work, create, search, or link a GitHub issue first.
+- Completed historical local MVP items are represented as closed GitHub issues grouped in milestone `MVP histórico completado`.
+- Future work must close issues through PR merge, not by editing local backlog only.
+
+These existing issue-first requirements also apply to the branch naming examples in GITFLOW; an old unnumbered branch is not permission to start new untracked work.
+
 ## Quick path
 
-1. Read the issue or task first.
-2. Follow the Gitflow rules in `docs/GITFLOW.md`.
-3. Branch from `develop` for feature and non-production bugfix work.
-4. Keep the branch, commits, and PR scoped to one issue or one clearly reviewable slice.
-5. Run the checks that match the scope before marking work done.
+1. Read the approved issue or task first.
+2. Use ODD for issue-based execution; add SDD artifacts only when requested or needed to settle requirements and design.
+3. Follow the Gitflow rules in `docs/GITFLOW.md`.
+4. Branch from `develop` for feature and non-production bugfix work.
+5. Keep the branch, commits, and PR scoped to one issue or one clearly reviewable slice.
+6. Run the checks that match the scope before marking work done.
 
 ## Branch and PR rules
 
@@ -25,15 +49,29 @@ This is the canonical workflow for AI assistants working in this private reposit
 
 ### PR description standards
 
-Every PR description must follow `.github/pull_request_template.md`:
+Use the [PR template](../.github/pull_request_template.md) as the single source for description sections and the contributor checklist. The first line must state `Closes #<number>`; select one PR type, summarize intent, map changes, record observed checks, and disclose approved scope/size exceptions or migration cautions. Its checklist retains the existing conventional-commit, no-AI-attribution and secrets-safety requirements.
 
-1. **Issue linkage**: First line must state `Closes #<number>`.
-2. **`## PR Type`**: Single-select checkbox indicating the change category (`type:*`).
-3. **`## Summary`**: Bulleted explanation of why the change was made and what it accomplishes.
-4. **`## Changes`**: Markdown table mapping affected areas/layers to specific changes.
-5. **`## Test Plan`**: Checklist of executed checks (`prisma generate`, `typecheck`, `lint`, `test:ui`, `pnpm build`, etc.).
-6. **`## Warnings`**: Document approved scope extensions, size exceptions (>400 lines), or migration cautions.
-7. **`## Contributor Checklist`**: Verifies linkage, label, conventional commits, zero AI attribution, and secrets safety.
+## Language conventions
+
+Use Spanish to explain and operate SEBASAM; use English for implementation and technical maintenance. Assign the language by audience, not by file extension.
+
+| Surface | Language |
+|---------|----------|
+| UI, validation/error messages, notifications, PDFs and public business messages | Spanish (Mexico), consistent with the product's existing terminology. |
+| README, product handbook and business rules/journeys | Spanish. |
+| Architecture, design, database safety and historical-import guides | Spanish; keep technical identifiers unchanged. |
+| Release and contribution runbooks, including this workflow and GITFLOW | English. |
+| Code identifiers, new technical filenames, API/schema/configuration keys and enums | English for new names; preserve existing contracts and paths. |
+| Code comments and test names/descriptions | English; assertions and fixtures for visible UI messages retain the exact Spanish strings. |
+| Conventional Commit messages | English, retaining the required conventional prefix. |
+| Agent instructions and new technical ODD/OpenSpec tracking, designs and specifications | English; preserve user quotations, UI copy and domain evidence in their original language. |
+| Issues and collaboration discussions/replies | The target context's language; use Spanish for Spanish-language issues and discussions. |
+
+Keep a document's prose and headings consistent with its assigned language. Product names, literal commands, code examples and quoted messages are not prose to translate. For example, write “La cotización pasa a `APPROVED`” in a Spanish guide; do not invent an `APROBADA` enum.
+
+Do not rename existing routes, fields, environment variables, persisted states or public anchors just to translate them. Preserve compatibility or update consumers as part of an explicitly scoped change. UI language does not determine the language of its identifiers or test descriptions.
+
+Apply this convention to new or edited content. Correct bounded language mixing when it is in scope; do not perform a repository-wide translation or rewrite historical ODD/OpenSpec evidence. Keep this section as the canonical language policy rather than copying it into agent-specific files or other guides.
 
 ## Change discipline
 
@@ -81,17 +119,24 @@ Run checks according to the size and risk of the change:
 
 If a check is not run, say why in the handoff.
 
+### Shared test and verification contract
+
+Testing is verification evidence shared by ODD and SDD, not a third planning workflow or an artificial phase that every change must add.
+
+1. For each implementation task, identify a relevant runnable deterministic test and its expected outcome before changing behavior.
+2. When such a test exists, observe RED before the fix, reach GREEN, and refactor while the test remains green. Do not claim RED or GREEN without observing it.
+3. If no meaningful test or runner applies, or the change is passive documentation, state why and run proportionate structural or functional checks instead of inventing a test.
+4. At handoff, list each exact check command and its observed result; explain every planned check that was skipped or unavailable. ODD closes a task only after its applicable proof is recorded. SDD retains its final Verify phase, using task-level evidence rather than replacing it with a vague testing phase.
+
+If a required delegated result is empty, malformed, or incomplete, mark the work blocked and preserve its progress. Report the missing result; do not fabricate evidence, silently switch workflows, or repeat the delegation without a documented supported recovery.
+
 ## Repository architecture rules
 
-| Topic | Rule |
-|-------|------|
-| Operational data | Use Prisma for operational business data. |
-| Supabase | Use Supabase for Auth and Storage infrastructure. |
-| Data boundary | Do not query Prisma-owned business tables through Supabase client helpers. |
-| Auth profiles | Store app roles and operational profile data in `UserProfile`. |
+Follow the data boundaries and auth contracts in [ARCHITECTURE](./ARCHITECTURE.md#límites-de-datos-y-ejecución). That is the canonical architecture reference; this workflow does not maintain another copy.
 
 ## References
 
 - `docs/GITFLOW.md` — branch, PR, release, and hotfix flow.
-- `docs/MVP_ISSUES.md` — MVP backlog and acceptance criteria.
-- `README.md` — project setup, commands, architecture rules, and deployment notes.
+- [Product handbook](./product-guide/index.md) — rules, objectives and observed behavior, not an execution checklist.
+- GitHub Issues — current execution tracker; Git history retains early MVP snapshots.
+- [README](../README.md) — setup, commands and documentation entry points.

@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { clsx } from "clsx";
-import { Landmark, FileText, Banknote } from "lucide-react";
+
 import { PublicDocumentHeader } from "@/features/public-branding/public-document-header";
 import { getPublicMapsUrl, type PublicBusinessIdentity } from "@/features/public-branding/domain";
+import { Icon, type IconName } from "@/components/ui/icon";
 
 export type ShellBusinessSettings = PublicBusinessIdentity;
 
@@ -16,17 +17,17 @@ export interface PublicPaymentShellProps {
   logoSrc?: string;
 }
 
-const badgeConfig = {
+const badgeConfig: Record<NonNullable<PublicPaymentShellProps["badge"]>, { icon: IconName; label: string }> = {
   payment: {
-    icon: Banknote,
+    icon: "cash",
     label: "Datos para transferencia",
   },
   invoice: {
-    icon: FileText,
+    icon: "quotes",
     label: "Captura para factura",
   },
   "payment-and-invoice": {
-    icon: Landmark,
+    icon: "bank",
     label: "Pagos y facturación",
   },
 };
@@ -36,11 +37,10 @@ export function PublicPaymentShell({ children, badge = "payment-and-invoice", bu
   const headerBusiness = { ...resolvedBusiness, phone: undefined, whatsapp: undefined };
   const mapsUrl = getPublicMapsUrl(location?.mapsUrl);
   const badgeInfo = badgeConfig[badge];
-  const BadgeIcon = badgeInfo.icon;
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--background)]">
-      <PublicDocumentHeader business={headerBusiness} logoSrc={logoSrc} location={undefined} maxWidthClassName="max-w-6xl" badge={<><BadgeIcon className="h-4 w-4" aria-hidden="true" /><span>{badgeInfo.label}</span></>} />
+      <PublicDocumentHeader business={headerBusiness} logoSrc={logoSrc} location={undefined} maxWidthClassName="max-w-6xl" badge={<><Icon name={badgeInfo.icon} className="h-4 w-4" aria-hidden="true" /><span>{badgeInfo.label}</span></>} />
 
       <main className="flex-1 bg-[var(--color-bg-soft)] px-4 py-6 md:px-8 md:py-8">
         <div className="mx-auto max-w-6xl">{children}</div>

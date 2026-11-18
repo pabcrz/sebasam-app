@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { QuoteItemType, UserRole, WorkerKind } from "@prisma/client";
+import { QuoteItemType, UserRole, WorkerKind } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 

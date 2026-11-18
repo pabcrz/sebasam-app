@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mapPersistedQuoteToBuilderInitialData } from "./quote-builder-mapper";
 
 const persistedQuote = {
+  operation: "SALE" as const,
   customerId: "customer-1",
   vehicle: { plate: "ABC-123", brand: null, model: "Transit", year: 2024 },
   vehicleSnapshot: { plate: "OLD", brand: "Ford", model: "Old", year: 2020 },
@@ -35,6 +36,7 @@ describe("mapPersistedQuoteToBuilderInitialData", () => {
   it("maps sections, vehicle fallbacks, payroll fields, and pending prices", () => {
     expect(mapPersistedQuoteToBuilderInitialData(persistedQuote)).toEqual({
       customerId: "customer-1",
+      operation: "SALE",
       customerContactId: null,
       customerFiscalProfileId: null,
       vehicle: { plate: "ABC-123", brand: "Ford", model: "Transit", year: "2024", economicNumber: "" },

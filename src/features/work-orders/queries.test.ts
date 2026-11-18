@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
-import { getCompletedWorkOrderById, listActiveWorkOrders, listCompletedWorkOrders } from "./queries";
+import { Prisma } from "@/generated/prisma/client";
+import { countActiveWorkOrders, countCompletedWorkOrders, getCompletedWorkOrderById, listPaginatedActiveWorkOrders, listActiveWorkOrders, listCompletedWorkOrders } from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: { $queryRaw: vi.fn(), payableNote: { findMany: vi.fn(), findFirst: vi.fn() }, workOrder: { findMany: vi.fn(), findFirst: vi.fn() } },
@@ -16,15 +16,78 @@ describe("work order operational queues", () => {
     vi.clearAllMocks();
     (prisma.workOrder.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     (prisma.payableNote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (prisma.payableNote.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
     (prisma.$queryRaw as ReturnType<typeof vi.fn>).mockResolvedValue([]);
   });
 
-  it("queries ASSIGNED and IN_PROGRESS work for Trabajos", async () => {
+  it("queries pending assignment, assigned and in-progress WORK only for Trabajos", async () => {
     await listActiveWorkOrders();
 
     expect(prisma.workOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { status: { in: ["ASSIGNED", "IN_PROGRESS"] } },
+      where: { status: { in: ["PLANNED", "ASSIGNED", "IN_PROGRESS"] }, quote: { operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } } },
     }));
+  });
+
+  it("keeps the unrestricted admin work-order lookup unchanged", async () => {
+    const { listWorkOrders } = await import("./queries");
+    await listWorkOrders();
+    expect(vi.mocked(prisma.workOrder.findMany).mock.calls[0][0]).not.toHaveProperty("where");
+  });
+
+  it("uses #760 issuance membership for completed WORK, including legacy rows without a note", async () => {
+    await listCompletedWorkOrders({ start: new Date("2026-08-01"), end: new Date("2026-09-01"), payment: "all", assignee: "all", page: 1 });
+    const query = vi.mocked(prisma.$queryRaw).mock.calls[0][0] as { strings: string[]; values: unknown[] };
+    const sql = query.strings.join("?");
+    expect(sql).toContain('LEFT JOIN "PayableNote" pn ON pn."quoteId" = q.id');
+    expect(sql).toContain('(pn.id IS NULL OR pn.status::text IN');
+    expect(query.values).toContain("ISSUED");
+    expect(query.values).not.toContain("DRAFT");
+    expect(sql).toContain("q.operation::text = 'WORK'");
+    expect(sql).toContain('q."deletedAt" IS NULL');
+    expect(query.values).toEqual(expect.arrayContaining(["REJECTED", "CANCELLED", "ARCHIVED"]));
+  });
+
+  it("keeps SALE issuance and archive membership separate from payment status", async () => {
+    vi.mocked(prisma.payableNote.findFirst).mockResolvedValue({ id: "sale" } as never);
+    await listCompletedWorkOrders({ start: new Date("2026-08-01"), end: new Date("2026-09-01"), payment: "all", assignee: "all", page: 1 });
+    const query = vi.mocked(prisma.$queryRaw).mock.calls[1][0] as { strings: string[]; values: unknown[] };
+    const sql = query.strings.join("?");
+    expect(sql).toContain('JOIN "Quote" q ON q.id = pn."quoteId"');
+    expect(sql).toContain('pn.status::text IN');
+    expect(sql).toContain('q."deletedAt" IS NULL');
+    expect(query.values).toContain("ISSUED");
+    expect(query.values).toEqual(expect.arrayContaining(["REJECTED", "CANCELLED", "ARCHIVED"]));
+    expect(sql).not.toContain("HAVING");
+  });
+
+  it("expressly includes archived and cancelled notes without admitting drafts or changing balances", async () => {
+    vi.mocked(prisma.payableNote.findFirst).mockResolvedValue({ id: "sale" } as never);
+    await listCompletedWorkOrders({ start: new Date("2026-08-01"), end: new Date("2026-09-01"), payment: "pending", assignee: "all", page: 1, showArchived: true, showCancelled: true });
+    for (const [raw] of vi.mocked(prisma.$queryRaw).mock.calls) {
+      const query = raw as { strings: string[]; values: unknown[] };
+      expect(query.values).toContain("ISSUED");
+      expect(query.values).toContain("CANCELLED");
+      expect(query.values).not.toContain("ARCHIVED");
+      expect(query.values).not.toContain("DRAFT");
+      expect(query.strings.join("?")).toMatch(/HAVING .* > 0/);
+    }
+  });
+
+  it.each([
+    { showArchived: true, showCancelled: false, hidden: "CANCELLED", visible: "ARCHIVED" },
+    { showArchived: false, showCancelled: true, hidden: "ARCHIVED", visible: "CANCELLED" },
+  ])("keeps archive and cancellation independent: $showArchived/$showCancelled", async ({ hidden, visible, ...flags }) => {
+    await listCompletedWorkOrders({ start: new Date("2026-08-01"), end: new Date("2026-09-01"), payment: "all", assignee: "all", page: 1, ...flags });
+    const query = vi.mocked(prisma.$queryRaw).mock.calls[0][0] as { strings: string[]; values: unknown[] };
+    expect(query.values).toContain(hidden);
+    // Inspect quote status parameters separately from payable-note statuses.
+    const statusListStart = query.strings.findIndex((part) => part.includes('q.status::text NOT IN'));
+    expect(statusListStart).toBeGreaterThan(-1);
+    expect(query.values.slice(statusListStart, statusListStart + 2)).toEqual(["REJECTED", hidden]);
+    if (visible === "ARCHIVED") expect(query.values).not.toContain(visible);
+    expect(vi.mocked(prisma.payableNote.findFirst).mock.calls[0][0]).toMatchObject({
+      where: { status: { in: flags.showCancelled ? ["ISSUED", "CANCELLED"] : ["ISSUED"] } },
+    });
   });
 
   it.each(["all", "pending", "paid"] as const)("filters and paginates %s Notas before hydration", async (payment) => {
@@ -266,14 +329,14 @@ describe("work order operational queues", () => {
     });
   });
 
-  it.each([
-    { name: "mixed Decimal windows", work: [89_000, 5_968_001, 316_001], sale: [0, 4_500, 4_500], expected: [89_000, 5_972_501, 320_501] },
-    { name: "WORK Decimal without SALE", work: [89_000, 5_968_001, 316_001], sale: null, expected: [89_000, 5_968_001, 316_001] },
-    { name: "SALE Decimal without WORK", work: null, sale: [900, 4_500, 4_500], expected: [900, 4_500, 4_500] },
-    { name: "zero Decimal windows", work: [0, 0, 0], sale: [0, 0, 0], expected: [0, 0, 0] },
-    { name: "missing windows", work: null, sale: null, expected: [0, 0, 0] },
-  ])("adds $name numerically before formatting", async ({ work, sale, expected }) => {
-    // PostgreSQL window SUM(bigint) returns NUMERIC, which Prisma maps to Decimal.
+  it.each([false, true].flatMap((operational) => [
+    { name: "mixed Decimal windows", operational, work: [89_000, 5_968_001, 316_001], sale: [0, 4_500, 4_500], expected: [89_000, 5_972_501, 320_501] },
+    { name: "WORK Decimal without SALE", operational, work: [89_000, 5_968_001, 316_001], sale: null, expected: [89_000, 5_968_001, 316_001] },
+    { name: "SALE Decimal without WORK", operational, work: null, sale: [900, 4_500, 4_500], expected: [900, 4_500, 4_500] },
+    { name: "zero Decimal windows", operational, work: [0, 0, 0], sale: [0, 0, 0], expected: [0, 0, 0] },
+    { name: "missing windows", operational, work: null, sale: null, expected: [0, 0, 0] },
+  ]))("adds $name numerically before formatting (operational=$operational)", async ({ work, sale, expected, operational }) => {
+    // Synthetic NUMERIC results, not the live September records or an assumed $100k total.
     const windowRow = (id: string, values: number[] | null) => values ? [{
       id, completedAt: new Date("2026-09-15T12:00:00Z"), issuedAt: new Date("2026-09-15T12:00:00Z"),
       totalPaidCents: new Prisma.Decimal(values[0]),
@@ -283,12 +346,10 @@ describe("work order operational queues", () => {
     vi.mocked(prisma.$queryRaw).mockResolvedValueOnce(windowRow("work", work));
     vi.mocked(prisma.payableNote.findFirst).mockResolvedValue(sale ? { id: "sale" } as never : null);
     if (sale) vi.mocked(prisma.$queryRaw).mockResolvedValueOnce(windowRow("sale", sale));
-
     const result = await listCompletedWorkOrders({
       start: new Date("2026-09-01T06:00:00Z"), end: new Date("2026-10-01T06:00:00Z"),
       payment: "all", assignee: "all", page: 1,
-    });
-
+    }, operational ? { operationalFilters: true } : {});
     expect(result.totals).toEqual({
       totalPaidCents: expected[0], totalPendingCents: expected[1], totalOverdueCents: expected[2],
     });
@@ -363,6 +424,9 @@ describe("work order operational queues", () => {
     };
     const rows = Array.from({ length: 21 }, (_, index) => ({
       id: `note-${String(index + 1).padStart(2, "0")}`,
+      totalPaidCents: new Prisma.Decimal(0),
+      totalPendingCents: new Prisma.Decimal(index % 2 === 0 ? 1_100 : 1_000),
+      totalOverdueCents: new Prisma.Decimal(0),
       effectiveTotalCents: BigInt(100),
       paidCents: BigInt(0),
       activePaymentId: null,
@@ -392,6 +456,8 @@ describe("work order operational queues", () => {
     expect(pageOne.hasNextPage).toBe(true);
     expect(pageTwo.workOrders.map(({ id }) => id)).toEqual(["note-21"]);
     expect(pageTwo.hasNextPage).toBe(false);
+    expect(pageOne.totals).toEqual({ totalPaidCents: 0, totalPendingCents: 2_100, totalOverdueCents: 0 });
+    expect(pageTwo.totals).toEqual(pageOne.totals);
     expect(new Set(ids).size).toBe(21);
     expect(ids).toEqual(rows.map(({ id }) => id));
   });
@@ -416,6 +482,7 @@ describe("work order operational queues", () => {
   });
 
   it("applies the shared period/payment/customer/overdue filters to both note kinds", async () => {
+    vi.mocked(prisma.payableNote.findFirst).mockResolvedValue({ id: "sale" } as never);
     const input = {
       start: new Date("2026-08-03T06:00:00Z"),
       end: new Date("2026-08-10T06:00:00Z"),
@@ -450,5 +517,83 @@ describe("work order operational queues", () => {
     });
 
     expect(prisma.payableNote.findFirst).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("additive operational query filters", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.workOrder.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.payableNote.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.payableNote.findFirst).mockResolvedValue({ id: "sale" } as never);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+  });
+
+  it("bounds active work only through the new paginated query with execution/responsible/scheduling predicates", async () => {
+    const result = await listPaginatedActiveWorkOrders({ number: "OT-42", concept: "aceite", plate: "ABC", economicNumber: "ECO", execution: "PLANNED", assignee: "workshop", scheduledFrom: "2021-04-03", scheduledTo: "2021-04-04", dateFrom: "2026-08-01", dateTo: "2026-08-31", page: "2" });
+    const call = vi.mocked(prisma.workOrder.findMany).mock.lastCall![0]!;
+    expect(call).toMatchObject({ skip: 20, take: 21, orderBy: [{ createdAt: "desc" }, { id: "desc" }], where: { status: "PLANNED", isSpecial: true, scheduledFor: { gte: new Date("2021-04-03T06:00:00Z"), lt: new Date("2021-04-05T05:00:00Z") }, quote: { operation: "WORK", operationalDate: { gte: new Date("2026-08-01"), lt: new Date("2026-09-01") } } } });
+    for (const text of ["OT-42", "aceite", "ABC", "ECO", "vehicleSnapshot"]) expect(JSON.stringify(call.where)).toContain(text);
+    expect(result).toEqual({ workOrders: [], page: 2, hasNextPage: false });
+    await listActiveWorkOrders();
+    expect(vi.mocked(prisma.workOrder.findMany).mock.lastCall![0]).not.toHaveProperty("take");
+  });
+
+  it.each(["all", "SALE", "WORK"] as const)("reconciles %s responsible before selecting either note kind", async (kind) => {
+    await listCompletedWorkOrders({ start: new Date("2026-08-01"), end: new Date("2026-09-01"), payment: "all", assignee: "workshop", kind, page: 1 }, { operationalFilters: true });
+    expect(prisma.payableNote.findFirst).toHaveBeenCalledTimes(kind === "WORK" ? 0 : 1);
+    const sql = vi.mocked(prisma.$queryRaw).mock.calls.map(([q]) => (q as { strings: string[] }).strings.join("?")).join(";");
+    expect(sql.includes('wo."isSpecial" = true')).toBe(kind === "WORK");
+  });
+
+  it("applies common criteria to WORK and SALE SQL before aggregation and global pagination", async () => {
+    await listCompletedWorkOrders({ start: new Date("2026-08-01"), end: new Date("2026-09-01"), payment: "pending", assignee: "all", page: 3, number: "42", concept: "aceite", plate: "ABC", economicNumber: "ECO", dateFrom: new Date("2026-08-03"), dateTo: new Date("2026-08-04") }, { operationalFilters: true });
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+    for (const [raw] of vi.mocked(prisma.$queryRaw).mock.calls) {
+      const q = raw as { strings: string[]; values: unknown[] };
+      const sql = q.strings.join("?");
+      for (const token of ['"QuoteItem"', '"Vehicle"', '"vehicleSnapshot"', 'ILIKE', 'GROUP BY', 'HAVING']) expect(sql).toContain(token);
+      expect(q.values).toEqual(expect.arrayContaining(["%42%", "%aceite%", "%ABC%", "%ECO%", new Date("2026-08-03T06:00:00Z"), new Date("2026-08-05T06:00:00Z")]));
+      expect(sql.indexOf('"QuoteItem"')).toBeLessThan(sql.indexOf("GROUP BY"));
+      expect(sql).not.toContain("LIMIT");
+    }
+  });
+});
+
+
+it("filters partial collections on both operational note kinds without modifying balances", async () => {
+  vi.clearAllMocks();
+  vi.mocked(prisma.payableNote.findFirst).mockResolvedValue({ id: "sale" } as never);
+  vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+  await listCompletedWorkOrders({ start: new Date("2026-08-01"), end: new Date("2026-09-01"), payment: "partial", assignee: "all", page: 1 }, { operationalFilters: true });
+  expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+  for (const [raw] of vi.mocked(prisma.$queryRaw).mock.calls) {
+    expect((raw as { strings: string[] }).strings.join("?")).toMatch(/HAVING .* > 0 AND COALESCE\(SUM/);
+  }
+});
+
+describe("work order counters for Trabajos", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (prisma.workOrder as unknown as { count: ReturnType<typeof vi.fn> }).count = vi.fn();
+  });
+
+  it("counts active work orders with the same base as the Trabajos list, without filters", async () => {
+    (prisma.workOrder as unknown as { count: ReturnType<typeof vi.fn> }).count.mockResolvedValueOnce(3);
+    await expect(countActiveWorkOrders()).resolves.toBe(3);
+
+    expect((prisma.workOrder as unknown as { count: ReturnType<typeof vi.fn> }).count).toHaveBeenCalledWith({
+      where: { status: { in: ["PLANNED", "ASSIGNED", "IN_PROGRESS"] }, quote: { operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } } },
+    });
+  });
+
+  it("counts completed WORK orders on visible quotes, the same membership Notas uses by default", async () => {
+    (prisma.workOrder as unknown as { count: ReturnType<typeof vi.fn> }).count.mockResolvedValueOnce(9);
+    await expect(countCompletedWorkOrders()).resolves.toBe(9);
+
+    expect((prisma.workOrder as unknown as { count: ReturnType<typeof vi.fn> }).count).toHaveBeenCalledWith({
+      where: { status: "COMPLETED", quote: { operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } } },
+    });
   });
 });

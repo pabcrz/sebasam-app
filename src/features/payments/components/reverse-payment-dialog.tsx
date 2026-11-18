@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RotateCcw } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { useRouter } from "next/navigation";
 import {
   Button,
@@ -108,7 +108,7 @@ export function ReversePaymentDialog({
         title={`Revertir pago de ${formatCents(amountCents)}`}
         className={className}
       >
-        <RotateCcw className="h-4 w-4" aria-hidden="true" />
+        <Icon name="undo" className="h-4 w-4" aria-hidden="true" />
         {!triggerIconOnly ? <span>{triggerLabel}</span> : null}
       </Button>
 

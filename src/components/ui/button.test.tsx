@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import Link from "next/link";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -47,14 +45,77 @@ describe("Button", () => {
     consoleError.mockRestore();
   });
 
-  it("uses the official primary gradient so primary does not regress to flat blue", () => {
+  it("renders primary as a flat blue action without the brand gradient", () => {
     render(<Button variant="primary">Guardar</Button>);
 
     const button = screen.getByRole("button", { name: "Guardar" });
-    expect(button.className).toContain("bg-[image:var(--gradient-primary)]");
-    expect(button.className).toContain("hover:bg-[image:var(--gradient-primary-hover)]");
-    expect(button.className).toContain("dark:bg-[var(--color-primary)]");
-    expect(button.className).toContain("dark:bg-none");
+    expect(button.className).toContain("bg-[var(--color-btn-primary)]");
+    expect(button.className).toContain("text-[var(--color-on-btn-primary)]");
+    expect(button.className).toContain("hover:bg-[var(--color-btn-primary-hover)]");
+    expect(button.className).not.toContain("gradient");
+  });
+
+  it("renders the tonal variant for card actions and keeps secondary aligned with it", () => {
+    render(
+      <>
+        <Button variant="tonal">Autorizar</Button>
+        <Button variant="secondary">Ver</Button>
+      </>,
+    );
+
+    for (const name of ["Autorizar", "Ver"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.className).toContain("bg-[var(--color-tonal-bg)]");
+      expect(button.className).toContain("text-[var(--color-tonal-fg)]");
+    }
+  });
+
+  it("renders danger as an outlined risk action, never a solid red button", () => {
+    render(<Button variant="danger">Desactivar</Button>);
+
+    const button = screen.getByRole("button", { name: "Desactivar" });
+    expect(button.className).toContain("border-[var(--color-status-danger-border)]");
+    expect(button.className).toContain("text-[var(--color-status-danger-fg)]");
+    expect(button.className).not.toContain("bg-[var(--color-status-danger)]");
+  });
+
+  it("uses the 40 / 36 / 32 control scale", () => {
+    render(
+      <>
+        <Button size="lg">Nueva</Button>
+        <Button>Guardar</Button>
+        <Button size="sm">Ver</Button>
+      </>,
+    );
+
+    expect(screen.getByRole("button", { name: "Nueva" }).className).toContain("h-[var(--control-lg)]");
+    expect(screen.getByRole("button", { name: "Guardar" }).className).toContain("h-[var(--control-md)]");
+    expect(screen.getByRole("button", { name: "Ver" }).className).toContain("h-[var(--control-sm)]");
+  });
+
+  it("extends the touch area to 44 px on every size", () => {
+    render(
+      <>
+        <Button size="lg">Nueva</Button>
+        <Button>Guardar</Button>
+        <Button size="sm">Ver</Button>
+        <Button size="icon" aria-label="Cerrar" />
+      </>,
+    );
+
+    for (const button of screen.getAllByRole("button")) {
+      expect(button.className).toContain("relative");
+      expect(button.className).toContain("before:h-[max(100%,var(--tap-min-height))]");
+      expect(button.className).toContain("before:w-[max(100%,var(--tap-min-height))]");
+    }
+  });
+
+  it("truncates long labels inside the button instead of overflowing", () => {
+    render(<Button>Etiqueta demasiado larga para caber</Button>);
+
+    const button = screen.getByRole("button");
+    expect(button.className).toContain("max-w-full");
+    expect(screen.getByText("Etiqueta demasiado larga para caber").className).toContain("truncate");
   });
 
   it("uses pointer cursor for enabled buttons and not-allowed cursor for disabled buttons", () => {
@@ -66,10 +127,4 @@ describe("Button", () => {
     expect(button.className).not.toContain("disabled:pointer-events-none");
   });
 
-  it("keeps the primary gradient token aligned with the Figma contract", () => {
-    const globalsCss = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
-
-    expect(globalsCss).toContain("--gradient-primary: linear-gradient(90deg, #004aad 0%, #001024 100%)");
-    expect(globalsCss).toContain("--gradient-primary-hover: linear-gradient(90deg, #003e91 0%, #001024 100%)");
-  });
 });

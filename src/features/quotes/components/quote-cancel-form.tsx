@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button, ConfirmDialog } from "@/components/ui";
-import { Ban } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import type { ButtonVariant, ButtonSize } from "@/components/ui";
 
 export interface QuoteCancelFormProps {
@@ -63,7 +63,7 @@ export function QuoteCancelForm({
         aria-label={`Cancelar cotización ${quoteNumber}`}
         title={`Cancelar cotización ${quoteNumber}`}
       >
-        {!isPending ? <Ban className="h-5 w-5" aria-hidden="true" /> : null}
+        {!isPending ? <Icon name="ban" className="h-5 w-5" aria-hidden="true" /> : null}
         {!iconOnly && !isPending ? <span className={actionLabelClassName}>Cancelar</span> : null}
       </Button>
 

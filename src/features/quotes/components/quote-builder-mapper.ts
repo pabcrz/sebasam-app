@@ -1,4 +1,4 @@
-import type { QuoteItemType } from "@prisma/client";
+import type { QuoteItemType } from "@/generated/prisma/client";
 import type { QuoteBuilderInitialData } from "./quote-builder-contracts";
 
 type PersistedQuoteItem = {
@@ -12,6 +12,7 @@ type PersistedQuoteItem = {
 
 type PersistedQuoteForBuilder = {
   customerId: string | null;
+  operation?: "WORK" | "SALE";
   customerContactId?: string | null;
   customerFiscalProfileId?: string | null;
   vehicle?: {
@@ -70,6 +71,7 @@ export function mapPersistedQuoteToBuilderInitialData(
 
   return {
     customerId: quote.customerId,
+    operation: quote.operation ?? "WORK",
     customerContactId: quote.customerContactId ?? null,
     customerFiscalProfileId: quote.customerFiscalProfileId ?? null,
     vehicle: {

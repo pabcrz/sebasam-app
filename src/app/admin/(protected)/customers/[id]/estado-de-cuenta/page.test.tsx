@@ -2,8 +2,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { CustomerStatementView } from "@/features/customers/components/customer-statement-view";
 import type { CustomerDetailedStatement } from "@/features/customers/customer-statement-queries";
+import CustomerStatementPage from "./page";
 
-const { printDocumentUrl } = vi.hoisted(() => ({ printDocumentUrl: vi.fn() }));
+const { printDocumentUrl, requireOperationalRoleMock, getCustomerDetailedStatementMock } = vi.hoisted(() => ({
+  printDocumentUrl: vi.fn(),
+  requireOperationalRoleMock: vi.fn(),
+  getCustomerDetailedStatementMock: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/session", () => ({
+  requireOperationalRole: requireOperationalRoleMock,
+  isAdminRole: (role: string | null | undefined) => role === "ADMIN" || role === "SUPER_ADMIN",
+}));
+
+vi.mock("@/features/customers/customer-statement-queries", () => ({
+  getCustomerDetailedStatement: getCustomerDetailedStatementMock,
+}));
+
+vi.mock("@/features/payments/actions", () => ({
+  applyCustomerCreditAction: vi.fn(),
+  recordPaymentAction: vi.fn(),
+}));
 
 vi.mock("react-hot-toast", () => ({
   default: {
@@ -37,6 +56,8 @@ describe("CustomerStatementView", () => {
     anchor: "2026-08-15",
     rangeLabel: "Cartera pendiente",
     availableCreditCents: 0,
+    availableCreditAtCutoffCents: 0,
+    paymentActivity: [],
     summary: {
       initialBalanceCents: 0,
       periodChargesCents: 150000,
@@ -56,6 +77,7 @@ describe("CustomerStatementView", () => {
         vehicleLabel: "ECO: 101 · Kenworth T680 · Placas: 12-AA-3B",
         totalCents: 150000,
         paidCents: 50000,
+        paidCentsAtCutoff: 50000,
         remainingCents: 100000,
         paymentState: {
           label: "Vencida",
@@ -83,21 +105,13 @@ describe("CustomerStatementView", () => {
         },
       },
     ],
-    bankAccounts: [
-      {
-        id: 1,
-        bankName: "BBVA",
-        accountHolder: "SEBASAM",
-        accountNumber: "1234567890",
-        clabe: "012180000000000000",
-      },
-    ],
     business: {
       name: "SEBASAM",
       fullName: "Servicio Básico a Suspensiones y Aire y Muelles",
       address: "Batalla de Casa Blanca 1719B",
       contactPhone: "5556007675",
       contactWhatsapp: "5536239346",
+      bankAccounts: [],
     },
   };
 
@@ -109,23 +123,22 @@ describe("CustomerStatementView", () => {
   it("renders statement header, customer info, and pending notes", () => {
     render(<CustomerStatementView statement={mockStatement} />);
 
-    expect(screen.getByText("Transportes del Norte S.A.")).toBeInTheDocument();
-    expect(screen.getByText(/Razón social: Transportes del Norte S.A. de C.V./)).toBeInTheDocument();
+    expect(screen.getAllByText("Transportes del Norte S.A.")).toHaveLength(2);
+    expect(screen.getAllByText(/Razón social: Transportes del Norte S.A. de C.V./)).toHaveLength(2);
     expect(screen.getByText("RFC: TDN900101XYZ")).toBeInTheDocument();
 
     // Notes table
-    expect(screen.getByText("OT-001")).toBeInTheDocument();
-    expect(screen.getByText("Cambiar muelles · Alinear eje")).toBeInTheDocument();
-    expect(screen.getByText(/ECO: 101 · Kenworth T680/)).toBeInTheDocument();
+    expect(screen.getAllByText("OT-001")).toHaveLength(2);
+    expect(screen.getAllByText("Cambiar muelles · Alinear eje")).toHaveLength(3);
+    expect(screen.getAllByText(/ECO: 101 · Kenworth T680/)).toHaveLength(2);
     const noteRow = screen.getByTestId("statement-note-OT-001");
     expect(within(noteRow).getByText("$1,500.00")).toBeInTheDocument(); // total
     expect(within(noteRow).getByText("$500.00")).toBeInTheDocument(); // paid
     expect(within(noteRow).getByText("$1,000.00")).toBeInTheDocument(); // remaining
-    expect(screen.getByText("Vencida")).toBeInTheDocument();
+    expect(screen.getAllByText("Vencida")).toHaveLength(2);
 
-    // Bank transfer details
-    expect(screen.getByText("BBVA")).toBeInTheDocument();
-    expect(screen.getByText(/CLABE: 012180000000000000/)).toBeInTheDocument();
+    expect(screen.queryByText("BBVA")).not.toBeInTheDocument();
+    expect(screen.queryByText(/012180000000000000|1234567890/)).not.toBeInTheDocument();
   });
 
   it("opens QuotePreviewDialog when clicking note row", () => {
@@ -137,6 +150,34 @@ describe("CustomerStatementView", () => {
     fireEvent.click(noteRow);
 
     expect(screen.getByTestId("quote-preview-dialog")).toBeInTheDocument();
+  });
+
+  it.each(["ADMIN", "SUPER_ADMIN"])("passes the payment action for the %s role", async (role) => {
+    requireOperationalRoleMock.mockResolvedValue({ profile: { role } });
+    getCustomerDetailedStatementMock.mockResolvedValue(mockStatement);
+
+    render(
+      await CustomerStatementPage({
+        params: Promise.resolve({ id: "cust-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(screen.getAllByRole("button", { name: /registrar abono para ot-001/i })).toHaveLength(2);
+  });
+
+  it("does not pass the payment action to operational-only ADMIN_ASSISTANT", async () => {
+    requireOperationalRoleMock.mockResolvedValue({ profile: { role: "ADMIN_ASSISTANT" } });
+    getCustomerDetailedStatementMock.mockResolvedValue(mockStatement);
+
+    render(
+      await CustomerStatementPage({
+        params: Promise.resolve({ id: "cust-1" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(screen.queryByRole("button", { name: /registrar abono/i })).not.toBeInTheDocument();
   });
 
   it("prints a note without opening its row preview or rendering a view action", async () => {
@@ -189,7 +230,8 @@ describe("CustomerStatementView", () => {
 
     render(<CustomerStatementView statement={historyStatement} />);
 
-    const initialCard = screen.getByText("Saldo inicial").closest("div");
+    // The label sits in the tile header; the tile itself holds the figure.
+    const initialCard = screen.getByText("Saldo inicial").parentElement?.parentElement;
     expect(within(initialCard!).getByText("$500.00")).toBeInTheDocument();
     expect(screen.getByText("Cargos del período")).toBeInTheDocument();
     expect(screen.getByText("+$1,500.00")).toBeInTheDocument();

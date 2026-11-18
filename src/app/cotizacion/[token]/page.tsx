@@ -48,6 +48,7 @@ function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQu
     operationalDate: quote.operationalDate,
     isLocked: quote.isLocked,
     paymentDueDate: quote.paymentDueDate,
+    payableNote: quote.payableNote,
     customer: quote.customer ? { name: quote.customer.name } : null,
     contactSnapshot: quote.contactSnapshot,
     customerContact: quote.customerContact ? { name: quote.customerContact.name, role: quote.customerContact.role } : null,

@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { PaymentRequestStatus, type Prisma } from "@prisma/client";
+import { PaymentRequestStatus, type Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertCommercialQuote } from "@/features/quotes/lib/commercial-validation";
 import { fiscalDataInputSchema, invoicePreferenceSchema } from "./schemas";

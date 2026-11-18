@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { QuoteStatus, WorkOrderStatus, UserRole, WorkerKind } from "@prisma/client";
+import { QuoteStatus, WorkOrderStatus, UserRole, WorkerKind } from "@/generated/prisma/client";
 
 const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),

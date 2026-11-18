@@ -1,6 +1,7 @@
-import { PrismaClient, CustomerContactRole, CustomerStatus } from "@prisma/client";
+import { CustomerContactRole, CustomerStatus } from "@/generated/prisma/client";
+import { createPrismaClient } from "@/lib/prisma-client";
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function main() {
   console.log("🌱 Sembrando ejemplos de clientes con contactos, operadores y ECO...");

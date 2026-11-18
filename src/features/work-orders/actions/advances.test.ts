@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AssignmentStatus, PayrollPeriodStatus, QuoteItemType, WorkerKind, WorkOrderStatus } from "@prisma/client";
+import { AssignmentStatus, PayrollPeriodStatus, QuoteItemType, WorkerKind, WorkOrderStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";

@@ -1,6 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { createPrismaClient } from "@/lib/prisma-client";
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const ALLOWED_USERNAMES = ["pablo", "fede", "andres", "marco", "alfa", "cuco", "roberto"];
 

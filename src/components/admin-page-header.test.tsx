@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ClipboardList } from "lucide-react";
+
 import { AdminPageHeader } from "./admin-page-header";
 
 describe("AdminPageHeader", () => {
   it("renders only the shared icon and title", () => {
     const { container } = render(
       <AdminPageHeader
-        icon={ClipboardList}
+        icon="clipboard"
         title="Trabajos"
       />,
     );
@@ -21,7 +21,7 @@ describe("AdminPageHeader", () => {
   it("renders an expanded hierarchy with distinct composition spacing", () => {
     const { container } = render(
       <AdminPageHeader
-        icon={ClipboardList}
+        icon="clipboard"
         title="Configuración"
         description="Administra los datos visibles para clientes."
         actions={<button type="button">Guardar</button>}
@@ -43,7 +43,7 @@ describe("AdminPageHeader", () => {
   it("keeps actions and description available in the compact variant", () => {
     render(
       <AdminPageHeader
-        icon={ClipboardList}
+        icon="clipboard"
         title="Trabajos"
         description="Órdenes activas"
         actions={<button type="button">Nuevo</button>}
@@ -57,7 +57,7 @@ describe("AdminPageHeader", () => {
   });
 
   it("preserves compact alignment and spacing by default", () => {
-    const { container } = render(<AdminPageHeader icon={ClipboardList} title="Trabajos" />);
+    const { container } = render(<AdminPageHeader icon="clipboard" title="Trabajos" />);
     const header = container.querySelector('[data-testid="admin-page-header"]');
     expect(header).toHaveAttribute("data-variant", "compact");
     expect(header).toHaveClass("p-4");
@@ -72,18 +72,15 @@ describe("AdminPageHeader", () => {
       "@/features/quotes/components/quote-builder-dialog",
       "@/features/workers/components/worker-edit-dialog",
       "@/features/customers/components/customer-create-form",
-      "@/features/customers/components/customer-detail-dialog",
       "@/features/workers/components/worker-create-dialog",
       "@/features/quotes/components/quote-preview-dialog",
       "@/features/quotes/components/quote-lifecycle-form",
        "@/features/quotes/components/quote-correct-decision-form",
        "@/features/quotes/components/quote-authorize-form",
-       "@/features/quotes/components/quote-approval-form",
        "@/features/payments/components/cash-payment-dialog",
       "@/features/payment-requests/components/payment-request-link-dialog",
       "@/features/work-orders/components/work-order-operations-dialog",
     ];
-    // MultiStepDialog is intentionally future scope: no current owner source exists.
 
     vi.resetModules();
     vi.doMock("@/components/admin-page-header", () => {

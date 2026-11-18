@@ -3,12 +3,12 @@ schema: spec-driven
 context: |
   Tech stack: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, Prisma ORM, Supabase / PostgreSQL.
   Architecture: Feature-sliced (src/features/*) + Route handlers / Server actions + Container-presentational UI.
-  Testing: Vitest (unit/UI), React Testing Library, custom contract verifications.
-  Style: Mobile-first responsive, custom design tokens in globals.css/ui.tsx (Navy/White theme).
+  Testing: Vitest (unit/UI), React Testing Library, custom contract verifications; Playwright browser fixtures (not authenticated app E2E).
+  Style: Mobile-first responsive, custom design tokens in globals.css and src/components/ui (Navy/White theme).
 
 testing:
   strict_tdd: true
-  detected: "2026-09-07"
+  scope: "Versioned configuration, not proof that checks were executed in this checkout"
   runner:
     command: "pnpm test:ui"
     framework: "vitest"
@@ -20,11 +20,11 @@ testing:
       available: true
       tool: "@testing-library/react"
     e2e:
-      available: false
-      tool: null
+      available: true
+      tool: "@playwright/test (tests/playwright browser fixtures; not authenticated app E2E)"
   coverage:
-    available: true
-    command: "pnpm test:ui -- --coverage"
+    available: false
+    command: null # No coverage provider is declared in package.json.
   quality:
     linter:
       available: true
@@ -33,8 +33,8 @@ testing:
       available: true
       command: "pnpm typecheck"
     formatter:
-      available: true
-      command: "pnpm lint"
+      available: false
+      command: null # pnpm lint runs ESLint, not a configured formatter.
 
 rules:
   proposal:
@@ -50,11 +50,11 @@ rules:
     - Keep tasks completable in one session
   apply:
     - Follow existing code patterns and container-presentational design
-    tdd: true
-    test_command: "pnpm test:ui"
+    - Follow the existing strict TDD setting for runnable deterministic behavior changes; see docs/AI_WORKFLOW.md for applicability and passive-documentation exceptions
+    - "Test command: pnpm test:ui"
   verify:
-    test_command: "pnpm test:ui"
-    build_command: "pnpm build"
-    coverage_threshold: 0
+    - "Test command: pnpm test:ui"
+    - "Build command when applicable: pnpm build"
+    - No minimum coverage percentage is configured (historical threshold was 0); do not claim coverage proof without a configured provider
   archive:
     - Warn before merging destructive deltas

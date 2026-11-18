@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { useIsMobile } from "./use-is-mobile";
 
 interface SwipeableRowProps {
@@ -122,9 +122,9 @@ export function SwipeableRow({
           type="button"
           aria-label={ariaLabel || "Eliminar concepto"}
           onClick={handleDeleteTap}
-          className="group flex h-full min-h-[44px] w-[120px] items-center justify-center gap-2 px-3 text-[var(--color-status-danger-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]"
+          className="group flex h-full min-h-[44px] w-[120px] items-center justify-center gap-2 px-3 text-[var(--color-status-danger-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
         >
-          <Trash2 className="size-5 shrink-0 icon-trash-hover" aria-hidden="true" />
+          <Icon name="trash" className="size-5 shrink-0 icon-trash-hover" aria-hidden="true" />
           <span className="text-sm font-medium">Eliminar</span>
         </button>
       </div>
@@ -137,7 +137,7 @@ export function SwipeableRow({
           willChange: "transform",
           position: "relative",
           zIndex: 1,
-          backgroundColor: "var(--color-bg-soft)",
+          backgroundColor: "var(--color-surface)",
           touchAction: "pan-y",
         }}
         onTouchStart={handleTouchStart}

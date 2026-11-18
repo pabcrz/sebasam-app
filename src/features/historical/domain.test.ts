@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/enums";
 import {
   buildItemEmbeddingText,
   computeHistoricalCommissionCents,
-  computeItemContentHash,
   computeUnitPriceCents,
   detectKit,
   hasQuantityConcept,
@@ -12,7 +11,7 @@ import {
   pesosToCents,
   resolveRatePercent,
 } from "./domain";
-import { finalizeHistoricalItem } from "./domain";
+import { computeItemContentHash, finalizeHistoricalItem } from "./finalize-item";
 
 describe("historical domain - money and quantity", () => {
   it("converts pesos line totals to integer cents", () => {

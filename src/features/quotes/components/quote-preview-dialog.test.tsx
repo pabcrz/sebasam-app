@@ -58,6 +58,39 @@ function createMockQuote(overrides: MockQuoteInput = {}): QuoteListSummary {
 }
 
 describe("QuotePreviewDialog", () => {
+  it("keeps three distinct content groups without nesting another framed document", () => {
+    const { container } = render(<QuotePreviewDialog quote={createMockQuote()} open />);
+    expect(screen.getByRole("region", { name: "Cliente y unidad" })).toHaveTextContent("Constructora del Norte");
+    expect(screen.getByRole("region", { name: "Conceptos" })).toHaveTextContent("Cambio de aceite");
+    expect(screen.getByRole("region", { name: "Totales" })).toHaveTextContent("Subtotal");
+    expect(screen.getByRole("region", { name: "Totales" })).toHaveTextContent("IVA (16%)");
+    expect(screen.getByRole("region", { name: "Totales" })).toHaveTextContent("$116.00");
+    const customerGroup = screen.getByRole("region", { name: "Cliente y unidad" });
+    expect(customerGroup.parentElement?.parentElement).not.toHaveClass("shadow-[var(--shadow-card)]");
+    expect(container).toBeInTheDocument();
+  });
+
+  it("resolves the completed work deadline without changing its stored quotation date", () => {
+    const stored = new Date("2026-09-20T12:00:00Z");
+    const issued = new Date("2026-09-30T12:00:00Z");
+    const quote = createMockQuote({ paymentDueDate: stored,
+      workOrder: { id: "wo-1", status: "COMPLETED", paymentDueDate: issued } as QuoteListSummary["workOrder"],
+    });
+    const preview = toQuotePreviewCardProps(quote);
+    expect(preview.isNote).toBe(true);
+    expect(preview.paymentDueDate).toBe(issued);
+    expect(quote.paymentDueDate).toBe(stored);
+  });
+
+  it("resolves an issued sale without manufacturing a work order", () => {
+    const due = new Date("2026-09-30T12:00:00Z");
+    const preview = toQuotePreviewCardProps(createMockQuote({
+      payableNote: { id: "pn-1", kind: "SALE", status: "ISSUED", paymentDueDate: due },
+    }));
+    expect(preview.isNote).toBe(true);
+    expect(preview.paymentDueDate).toBe(due);
+  });
+
   it("renders the supplied quote content immediately when opened", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote();
@@ -96,7 +129,7 @@ describe("QuotePreviewDialog", () => {
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /cerrar/i }));
+    await user.click(screen.getByRole("button", { name: "Cerrar vista previa" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -239,7 +272,7 @@ describe("QuotePreviewDialog", () => {
     expect(screen.queryByText(/imprimir cotización/i)).not.toBeInTheDocument();
   });
 
-  it("renders contact with role 'Operador' when DRIVER is present in snapshot", async () => {
+  it("renders the driver from the snapshot as 'Chofer' under the unit", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote({
       contactSnapshot: {
@@ -252,10 +285,10 @@ describe("QuotePreviewDialog", () => {
     render(<QuotePreviewDialog quote={quote} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(screen.getByText("Operador: Roberto Chofer")).toBeInTheDocument();
+    expect(screen.getByText("Chofer: Roberto Chofer")).toBeInTheDocument();
   });
 
-  it("renders contact with role 'Contacto responsable' and 'Contacto de facturación'", async () => {
+  it("keeps non-driver contacts out of the in-app preview", async () => {
     const user = userEvent.setup();
     const contactQuote = createMockQuote({
       contactSnapshot: {
@@ -267,7 +300,8 @@ describe("QuotePreviewDialog", () => {
 
     const { unmount } = render(<QuotePreviewDialog quote={contactQuote} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
-    expect(screen.getByText("Contacto responsable: Maria Directora")).toBeInTheDocument();
+    expect(screen.queryByText(/Maria Directora/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Chofer:/)).not.toBeInTheDocument();
     unmount();
 
     const billingQuote = createMockQuote({
@@ -279,7 +313,7 @@ describe("QuotePreviewDialog", () => {
     });
     render(<QuotePreviewDialog quote={billingQuote} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
-    expect(screen.getByText("Contacto de facturación: Carlos Contador")).toBeInTheDocument();
+    expect(screen.queryByText(/Carlos Contador/)).not.toBeInTheDocument();
   });
 
   it("prioritizes contact snapshot over changed live customer contact", async () => {
@@ -301,18 +335,18 @@ describe("QuotePreviewDialog", () => {
     render(<QuotePreviewDialog quote={quote} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(screen.getByText("Operador: Chofer Histórico")).toBeInTheDocument();
+    expect(screen.getByText("Chofer: Chofer Histórico")).toBeInTheDocument();
     expect(screen.queryByText(/Nuevo Chofer Vivo/)).not.toBeInTheDocument();
   });
 
-  it("falls back to live customer contact when contactSnapshot is null", async () => {
+  it("falls back to the live customer driver when contactSnapshot is null", async () => {
     const user = userEvent.setup();
     const quote = createMockQuote({
       contactSnapshot: null,
       customerContact: {
         id: "c-live",
-        name: "Contacto Vivo",
-        role: "CONTACT",
+        name: "Chofer Vivo",
+        role: "DRIVER",
         phone: "5511223344",
       },
     });
@@ -320,7 +354,7 @@ describe("QuotePreviewDialog", () => {
     render(<QuotePreviewDialog quote={quote} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    expect(screen.getByText("Contacto responsable: Contacto Vivo")).toBeInTheDocument();
+    expect(screen.getByText("Chofer: Chofer Vivo")).toBeInTheDocument();
   });
 
   it("does not render a contact line when no contact is selected", async () => {
@@ -345,7 +379,7 @@ describe("QuotePreviewDialog", () => {
     render(<QuotePreviewDialog quote={createMockQuote()} />);
     await user.click(screen.getByRole("button", { name: /ver vista previa/i }));
 
-    const closeButton = screen.getByRole("button", { name: /cerrar/i });
-    expect(closeButton).toHaveClass("min-h-[40px]", "min-w-[40px]");
+    const closeButton = screen.getByRole("button", { name: "Cerrar vista previa" });
+    expect(closeButton.closest("[data-dialog-header]")).not.toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 
 export const quoteStatusLabels: Record<QuoteStatus, string> = {
   DRAFT: "Borrador",

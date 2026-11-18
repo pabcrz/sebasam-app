@@ -1,14 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { resolveDocumentDates, type DocumentDateSource } from "@/features/quotes/lib/document-dates";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X, Printer } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui";
 import { QuotePreviewCard } from "@/features/quotes/components/quote-preview-card";
 import { formatSnapshotVehicle, formatVehicle } from "@/features/quotes/lib/format";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
-import type { QuoteItemType, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import type { QuoteItemType, QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { BankDataCard, type BankAccountData } from "@/features/public-payment/components/bank-data-card";
 
 type SerializableQuoteItem = {
@@ -47,7 +48,8 @@ export type SharedQuoteViewQuote = {
   vehicle: { plate: string | null; economicNumber: string | null; brand: string | null; model: string | null } | null;
   items: SerializableQuoteItem[];
   sections: { id: string; quoteId: string; name: string; sortOrder: number; isAuthorized: boolean; items: SerializableQuoteItem[] }[];
-  workOrder: { id?: string; status: WorkOrderStatus; folio?: string | null } | null;
+  workOrder: { id?: string; status: WorkOrderStatus; folio?: string | null; paymentDueDate?: Date | null } | null;
+  payableNote?: DocumentDateSource["payableNote"];
 };
 
 export interface SharedQuoteViewProps {
@@ -75,7 +77,8 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
   const router = useRouter();
   const [decision, setDecision] = React.useState<string | null>(null);
   const isPrint = isPrintProp ?? !token;
-  const isNote = isNoteProp ?? (quote.workOrder?.status === "COMPLETED");
+  const dates = resolveDocumentDates(quote);
+  const isNote = isNoteProp ?? dates.isIssuedNote;
 
   React.useEffect(() => {
     if (!token || isPrint || isNote || (quote.status !== "DRAFT" && quote.status !== "SENT") || decision !== null || !initialStatusRevision) return;
@@ -277,7 +280,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
         selectableSectionIds={showDecisionControls && quote.sections.length > 1 ? selectedSectionIds : undefined}
         onSectionToggle={showDecisionControls && quote.sections.length > 1 ? handleSectionToggle : undefined}
         validUntil={quote.validUntil}
-        paymentDueDate={quote.paymentDueDate}
+        paymentDueDate={dates.paymentDueDate}
         isNote={isNote}
         isPrint={isPrint}
         isApproved={quote.status === "APPROVED" || decision === "accepted"}
@@ -301,7 +304,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
           tabIndex={-1}
           className="rounded-[var(--radius-md)] bg-[var(--color-status-success-bg)] p-4 text-center print:hidden"
         >
-          <Check className="mx-auto h-8 w-8 text-[var(--color-status-success-fg)]" aria-hidden="true" />
+          <Icon name="check" className="mx-auto h-8 w-8 text-[var(--color-status-success-fg)]" aria-hidden="true" />
           <p className="mt-2 font-semibold text-[var(--color-status-success-fg)]">Cotización aceptada</p>
           <p className="mt-1 text-sm text-[var(--color-status-success-fg)] opacity-80">
             Gracias por tu confirmación. El taller se comunicará contigo para coordinar los siguientes pasos.
@@ -314,7 +317,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
           tabIndex={-1}
           className="rounded-[var(--radius-md)] bg-[var(--color-surface-muted)] p-4 text-center print:hidden"
         >
-          <X className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" aria-hidden="true" />
+          <Icon name="close" className="mx-auto h-8 w-8 text-[var(--color-text-muted)]" aria-hidden="true" />
           <p className="mt-2 font-semibold text-[var(--color-text-main)]">Cotización declinada</p>
           <p className="mt-1 text-sm text-[var(--color-text-muted)]">
             Has declinado esta cotización. Si cambias de opinión, contacta al taller
@@ -341,7 +344,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
             disabled={isPending || (quote.sections.length > 0 && selectedSectionIds.length === 0)}
             onClick={handleAccept}
           >
-            <Check className="h-4 w-4" aria-hidden="true" />
+            <Icon name="check" className="h-4 w-4" aria-hidden="true" />
             <span>
               {quote.sections.length > 0 && selectedSectionIds.length === 0
                 ? "Seleccione al menos una sección"
@@ -359,7 +362,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
             onClick={handleDecline}
             aria-label="Declinar cotización"
           >
-            <X className="h-4 w-4" aria-hidden="true" />
+            <Icon name="close" className="h-4 w-4" aria-hidden="true" />
             <span>Declinar cotización</span>
           </Button>
         </div>
@@ -375,7 +378,7 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
           onClick={() => window.print()}
           className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 min-h-11 min-w-11 gap-2 px-3 shadow-lg print:hidden sm:bottom-5 sm:right-5 sm:px-4"
         >
-          <Printer className="h-4 w-4" aria-hidden="true" />
+          <Icon name="print" className="h-4 w-4" aria-hidden="true" />
           <span className="hidden sm:inline">Imprimir</span>
         </Button>
       ) : null}

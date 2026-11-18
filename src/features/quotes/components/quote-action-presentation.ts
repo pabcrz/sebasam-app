@@ -1,4 +1,4 @@
-import type { QuoteStatus } from "@prisma/client";
+import type { QuoteStatus } from "@/generated/prisma/client";
 
 export type QuoteActionId =
   | "print"
@@ -58,7 +58,7 @@ export function resolveQuoteActionPresentation({
   if (status !== "CANCELLED") {
     available.add("share");
   }
-  if (status === "SENT") available.add("authorize");
+  if (status === "DRAFT" || status === "SENT") available.add("authorize");
   if ((status === "APPROVED" || status === "REJECTED") && !hasWorkOrder) available.add("correctDecision");
   if (status === "DRAFT" || status === "SENT" || status === "APPROVED") available.add("workOrder");
   if (paymentAvailable) available.add("paymentLink");
@@ -70,7 +70,7 @@ export function resolveQuoteActionPresentation({
   if (status !== "APPROVED") available.add("delete");
 
   const primaryCandidates: Record<QuoteStatus, QuoteActionId[]> = {
-    DRAFT: [],
+    DRAFT: ["share"],
     SENT: ["authorize"],
     APPROVED: ["workOrder"],
     REJECTED: ["correctDecision"],

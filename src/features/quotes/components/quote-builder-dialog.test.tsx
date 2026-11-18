@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteBuilderDialog } from "./quote-builder-dialog";
@@ -9,7 +9,16 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
 }));
 
+let matchMediaSpy: ReturnType<typeof vi.spyOn> | undefined;
+
+afterEach(() => {
+  matchMediaSpy?.mockRestore();
+  matchMediaSpy = undefined;
+});
+
 const customers = [{ id: "1", name: "Acme" }];
+// Full-screen quote flow: the bottom bar names the next step, e.g. "Conceptos →".
+const NEXT_STEP = /→$/;
 const editInitialData = { customerId: "1", vehicle: { plate: "ABC123", brand: "Ford", model: "Transit", year: "2024" }, title: "Servicio", description: "", administrative: false, taxEnabled: true, discountCents: 0, sections: [{ name: "", items: [{ type: "LABOR" as const, description: "Frenos", quantity: "1", unitPrice: "100" }] }] };
 
 function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
@@ -26,11 +35,13 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   const footer = screen.getByTestId("multi-step-dialog-footer");
   const footerHost = screen.getByTestId("quote-builder-footer-host");
 
-  expect(Array.from(dialog.children)).toEqual([header, stepper, body, footer]);
+  // The desktop summary slot exists only in the full-screen flow (hidden below 1024px).
+  const summary = screen.queryByTestId("multi-step-dialog-summary");
+  expect(Array.from(dialog.children)).toEqual([header, stepper, body, ...(summary ? [summary] : []), footer]);
 
   expect(header).toContainElement(screen.getByRole("heading", { name: /cotización/ }));
   expect(stepper).toContainElement(screen.getByRole("navigation", { name: "Pasos de cotización" }));
-  expect(footer).toContainElement(screen.getByRole("button", { name: "Siguiente" }));
+  expect(footer).toContainElement(screen.getByRole("button", { name: NEXT_STEP }));
   expect(footerHost).toHaveClass("contents");
   expect(footerHost.parentElement).toBe(footer);
 
@@ -48,7 +59,8 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   expect(formStyle.display).toBe("flex");
   expect(formStyle.flexDirection).toBe("column");
   expect(formStyle.justifyContent).toBe("flex-start");
-  expect(formStyle.height).toBe("100%");
+  // The shell body is the only scroll zone: the form and its scroll area keep natural height.
+  expect(form.style.height).toBe("");
   expect(formStyle.minHeight).toBe("0px");
   expect(formStyle.minWidth).toBe("0px");
 
@@ -60,19 +72,33 @@ function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   expect(bodyStyle.overflowY).toBe("auto");
   expect(bodyStyle.overscrollBehaviorY).toBe("contain");
 
-  const scrollAreaStyle = getComputedStyle(scrollArea);
-  expect(scrollAreaStyle.flexGrow).toBe("1");
-  expect(scrollAreaStyle.flexShrink).toBe("1");
-  expect(scrollAreaStyle.minHeight).toBe("0px");
-  expect(scrollAreaStyle.minWidth).toBe("0px");
-  expect(scrollAreaStyle.overflowY).toBe("auto");
-  expect(scrollAreaStyle.overscrollBehaviorY).toBe("contain");
+  expect(getComputedStyle(scrollArea).overflowY).not.toBe("auto");
 
-  Object.defineProperties(scrollArea, {
+  Object.defineProperties(body, {
     clientHeight: { configurable: true, value: 320 },
     scrollHeight: { configurable: true, value: overflowing ? 960 : 240 },
   });
-  expect(scrollArea.scrollHeight > scrollArea.clientHeight).toBe(overflowing);
+  expect(body.scrollHeight > body.clientHeight).toBe(overflowing);
+}
+
+function expectFullScreenQuoteDialog(dialog: HTMLElement) {
+  expect(dialog).toHaveClass(
+    "!inset-0",
+    "!h-dvh",
+    "!max-h-none",
+    "!w-screen",
+    "!max-w-none",
+    "!rounded-none",
+    "!gap-0",
+    "p-0",
+    "sm:!inset-0",
+    "sm:!h-dvh",
+    "sm:!w-screen",
+    "sm:!max-w-none",
+    "sm:!rounded-none",
+    "sm:!p-0",
+  );
+  expect(dialog).not.toHaveClass("sm:!w-[min(92vw,64rem)]", "sm:!max-w-5xl", "sm:!rounded-[var(--radius-lg)]", "p-3");
 }
 
 function expectFullHeightQuoteBuilderDialog(dialog: HTMLElement) {
@@ -93,16 +119,15 @@ async function enterRepresentativeQuoteState(user: ReturnType<typeof userEvent.s
   await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "ABC123");
   await user.type(screen.getByRole("textbox", { name: "Marca (opcional)" }), "Ford");
   await user.type(screen.getByRole("textbox", { name: "Modelo (opcional)" }), "Transit");
-  await user.click(screen.getByRole("button", { name: "Siguiente" }));
+  await user.click(screen.getByRole("button", { name: NEXT_STEP }));
   await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Cambio de frenos");
   await user.clear(screen.getByRole("textbox", { name: "Cantidad" }));
   await user.type(screen.getByRole("textbox", { name: "Cantidad" }), "3");
   await user.type(screen.getByRole("spinbutton", { name: "Precio unitario" }), "1250");
-  await user.click(screen.getByRole("checkbox", { name: "Incluir IVA (16%)" }));
-  await user.click(screen.getByRole("button", { name: "Siguiente" }));
-  await user.type(screen.getByRole("textbox", { name: "Título" }), "Servicio completo");
-  await user.type(screen.getByLabelText("Descripción", { selector: "textarea" }), "Trabajo prioritario");
-  await user.click(screen.getByRole("checkbox", { name: "Cotización administrativa" }));
+  await user.click(screen.getByRole("switch", { name: "Incluir IVA (16%)" }));
+  await user.click(screen.getByRole("button", { name: NEXT_STEP }));
+  await user.type(screen.getByRole("textbox", { name: "Descripción breve" }), "Servicio completo");
+  await user.type(screen.getByLabelText("Detalles (opcional)"), "Trabajo prioritario");
 }
 
 function expectRepresentativeQuoteState() {
@@ -114,9 +139,8 @@ function expectRepresentativeQuoteState() {
   expect(screen.getByLabelText("Descripción", { selector: "input" })).toHaveValue("Cambio de frenos");
   expect(screen.getByLabelText("Cantidad")).toHaveValue("3");
   expect(screen.getByLabelText("Precio unitario")).toHaveValue(1250);
-  expect(screen.getByLabelText("Título")).toHaveValue("Servicio completo");
-  expect(screen.getByLabelText("Descripción", { selector: "textarea" })).toHaveValue("Trabajo prioritario");
-  expect(screen.getByLabelText("Cotización administrativa")).toBeChecked();
+  expect(screen.getByLabelText("Descripción breve")).toHaveValue("Servicio completo");
+  expect(screen.getByLabelText("Detalles (opcional)")).toHaveValue("Trabajo prioritario");
   expect(screen.getByLabelText("Incluir IVA (16%)")).not.toBeChecked();
 }
 
@@ -162,15 +186,10 @@ describe("QuoteBuilderDialog", () => {
     await user.click(screen.getByRole("button", { name: "Editar" }));
 
     const dialog = screen.getByRole("dialog", { name: "Editar cotización C-001" });
-    expectFullHeightQuoteBuilderDialog(dialog);
-    expect(dialog).toHaveClass(
-      "sm:!w-[min(92vw,64rem)]",
-      "sm:!max-w-5xl",
-      "p-3",
-    );
+    expectFullScreenQuoteDialog(dialog);
     expectStableDialogLayout(dialog, itemCount > 1);
     expect(screen.getAllByLabelText("Descripción", { selector: "input" })).toHaveLength(itemCount);
-    expect(screen.getByTestId("concept-list-0")).toHaveClass("grid", "gap-3");
+    expect(screen.getByTestId("concept-list-0")).toHaveClass("grid");
     expect(screen.getByTestId("concept-list-0")).not.toHaveClass("max-h-[45dvh]", "overflow-y-auto");
   });
 
@@ -186,22 +205,20 @@ describe("QuoteBuilderDialog", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Editar" }));
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: NEXT_STEP }));
 
     const footer = screen.getByTestId("multi-step-dialog-footer");
     const footerHost = screen.getByTestId("quote-builder-footer-host");
-    const previous = screen.getByRole("button", { name: "Anterior" });
-    const next = screen.getByRole("button", { name: "Siguiente" });
-    const previousGroup = previous.parentElement;
+    const next = screen.getByRole("button", { name: "Notas →" });
+    const back = screen.getByRole("button", { name: "Paso anterior" });
 
     expect(footer).toHaveClass("min-w-0", "flex-wrap", "items-center", "justify-between", "gap-3");
     expect(footerHost).toHaveClass("contents");
-    expect(previousGroup).toBeTruthy();
-    expect(previousGroup).not.toBe(footerHost);
-    expect(previousGroup).toHaveClass("flex", "items-center", "gap-2");
     expect(next.parentElement).toBe(footerHost);
-    expect(footerHost).toContainElement(previous);
     expect(footerHost).toContainElement(next);
+    expect(footerHost).not.toContainElement(back);
+    expect(screen.getByTestId("multi-step-dialog-header")).toContainElement(back);
+    expect(screen.queryByRole("button", { name: "Anterior" })).not.toBeInTheDocument();
   });
 
   it("requests confirmation via the X button", async () => {
@@ -211,33 +228,15 @@ describe("QuoteBuilderDialog", () => {
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Crear cotización" })).toBeInTheDocument();
-    expectFullHeightQuoteBuilderDialog(dialog);
-    expect(dialog).toHaveClass(
-      "!inset-0",
-      "!w-screen",
-      "!max-w-none",
-      "!translate-x-0",
-      "!translate-y-0",
-      "!rounded-none",
-      "!gap-0",
-      "p-3",
-      "sm:!left-1/2",
-      "sm:!top-1/2",
-      "sm:!w-[min(92vw,64rem)]",
-      "sm:!max-w-5xl",
-      "sm:!translate-x-[-50%]",
-      "sm:!translate-y-[-50%]",
-      "sm:!rounded-[var(--radius-lg)]",
-    );
-    expect(dialog).not.toHaveClass("sm:!w-screen", "sm:!max-w-none");
+    expect(screen.getByRole("heading", { name: "Nueva cotización" })).toBeInTheDocument();
+    expectFullScreenQuoteDialog(dialog);
     expectStableDialogLayout(dialog, false);
     expect(screen.queryByText(/crear cotización en borrador/i)).not.toBeInTheDocument();
 
     await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
-    expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
-    expect(screen.getByText("Se perderá todo el progreso que no hayas guardado.")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar y salir" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Seguir editando" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Descartar cambios" })).toBeInTheDocument();
   });
@@ -251,8 +250,8 @@ describe("QuoteBuilderDialog", () => {
     await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
     await user.click(closeButton);
 
-    const confirmation = screen.getByRole("dialog", { name: "¿Descartar la cotización?" });
-    const hiddenBuilder = screen.getByRole("dialog", { name: /Crear cotización/i, hidden: true });
+    const confirmation = screen.getByRole("dialog", { name: "¿Salir de la cotización?" });
+    const hiddenBuilder = screen.getByRole("dialog", { name: /Nueva cotización/i, hidden: true });
     expect(hiddenBuilder).toHaveAttribute("data-state", "open");
     expect(confirmation).toContainElement(document.activeElement as HTMLElement);
     expect(hiddenBuilder).not.toContainElement(document.activeElement as HTMLElement);
@@ -266,7 +265,7 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Seguir editando" }));
     await waitFor(() => expect(closeButton).toHaveFocus());
-    expect(screen.getByRole("dialog", { name: "Crear cotización" })).not.toHaveAttribute("aria-hidden");
+    expect(screen.getByRole("dialog", { name: "Nueva cotización" })).not.toHaveAttribute("aria-hidden");
   });
 
   it("closes a pristine form immediately", async () => {
@@ -294,7 +293,7 @@ describe("QuoteBuilderDialog", () => {
       await user.click(overlay);
     }
 
-    expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Nueva cotización", hidden: true })).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -306,7 +305,7 @@ describe("QuoteBuilderDialog", () => {
     await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
     await user.keyboard("{Escape}");
 
-    expect(screen.getByRole("dialog", { name: "¿Descartar la cotización?" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Nueva cotización", hidden: true })).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -320,7 +319,23 @@ describe("QuoteBuilderDialog", () => {
     await user.click(screen.getByRole("button", { name: "Seguir editando" }));
 
     expectRepresentativeQuoteState();
-    expect(screen.queryByRole("dialog", { name: "¿Descartar la cotización?" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "¿Salir de la cotización?" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the capture on Guardar y salir and restores it when reopened", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
+    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "ABC123");
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+    await user.click(screen.getByRole("button", { name: "Guardar y salir" }));
+
+    const trigger = screen.getByRole("button", { name: "Nueva cotización" });
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
+    await user.click(trigger);
+    await screen.findByRole("dialog", { name: "Nueva cotización" });
+    expect(screen.getByLabelText("Placas (opcional)")).toHaveValue("ABC123");
   });
 
   it("discards state and starts fresh when reopened", async () => {
@@ -335,8 +350,8 @@ describe("QuoteBuilderDialog", () => {
     const trigger = screen.getByRole("button", { name: "Nueva cotización" });
     await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
     await user.click(trigger);
-    await screen.findByRole("dialog", { name: "Crear cotización" });
-    expect(screen.getByRole("button", { name: "Paso 1: Cliente / Unidad" })).toHaveAttribute("aria-current", "step");
+    await screen.findByRole("dialog", { name: "Nueva cotización" });
+    expect(screen.getByRole("button", { name: "Paso 1: Cliente y unidad" })).toHaveAttribute("aria-current", "step");
     expect(screen.getByLabelText("Cliente")).not.toHaveValue("Acme");
     expect(screen.getByLabelText("Placas (opcional)")).toHaveValue("");
     expect(screen.getByLabelText("Marca (opcional)")).toHaveValue("");
@@ -344,13 +359,26 @@ describe("QuoteBuilderDialog", () => {
     expect(screen.getByLabelText("Descripción", { selector: "input" })).toHaveValue("");
     expect(screen.getByLabelText("Cantidad")).toHaveValue("1");
     expect(screen.getByLabelText("Precio unitario")).toHaveValue(null);
-    expect(screen.getByLabelText("Título")).toHaveValue("");
-    expect(screen.getByLabelText("Descripción", { selector: "textarea" })).toHaveValue("");
-    expect(screen.getByLabelText("Cotización administrativa")).not.toBeChecked();
+    expect(screen.getByLabelText("Descripción breve")).toHaveValue("");
+    expect(screen.getByLabelText("Detalles (opcional)")).toHaveValue("");
     expect(screen.getByLabelText("Incluir IVA (16%)")).toBeChecked();
   });
 
   it("does not request close when selecting from portaled dropdowns", async () => {
+    // The concept type is a portaled Select only in the desktop table layout.
+    matchMediaSpy = vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) =>
+        ({
+          matches: query === "(min-width: 1024px)",
+          media: query,
+          onchange: null,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          dispatchEvent: () => true,
+          addListener: () => {},
+          removeListener: () => {},
+        }) as unknown as MediaQueryList,
+    );
     const user = userEvent.setup();
     render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
 
@@ -361,7 +389,7 @@ describe("QuoteBuilderDialog", () => {
     const option = await screen.findByRole("option", { name: "Acme" });
     expect(option.closest("[data-dialog-popover]")?.parentElement).toBe(document.body);
     await user.click(option);
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: NEXT_STEP }));
 
     const itemTypeSelect = screen.getAllByRole("combobox").find((element) => element.tagName === "BUTTON");
     expect(itemTypeSelect).toBeDefined();
@@ -370,10 +398,10 @@ describe("QuoteBuilderDialog", () => {
     }
     await user.click(await screen.findByRole("option", { name: "Material" }));
 
-    expect(screen.getByRole("dialog", { name: "Crear cotización" })).toHaveAttribute("data-state", "open");
+    expect(screen.getByRole("dialog", { name: "Nueva cotización" })).toHaveAttribute("data-state", "open");
     expect(itemTypeSelect).toHaveTextContent("Material");
     expect(screen.queryByRole("option", { name: "Material" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("dialog", { name: "¿Descartar la cotización?" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "¿Salir de la cotización?" })).not.toBeInTheDocument();
   });
 
   it("opens edit with the existing state", async () => {
@@ -393,12 +421,12 @@ describe("QuoteBuilderDialog", () => {
     render(<QuoteBuilderDialog customers={customers} saveAction={saveAction} quoteNumber="C-001" initialData={editInitialData} />);
 
     await user.click(screen.getByRole("button", { name: "Editar" }));
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    const title = screen.getByRole("textbox", { name: "Título" });
+    await user.click(screen.getByRole("button", { name: NEXT_STEP }));
+    await user.click(screen.getByRole("button", { name: NEXT_STEP }));
+    const title = screen.getByRole("textbox", { name: "Descripción breve" });
     await user.clear(title);
     await user.type(title, "Servicio editado");
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: NEXT_STEP }));
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1));
@@ -411,9 +439,9 @@ describe("QuoteBuilderDialog", () => {
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Editar cotización C-001" })).not.toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: "Editar" }));
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    expect(screen.getByRole("textbox", { name: "Título" })).toHaveValue("Servicio");
+    await user.click(screen.getByRole("button", { name: NEXT_STEP }));
+    await user.click(screen.getByRole("button", { name: NEXT_STEP }));
+    expect(screen.getByRole("textbox", { name: "Descripción breve" })).toHaveValue("Servicio");
   });
 
   it("closes on success and keeps state open on a server error", async () => {
@@ -424,14 +452,14 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     await enterRepresentativeQuoteState(user);
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await user.click(screen.getByRole("button", { name: NEXT_STEP }));
     await user.click(screen.getByRole("button", { name: "Crear cotización" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Error del servidor");
-    expect(screen.getByLabelText("Título")).toHaveValue("Servicio completo");
+    expect(screen.getByLabelText("Descripción breve")).toHaveValue("Servicio completo");
 
     await user.click(screen.getByRole("button", { name: "Crear cotización" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Crear cotización" })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nueva cotización" })).not.toBeInTheDocument());
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 

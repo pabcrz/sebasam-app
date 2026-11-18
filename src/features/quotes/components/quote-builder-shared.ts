@@ -1,5 +1,5 @@
-import { QuoteItemType } from "@prisma/client";
-import { getMeaningfulTextError, isMeaningfulText } from "@/lib/meaningful-text";
+import { QuoteItemType } from "@/generated/prisma/enums";
+import { isMeaningfulText } from "@/lib/meaningful-text";
 
 export type Step = "client" | "items" | "notes" | "preview";
 
@@ -35,6 +35,14 @@ export const stepLabels: Record<Step, string> = {
   items: "Conceptos",
   notes: "Notas",
   preview: "Revisar",
+};
+
+/** Full-screen quote flow names (progress bar, bottom bar context and next-step action). */
+export const flowStepLabels: Record<Step, string> = {
+  client: "Cliente y unidad",
+  items: "Conceptos",
+  notes: "Notas",
+  preview: "Vista previa",
 };
 
 export const itemTypes: QuoteItemType[] = ["LABOR", "REFACCIONES", "MATERIAL", "OTHER"];
@@ -259,7 +267,7 @@ export function getStepError(
   }
 
   if (step === "notes") {
-    return state.title.trim() ? getMeaningfulTextError(state.title, "título") : "Ingresa el título de la cotización.";
+    return null;
   }
 
   return null;

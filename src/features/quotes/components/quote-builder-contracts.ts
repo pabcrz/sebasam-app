@@ -1,4 +1,6 @@
+import * as React from "react";
 import type { QuoteFormActionState } from "../actions";
+import type { QuoteOperationKind } from "@/generated/prisma/enums";
 import type { QuoteListSummary } from "../queries";
 import type { ButtonVariant } from "@/components/ui";
 import type { ItemFormValue } from "./quote-builder-shared";
@@ -31,6 +33,7 @@ export type CustomerOption = {
 };
 
 export type QuoteBuilderInitialData = {
+  operation?: QuoteOperationKind;
   customerId: string | null;
   customerContactId?: string | null;
   customerFiscalProfileId?: string | null;
@@ -66,16 +69,30 @@ export type QuoteBuilderProps = {
   initialData?: QuoteBuilderInitialData;
   onCancel?: () => void;
   onDirtyChange?: (dirty: boolean) => void;
+  /** Full-screen quote flow: localStorage key that keeps unsent captures so closing never loses them. */
+  draftKey?: string;
   onSuccess?: () => void;
   layout?: "page" | "dialog";
+  /** Full-screen quote flow: progress bar, ← ✕ top bar and context + next-step bottom bar. Dialog layout only. */
+  fullScreen?: boolean;
   mode?: "quote" | "direct" | "direct-work-order" | "direct-note" | "direct-sale";
   masters?: MasterOption[];
 };
 
 export type QuoteBuilderChromeHosts = {
+  leadingHost: HTMLDivElement | null;
+  subtitleHost: HTMLDivElement | null;
   stepperHost: HTMLDivElement | null;
   footerHost: HTMLDivElement | null;
+  /** Desktop (≥ lg) full-screen flow: the summary column slot, replacing the bottom bar. */
+  summaryHost: HTMLDivElement | null;
 };
+
+/**
+ * Leave-the-flow action (✕ and ← on the first step) provided by the dialog shell,
+ * which owns the discard guard. Null outside the shell, where ← does nothing.
+ */
+export const QuoteFlowCloseContext = React.createContext<(() => void) | null>(null);
 
 export type QuoteBuilderDialogProps = {
   customers: CustomerOption[];
@@ -90,6 +107,7 @@ export type QuoteBuilderDialogProps = {
   triggerVariant?: ButtonVariant;
   triggerIconOnlyMobile?: boolean;
   triggerIconOnly?: boolean;
+  triggerDisabled?: boolean;
   triggerLabel?: string;
   createCustomerAction?: QuoteBuilderProps["createCustomerAction"];
   searchCustomersAction?: QuoteBuilderProps["searchCustomersAction"];

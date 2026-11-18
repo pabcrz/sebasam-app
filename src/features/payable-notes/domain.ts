@@ -4,8 +4,8 @@ import {
   PaymentMethod,
   PaymentStatus,
   Prisma,
-} from "@prisma/client";
-import type { PayableNoteStatus } from "@prisma/client";
+} from "@/generated/prisma/client";
+import type { PayableNoteStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { withHistoricalBalances, type NotePaymentHistoryItem } from "@/features/payments/lib/payment-register";
 import { getEffectiveSettlementTotals } from "@/features/settlement-agreements/domain";

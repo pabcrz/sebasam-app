@@ -1,4 +1,4 @@
-import { LedgerMovementType, PaymentMethod, PaymentStatus } from "@prisma/client";
+import { LedgerMovementType, PaymentMethod, PaymentStatus } from "@/generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { getPayableNoteReadModel, recordPayableNotePayment } from "@/features/payable-notes/domain";

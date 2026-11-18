@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { PaymentRequestStatus } from "@prisma/client";
+import { PaymentRequestStatus } from "@/generated/prisma/client";
 
 const { getPaymentRequestByToken, getPaymentSettings } = vi.hoisted(() => ({
   getPaymentRequestByToken: vi.fn(),

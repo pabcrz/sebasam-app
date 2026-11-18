@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WorkOrderStatus } from "@prisma/client";
+import { WorkOrderStatus } from "@/generated/prisma/client";
 import {
   resolveDocumentFolio,
   resolveAntecedentQuoteFolio,

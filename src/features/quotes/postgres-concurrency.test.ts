@@ -1,16 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
+import { createPrismaClient } from "@/lib/prisma-client";
 import { allocateDailyDocumentFolio } from "./lib/daily-document-sequence";
 
 const databaseUrl = process.env.DATABASE_URL ?? process.env.DIRECT_URL;
 
 describe.skipIf(!databaseUrl)("PostgreSQL daily document sequence concurrency", { timeout: 30000 }, () => {
   const prisma = databaseUrl
-    ? new PrismaClient({
-        datasources: {
-          db: { url: databaseUrl },
-        },
-      })
+    ? createPrismaClient(databaseUrl)
     : (null as unknown as PrismaClient);
 
   // Use distinct future business dates for isolation

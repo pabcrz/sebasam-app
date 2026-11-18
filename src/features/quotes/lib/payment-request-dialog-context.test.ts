@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PaymentRequestStatus } from "@prisma/client";
+import type { PaymentRequestStatus } from "@/generated/prisma/client";
 import type { listQuotes } from "@/features/quotes/queries";
 import {
   createPaymentRequestDialogContext,

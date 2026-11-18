@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ClipboardList, Printer } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { getWorkOrderById } from "@/features/work-orders/queries";
 import { listActiveWorkers } from "@/features/workers/queries";
@@ -65,12 +65,12 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
           href="/admin/work-orders"
           className="inline-flex items-center gap-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <Icon name="arrow-left" className="h-4 w-4" />
           Volver a Trabajos
         </Link>
       </div>
 
-      <AdminPageHeader icon={ClipboardList} title={quote.customer?.name ?? "Sin cliente"} description={`Orden de Trabajo ${workOrder.number}`} variant="expanded" actions={<Badge variant={workOrder.status === "COMPLETED" ? "success" : "info"} className="w-fit">{workOrder.status === "COMPLETED" ? "Completada" : "En proceso"}</Badge>} />
+      <AdminPageHeader icon="clipboard" title={quote.customer?.name ?? "Sin cliente"} description={`Orden de Trabajo ${workOrder.number}`} variant="expanded" actions={<Badge variant={workOrder.status === "COMPLETED" ? "success" : "info"} className="w-fit">{workOrder.status === "COMPLETED" ? "Completada" : "En proceso"}</Badge>} />
       <Card>
         <CardContent className="grid gap-6">
           {/* Details Grid */}
@@ -141,7 +141,7 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
                 title={`Imprimir orden ${workOrder.number}`}
                 aria-label={`Imprimir orden ${workOrder.number}`}
               >
-                <Printer className="h-4 w-4" aria-hidden="true" />
+                <Icon name="print" className="h-4 w-4" aria-hidden="true" />
                 <span className="sr-only sm:not-sr-only">Imprimir orden</span>
               </PrintActionButton>
               <WorkOrderOperationsDialog

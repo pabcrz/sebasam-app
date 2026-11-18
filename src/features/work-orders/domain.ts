@@ -1,4 +1,4 @@
-import { QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@prisma/client";
+import { QuoteStatus, UserRole, WorkOrderStatus, WorkerKind } from "@/generated/prisma/client";
 
 export class WorkOrderOperationError extends Error {
   constructor(message: string) {

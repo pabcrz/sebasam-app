@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 
 export type TabItem = {
   value: string;
@@ -80,8 +80,8 @@ export function Tabs({
     <div
       role="tablist"
       aria-label={label}
-      className={clsx(
-        "inline-flex max-w-full overflow-x-auto rounded-[var(--radius-sm)] bg-[var(--color-bg-soft)] p-[var(--space-2xs)]",
+      className={cn(
+        "no-scrollbar inline-flex max-w-full overflow-x-auto border-b border-[var(--color-border-light)]",
         tabListClassName,
       )}
     >
@@ -104,11 +104,11 @@ export function Tabs({
             aria-selected={selected}
             onClick={() => selectTab(tab.value)}
             onKeyDown={(event) => handleKeyDown(event, index)}
-            className={clsx(
-              "shrink-0 rounded-[var(--radius-sm)] px-3 py-1.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] focus-visible:shadow-[var(--shadow-focus)]",
+            className={cn(
+              "relative shrink-0 min-h-[var(--tap-min-height)] px-3 text-sm transition-colors duration-[var(--motion-fast)] after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:rounded-full after:content-[''] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
               selected
-                ? "bg-[var(--color-surface)] text-[var(--color-text-main)] shadow-[var(--shadow-control)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]",
+                ? "font-semibold text-[var(--color-text-main)] after:bg-[image:var(--gradient-primary)]"
+                : "font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]",
             )}
           >
             {tab.label}

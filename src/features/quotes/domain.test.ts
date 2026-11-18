@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { Prisma, QuoteDecisionOrigin, QuoteItemType, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { Prisma, QuoteDecisionOrigin, QuoteItemType, QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   acceptSharedQuote,

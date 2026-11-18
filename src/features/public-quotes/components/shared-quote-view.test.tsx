@@ -6,7 +6,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 
-import { CustomerStatus, QuoteItemType, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { CustomerStatus, QuoteItemType, QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { SharedQuoteView, type SharedQuoteViewProps } from "./shared-quote-view";
 import { acceptSharedQuoteAction, declineSharedQuoteAction } from "@/features/quotes/actions";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import type { HistoricalImportReport } from "../importer";
 import type { DraftPayload } from "./import-draft";
 import { Button } from "@/components/ui/button";
@@ -50,18 +50,18 @@ export function ImportConfirmStep({
         <CardContent>
           <div className="space-y-2 text-sm">
             <p className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]">
-              <CheckCircle2 className="h-4 w-4 text-[var(--color-status-success)]" aria-hidden="true" />
+              <Icon name="check-circle" className="h-4 w-4 text-[var(--color-status-success)]" aria-hidden="true" />
               Trabajos importados: {report.importedWorks} · Conceptos: {report.importedItems}
             </p>
             {report.duplicateWorks > 0 || report.duplicatedItems > 0 ? (
               <p className="flex items-center gap-2 text-[var(--color-text-main)]">
-                <AlertTriangle className="h-4 w-4 text-[var(--color-status-warning)]" aria-hidden="true" />
+                <Icon name="warning" className="h-4 w-4 text-[var(--color-status-warning)]" aria-hidden="true" />
                 Duplicados: {report.duplicateWorks} trabajos · {report.duplicatedItems} conceptos
               </p>
             ) : null}
             {report.errorWorks > 0 ? (
               <p className="flex items-center gap-2 text-[var(--color-status-danger)]">
-                <XCircle className="h-4 w-4" aria-hidden="true" />
+                <Icon name="x-circle" className="h-4 w-4" aria-hidden="true" />
                 Con error: {report.errorWorks} trabajos
               </p>
             ) : null}
@@ -124,7 +124,7 @@ export function ImportConfirmStep({
         {duplicates.length > 0 ? (
           <div className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-status-warning)] bg-[var(--color-bg-soft)] p-3 text-sm" role="alert">
             <p className="flex items-center gap-2 font-semibold text-[var(--color-text-main)]">
-              <AlertTriangle className="h-4 w-4 text-[var(--color-status-warning)]" aria-hidden="true" />
+              <Icon name="warning" className="h-4 w-4 text-[var(--color-status-warning)]" aria-hidden="true" />
               Posibles duplicados en este lote
             </p>
             <p className="mt-1 text-[var(--color-text-muted)]">

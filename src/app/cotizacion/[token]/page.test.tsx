@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { CustomerStatus, Prisma, QuoteItemType, QuoteStatus } from "@prisma/client";
+import { CustomerStatus, Prisma, QuoteItemType, QuoteStatus } from "@/generated/prisma/client";
 
 const getSharedQuoteByTokenMock = vi.hoisted(() => vi.fn());
 const getSharedQuotePaymentStatusMock = vi.hoisted(() => vi.fn());

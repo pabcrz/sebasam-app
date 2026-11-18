@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button, ConfirmDialog } from "@/components/ui";
-import { Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import type { ButtonVariant, ButtonSize } from "@/components/ui";
 
 export interface QuoteDeleteFormProps {
@@ -60,7 +60,7 @@ export function QuoteDeleteForm({
         aria-label={`Eliminar cotización ${quoteNumber}`}
         title={`Eliminar cotización ${quoteNumber}`}
       >
-        {!isPending ? <Trash2 className="h-5 w-5" aria-hidden="true" /> : null}
+        {!isPending ? <Icon name="trash" className="h-5 w-5" aria-hidden="true" /> : null}
         {!iconOnly && !isPending ? <span className={actionLabelClassName}>Eliminar</span> : null}
       </Button>
 

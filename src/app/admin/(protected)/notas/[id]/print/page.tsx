@@ -61,7 +61,9 @@ export default async function WorkOrderPrintPage({ params }: PrintPageProps) {
     <QuoteDocumentView
       quote={{
         ...(workOrder?.quote ?? saleNote!.quote),
-        ...(workOrder ? { workOrder: { status: workOrder.status, folio: workOrder.folio } } : {}),
+        ...(workOrder
+          ? { workOrder: { status: workOrder.status, folio: workOrder.folio, paymentDueDate: workOrder.paymentDueDate } }
+          : { payableNote: { kind: saleNote!.kind, status: saleNote!.status, paymentDueDate: saleNote!.paymentDueDate } }),
       }}
       workOrderStatus={workOrder?.status}
       paymentSettings={paymentSettings}

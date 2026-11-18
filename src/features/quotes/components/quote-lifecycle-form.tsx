@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Archive, RotateCcw } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Dialog,
@@ -51,14 +51,14 @@ export function QuoteLifecycleForm({ action, mode, quoteNumber, iconOnly = false
     <>
       <Button
         type="button"
-        variant={archive ? "outline" : "primary"}
+        variant={archive ? "outline" : "tonal"}
         size={iconOnly ? "icon" : "sm"}
         ref={triggerRef}
         aria-label={`${label} cotización ${quoteNumber}`}
         title={`${label} cotización ${quoteNumber}`}
         onClick={(event) => { event.stopPropagation(); setOpen(true); }}
       >
-        {archive ? <Archive className="h-5 w-5" aria-hidden="true" /> : <RotateCcw className="h-5 w-5" aria-hidden="true" />}
+        {archive ? <Icon name="archive" className="h-5 w-5" aria-hidden="true" /> : <Icon name="undo" className="h-5 w-5" aria-hidden="true" />}
         {!iconOnly ? <span className={actionLabelClassName}>{label}</span> : null}
       </Button>
       <Dialog open={open} onOpenChange={(nextOpen) => { if (!isPending) setOpen(nextOpen); }}>

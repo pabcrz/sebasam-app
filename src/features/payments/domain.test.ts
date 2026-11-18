@@ -5,7 +5,7 @@ import {
   PaymentStatus,
   QuoteStatus,
   WorkOrderStatus,
-} from "@prisma/client";
+} from "@/generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {

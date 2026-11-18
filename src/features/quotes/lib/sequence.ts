@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma, type Prisma as PrismaTypes } from "@prisma/client";
+import { Prisma, type Prisma as PrismaTypes } from "@/generated/prisma/client";
 
 type SequenceClient = Pick<PrismaTypes.TransactionClient, "$queryRaw">;
 type HighestSequenceRow = { highestSequence: string };

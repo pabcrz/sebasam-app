@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { WorkOrderStatus } from "@prisma/client";
+import { WorkOrderStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { getCustomerAccountStatement, getCustomerDeletionBlocker, listCustomers } from "./queries";
@@ -111,7 +111,36 @@ describe("listCustomers search", () => {
           { createdAt: "asc" },
         ],
       },
+      vehicles: {
+        orderBy: [{ createdAt: "desc" }],
+        include: {
+          quotes: {
+            where: { workOrder: { status: { in: ["ASSIGNED", "IN_PROGRESS"] } } },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      },
     });
+  });
+
+  it("marks a unit as in the workshop only while its work order is assigned or in progress", async () => {
+    (prisma.customer.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "cust-1",
+        vehicles: [
+          { id: "veh-busy", economicNumber: "118", quotes: [{ id: "q-1" }] },
+          { id: "veh-idle", economicNumber: "042", quotes: [] },
+        ],
+      },
+    ]);
+
+    const [customer] = await listCustomers();
+
+    expect(customer.vehicles).toEqual([
+      { id: "veh-busy", economicNumber: "118", inWorkshop: true },
+      { id: "veh-idle", economicNumber: "042", inWorkshop: false },
+    ]);
   });
 });
 

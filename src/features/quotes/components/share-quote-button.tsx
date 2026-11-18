@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Share2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui";
@@ -12,8 +12,10 @@ export interface ShareQuoteButtonProps {
   quoteNumber: string;
   className?: string;
   variant?: ButtonVariant;
+  size?: "default" | "sm";
   iconOnly?: boolean;
   actionLabelClassName?: string;
+  disabled?: boolean;
 }
 
 export function ShareQuoteButton({
@@ -21,8 +23,10 @@ export function ShareQuoteButton({
   quoteNumber,
   className,
   variant = "outline",
+  size = "sm",
   iconOnly = false,
   actionLabelClassName,
+  disabled = false,
 }: ShareQuoteButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
@@ -75,15 +79,15 @@ export function ShareQuoteButton({
     <Button
       type="button"
       variant={variant}
-      size={iconOnly ? "icon" : "sm"}
+      size={iconOnly ? "icon" : size}
       aria-label={`${label} cotización ${quoteNumber}`}
       title={`${label} cotización ${quoteNumber}`}
       className={className}
       loading={isPending}
-      disabled={isPending}
+      disabled={disabled || isPending}
       onClick={handleShare}
     >
-      {!isPending ? <Share2 className="h-5 w-5" aria-hidden="true" /> : null}
+      {!isPending ? <Icon name="share" className="h-5 w-5" aria-hidden="true" /> : null}
       {!iconOnly && !isPending ? (
         <span className={actionLabelClassName}>{label}</span>
       ) : null}

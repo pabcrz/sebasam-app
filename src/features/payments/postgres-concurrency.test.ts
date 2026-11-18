@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import {
-  PrismaClient,
+  type PrismaClient,
   Prisma,
   QuoteStatus,
   WorkOrderStatus,
   PaymentMethod,
-} from "@prisma/client";
+} from "@/generated/prisma/client";
+import { createPrismaClient } from "@/lib/prisma-client";
 import { randomUUID } from "node:crypto";
 import { correctCompletedWorkQuote } from "@/features/quotes/actions";
 import {
@@ -235,11 +236,7 @@ async function activeApplicationsForWorkOrder(prisma: PrismaClient, workOrderId:
 
 describe.skipIf(!databaseUrl)("PostgreSQL concurrency locks", { timeout: 30000 }, () => {
   const prisma = databaseUrl
-    ? new PrismaClient({
-        datasources: {
-          db: { url: databaseUrl },
-        },
-      })
+    ? createPrismaClient(databaseUrl)
     : (null as unknown as PrismaClient);
   let actor: CreatedActor;
 

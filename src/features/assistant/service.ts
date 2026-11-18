@@ -1,4 +1,4 @@
-import type { QuoteItemType } from "@prisma/client";
+import type { QuoteItemType } from "@/generated/prisma/client";
 import {
   computeHistoricalCommissionCents,
   computeUnitPriceCents,

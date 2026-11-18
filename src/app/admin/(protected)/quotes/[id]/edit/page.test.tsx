@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { QuoteStatus } from "@prisma/client";
+import { QuoteStatus } from "@/generated/prisma/client";
 
 const requireOperationalRoleMock = vi.hoisted(() => vi.fn());
 const prismaQuoteFindUniqueMock = vi.hoisted(() => vi.fn());

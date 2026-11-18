@@ -4,6 +4,7 @@ import { requireOperationalRole } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import {
   createWorker,
+  deleteWorker,
   setWorkerActiveFromForm,
   setWorkerActive,
   updateWorker,
@@ -17,7 +18,10 @@ vi.mock("@/lib/prisma", () => ({
       create: vi.fn(),
       findFirst: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
+    workAssignment: { count: vi.fn(), deleteMany: vi.fn() },
+    executionRecord: { count: vi.fn(), deleteMany: vi.fn() },
   },
 }));
 
@@ -117,7 +121,46 @@ describe("worker actions", () => {
       where: { id: "worker-1" },
       data: { isActive: false },
     });
-    expect(prisma.userProfile).not.toHaveProperty("delete");
+  });
+
+  it("keeps a worker with history: deleting only deactivates and never removes records", async () => {
+    (prisma.workAssignment.count as ReturnType<typeof vi.fn>).mockResolvedValue(3);
+    (prisma.executionRecord.count as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+
+    const result = await deleteWorker("worker-1");
+
+    expect(result).toEqual({ outcome: "deactivated" });
+    expect(prisma.userProfile.update).toHaveBeenCalledWith({
+      where: { id: "worker-1" },
+      data: { isActive: false },
+    });
+    expect(prisma.workAssignment.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.executionRecord.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.userProfile.delete).not.toHaveBeenCalled();
+  });
+
+  it("deletes a worker that has no history at all", async () => {
+    (prisma.workAssignment.count as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+    (prisma.executionRecord.count as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+
+    const result = await deleteWorker("worker-1");
+
+    expect(result).toEqual({ outcome: "deleted" });
+    expect(prisma.userProfile.delete).toHaveBeenCalledWith({ where: { id: "worker-1" } });
+  });
+
+  it("falls back to deactivation when other records still reference the worker", async () => {
+    (prisma.workAssignment.count as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+    (prisma.executionRecord.count as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+    (prisma.userProfile.delete as ReturnType<typeof vi.fn>).mockRejectedValue(Object.assign(new Error("fk"), { code: "P2003" }));
+
+    const result = await deleteWorker("worker-1");
+
+    expect(result).toEqual({ outcome: "deactivated" });
+    expect(prisma.userProfile.update).toHaveBeenCalledWith({
+      where: { id: "worker-1" },
+      data: { isActive: false },
+    });
   });
 
   it("stops before Prisma when the caller lacks an operational role", async () => {

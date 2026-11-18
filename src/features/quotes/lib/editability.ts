@@ -1,4 +1,4 @@
-import type { QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import type { QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 
 type QuoteForEditability = {
   status: QuoteStatus;

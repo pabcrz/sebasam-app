@@ -1,4 +1,4 @@
-import { KnowledgeIndexState, QuoteItemType } from "@prisma/client";
+import { KnowledgeIndexState, QuoteItemType } from "@/generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { prisma } = vi.hoisted(() => ({

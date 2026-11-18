@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/client";
 import type { HistoricalMatchSource } from "@/features/historical/repository";
 import type { CompletedWorkMatchSource } from "@/features/completed-work-knowledge/repository";
 import { answerHistoricalQuestion, parseAssistantFilters, mapFiltersToAggregateInput } from "./service";

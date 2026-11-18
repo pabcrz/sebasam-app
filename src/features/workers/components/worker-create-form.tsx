@@ -2,9 +2,6 @@
 
 import * as React from "react";
 import {
-  Button,
-  DialogClose,
-  DialogFooter,
   Input,
   Label,
   Select,
@@ -19,18 +16,20 @@ type WorkerCreateFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   isPending: boolean;
   onSubmit: () => void;
+  /** The dialog footer submits this form through `form={formId}`. */
+  formId?: string;
 };
 
-export function WorkerCreateForm({ action, isPending, onSubmit }: WorkerCreateFormProps) {
+export function WorkerCreateForm({ action, isPending, onSubmit, formId }: WorkerCreateFormProps) {
   const [username, setUsername] = React.useState("");
   const [workerKind, setWorkerKind] = React.useState<"MASTER" | "HELPER">("MASTER");
   const generatedEmail = usernameToInternalEmail(username.trim().toLowerCase());
 
   return (
-    <form action={action} onSubmit={onSubmit} className="grid gap-4" data-testid="worker-create-form">
+    <form id={formId} action={action} onSubmit={onSubmit} className="grid gap-4" data-testid="worker-create-form">
       <div className="grid gap-2">
         <Label htmlFor="displayName">Nombre</Label>
-        <Input id="displayName" name="displayName" placeholder="Nombre del trabajador" required disabled={isPending} />
+        <Input id="displayName" name="displayName" placeholder="Nombre del trabajador" required disabled={isPending} autoFocus />
       </div>
       <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
         <div className="grid gap-2">
@@ -99,16 +98,6 @@ export function WorkerCreateForm({ action, isPending, onSubmit }: WorkerCreateFo
       <p role="status" className="sr-only">
         {isPending ? "Creando trabajador..." : ""}
       </p>
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button type="button" variant="outline" disabled={isPending}>
-            Cancelar
-          </Button>
-        </DialogClose>
-        <Button type="submit" variant="primary" className="w-full sm:w-fit" loading={isPending} disabled={isPending}>
-          Crear trabajador
-        </Button>
-      </DialogFooter>
     </form>
   );
 }

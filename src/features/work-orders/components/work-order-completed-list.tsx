@@ -1,19 +1,19 @@
 "use client";
 
-import * as React from "react";
 import type { CompletedNoteItem } from "@/features/work-orders/queries";
 import {
   Badge,
   Button,
+  CardPanelProvider,
+  EntityCard,
   OperationalActionsMenu,
-  OperationalCardActions,
-  OperationalCardLayout,
+  useCardPanel,
 } from "@/components/ui";
+import { formatUnitIdentity } from "@/lib/unit-identity";
 import { formatCents } from "@/features/quotes/lib/format";
 import { derivePaymentState } from "@/features/work-orders/payment-state";
 import { NotaDetailDialog } from "./nota-detail-dialog";
-import { NotaCard } from "./nota-card";
-import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshots";
+import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshot-display";
 import { resolveDocumentFolio, resolveAntecedentQuoteFolio } from "@/features/quotes/lib/document-resolver";
 import { WorkOrderOperationsDialog, type WorkOrderActions } from "./work-order-operations-dialog";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
@@ -22,7 +22,7 @@ import { ShareQuoteButton } from "@/features/quotes/components/share-quote-butto
 import { NoteArchiveRevocationAction } from "@/features/quotes/components/note-archive-revocation-actions";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
 import type { NotePaymentHistoryItem } from "@/features/payments/lib/payment-register";
-import { ClipboardList, Printer } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder-contracts";
 import type { QuoteFormActionState } from "@/features/quotes/actions";
 
@@ -65,106 +65,173 @@ interface WorkOrderCompletedListProps {
   paymentHistories?: Array<{ workOrderId: string; totalCents: number; payments: NotePaymentHistoryItem[] }>;
 }
 
+/** Icon-only footer tool on the 32px control with a 44px touch area. */
+const toolClassName = "h-[var(--control-sm)] w-[var(--control-sm)] shrink-0 justify-center gap-0 px-0";
+
 function formatDate(date: Date | null) {
   if (!date) return "—";
   return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" }).format(new Date(date));
 }
 
-function formatVehicle(wo: WorkOrderItem) {
-  const v = wo.quote.vehicle;
-  if (!v) return "Sin vehículo";
-  return [v.brand, v.model, v.year, v.plate ? `· ${v.plate}` : null].filter(Boolean).join(" ");
+function unitIdentityOf(wo: WorkOrderItem) {
+  const vehicle = wo.quote.vehicle;
+  return formatUnitIdentity({
+    economicNumber: vehicle?.economicNumber,
+    plates: vehicle?.plate,
+    model: [vehicle?.brand, vehicle?.model].filter(Boolean).join(" "),
+  });
 }
 
-export function WorkOrderCompletedList({
-  workOrders,
-  quoteMap,
-  customers = [],
+type CompletedNoteCardProps = {
+  wo: WorkOrderItem;
+  quoteDetail: WorkOrderItem["quote"];
+  paymentAction: WorkOrderPaymentAction["action"] | undefined;
+  correctWorkOrderAction: WorkOrderCommercialCorrectionAction["action"] | undefined;
+  archiveRevocationAction: NoteArchiveRevocationAction | undefined;
+  paymentHistory: { workOrderId: string; totalCents: number; payments: NotePaymentHistoryItem[] } | undefined;
+  customers: CustomerOption[];
+  searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
+  shareAction: WorkOrderCompletedListProps["shareAction"];
+  rollbackAction?: WorkOrderActions["rollback"];
+  noteReturnTo: string;
+};
+
+function CompletedNoteCard({
+  wo,
+  quoteDetail,
+  paymentAction,
+  correctWorkOrderAction,
+  archiveRevocationAction,
+  paymentHistory,
+  customers,
   searchCustomersAction,
-  recordPaymentActions = [],
-  correctWorkOrderActions = [],
   shareAction,
-  archiveRevocationActions = [],
   rollbackAction,
-  noteReturnTo = "/admin/notas",
-  paymentHistories = [],
-}: WorkOrderCompletedListProps) {
-  const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
-  const correctWorkOrderActionMap = new Map(correctWorkOrderActions.map((c) => [c.workOrderId, c.action]));
-  const archiveRevocationActionMap = new Map(archiveRevocationActions.map((action) => [action.quoteId, action]));
-  const [selectedWorkOrderId, setSelectedWorkOrderId] = React.useState<string | null>(null);
-  const [previewQuoteId, setPreviewQuoteId] = React.useState<string | null>(null);
+  noteReturnTo,
+}: CompletedNoteCardProps) {
+  const panel = useCardPanel(wo.id);
+  const totalCents = wo.quote.effectiveTotalCents ?? Number(wo.quote.totalCents);
+  const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
+  const noteFolio = resolveDocumentFolio(wo);
+  const antecedentQuoteFolio = resolveAntecedentQuoteFolio(wo.quote);
+  const identity = resolveCustomerDisplayIdentity(wo.quote);
+  const paymentState = derivePaymentState({
+    completedAt: wo.completedAt,
+    paymentDueDate: dueDate,
+    paidCents: wo.quote.paidCents ?? 0,
+    remainingCents: wo.quote.remainingCents ?? totalCents,
+  });
+  const paymentStatusLabel = paymentState.label === "Pagada"
+    ? "Pagada"
+    : paymentState.label === "Vencida"
+      ? "Vencida"
+      : "Pendiente";
+  const remainingCents = wo.quote.remainingCents ?? totalCents;
+  const workOrder = wo.kind === "WORK" ? wo : null;
+  const paymentBadge = <Badge variant={paymentState.variant} className="w-fit">{paymentStatusLabel}</Badge>;
+  const paymentLabel = remainingCents > 0 && paymentAction ? "Registrar pago" : "Ver pagos";
 
   return (
     <>
-      <div className="grid gap-3 lg:grid-cols-2">
-      {workOrders.map((wo) => {
-        const correctWorkOrderAction = correctWorkOrderActionMap.get(wo.id);
-        const archiveRevocationAction = archiveRevocationActionMap.get(wo.quote.id);
-        const totalCents = wo.quote.effectiveTotalCents ?? Number(wo.quote.totalCents);
-        const dueDate = wo.paymentDueDate ?? wo.quote.paymentDueDate ?? null;
-        const noteFolio = resolveDocumentFolio(wo);
-        const antecedentQuoteFolio = resolveAntecedentQuoteFolio(wo.quote);
-        const paymentState = derivePaymentState({
-          completedAt: wo.completedAt,
-          paymentDueDate: dueDate,
-          paidCents: wo.quote.paidCents ?? 0,
-          remainingCents: wo.quote.remainingCents ?? totalCents,
-        });
-        const paymentStatusLabel = paymentState.label === "Pagada"
-          ? "Pagada"
-          : paymentState.label === "Vencida"
-            ? "Vencida"
-            : "Pendiente";
-        const quoteDetail = quoteMap?.get(wo.quote.id) ?? wo.quote;
-        const remainingCents = wo.quote.remainingCents ?? totalCents;
-
-        const frequentActions = (
-          <>
-            <ShareQuoteButton
-              action={shareAction.bind(null, wo.quote.id)}
-              quoteNumber={wo.quote.number}
-              variant="outline"
-              className="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
-              iconOnly
-            />
-               <PrintActionButton
-              url={`/admin/notas/${wo.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}
-              variant="outline"
-              size="sm"
-              className="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
-               title={`Imprimir nota de remisión ${noteFolio}`}
-               aria-label={`Imprimir nota de remisión ${noteFolio}`}
-            >
-              <Printer className="h-5 w-5" aria-hidden="true" />
-              <span className="sr-only">Imprimir</span>
-            </PrintActionButton>
-            {correctWorkOrderAction ? (
-              <QuoteBuilderDialog
-                customers={customers}
-                quote={quoteDetail as never}
-                quoteNumber={wo.quote.number}
-                saveAction={correctWorkOrderAction}
-                searchCustomersAction={searchCustomersAction}
-                triggerLabel="Corregir nota"
-                triggerAriaLabel="Corregir nota"
-                triggerVariant="outline"
-                triggerSize="sm"
-                triggerClassName="h-11 w-full min-w-0 justify-center gap-0 px-0 sm:h-9 sm:w-full sm:min-w-0 sm:gap-0 sm:px-0"
-                 triggerIconOnly
-              />
-            ) : null}
-          </>
-        );
-
-        const workOrder = wo.kind === "WORK" ? wo : null;
-        const overflowAction = (
+      <QuotePreviewDialog
+        quote={quoteDetail as never}
+        folio={noteFolio}
+        statusBadge={paymentBadge}
+        open={panel.isOpen("preview")}
+        onOpenChange={(open) => (open ? panel.open("preview") : panel.close("preview"))}
+        showTrigger={false}
+        footerAction={<Button type="button" variant="primary" onClick={() => panel.open("manage")}>{paymentLabel}</Button>}
+      />
+      <NotaDetailDialog
+        workOrderId={wo.id}
+        workOrderNumber={wo.number}
+        quote={quoteDetail as never}
+        paymentDueDate={dueDate}
+        noteFolio={noteFolio}
+        customerName={identity.displayName}
+        statusBadge={paymentBadge}
+        open={panel.isOpen("manage")}
+        onOpenChange={(open) => (open ? panel.open("manage") : panel.close("manage"))}
+        noteReturnTo={noteReturnTo}
+        paymentHistory={paymentHistory}
+        paymentAction={paymentAction}
+        correctWorkOrderAction={correctWorkOrderAction}
+        shareAction={shareAction.bind(null, wo.quote.id)}
+        customers={customers}
+        searchCustomersAction={searchCustomersAction}
+      />
+      <EntityCard
+        className="h-full"
+        openLabel={`Ver vista previa de nota ${noteFolio}`}
+        onOpen={() => panel.open("preview")}
+        selected={panel.selected}
+        title={wo.quote.title || identity.displayName || "Sin título"}
+        folio={noteFolio}
+        status={paymentBadge}
+        amount={formatCents(totalCents)}
+        customer={identity.displayName}
+        unit={unitIdentityOf(wo)}
+        driver={identity.operatorName ?? null}
+        keyData={
+          <div className="grid gap-1">
+            <p>
+              Cot. {antecedentQuoteFolio} · {wo.isSpecial
+                ? "Taller"
+                : wo.assignments.find((a) => a.worker.workerKind === "MASTER")?.worker.displayName ?? "Sin maestro"}
+            </p>
+            <p>
+              Finalizada {formatDate(wo.completedAt)}
+              {dueDate ? ` · Vence ${formatDate(dueDate)}` : ""}
+            </p>
+            <p className={remainingCents === 0 ? "text-[var(--color-status-success-fg)]" : undefined}>
+              Saldo pendiente {formatCents(remainingCents)}
+            </p>
+          </div>
+        }
+        editAction={correctWorkOrderAction ? (
+          <QuoteBuilderDialog
+            customers={customers}
+            quote={quoteDetail as never}
+            quoteNumber={wo.quote.number}
+            saveAction={correctWorkOrderAction}
+            searchCustomersAction={searchCustomersAction}
+            triggerLabel="Corregir nota"
+            triggerAriaLabel="Corregir nota"
+            triggerVariant="ghost"
+            triggerSize="sm"
+            triggerClassName={toolClassName}
+            triggerIconOnly
+          />
+        ) : undefined}
+        printAction={
+          <PrintActionButton
+            url={`/admin/notas/${wo.id}/print?returnTo=${encodeURIComponent(noteReturnTo)}`}
+            variant="ghost"
+            size="sm"
+            className={toolClassName}
+            title={`Imprimir nota de remisión ${noteFolio}`}
+            aria-label={`Imprimir nota de remisión ${noteFolio}`}
+          >
+            <Icon name="print" className="h-5 w-5" aria-hidden="true" />
+            <span className="sr-only">Imprimir</span>
+          </PrintActionButton>
+        }
+        shareAction={
+          <ShareQuoteButton
+            action={shareAction.bind(null, wo.quote.id)}
+            quoteNumber={wo.quote.number}
+            variant="ghost"
+            className={toolClassName}
+            iconOnly
+          />
+        }
+        overflowAction={
           <OperationalActionsMenu
             title="Acciones de nota"
             description={`Opciones para la nota ${noteFolio}.`}
             triggerAriaLabel={`Más acciones de nota ${noteFolio}`}
             triggerTitle={`Más acciones de nota ${noteFolio}`}
-            triggerClassName="h-11 w-11 shrink-0 justify-center gap-0 px-0 sm:h-9 sm:w-9 sm:px-0"
+            triggerClassName={toolClassName}
             triggerIconOnly
             destructive={
               rollbackAction && workOrder ? (
@@ -194,128 +261,59 @@ export function WorkOrderCompletedList({
               />
             ) : null}
           </OperationalActionsMenu>
-        );
+        }
+        stateAction={
+          <Button
+            type="button"
+            variant="tonal"
+            className="w-full justify-center"
+            onClick={() => panel.open("manage")}
+          >
+            {paymentLabel}
+          </Button>
+        }
+      />
+    </>
+  );
+}
 
-        return (
-          <NotaCard
+export function WorkOrderCompletedList({
+  workOrders,
+  quoteMap,
+  customers = [],
+  searchCustomersAction,
+  recordPaymentActions = [],
+  correctWorkOrderActions = [],
+  shareAction,
+  archiveRevocationActions = [],
+  rollbackAction,
+  noteReturnTo = "/admin/notas",
+  paymentHistories = [],
+}: WorkOrderCompletedListProps) {
+  const paymentActionMap = new Map(recordPaymentActions.map((p) => [p.workOrderId, p.action]));
+  const correctWorkOrderActionMap = new Map(correctWorkOrderActions.map((c) => [c.workOrderId, c.action]));
+  const archiveRevocationActionMap = new Map(archiveRevocationActions.map((action) => [action.quoteId, action]));
+
+  return (
+    <CardPanelProvider>
+      <div className="side-panel-list grid gap-3 lg:auto-rows-fr lg:grid-cols-[repeat(2,minmax(0,1fr))]">
+        {workOrders.map((wo) => (
+          <CompletedNoteCard
             key={wo.id}
-            onOpen={() => setPreviewQuoteId(wo.quote.id)}
-            openLabel={`Ver vista previa de nota ${noteFolio}`}
-             actions={
-               <>
-                 <QuotePreviewDialog
-                   quote={quoteDetail as never}
-                   previewTitle={`Nota ${noteFolio}`}
-                   open={previewQuoteId === wo.quote.id}
-                   onOpenChange={(open) => setPreviewQuoteId(open ? wo.quote.id : null)}
-                   showTrigger={false}
-                 />
-                  <OperationalCardActions
-                    primary={(
-                      <Button
-                        type="button"
-                        variant="primary"
-                        className="w-full justify-center"
-                        onClick={() => setSelectedWorkOrderId(wo.id)}
-                      >
-                        <ClipboardList className="h-5 w-5" aria-hidden="true" />
-                        Gestionar pagos
-                      </Button>
-                    )}
-                    frequent={frequentActions}
-                   overflow={overflowAction}
-                   className="gap-1"
-                   actionGapClassName="gap-1"
-                 />
-               </>
-             }
-             className="!w-full !min-w-0 !p-2"
-             body={
-              <OperationalCardLayout
-                 header={
-                   <div className="grid min-w-0 gap-2">
-                     <div className="flex min-w-0 items-center justify-between gap-3">
-                       <span className="min-w-0 truncate text-xs font-bold text-[var(--color-text-main)]">{noteFolio}</span>
-                       <Badge variant={paymentState.variant} className="w-fit shrink-0">
-                         {paymentStatusLabel}
-                       </Badge>
-                     </div>
-                     <p className="w-full text-right font-mono text-2xl font-extrabold leading-tight tabular-nums whitespace-nowrap text-[var(--color-total-emphasis)]">
-                       {formatCents(totalCents)}
-                     </p>
-                   </div>
-                 }
-                identity={
-                  <div className="min-w-0">
-                    <p className="min-w-0 truncate font-semibold text-[var(--color-text-main)]">
-                      {resolveCustomerDisplayIdentity(wo.quote).displayName}
-                    </p>
-                    <p className="min-w-0 truncate text-sm text-[var(--color-text-muted)]">
-                      {[
-                        resolveCustomerDisplayIdentity(wo.quote).operatorName
-                          ? `${resolveCustomerDisplayIdentity(wo.quote).operatorRole}: ${resolveCustomerDisplayIdentity(wo.quote).operatorName}`
-                          : null,
-                        formatVehicle(wo),
-                      ].filter(Boolean).join(" · ")}
-                    </p>
-                  </div>
-                }
-                context={
-                  <div className="grid gap-2">
-                    <div className="flex flex-wrap items-center gap-x-2 text-sm text-[var(--color-text-muted)]">
-                      <span className="min-w-0 break-words font-medium">Cot. {antecedentQuoteFolio}</span>
-                      <span>·</span>
-                      <span className="min-w-0 break-words">
-                        {wo.isSpecial
-                          ? "Taller"
-                          : wo.assignments.find((a) => a.worker.workerKind === "MASTER")?.worker.displayName ??
-                            "Sin maestro"}
-                      </span>
-                    </div>
-                     <div className="flex flex-wrap gap-x-2 text-sm text-[var(--color-text-muted)]">
-                       {remainingCents > 0 ? <><span>Total {formatCents(totalCents)}</span><span>·</span></> : null}
-                       <span className={remainingCents === 0 ? "text-[var(--color-status-success-fg)]" : undefined}>
-                         Saldo pendiente {formatCents(remainingCents)}
-                       </span>
-                    </div>
-                  </div>
-                }
-                dates={
-                  <div className="flex flex-wrap gap-x-4 gap-y-1">
-                    <p>Finalizada {formatDate(wo.completedAt)}</p>
-                    {dueDate ? <p>Vence {formatDate(dueDate)}</p> : null}
-                  </div>
-                }
-              />
-            }
+            wo={wo}
+            quoteDetail={quoteMap?.get(wo.quote.id) ?? wo.quote}
+            paymentAction={paymentActionMap.get(wo.id)}
+            correctWorkOrderAction={correctWorkOrderActionMap.get(wo.id)}
+            archiveRevocationAction={archiveRevocationActionMap.get(wo.quote.id)}
+            paymentHistory={paymentHistories.find((history) => history.workOrderId === wo.id)}
+            customers={customers}
+            searchCustomersAction={searchCustomersAction}
+            shareAction={shareAction}
+            rollbackAction={rollbackAction}
+            noteReturnTo={noteReturnTo}
           />
-        );
-      })}
-    </div>
-
-    {selectedWorkOrderId ? (() => {
-      const selected = workOrders.find((item) => item.id === selectedWorkOrderId);
-      if (!selected) return null;
-      return (
-        <NotaDetailDialog
-          workOrderId={selected.id}
-          workOrderNumber={selected.number}
-          quote={(quoteMap?.get(selected.quote.id) ?? selected.quote) as never}
-          paymentDueDate={selected.paymentDueDate ?? selected.quote.paymentDueDate ?? null}
-          noteFolio={resolveDocumentFolio(selected)}
-          customerName={resolveCustomerDisplayIdentity(selected.quote).displayName}
-          open
-          onOpenChange={(open) => { if (!open) setSelectedWorkOrderId(null); }}
-          noteReturnTo={noteReturnTo}
-          paymentHistory={paymentHistories.find((history) => history.workOrderId === selected.id)}
-          paymentAction={paymentActionMap.get(selected.id)}
-          correctWorkOrderAction={correctWorkOrderActionMap.get(selected.id)}
-          shareAction={shareAction.bind(null, selected.quote.id)}
-          customers={customers}
-          searchCustomersAction={searchCustomersAction}
-        />
-      );
-    })() : null}
-  </>
+        ))}
+      </div>
+    </CardPanelProvider>
   );
 }

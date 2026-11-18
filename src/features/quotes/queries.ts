@@ -1,9 +1,11 @@
-import { Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { Prisma, QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { quoteFilterSchema, quoteListPageSchema, type QuoteFilterInput } from "./schemas";
 import { getQuotePaidTotals } from "@/features/payments/queries";
+import { parseOperationalQuoteParams } from "./quote-filter-model";
+import { operationalQuoteWhere, parsePage, type OperationalFilterOptions } from "@/features/work-orders/work-order-filter-model";
 
 export async function getQuoteById(quoteId: string) {
   await requireOperationalRole();
@@ -12,6 +14,7 @@ export async function getQuoteById(quoteId: string) {
     where: { id: quoteId },
     include: {
       customer: true,
+      payableNote: { select: { kind: true, status: true, paymentDueDate: true } },
       customerContact: true,
       customerFiscalProfile: true,
       vehicle: true,
@@ -35,22 +38,24 @@ function findActiveSharedQuote<T extends { expiresAt: Date; revokedAt: Date | nu
   return sharedQuotes.find((sharedQuote) => sharedQuote.revokedAt === null && sharedQuote.expiresAt >= now) ?? null;
 }
 
-type QuoteListOptions = { operationalQueue?: "quotes" };
+type QuoteListOptions = OperationalFilterOptions & { operationalQueue?: "quotes" };
 
 function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.QuoteWhereInput | undefined {
   const parsed = quoteFilterSchema.safeParse(input);
-  const filters = parsed.success ? parsed.data : ({} as QuoteFilterInput);
+  const operationalFilters = options.operationalFilters
+    ? parseOperationalQuoteParams(input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {})
+    : undefined;
+  const filters = operationalFilters ?? (parsed.success ? parsed.data : ({} as QuoteFilterInput));
   const where: Prisma.QuoteWhereInput = {};
   const quoteQueueStatuses: QuoteStatus[] = [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.APPROVED];
 
   if (options.operationalQueue === "quotes") {
-    where.NOT = {
-      workOrder: {
-        status: {
-          in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED],
-        },
-      },
-    };
+    // A cancelled order can return to the commercial queue; a planned order
+    // already belongs to Trabajos, even before its first assignment.
+    where.NOT = [
+      { workOrder: { status: { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED] } } },
+      { payableNote: { kind: "SALE", status: "ISSUED" } },
+    ];
   }
 
   where.deletedAt = null;
@@ -132,6 +137,15 @@ function buildQuoteWhere(input: unknown, options: QuoteListOptions): Prisma.Quot
     }
   }
 
+  if (operationalFilters) {
+    // Keep legacy callers unchanged; the opt-in replaces common predicates only.
+    delete where.OR;
+    delete where.AND;
+    delete where.operationalDate;
+    Object.assign(where, operationalQuoteWhere(operationalFilters));
+    if (operationalFilters.kind !== "all") where.operation = operationalFilters.kind;
+  }
+
   return Object.keys(where).length > 0 ? where : undefined;
 }
 
@@ -174,6 +188,9 @@ const quoteListInclude = {
       customerFiscalProfileId: true,
       fiscalSnapshot: true,
     },
+  },
+  payableNote: {
+    select: { id: true, kind: true, status: true, paymentDueDate: true },
   },
 } satisfies Prisma.QuoteInclude;
 
@@ -252,7 +269,7 @@ export async function listPaginatedQuotes(input: unknown = {}, options: QuoteLis
     ? (input as Record<string, unknown>).page
     : undefined;
   const parsedPage = quoteListPageSchema.safeParse(pageInput);
-  const page = parsedPage.success ? parsedPage.data : 1;
+  const page = options.operationalFilters ? parsePage(pageInput) : parsedPage.success ? parsedPage.data : 1;
   const pageSize = 20;
   const quotes = await findQuotes(buildQuoteWhere(input, options), {
     skip: (page - 1) * pageSize,
@@ -264,6 +281,26 @@ export async function listPaginatedQuotes(input: unknown = {}, options: QuoteLis
     page,
     hasNextPage: quotes.length > pageSize,
   };
+}
+
+/** Quotes per status under the current filters, ignoring the status itself: the counts on the status tabs. */
+export async function countQuotesByStatus(input: unknown = {}, options: QuoteListOptions = {}) {
+  await requireOperationalRole();
+  const base = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
+  const { showCancelled, showArchived } = parseOperationalQuoteParams(base);
+  const groups = await prisma.quote.groupBy({
+    by: ["status"],
+    // Every status is counted so the Canceladas and Archivadas tabs show their number even while hidden from Todas.
+    where: buildQuoteWhere({ ...base, status: undefined, showCancelled: "true", showArchived: "true" }, options),
+    _count: { _all: true },
+  });
+  const counts: Partial<Record<QuoteStatus | "ALL", number>> = {};
+  for (const group of groups) counts[group.status] = group._count._all;
+  const inAll: QuoteStatus[] = [QuoteStatus.DRAFT, QuoteStatus.SENT, QuoteStatus.APPROVED];
+  if (showCancelled) inAll.push(QuoteStatus.CANCELLED);
+  if (showArchived) inAll.push(QuoteStatus.ARCHIVED);
+  counts.ALL = inAll.reduce((sum, status) => sum + (counts[status] ?? 0), 0);
+  return counts;
 }
 
 export async function listArchivedEligibleQuotes() {

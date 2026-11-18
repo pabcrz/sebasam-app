@@ -1,6 +1,6 @@
 "use client";
 
-import { clsx } from "clsx";
+import { cn } from "@/lib/utils";
 
 export type BadgeVariant = "default" | "success" | "warning" | "danger" | "info";
 
@@ -31,14 +31,14 @@ const dotBgClasses: Record<BadgeVariant, string> = {
 export function Badge({ className, variant = "default", children, ...props }: BadgeProps) {
   return (
     <span
-      className={clsx(
+      className={cn(
         "inline-flex items-center gap-[var(--space-xs)] rounded-[var(--radius-full)] border px-[var(--space-sm)] py-[var(--space-xs)] text-xs font-medium",
         variantClasses[variant],
         className,
       )}
       {...props}
     >
-      <span className={clsx("h-1.5 w-1.5 rounded-full", dotBgClasses[variant])} />
+      <span className={cn("h-1.5 w-1.5 rounded-full", dotBgClasses[variant])} />
       {children}
     </span>
   );

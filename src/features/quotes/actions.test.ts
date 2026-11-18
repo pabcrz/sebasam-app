@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
-import { PaymentStatus, Prisma, QuoteStatus, WorkOrderStatus } from "@prisma/client";
+import { PaymentStatus, Prisma, QuoteStatus, WorkOrderStatus } from "@/generated/prisma/client";
 import {
   cancelQuote,
   archiveQuote,
@@ -211,6 +211,7 @@ describe("createQuote", () => {
     });
     expect(createData.id).toEqual(expect.any(String));
     expect(createData.status).toBe("DRAFT");
+    expect(createData.operation).toBe("WORK");
     expect(createData.operationalDate).toEqual(new Date("2026-07-14T00:00:00.000Z"));
     expect(createData).not.toHaveProperty("sharedQuotes");
     expect(createData.sections.create).toEqual([{
@@ -219,6 +220,18 @@ describe("createQuote", () => {
       sortOrder: 0,
     }]);
     expect(result.totalCents).toBe(197200);
+  });
+
+  it("persists a SALE operation on a material-only draft without issuing a note", async () => {
+    const tx = mockTx();
+    await createQuote({
+      ...validInput(),
+      operation: "SALE",
+      sections: [{ name: "General", items: [{ type: "MATERIAL" as const, description: "Filtro", quantity: 1, unitPriceCents: 85000 }] }],
+    });
+
+    expect(tx.quote.create.mock.calls[0]?.[0].data.operation).toBe("SALE");
+    expect(tx.payableNote.create).not.toHaveBeenCalled();
   });
 
   it("creates a draft quote with vehicle data but without a customer, storing snapshot without linking Vehicle", async () => {
@@ -542,7 +555,7 @@ describe("updateDraftQuoteFromForm", () => {
   });
 
   it("returns an error when form data is malformed", async () => {
-    await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData({ title: "" }) as unknown as FormData))
+    await expect(updateDraftQuoteFromForm("quote-1", {}, buildFormData({ title: "a".repeat(161) }) as unknown as FormData))
       .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
   });
 
@@ -683,7 +696,7 @@ describe.each([
   });
 
   it("returns the validation error for invalid form data", async () => {
-    await expect(action(buildFormData({ title: "" }) as unknown as FormData))
+    await expect(action(buildFormData({ title: "a".repeat(161) }) as unknown as FormData))
       .resolves.toEqual({ error: "Revisa los datos e intenta de nuevo." });
   });
 
@@ -1544,7 +1557,12 @@ describe("publishSharedQuote", () => {
 
     await expect(publishSharedQuote("quote-1")).resolves.toEqual({ success: true, token: "tok-123" });
 
+    expect(tx.quote.updateMany).toHaveBeenCalledWith({
+      where: { id: "quote-1", status: QuoteStatus.DRAFT },
+      data: { status: QuoteStatus.SENT },
+    });
     expect(getOrCreateSharedQuoteForQuote).toHaveBeenCalledWith("quote-1");
+    expect(tx.quote.updateMany.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(getOrCreateSharedQuoteForQuote).mock.invocationCallOrder[0]);
     expect(revalidatePath).toHaveBeenCalledWith("/admin/quotes");
   });
 

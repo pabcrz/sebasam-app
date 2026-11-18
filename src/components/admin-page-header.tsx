@@ -1,9 +1,8 @@
-import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { Card, CardHeader, CardTitle } from "@/components/ui";
+import { Card, CardHeader, CardTitle, Icon, type IconName } from "@/components/ui";
 
 type AdminPageHeaderProps = {
-  icon: LucideIcon;
+  icon: IconName;
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
@@ -12,7 +11,7 @@ type AdminPageHeaderProps = {
 };
 
 export function AdminPageHeader({
-  icon: Icon,
+  icon,
   title,
   description,
   actions,
@@ -25,7 +24,7 @@ export function AdminPageHeader({
         <div className={variant === "expanded" ? "flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between" : "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"}>
           <div className={variant === "expanded" ? "flex min-w-0 items-start gap-4" : "flex min-w-0 items-center gap-3"}>
           <div className={variant === "expanded" ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-blue-tint)] text-[var(--color-primary)]" : "flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-blue-tint)] text-[var(--color-primary)]"}>
-            <Icon className={variant === "expanded" ? "h-6 w-6" : "h-5 w-5"} aria-hidden="true" />
+            <Icon name={icon} className={variant === "expanded" ? "h-6 w-6" : "h-5 w-5"} aria-hidden="true" />
           </div>
           <div className="min-w-0">
             <CardTitle as="h1" className={variant === "expanded" ? "text-xl" : "text-lg"}>{title}</CardTitle>

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { requireOperationalRole } from "@/lib/auth/session";
+import { isAdminRole, requireOperationalRole } from "@/lib/auth/session";
 import { parseCustomerStatementParams } from "@/features/customers/customer-statement";
 import { getCustomerDetailedStatement } from "@/features/customers/customer-statement-queries";
 import { CustomerStatementView } from "@/features/customers/components/customer-statement-view";
+import { recordPaymentAction } from "@/features/payments/actions";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -26,7 +27,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 }
 
 export default async function CustomerStatementPage({ params, searchParams }: PageProps) {
-  await requireOperationalRole();
+  const { profile } = await requireOperationalRole();
   const { id } = await params;
   const periodParams = parseCustomerStatementParams(await searchParams);
   const statement = await getCustomerDetailedStatement(id, periodParams);
@@ -35,5 +36,10 @@ export default async function CustomerStatementPage({ params, searchParams }: Pa
     notFound();
   }
 
-  return <CustomerStatementView statement={statement} />;
+  return (
+    <CustomerStatementView
+      statement={statement}
+      {...(isAdminRole(profile.role) ? { recordPaymentAction } : {})}
+    />
+  );
 }

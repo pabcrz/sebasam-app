@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Boxes, CheckCircle2, CircleDollarSign, Coins, TrendingUp } from "lucide-react";
-import { StatCard, Tabs } from "@/components/ui";
+import { Icon } from "@/components/ui/icon";
+import { StatTile, Tabs } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import type { DashboardPeriodKey, PeriodMetrics } from "../types";
 
@@ -38,7 +38,7 @@ export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
         header={
           <div>
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
+              <Icon name="trend-up" className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
               <h2 id="kpis-heading" className="text-lg font-semibold text-[var(--color-text-main)]">
                 Resumen del período
               </h2>
@@ -60,35 +60,29 @@ function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
   return (
     <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
+        <StatTile
           label="Trabajos Finalizados"
           value={metrics.completedWorkOrdersCount}
           numericRole="count"
           description="Órdenes completadas"
-          icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
-          iconVariant="success"
         />
-        <StatCard
+        <StatTile
           label="Mano de Obra"
           value={formatCents(metrics.completedLaborBilledCents)}
           numericRole="currency"
           description="Facturada finalizada"
-          icon={<Coins className="h-4 w-4" aria-hidden="true" />}
-          iconVariant="info"
         />
-        <StatCard
+        <StatTile
           label="Materiales y Refacciones"
           value={formatCents(metrics.completedMaterialsBilledCents)}
           numericRole="currency"
           description="Materiales y repuestos"
-          icon={<Boxes className="h-4 w-4" aria-hidden="true" />}
-          iconVariant="primary"
         />
-        <StatCard
+        <StatTile
           label="Cobros Recibidos"
           value={formatCents(metrics.collectedPaymentsTotalCents)}
           numericRole="currency"
-          valueClassName="text-[var(--color-status-success)]"
+          tone="success"
           description={
             <>
               <span data-numeric-role="supporting-count" className="font-medium tabular-nums">
@@ -97,8 +91,6 @@ function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
               pago{metrics.collectedPaymentsCount === 1 ? "" : "s"}
             </>
           }
-          icon={<CircleDollarSign className="h-4 w-4" aria-hidden="true" />}
-          iconVariant="success"
         />
       </div>
       <p className="mt-3 text-right text-[11px] text-[var(--color-text-muted)] italic">

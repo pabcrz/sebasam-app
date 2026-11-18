@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuoteBuilder } from "./quote-builder";
 import { getStepError } from "./quote-builder-shared";
@@ -42,7 +42,7 @@ function fillItemsStep(user: ReturnType<typeof userEvent.setup>) {
 
 function fillNotesStep(user: ReturnType<typeof userEvent.setup>) {
   return async () => {
-    await user.type(screen.getByLabelText("Título"), "Servicio general");
+    await user.type(screen.getByLabelText("Descripción breve"), "Servicio general");
   };
 }
 
@@ -65,11 +65,10 @@ describe("QuoteBuilder", () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} mode="direct-note" />);
 
-    await user.click(screen.getByRole("combobox", { name: "Tipo de operación" }));
-    await user.click(screen.getByRole("option", { name: "Venta de refacciones" }));
+    await user.click(screen.getByRole("button", { name: "Venta" }));
 
     expect(screen.queryByLabelText("Placas (opcional)")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Número económico / ECO (opcional)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("ECO (opcional)")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Marca (opcional)")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Modelo (opcional)")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Año (opcional)")).not.toBeInTheDocument();
@@ -92,13 +91,11 @@ describe("QuoteBuilder", () => {
     const description = screen.getByLabelText("Descripción", { selector: "input" });
     expect(description).toHaveAttribute("placeholder", "Ej. Bajar dos muelles");
 
-    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
-    await user.click(screen.getByRole("option", { name: "Material" }));
+    await user.click(within(screen.getByRole("group", { name: "Tipo del concepto 1" })).getByRole("button", { name: "Material" }));
     expect(description).toHaveAttribute("placeholder", "Ej. Bujes o perchas");
     expect(description).not.toHaveAttribute("placeholder", "Ej. Bajar dos muelles");
 
-    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
-    await user.click(screen.getByRole("option", { name: "Refacciones" }));
+    await user.click(within(screen.getByRole("group", { name: "Tipo del concepto 1" })).getByRole("button", { name: "Refacciones" }));
     expect(description).toHaveAttribute("placeholder", "Ej. Tensores o balancines");
     expect(description).not.toHaveAttribute("placeholder", "Ej. Bajar dos muelles");
   });
@@ -165,7 +162,7 @@ describe("QuoteBuilder", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+    await user.click(screen.getByRole("button", { name: "+ Crear cliente nuevo" }));
     expect(screen.getByLabelText("Teléfono")).toHaveAttribute("type", "tel");
     expect(screen.getByLabelText("Teléfono")).toHaveAttribute("inputmode", "tel");
     expect(screen.getByLabelText("Teléfono")).toHaveAttribute("maxlength", "20");
@@ -450,6 +447,36 @@ describe("QuoteBuilder", () => {
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
   });
 
+  it.each(["resolve", "reject"] as const)("ignores an older search %s while the newer query is pending", async (outcome) => {
+    vi.useFakeTimers();
+    const older = deferred<typeof customers>();
+    const newer = deferred<typeof customers>();
+    const searchCustomersAction = vi.fn().mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+    try {
+      render(<QuoteBuilder customers={customers} createAction={vi.fn()} searchCustomersAction={searchCustomersAction} />);
+      const search = screen.getByRole("combobox", { name: /cliente/i });
+      fireEvent.change(search, { target: { value: "alpha" } });
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      fireEvent.change(search, { target: { value: "beta" } });
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      expect(searchCustomersAction.mock.calls).toEqual([[{ query: "alpha" }], [{ query: "beta" }]]);
+      await act(async () => {
+        if (outcome === "resolve") older.resolve([{ id: "old", name: "Alpha old" }]);
+        else older.reject(new Error("Old failure"));
+      });
+      expect(search).toHaveValue("beta");
+      expect(screen.getByRole("status")).toHaveTextContent("Buscando clientes...");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Alpha old" })).not.toBeInTheDocument();
+      await act(async () => newer.resolve([{ id: "new", name: "Beta current" }]));
+      expect(screen.getByRole("option", { name: "Beta current" })).toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps a manually selected customer visible when an older search resolves late", async () => {
     const user = userEvent.setup();
     const pendingSearch = deferred<Array<{ id: string; name: string }>>();
@@ -541,7 +568,7 @@ describe("QuoteBuilder", () => {
 
     await user.type(screen.getByRole("combobox", { name: /cliente/i }), "pendiente");
     await waitFor(() => expect(searchCustomersAction).toHaveBeenCalledOnce());
-    await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+    await user.click(screen.getByRole("button", { name: "+ Crear cliente nuevo" }));
     await user.type(screen.getByLabelText("Nombre"), "Cliente recién creado");
     await user.click(screen.getByRole("button", { name: "Guardar y seleccionar" }));
 
@@ -614,7 +641,7 @@ describe("QuoteBuilder", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+    await user.click(screen.getByRole("button", { name: "+ Crear cliente nuevo" }));
     await user.type(screen.getByLabelText("Nombre"), "Cliente existente");
     await user.click(screen.getByRole("button", { name: "Guardar y seleccionar" }));
 
@@ -682,12 +709,13 @@ describe("QuoteBuilder", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+    await user.click(screen.getByRole("button", { name: "+ Crear cliente nuevo" }));
     await user.type(screen.getByLabelText("Nombre"), "Grúas del Centro");
     await user.click(screen.getByRole("button", { name: "Guardar y seleccionar" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo crear el cliente. Intenta de nuevo.");
     expect(screen.getByRole("button", { name: "Guardar y seleccionar" })).not.toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.getByRole("button", { name: "Siguiente" })).not.toBeDisabled();
   });
 
@@ -731,10 +759,10 @@ describe("QuoteBuilder", () => {
     expect(entries["sections.0.items.1.type"]).toBeUndefined();
     expect([...formData.keys()].some((key) => key.toLowerCase().includes("rowid"))).toBe(false);
     const conceptDescriptions = screen.getAllByText("Cambio de aceite");
-    // 1 hidden summary row in the items step + 2 visible preview surfaces:
-    // the desktop table and the mobile compact item cards (both in the DOM).
-    expect(conceptDescriptions).toHaveLength(3);
-    expect(conceptDescriptions.filter((description) => !description.closest("[hidden]"))).toHaveLength(2);
+    // 1 hidden summary row in the items step + 1 visible review surface: the
+    // shared document preview renders each concept once.
+    expect(conceptDescriptions).toHaveLength(2);
+    expect(conceptDescriptions.filter((description) => !description.closest("[hidden]"))).toHaveLength(1);
   }, 10_000);
 
   it("allows draft submission with a missing price without displaying a false zero", async () => {
@@ -835,24 +863,20 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue(type);
   });
 
-  it("renders compact add labels only below the responsive breakpoint", async () => {
+  it("shows the add chips with full type labels in one horizontally scrolling row", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    const laborButton = screen.getByRole("button", { name: /Agregar Mano de obra a la sección/ });
-    const partsButton = screen.getByRole("button", { name: /Agregar Refacciones a la sección/ });
-    const materialsButton = screen.getByRole("button", { name: /Agregar Materiales a la sección/ });
+    const addRow = screen.getByRole("group", { name: "Agregar concepto a sección 1" });
+    expect(addRow).toHaveClass("flex-nowrap", "overflow-x-auto");
 
-    expect(laborButton.querySelector("span.sm\\:hidden")).toHaveTextContent("+ M. O.");
-    expect(laborButton.querySelector("span.hidden.sm\\:inline")).toHaveTextContent("+ Mano de obra");
-    expect(partsButton.querySelector("span.sm\\:hidden")).toHaveTextContent("+ Refac.");
-    expect(partsButton.querySelector("span.hidden.sm\\:inline")).toHaveTextContent("+ Refacciones");
-    expect(materialsButton.querySelector("span.sm\\:hidden")).toHaveTextContent("+ Mat.");
-    expect(materialsButton.querySelector("span.hidden.sm\\:inline")).toHaveTextContent("+ Materiales");
-    expect(materialsButton).toHaveAccessibleName("Agregar Materiales a la sección 1");
-    expect(materialsButton).toHaveAttribute("title", "Materiales");
+    const laborButton = within(addRow).getByRole("button", { name: "Agregar Mano de obra a la sección 1" });
+    expect(laborButton).toHaveTextContent("Mano de obra");
+    expect(laborButton).toHaveClass("border-dashed");
+    expect(within(addRow).getByRole("button", { name: "Agregar Refacciones a la sección 1" })).toHaveTextContent("Refacciones");
+    expect(within(addRow).getByRole("button", { name: "Agregar Materiales a la sección 1" })).toHaveTextContent("Materiales");
   });
 
   it.each([
@@ -870,7 +894,7 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue(type);
   });
 
-  it("aligns the other concept menu to the trigger's right edge", async () => {
+  it("opens the other concept menu below the add chips", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
     await fillClientStep(user)();
@@ -880,13 +904,12 @@ describe("QuoteBuilder", () => {
     await user.click(trigger);
 
     const menu = screen.getByRole("menu", { name: "Otros tipos de concepto" });
-    expect(menu).toHaveClass("right-0");
-    expect(menu).not.toHaveClass("left-0");
+    expect(menu.previousElementSibling).toBe(trigger.closest('[role="group"]'));
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(trigger).toHaveAttribute("aria-haspopup", "menu");
   });
 
-  it("shows an always-visible delete icon in the collapsed row on desktop", async () => {
+  it("keeps Eliminar in the editor of the expanded concept", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
     await fillClientStep(user)();
@@ -895,11 +918,7 @@ describe("QuoteBuilder", () => {
 
     const deleteButton = screen.getByRole("button", { name: "Eliminar concepto 1" });
     expect(deleteButton).toBeInTheDocument();
-    // The base Button component injects `inline-flex`, which conflicts with the
-    // breakpoint `hidden`. This icon must NOT carry a conflicting display that
-    // would make it visible on mobile. It should only be inline-flex at sm+.
-    expect(deleteButton).toHaveClass("hidden");
-    expect(deleteButton).toHaveClass("sm:inline-flex");
+    expect(deleteButton.closest("[id^='concept-editor-']")).not.toHaveAttribute("hidden");
   });
 
   it("renders the section name as title text without an input box", async () => {
@@ -943,7 +962,7 @@ describe("QuoteBuilder", () => {
     await fillItemsStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByLabelText("Título")).toBeInTheDocument();
+    expect(screen.getByLabelText("Descripción breve")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Paso 1: Cliente / Unidad" }));
 
@@ -1050,8 +1069,7 @@ describe("QuoteBuilder", () => {
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
-    await user.click(screen.getByRole("option", { name: "Material" }));
+    await user.click(within(screen.getByRole("group", { name: "Tipo del concepto 1" })).getByRole("button", { name: "Material" }));
 
     const [quantityInput] = screen.getAllByLabelText(/cantidad/i);
 
@@ -1192,7 +1210,7 @@ describe("QuoteBuilder", () => {
     expect(screen.queryByText(/necesita un precio unitario/i)).not.toBeInTheDocument();
   });
 
-  it("keeps and then clears the missing-title error as the title becomes valid", async () => {
+  it("lets the user continue without a brief description", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -1200,16 +1218,9 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await fillItemsStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    expect(screen.getByLabelText("Descripción breve")).not.toBeRequired();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
-
-    const titleInput = screen.getByLabelText("Título");
-    await user.type(titleInput, "   ");
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa el título de la cotización.");
-
-    await user.type(titleInput, "Servicio general");
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -1273,7 +1284,7 @@ describe("QuoteBuilder", () => {
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     await fillItemsStep(user)();
-    await user.click(screen.getByRole("checkbox", { name: /incluir iva/i }));
+    await user.click(screen.getByRole("switch", { name: /incluir iva/i }));
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
     await fillNotesStep(user)();
@@ -1299,13 +1310,12 @@ describe("QuoteBuilder", () => {
 
     await fillClientStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    await user.click(screen.getByRole("combobox", { name: "Tipo del concepto 1" }));
-    await user.click(screen.getByRole("option", { name: "Otro" }));
+    await user.click(within(screen.getByRole("group", { name: "Tipo del concepto 1" })).getByRole("button", { name: "Otro" }));
     await fillItemsStep(user)();
-    await user.click(screen.getByRole("checkbox", { name: "Incluir en nómina / comisión" }));
+    await user.click(screen.getByRole("switch", { name: "Incluir en nómina / comisión" }));
     await user.clear(screen.getByRole("spinbutton", { name: "Porcentaje de comisión" }));
     await user.type(screen.getByRole("spinbutton", { name: "Porcentaje de comisión" }), "35");
-    await user.type(screen.getByLabelText("Descuento Global (Opcional)"), "100");
+    await user.type(screen.getByLabelText("Descuento (opcional)"), "100");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await fillNotesStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
@@ -1318,6 +1328,7 @@ describe("QuoteBuilder", () => {
     expect(formData.get("discount")).toBe("100");
     expect(formData.get("taxEnabled")).toBe("on");
     expect([...formData.keys()]).toEqual([
+      "operation",
       "customerId",
       "customerContactId",
       "customerFiscalProfileId",
@@ -1341,7 +1352,7 @@ describe("QuoteBuilder", () => {
     ]);
   }, 10_000);
 
-  it("shows the validity note in the preview step", async () => {
+  it("shows the validity date as the last line of the preview step", async () => {
     const user = userEvent.setup();
 
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
@@ -1353,8 +1364,25 @@ describe("QuoteBuilder", () => {
     await fillNotesStep(user)();
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByTestId("quote-validity")).toHaveTextContent(/vigente hasta/i);
-    expect(screen.getByTestId("quote-validity")).toHaveTextContent(/cambios imprevistos/i);
+    expect(screen.getByTestId("document-preview-dates")).toHaveTextContent(/vigente hasta/i);
+    expect(screen.getByTestId("document-preview-dates")).not.toHaveTextContent(/cambios imprevistos/i);
+  });
+
+  it("jumps back from the preview step to the concepts step with the ✎ shortcut", async () => {
+    const user = userEvent.setup();
+
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    await fillClientStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillItemsStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+    await fillNotesStep(user)();
+    await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+    await user.click(screen.getByRole("button", { name: "✎ Conceptos" }));
+
+    expect(screen.getByRole("button", { name: "Paso 2: Conceptos" })).toHaveAttribute("aria-current", "step");
   });
 
   it("limits the vehicle plate input to 10 characters", async () => {
@@ -1413,6 +1441,7 @@ describe("QuoteBuilder", () => {
     expect(document.querySelector('input[name="sections.0.items.1.type"]')).toHaveValue("LABOR");
     expect(document.querySelector('[name*="rowId"]')).not.toBeInTheDocument();
 
+    await user.click(screen.getByTestId("concept-summary-0"));
     await user.click(screen.getByRole("button", { name: "Eliminar concepto 1" }));
     expect(screen.getByTestId("concept-row-0")).toBe(duplicatedRow);
     expect(document.querySelector('input[name="sections.0.items.0.description"]')).toHaveValue("Cambio de aceite");
@@ -1488,8 +1517,7 @@ describe("QuoteBuilder", () => {
     const summary = screen.getByTestId("concept-summary-0");
 
     expect(summary).toHaveTextContent("Cambio de aceite");
-    expect(summary).toHaveTextContent("1 unidad");
-    expect(summary).toHaveTextContent("Mano de obra");
+    expect(summary).toHaveTextContent("$850.00");
     expect(document.querySelector('input[name="sections.0.items.0.description"]')).toHaveValue("cambio de aceite");
     expect(screen.getByRole("button", { name: "Reordenar concepto 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Duplicar concepto 1" })).toBeInTheDocument();
@@ -1559,14 +1587,12 @@ describe("QuoteBuilder", () => {
     await user.type(notesDescription as HTMLTextAreaElement, "Notas de servicio");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
-    expect(screen.getByTestId("preview-customer-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("preview-vehicle-icon")).toBeInTheDocument();
-    // Concepts must be visible in the review step on every breakpoint: the
-    // compact item cards render the filled concept even when the table is
-    // hidden on mobile.
-    expect(screen.getByTestId("quote-compact-items")).toBeInTheDocument();
-    expect(screen.getAllByText("Cambio de aceite").length).toBeGreaterThan(0);
-    expect(screen.getByTestId("quote-items-table")).toBeInTheDocument();
+    // The review step is the shared document preview: one render, no inner scroll.
+    const preview = screen.getByTestId("document-preview");
+    expect(preview).toBeInTheDocument();
+    expect(preview.className).not.toMatch(/overflow-y-/);
+    expect(within(preview).getByRole("region", { name: "Cliente y unidad" })).toBeInTheDocument();
+    expect(within(preview).getByRole("region", { name: "Conceptos" })).toHaveTextContent("Cambio de aceite");
   });
 
   it("keeps inactive item error slots stable and preserves price currency help", async () => {
@@ -1652,7 +1678,7 @@ describe("QuoteBuilder", () => {
     expect(unitPrice).not.toHaveAttribute("aria-invalid");
   });
 
-  it("rejects placeholder item descriptions and titles until they are corrected", async () => {
+  it("rejects placeholder item descriptions until they are corrected", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
@@ -1666,13 +1692,6 @@ describe("QuoteBuilder", () => {
     await user.type(description, "Cambio de aceite");
     expect(document.getElementById("sections-0-items-0-description-error")).toBeEmptyDOMElement();
 
-    await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    const title = screen.getByLabelText("Título");
-    await user.type(title, "xyz");
-    expect(screen.getByRole("alert")).toHaveTextContent("El título debe incluir texto significativo.");
-    await user.clear(title);
-    await user.type(title, "Servicio general");
-    expect(document.getElementById("quote-title-error")).toBeEmptyDOMElement();
   });
 
   it("revalidates items in the final action before calling the server action", async () => {
@@ -1789,5 +1808,70 @@ describe("QuoteBuilder", () => {
     const quantityErrorId = quantityInput.getAttribute("aria-describedby");
     expect(quantityErrorId).toBeTruthy();
     expect(document.getElementById(quantityErrorId!)).toHaveTextContent("El concepto 1 necesita una cantidad.");
+  });
+});
+
+describe("quote builder client step and totals (visual batch 3)", () => {
+  it("chooses the operation with a full-width segmented control instead of a select", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} mode="direct-note" />);
+
+    const group = screen.getByRole("group", { name: "Tipo de operación" });
+    expect(group).toHaveClass("w-full");
+    expect(screen.queryByRole("combobox", { name: "Tipo de operación" })).not.toBeInTheDocument();
+    expect(within(group).getByRole("button", { name: "Trabajo de taller" })).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(within(group).getByRole("button", { name: "Venta" }));
+    expect(within(group).getByRole("button", { name: "Venta" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("searches customers from a magnifier with the name, phone or plate placeholder", () => {
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    expect(screen.getByRole("combobox", { name: "Cliente" })).toHaveAttribute("placeholder", "Nombre, teléfono o placas");
+    expect(screen.getByTestId("customer-search-icon")).toBeInTheDocument();
+  });
+
+  it("offers only a '+ Crear cliente nuevo' link that opens a sheet with Cancelar and Guardar y seleccionar", async () => {
+    const user = userEvent.setup();
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} createCustomerAction={vi.fn()} />);
+
+    expect(screen.queryByText("¿No encuentras el cliente?")).not.toBeInTheDocument();
+    expect(screen.queryByText("Créalo sin salir de la cotización.")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "+ Crear cliente nuevo" }));
+    const sheet = screen.getByRole("dialog", { name: "Crear cliente nuevo" });
+    expect(within(sheet).getByLabelText("Nombre")).toBeInTheDocument();
+    expect(within(sheet).getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+    expect(within(sheet).getByRole("button", { name: "Guardar y seleccionar" })).toBeInTheDocument();
+
+    await user.click(within(sheet).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog", { name: "Crear cliente nuevo" })).not.toBeInTheDocument();
+  });
+
+  it("gives the vehicle fields their examples as placeholders and labels the economic number as ECO", () => {
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    expect(screen.getByLabelText("ECO (opcional)")).toHaveAttribute("placeholder", "Ej. 42");
+    expect(screen.getByLabelText("Placas (opcional)")).toHaveAttribute("placeholder", "Ej. ABC-123");
+    expect(screen.getByLabelText("Marca (opcional)")).toHaveAttribute("placeholder", "Ej. Ford");
+    expect(screen.getByLabelText("Modelo (opcional)")).toHaveAttribute("placeholder", "Ej. F-350");
+    expect(screen.getByLabelText("Año (opcional)")).toHaveAttribute("placeholder", "Ej. 2015");
+  });
+
+  it("drops the helper texts under the totals and labels the discount as optional", () => {
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    expect(screen.queryByText(/Ajusta el IVA o descuento/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Este descuento se aplicará/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Descuento (opcional)")).toBeInTheDocument();
+  });
+
+  it("puts the totals block on a white surface", () => {
+    render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
+
+    const totals = screen.getByTestId("quote-summary-column").firstElementChild;
+    expect(totals).toHaveClass("bg-[var(--color-surface)]");
+    expect(totals).not.toHaveClass("bg-[var(--color-bg-soft)]");
   });
 });

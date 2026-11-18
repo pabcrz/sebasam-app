@@ -1,4 +1,4 @@
-import type { PaymentRequestStatus } from "@prisma/client";
+import type { PaymentRequestStatus } from "@/generated/prisma/client";
 import type {
   PaymentRequestDialogBankAccount,
   PaymentRequestDialogContext,

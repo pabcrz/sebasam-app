@@ -1,38 +1,56 @@
 "use client";
 
 import * as React from "react";
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType } from "@/generated/prisma/enums";
 import { getMeaningfulTextError } from "@/lib/meaningful-text";
+import { resolveQuoteTitle } from "../quote-title";
 import { createPortal } from "react-dom";
+import { Icon } from "@/components/ui/icon";
 import {
   Button,
   Checkbox,
+  DialogMobileBody,
+  DialogMobileContent,
+  DialogMobileFooter,
+  DialogMobileHeader,
+  DialogTitle,
   Input,
   Label,
+  SegmentedControl,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Sheet,
   Textarea,
 } from "@/components/ui";
-import { createQuoteValidUntil } from "@/features/quotes/lib/calculate";
+import { createQuoteValidUntil, QUOTE_VALIDITY_DAYS } from "@/features/quotes/lib/calculate";
 import {
   defaultOperationalCalendarDate,
   isSundayOperationalDate,
   mexicoCityCalendarDate,
 } from "@/features/quotes/lib/operational-date";
-import { formatQuoteContactRole } from "@/features/quotes/lib/quote-snapshots";
+import { formatQuoteContactRole } from "@/features/quotes/lib/quote-snapshot-display";
+import { formatCents } from "@/features/quotes/lib/format";
 import {
   getStepError,
   normalizeSections,
   Step,
   steps,
+  flowStepLabels,
   validateItemValue,
 } from "./quote-builder-shared";
+import { useQuoteCustomerSearch } from "./use-quote-customer-search";
 import { QuoteBuilderItemsStep } from "./quote-builder-items-step";
-import { QuoteBuilderStepper } from "./quote-builder-stepper";
-import { QuotePreviewCard } from "./quote-preview-card";
+import { QuoteBuilderProgress, QuoteBuilderStepper } from "./quote-builder-stepper";
+import { QuoteBuilderSummaryColumn, type QuoteBuilderChecklistItem } from "./quote-builder-summary-column";
+import { useIsDesktopLayout } from "./use-media-query";
+import { formatUnitIdentity } from "@/lib/unit-identity";
+import type { QuotePreviewCardProps } from "./quote-preview-card";
+import { toDocumentPreviewProps } from "./document-preview-model";
+import { DocumentPreview } from "@/components/document-preview";
+import { quoteStatusLabels } from "@/features/quotes/lib/status";
 import type { QuoteFormActionState } from "../actions";
 import { createCustomerContactAction } from "@/features/customers/actions";
 import {
@@ -43,6 +61,8 @@ import {
   serializeQuoteBuilderSnapshot,
   type QuoteBuilderItemsAction,
 } from "./quote-builder-state";
+import toast from "react-hot-toast";
+import { clearQuoteDraft, loadQuoteDraft, saveQuoteDraft } from "./quote-builder-draft";
 import type {
   CustomerOption,
   QuoteBuilderChromeHosts,
@@ -62,24 +82,16 @@ export type {
  * Host elements for the dialog chrome slots (stepper + footer). The dialog
  * shell owns them as state and provides them through
  * `QuoteBuilderChromeContext`; consumed only when `layout === "dialog"` so the
- * stepper and footer render into `MultiStepDialog`'s fixed slots instead of
+ * stepper and footer render into the dialog shell's fixed slots instead of
  * inside the form. Reactivity is driven by the provider's host ref callbacks,
  * so the consumer re-renders the portals once both hosts are attached — no
  * effect ordering involved.
  */
 export const QuoteBuilderChromeContext = React.createContext<QuoteBuilderChromeHosts | null>(null);
 
-const customerSearchDelay = 500;
-const minimumCustomerQueryLength = 2;
 const customerListGap = 4;
 const customerListViewportMargin = 8;
 const customerListMaxHeight = 224;
-
-function filterCustomers(customers: CustomerOption[], query: string) {
-  const normalizedQuery = query.trim().toLocaleLowerCase("es-MX");
-  if (!normalizedQuery) return customers;
-  return customers.filter((customer) => customer.name.toLocaleLowerCase("es-MX").includes(normalizedQuery));
-}
 
 export function QuoteBuilder({
   customers,
@@ -89,8 +101,10 @@ export function QuoteBuilder({
   searchCustomersAction,
   initialData,
   onDirtyChange,
+  draftKey,
   onSuccess,
   layout = "page",
+  fullScreen = false,
   mode = "quote",
   masters = [],
 }: QuoteBuilderProps) {
@@ -100,32 +114,27 @@ export function QuoteBuilder({
     async (state: QuoteFormActionState, formData: FormData) => (await action?.(state, formData)) ?? {},
     {},
   );
-  const initialSelectedCustomer = customers.find((customer) => customer.id === initialData?.customerId);
-  const [customerOptions, setCustomerOptions] = React.useState<CustomerOption[]>(customers);
-  const [customerSearch, setCustomerSearch] = React.useState(initialSelectedCustomer?.name ?? "");
-  const [customerSearchError, setCustomerSearchError] = React.useState<string | null>(null);
-  const [isSearchingCustomers, setIsSearchingCustomers] = React.useState(false);
+  // Read once on mount: the builder only mounts while its dialog is open, so this runs on the client.
+  const [draft] = React.useState(() => (draftKey ? loadQuoteDraft(draftKey) : null));
+  const originalSelectedCustomer = customers.find((customer) => customer.id === initialData?.customerId);
+  const initialSelectedCustomer = draft?.customer ?? originalSelectedCustomer;
   const [isCustomerListOpen, setIsCustomerListOpen] = React.useState(false);
   const [activeCustomerIndex, setActiveCustomerIndex] = React.useState(-1);
   const isDirect = mode === "direct" || mode === "direct-work-order" || mode === "direct-note" || mode === "direct-sale";
   const isUnifiedDirect = isDirect;
-  const [operation, setOperation] = React.useState<"WORK" | "SALE">(
-    mode === "direct-sale" ? "SALE" : "WORK",
-  );
-  const isSale = isUnifiedDirect && operation === "SALE";
+  const initialOperation = initialData?.operation ?? (mode === "direct-sale" ? "SALE" : "WORK");
+  const [operation, setOperation] = React.useState<"WORK" | "SALE">(initialOperation);
+  const isSale = operation === "SALE";
+  const isSaleNote = isUnifiedDirect && isSale;
   const isWorkshopDirect = isUnifiedDirect && operation === "WORK";
   const [masterId, setMasterId] = React.useState("");
   const [isCompleted, setIsCompleted] = React.useState(mode === "direct-note");
   const [paymentDueDate, setPaymentDueDate] = React.useState("");
-  const customerSearchRequest = React.useRef(0);
-  const selectedCustomerRef = React.useRef<CustomerOption | undefined>(initialSelectedCustomer);
   const customerInputRef = React.useRef<HTMLInputElement>(null);
   const customerListRef = React.useRef<HTMLDivElement>(null);
   const formRef = React.useRef<HTMLFormElement>(null);
   const submitButtonRef = React.useRef<HTMLButtonElement>(null);
   const hasExplicitSubmitRequest = React.useRef(false);
-  const knownCustomersRef = React.useRef(new Map(customers.map((customer) => [customer.id, customer])));
-  const customerQueryCache = React.useRef(new Map<string, CustomerOption[]>());
   const [customerListPosition, setCustomerListPosition] = React.useState<React.CSSProperties>({});
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const hasChangedStep = React.useRef(false);
@@ -144,7 +153,7 @@ export function QuoteBuilder({
   const [builderState, dispatch] = React.useReducer(
     quoteBuilderReducer,
     undefined,
-    () => initializeQuoteBuilderState(initialData, defaultOperationalCalendarDate()),
+    () => draft?.state ?? initializeQuoteBuilderState(initialData, defaultOperationalCalendarDate()),
   );
   const {
     customerId,
@@ -159,6 +168,24 @@ export function QuoteBuilder({
     operationalDate,
     sections,
   } = builderState;
+  const onCustomerSearchResults = React.useCallback((results: CustomerOption[]) => {
+    setActiveCustomerIndex(results.length ? 0 : -1);
+  }, []);
+  const {
+    customerOptions,
+    customerSearch,
+    customerSearchError,
+    isSearchingCustomers,
+    updateCustomerSearch,
+    selectSearchCustomer,
+    clearCustomerSearchCache,
+  } = useQuoteCustomerSearch({
+    customers,
+    initialSelectedCustomer,
+    customerId,
+    searchCustomersAction,
+    onResults: onCustomerSearchResults,
+  });
   const isOperationalDateEditable = initialData?.isOperationalDateEditable ?? true;
   const [expandedItemRowId, setExpandedItemRowId] = React.useState<string | null>(
     builderState.sections[0]?.rowIds[0] ?? null,
@@ -166,11 +193,15 @@ export function QuoteBuilder({
 
   const [animatedItemRowId, setAnimatedItemRowId] = React.useState<string | null>(null);
   const pendingItemRowId = React.useRef<string | null>(null);
-  const itemRowRefs = React.useRef(new Map<string, HTMLDivElement>());
+  const itemRowRefs = React.useRef(new Map<string, HTMLElement>());
   const itemDescriptionRefs = React.useRef(new Map<string, HTMLInputElement>());
 
   const [initialFormState] = React.useState(() =>
-    serializeQuoteBuilderSnapshot(builderState, initialSelectedCustomer?.name ?? "", ["", "", ""]),
+    serializeQuoteBuilderSnapshot(
+      draft ? initializeQuoteBuilderState(initialData, defaultOperationalCalendarDate()) : builderState,
+      originalSelectedCustomer?.name ?? "",
+      ["", "", ""],
+    ),
   );
 
   const currentStepIndex = steps.indexOf(step);
@@ -178,8 +209,11 @@ export function QuoteBuilder({
     selectQuoteBuilderSummary(builderState);
   const selectedCustomer = customerOptions.find((customer) => customer.id === customerId);
   const validUntil = createQuoteValidUntil();
-  const titleError = title.trim() === "" ? null : getMeaningfulTextError(title, "título");
   const newCustomerNameError = newCustomerName === "" ? null : getMeaningfulTextError(newCustomerName, "nombre");
+
+  React.useEffect(() => {
+    if (draft) toast("Borrador recuperado");
+  }, [draft]);
 
   React.useEffect(() => {
     if (actionState.success) onSuccess?.();
@@ -187,9 +221,15 @@ export function QuoteBuilder({
 
   React.useEffect(() => {
     const current = serializeQuoteBuilderSnapshot(builderState, customerSearch, [newCustomerName, newCustomerEmail, newCustomerPhone]);
-    const isDirectDirty = isUnifiedDirect ? Boolean(masterId || paymentDueDate || operation !== "WORK") : false;
-    onDirtyChange?.(current !== initialFormState || isDirectDirty);
-  }, [builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, isUnifiedDirect, masterId, operation, paymentDueDate]);
+    const isDirectDirty = isUnifiedDirect ? Boolean(masterId || paymentDueDate) : false;
+    const isDirty = current !== initialFormState || isDirectDirty || operation !== initialOperation;
+    onDirtyChange?.(isDirty);
+    // After a successful save the dialog clears the draft; do not write it back.
+    if (draftKey && !actionState.success) {
+      if (isDirty) saveQuoteDraft(draftKey, { state: builderState, customer: customerOptions.find((option) => option.id === builderState.customerId) ?? null });
+      else clearQuoteDraft(draftKey);
+    }
+  }, [actionState.success, customerOptions, draftKey, builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, initialOperation, isUnifiedDirect, masterId, operation, paymentDueDate]);
 
   function changeOperation(next: "WORK" | "SALE") {
     if (next === operation) return;
@@ -222,7 +262,8 @@ export function QuoteBuilder({
       return;
     }
 
-    if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0;
+    const scroller = scrollAreaRef.current?.closest<HTMLElement>("[data-testid='multi-step-dialog-body']") ?? scrollAreaRef.current;
+    if (scroller) scroller.scrollTop = 0;
     const activeHeading = scrollAreaRef.current?.querySelector<HTMLElement>(
       `[data-step-heading="${step}"]`,
     );
@@ -234,11 +275,11 @@ export function QuoteBuilder({
     if (!rowId) return;
 
     const row = itemRowRefs.current.get(rowId);
-    const descriptionInput = itemDescriptionRefs.current.get(rowId);
-    if (!row || !descriptionInput) return;
+    const firstField = itemDescriptionRefs.current.get(rowId);
+    if (!row || !firstField) return;
 
     row.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    descriptionInput.focus({ preventScroll: true });
+    firstField.focus({ preventScroll: true });
     pendingItemRowId.current = null;
   }, [sections]);
 
@@ -291,59 +332,13 @@ export function QuoteBuilder({
     };
   }, [isCustomerListOpen]);
 
-  React.useEffect(() => {
-    const query = customerSearch.trim().toLocaleLowerCase("es-MX");
-    if (!searchCustomersAction || customerSearch === selectedCustomer?.name || query.length < minimumCustomerQueryLength) {
-      return;
-    }
-
-    if (customerQueryCache.current.has(query)) return;
-
-    const requestId = ++customerSearchRequest.current;
-    const timeout = window.setTimeout(async () => {
-      setIsSearchingCustomers(true);
-      setCustomerSearchError(null);
-
-      try {
-        const results = await searchCustomersAction({ query: customerSearch });
-        if (requestId === customerSearchRequest.current) {
-          results.forEach((customer) => knownCustomersRef.current.set(customer.id, customer));
-          customerQueryCache.current.set(query, results);
-          const selected = selectedCustomerRef.current;
-          setCustomerOptions(
-            selected && !results.some((customer) => customer.id === selected.id)
-              ? [selected, ...results]
-              : results,
-          );
-          setActiveCustomerIndex(results.length ? 0 : -1);
-        }
-      } catch {
-        if (requestId === customerSearchRequest.current) {
-          setCustomerSearchError("No se pudo buscar clientes. Intenta de nuevo.");
-        }
-      } finally {
-        if (requestId === customerSearchRequest.current) setIsSearchingCustomers(false);
-      }
-    }, customerSearchDelay);
-
-    return () => window.clearTimeout(timeout);
-  }, [customerSearch, searchCustomersAction, selectedCustomer?.name]);
-
   function selectCustomer(customer: CustomerOption) {
-    customerSearchRequest.current += 1;
-    selectedCustomerRef.current = customer;
-    knownCustomersRef.current.set(customer.id, customer);
-    setCustomerOptions((current) =>
-      current.some((option) => option.id === customer.id) ? current : [customer, ...current],
-    );
+    selectSearchCustomer(customer);
     dispatch({ type: "setCustomerId", customerId: customer.id });
     const defaultFp = customer.fiscalProfiles?.find((fp) => fp.isDefault);
     if (defaultFp) {
       dispatch({ type: "setCustomerFiscalProfileId", customerFiscalProfileId: defaultFp.id });
     }
-    setCustomerSearch(customer.name);
-    setCustomerSearchError(null);
-    setIsSearchingCustomers(false);
     setIsCustomerListOpen(false);
     setActiveCustomerIndex(-1);
     setStepError(null);
@@ -436,7 +431,7 @@ export function QuoteBuilder({
       }
     }
 
-    customerQueryCache.current.clear();
+    clearCustomerSearchCache();
     selectCustomer(createdCustomer);
     setNewCustomerName("");
     setNewCustomerLegalName("");
@@ -622,6 +617,7 @@ export function QuoteBuilder({
   // consumer re-renders the portals reactively, without any effect that could
   // miss the late-attached footer host.
   const chromeHosts = React.useContext(QuoteBuilderChromeContext);
+  const isDesktop = useIsDesktopLayout();
   // Unique per instance: the footer is rendered outside the form in the dialog
   // layout, so the submit button associates back to its form by id.
   const formId = React.useId();
@@ -631,8 +627,83 @@ export function QuoteBuilder({
   const scrollAreaClass = isDialogLayout
     ? "min-h-0 min-w-0"
     : "py-4 pr-1";
-  const stepperContent = <QuoteBuilderStepper current={step} onChange={setStep} />;
-  const footerContent = (
+  const sectionsForSummary = normalizeSections(sections);
+  const conceptCount = sectionsForSummary.reduce((count, section) => count + section.items.length, 0);
+  const sectionCount = sectionsForSummary.length;
+  const clientStateArgs = { customerId, vehicle, title, sections };
+  const clientReady = !(isSale && !customerId) && getStepError("client", clientStateArgs) === null;
+  const priceReady = getStepError("items", clientStateArgs, true) === null;
+  const unitLine = formatUnitIdentity({ economicNumber: vehicle.economicNumber, plates: vehicle.plate, model: vehicle.model });
+  const customerName = selectedCustomer ? selectedCustomer.commercialName || selectedCustomer.name : null;
+  const driverName = selectedCustomer?.contacts?.find((contact) => contact.id === customerContactId)?.name ?? null;
+  const stepSummaries: Record<Step, string> = {
+    client: [customerName, unitLine].filter(Boolean).join(" · ") || "Sin cliente ni unidad",
+    items: conceptCount === 0
+      ? "Sin conceptos"
+      : `${conceptCount} ${conceptCount === 1 ? "concepto" : "conceptos"} · ${sectionCount} ${sectionCount === 1 ? "sección" : "secciones"}`,
+    notes: resolveQuoteTitle(title, sections),
+    preview: "Vista previa del documento",
+  };
+  const stepCompleted: Record<Step, boolean> = {
+    client: clientReady,
+    items: priceReady,
+    notes: getStepError("notes", clientStateArgs) === null,
+    preview: false,
+  };
+  const stepperContent = fullScreen
+    ? <QuoteBuilderProgress current={step} onChange={setStep} summaries={stepSummaries} completed={stepCompleted} />
+    : <QuoteBuilderStepper current={step} onChange={setStep} />;
+  const subtitleContent = fullScreen
+    ? <p className="truncate text-xs text-[var(--color-text-muted)]">{`Paso ${currentStepIndex + 1} de ${steps.length} · ${flowStepLabels[step]}`}</p>
+    : null;
+  const nextStep = steps[currentStepIndex + 1];
+  const submitButton = (
+    <Button
+      ref={submitButtonRef}
+      type="submit"
+      variant="primary"
+      size={fullScreen ? "default" : undefined}
+      loading={isSubmitting}
+      form={formId}
+      onClick={() => {
+        hasExplicitSubmitRequest.current = true;
+      }}
+      className={fullScreen ? undefined : "min-w-[160px]"}
+      aria-live="polite"
+    >
+      {isSubmitting
+        ? (isEdit ? "Guardando..." : "Creando...")
+        : isEdit
+          ? "Guardar cambios"
+        : isSaleNote || mode === "direct-note"
+            ? "Crear nota"
+        : mode === "direct-work-order" || mode === "direct"
+              ? "Crear trabajo"
+              : "Crear cotización"}
+    </Button>
+  );
+  const footerContent = fullScreen ? (
+    <>
+      {step === "items" || step === "notes" ? (
+        <div className="flex min-w-0 flex-col">
+          <span className="text-xs font-medium text-[var(--color-text-muted)]">{taxEnabled ? "Total con IVA" : "Total"}</span>
+          <span data-testid="quote-builder-footer-total" className="text-[22px] font-bold leading-tight tabular-nums text-[var(--color-amount)]">
+            {formatCents(totalCents)}
+          </span>
+        </div>
+      ) : (
+        <div className="flex min-w-0 flex-col">
+          <span className="text-xs font-medium text-[var(--color-text-muted)]">{`Paso ${currentStepIndex + 1} de ${steps.length}`}</span>
+          <span className="truncate text-sm font-semibold text-[var(--color-text-main)]">{flowStepLabels[step]}</span>
+        </div>
+      )}
+      {step === "preview" ? submitButton : (
+        <Button type="button" variant="primary" size="default" onClick={goToNext}>
+          {`${flowStepLabels[nextStep]} →`}
+        </Button>
+      )}
+    </>
+  ) : (
     <>
       <div className="flex items-center gap-2">
         {step !== "client" ? (
@@ -647,30 +718,7 @@ export function QuoteBuilder({
         ) : null}
       </div>
 
-      {step === "preview" ? (
-        <Button
-          ref={submitButtonRef}
-          type="submit"
-          variant="primary"
-          loading={isSubmitting}
-          form={formId}
-          onClick={() => {
-            hasExplicitSubmitRequest.current = true;
-          }}
-          className="min-w-[160px]"
-          aria-live="polite"
-        >
-          {isSubmitting
-            ? (isEdit ? "Guardando..." : "Creando...")
-            : isEdit
-              ? "Guardar cambios"
-            : isSale || mode === "direct-note"
-                ? "Crear nota"
-            : mode === "direct-work-order" || mode === "direct"
-                  ? "Crear trabajo"
-                  : "Crear cotización"}
-        </Button>
-      ) : (
+      {step === "preview" ? submitButton : (
         <Button
           type="button"
           variant="primary"
@@ -682,11 +730,55 @@ export function QuoteBuilder({
       )}
     </>
   );
+  // Desktop (≥ lg) full-screen flow: the summary column replaces the bottom bar and holds the primary action.
+  const desktopSummaryInShell = fullScreen && isDesktop;
+  const readinessChecklist: QuoteBuilderChecklistItem[] | null = step === "preview"
+    ? [
+      { label: "Cliente y unidad completos", done: clientReady },
+      { label: "Todos los conceptos tienen precio", done: priceReady },
+      { label: `Vigencia de ${QUOTE_VALIDITY_DAYS} días`, done: !Number.isNaN(validUntil.getTime()) },
+    ]
+    : null;
+  const summaryColumn = (
+    <QuoteBuilderSummaryColumn
+      formId={formId}
+      customerName={customerName}
+      unitLine={unitLine}
+      driverName={driverName}
+      taxEnabled={taxEnabled}
+      discount={discount}
+      subtotalCents={subtotalCents}
+      discountCents={discountCents}
+      taxCents={taxCents}
+      totalCents={totalCents}
+      onTaxEnabledChange={(checked) => dispatchItemsAction({ type: "setTaxEnabled", taxEnabled: checked })}
+      onDiscountChange={(value) => dispatchItemsAction({ type: "setDiscount", discount: value })}
+      checklist={readinessChecklist}
+      primaryAction={step === "preview" ? submitButton : (
+        <Button type="button" variant="primary" onClick={goToNext}>
+          {`${flowStepLabels[nextStep]} →`}
+        </Button>
+      )}
+    />
+  );
+  // ← steps back and is disabled on the first step; ✕ (in the shell) is the only way out.
+  const leadingContent = (
+    <button
+      type="button"
+      onClick={goToPrevious}
+      disabled={currentStepIndex === 0}
+      aria-label="Paso anterior"
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-main)] transition-colors hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-40 lg:hidden"
+    >
+      <Icon name="chevron-left" className="h-5 w-5" aria-hidden="true" />
+    </button>
+  );
   const shouldPortalChrome =
     isDialogLayout &&
     chromeHosts != null &&
     chromeHosts.stepperHost != null &&
-    chromeHosts.footerHost != null;
+    (desktopSummaryInShell ? chromeHosts.summaryHost != null : chromeHosts.footerHost != null) &&
+    (!fullScreen || (chromeHosts.leadingHost != null && chromeHosts.subtitleHost != null));
 
   return (
     <>
@@ -701,7 +793,6 @@ export function QuoteBuilder({
         alignItems: "stretch",
          display: "flex",
          flexDirection: "column",
-         height: "100%",
         justifyContent: "flex-start",
         minHeight: 0,
         minWidth: 0,
@@ -718,16 +809,9 @@ export function QuoteBuilder({
             ref={scrollAreaRef}
             className={scrollAreaClass}
             data-testid="quote-builder-scroll-area"
-            style={isDialogLayout ? {
-              flex: "1 1 0%",
-              minHeight: 0,
-              minWidth: 0,
-              overflowY: "auto",
-              overscrollBehaviorY: "contain",
-            } : undefined}
           >
             <div className="grid content-start gap-6">
-          {isUnifiedDirect ? (
+          {isUnifiedDirect || mode === "quote" ? (
             <>
               <input type="hidden" name="operation" value={operation} />
               {isWorkshopDirect ? <input type="hidden" name="masterId" value={masterId} /> : null}
@@ -755,27 +839,31 @@ export function QuoteBuilder({
             <h2 className="sr-only" tabIndex={-1} data-step-heading="client">
               Cliente y unidad
             </h2>
-            {isUnifiedDirect ? (
-              <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-4">
-                <Label htmlFor="direct-operation">Tipo de operación</Label>
-                <Select value={operation} onValueChange={(value) => changeOperation(value as "WORK" | "SALE")}>
-                  <SelectTrigger id="direct-operation"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="WORK">Trabajo de taller</SelectItem>
-                    <SelectItem value="SALE">Venta de refacciones</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            {isUnifiedDirect || mode === "quote" ? (
+              <SegmentedControl
+                label="Tipo de operación"
+                fullWidth
+                options={[
+                  { value: "WORK", label: "Trabajo de taller" },
+                  { value: "SALE", label: "Venta" },
+                ]}
+                value={operation}
+                onValueChange={(value) => changeOperation(value as "WORK" | "SALE")}
+              />
             ) : null}
             <div className="grid gap-2">
               <Label htmlFor="customerId">Cliente</Label>
               <input type="hidden" name="customerId" value={customerId} />
               <input type="hidden" name="customerContactId" value={customerContactId} />
               <input type="hidden" name="customerFiscalProfileId" value={customerFiscalProfileId} />
+              <div className="relative">
+                <span data-testid="customer-search-icon" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]">
+                  <Icon name="search" className="h-4 w-4" aria-hidden="true" />
+                </span>
               <Input
                 ref={customerInputRef}
                 id="customerId"
-                className="focus-visible:ring-inset"
+                className="pl-9 focus-visible:ring-inset"
                 role="combobox"
                 aria-controls="customer-results"
                 aria-expanded={isCustomerListOpen}
@@ -789,23 +877,17 @@ export function QuoteBuilder({
                 value={customerSearch}
                 onChange={(event) => {
                   const nextSearch = event.target.value;
-                  customerSearchRequest.current += 1;
-                  setCustomerSearch(nextSearch);
+                  const nextOptions = updateCustomerSearch(nextSearch);
                   dispatch({ type: "setCustomerId", customerId: "" });
-                  selectedCustomerRef.current = undefined;
-                  setCustomerSearchError(null);
-                  setIsSearchingCustomers(false);
-                  const cached = customerQueryCache.current.get(nextSearch.trim().toLocaleLowerCase("es-MX"));
-                  const nextOptions = cached ?? filterCustomers([...knownCustomersRef.current.values()], nextSearch);
-                  setCustomerOptions(nextOptions);
                   setIsCustomerListOpen(true);
                   setActiveCustomerIndex(nextOptions.length ? 0 : -1);
                 }}
                 onFocus={() => setIsCustomerListOpen(true)}
                 onClick={() => setIsCustomerListOpen(true)}
                 onKeyDown={handleCustomerSearchKeyDown}
-                placeholder="Buscar por nombre, correo, teléfono, dirección, placas o notas"
+                placeholder="Nombre, teléfono o placas"
               />
+              </div>
               {isSearchingCustomers ? <p className="text-sm text-[var(--color-text-muted)]" role="status">Buscando clientes...</p> : null}
               {customerSearchError ? <p className="text-sm text-[var(--color-status-danger-fg)]" role="alert">{customerSearchError}</p> : null}
               {isCustomerListOpen && !customerSearchError ? createPortal(
@@ -829,7 +911,7 @@ export function QuoteBuilder({
                 document.body,
               ) : null}
               {selectedCustomer ? (
-                <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
+                <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3">
                   <div>
                     <p className="text-sm text-[var(--color-text-muted)]">
                       Cliente seleccionado: <strong className="text-[var(--color-text-main)]">{selectedCustomer.name}</strong>
@@ -910,126 +992,128 @@ export function QuoteBuilder({
                 </div>
               ) : null}
               {createCustomerAction ? (
-                <div className="grid gap-3 rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-light)] bg-[var(--color-bg-soft)] p-3">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-[var(--color-text-main)]">¿No encuentras el cliente?</p>
-                      <p className="text-xs text-[var(--color-text-muted)]">Créalo sin salir de la cotización.</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowCreateCustomer((current) => !current)}
-                      aria-expanded={showCreateCustomer}
-                    >
-                      Crear cliente
-                    </Button>
-                  </div>
-
-                  {showCreateCustomer ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="grid gap-2 sm:col-span-2">
-                        <Label htmlFor="quoteCustomerName">Nombre</Label>
-                          <Input
-                            id="quoteCustomerName"
-                            value={newCustomerName}
-                            onChange={(event) => setNewCustomerName(event.target.value)}
-                            placeholder="Ej. Juan Pérez o Grúas Mejía"
-                            required
-                            aria-describedby={newCustomerNameError ? "quote-customer-name-error" : undefined}
-                            aria-invalid={newCustomerNameError ? true : undefined}
-                          />
-                          <span id="quote-customer-name-error" role={newCustomerNameError ? "alert" : undefined} className="min-h-4 text-xs text-[var(--color-status-danger-fg)]">
-                            {newCustomerNameError}
-                          </span>
-                      </div>
-                      <div className="grid gap-2 sm:col-span-2">
-                        <Label htmlFor="quoteCustomerLegalName">Razón social formal (opcional)</Label>
-                        <Input
-                          id="quoteCustomerLegalName"
-                          value={newCustomerLegalName}
-                          onChange={(event) => setNewCustomerLegalName(event.target.value)}
-                          placeholder="Ej. Grúas Mejía Cuautla S.A. de C.V."
-                        />
-                      </div>
-                      <div className="grid gap-3 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-border-light)] bg-[var(--color-surface)] p-2.5 sm:col-span-2 sm:grid-cols-2">
-                        <div className="grid gap-1.5">
-                          <Label htmlFor="quoteCustomerContactName" className="text-xs">
-                            Chofer u operador inicial (opcional)
-                          </Label>
-                          <Input
-                            id="quoteCustomerContactName"
-                            value={newCustomerContactName}
-                            onChange={(event) => setNewCustomerContactName(event.target.value)}
-                            placeholder="Ej. El Mariachi / Juanito"
-                          />
-                        </div>
-                        <div className="grid gap-1.5">
-                          <Label htmlFor="quoteCustomerContactPhone" className="text-xs">
-                            Teléfono del chofer (opcional)
-                          </Label>
-                          <Input
-                            id="quoteCustomerContactPhone"
-                            type="tel"
-                            inputMode="tel"
-                            maxLength={20}
-                            value={newCustomerContactPhone}
-                            onChange={(event) => setNewCustomerContactPhone(event.target.value)}
-                            placeholder="55 1234 5678"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="quoteCustomerEmail">Correo electrónico</Label>
-                        <Input
-                          id="quoteCustomerEmail"
-                          type="email"
-                          value={newCustomerEmail}
-                          onChange={(event) => setNewCustomerEmail(event.target.value)}
-                          placeholder="cliente@ejemplo.com"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="quoteCustomerPhone">Teléfono</Label>
-                        <Input
-                          id="quoteCustomerPhone"
-                          type="tel"
-                          inputMode="tel"
-                          maxLength={20}
-                          value={newCustomerPhone}
-                          onChange={(event) => setNewCustomerPhone(event.target.value)}
-                          placeholder="55 1234 5678"
-                        />
-                      </div>
-                      {createCustomerError ? (
-                        <p className="text-sm text-[var(--color-status-danger-fg)]" role="alert">
-                          {createCustomerError}
-                        </p>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="primary"
-                        className="w-full sm:w-fit"
-                        loading={isCreatingCustomer}
-                        disabled={newCustomerName.trim() === "" || Boolean(newCustomerNameError)}
-                        onClick={handleCreateCustomer}
-                      >
-                        Guardar y seleccionar
-                      </Button>
-                    </div>
-                  ) : null}
+                <div className="grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateCustomer(true)}
+                    className="justify-self-start rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-link)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
+                  >
+                    + Crear cliente nuevo
+                  </button>
                   {createCustomerMessage ? (
                     <p className="text-sm text-[var(--color-status-success-fg)]" role="status">
                       {createCustomerMessage}
                     </p>
                   ) : null}
+                  <Sheet open={showCreateCustomer} onOpenChange={setShowCreateCustomer}>
+                    <DialogMobileContent variant="sheet" aria-describedby={undefined}>
+                      <DialogMobileHeader>
+                        <DialogTitle>Crear cliente nuevo</DialogTitle>
+                      </DialogMobileHeader>
+                      <DialogMobileBody>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="grid gap-2 sm:col-span-2">
+                            <Label htmlFor="quoteCustomerName">Nombre</Label>
+                            <Input
+                              id="quoteCustomerName"
+                              value={newCustomerName}
+                              onChange={(event) => setNewCustomerName(event.target.value)}
+                              placeholder="Ej. Juan Pérez o Grúas Mejía"
+                              required
+                              aria-describedby={newCustomerNameError ? "quote-customer-name-error" : undefined}
+                              aria-invalid={newCustomerNameError ? true : undefined}
+                            />
+                            <span id="quote-customer-name-error" role={newCustomerNameError ? "alert" : undefined} className="min-h-4 text-xs text-[var(--color-status-danger-fg)]">
+                              {newCustomerNameError}
+                            </span>
+                          </div>
+                          <div className="grid gap-2 sm:col-span-2">
+                            <Label htmlFor="quoteCustomerLegalName">Razón social formal (opcional)</Label>
+                            <Input
+                              id="quoteCustomerLegalName"
+                              value={newCustomerLegalName}
+                              onChange={(event) => setNewCustomerLegalName(event.target.value)}
+                              placeholder="Ej. Grúas Mejía Cuautla S.A. de C.V."
+                            />
+                          </div>
+                          <div className="grid gap-3 rounded-[var(--radius-sm)] border border-[var(--color-border-light)] p-2.5 sm:col-span-2 sm:grid-cols-2">
+                            <div className="grid gap-1.5">
+                              <Label htmlFor="quoteCustomerContactName" className="text-xs">
+                                Chofer u operador inicial (opcional)
+                              </Label>
+                              <Input
+                                id="quoteCustomerContactName"
+                                value={newCustomerContactName}
+                                onChange={(event) => setNewCustomerContactName(event.target.value)}
+                                placeholder="Ej. El Mariachi / Juanito"
+                              />
+                            </div>
+                            <div className="grid gap-1.5">
+                              <Label htmlFor="quoteCustomerContactPhone" className="text-xs">
+                                Teléfono del chofer (opcional)
+                              </Label>
+                              <Input
+                                id="quoteCustomerContactPhone"
+                                type="tel"
+                                inputMode="tel"
+                                maxLength={20}
+                                value={newCustomerContactPhone}
+                                onChange={(event) => setNewCustomerContactPhone(event.target.value)}
+                                placeholder="55 1234 5678"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="quoteCustomerEmail">Correo electrónico</Label>
+                            <Input
+                              id="quoteCustomerEmail"
+                              type="email"
+                              value={newCustomerEmail}
+                              onChange={(event) => setNewCustomerEmail(event.target.value)}
+                              placeholder="cliente@ejemplo.com"
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="quoteCustomerPhone">Teléfono</Label>
+                            <Input
+                              id="quoteCustomerPhone"
+                              type="tel"
+                              inputMode="tel"
+                              maxLength={20}
+                              value={newCustomerPhone}
+                              onChange={(event) => setNewCustomerPhone(event.target.value)}
+                              placeholder="55 1234 5678"
+                            />
+                          </div>
+                          {createCustomerError ? (
+                            <p className="text-sm text-[var(--color-status-danger-fg)] sm:col-span-2" role="alert">
+                              {createCustomerError}
+                            </p>
+                          ) : null}
+                        </div>
+                      </DialogMobileBody>
+                      <DialogMobileFooter>
+                        <Button type="button" variant="outline" onClick={() => setShowCreateCustomer(false)}>
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="primary"
+                          loading={isCreatingCustomer}
+                          disabled={newCustomerName.trim() === "" || Boolean(newCustomerNameError)}
+                          onClick={handleCreateCustomer}
+                        >
+                          Guardar y seleccionar
+                        </Button>
+                      </DialogMobileFooter>
+                    </DialogMobileContent>
+                  </Sheet>
                 </div>
               ) : null}
             </div>
 
             {isWorkshopDirect ? (
-              <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
+              <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
                 <div className="grid gap-2">
                   <Label htmlFor="masterId">Maestro responsable *</Label>
                   <Select
@@ -1065,7 +1149,7 @@ export function QuoteBuilder({
               </div>
             ) : null}
 
-            {!isSale ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] p-4">
+            {!isSaleNote ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
               <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
@@ -1074,19 +1158,20 @@ export function QuoteBuilder({
                     id="plate"
                     name="plate"
                     maxLength={10}
+                    placeholder="Ej. ABC-123"
                     value={vehicle.plate}
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "plate", value: event.target.value })}
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="economicNumber">Número económico / ECO (opcional)</Label>
+                  <Label htmlFor="economicNumber">ECO (opcional)</Label>
                   <Input
                     id="economicNumber"
                     name="economicNumber"
                     maxLength={30}
                     value={vehicle.economicNumber}
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "economicNumber", value: event.target.value })}
-                    placeholder="Ej. ECO-104"
+                    placeholder="Ej. 42"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -1094,6 +1179,7 @@ export function QuoteBuilder({
                   <Input
                     id="brand"
                     name="brand"
+                    placeholder="Ej. Ford"
                     value={vehicle.brand}
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "brand", value: event.target.value })}
                   />
@@ -1103,6 +1189,7 @@ export function QuoteBuilder({
                   <Input
                     id="model"
                     name="model"
+                    placeholder="Ej. F-350"
                     value={vehicle.model}
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "model", value: event.target.value })}
                   />
@@ -1112,6 +1199,7 @@ export function QuoteBuilder({
                   <Input
                     id="year"
                     name="year"
+                    placeholder="Ej. 2015"
                     type="number"
                     min="1950"
                     max={new Date().getFullYear() + 1}
@@ -1146,6 +1234,7 @@ export function QuoteBuilder({
                 },
               }}
               allowedItemTypes={isSale ? ["MATERIAL", "REFACCIONES"] : undefined}
+              summaryInShell={desktopSummaryInShell}
             />
           </div>
 
@@ -1155,11 +1244,10 @@ export function QuoteBuilder({
               Notas
             </h2>
             <div className="grid gap-2">
-              <Label htmlFor="title">Título</Label>
+              <Label htmlFor="title">Descripción breve</Label>
               <Input
                 id="title"
                 name="title"
-                required
                 value={title}
                 onChange={(event) => {
                   const nextTitle = event.target.value;
@@ -1170,17 +1258,16 @@ export function QuoteBuilder({
                       : null,
                   );
                 }}
-                placeholder="Ej. Servicio general"
-                aria-describedby={titleError ? "quote-title-error" : undefined}
-                aria-invalid={titleError ? true : undefined}
+                placeholder="Ej. Muelles delanteros, cambiar percha"
+                maxLength={160}
               />
-              <span id="quote-title-error" role={titleError ? "alert" : undefined} className="min-h-4 text-xs text-[var(--color-status-danger-fg)]">
-                {titleError}
+              <span className="text-xs text-[var(--color-text-muted)]">
+                Si lo dejas vacío usamos el primer concepto.
               </span>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="operationalDate">
-                {isSale || mode === "direct-note" ? "Fecha de la nota" : mode === "direct-work-order" || mode === "direct" ? "Fecha del trabajo" : "Fecha de cotización"}
+                {isSaleNote || mode === "direct-note" ? "Fecha de la nota" : mode === "direct-work-order" || mode === "direct" ? "Fecha del trabajo" : "Fecha de cotización"}
               </Label>
               <Input
                 id="operationalDate"
@@ -1198,7 +1285,7 @@ export function QuoteBuilder({
                 </p>
               )}
             </div>
-            {isSale || mode === "direct-note" ? (
+            {isSaleNote || mode === "direct-note" ? (
               <div className="grid gap-2">
                 <Label htmlFor="paymentDueDate">Fecha de vencimiento de pago (opcional)</Label>
                 <Input
@@ -1210,28 +1297,22 @@ export function QuoteBuilder({
               </div>
             ) : null}
             <div className="grid gap-2">
-              <Label htmlFor="description">Descripción</Label>
+              <Label htmlFor="description">Detalles (opcional)</Label>
               <Textarea
                 id="description"
                 name="description"
                 rows={4}
                 value={description}
                 onChange={(event) => dispatch({ type: "setDescription", description: event.target.value })}
-                placeholder={isSale || mode === "direct-note" ? "Detalles adicionales de la nota..." : mode === "direct-work-order" || mode === "direct" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
+                placeholder={isSaleNote || mode === "direct-note" ? "Detalles adicionales de la nota..." : mode === "direct-work-order" || mode === "direct" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
               />
             </div>
-            <Checkbox
-              name="administrative"
-              label="Cotización administrativa"
-              checked={administrative}
-              onCheckedChange={(checked) => dispatch({ type: "setAdministrative", administrative: checked === true })}
-            />
           </section>
 
           {/* Step 4: Review and submit */}
           <section hidden={step !== "preview"} className="grid gap-4">
             <h2 className="sr-only" tabIndex={-1} data-step-heading="preview">
-              {isSale || mode === "direct-note" ? "Revisar y confirmar nota" : mode === "direct-work-order" || mode === "direct" ? "Revisar y confirmar trabajo" : "Revisar y enviar cotización"}
+              {isSaleNote || mode === "direct-note" ? "Revisar y confirmar nota" : mode === "direct-work-order" || mode === "direct" ? "Revisar y confirmar trabajo" : "Revisar y enviar cotización"}
             </h2>
             {(() => {
               const selectedContact = selectedCustomer?.contacts?.find((c) => c.id === customerContactId);
@@ -1245,23 +1326,32 @@ export function QuoteBuilder({
                 ? formatQuoteContactRole(selectedContact.role)
                 : null;
 
+              const previewProps: QuotePreviewCardProps = {
+                customerName: customerDisplayName,
+                customerPhone: selectedCustomer?.phone ?? null,
+                legalName: legalDisplayName,
+                contactName: selectedContact?.name,
+                contactRole: contactRoleBadge,
+                vehicle,
+                title: resolveQuoteTitle(title, sections),
+                description,
+                administrative,
+                sections,
+                subtotalCents,
+                discountCents,
+                taxCents,
+                totalCents,
+                validUntil,
+              };
+              const typeLabel = isSaleNote || mode === "direct-note" ? "Nota" : mode === "direct-work-order" || mode === "direct" ? "Trabajo" : "Cotización";
               return (
-                <QuotePreviewCard
-                  customerName={customerDisplayName}
-                  legalName={legalDisplayName}
-                  contactName={selectedContact?.name}
-                  contactRole={contactRoleBadge}
-                  vehicle={vehicle}
-                  title={title}
-                  description={description}
-                  administrative={administrative}
-                  sections={sections}
-                  subtotalCents={subtotalCents}
-                  discountCents={discountCents}
-                  taxCents={taxCents}
-                  totalCents={totalCents}
-                  validUntil={validUntil}
-                  compactItems
+                <DocumentPreview
+                  {...toDocumentPreviewProps(previewProps, { typeLabel, statusLabel: quoteStatusLabels.DRAFT })}
+                  stepShortcuts={[
+                    { label: "Cliente", onSelect: () => setStep("client") },
+                    { label: "Conceptos", onSelect: () => setStep("items") },
+                    { label: "Notas", onSelect: () => setStep("notes") },
+                  ]}
                 />
               );
             })()}
@@ -1280,8 +1370,10 @@ export function QuoteBuilder({
     </form>
     {shouldPortalChrome && chromeHosts ? (
       <>
+        {fullScreen ? createPortal(leadingContent, chromeHosts.leadingHost!) : null}
+        {fullScreen ? createPortal(subtitleContent, chromeHosts.subtitleHost!) : null}
         {createPortal(stepperContent, chromeHosts.stepperHost!)}
-        {createPortal(footerContent, chromeHosts.footerHost!)}
+        {desktopSummaryInShell ? createPortal(summaryColumn, chromeHosts.summaryHost!) : createPortal(footerContent, chromeHosts.footerHost!)}
       </>
     ) : null}
     </>

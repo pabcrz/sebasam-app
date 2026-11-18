@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Coins } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
@@ -139,7 +139,7 @@ export function ApplyCreditDialog({
         aria-label={`Aplicar saldo a favor a nota ${noteNumber}`}
         className="flex items-center gap-1.5"
       >
-        <Coins className="h-3.5 w-3.5" aria-hidden="true" />
+        <Icon name="coins" className="h-3.5 w-3.5" aria-hidden="true" />
         <span>{triggerLabel}</span>
       </Button>
 

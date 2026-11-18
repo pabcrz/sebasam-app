@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { clsx } from "clsx";
-import { X } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
+  Button,
   ConfirmDialog,
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui";
+import { QuoteFlowCloseContext } from "./quote-builder-contracts";
 
 type QuoteBuilderDialogShellProps = {
   open: boolean;
@@ -21,6 +22,8 @@ type QuoteBuilderDialogShellProps = {
   pending?: boolean;
   dirty?: boolean;
   onDiscard?: () => void;
+  /** When set, leaving a dirty flow offers "Guardar y salir" (the capture is already kept) next to discarding. */
+  onSaveDraft?: () => void;
   trigger?: React.ReactNode;
   header?: React.ReactNode;
   stepper?: React.ReactNode;
@@ -31,6 +34,16 @@ type QuoteBuilderDialogShellProps = {
   discardDescription?: React.ReactNode;
   discardConfirmLabel?: string;
   discardCancelLabel?: string;
+  /** Full-screen quote flow: fixed top bar (leading slot, title, ✕), progress and bottom bar. */
+  fullScreen?: boolean;
+  /** Full-screen only: slot at the top left of the bar (the ← control). */
+  leading?: React.ReactNode;
+  /** Full-screen only: line under the title (the step number and name). */
+  subtitle?: React.ReactNode;
+  /** Full-screen only: label of the desktop top-bar button that leaves the flow (same guard as ✕). */
+  exitLabel?: string;
+  /** Full-screen only: the desktop summary column (≥ lg); phone keeps the bottom bar. */
+  summary?: React.ReactNode;
 };
 
 /** Quote-builder-only modal chrome with compact desktop spacing. */
@@ -42,6 +55,7 @@ export function QuoteBuilderDialogShell({
   pending = false,
   dirty = false,
   onDiscard,
+  onSaveDraft,
   trigger,
   header,
   stepper,
@@ -52,6 +66,11 @@ export function QuoteBuilderDialogShell({
   discardDescription = "Se perderá el progreso no guardado.",
   discardConfirmLabel = "Descartar cambios",
   discardCancelLabel = "Seguir editando",
+  fullScreen = false,
+  leading,
+  subtitle,
+  exitLabel,
+  summary,
 }: QuoteBuilderDialogShellProps) {
   const [confirmDiscardOpen, setConfirmDiscardOpen] = React.useState(false);
   const closeRequestFocusRef = React.useRef<HTMLElement | null>(null);
@@ -90,35 +109,77 @@ export function QuoteBuilderDialogShell({
     onOpenChange(false);
   }, [onDiscard, onOpenChange]);
 
+  const handleSaveDraft = React.useCallback(() => {
+    setConfirmDiscardOpen(false);
+    onSaveDraft?.();
+  }, [onSaveDraft]);
+
+  const contentClassName = fullScreen
+    ? "!inset-0 !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none !gap-0 p-0 lg:!grid lg:!grid-cols-[minmax(0,1fr)_20rem] lg:!grid-rows-[auto_auto_minmax(0,1fr)] sm:!inset-0 sm:!h-dvh sm:!max-h-none sm:!w-screen sm:!max-w-none sm:!translate-x-0 sm:!translate-y-0 sm:!rounded-none sm:!p-0"
+    : "!inset-0 !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none !gap-0 p-3 sm:!bottom-auto sm:!left-1/2 sm:!right-auto sm:!top-1/2 sm:!h-dvh sm:!max-h-none sm:!w-[min(92vw,64rem)] sm:!max-w-5xl sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-[var(--radius-lg)] sm:!p-3";
+
   return (
+    <QuoteFlowCloseContext.Provider value={requestClose}>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent
-        className={clsx(
-          "!inset-0 !h-dvh !max-h-none !w-screen !max-w-none !translate-x-0 !translate-y-0 !rounded-none !gap-0 p-3 sm:!bottom-auto sm:!left-1/2 sm:!right-auto sm:!top-1/2 sm:!h-dvh sm:!max-h-none sm:!w-[min(92vw,64rem)] sm:!max-w-5xl sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:!rounded-[var(--radius-lg)] sm:!p-3",
-        )}
+        className={contentClassName}
         style={{ alignItems: "stretch", display: "flex", flexDirection: "column", justifyContent: "flex-start", overflow: "hidden" }}
         onEscapeKeyDown={(event) => { if (pending) event.preventDefault(); }}
         onPointerDownOutside={(event) => { if (pending) event.preventDefault(); }}
         onInteractOutside={(event) => { if (pending) event.preventDefault(); }}
       >
+        {fullScreen ? (
+          <div className="flex h-14 shrink-0 items-center gap-2 border-b border-[var(--color-border-light)] bg-[var(--color-surface)] px-3 lg:col-span-2" style={{ flexShrink: 0 }} data-testid="multi-step-dialog-header">
+            {leading}
+            {exitLabel ? (
+              <button type="button" onClick={requestClose} disabled={pending} className="hidden h-10 shrink-0 items-center rounded-[var(--radius-md)] px-2 text-sm font-medium text-[var(--color-link)] transition-colors hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50 lg:inline-flex">
+                {exitLabel}
+              </button>
+            ) : null}
+            <div className="flex min-w-0 flex-1 flex-col">
+              <DialogTitle className="truncate text-base font-bold">{title}</DialogTitle>
+              {subtitle}
+            </div>
+            <button type="button" onClick={requestClose} disabled={pending} aria-label={closeLabel} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50">
+              <Icon name="close" className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+        ) : (
         <div className="relative shrink-0" style={{ flexShrink: 0 }} data-testid="multi-step-dialog-header">
           <DialogHeader className="pr-12 sm:pr-14">
             <DialogTitle>{title}</DialogTitle>
             {description ? <DialogDescription>{description}</DialogDescription> : null}
             {header}
           </DialogHeader>
-          <button type="button" onClick={requestClose} disabled={pending} aria-label={closeLabel} className="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50">
-            <X className="h-4 w-4" aria-hidden="true" />
+          <button type="button" onClick={requestClose} disabled={pending} aria-label={closeLabel} className="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:pointer-events-none disabled:opacity-50">
+            <Icon name="close" className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
-        {stepper != null ? <div className="shrink-0 border-b border-[var(--color-border-light)] p-2 sm:p-2" style={{ flexShrink: 0 }} data-testid="multi-step-dialog-stepper">{stepper}</div> : null}
-        <section className="py-2" style={{ flex: "1 1 0%", minHeight: 0, minWidth: 0, overflowY: "auto", overscrollBehaviorY: "contain" }} data-testid="multi-step-dialog-body">
+        )}
+        {stepper != null ? <div className={fullScreen ? "shrink-0 border-b border-[var(--color-border-light)] bg-[var(--color-surface)] px-4 py-3 lg:col-span-2 lg:row-start-2 lg:px-6 lg:py-3" : "shrink-0 border-b border-[var(--color-border-light)] p-2 sm:p-2"} style={{ flexShrink: 0 }} data-testid="multi-step-dialog-stepper">{stepper}</div> : null}
+        <section className={fullScreen ? "bg-[var(--background)] px-4 py-4 lg:col-start-1 lg:row-start-3 lg:min-h-0 lg:overflow-x-hidden lg:px-6" : "py-2"} style={{ flex: "1 1 0%", minHeight: 0, minWidth: 0, overflowY: "auto", overscrollBehaviorY: "contain" }} data-testid="multi-step-dialog-body">
           {body}
         </section>
-        {footer != null ? <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-2 sm:pt-4" style={{ flexShrink: 0, minWidth: 0 }} data-testid="multi-step-dialog-footer">{footer}</div> : null}
+        {fullScreen && summary != null ? <div className="hidden min-h-0 border-l border-[var(--color-border-light)] bg-[var(--color-surface)] px-4 py-4 lg:col-start-2 lg:row-start-3 lg:block" data-testid="multi-step-dialog-summary">{summary}</div> : null}
+        {footer != null ? <div className={fullScreen ? "flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] px-4 py-3 lg:hidden" : "flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-light)] bg-[var(--color-surface)] pt-2 sm:pt-4"} style={{ flexShrink: 0, minWidth: 0 }} data-testid="multi-step-dialog-footer">{footer}</div> : null}
       </DialogContent>
-      <ConfirmDialog open={confirmDiscardOpen} onOpenChange={handleConfirmDiscardOpenChange} title={discardTitle} description={discardDescription} confirmLabel={discardConfirmLabel} cancelLabel={discardCancelLabel} variant="danger" onConfirm={handleDiscard} />
+      {onSaveDraft ? (
+        <ConfirmDialog
+          open={confirmDiscardOpen}
+          onOpenChange={handleConfirmDiscardOpenChange}
+          title="¿Salir de la cotización?"
+          description="Guarda un borrador en este dispositivo para retomarlo después, o descarta lo capturado."
+          confirmLabel="Guardar y salir"
+          cancelLabel="Seguir editando"
+          onConfirm={handleSaveDraft}
+        >
+          <Button type="button" variant="ghost" className="text-[var(--color-status-danger-fg)]" onClick={handleDiscard}>{discardConfirmLabel}</Button>
+        </ConfirmDialog>
+      ) : (
+        <ConfirmDialog open={confirmDiscardOpen} onOpenChange={handleConfirmDiscardOpenChange} title={discardTitle} description={discardDescription} confirmLabel={discardConfirmLabel} cancelLabel={discardCancelLabel} variant="danger" onConfirm={handleDiscard} />
+      )}
     </Dialog>
+    </QuoteFlowCloseContext.Provider>
   );
 }

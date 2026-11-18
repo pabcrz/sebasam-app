@@ -110,10 +110,7 @@ describe("WorkOrderCompletedList", () => {
     expect(screen.getByText("Vencida", { exact: true })).toBeVisible();
     expect(screen.queryByText(/Pendiente · Saldo/)).not.toBeInTheDocument();
     expect(screen.queryByText("Completada")).not.toBeInTheDocument();
-    expect(screen.getAllByTestId("card-header")[0]?.querySelector("[class*='min-w-0']")).toBeInTheDocument();
-    expect(screen.getAllByTestId("card-dates")[0]?.firstElementChild).toHaveClass("flex-wrap");
-    expect(screen.getAllByTestId("operational-card-secondary-actions")[0]).toHaveClass("gap-1");
-    expect(screen.getAllByTestId("card-header")[0]?.parentElement?.parentElement?.parentElement).toHaveClass("!p-2");
+    expect(screen.getAllByTestId("entity-card-footer")).toHaveLength(4);
   });
 
   it("opens payment details and history without administrative correction or reversal controls", () => {
@@ -130,7 +127,7 @@ describe("WorkOrderCompletedList", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Gestionar pagos" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ver pagos" }));
     expect(screen.getByTestId("nota-detail-dialog")).toBeInTheDocument();
     expect(screen.getByText("Historial de pagos")).toBeInTheDocument();
     expect(screen.getByTestId("nota-payment-history")).toBeInTheDocument();
@@ -167,13 +164,11 @@ describe("WorkOrderCompletedList", () => {
 
     expect(screen.getByText("N-140826-01")).toBeInTheDocument();
     expect(screen.queryByText("T-0926-01")).not.toBeInTheDocument();
-    expect(screen.getByTestId("card-context")).toHaveTextContent("Cot. C-140826-01");
     expect(screen.getAllByText(/Cot\.\s*C-140826-01/)).toHaveLength(1);
-    expect(screen.getByTestId("card-header")).toHaveTextContent("N-140826-01");
-    expect(screen.getByTestId("card-header")).not.toHaveTextContent("C-140826-01");
-    expect(screen.getByTestId("card-header")).not.toHaveTextContent("T-0926-01");
-    expect(screen.getByTestId("card-header").querySelector("p")).toHaveClass("text-2xl", "tabular-nums", "whitespace-nowrap");
-    fireEvent.click(screen.getByRole("button", { name: "Gestionar pagos" }));
+    const card = screen.getByRole("group", { name: "Ver vista previa de nota N-140826-01" });
+    expect(card).toHaveTextContent("N-140826-01");
+    expect(card).not.toHaveTextContent("T-0926-01");
+    fireEvent.click(screen.getByRole("button", { name: "Ver pagos" }));
     expect(screen.getByTestId("nota-detail-summary")).toHaveTextContent("Referencia interna: T-0926-01");
   });
 
@@ -196,7 +191,7 @@ describe("WorkOrderCompletedList", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Registrar pago para COT-001" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Gestionar pagos" }));
+    fireEvent.click(screen.getByRole("button", { name: "Registrar pago" }));
     expect(screen.getByRole("button", { name: "Registrar pago para COT-001" })).toBeInTheDocument();
   });
 
@@ -232,13 +227,16 @@ describe("WorkOrderCompletedList", () => {
     fireEvent.click(screen.getByRole("button", { name: /Compartir cotización/ }));
     expect(screen.queryByTestId("nota-detail-dialog")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Ver vista previa de nota COT-001" }));
-    expect(screen.getByRole("heading", { name: "Nota COT-001" })).toBeInTheDocument();
-    expect(screen.getAllByText("Cambio de aceite")).toHaveLength(2);
+    const noteCard = screen.getByRole("group", { name: "Ver vista previa de nota COT-001" });
+    fireEvent.click(noteCard);
+    expect(noteCard).toHaveAttribute("aria-current", "true");
+    expect(noteCard.parentElement).toHaveClass("side-panel-list");
+    expect(screen.getByRole("heading", { name: /^COT-001/ })).toBeInTheDocument();
+    expect(screen.getAllByText("Cambio de aceite")).toHaveLength(1);
     expect(screen.queryByTestId("nota-detail-dialog")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Cerrar" }));
-    fireEvent.click(screen.getByRole("button", { name: "Gestionar pagos" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar vista previa" }));
+    fireEvent.click(screen.getByRole("button", { name: "Registrar pago" }));
     expect(screen.queryByRole("heading", { name: "Acciones de nota" })).not.toBeInTheDocument();
     expect(screen.getByTestId("nota-detail-dialog")).toBeInTheDocument();
     expect(screen.getByText("Historial de pagos")).toBeInTheDocument();
@@ -247,18 +245,16 @@ describe("WorkOrderCompletedList", () => {
     expect(within(detailDialog).queryByRole("button", { name: "Imprimir nota de remisión COT-001" })).not.toBeInTheDocument();
     expect(cardPrintAction).toBeInTheDocument();
     expect(cardPrintAction).toHaveAttribute("data-print-url", "/admin/notas/work-order-1/print?returnTo=%2Fadmin%2Fnotas");
-    expect(screen.getAllByRole("listitem")).toHaveLength(longPaymentHistory.length);
+    expect(within(screen.getByTestId("nota-payment-history")).getAllByRole("listitem")).toHaveLength(longPaymentHistory.length);
     expect(screen.getByTestId("quote-payment-balance-indicator")).toHaveTextContent(/Saldo pendiente\s*\$125\.00/);
-    expect(screen.getByTestId("note-due-date")).toHaveTextContent(/Fecha de vencimiento de pago: 21 de agosto de 2026\./);
-    expect(screen.queryByTestId("quote-validity")).not.toBeInTheDocument();
+    expect(screen.getByTestId("document-preview-dates")).toHaveTextContent(/Fecha de vencimiento de pago: 21 de agosto de 2026\./);
+    expect(screen.getByTestId("document-preview-dates")).not.toHaveTextContent("Vigente hasta");
     expect(screen.getByRole("button", { name: "Registrar pago para COT-001" })).toBeInTheDocument();
     expect(screen.getByTestId("nota-detail-actions").querySelector('[aria-label="Compartir cotización COT-001"]')).not.toBeNull();
-    expect(screen.getByTestId("nota-detail-summary")).toHaveTextContent("Cliente de prueba");
+    expect(within(screen.getByTestId("document-preview")).getByRole("region", { name: "Cliente y unidad" })).toHaveTextContent("Cliente de prueba");
     expect(screen.getByTestId("nota-detail-summary")).toHaveTextContent("Referencia interna: OT-001");
     expect(screen.getByTestId("nota-detail-body")).toHaveClass("overflow-y-auto");
-    expect(screen.getByTestId("nota-detail-body")).toHaveClass("p-0");
-    expect(screen.getByTestId("nota-detail-body")).not.toHaveClass("px-4", "py-4", "sm:px-6", "sm:py-6");
-    expect(screen.getByTestId("nota-detail-dialog")).toHaveClass("h-dvh", "w-screen", "sm:max-w-2xl");
+    expect(screen.getByTestId("nota-detail-dialog")).toHaveAttribute("data-dialog-variant", "sheet");
   });
 
   it("renders SALE notes through the same payable actions without a WorkOrder", () => {
@@ -286,7 +282,7 @@ describe("WorkOrderCompletedList", () => {
       "data-print-url",
       "/admin/notas/sale-note-1/print?returnTo=%2Fadmin%2Fnotas",
     );
-    fireEvent.click(screen.getByRole("button", { name: "Gestionar pagos" }));
+    fireEvent.click(screen.getByRole("button", { name: "Registrar pago" }));
     expect(screen.getByRole("button", { name: "Registrar pago para COT-SALE-01" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Corregir nota" })).toBeInTheDocument();
   });
@@ -366,20 +362,18 @@ describe("WorkOrderCompletedList", () => {
     );
 
     expect(screen.queryByRole("button", { name: /registrar pago/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Gestionar pagos" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver pagos" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Compartir cotización/ })).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Gestionar pagos" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ver pagos" }));
     expect(screen.getByTestId("nota-detail-dialog")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /registrar pago/i })).not.toBeInTheDocument();
-    const context = screen.getByTestId("card-context");
-    expect(context).not.toHaveTextContent("Total");
-    expect(context.querySelector("[class*='status-success-fg']")).toHaveTextContent("Saldo pendiente $0.00");
+    expect(screen.getByText("Saldo pendiente $0.00")).toHaveClass("text-[var(--color-status-success-fg)]");
   });
 
   it("renders a primary payment management action on every note card and removes it from overflow", () => {
     render(<WorkOrderCompletedList workOrders={[workOrder, partialWorkOrder]} shareAction={vi.fn()} />);
 
-    expect(screen.getAllByRole("button", { name: "Gestionar pagos" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Ver pagos" })).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "Más acciones de nota COT-001" }));
     expect(screen.queryByRole("button", { name: "Ver pagos e historial" })).not.toBeInTheDocument();
   });
@@ -400,14 +394,32 @@ describe("WorkOrderCompletedList", () => {
 
     render(<WorkOrderCompletedList workOrders={[longWorkOrder]} shareAction={vi.fn()} />);
 
-    expect(screen.getByTestId("card-header").firstElementChild).toHaveClass("min-w-0");
-    expect(screen.getByTestId("card-header").querySelector("p")).toHaveClass(
-      "w-full",
-      "text-2xl",
-      "tabular-nums",
-      "whitespace-nowrap",
-    );
-    expect(screen.getByTestId("card-identity").querySelector("p")).toHaveClass("truncate");
-    expect(screen.getByTestId("card-context")).toHaveTextContent("Cot. C-20260915-01-THIS-FOLIO-IS-INTENTIONALLY-LONG");
+    expect(screen.getByRole("heading", { level: 3, name: "Servicio" })).toHaveClass("break-words");
+    expect(screen.getByText("Cliente con una razón social extremadamente larga para probar el ajuste")).toHaveClass("truncate");
+    expect(screen.getByText(/Cot\. C-20260915-01-THIS-FOLIO-IS-INTENTIONALLY-LONG/)).toBeInTheDocument();
+  });
+});
+
+describe("WorkOrderCompletedList on the shared EntityCard", () => {
+  it("puts Registrar pago as the state action and the tools in Imprimir · Compartir · ⋯ order", () => {
+    render(<WorkOrderCompletedList workOrders={[workOrder]} shareAction={vi.fn()} recordPaymentActions={[{ workOrderId: workOrder.id, action: vi.fn() }]} />);
+
+    const card = screen.getByRole("group", { name: /ver vista previa de nota/i });
+    expect(card.className).not.toMatch(/border/);
+    expect(within(card).getByTestId("entity-card-state")).toHaveTextContent("Registrar pago");
+    const tools = within(within(card).getByTestId("entity-card-tools"));
+    expect(tools.getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? button.textContent)).toEqual([
+      "Imprimir nota de remisión COT-001",
+      "Compartir cotización COT-001",
+      "Más acciones de nota COT-001",
+    ]);
+  });
+
+  it("keeps the payment detail reachable as Ver pagos once the note is fully paid", () => {
+    const paid = { ...workOrder, quote: { ...workOrder.quote, paidCents: 12_500, remainingCents: 0 } } as CompletedListProps["workOrders"][number];
+    render(<WorkOrderCompletedList workOrders={[paid]} shareAction={vi.fn()} />);
+
+    expect(within(screen.getByTestId("entity-card-state")).getByRole("button", { name: "Ver pagos" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Registrar pago" })).not.toBeInTheDocument();
   });
 });

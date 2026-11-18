@@ -1,4 +1,4 @@
-import { QuoteItemType } from "@prisma/client";
+import { QuoteItemType, QuoteOperationKind } from "@/generated/prisma/enums";
 import { z } from "zod";
 import { isMeaningfulText } from "@/lib/meaningful-text";
 import { normalizeOperationalDate } from "./lib/operational-date";
@@ -116,7 +116,8 @@ const quoteInputBaseSchema = z.object({
   customerContactId: optionalTrimmedString,
   customerFiscalProfileId: optionalTrimmedString,
   vehicle: quoteVehicleInputSchema,
-  title: z.string().trim().min(1, "Quote title is required").max(160).refine(isMeaningfulText, "El título debe incluir texto significativo."),
+  title: z.string().trim().min(1, "Quote title is required").max(160),
+  operation: z.nativeEnum(QuoteOperationKind).default(QuoteOperationKind.WORK),
   description: optionalTrimmedString,
   administrative: z.boolean().default(false),
   taxEnabled: z.boolean().default(true),
@@ -154,6 +155,7 @@ function validateQuoteTotals(
   quote: z.infer<typeof quoteInputBaseSchema>,
   ctx: z.RefinementCtx,
 ) {
+  validateQuoteOperation(quote, ctx);
   const subtotalCents = quote.sections.reduce(
     (total, section) => total + section.items.reduce((secTotal, item) => secTotal + Math.round(item.quantity * item.unitPriceCents), 0),
     0,
@@ -181,6 +183,15 @@ function validateQuoteTotals(
   }
 }
 
+function validateQuoteOperation(
+  quote: { operation: QuoteOperationKind; sections: Array<{ items: Array<{ type: QuoteItemType }> }> },
+  ctx: z.RefinementCtx,
+) {
+  if (quote.operation === QuoteOperationKind.SALE && quote.sections.some((section) => section.items.some((item) => item.type !== QuoteItemType.MATERIAL && item.type !== QuoteItemType.REFACCIONES))) {
+    ctx.addIssue({ code: "custom", message: "Las cotizaciones con intención de venta solo admiten conceptos de material o refacciones.", path: ["sections"] });
+  }
+}
+
 export const quoteInputSchema = quoteInputBaseSchema.superRefine(validateQuoteTotals);
 
 export const quoteFormItemSchema = quoteItemBaseSchema.extend({
@@ -202,9 +213,10 @@ const quoteDraftInputBaseSchema = quoteInputBaseSchema.extend({
 });
 
 function validateDraftIdentity(
-  quote: { customerId?: string; vehicle: z.infer<typeof quoteVehicleInputSchema> },
+  quote: { customerId?: string; vehicle: z.infer<typeof quoteVehicleInputSchema>; operation: QuoteOperationKind; sections: Array<{ items: Array<{ type: QuoteItemType }> }> },
   ctx: z.RefinementCtx,
 ) {
+  validateQuoteOperation(quote, ctx);
   const hasIdentifiableUnit = Boolean(
     quote.vehicle.plate || quote.vehicle.economicNumber || (quote.vehicle.brand && quote.vehicle.model),
   );
@@ -249,6 +261,12 @@ export const quoteFilterSchema = z.object({
   hasWorkOrder: z.string().optional().transform((val) => val === "true" ? true : val === "false" ? false : undefined),
   showCancelled: z.coerce.boolean().default(false),
   showArchived: z.coerce.boolean().default(false),
+});
+
+/** Additive filter fields are validated only by operational opt-in consumers. */
+export const operationalQuoteFilterSchema = quoteFilterSchema.extend({
+  concept: optionalFilterString(),
+  kind: z.enum(["all", "WORK", "SALE"]).optional().catch(undefined),
 });
 
 export const quoteLifecycleReasonSchema = z.string().trim().min(3).max(500);

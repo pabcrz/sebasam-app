@@ -93,3 +93,28 @@ describe("Notas periods", () => {
     expect(new URL(href, "https://example.test").searchParams.get("kind")).toBe(kind);
   });
 });
+
+
+describe("opt-in operational Notes contract", () => {
+  it.each(["all", "SALE", "WORK"] as const)("reconciles responsible with %s explicitly and round-trips all effective criteria", (kind) => {
+    const filters = parseNotasParams({ kind, assignee: "workshop", number: "N-42", concept: "aceite", plate: "ABC", economicNumber: "ECO", customerId: "c", dateFrom: "2026-08-01", dateTo: "2026-08-31", showArchived: "true", showCancelled: "false", page: "2", anchor: "2026-08-12" }, new Date("2026-08-12"), { operationalFilters: true });
+    expect(filters.assignee).toBe(kind === "WORK" ? "workshop" : "all");
+    const url = new URL(notasHref(filters, { operationalFilters: true }), "https://example.test");
+    expect(url.searchParams.get("assignee")).toBe(kind === "WORK" ? "workshop" : null);
+    for (const key of ["number", "concept", "plate", "economicNumber", "customerId", "dateFrom", "dateTo", "showArchived", "page"]) expect(url.searchParams.has(key)).toBe(true);
+    expect(url.searchParams.has("showCancelled")).toBe(false);
+    expect(parseNotasParams(Object.fromEntries(url.searchParams), new Date("2026-08-12"), { operationalFilters: true })).toEqual(filters);
+  });
+});
+
+
+describe("operational Notes payment and input boundaries", () => {
+  it("offers partial collection only in the opt-in contract without changing legacy defaults or the period", () => {
+    const input = { payment: "partial", anchor: "2026-08-12", page: "9007199254740992", showArchived: "false" };
+    const legacy = parseNotasParams(input, new Date("2026-08-12"));
+    const filters = parseNotasParams(input, new Date("2026-08-12"), { operationalFilters: true });
+    expect(legacy.payment).toBe("all");
+    expect(filters).toMatchObject({ payment: "partial", page: 1, showArchived: false, start: legacy.start, end: legacy.end });
+    expect(notasHref(filters, { operationalFilters: true })).toContain("payment=partial");
+  });
+});

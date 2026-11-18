@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ClipboardPaste, FileUp } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -68,7 +68,7 @@ export function ImportPasteStep({
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
             >
-              <FileUp className="h-4 w-4" aria-hidden="true" />
+              <Icon name="file-upload" className="h-4 w-4" aria-hidden="true" />
               {fileName ? `Reemplazar ${fileName}` : "Subir archivo .json"}
             </Button>
           </div>
@@ -80,7 +80,7 @@ export function ImportPasteStep({
           ) : null}
 
           <Button type="button" onClick={onAnalyze} disabled={rawText.trim() === ""} className="w-full">
-            <ClipboardPaste className="h-4 w-4" aria-hidden="true" />
+            <Icon name="paste" className="h-4 w-4" aria-hidden="true" />
             Analizar y revisar
           </Button>
         </div>

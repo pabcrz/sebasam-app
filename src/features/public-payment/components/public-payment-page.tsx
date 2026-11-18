@@ -1,6 +1,6 @@
 "use client";
 
-import { type PaymentRequest } from "@prisma/client";
+import { type PaymentRequest } from "@/generated/prisma/client";
 import { PublicPaymentShell, PublicPaymentContent, type ShellBusinessSettings } from "./public-payment-shell";
 import { BankDataCard, type BankAccountData } from "./bank-data-card";
 import { ContactCard, type ContactSettings } from "./contact-card";

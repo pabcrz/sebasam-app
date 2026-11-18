@@ -1,4 +1,10 @@
 import "@testing-library/jest-dom/vitest";
+import { afterEach } from "vitest";
+
+// Quote drafts live in localStorage; never let one test see another's.
+afterEach(() => {
+  if (typeof window !== "undefined") window.localStorage.clear();
+});
 
 class ResizeObserverStub {
   observe() {}
