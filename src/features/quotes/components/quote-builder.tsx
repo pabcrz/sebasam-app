@@ -637,6 +637,24 @@ export function QuoteBuilder({
   const clientReady = !(isSale && !customerId) && getStepError("client", clientStateArgs) === null;
   const priceReady = getStepError("items", clientStateArgs, true) === null;
   const unitLine = formatUnitIdentity({ economicNumber: vehicle.economicNumber, plates: vehicle.plate, model: vehicle.model });
+  const savedVehicles = selectedCustomer?.vehicles ?? [];
+  const matchedVehicle = savedVehicles.find(
+    (saved) => (saved.plate ?? "") === vehicle.plate && (saved.economicNumber ?? "") === vehicle.economicNumber,
+  );
+  function selectSavedVehicle(id: string) {
+    const saved = savedVehicles.find((candidate) => candidate.id === id);
+    const values = {
+      plate: saved?.plate ?? "",
+      economicNumber: saved?.economicNumber ?? "",
+      brand: saved?.brand ?? "",
+      model: saved?.model ?? "",
+      year: saved?.year ? String(saved.year) : "",
+    };
+    for (const [field, value] of Object.entries(values)) {
+      dispatch({ type: "setVehicleField", field: field as keyof typeof values, value });
+    }
+    if (saved?.brand || saved?.model || saved?.year || saved?.economicNumber) setUnitDetailsOpen(true);
+  }
   const customerName = selectedCustomer ? selectedCustomer.commercialName || selectedCustomer.name : null;
   const driverName = selectedCustomer?.contacts?.find((contact) => contact.id === customerContactId)?.name ?? null;
   const stepSummaries: Record<Step, string> = {
@@ -1155,6 +1173,24 @@ export function QuoteBuilder({
             {!isSaleNote ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
               <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
               <div className="grid gap-3">
+                {savedVehicles.length ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="savedVehicle">Unidad guardada</Label>
+                    <Select value={matchedVehicle?.id ?? "new"} onValueChange={selectSavedVehicle}>
+                      <SelectTrigger id="savedVehicle">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {savedVehicles.map((saved) => (
+                          <SelectItem key={saved.id} value={saved.id}>
+                            {formatUnitIdentity({ economicNumber: saved.economicNumber, plates: saved.plate, model: [saved.brand, saved.model].filter(Boolean).join(" ") }) ?? "Unidad sin datos"}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="new">Otra unidad</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
                 <div className="grid gap-2">
                   <Label htmlFor="plate">Placas (opcional)</Label>
                   <Input
