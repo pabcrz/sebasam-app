@@ -18,8 +18,7 @@ for (const width of [390, 1440]) {
   test(`opening a select keeps fixed elements in place at ${width}px`, async ({ page }) => {
     // A short viewport forces a vertical page scrollbar.
     await page.setViewportSize({ width, height: 420 });
-    await page.goto("/quote-filters");
-    await page.getByRole("button", { name: "Mostrar filtros" }).click();
+    await page.goto("/select");
     await page.evaluate((elements) => {
       for (const [id, className] of Object.entries(elements)) {
         const element = document.createElement("div");
@@ -32,9 +31,10 @@ for (const width of [390, 1440]) {
     }, FIXED_ELEMENTS);
 
     const scrollbarWidth = await page.evaluate(() => window.innerWidth - document.documentElement.clientWidth);
-    expect(scrollbarWidth).toBeGreaterThan(0);
+    // Overlay scrollbars (macOS) take no space, so there is no gutter to compensate and nothing to measure.
+    test.skip(scrollbarWidth === 0, "This browser uses overlay scrollbars");
 
-    const trigger = page.getByLabel("Estatus", { exact: true });
+    const trigger = page.getByLabel("Estado", { exact: true });
     const measure = () => page.evaluate(() => {
       const right = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().right;
       return {

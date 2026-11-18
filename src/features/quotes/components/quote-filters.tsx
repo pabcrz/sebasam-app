@@ -160,7 +160,7 @@ export function QuoteFilters({ filters, customers, rejectedDateRange }: QuoteFil
   });
 
   return (
-    <div className="grid gap-3">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
       <SegmentedControl
         label="Filtros directos por estado"
         options={statusOptions}

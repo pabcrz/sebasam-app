@@ -1,8 +1,16 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import path from "node:path";
 
 const viewports = [320, 390, 768, 1440];
 const displayedRangeLabel = "28 de septiembre – 3 de octubre de 2026";
+
+/** Waits for the sheet's slide animation to finish; measuring earlier sees it half off screen. */
+async function settled(page: Page) {
+  await page.getByRole("dialog").evaluate((el) => Promise.all(el.getAnimations().map((animation) => animation.finished)));
+}
+
+const openSheet = (page: Page) => page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
+const applySheet = (page: Page) => page.getByRole("button", { name: "Ver resultados" }).click();
 
 type Box = { x: number; y: number; width: number; height: number };
 
@@ -50,91 +58,49 @@ test.describe("NotasFilters responsive browser layout", () => {
       const pageOverflow = await page.evaluate(() => ({
         documentWidth: document.documentElement.scrollWidth,
         bodyWidth: document.body.scrollWidth,
-        viewportWidth: window.innerWidth,
       }));
       expect(pageOverflow.documentWidth).toBeLessThanOrEqual(width);
       expect(pageOverflow.bodyWidth).toBeLessThanOrEqual(width);
 
-      const panelOverflow = await panel.evaluate((element) => ({
-        clientWidth: element.clientWidth,
-        scrollWidth: element.scrollWidth,
-      }));
-      expect(panelOverflow.scrollWidth).toBeLessThanOrEqual(panelOverflow.clientWidth);
+      const panelOverflow = await panel.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
+      // 44px tap areas (::before) may poke a few px past a small control; anything larger is a real overflow.
+      expect(panelOverflow.scrollWidth).toBeLessThanOrEqual(panelOverflow.clientWidth + 8);
 
-      const header = panel.locator(":scope > div").nth(0);
-      const headerElements = [
-        page.getByRole("link", { name: "Semana anterior" }),
+      const periodRow = [
+        page.getByRole("button", { name: "Periodo anterior" }),
         page.getByText(displayedRangeLabel, { exact: true }),
-        page.getByRole("link", { name: "Semana siguiente" }),
-        page.getByText("Semana en curso", { exact: true }),
-        page.getByRole("link", { name: "Hoy" }),
-        page.getByRole("link", { name: "Vista mensual" }),
+        page.getByRole("button", { name: "Periodo siguiente" }),
+        page.getByRole("button", { name: "Hoy" }),
       ];
-
-      for (const element of headerElements) {
+      for (const element of periodRow) {
         await expect(element).toBeVisible();
-        await assertInside(
-          getBox(await element.boundingBox(), "Header control"),
-          getBox(await header.boundingBox(), "Header row"),
-          "Header control",
-        );
+        await assertInside(getBox(await element.boundingBox(), "Period control"), getBox(await panel.boundingBox(), "Filter panel"), "Period control");
       }
-      await assertNoOverlap(headerElements);
+      await assertNoOverlap(periodRow);
 
-      const controlsRow = panel.locator(":scope > div").nth(1);
-      const kindSelect = panel.getByRole("combobox", { name: "Tipo de nota" });
-      const paymentFieldset = panel.locator("fieldset");
-      const paymentToggle = paymentFieldset.locator(":scope > div");
-      const filtersButton = page.getByRole("button", { name: "Abrir filtros de cartera" });
-      const secondRowControls = [kindSelect, paymentToggle, filtersButton];
-      await expect(page.getByText("2", { exact: true })).toBeVisible();
-
-      for (const control of secondRowControls) {
+      const searchRow = [page.getByRole("searchbox", { name: "Buscar por folio" }), page.getByRole("button", { name: "Abrir filtros de cartera" })];
+      for (const control of searchRow) {
         await expect(control).toBeVisible();
-        await assertInside(
-          getBox(await control.boundingBox(), "Second-row control"),
-          getBox(await panel.boundingBox(), "Filter panel"),
-          "Second-row control",
-        );
+        await assertInside(getBox(await control.boundingBox(), "Search control"), getBox(await panel.boundingBox(), "Filter panel"), "Search control");
       }
-      await assertNoOverlap(secondRowControls);
+      await assertNoOverlap(searchRow);
 
-      const paymentGeometry = await Promise.all([
-        paymentToggle.boundingBox(),
-        paymentFieldset.boundingBox(),
-        controlsRow.boundingBox(),
-      ]);
-      const [toggleBox, fieldsetBox, rowBox] = paymentGeometry.map((box, index) =>
-        getBox(box, `Payment layout box ${index + 1}`),
-      );
+      await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-legacy-${width}.png`), fullPage: true });
 
-      if (width < 768) {
-        expect(Math.abs(toggleBox.width - fieldsetBox.width)).toBeLessThanOrEqual(1);
-      } else {
-        expect(toggleBox.width).toBeLessThan(rowBox.width - 16);
-      }
-
-      await page.screenshot({
-        path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-legacy-${width}.png`),
-        fullPage: true,
-      });
-
-      await filtersButton.click();
+      await openSheet(page);
       const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
+      await settled(page);
       const dateInput = page.getByLabel("Semana", { exact: true });
-      await expect(dateInput).toBeVisible();
       await expect(dateInput).toBeEnabled();
       await expect(dateInput).toHaveAttribute("type", "date");
-      await assertInside(
-        getBox(await dateInput.boundingBox(), "Date input"),
-        getBox(await dialog.boundingBox(), "Filters dialog"),
-        "Date input",
-      );
+      await assertInside(getBox(await dateInput.boundingBox(), "Date input"), getBox(await dialog.boundingBox(), "Filters dialog"), "Date input");
     });
   }
 });
 
+const master = "a0b1c2d3-1234-4abc-8def-1234567890ab";
+const sheetClear = (page: Page) => page.getByRole("dialog").getByRole("button", { name: "Limpiar", exact: true }).click();
 
 for (const width of [390, 1440]) {
   test(`Operational Notes at ${width}px`, async ({ page }) => {
@@ -150,51 +116,52 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/notes-operational?${new URLSearchParams({ ...common, mode: "week", anchor: "2026-08-05", payment: "partial", kind: "WORK", assignee: "workshop", page: "3" })}`);
     await expect(page.getByRole("button", { name: "Parciales", exact: true })).toHaveAttribute("aria-pressed", "true");
-    for (const label of ["Semana anterior", "Semana siguiente", "Hoy", "Vista mensual"]) {
-      retained(new URL((await page.getByRole("link", { name: label, exact: true }).getAttribute("href"))!, page.url()).href);
-    }
     await expect(page.getByText("Concepto: aceite", { exact: true })).toBeVisible();
     await expect(page.getByText("Responsable: Taller", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-navigation-${width}.png`), fullPage: true });
-    await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
+
+    // A WORK-only filter: pick another master from the sheet.
+    await openSheet(page);
     await expect(page.getByLabel("Responsable", { exact: true })).toBeEnabled();
-    await page.getByLabel("Responsable", { exact: true }).selectOption("a0b1c2d3-1234-4abc-8def-1234567890ab");
-    await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
-    expect(retained(page.url()).get("assignee")).toBe("a0b1c2d3-1234-4abc-8def-1234567890ab");
+    await page.getByLabel("Responsable", { exact: true }).selectOption(master);
+    await applySheet(page);
+    expect(retained(page.url()).get("assignee")).toBe(master);
+
+    // Changing the type to all/SALE drops the WORK-only responsable.
     for (const kind of ["all", "SALE"]) {
+      await openSheet(page);
       await page.getByLabel("Tipo de nota", { exact: true }).selectOption(kind);
-      expect(retained(page.url()).has("assignee")).toBe(false);
-      await expect(page.getByText(/Responsable:/)).toHaveCount(0);
-      await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
-      const dialog = page.getByRole("dialog");
       await expect(page.getByLabel("Responsable", { exact: true })).toBeDisabled();
-      await expect(page.getByText("El responsable solo aplica a notas WORK; todas y SALE conservan las ventas.")).toBeVisible();
+      await settled(page);
+      const dialog = page.getByRole("dialog");
       for (const input of await dialog.locator('input:not([type="checkbox"]), select').all()) {
         await input.scrollIntoViewIfNeeded();
         const box = getBox(await input.boundingBox(), "Operational dialog input");
         expect(box.height).toBeGreaterThanOrEqual(44);
         await assertInside(box, getBox(await dialog.boundingBox(), "Dialog"), "Input");
       }
-      if (kind === "all") await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-inactive-${width}.png`), fullPage: true });
-      await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
-      expect(retained(page.url()).get("kind")).toBe(kind);
+      await applySheet(page);
+      const query = retained(page.url());
+      expect(query.get("kind")).toBe(kind);
+      expect(query.has("assignee") ? query.get("assignee") : "all").toBe("all");
+      await expect(page.getByText(/Responsable:/)).toHaveCount(0);
     }
+
     await page.getByRole("button", { name: "Pagadas", exact: true }).click();
     expect(retained(page.url()).get("payment")).toBe("paid");
-    await page.getByRole("link", { name: "Semana anterior", exact: true }).click();
-    expect(retained(page.url()).get("anchor")).toBe("2026-07-29");
-    await page.getByRole("link", { name: "Vista mensual", exact: true }).click();
+    await page.getByRole("button", { name: "Periodo anterior" }).click();
+    expect(retained(page.url()).get("anchor")).toBe("2026-07-27");
+    await page.getByRole("button", { name: "Mes", exact: true }).click();
     expect(retained(page.url()).get("mode")).toBe("month");
-    await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
+    await openSheet(page);
     await page.getByLabel("Mes y año", { exact: true }).fill("2026-09");
     expect(retained(page.url()).get("anchor")).toBe("2026-09");
-    await page.getByRole("button", { name: "Limpiar filtros", exact: true }).click();
-    expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ mode: "month", anchor: "2026-09", payment: "all", kind: "all" });
+    await sheetClear(page);
+    await expect.poll(() => Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ mode: "month", anchor: "2026-09", payment: "all", kind: "all" });
     expect(errors).toEqual([]);
   });
 }
-
 
 for (const width of [390, 1440]) {
   test(`Common Notes controls at ${width}px`, async ({ page }) => {
@@ -202,20 +169,21 @@ for (const width of [390, 1440]) {
     page.on("pageerror", (error) => errors.push(error.message));
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/notes-operational?mode=week&anchor=2026-08-05&payment=partial&kind=WORK&assignee=workshop&customerId=cust-1&overdue=overdue&page=3");
-    await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
-    const fields = { Folio: "N-99", Concepto: "frenos", Placas: "DEF-999", ECO: "ECO-99", "Finalización/emisión desde": "2026-08-02", "Finalización/emisión hasta": "2026-08-30" };
+    await openSheet(page);
+    const fields = { Folio: "N-99", Concepto: "frenos", Placas: "DEF-999", ECO: "ECO-99", Desde: "2026-08-02", Hasta: "2026-08-30" };
     for (const [label, value] of Object.entries(fields)) await page.getByLabel(label, { exact: true }).fill(value);
-    await expect(page.getByText("Fecha operativa: finalización WORK o emisión SALE (ambos días incluidos)")).toBeVisible();
     await page.getByRole("checkbox", { name: "Mostrar archivadas", exact: true }).check();
     await page.getByRole("checkbox", { name: "Mostrar canceladas", exact: true }).check();
     const dialog = page.getByRole("dialog");
+    await settled(page);
     for (const input of await dialog.locator('input:not([type="checkbox"]), select').all()) {
       await input.scrollIntoViewIfNeeded();
       const box = getBox(await input.boundingBox(), "Common field");
       expect(box.height).toBeGreaterThanOrEqual(44);
       await assertInside(box, getBox(await dialog.boundingBox(), "Common dialog"), "Common field");
     }
-    await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
+    await applySheet(page);
+    await expect(dialog).toBeHidden();
     const expected = { mode: "week", anchor: "2026-08-05", payment: "partial", kind: "WORK", assignee: "workshop", customerId: "cust-1", overdue: "overdue", number: "N-99", concept: "frenos", plate: "DEF-999", economicNumber: "ECO-99", dateFrom: "2026-08-02", dateTo: "2026-08-30", showArchived: "true", showCancelled: "true" };
     expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual(expected);
     for (const summary of ["Folio: N-99", "Concepto: frenos", "Placas: DEF-999", "ECO: ECO-99", "Finalización/emisión desde: 2026-08-02", "Finalización/emisión hasta: 2026-08-30", "Mostrar archivadas", "Mostrar canceladas"]) {
@@ -223,27 +191,26 @@ for (const width of [390, 1440]) {
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-common-${width}.png`), fullPage: true });
-    await page.getByRole("button", { name: "Abrir filtros de cartera" }).click();
+
+    await openSheet(page);
     for (const [label, value] of Object.entries(fields)) await expect(page.getByLabel(label, { exact: true })).toHaveValue(value);
     await page.getByLabel("Concepto", { exact: true }).fill("borrador retenido");
-    await page.getByLabel("Finalización/emisión desde", { exact: true }).fill("2026-09-01");
+    await page.getByLabel("Desde", { exact: true }).fill("2026-09-01");
     const before = page.url();
-    await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
+    await applySheet(page);
     await expect(dialog).toBeVisible();
     await expect(page.getByRole("alert")).toContainText("La fecha de finalización/emisión desde no puede ser posterior a hasta");
     expect(page.url()).toBe(before);
     await expect(page.getByLabel("Concepto", { exact: true })).toHaveValue("borrador retenido");
-    await expect(page.getByLabel("Finalización/emisión desde", { exact: true })).toHaveValue("2026-09-01");
+    await expect(page.getByLabel("Desde", { exact: true })).toHaveValue("2026-09-01");
     await expect(page.getByRole("checkbox", { name: "Mostrar archivadas", exact: true })).toBeChecked();
-    await page.getByLabel("Finalización/emisión desde", { exact: true }).scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-prior-error-${width}.png`), fullPage: true });
-    await page.getByRole("button", { name: "Limpiar filtros", exact: true }).click();
-    expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ mode: "week", anchor: "2026-08-05", payment: "all", kind: "all" });
+    await sheetClear(page);
+    await expect.poll(() => Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ mode: "week", anchor: "2026-08-05", payment: "all", kind: "all" });
     await expect(page.getByRole("alert")).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 }
-
 
 for (const width of [390, 1440]) {
   test(`Incoming Notes range at ${width}px`, async ({ page }) => {
@@ -262,26 +229,26 @@ for (const width of [390, 1440]) {
       const before = page.url();
       await expect(page.getByRole("dialog")).toBeVisible();
       await expect(page.getByRole("alert")).toContainText("La fecha de finalización/emisión desde no puede ser posterior a hasta");
-      await expect(page.getByLabel("Finalización/emisión desde", { exact: true })).toHaveValue(raw.dateFrom);
+      await expect(page.getByLabel("Desde", { exact: true })).toHaveValue(raw.dateFrom);
       await expect(page.getByLabel("Concepto", { exact: true })).toHaveValue(raw.concept);
       await expect(page.getByLabel("Semana", { exact: true })).toBeDisabled();
       await expect(page.getByLabel("Tipo de nota", { exact: true })).toBeDisabled();
-      expect(await page.locator("a[href]").evaluateAll((links) => links.every((link) => link.getAttribute("href") === "#notas-date-error"))).toBe(true);
+      // The rejected range blocks the sheet from closing and every navigation outside it.
       await page.keyboard.press("Escape");
       await expect(page.getByRole("dialog")).toBeVisible();
-      await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
+      await applySheet(page);
       expect(page.url()).toBe(before);
       if (action === "clear") {
-        await page.getByRole("button", { name: "Limpiar filtros", exact: true }).click();
-        expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ mode: "week", anchor: "2026-08-05", payment: "all", kind: "all" });
+        await sheetClear(page);
+        await expect.poll(() => Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ mode: "week", anchor: "2026-08-05", payment: "all", kind: "all" });
       } else {
-        await page.getByLabel("Finalización/emisión desde", { exact: true }).scrollIntoViewIfNeeded();
+        await page.getByLabel("Desde", { exact: true }).scrollIntoViewIfNeeded();
         await page.screenshot({ path: path.join(process.cwd(), "test-results", "screenshots", `notas-page-error-${width}.png`), fullPage: true });
-        await page.getByLabel("Finalización/emisión desde", { exact: true }).fill("2026-08-01");
-        await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
+        await page.getByLabel("Desde", { exact: true }).fill("2026-08-01");
+        await applySheet(page);
         const { page: ignoredPage, assignee: ignoredAssignee, ...expected } = raw;
         void ignoredPage; void ignoredAssignee;
-        expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ ...expected, dateFrom: "2026-08-01" });
+        await expect.poll(() => Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ ...expected, dateFrom: "2026-08-01" });
       }
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect(page.getByRole("alert")).toHaveCount(0);

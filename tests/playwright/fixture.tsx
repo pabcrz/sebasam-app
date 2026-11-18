@@ -9,6 +9,7 @@ import { parseOperationalQuoteParams } from "../../src/features/quotes/quote-fil
 import { parseNotasParams } from "../../src/features/work-orders/notas-period";
 import { NotasFilters } from "../../src/features/work-orders/components/notas-filters";
 import { QuoteListCard } from "../../src/features/quotes/components/quote-mobile-card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../src/components/ui/select";
 import "../../src/app/globals.css";
 
 type ConversionOperation = "SALE" | "WORK";
@@ -412,7 +413,23 @@ function OperationalNotesFixture() {
   );
 }
 
+/** A page-level (non-modal) select on a tall page: the case where Radix locks body scroll. */
+function SelectFixture() {
+  return (
+    <main className="mx-auto w-full max-w-screen-xl p-4" style={{ minHeight: "200vh" }}>
+      <Select defaultValue="all">
+        <SelectTrigger aria-label="Estado"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Todos</SelectItem>
+          <SelectItem value="open">Abiertos</SelectItem>
+        </SelectContent>
+      </Select>
+    </main>
+  );
+}
+
 function Fixture() {
+  if (window.location.pathname === "/select") return <SelectFixture />;
   if (window.location.pathname === "/responsive-preview") return <ResponsivePreviewFixture />;
   if (window.location.pathname === "/notes-operational" || window.location.pathname === "/admin/notas") return <OperationalNotesFixture />;
   if (window.location.pathname === "/work-filters" || window.location.pathname === "/admin/work-orders") return <WorkFiltersFixture />;
