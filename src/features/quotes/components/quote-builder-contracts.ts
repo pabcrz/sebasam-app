@@ -21,6 +21,15 @@ export type CustomerFiscalProfileOption = {
   isDefault: boolean;
 };
 
+export type CustomerVehicleOption = {
+  id: string;
+  plate?: string | null;
+  economicNumber?: string | null;
+  brand?: string | null;
+  model?: string | null;
+  year?: number | null;
+};
+
 export type CustomerOption = {
   id: string;
   name: string;
@@ -30,6 +39,7 @@ export type CustomerOption = {
   phone?: string | null;
   contacts?: CustomerContactOption[];
   fiscalProfiles?: CustomerFiscalProfileOption[];
+  vehicles?: CustomerVehicleOption[];
 };
 
 export type QuoteBuilderInitialData = {
