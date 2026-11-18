@@ -169,6 +169,18 @@ describe("quote builder full-screen flow", () => {
     expect(within(top).getByText("Paso 2 de 4 · Conceptos")).toBeInTheDocument();
   });
 
+  it("marks the subtitle as a saved draft once the form has changes", async () => {
+    const user = userEvent.setup();
+    renderFlow();
+    await openFlow(user);
+
+    const top = screen.getByTestId("multi-step-dialog-header");
+    expect(within(top).queryByText(/Borrador guardado/)).not.toBeInTheDocument();
+
+    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
+    expect(within(top).getByText("Paso 1 de 4 · Cliente y unidad · Borrador guardado")).toBeInTheDocument();
+  });
+
   it("shows the step number on the client step and the total with IVA on the items step", async () => {
     const user = userEvent.setup();
     renderFlow();
