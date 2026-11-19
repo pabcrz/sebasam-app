@@ -322,7 +322,6 @@ export async function getCustomerDetailedStatement(
       number: wo.quote.number,
       title: wo.quote.title,
       description: wo.quote.description,
-      administrative: wo.quote.administrative,
       vehicleSnapshot: wo.quote.vehicleSnapshot,
       customerSnapshot: wo.quote.customerSnapshot,
       contactSnapshot: wo.quote.contactSnapshot,

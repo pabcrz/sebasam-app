@@ -24,7 +24,6 @@ const workOrder = {
     status: "APPROVED",
     title: "Servicio",
     description: null,
-    administrative: false,
     taxEnabled: true,
     discountCents: 0,
     operationalDate: new Date("2026-08-14"),

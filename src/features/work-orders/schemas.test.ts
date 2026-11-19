@@ -6,7 +6,6 @@ const saleInput = {
   vehicle: {},
   title: "Material sale",
   description: "Counter sale",
-  administrative: false,
   taxEnabled: true,
   discountCents: 0,
   sections: [{ name: "Materials", items: [{ type: "MATERIAL", description: "Brake pad", quantity: 1, unitPriceCents: 12500, includeInPayroll: false }] }],

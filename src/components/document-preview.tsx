@@ -33,7 +33,6 @@ export interface DocumentPreviewStepShortcut {
 export interface DocumentPreviewProps {
   typeLabel: string;
   statusLabel?: string | null;
-  administrative?: boolean;
   customer: { name: string; phone?: string | null };
   /** Driver name, shown as "Chofer: X" under the unit. Only when the data has one. */
   driverName?: string | null;
@@ -78,7 +77,6 @@ function noteItemsFrom(notes: string): string[] {
 export function DocumentPreview({
   typeLabel,
   statusLabel,
-  administrative = false,
   customer,
   driverName,
   unitLine,
@@ -116,7 +114,6 @@ export function DocumentPreview({
         <div data-testid="document-preview-status" className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
           {statusLabel ? <Badge variant="default">{statusLabel}</Badge> : null}
           <span>{typeLabel}</span>
-          {administrative ? <Badge variant="info">{typeLabel} administrativa</Badge> : null}
         </div>
 
         <section aria-label="Cliente y unidad" className="grid min-w-0 grid-cols-2 gap-3 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] p-3">

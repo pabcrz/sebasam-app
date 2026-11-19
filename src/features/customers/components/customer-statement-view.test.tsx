@@ -65,7 +65,6 @@ describe("CustomerStatementView", () => {
           number: "COT-001",
           title: "Servicio mayor de frenos",
           description: null,
-          administrative: false,
           vehicleSnapshot: null,
           subtotalCents: 20000,
           discountCents: 0,

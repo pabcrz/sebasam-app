@@ -14,7 +14,6 @@ const initialData = {
   vehicle: { plate: "", brand: "", model: "", year: "" },
   title: "Servicio",
   description: "",
-  administrative: false,
   taxEnabled: true,
   discountCents: 0,
   sections: [{ name: "", items: [{ type: "LABOR" as const, description: "Trabajo", quantity: "1", unitPrice: "100" }] }],

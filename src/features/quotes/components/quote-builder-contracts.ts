@@ -50,7 +50,6 @@ export type QuoteBuilderInitialData = {
   vehicle: { plate: string; brand: string; model: string; year: string; economicNumber?: string };
   title: string;
   description: string;
-  administrative: boolean;
   taxEnabled: boolean;
   discountCents: number;
   operationalDate?: string;

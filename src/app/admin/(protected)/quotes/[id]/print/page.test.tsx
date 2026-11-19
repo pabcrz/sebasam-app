@@ -27,7 +27,6 @@ describe("QuotePrintPage", () => {
       vehicle: null,
       vehicleSnapshot: null,
       workOrder: null,
-      administrative: false,
       items: [],
       subtotalCents: 0,
       discountCents: 0,

@@ -8,7 +8,6 @@ function summary(overrides: Record<string, unknown> = {}) {
     number: "C-001",
     title: "Servicio general",
     description: "",
-    administrative: false,
     subtotalCents: 10000,
     discountCents: 0,
     taxCents: 1600,

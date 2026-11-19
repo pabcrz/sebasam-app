@@ -25,7 +25,6 @@ type PersistedQuoteForBuilder = {
   vehicleSnapshot?: unknown;
   title: string;
   description?: string | null;
-  administrative: boolean;
   taxEnabled: boolean;
   discountCents?: unknown;
   operationalDate: Date | string;
@@ -83,7 +82,6 @@ export function mapPersistedQuoteToBuilderInitialData(
     },
     title: quote.title,
     description: quote.description ?? "",
-    administrative: quote.administrative,
     taxEnabled: quote.taxEnabled,
     discountCents: Number(quote.discountCents ?? 0),
     operationalDate: (quote.operationalDate instanceof Date
