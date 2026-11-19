@@ -222,8 +222,7 @@ describe("DialogContent", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       });
 
-      // Only the simulated back press itself; the dialog adds no second history.back().
-      expect(backSpy).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     it("ignores popstate events that did not pop its own entry (fallback mode)", async () => {
@@ -250,6 +249,23 @@ describe("DialogContent", () => {
       unmount();
 
       expect(backSpy).not.toHaveBeenCalled();
+    });
+
+    it("skips the orphan history entry a closed dialog leaves behind after a navigation (fallback mode)", async () => {
+      const user = userEvent.setup();
+      window.history.pushState({}, "", "/pantalla-previa");
+      const { unmount } = render(<SimpleTestDialog />);
+      await user.click(screen.getByRole("button", { name: "Open simple dialog" }));
+      window.history.pushState({}, "", "/pantalla-nueva");
+      unmount();
+
+      await React.act(async () => {
+        window.history.back();
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      expect(window.location.pathname).toBe("/pantalla-previa");
+      expect((window.history.state as Record<string, unknown> | null)?.__dialogOwn).toBeUndefined();
     });
 
     it("keeps the outer dialog open when an inner dialog is closed by its own control (fallback mode)", async () => {

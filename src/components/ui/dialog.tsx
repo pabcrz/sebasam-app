@@ -114,6 +114,21 @@ function dispatchEscape(target: HTMLElement | null) {
   }
 }
 
+const OWN_ENTRY_KEY = "__dialogOwn";
+const activeDialogEntries = new Set<string>();
+let staleEntrySkipperInstalled = false;
+
+// A dialog closed by a navigation (router.push) leaves its history entry behind. When back
+// lands on such an orphan entry, hop over it so one press still moves one screen.
+function installStaleEntrySkipper() {
+  if (staleEntrySkipperInstalled) return;
+  staleEntrySkipperInstalled = true;
+  window.addEventListener("popstate", () => {
+    const own = (window.history.state as Record<string, unknown> | null)?.[OWN_ENTRY_KEY];
+    if (typeof own === "string" && activeDialogEntries.size === 0) window.history.back();
+  });
+}
+
 export function useDialogPlatformDismiss(
   contentRef: React.RefObject<HTMLElement | null>,
   enabled: boolean = true,
@@ -161,8 +176,10 @@ export function useDialogPlatformDismiss(
 
     try {
       const currentState = (window.history.state as Record<string, unknown> | null) ?? {};
-      window.history.pushState({ ...currentState, [historyKey]: true }, "");
+      window.history.pushState({ ...currentState, [historyKey]: true, [OWN_ENTRY_KEY]: historyKey }, "");
       pushed = true;
+      activeDialogEntries.add(historyKey);
+      installStaleEntrySkipper();
     } catch {
       return;
     }
@@ -180,6 +197,7 @@ export function useDialogPlatformDismiss(
 
     return () => {
       window.removeEventListener("popstate", handlePopState);
+      activeDialogEntries.delete(historyKey);
       // Pop our entry only while it is still the current one; after a navigation
       // (router.push) back() would undo that navigation instead.
       if (pushed && hasEntry()) {
