@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireSuperAdmin } from "@/lib/auth/session";
+import { requireSuperAdminForPage } from "@/lib/auth/session";
 import { createUser } from "@/features/user-management/actions";
 import { listUsers } from "@/features/user-management/queries";
 import { UserCreateDialog } from "@/features/user-management/components/user-create-dialog";
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function UsersPage() {
-  const current = await requireSuperAdmin();
+  const current = await requireSuperAdminForPage();
   const users = await listUsers();
 
   const handleCreateUser = async (formData: FormData) => {
