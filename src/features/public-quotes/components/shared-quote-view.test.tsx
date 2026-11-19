@@ -206,19 +206,19 @@ describe("SharedQuoteView", () => {
     expect(screen.getByRole("button", { name: "Declinar cotización" })).toHaveClass("focus-visible:!ring-[var(--color-primary)]", "focus-visible:!ring-offset-2");
   });
 
-  it("shows the Imprimir label beside the printer icon at desktop breakpoints", () => {
+  it("shows the Descargar PDF label beside the printer icon at desktop breakpoints", () => {
     render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
 
-    const printControl = screen.getByRole("button", { name: "Imprimir documento" });
+    const printControl = screen.getByRole("button", { name: "Descargar PDF" });
     expect(printControl.querySelector("svg")).toBeInTheDocument();
-    expect(screen.getByText("Imprimir")).toHaveClass("hidden", "sm:inline");
+    expect(screen.getByText("Descargar PDF")).toHaveClass("hidden", "sm:inline");
   });
 
   it("keeps the mobile icon-only print control accessible and tappable", () => {
     render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
 
-    const printControl = screen.getByRole("button", { name: "Imprimir documento" });
-    expect(printControl).toHaveAttribute("title", "Imprimir documento");
+    const printControl = screen.getByRole("button", { name: "Descargar PDF" });
+    expect(printControl).toHaveAttribute("title", "Descargar PDF");
     expect(printControl).toHaveClass(
       "min-h-11",
       "min-w-11",
@@ -230,13 +230,13 @@ describe("SharedQuoteView", () => {
       "right-4",
       "z-40",
     );
-    expect(screen.getByText("Imprimir")).toHaveClass("hidden", "sm:inline");
+    expect(screen.getByText("Descargar PDF")).toHaveClass("hidden", "sm:inline");
   });
 
   it("keeps the print action floating above the reserved document edge", () => {
     render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
 
-    const printControl = screen.getByRole("button", { name: "Imprimir documento" });
+    const printControl = screen.getByRole("button", { name: "Descargar PDF" });
     expect(printControl).toHaveClass("fixed", "sm:bottom-5", "sm:right-5", "z-40");
     expect(printControl.parentElement).toHaveClass(
       "pb-[calc(4.75rem+env(safe-area-inset-bottom))]",
@@ -248,7 +248,7 @@ describe("SharedQuoteView", () => {
   it("uses the neutral outline variant instead of the primary acceptance treatment", () => {
     render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
 
-    const printControl = screen.getByRole("button", { name: "Imprimir documento" });
+    const printControl = screen.getByRole("button", { name: "Descargar PDF" });
     expect(printControl).toHaveClass(
       "border",
       "border-[var(--color-border-light)]",
@@ -265,10 +265,10 @@ describe("SharedQuoteView", () => {
 
     render(<SharedQuoteView quote={makeQuote()} token="token-123" />);
 
-    await user.click(screen.getByRole("button", { name: "Imprimir documento" }));
+    await user.click(screen.getByRole("button", { name: "Descargar PDF" }));
 
     expect(print).toHaveBeenCalledOnce();
-    expect(screen.getByRole("button", { name: "Imprimir documento" })).not.toHaveAttribute("target");
+    expect(screen.getByRole("button", { name: "Descargar PDF" })).not.toHaveAttribute("target");
     print.mockRestore();
   });
 
@@ -284,7 +284,7 @@ describe("SharedQuoteView", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Imprimir documento" }));
+    await user.click(screen.getByRole("button", { name: "Descargar PDF" }));
 
     expect(print).toHaveBeenCalledOnce();
     print.mockRestore();

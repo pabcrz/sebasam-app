@@ -4,8 +4,10 @@ import * as React from "react";
 import { clsx } from "clsx";
 
 import { PublicDocumentHeader } from "@/features/public-branding/public-document-header";
-import { getPublicMapsUrl, type PublicBusinessIdentity } from "@/features/public-branding/domain";
+import { type PublicBusinessIdentity } from "@/features/public-branding/domain";
 import { Icon, type IconName } from "@/components/ui/icon";
+
+const defaultLogoSrc = "/logo-white-short.png";
 
 export type ShellBusinessSettings = PublicBusinessIdentity;
 
@@ -35,31 +37,16 @@ const badgeConfig: Record<NonNullable<PublicPaymentShellProps["badge"]>, { icon:
 export function PublicPaymentShell({ children, badge = "payment-and-invoice", business, location, logoSrc }: PublicPaymentShellProps) {
   const resolvedBusiness = business ?? {};
   const headerBusiness = { ...resolvedBusiness, phone: undefined, whatsapp: undefined };
-  const mapsUrl = getPublicMapsUrl(location?.mapsUrl);
+  const resolvedLogoSrc = logoSrc ?? (resolvedBusiness.businessName ? defaultLogoSrc : undefined);
   const badgeInfo = badgeConfig[badge];
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--background)]">
-      <PublicDocumentHeader business={headerBusiness} logoSrc={logoSrc} location={undefined} maxWidthClassName="max-w-6xl" badge={<><Icon name={badgeInfo.icon} className="h-4 w-4" aria-hidden="true" /><span>{badgeInfo.label}</span></>} />
+      <PublicDocumentHeader business={headerBusiness} logoSrc={resolvedLogoSrc} location={location} quoteLayout badge={<><Icon name={badgeInfo.icon} className="h-4 w-4" aria-hidden="true" /><span>{badgeInfo.label}</span></>} />
 
       <main className="flex-1 bg-[var(--color-bg-soft)] px-4 py-6 md:px-8 md:py-8">
-        <div className="mx-auto max-w-6xl">{children}</div>
+        <div className="mx-auto max-w-4xl">{children}</div>
       </main>
-
-      <footer className="border-t border-white/10 bg-[var(--color-navy-900)] px-6 py-5 text-[var(--color-on-navy-tint)] md:px-8">
-        <div className="mx-auto max-w-6xl">
-          {location?.address ? (
-            mapsUrl ? <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm underline transition-colors hover:text-white"
-            >
-              {location.address}
-            </a> : <p className="text-sm">{location.address}</p>
-          ) : null}
-        </div>
-      </footer>
     </div>
   );
 }
