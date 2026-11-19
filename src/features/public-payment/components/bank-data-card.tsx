@@ -98,7 +98,7 @@ export function BankDataCard({ bankAccounts, isPrint = false }: BankDataCardProp
                 <div key={account.id} data-testid="bank-account-print" className="min-w-[180px] flex-1 basis-[220px] text-[12px] leading-tight">
                   <p className="text-[10px] text-gray-500">
                     {account.bankName}
-                    {account.isForInvoicing ? <span className="text-[var(--color-primary)]"> · facturación</span> : null}
+                    {account.isForInvoicing ? <span className="text-[var(--color-primary)] print:text-black"> · facturación</span> : null}
                   </p>
                   {clabe ? (
                     <p>

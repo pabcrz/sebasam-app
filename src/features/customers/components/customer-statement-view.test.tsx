@@ -99,8 +99,9 @@ describe("CustomerStatementView", () => {
   it("renders customer details, financial cards, and table of notes", () => {
     render(<CustomerStatementView statement={baseStatement} />);
 
-    expect(screen.getAllByRole("heading", { name: "Transportes del Norte S.A." })).toHaveLength(2);
-    expect(screen.getByText(/RFC: TDN010101ABC/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Transportes del Norte S.A." })).toBeInTheDocument();
+    expect(within(screen.getByTestId("customer-statement-print")).getByText("Transportes del Norte S.A.")).toBeInTheDocument();
+    expect(screen.getAllByText(/RFC: TDN010101ABC/i)[0]).toBeInTheDocument();
     expect(screen.getAllByText("OT-001")).toHaveLength(2);
     expect(screen.getAllByText("Servicio mayor de frenos")).toHaveLength(3);
     expect(screen.getAllByText("Kenworth T680")).toHaveLength(2);
@@ -385,6 +386,27 @@ describe("CustomerStatementView", () => {
     expect(within(printProjection).queryByText(/Folio|Vehículo|Acciones|Vencida/)).not.toBeInTheDocument();
   });
 
+  it("prints the shared document header and the payment accounts", () => {
+    render(
+      <CustomerStatementView
+        statement={{
+          ...baseStatement,
+          business: {
+            ...baseStatement.business,
+            bankAccounts: [
+              { id: 1, accountHolder: "SEBASAM", bankName: "Santander", accountNumber: "65500012345", clabe: "014180655000123456", isForInvoicing: false, isPubliclyShareable: false, publicToken: "t", sortOrder: 0 },
+            ],
+          },
+        }}
+      />,
+    );
+
+    const printProjection = screen.getByTestId("customer-statement-print");
+    expect(within(printProjection).getByText("Estado de cuenta")).toBeInTheDocument();
+    expect(within(printProjection).getByAltText(/^Logo de /)).toBeInTheDocument();
+    expect(within(printProjection).getByTestId("bank-data-print")).toHaveTextContent("0141 8065 5000 1234 56");
+  });
+
   it("keeps partial and overdue notes pending in the customer-facing print projection", () => {
     const partiallyPaidStatement: CustomerDetailedStatement = {
       ...baseStatement,
@@ -560,7 +582,7 @@ describe("CustomerStatementView", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Cuentas para transferencia" })).toBeInTheDocument();
-    expect(screen.getByText("Santander")).toBeInTheDocument();
+    expect(screen.getAllByText("Santander")).toHaveLength(2);
     expect(screen.getByText("•••• •••• •••• 3456")).toBeInTheDocument();
     expect(screen.queryByText("014180655000123456")).not.toBeInTheDocument();
 

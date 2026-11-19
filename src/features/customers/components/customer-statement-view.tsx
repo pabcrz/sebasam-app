@@ -18,6 +18,8 @@ import {
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog, type QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
+import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
+import { BankDataCard } from "@/features/public-payment/components/bank-data-card";
 import { ApplyCreditDialog } from "@/features/payments/components/apply-credit-dialog";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
@@ -120,6 +122,10 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
   const legalSubtitle = customer.commercialName
     ? customer.legalName || customer.name
     : customer.legalName || undefined;
+  const printCustomerSubtitle = [
+    legalSubtitle ? `Razón social: ${legalSubtitle}` : null,
+    customer.rfc ? `RFC: ${customer.rfc}` : null,
+  ].filter(Boolean).join(" · ") || undefined;
   const statementHref = customerStatementHref(customer.id, { view, period, anchor });
 
   const go = (state: { view?: StatementView; period?: StatementPeriodUnit; anchor?: string }) => {
@@ -541,22 +547,22 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
       ) : null}
       </div>
 
-      <section
-        data-testid="customer-statement-print"
-        className="mx-auto hidden w-full max-w-5xl space-y-5 px-[15mm] py-[12mm] print:block print:max-w-none print:break-inside-avoid"
-      >
-        <header className="flex items-start justify-between gap-6 border-b border-gray-400 pb-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest">{business.name} · Estado de cuenta</p>
-            <h1 className="mt-1 text-xl font-bold">{displayName}</h1>
-            {legalSubtitle ? <p className="text-sm">Razón social: {legalSubtitle}</p> : null}
-          </div>
-          <div className="text-right text-sm">
-            <p className="font-semibold">Fecha de emisión</p>
-            <p>{formatDate(emissionDate)}</p>
-          </div>
-        </header>
-
+      <section data-testid="customer-statement-print" className="hidden print:block">
+        <PublicQuoteShell
+          business={{
+            businessName: business.name,
+            fullName: business.fullName,
+            phone: business.contactPhone,
+            whatsapp: business.contactWhatsapp,
+          }}
+          location={{ address: business.address }}
+          documentType="Estado de cuenta"
+          documentNumber={rangeLabel}
+          date={emissionDate}
+          customerName={displayName}
+          customerSubtitle={printCustomerSubtitle}
+        >
+        <div className="space-y-5">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-gray-400 text-left">
@@ -629,6 +635,9 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
             Saldo a favor disponible al {formatDate(emissionDate)}: {formatCents(availableCreditAtCutoffCents)}
           </p>
         </section>
+        <div className="-mx-4"><BankDataCard bankAccounts={business.bankAccounts} isPrint /></div>
+        </div>
+        </PublicQuoteShell>
       </section>
     </div>
   );
