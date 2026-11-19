@@ -201,7 +201,7 @@ describe("DialogContent", () => {
       });
     });
 
-    it("closes the dialog and does not trigger extra history.back when popstate fires (fallback mode)", async () => {
+    it("closes the dialog and does not trigger extra history.back when the back press pops its entry (fallback mode)", async () => {
       const pushStateSpy = vi.spyOn(window.history, "pushState");
       const backSpy = vi.spyOn(window.history, "back");
 
@@ -211,16 +211,104 @@ describe("DialogContent", () => {
       await user.click(screen.getByRole("button", { name: "Open simple dialog" }));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(pushStateSpy).toHaveBeenCalled();
+      backSpy.mockClear();
 
       await React.act(async () => {
-        window.dispatchEvent(new PopStateEvent("popstate"));
+        window.history.back();
+        await new Promise((resolve) => setTimeout(resolve, 50));
       });
 
       await waitFor(() => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       });
 
+      // Only the simulated back press itself; the dialog adds no second history.back().
+      expect(backSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("ignores popstate events that did not pop its own entry (fallback mode)", async () => {
+      const user = userEvent.setup();
+      render(<SimpleTestDialog />);
+
+      await user.click(screen.getByRole("button", { name: "Open simple dialog" }));
+
+      await React.act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("does not pop history on unmount when a navigation already moved past its entry (fallback mode)", async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<SimpleTestDialog />);
+
+      await user.click(screen.getByRole("button", { name: "Open simple dialog" }));
+      window.history.pushState({}, "", "/otra-pantalla");
+      const backSpy = vi.spyOn(window.history, "back");
+
+      unmount();
+
       expect(backSpy).not.toHaveBeenCalled();
+    });
+
+    it("keeps the outer dialog open when an inner dialog is closed by its own control (fallback mode)", async () => {
+      function NestedDialogs() {
+        const [outer, setOuter] = React.useState(true);
+        const [inner, setInner] = React.useState(true);
+        return (
+          <Dialog open={outer} onOpenChange={setOuter}>
+            <DialogContent>
+              <DialogTitle>Outer</DialogTitle>
+              <Dialog open={inner} onOpenChange={setInner}>
+                <DialogContent>
+                  <DialogTitle>Inner</DialogTitle>
+                  <DialogClose asChild>
+                    <button type="button">Close inner</button>
+                  </DialogClose>
+                </DialogContent>
+              </Dialog>
+            </DialogContent>
+          </Dialog>
+        );
+      }
+      const user = userEvent.setup();
+      render(<NestedDialogs />);
+
+      await user.click(screen.getByRole("button", { name: "Close inner" }));
+      await React.act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      expect(screen.getByText("Outer")).toBeInTheDocument();
+      expect(screen.queryByText("Inner")).not.toBeInTheDocument();
+    });
+
+    it("re-arms the CloseWatcher when the dialog stays open after a back press", async () => {
+      const watchers: Array<{ onclose?: () => void; destroy: () => void }> = [];
+      function MockCloseWatcher(this: { onclose?: () => void; destroy: () => void }) {
+        this.destroy = vi.fn();
+        watchers.push(this);
+      }
+      vi.stubGlobal("CloseWatcher", MockCloseWatcher);
+
+      function StubbornDialog() {
+        return (
+          <Dialog open onOpenChange={() => {}}>
+            <DialogContent>
+              <DialogTitle>Stubborn</DialogTitle>
+            </DialogContent>
+          </Dialog>
+        );
+      }
+      render(<StubbornDialog />);
+      expect(watchers).toHaveLength(1);
+
+      await React.act(async () => {
+        watchers[0].onclose?.();
+      });
+
+      expect(watchers).toHaveLength(2);
     });
 
     it("pops the pushed history state when dialog is closed via UI close button (fallback mode)", async () => {

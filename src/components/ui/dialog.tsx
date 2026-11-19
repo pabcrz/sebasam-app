@@ -122,40 +122,41 @@ export function useDialogPlatformDismiss(
     if (!enabled || typeof window === "undefined") return;
 
     // 1. Modern CloseWatcher API (Chrome 120+, Android Chrome/WebView)
-    if (
-      "CloseWatcher" in window &&
-      typeof (window as unknown as { CloseWatcher: new () => { onclose?: () => void; destroy: () => void } }).CloseWatcher === "function"
-    ) {
-      let watcher: { onclose?: () => void; destroy: () => void } | null = null;
-      try {
-        const CloseWatcherConstructor = (
-          window as unknown as { CloseWatcher: new () => { onclose?: () => void; destroy: () => void } }
-        ).CloseWatcher;
+    type Watcher = { onclose?: () => void; destroy: () => void };
+    const CloseWatcherConstructor = (window as unknown as { CloseWatcher?: new () => Watcher }).CloseWatcher;
+    if (typeof CloseWatcherConstructor === "function") {
+      let watcher: Watcher | null = null;
+      // A watcher fires once. If the dialog stays open after Escape (for example a discard
+      // confirmation), arm a new one so the next back press is still intercepted.
+      const arm = () => {
         watcher = new CloseWatcherConstructor();
         watcher.onclose = () => {
-          if (watcher) {
-            watcher.destroy();
-            watcher = null;
-          }
+          watcher?.destroy();
+          watcher = null;
           dispatchEscape(contentRef.current);
+          if (contentRef.current?.isConnected) {
+            try {
+              arm();
+            } catch {
+              // Back press falls through to history navigation
+            }
+          }
+        };
+      };
+      try {
+        arm();
+        return () => {
+          watcher?.destroy();
+          watcher = null;
         };
       } catch {
         // Fall back to history if CloseWatcher creation fails
-      }
-
-      if (watcher) {
-        return () => {
-          if (watcher) {
-            watcher.destroy();
-            watcher = null;
-          }
-        };
       }
     }
 
     // 2. History API fallback for browsers without CloseWatcher (Safari, Firefox, older browsers)
     const historyKey = `__dialog_${Math.random().toString(36).slice(2, 9)}`;
-    let closedByPopState = false;
+    const hasEntry = () => (window.history.state as Record<string, unknown> | null)?.[historyKey] === true;
     let pushed = false;
 
     try {
@@ -166,8 +167,12 @@ export function useDialogPlatformDismiss(
       return;
     }
 
+    // Every popstate reaches every open dialog. Only the one whose own entry was popped
+    // (its key is gone from history.state) may close; otherwise closing an inner dialog
+    // would also close the outer one.
     const handlePopState = () => {
-      closedByPopState = true;
+      if (!pushed || hasEntry()) return;
+      pushed = false;
       dispatchEscape(contentRef.current);
     };
 
@@ -175,7 +180,9 @@ export function useDialogPlatformDismiss(
 
     return () => {
       window.removeEventListener("popstate", handlePopState);
-      if (pushed && !closedByPopState) {
+      // Pop our entry only while it is still the current one; after a navigation
+      // (router.push) back() would undo that navigation instead.
+      if (pushed && hasEntry()) {
         try {
           window.history.back();
         } catch {
