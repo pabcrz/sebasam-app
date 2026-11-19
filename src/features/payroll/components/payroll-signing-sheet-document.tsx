@@ -66,16 +66,16 @@ export function PayrollSigningSheetDocument({
       </div>
 
       {/* Table (Clean 3 columns: No., Nombre del Trabajador, Firma de Conformidad) */}
-      <div className="overflow-hidden border border-slate-300 rounded">
+      <div className="overflow-hidden">
         <table className="w-full text-left text-sm border-collapse">
           <thead>
-            <tr className="bg-slate-100 border-b border-slate-300 text-slate-800 font-bold text-xs uppercase tracking-wide">
+            <tr className="border-b-2 border-slate-900 text-slate-900 font-bold text-xs uppercase tracking-wide">
               <th className="py-3.5 px-4 w-16 text-center">No.</th>
               <th className="py-3.5 px-6">Nombre del Trabajador</th>
               <th className="py-3.5 px-8 w-80 text-center">Firma de Conformidad</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-slate-400">
             {allWorkers.length > 0 ? (
               allWorkers.map((worker, idx) => (
                 <tr key={worker.id} className="h-16">
