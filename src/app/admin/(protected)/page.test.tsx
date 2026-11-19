@@ -39,7 +39,7 @@ describe("AdminHomePage", () => {
         draftQuotesCount: 4,
         sentQuotesCount: 3,
         approvedQuotesCount: 1,
-        activeExecutionCount: 2,
+        activeExecutionCount: 2, stoppedActiveCount: 0,
       },
       nextWork: null,
       receivables: [],

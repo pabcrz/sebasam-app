@@ -98,7 +98,7 @@ export function parseWorkOrderParams(input: FilterParams) {
   const scheduled = parseCommonOperationalFilters({ dateFrom: input.scheduledFrom });
   const scheduledTo = parseCommonOperationalFilters({ dateTo: input.scheduledTo }).dateTo;
   if (scheduled.dateFrom && scheduledTo && scheduled.dateFrom > scheduledTo) throw new RangeError("scheduledFrom must not be after scheduledTo.");
-  const execution: "PLANNED" | "ASSIGNED" | "IN_PROGRESS" | undefined = input.execution === "PLANNED" || input.execution === "ASSIGNED" || input.execution === "IN_PROGRESS" ? input.execution : undefined;
+  const execution: "PLANNED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | undefined = input.execution === "PLANNED" || input.execution === "ASSIGNED" || input.execution === "IN_PROGRESS" || input.execution === "ON_HOLD" ? input.execution : undefined;
   return { ...common, execution, assignee: normalizeResponsible(input.assignee), scheduledFrom: scheduled.dateFrom, scheduledTo, page: parsePage(input.page) };
 }
 

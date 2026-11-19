@@ -98,7 +98,7 @@ describe("getOperationalDashboardSnapshot", () => {
 
     const snapshot = await getOperationalDashboardSnapshot(fixedNow);
 
-    expect(snapshot.queues).toEqual({ draftQuotesCount: 0, sentQuotesCount: 0, approvedQuotesCount: 0, activeExecutionCount: 0 });
+    expect(snapshot.queues).toEqual({ draftQuotesCount: 0, sentQuotesCount: 0, approvedQuotesCount: 0, activeExecutionCount: 0, stoppedActiveCount: 0 });
     expect(snapshot.receivables).toEqual([]);
     expect(prisma.quote.count).toHaveBeenNthCalledWith(1, {
       where: {
@@ -217,5 +217,16 @@ describe("getOperationalDashboardSnapshot", () => {
       expect.objectContaining({ customerId: "customer-credit", pendingBalanceCents: 50_000 }),
     ]);
     expect(snapshot).not.toHaveProperty("availableCreditCents");
+  });
+
+  it("counts active jobs marked en espera for the amber inbox row", async () => {
+    vi.mocked(prisma.workOrder.count).mockResolvedValueOnce(5).mockResolvedValueOnce(2);
+
+    const snapshot = await getOperationalDashboardSnapshot(fixedNow);
+
+    expect(snapshot.queues).toMatchObject({ activeExecutionCount: 5, stoppedActiveCount: 2 });
+    expect(prisma.workOrder.count).toHaveBeenNthCalledWith(2, {
+      where: { status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] }, onHoldAt: { not: null } },
+    });
   });
 });

@@ -430,6 +430,8 @@ model WorkOrder {
   siteAddress                   String?
   notes                         String?
   completedAt                   DateTime?
+  onHoldAt                      DateTime?
+  onHoldReason                  String?
   paymentDueDate                DateTime?
   isSpecial                     Boolean         @default(false)
   specialAssigneeName           String?

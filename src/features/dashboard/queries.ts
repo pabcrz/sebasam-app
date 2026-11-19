@@ -111,7 +111,7 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
     ],
   };
 
-  const [draftQuotesCount, sentQuotesCount, approvedQuotesCount, activeExecutionCount, receivableWorkOrders, oldestApprovedQuote] = await Promise.all([
+  const [draftQuotesCount, sentQuotesCount, approvedQuotesCount, activeExecutionCount, stoppedActiveCount, receivableWorkOrders, oldestApprovedQuote] = await Promise.all([
     prisma.quote.count({
       where: {
         deletedAt: null,
@@ -130,6 +130,12 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
     prisma.workOrder.count({
       where: {
         status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
+      },
+    }),
+    prisma.workOrder.count({
+      where: {
+        status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
+        onHoldAt: { not: null },
       },
     }),
     prisma.workOrder.findMany({
@@ -174,6 +180,7 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
     sentQuotesCount,
     approvedQuotesCount,
     activeExecutionCount,
+    stoppedActiveCount,
   };
   const receivables = aggregateReceivablesByCustomer(receivableWorkOrders, now);
 

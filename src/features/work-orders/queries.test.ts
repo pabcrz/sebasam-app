@@ -540,6 +540,14 @@ describe("additive operational query filters", () => {
     expect(vi.mocked(prisma.workOrder.findMany).mock.lastCall![0]).not.toHaveProperty("take");
   });
 
+  it("filters the paused marker without treating it as a status", async () => {
+    await listPaginatedActiveWorkOrders({ execution: "ON_HOLD" });
+    expect(vi.mocked(prisma.workOrder.findMany).mock.lastCall![0]!.where).toMatchObject({
+      status: { in: ["ASSIGNED", "IN_PROGRESS"] },
+      onHoldAt: { not: null },
+    });
+  });
+
   it("finds active work by the driver typed in the unified search, and counts exactly what the list would show", async () => {
     await listPaginatedActiveWorkOrders({ number: "Mariachi" });
     const listed = vi.mocked(prisma.workOrder.findMany).mock.lastCall![0]!.where;

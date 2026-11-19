@@ -56,7 +56,7 @@ describe("prioritizeInbox", () => {
 describe("buildInboxRows", () => {
   it("targets the already filtered list for each row", () => {
     const rows = buildInboxRows(
-      { draftQuotesCount: 4, sentQuotesCount: 3, approvedQuotesCount: 2, activeExecutionCount: 1 },
+      { draftQuotesCount: 4, sentQuotesCount: 3, approvedQuotesCount: 2, activeExecutionCount: 1, stoppedActiveCount: 0 },
       { oldestApprovedAt: day(1), stoppedActiveCount: 0 },
     );
     const hrefByKey = Object.fromEntries(rows.map((row) => [row.key, row.href]));
@@ -71,7 +71,7 @@ describe("buildInboxRows", () => {
 
   it("uses the existing queue counts and dates the approved row by its oldest quote", () => {
     const rows = buildInboxRows(
-      { draftQuotesCount: 4, sentQuotesCount: 3, approvedQuotesCount: 2, activeExecutionCount: 1 },
+      { draftQuotesCount: 4, sentQuotesCount: 3, approvedQuotesCount: 2, activeExecutionCount: 1, stoppedActiveCount: 0 },
       { oldestApprovedAt: day(1) },
     );
     const byKey = Object.fromEntries(rows.map((row) => [row.key, row]));

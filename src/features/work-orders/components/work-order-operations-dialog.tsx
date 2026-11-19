@@ -59,6 +59,7 @@ export type WorkOrderActions = {
   assign?: (input: unknown) => Promise<ActionResult>;
   complete?: (input: unknown) => Promise<ActionResult>;
   rollback?: (input: unknown) => Promise<ActionResult>;
+  setOnHold?: (input: unknown) => Promise<ActionResult>;
   ensureWaiting?: () => Promise<ActionResult>;
   start?: (input: unknown) => Promise<ActionResult>;
   recordExecution?: (input: unknown) => Promise<ActionResult>;

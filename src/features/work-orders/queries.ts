@@ -134,7 +134,10 @@ function activeWorkOrderWhere(filters: ReturnType<typeof parseWorkOrderParams>) 
   const quote = operationalQuoteWhere({ ...filters, number: undefined });
   const contains = (value: string) => ({ contains: value, mode: "insensitive" as const });
   const where: Prisma.WorkOrderWhereInput = {
-    status: filters.execution ?? { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
+    // "ON_HOLD" is a marker on active jobs, not a status.
+    ...(filters.execution === "ON_HOLD"
+      ? { status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] }, onHoldAt: { not: null } }
+      : { status: filters.execution ?? { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] } }),
     quote: { ...quote, operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } },
   };
   if (filters.number) where.OR = [{ number: contains(filters.number) }, { folio: contains(filters.number) }, { quote: { OR: quoteSearchMatches(filters.number) } }];

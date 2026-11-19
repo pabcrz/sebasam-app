@@ -51,7 +51,7 @@ type WorkOrderFilterDraft = {
   scheduledTo: string;
 };
 
-const executionLabels = { PLANNED: "Pendiente de asignación", ASSIGNED: "Asignado", IN_PROGRESS: "En ejecución" };
+const executionLabels = { PLANNED: "Pendiente de asignación", ASSIGNED: "Asignado", IN_PROGRESS: "En ejecución", ON_HOLD: "En espera" };
 const textFields = [["concept", "Concepto"], ["plate", "Placas"], ["economicNumber", "ECO"]] as const;
 const dateGroups = [
   {
