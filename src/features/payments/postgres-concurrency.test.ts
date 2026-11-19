@@ -145,6 +145,21 @@ async function createCompletedWork(prisma: PrismaClient, customerId: string) {
     },
   });
 
+  await prisma.payableNote.create({
+    data: {
+      customerId,
+      quoteId: quote.id,
+      workOrderId: workOrder.id,
+      referenceNumber: `N-${randomUUID()}`,
+      title: quote.title,
+      subtotalCents: quote.subtotalCents ?? 0,
+      taxCents: quote.taxCents ?? 0,
+      totalCents: quote.totalCents ?? 0,
+      status: "ISSUED",
+      issuedAt: new Date(),
+    },
+  });
+
   return { quote, workOrder };
 }
 
@@ -174,6 +189,7 @@ async function createActivePaymentWithApplication(
   amountCents: number,
   actorId: string,
 ) {
+  const payableNote = await prisma.payableNote.findUniqueOrThrow({ where: { workOrderId }, select: { id: true } });
   return prisma.payment.create({
     data: {
       operationKey: `pay-${randomUUID()}`,
@@ -187,7 +203,7 @@ async function createActivePaymentWithApplication(
           {
             operationKey: `app-${randomUUID()}`,
             workOrderId,
-            payableNoteId: workOrderId,
+            payableNoteId: payableNote.id,
             amountCents,
             actorId,
           },
@@ -266,6 +282,9 @@ describe.skipIf(!databaseUrl)("PostgreSQL concurrency locks", { timeout: 30000 }
             where: { payment: { customerId: { in: trackedCustomerIds } } },
           });
           await prisma.payment.deleteMany({ where: { customerId: { in: trackedCustomerIds } } });
+          await prisma.payableNote.deleteMany({
+            where: { OR: [{ customerId: { in: trackedCustomerIds } }, { quote: { customerId: { in: trackedCustomerIds } } }] },
+          });
           await prisma.workAssignment.deleteMany({
             where: { workOrder: { quote: { customerId: { in: trackedCustomerIds } } } },
           });

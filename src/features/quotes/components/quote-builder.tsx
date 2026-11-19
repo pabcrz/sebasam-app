@@ -116,7 +116,6 @@ export function QuoteBuilder({
   );
   // Read once on mount: the builder only mounts while its dialog is open, so this runs on the client.
   const [draft] = React.useState(() => (draftKey ? loadQuoteDraft(draftKey) : null));
-  const [isDraftSaved, setIsDraftSaved] = React.useState(false);
   const originalSelectedCustomer = customers.find((customer) => customer.id === initialData?.customerId);
   const initialSelectedCustomer = draft?.customer ?? originalSelectedCustomer;
   const [isCustomerListOpen, setIsCustomerListOpen] = React.useState(false);
@@ -222,18 +221,18 @@ export function QuoteBuilder({
     if (actionState.success) onSuccess?.();
   }, [actionState.success, onSuccess]);
 
+  const isDirectDirty = isUnifiedDirect ? Boolean(masterId || paymentDueDate) : false;
+  const isDirty = serializeQuoteBuilderSnapshot(builderState, customerSearch, [newCustomerName, newCustomerEmail, newCustomerPhone]) !== initialFormState || isDirectDirty || operation !== initialOperation;
+  const isDraftSaved = Boolean(draftKey) && !actionState.success && isDirty;
+
   React.useEffect(() => {
-    const current = serializeQuoteBuilderSnapshot(builderState, customerSearch, [newCustomerName, newCustomerEmail, newCustomerPhone]);
-    const isDirectDirty = isUnifiedDirect ? Boolean(masterId || paymentDueDate) : false;
-    const isDirty = current !== initialFormState || isDirectDirty || operation !== initialOperation;
     onDirtyChange?.(isDirty);
     // After a successful save the dialog clears the draft; do not write it back.
     if (draftKey && !actionState.success) {
       if (isDirty) saveQuoteDraft(draftKey, { state: builderState, customer: customerOptions.find((option) => option.id === builderState.customerId) ?? null });
       else clearQuoteDraft(draftKey);
-      setIsDraftSaved(isDirty);
     }
-  }, [actionState.success, customerOptions, draftKey, builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, initialOperation, isUnifiedDirect, masterId, operation, paymentDueDate]);
+  }, [actionState.success, customerOptions, draftKey, builderState, isDirty, onDirtyChange]);
 
   function changeOperation(next: "WORK" | "SALE") {
     if (next === operation) return;
