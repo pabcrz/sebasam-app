@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { createCustomerFromForm } from "@/features/customers/actions";
 import { listCustomerRows } from "@/features/customers/queries";
 import { filterCustomerRows } from "@/features/customers/customer-list";
@@ -74,9 +75,14 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
             No se encontraron clientes.
           </p>
           {query ? (
-            <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-              Limpia la búsqueda o da de alta un nuevo cliente.
-            </p>
+            <>
+              <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                Limpia la búsqueda o da de alta un nuevo cliente.
+              </p>
+              <Link href="/admin/customers" className="mt-3 inline-block text-sm font-semibold text-[var(--color-link)] underline-offset-2 hover:underline">
+                Limpiar búsqueda
+              </Link>
+            </>
           ) : (
             <p className="mt-2 text-sm text-[var(--color-text-muted)]">
               Da de alta un nuevo cliente para comenzar.

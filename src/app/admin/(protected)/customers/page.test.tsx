@@ -20,5 +20,6 @@ describe("CustomersPage", () => {
   it("passes the search text from the URL to the loader", async () => {
     render(await CustomersPage({ searchParams: Promise.resolve({ q: "Ana" }) }));
     expect(listCustomerRows).toHaveBeenCalledWith({ query: "Ana" });
+    expect(screen.getByRole("link", { name: "Limpiar búsqueda" })).toHaveAttribute("href", "/admin/customers");
   });
 });
