@@ -142,7 +142,7 @@ describe("quote builder desktop flow (≥ 1024px)", () => {
     await fillItemsStep(user);
     await user.click(within(summary).getByRole("button", { name: "Notas →" }));
     await user.type(screen.getByRole("textbox", { name: "Descripción breve" }), "Servicio general");
-    await user.click(within(summary).getByRole("button", { name: "Vista previa →" }));
+    await user.click(within(summary).getByRole("button", { name: "Revisar →" }));
 
     expect(within(summary).getByText("Antes de crear")).toBeInTheDocument();
     expect(within(summary).getByText("Cliente y unidad completos")).toBeInTheDocument();
@@ -168,7 +168,7 @@ describe("quote builder desktop flow (≥ 1024px)", () => {
     await user.type(within(summary).getByRole("spinbutton", { name: "Descuento (opcional)" }), "100");
     await user.click(within(summary).getByRole("button", { name: "Notas →" }));
     await user.type(screen.getByRole("textbox", { name: "Descripción breve" }), "Servicio general");
-    await user.click(within(summary).getByRole("button", { name: "Vista previa →" }));
+    await user.click(within(summary).getByRole("button", { name: "Revisar →" }));
     await user.click(within(summary).getByRole("button", { name: "Crear cotización" }));
 
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
