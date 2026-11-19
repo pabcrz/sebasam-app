@@ -203,9 +203,9 @@ export function QuotePreviewDialog({
         {footerAction !== undefined ? (
           <DialogMobileFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">Cerrar</Button>
+              <Button type="button" variant="outline" className="shrink-0">Cerrar</Button>
             </DialogClose>
-            {footerAction}
+            <div className="min-w-0 flex-1 [&>*]:w-full">{footerAction}</div>
           </DialogMobileFooter>
         ) : null}
       </DialogContent>
