@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BackLink } from "@/components/layout/back-link";
 import { Icon } from "@/components/ui/icon";
 import { notFound } from "next/navigation";
 import {
@@ -108,10 +109,10 @@ export default async function CustomerDetailPage({ params, searchParams }: Custo
   return (
     <section className="mx-auto grid w-full min-w-0 max-w-4xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <Button asChild variant="ghost" size="sm" className="w-fit">
-        <Link href="/admin/customers">
+        <BackLink href="/admin/customers">
           <Icon name="arrow-left" className="h-4 w-4" aria-hidden="true" />
           Regresar a clientes
-        </Link>
+        </BackLink>
       </Button>
 
       <PageHeader
