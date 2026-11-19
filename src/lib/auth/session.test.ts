@@ -70,6 +70,12 @@ describe("auth session resolution", () => {
     await expect(requireSuperAdmin()).rejects.toBeInstanceOf(UnauthorizedRoleError);
   });
 
+  it("sends a non-SUPER_ADMIN back to the panel from SUPER_ADMIN pages", async () => {
+    const { requireSuperAdminForPage } = await loadSession();
+
+    await expect(requireSuperAdminForPage()).rejects.toThrow("redirect:/admin");
+  });
+
   it("preserves the page redirect for a missing profile", async () => {
     findUnique.mockResolvedValue(null);
     const { requireProfileForPage } = await loadSession();

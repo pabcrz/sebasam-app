@@ -2,10 +2,10 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const listUsers = vi.hoisted(() => vi.fn().mockResolvedValue([]));
-const requireSuperAdmin = vi.hoisted(() => vi.fn().mockResolvedValue({ user: { id: "u1" } }));
+const requireSuperAdminForPage = vi.hoisted(() => vi.fn().mockResolvedValue({ user: { id: "u1" } }));
 
 vi.mock("@/features/user-management/queries", () => ({ listUsers }));
-vi.mock("@/lib/auth/session", () => ({ requireSuperAdmin }));
+vi.mock("@/lib/auth/session", () => ({ requireSuperAdminForPage }));
 vi.mock("@/features/user-management/actions", () => ({ createUser: vi.fn() }));
 vi.mock("@/features/user-management/components/user-create-dialog", () => ({
   UserCreateDialog: () => <button type="button">Crear usuario</button>,
