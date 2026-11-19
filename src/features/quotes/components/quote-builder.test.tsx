@@ -1543,7 +1543,7 @@ describe("QuoteBuilder", () => {
     expect(quantityInput.parentElement).toHaveClass("min-w-0");
     expect(unitPriceInput.parentElement).toHaveClass("min-w-0");
     expect(screen.getByLabelText("Precio unitario")).toHaveAccessibleDescription("Importe en pesos mexicanos.");
-    expect(screen.getAllByText("Importe")[0]).toBeInTheDocument();
+    expect(screen.queryByText("Importe")).not.toBeInTheDocument();
     expect(screen.getByTestId("currency-prefix-0")).toHaveTextContent("$");
     expect(screen.getByTestId("concept-total-0")).toHaveTextContent("$850.00");
     expect(quantityPriceRow.parentElement).not.toHaveTextContent("1 × $850.00");
