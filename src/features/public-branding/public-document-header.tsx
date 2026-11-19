@@ -1,5 +1,6 @@
 import * as React from "react";
 import { getPublicMapsUrl, type PublicBusinessIdentity } from "./domain";
+import { Icon } from "@/components/ui/icon";
 import { PublicBrandHeader } from "./public-brand-header";
 import { formatOperationalDate } from "@/features/quotes/lib/format";
 
@@ -57,7 +58,7 @@ export function PublicDocumentHeader({ business, logoSrc, documentType, document
                     {(documentType || documentNumber) ? <div className="min-w-0 shrink-0 max-w-full break-all text-left print:text-right">{documentType ? <span className="block text-xs font-bold uppercase tracking-wider text-white print:text-black">{documentType}</span> : null}{documentNumber ? <span className="block text-xs font-bold tracking-tight text-white/90 print:text-gray-800">{documentNumber}</span> : null}</div> : null}
                   </div>
                   {(values.length > 0 || date || specialDocumentLabel) ? <div className="mt-3 border-t border-white/20 pt-2 print:mt-2 print:border-gray-300 print:pt-1.5" aria-label="Datos de unidad">
-                    {values.length > 0 ? <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[11px] text-white/90 print:gap-x-3 print:text-[10px] print:text-gray-700">{values.map((item) => <span key={`${item.label}-${item.value}`}><span className={item.label ? "text-white/50 print:text-gray-500" : "sr-only"}>{item.label}</span>{item.label ? " " : null}<span className="font-semibold">{item.value}</span></span>)}</div> : null}
+                    {values.length > 0 ? <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/90 print:gap-x-3 print:text-[10px] print:text-gray-700"><Icon name="unit" className="h-3.5 w-3.5 shrink-0 text-white/60 print:hidden" aria-hidden="true" />{values.map((item) => <span key={`${item.label}-${item.value}`}><span className={item.label ? "text-white/50 print:text-gray-500" : "sr-only"}>{item.label}</span>{item.label ? " " : null}<span className="font-semibold">{item.value}</span></span>)}</div> : null}
                     {date ? <p className="mt-2 text-right text-xs font-semibold text-white/70 print:mt-1 print:text-[11px] print:text-gray-500">{formatOperationalDate(date)}</p> : null}
                     {specialDocumentLabel && !/[.\-·]/.test(specialDocumentLabel) ? <p className="mt-2 text-xs font-medium text-white/90 print:mt-1 print:text-gray-600">{specialDocumentLabel}</p> : null}
                   </div> : null}
