@@ -373,13 +373,13 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
           type="button"
           variant="outline"
           size="default"
-          title="Imprimir documento"
-          aria-label="Imprimir documento"
+          title="Descargar PDF"
+          aria-label="Descargar PDF"
           onClick={() => window.print()}
           className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 min-h-11 min-w-11 gap-2 px-3 shadow-lg print:hidden sm:bottom-5 sm:right-5 sm:px-4"
         >
-          <Icon name="print" className="h-4 w-4" aria-hidden="true" />
-          <span className="hidden sm:inline">Imprimir</span>
+          <Icon name="download" className="h-4 w-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Descargar PDF</span>
         </Button>
       ) : null}
 

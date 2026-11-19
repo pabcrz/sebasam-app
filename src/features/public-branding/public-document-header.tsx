@@ -38,14 +38,14 @@ export function PublicDocumentHeader({ business, logoSrc, documentType, document
   const hasDocument = Boolean(documentType || documentNumber || customerName || customerSubtitle || values.length || specialDocumentLabel || date);
 
   return (
-    <header className="relative isolate overflow-hidden bg-[image:var(--gradient-primary)] px-6 pb-6 pt-8 text-white md:rounded-b-[22px] md:px-8 md:pb-8 md:pt-10 print:rounded-none print:bg-none print:px-0 print:pt-0 print:pb-3 print:text-black print:w-full print:overflow-visible">
+    <header className="relative isolate overflow-hidden bg-[image:var(--gradient-primary)] px-4 pb-4 pt-5 text-white sm:px-6 sm:pb-6 sm:pt-8 md:rounded-b-[22px] md:px-8 md:pb-8 md:pt-10 print:rounded-none print:bg-none print:px-0 print:pt-0 print:pb-3 print:text-black print:w-full print:overflow-visible">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px] print:hidden" />
       <div className={`relative mx-auto ${maxWidthClassName} w-full`}>
         <div className="flex flex-col gap-4 print:gap-2">
-          <div className="flex flex-col items-start gap-6 sm:flex-row print:flex-row print:gap-4">
+          <div className="flex flex-col items-start gap-3 sm:gap-6 sm:flex-row print:flex-row print:gap-4">
             <div className="flex w-full min-w-0 flex-col sm:w-3/5 print:w-auto print:flex-[11_1_0%]">
               <PublicBrandHeader identity={business} logoSrc={logoSrc} quoteLayout={quoteLayout || hasDocument} />
-              {location?.address ? mapsUrl ? <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 block max-w-sm text-xs text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:text-gray-600 print:text-[11px] print:no-underline">{location.address}</a> : <p className="mt-1 max-w-sm text-xs text-white/80 print:text-gray-600 print:text-[11px]">{location.address}</p> : null}
+              {location?.address ? mapsUrl ? <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-1 hidden max-w-sm sm:block print:block text-xs text-white/80 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-700)] print:text-gray-600 print:text-[11px] print:no-underline">{location.address}</a> : <p className="mt-1 hidden max-w-sm text-xs text-white/80 sm:block print:block print:text-gray-600 print:text-[11px]">{location.address}</p> : null}
             </div>
             {hasDocument ? (
               <div className="flex w-full min-w-0 flex-col rounded-[12px] border border-white/15 bg-white/[0.08] px-4 py-3 backdrop-blur-sm sm:w-2/5 sm:min-w-[18rem] print:w-auto print:flex-[9_1_0%] print:min-w-0 print:rounded-lg print:border-gray-300 print:bg-transparent print:px-3.5 print:py-2.5 print:text-right print:backdrop-blur-none">
