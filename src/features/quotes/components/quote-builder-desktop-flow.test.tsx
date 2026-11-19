@@ -39,8 +39,8 @@ async function openFlow(user: User, createAction = vi.fn()) {
 async function fillClientStep(user: User) {
   await user.click(screen.getByRole("combobox", { name: "Cliente" }));
   await user.click(await screen.findByRole("option", { name: "Acme" }));
-  await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "ABC123");
-  await user.type(screen.getByRole("textbox", { name: "Modelo (opcional)" }), "Transit");
+  await user.type(screen.getByRole("textbox", { name: "Placas" }), "ABC123");
+  await user.type(screen.getByRole("textbox", { name: "Modelo" }), "Transit");
 }
 
 async function fillItemsStep(user: User) {

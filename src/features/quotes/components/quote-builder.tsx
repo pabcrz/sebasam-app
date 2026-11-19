@@ -170,7 +170,7 @@ export function QuoteBuilder({
     sections,
   } = builderState;
   const [unitDetailsOpen, setUnitDetailsOpen] = React.useState(() =>
-    Boolean(vehicle.economicNumber || vehicle.brand || vehicle.model || vehicle.year),
+    Boolean(vehicle.economicNumber || vehicle.year),
   );
   const onCustomerSearchResults = React.useCallback((results: CustomerOption[]) => {
     setActiveCustomerIndex(results.length ? 0 : -1);
@@ -1174,8 +1174,11 @@ export function QuoteBuilder({
               </div>
             ) : null}
 
-            {!isSaleNote ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
-              <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
+            {!isSaleNote ? <div className="grid gap-3 border-t border-[var(--color-border-light)] pt-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
+                <p className="text-xs text-[var(--color-text-muted)]">Opcional · con placas, o marca y modelo, basta</p>
+              </div>
               <div className="grid gap-3">
                 {savedVehicles.length ? (
                   <div className="grid gap-2">
@@ -1196,7 +1199,7 @@ export function QuoteBuilder({
                   </div>
                 ) : null}
                 <div className="grid gap-2">
-                  <Label htmlFor="plate">Placas (opcional)</Label>
+                  <Label htmlFor="plate">Placas</Label>
                   <Input
                     id="plate"
                     name="plate"
@@ -1205,6 +1208,28 @@ export function QuoteBuilder({
                     value={vehicle.plate}
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "plate", value: event.target.value })}
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="brand">Marca</Label>
+                  <Input
+                    id="brand"
+                    name="brand"
+                    placeholder="Ej. Ford"
+                    value={vehicle.brand}
+                    onChange={(event) => dispatch({ type: "setVehicleField", field: "brand", value: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="model">Modelo</Label>
+                  <Input
+                    id="model"
+                    name="model"
+                    placeholder="Ej. F-350"
+                    value={vehicle.model}
+                    onChange={(event) => dispatch({ type: "setVehicleField", field: "model", value: event.target.value })}
+                  />
+                </div>
                 </div>
                 <details
                   open={unitDetailsOpen}
@@ -1215,11 +1240,11 @@ export function QuoteBuilder({
                     <Icon name="plus-circle" className="size-4 shrink-0 group-open:hidden" aria-hidden="true" />
                     <Icon name="chevron-up" className="hidden size-4 shrink-0 group-open:block" aria-hidden="true" />
                     <span>Más datos de la unidad</span>
-                    <span className="ml-auto text-xs font-normal text-[var(--color-text-muted)]">ECO, marca, modelo, año</span>
+                    <span className="ml-auto text-xs font-normal text-[var(--color-text-muted)]">ECO y año</span>
                   </summary>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 grid-cols-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="economicNumber">ECO (opcional)</Label>
+                  <Label htmlFor="economicNumber">ECO</Label>
                   <Input
                     id="economicNumber"
                     name="economicNumber"
@@ -1230,27 +1255,7 @@ export function QuoteBuilder({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="brand">Marca (opcional)</Label>
-                  <Input
-                    id="brand"
-                    name="brand"
-                    placeholder="Ej. Ford"
-                    value={vehicle.brand}
-                    onChange={(event) => dispatch({ type: "setVehicleField", field: "brand", value: event.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="model">Modelo (opcional)</Label>
-                  <Input
-                    id="model"
-                    name="model"
-                    placeholder="Ej. F-350"
-                    value={vehicle.model}
-                    onChange={(event) => dispatch({ type: "setVehicleField", field: "model", value: event.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="year">Año (opcional)</Label>
+                  <Label htmlFor="year">Año</Label>
                   <Input
                     id="year"
                     name="year"

@@ -36,9 +36,9 @@ async function openFlow(user: User) {
 async function fillClientStep(user: User) {
   await user.click(screen.getByRole("combobox", { name: "Cliente" }));
   await user.click(await screen.findByRole("option", { name: "Acme" }));
-  await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "ABC123");
-  await user.type(screen.getByRole("textbox", { name: "Marca (opcional)" }), "Ford");
-  await user.type(screen.getByRole("textbox", { name: "Modelo (opcional)" }), "Transit");
+  await user.type(screen.getByRole("textbox", { name: "Placas" }), "ABC123");
+  await user.type(screen.getByRole("textbox", { name: "Marca" }), "Ford");
+  await user.type(screen.getByRole("textbox", { name: "Modelo" }), "Transit");
 }
 
 async function fillItemsStep(user: User) {
@@ -125,11 +125,11 @@ describe("quote builder full-screen flow", () => {
     expect(screen.queryByRole("dialog", { name: "Nueva cotización" })).not.toBeInTheDocument();
 
     await openFlow(user);
-    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
+    await user.type(screen.getByRole("textbox", { name: "Placas" }), "A");
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Seguir editando" }));
-    expect(screen.getByRole("textbox", { name: "Placas (opcional)" })).toHaveValue("A");
+    expect(screen.getByRole("textbox", { name: "Placas" })).toHaveValue("A");
 
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
@@ -177,7 +177,7 @@ describe("quote builder full-screen flow", () => {
     const top = screen.getByTestId("multi-step-dialog-header");
     expect(within(top).queryByText(/Borrador guardado/)).not.toBeInTheDocument();
 
-    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
+    await user.type(screen.getByRole("textbox", { name: "Placas" }), "A");
     expect(within(top).getByText("Paso 1 de 4 · Cliente y unidad · Borrador guardado")).toBeInTheDocument();
   });
 

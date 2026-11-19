@@ -51,7 +51,7 @@ describe("QuoteBuilder", () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} masters={[{ id: "master-1", displayName: "Master One" }]} createAction={vi.fn()} mode="direct-note" />);
 
-    expect(screen.getByLabelText("Placas (opcional)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Placas")).toBeInTheDocument();
     expect(screen.getByLabelText("Maestro responsable *")).toBeInTheDocument();
     expect(document.querySelector('input[name="operation"]')).toHaveValue("WORK");
     expect(document.querySelector('input[name="masterId"]')).toHaveValue("");
@@ -67,11 +67,11 @@ describe("QuoteBuilder", () => {
 
     await user.click(screen.getByRole("button", { name: "Venta" }));
 
-    expect(screen.queryByLabelText("Placas (opcional)")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("ECO (opcional)")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Marca (opcional)")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Modelo (opcional)")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Año (opcional)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Placas")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("ECO")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Marca")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Modelo")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Año")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Maestro responsable *")).not.toBeInTheDocument();
     expect(document.querySelector('input[name="masterId"]')).not.toBeInTheDocument();
     expect(document.querySelector('input[name="operation"]')).toHaveValue("SALE");
@@ -108,7 +108,7 @@ describe("QuoteBuilder", () => {
     expect(screen.getByTestId("quote-builder-footer")).toHaveClass("shrink-0");
     expect(screen.getByRole("navigation", { name: /pasos de cotización/i })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /cliente/i })).toBeInTheDocument();
-    expect(screen.getByLabelText("Modelo (opcional)")).toHaveAttribute("name", "model");
+    expect(screen.getByLabelText("Modelo")).toHaveAttribute("name", "model");
     expect(screen.queryByLabelText("Color")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Siguiente" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Anterior" })).not.toBeInTheDocument();
@@ -117,11 +117,11 @@ describe("QuoteBuilder", () => {
   it("exposes all required form field names for the server action", () => {
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
-    expect(screen.getByLabelText("Modelo (opcional)")).toHaveAttribute("name", "model");
-    expect(screen.getByLabelText("Placas (opcional)")).toHaveAttribute("name", "plate");
-    expect(screen.getByLabelText("Marca (opcional)")).toHaveAttribute("name", "brand");
+    expect(screen.getByLabelText("Modelo")).toHaveAttribute("name", "model");
+    expect(screen.getByLabelText("Placas")).toHaveAttribute("name", "plate");
+    expect(screen.getByLabelText("Marca")).toHaveAttribute("name", "brand");
     expect(screen.queryByLabelText("Color")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Año (opcional)")).toHaveAttribute("name", "year");
+    expect(screen.getByLabelText("Año")).toHaveAttribute("name", "year");
     expect(screen.getByLabelText("Fecha de cotización")).toHaveAttribute("name", "operationalDate");
 
     // Hidden item type inputs are rendered even while step is hidden.
@@ -141,7 +141,7 @@ describe("QuoteBuilder", () => {
       "Selecciona un cliente o identifica la unidad con placas o marca y modelo.",
     );
 
-    await user.type(screen.getByLabelText("Placas (opcional)"), "ABC-123");
+    await user.type(screen.getByLabelText("Placas"), "ABC-123");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     expect(screen.getByRole("heading", { name: "Conceptos", level: 2 })).toBeInTheDocument();
   });
@@ -1317,9 +1317,9 @@ describe("QuoteBuilder", () => {
       "customerContactId",
       "customerFiscalProfileId",
       "plate",
-      "economicNumber",
       "brand",
       "model",
+      "economicNumber",
       "year",
       "sections.0.name",
       "sections.0.items.0.type",
@@ -1373,7 +1373,7 @@ describe("QuoteBuilder", () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
-    const plateInput = screen.getByLabelText("Placas (opcional)");
+    const plateInput = screen.getByLabelText("Placas");
     expect(plateInput).toHaveAttribute("maxLength", "10");
 
     await user.type(plateInput, "ABCDEFGHIJKLMNOP");
@@ -1383,7 +1383,7 @@ describe("QuoteBuilder", () => {
   it("caps the vehicle year input at the current year plus one", () => {
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
-    const yearInput = screen.getByLabelText("Año (opcional)");
+    const yearInput = screen.getByLabelText("Año");
     expect(yearInput).toHaveAttribute("max", String(new Date().getFullYear() + 1));
   });
 
@@ -1836,11 +1836,11 @@ describe("quote builder client step and totals (visual batch 3)", () => {
   it("gives the vehicle fields their examples as placeholders and labels the economic number as ECO", () => {
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} />);
 
-    expect(screen.getByLabelText("ECO (opcional)")).toHaveAttribute("placeholder", "Ej. 42");
-    expect(screen.getByLabelText("Placas (opcional)")).toHaveAttribute("placeholder", "Ej. ABC-123");
-    expect(screen.getByLabelText("Marca (opcional)")).toHaveAttribute("placeholder", "Ej. Ford");
-    expect(screen.getByLabelText("Modelo (opcional)")).toHaveAttribute("placeholder", "Ej. F-350");
-    expect(screen.getByLabelText("Año (opcional)")).toHaveAttribute("placeholder", "Ej. 2015");
+    expect(screen.getByLabelText("ECO")).toHaveAttribute("placeholder", "Ej. 42");
+    expect(screen.getByLabelText("Placas")).toHaveAttribute("placeholder", "Ej. ABC-123");
+    expect(screen.getByLabelText("Marca")).toHaveAttribute("placeholder", "Ej. Ford");
+    expect(screen.getByLabelText("Modelo")).toHaveAttribute("placeholder", "Ej. F-350");
+    expect(screen.getByLabelText("Año")).toHaveAttribute("placeholder", "Ej. 2015");
   });
 
   it("drops the helper texts under the totals and labels the discount as optional", () => {
