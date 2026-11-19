@@ -314,7 +314,22 @@ describe("AdminShell", () => {
     expect(dialog.querySelectorAll(".bg-\\[image\\:var\\(--gradient-primary\\)\\]")).toHaveLength(0);
   });
 
-  it("collapses the desktop rail to 64px by default with the short logo", () => {
+  it("shows a text label under every mobile bar icon and on the collapsed rail", () => {
+    render(
+      <AdminShell displayName="Admin User" role="SUPER_ADMIN">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const mobileNav = screen.getByRole("navigation", { name: "Navegación móvil" });
+    for (const label of ["Inicio", "Cotizaciones", "Trabajos", "Notas", "Más"]) {
+      expect(within(mobileNav).getByText(label)).toBeVisible();
+    }
+    const rail = screen.getByRole("navigation", { name: "Navegación principal" });
+    expect(within(rail).getByText("Cotizaciones")).not.toHaveClass("opacity-0");
+  });
+
+  it("collapses the desktop rail to 80px by default with the short logo", () => {
     render(
       <AdminShell displayName="Admin User" role="SUPER_ADMIN">
         <div>Content</div>
@@ -322,7 +337,7 @@ describe("AdminShell", () => {
     );
 
     const aside = screen.getByRole("complementary");
-    expect(aside).toHaveClass("w-16");
+    expect(aside).toHaveClass("w-20");
     expect(aside).not.toHaveClass("w-64");
 
     const rail = aside.querySelector("[data-admin-rail]");
@@ -344,7 +359,7 @@ describe("AdminShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expandir menú" }));
 
     const aside = screen.getByRole("complementary");
-    expect(aside).toHaveClass("w-16");
+    expect(aside).toHaveClass("w-20");
     expect(aside.querySelector("[data-admin-rail]")).toHaveAttribute("data-expanded", "true");
     expect(aside.querySelector("[data-admin-rail]")).toHaveClass("w-[220px]");
     expect(screen.getByRole("button", { name: "Contraer menú" })).toHaveAttribute("aria-expanded", "true");
