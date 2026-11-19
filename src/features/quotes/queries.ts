@@ -283,6 +283,12 @@ export async function listPaginatedQuotes(input: unknown = {}, options: QuoteLis
   };
 }
 
+/** Quotes the list would show for these filters, without loading them: the count on "Ver resultados". */
+export async function countQuotes(input: unknown = {}, options: QuoteListOptions = {}) {
+  await requireOperationalRole();
+  return prisma.quote.count({ where: buildQuoteWhere(input, options) });
+}
+
 /** Quotes per status under the current filters, ignoring the status itself: the counts on the status tabs. */
 export async function countQuotesByStatus(input: unknown = {}, options: QuoteListOptions = {}) {
   await requireOperationalRole();

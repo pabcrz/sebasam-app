@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
-import { countActiveWorkOrders, countCompletedWorkOrders, getCompletedWorkOrderById, listPaginatedActiveWorkOrders, listActiveWorkOrders, listCompletedWorkOrders } from "./queries";
+import { countActiveWorkOrders, countFilteredActiveWorkOrders, countCompletedWorkOrders, getCompletedWorkOrderById, listPaginatedActiveWorkOrders, listActiveWorkOrders, listCompletedWorkOrders } from "./queries";
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { $queryRaw: vi.fn(), payableNote: { findMany: vi.fn(), findFirst: vi.fn() }, workOrder: { findMany: vi.fn(), findFirst: vi.fn() } },
+  prisma: { $queryRaw: vi.fn(), payableNote: { findMany: vi.fn(), findFirst: vi.fn() }, workOrder: { findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn() } },
 }));
 
 vi.mock("@/lib/auth/session", () => ({
@@ -538,6 +538,28 @@ describe("additive operational query filters", () => {
     expect(result).toEqual({ workOrders: [], page: 2, hasNextPage: false });
     await listActiveWorkOrders();
     expect(vi.mocked(prisma.workOrder.findMany).mock.lastCall![0]).not.toHaveProperty("take");
+  });
+
+  it("finds active work by the driver typed in the unified search, and counts exactly what the list would show", async () => {
+    await listPaginatedActiveWorkOrders({ number: "Mariachi" });
+    const listed = vi.mocked(prisma.workOrder.findMany).mock.lastCall![0]!.where;
+    expect(JSON.stringify(listed)).toContain("customerContact");
+    expect(JSON.stringify(listed)).toContain("contactSnapshot");
+
+    vi.mocked(prisma.workOrder.count).mockResolvedValue(3);
+    await expect(countFilteredActiveWorkOrders({ number: "Mariachi", page: "4" })).resolves.toBe(3);
+    expect(vi.mocked(prisma.workOrder.count).mock.lastCall![0]).toEqual({ where: listed });
+  });
+
+  it("matches the driver in the notes SQL, in the live contact and in the quote snapshot", async () => {
+    await listCompletedWorkOrders({ start: new Date("2026-08-01"), end: new Date("2026-09-01"), payment: "all", assignee: "all", page: 1, number: "Mariachi" }, { operationalFilters: true });
+    for (const [raw] of vi.mocked(prisma.$queryRaw).mock.calls) {
+      const q = raw as { strings: string[]; values: unknown[] };
+      const sql = q.strings.join("?");
+      expect(sql).toContain('"CustomerContact"');
+      expect(sql).toContain("contactSnapshot");
+      expect(q.values).toContain("%Mariachi%");
+    }
   });
 
   it.each(["all", "SALE", "WORK"] as const)("reconciles %s responsible before selecting either note kind", async (kind) => {

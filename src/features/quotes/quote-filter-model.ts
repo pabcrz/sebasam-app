@@ -43,7 +43,7 @@ function getActiveFilterSummary(filters: QuoteFilterInput, customers: QuoteFilte
     summary.push(`Estatus: ${isQuoteStatus(filters.status) ? quoteStatusLabels[filters.status] : filters.status}`);
   }
   if (filters.customerId) summary.push(`Cliente: ${customer?.name ?? filters.customerId}`);
-  if (filters.number) summary.push(`Folio: ${filters.number}`);
+  if (filters.number) summary.push(`Búsqueda: ${filters.number}`);
   if (filters.plate) summary.push(`Placas: ${filters.plate}`);
   if (filters.dateFrom) summary.push(`Desde: ${formatDateValue(filters.dateFrom)}`);
   if (filters.dateTo) summary.push(`Hasta: ${formatDateValue(filters.dateTo)}`);
@@ -199,7 +199,7 @@ export function matchDateShortcut(range: { dateFrom?: Date; dateTo?: Date }, tod
  */
 export function getQuoteFilterChips(filters: QuoteFilterState, customers: QuoteFiltersCustomer[], today: string): QuoteFilterChip[] {
   const chips: QuoteFilterChip[] = [];
-  if (filters.number) chips.push({ id: "number", label: `Folio: ${filters.number}` });
+  if (filters.number) chips.push({ id: "number", label: `Búsqueda: ${filters.number}` });
   if (filters.dateFrom || filters.dateTo) {
     const shortcut = matchDateShortcut(filters, today);
     const from = formatDateValue(filters.dateFrom);

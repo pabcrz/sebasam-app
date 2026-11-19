@@ -29,11 +29,13 @@ type QuoteFiltersProps = {
   customers: QuoteFiltersCustomer[];
   /** Quotes per status under the other filters; shown on the status tabs when given. */
   statusCounts?: Partial<Record<QuoteStatus | "ALL", number>>;
+  /** Counts the results of the staged filters so "Ver resultados" can say how many; null when they are invalid. */
+  countResultsAction?: (input: Record<string, unknown>) => Promise<number | null>;
 };
 
 type DateChoice = QuoteDateShortcut | "all" | "custom";
 
-/** Sheet fields staged until "Ver resultados"; the folio search applies on its own. */
+/** Sheet fields staged until "Ver resultados"; the search box applies on its own. */
 type QuoteFilterDraft = {
   dateChoice: DateChoice;
   dateFrom: string;
@@ -97,15 +99,15 @@ function QuoteSearchField({ initialValue, onSearch }: { initialValue: string; on
           setValue(next);
           if (next === "") onSearch("");
         }}
-        placeholder="Buscar por folio"
-        aria-label="Buscar por folio"
+        placeholder="Buscar por folio, chofer, placas o ECO"
+        aria-label="Buscar por folio, chofer, placas o ECO"
         enterKeyHint="search"
       />
     </form>
   );
 }
 
-export function QuoteFilters({ filters, customers, rejectedDateRange, statusCounts }: QuoteFiltersProps) {
+export function QuoteFilters({ filters, customers, rejectedDateRange, statusCounts, countResultsAction }: QuoteFiltersProps) {
   const router = useRouter();
   const today = todayInOperationalTimeZone();
   const effectiveFilters = parseOperationalQuoteParams(filters);
@@ -138,8 +140,8 @@ export function QuoteFilters({ filters, customers, rejectedDateRange, statusCoun
     setSheetOpen(true);
   }
 
-  function applyDraft(): boolean {
-    return navigate({
+  function draftChanges() {
+    return {
       ...dateRangeForDraft(draft, today),
       hasWorkOrder: draft.hasWorkOrder === "ALL" ? undefined : draft.hasWorkOrder === "true",
       kind: draft.kind,
@@ -149,8 +151,26 @@ export function QuoteFilters({ filters, customers, rejectedDateRange, statusCoun
       economicNumber: draft.economicNumber.trim() || undefined,
       showCancelled: draft.showCancelled,
       showArchived: draft.showArchived,
-    });
+    };
   }
+
+  function applyDraft(): boolean {
+    return navigate(draftChanges());
+  }
+
+  const [resultCount, setResultCount] = React.useState<number | undefined>();
+  React.useEffect(() => {
+    if (!sheetOpen || !countResultsAction) return;
+    let stale = false;
+    const timeout = window.setTimeout(() => {
+      countResultsAction({ ...effectiveFilters, ...draftChanges(), page: 1 })
+        .then((count) => { if (!stale) setResultCount(count ?? undefined); })
+        .catch(() => { if (!stale) setResultCount(undefined); });
+    }, 300);
+    return () => { stale = true; window.clearTimeout(timeout); };
+    // The draft is the only input that changes while the sheet is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetOpen, draft, countResultsAction]);
 
   function removeChip(id: string) {
     pushState(removeQuoteFilterChip(effectiveFilters, id as QuoteFilterChipId));
@@ -193,6 +213,7 @@ export function QuoteFilters({ filters, customers, rejectedDateRange, statusCoun
       <FilterSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        resultCount={resultCount}
         onClear={() => setDraft(draftFromState(parseOperationalQuoteParams({}), today))}
         onApply={applyDraft}
       >

@@ -38,6 +38,7 @@ import {
 } from "@/features/work-orders/actions";
 
 import { listActiveWorkers } from "@/features/work-orders/queries";
+import { countQuotesForFilters } from "@/features/quotes/count-actions";
 
 export const metadata: Metadata = {
   title: "Cotizaciones",
@@ -105,7 +106,7 @@ export default async function QuotesPage({ searchParams }: QuotesPageProps) {
 
       <section aria-labelledby="recent-quotes-heading" className="grid min-w-0 gap-4">
         <h2 id="recent-quotes-heading" className="sr-only">Cotizaciones recientes</h2>
-        <QuoteFilters filters={filters} customers={customers} statusCounts={statusCounts} />
+        <QuoteFilters filters={filters} customers={customers} statusCounts={statusCounts} countResultsAction={countQuotesForFilters} />
 
       <CardPanelProvider>
       <div className="side-panel-list grid gap-3 lg:auto-rows-fr lg:grid-cols-[repeat(2,minmax(0,1fr))]">

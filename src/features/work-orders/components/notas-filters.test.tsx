@@ -455,7 +455,7 @@ describe("Notes search, filter count and active chips", () => {
 
   it("searches by folio from a magnifier search field and counts the active filters in the Filtros button", () => {
     renderOperational();
-    const search = screen.getByRole("searchbox", { name: "Buscar por folio" });
+    const search = screen.getByRole("searchbox", { name: "Buscar por folio, chofer, placas o ECO" });
     expect(search).toHaveValue("N-42");
 
     fireEvent.change(search, { target: { value: "N-77" } });

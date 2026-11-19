@@ -94,8 +94,8 @@ function NotasSearchField({ initialValue, disabled, onSearch }: { initialValue: 
           setValue(next);
           if (next === "") onSearch("");
         }}
-        placeholder="Buscar por folio"
-        aria-label="Buscar por folio"
+        placeholder="Buscar por folio, chofer, placas o ECO"
+        aria-label="Buscar por folio, chofer, placas o ECO"
         enterKeyHint="search"
       />
     </form>
