@@ -57,7 +57,7 @@ describe("quote builder full-screen flow", () => {
       "Paso 1: Cliente y unidad",
       "Paso 2: Conceptos",
       "Paso 3: Notas",
-      "Paso 4: Vista previa",
+      "Paso 4: Revisar",
     ]);
     expect(screen.getByRole("button", { name: "Paso 1: Cliente y unidad" })).toHaveAttribute("aria-current", "step");
   });
@@ -107,11 +107,11 @@ describe("quote builder full-screen flow", () => {
     await fillItemsStep(user);
     await user.click(within(footer).getByRole("button", { name: "Notas →" }));
     expect(within(footer).getByText(/^Total/)).toBeInTheDocument();
-    expect(within(footer).getByRole("button", { name: "Vista previa →" })).toBeInTheDocument();
+    expect(within(footer).getByRole("button", { name: "Revisar →" })).toBeInTheDocument();
 
     await user.type(screen.getByRole("textbox", { name: "Descripción breve" }), "Servicio general");
-    await user.click(within(footer).getByRole("button", { name: "Vista previa →" }));
-    expect(within(footer).getByText("Vista previa")).toBeInTheDocument();
+    await user.click(within(footer).getByRole("button", { name: "Revisar →" }));
+    expect(within(footer).getByText("Revisar")).toBeInTheDocument();
     expect(within(footer).getByRole("button", { name: "Crear cotización" })).toHaveAttribute("type", "submit");
   });
 

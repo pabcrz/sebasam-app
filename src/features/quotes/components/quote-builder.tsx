@@ -1368,6 +1368,9 @@ export function QuoteBuilder({
                 onChange={(event) => dispatch({ type: "setDescription", description: event.target.value })}
                 placeholder={isSaleNote || mode === "direct-note" ? "Detalles adicionales de la nota..." : mode === "direct-work-order" || mode === "direct" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
               />
+              <span className="text-xs text-[var(--color-text-muted)]">
+                Cada renglón que empieza con «-» se muestra como lista en el documento.
+              </span>
             </div>
           </section>
 

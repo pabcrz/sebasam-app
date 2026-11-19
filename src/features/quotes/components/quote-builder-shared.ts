@@ -42,7 +42,7 @@ export const flowStepLabels: Record<Step, string> = {
   client: "Cliente y unidad",
   items: "Conceptos",
   notes: "Notas",
-  preview: "Vista previa",
+  preview: "Revisar",
 };
 
 export const itemTypes: QuoteItemType[] = ["LABOR", "REFACCIONES", "MATERIAL", "OTHER"];
