@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { Badge, Button, EntityCard, EntityCardDataRow, Icon, SectionLabel } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
@@ -7,6 +8,8 @@ import type { NextWorkQuote } from "../types";
 
 interface NextWorkCardProps {
   nextWork: NextWorkQuote;
+  /** Fully actionable quote card (preview, edit, share, assign...); replaces the static fallback card. */
+  actionableCard?: ReactNode;
 }
 
 type ToolIcon = "edit" | "print" | "share" | "more";
@@ -28,7 +31,7 @@ function ToolLink({ href, label, icon }: { href: string; label: string; icon: To
 }
 
 /** The oldest approved quote without a work order, featured with its assignment action. */
-export function NextWorkCard({ nextWork }: NextWorkCardProps) {
+export function NextWorkCard({ nextWork, actionableCard }: NextWorkCardProps) {
   const unit = formatUnitIdentity({
     economicNumber: nextWork.vehicle?.economicNumber,
     plates: nextWork.vehicle?.plate,
@@ -44,6 +47,7 @@ export function NextWorkCard({ nextWork }: NextWorkCardProps) {
         <Icon name="wrench" className="h-4 w-4" aria-hidden="true" />
         Siguiente trabajo
       </SectionLabel>
+      {actionableCard ?? (
       <EntityCard
         variant="featured"
         openLabel={`Siguiente trabajo: ${nextWork.title}`}
@@ -69,6 +73,7 @@ export function NextWorkCard({ nextWork }: NextWorkCardProps) {
           </Button>
         }
       />
+      )}
     </section>
   );
 }
