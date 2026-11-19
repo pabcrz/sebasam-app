@@ -12,6 +12,12 @@ describe("operational work-order filters", () => {
     expect(parseWorkOrderParams(Object.fromEntries(url.searchParams))).toEqual(filters);
   });
 
+  it("round-trips the En espera filter through the URL", () => {
+    const href = workOrdersHref(parseWorkOrderParams({ execution: "ON_HOLD" }));
+    expect(href).toBe("/admin/work-orders?execution=ON_HOLD");
+    expect(parseWorkOrderParams({ execution: "ON_HOLD" }).execution).toBe("ON_HOLD");
+  });
+
   it("normalizes invalid execution, responsible, dates and unsafe page without admitting terminal work", () => {
     expect(workOrdersHref(parseWorkOrderParams({ execution: "COMPLETED", assignee: "bad", dateFrom: "2026-02-30", page: "9007199254740992" }))).toBe("/admin/work-orders");
     expect(() => parseWorkOrderParams({ dateFrom: "2026-09-02", dateTo: "2026-09-01" })).toThrow("dateFrom must not be after dateTo");

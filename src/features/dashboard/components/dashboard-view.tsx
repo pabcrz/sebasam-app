@@ -94,7 +94,7 @@ export function DashboardView({
   const isPatron = role === "ADMIN";
   const quickAccessModules = isPatron ? patronModules : modules;
   const inboxRows = prioritizeInbox(
-    buildInboxRows(snapshot.queues, { oldestApprovedAt: snapshot.nextWork?.approvedAt ?? null }),
+    buildInboxRows(snapshot.queues, { oldestApprovedAt: snapshot.nextWork?.approvedAt ?? null, stoppedActiveCount: snapshot.queues.stoppedActiveCount }),
   );
   const todayRows = inboxRows.filter((row) => row.key === "approved" || row.key === "active");
   const followUpRows = inboxRows.filter((row) => row.key === "sent" || row.key === "draft");

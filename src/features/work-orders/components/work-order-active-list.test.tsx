@@ -321,3 +321,57 @@ describe("Trabajos card", () => {
     expect(within(card).getByRole("button", { name: "Gestionar orden" }).className).not.toMatch(/w-full/);
   });
 });
+
+describe("en espera", () => {
+  function renderWith(workOrder: object, setOnHold = vi.fn().mockResolvedValue({ success: true })) {
+    const base = createWorkOrder({ isSpecial: false, assignments: [{ workerKind: "MASTER", displayName: "Maestro" }] });
+    render(
+      <WorkOrderActiveList
+        workOrders={[{ ...base, ...workOrder } as ActiveListProps["workOrders"][number]]}
+        workers={[]}
+        customers={[]}
+        quoteMap={new Map()}
+        saveQuoteActions={[]}
+        searchCustomersAction={async () => []}
+        duplicateQuoteAction={vi.fn()}
+        shareAction={vi.fn()}
+        workOrderActions={{ setOnHold }}
+      />,
+    );
+    return setOnHold;
+  }
+
+  it("marks a job en espera with an optional reason", async () => {
+    const user = userEvent.setup();
+    const setOnHold = renderWith({});
+
+    expect(screen.getByText("En proceso")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Poner en espera la orden OT-001" }));
+    await user.type(screen.getByLabelText("Motivo de espera de la orden OT-001"), "Refacción");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    expect(setOnHold).toHaveBeenCalledWith({ workOrderId: "work-order-1", onHold: true, reason: "Refacción" });
+  });
+
+  it("shows the badge and reason of a paused job and lets you clear it", async () => {
+    const user = userEvent.setup();
+    const setOnHold = renderWith({ onHoldAt: new Date("2026-11-01T00:00:00Z"), onHoldReason: "Cliente" });
+
+    expect(screen.getByText("En espera")).toBeInTheDocument();
+    expect(screen.queryByText("En proceso")).not.toBeInTheDocument();
+    expect(screen.getByText("Motivo: Cliente")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Quitar espera de la orden OT-001" }));
+
+    expect(setOnHold).toHaveBeenCalledWith({ workOrderId: "work-order-1", onHold: false, reason: undefined });
+  });
+
+  it("offers no hold control for jobs still waiting for assignment", () => {
+    renderWith({ status: "PLANNED" });
+    expect(screen.queryByRole("button", { name: /en espera la orden/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps showing the driver on the card", () => {
+    renderWith({ quote: { id: "quote-1", number: "COT-001", customer: { name: "C" }, vehicle: null, totalCents: 1, title: "T", customerContact: { name: "Mariachi" } } });
+    expect(screen.getByTestId("entity-card-driver")).toBeInTheDocument();
+  });
+});

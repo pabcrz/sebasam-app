@@ -17,6 +17,7 @@ import {
   completeWorkOrderAction,
   createDirectWorkOrderFromWorkspace,
   rollbackWorkOrderAction,
+  setWorkOrderOnHoldAction,
 } from "@/features/work-orders/actions";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 
@@ -128,6 +129,7 @@ export default async function WorkOrdersPage({ searchParams }: {
                 assign: assignWorkOrderAction,
                 complete: completeWorkOrderAction,
                 rollback: rollbackWorkOrderAction,
+                setOnHold: setWorkOrderOnHoldAction,
               }}
             />
           )}

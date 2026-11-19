@@ -46,6 +46,7 @@ import {
   executionRecordInputSchema,
   returnNoteToQuoteInputSchema,
   rollbackWorkOrderInputSchema,
+  setWorkOrderOnHoldInputSchema,
   workAssignmentInputSchema,
   workOrderAcceptanceInputSchema,
   workOrderInputSchema,
@@ -483,6 +484,8 @@ export async function completeWorkOrder(input: unknown) {
         status: WorkOrderStatus.COMPLETED,
         completedAt,
         paymentDueDate,
+        onHoldAt: null,
+        onHoldReason: null,
       },
     });
 
@@ -717,6 +720,31 @@ export async function rollbackWorkOrderAction(input: unknown): Promise<ActionRes
     }
     console.error("Work order rollback failed", { input, error });
     return { success: false, error: "No se pudo corregir la orden. Recarga la página e inténtalo de nuevo." };
+  }
+}
+
+/** Marks or clears the "en espera" flag on an active work order; the status itself never changes. */
+export async function setWorkOrderOnHoldAction(input: unknown): Promise<ActionResult> {
+  try {
+    await requireOperationalRole();
+    const data = setWorkOrderOnHoldInputSchema.parse(input);
+    const updated = await prisma.workOrder.updateMany({
+      where: { id: data.workOrderId, status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] } },
+      data: data.onHold
+        ? { onHoldAt: new Date(), onHoldReason: data.reason || null }
+        : { onHoldAt: null, onHoldReason: null },
+    });
+    if (updated.count !== 1) {
+      return { success: false, error: "Solo los trabajos asignados o en proceso pueden ponerse en espera." };
+    }
+    revalidatePath(workOrdersPath);
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { success: false, error: error.issues[0]?.message ?? "Revisa los datos del trabajo." };
+    }
+    return toActionResult(error, "No se pudo actualizar el trabajo.");
   }
 }
 

@@ -5,6 +5,8 @@ export interface QueueMetrics {
   sentQuotesCount: number;
   approvedQuotesCount: number;
   activeExecutionCount: number;
+  /** Active jobs marked "en espera". */
+  stoppedActiveCount: number;
 }
 
 export interface PeriodMetrics {
