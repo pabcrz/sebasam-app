@@ -39,7 +39,7 @@ export function ConceptTable({
   onRowRef,
 }: ConceptTableProps) {
   return (
-    <div className="min-w-0 overflow-x-auto">
+    <div className="min-w-0 overflow-x-auto lg:overflow-x-visible">
       <table
         aria-label={`Conceptos de la sección ${sectionIndex + 1}`}
         data-testid={`concept-list-${sectionIndex}`}

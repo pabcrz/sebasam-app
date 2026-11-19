@@ -385,6 +385,10 @@ describe("searchCustomersForQuote", () => {
           select: { id: true, businessName: true, taxId: true, isDefault: true },
           orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
         },
+        vehicles: {
+          select: { id: true, plate: true, economicNumber: true, brand: true, model: true, year: true },
+          orderBy: [{ createdAt: "desc" }],
+        },
       },
     });
   });

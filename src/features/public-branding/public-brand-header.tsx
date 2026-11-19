@@ -1,14 +1,15 @@
 "use client";
-import Image from "next/image";
 import { Icon } from "@/components/ui/icon";
 import type { PublicBusinessIdentity } from "./domain";
+import { BrandLogo } from "./brand-logo";
 export function PublicBrandHeader({ identity, logoSrc, quoteLayout = false }: { identity: PublicBusinessIdentity; logoSrc?: string; quoteLayout?: boolean }) {
   const contacts = identity.phone || identity.whatsapp;
+  const logoAlt = identity.businessName ? `Logo de ${identity.businessName}` : "Logo";
 
   if (quoteLayout) {
     return <>
       <div className="flex items-center gap-3 print:gap-2">
-        {logoSrc ? <Image src={logoSrc} alt={identity.businessName ? `Logo de ${identity.businessName}` : "Logo"} width={52} height={52} className="h-13 w-13 print:h-10 print:w-10 object-contain print:invert" priority /> : null}
+        {logoSrc ? <BrandLogo src={logoSrc} alt={logoAlt} size={52} className="h-13 w-13" priority /> : null}
         {identity.businessName ? <h1 className="text-3xl font-extrabold leading-none tracking-[-0.05em] md:text-4xl print:text-2xl print:text-black">{identity.businessName}</h1> : null}
       </div>
       {identity.fullName ? <p className="mt-2.5 print:mt-1.5 font-mono text-xs print:text-[10px] uppercase tracking-[0.12em] font-medium text-[var(--color-on-navy-tint)] print:text-gray-700">{identity.fullName}</p> : null}
@@ -20,7 +21,7 @@ export function PublicBrandHeader({ identity, logoSrc, quoteLayout = false }: { 
   }
 
   return <div className="flex min-w-0 items-start gap-3">
-    {logoSrc ? <Image src={logoSrc} alt={identity.businessName ? `Logo de ${identity.businessName}` : "Logo"} width={52} height={52} className="rounded-[var(--radius-md)] bg-white/10 p-1 shadow-md print:shadow-none object-contain print:h-10 print:w-10 print:invert" priority /> : null}
+    {logoSrc ? <BrandLogo src={logoSrc} alt={logoAlt} size={52} className="rounded-[var(--radius-md)] bg-white/10 p-1 shadow-md print:shadow-none" priority /> : null}
     <div className="min-w-0">{identity.businessName ? <h1 className="font-mono text-3xl font-extrabold leading-none tracking-[-0.05em] md:text-4xl">{identity.businessName}</h1> : null}
       {contacts ? <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-white/80 print:text-gray-600">
         {identity.phone ? <a href={`tel:${identity.phone}`} className="flex items-center gap-1.5 rounded-sm print:no-underline"><Icon name="phone" className="h-3.5 w-3.5" aria-hidden="true" />{identity.phone}</a> : null}

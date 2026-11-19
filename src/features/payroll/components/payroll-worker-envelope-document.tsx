@@ -53,11 +53,11 @@ export function PayrollWorkerEnvelopeDocument({
           <div className="flex items-center gap-2">
               <div className="relative h-9 w-9 shrink-0 flex items-center justify-center print:h-10 print:w-10">
               <Image
-                src="/logo-white-short.png"
+                src="/logo-ink-short.png"
                 alt="Logo de SEBASAM"
                 width={32}
                 height={32}
-                className="object-contain invert"
+                className="object-contain"
                 priority
               />
             </div>
@@ -72,7 +72,7 @@ export function PayrollWorkerEnvelopeDocument({
         </div>
 
         {/* Worker & Period Info */}
-        <div className="bg-slate-50 rounded-md p-3 print:p-3 border border-slate-200 text-xs space-y-1 print:space-y-1 print:break-inside-avoid">
+        <div className="pb-2 text-xs space-y-1 print:break-inside-avoid">
           <div className="flex items-baseline justify-between gap-1">
             <span className="text-[10px] uppercase font-bold text-slate-500">Trabajador:</span>
             <span className="font-bold text-slate-900 text-xs truncate">{worker.displayName}</span>
@@ -84,26 +84,26 @@ export function PayrollWorkerEnvelopeDocument({
         </div>
 
         {/* Compact envelope table - In print: no lines, minimal vertical padding */}
-        <div className="border border-slate-200 rounded-md overflow-hidden print:break-inside-avoid">
+        <div className="print:break-inside-avoid">
           <table className="w-full table-fixed text-left border-collapse">
             <thead className="print:table-header-group">
-              <tr className="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold text-[10px] uppercase tracking-wide">
-                <th className="py-2 pl-2.5 pr-1 text-left">Mano de Obra</th>
+              <tr className="border-b border-slate-900 text-slate-900 font-bold text-[10px] uppercase tracking-wide">
+                <th className="py-2 pl-0 pr-1 text-left">Mano de Obra</th>
                 <th className="py-2 px-0.5 text-center w-7 text-[9px] font-bold text-slate-600">%</th>
-                <th className="py-2 pl-1 pr-2.5 text-right w-16 text-[10px] font-bold text-slate-900">A Cobrar</th>
+                <th className="py-2 pl-1 pr-0 text-right w-16 text-[10px] font-bold text-slate-900">A Cobrar</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 print:divide-y-0">
+            <tbody className="print:divide-y-0">
               {allLaborItems.length > 0 ? (
                 allLaborItems.map((item, idx) => (
-                  <tr key={`${item.id}-${idx}`} className="hover:bg-slate-50/50">
-                    <td className="py-2 print:py-0.5 print:leading-none pl-2.5 pr-1 text-slate-800 font-medium text-xs leading-tight">
+                  <tr key={`${item.id}-${idx}`}>
+                    <td className="py-2 print:py-0.5 print:leading-none pl-0 pr-1 text-slate-800 font-medium text-xs leading-tight">
                       {item.description}
                     </td>
                     <td className="py-2 print:py-0.5 print:leading-none px-0.5 text-center text-slate-400 font-normal text-[10px] whitespace-nowrap">
                       {item.ratePercent}%
                     </td>
-                    <td className="py-2 print:py-0.5 print:leading-none pl-1 pr-2.5 text-right font-medium text-slate-950 text-xs whitespace-nowrap">
+                    <td className="py-2 print:py-0.5 print:leading-none pl-1 pr-0 text-right font-medium text-slate-950 text-xs whitespace-nowrap">
                       {formatCents(item.commissionCents)}
                     </td>
                   </tr>
@@ -120,7 +120,7 @@ export function PayrollWorkerEnvelopeDocument({
         </div>
 
         {/* Light Totals Summary */}
-        <div className="bg-slate-50 border border-slate-200 rounded-md p-3 print:p-3 flex items-center justify-between print:break-inside-avoid">
+        <div className="border-t border-slate-900 pt-3 flex items-center justify-between print:break-inside-avoid">
           <div>
             <span className="text-[9px] uppercase tracking-wider block font-bold text-slate-500">
               Mano de Obra Taller:

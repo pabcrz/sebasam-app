@@ -116,9 +116,9 @@ function expectFullHeightQuoteBuilderDialog(dialog: HTMLElement) {
 async function enterRepresentativeQuoteState(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("combobox", { name: "Cliente" }));
   await user.click(await screen.findByRole("option", { name: "Acme" }));
-  await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "ABC123");
-  await user.type(screen.getByRole("textbox", { name: "Marca (opcional)" }), "Ford");
-  await user.type(screen.getByRole("textbox", { name: "Modelo (opcional)" }), "Transit");
+  await user.type(screen.getByRole("textbox", { name: "Placas" }), "ABC123");
+  await user.type(screen.getByRole("textbox", { name: "Marca" }), "Ford");
+  await user.type(screen.getByRole("textbox", { name: "Modelo" }), "Transit");
   await user.click(screen.getByRole("button", { name: NEXT_STEP }));
   await user.type(screen.getByLabelText("Descripción", { selector: "input" }), "Cambio de frenos");
   await user.clear(screen.getByRole("textbox", { name: "Cantidad" }));
@@ -133,9 +133,9 @@ async function enterRepresentativeQuoteState(user: ReturnType<typeof userEvent.s
 function expectRepresentativeQuoteState() {
   expect(screen.getByRole("button", { name: "Paso 3: Notas" })).toHaveAttribute("aria-current", "step");
   expect(screen.getByLabelText("Cliente")).toHaveValue("Acme");
-  expect(screen.getByLabelText("Placas (opcional)")).toHaveValue("ABC123");
-  expect(screen.getByLabelText("Marca (opcional)")).toHaveValue("Ford");
-  expect(screen.getByLabelText("Modelo (opcional)")).toHaveValue("Transit");
+  expect(screen.getByLabelText("Placas")).toHaveValue("ABC123");
+  expect(screen.getByLabelText("Marca")).toHaveValue("Ford");
+  expect(screen.getByLabelText("Modelo")).toHaveValue("Transit");
   expect(screen.getByLabelText("Descripción", { selector: "input" })).toHaveValue("Cambio de frenos");
   expect(screen.getByLabelText("Cantidad")).toHaveValue("3");
   expect(screen.getByLabelText("Precio unitario")).toHaveValue(1250);
@@ -233,7 +233,7 @@ describe("QuoteBuilderDialog", () => {
     expectStableDialogLayout(dialog, false);
     expect(screen.queryByText(/crear cotización en borrador/i)).not.toBeInTheDocument();
 
-    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
+    await user.type(screen.getByRole("textbox", { name: "Placas" }), "A");
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Guardar y salir" })).toBeInTheDocument();
@@ -247,7 +247,7 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     const closeButton = screen.getByRole("button", { name: "Cerrar" });
-    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
+    await user.type(screen.getByRole("textbox", { name: "Placas" }), "A");
     await user.click(closeButton);
 
     const confirmation = screen.getByRole("dialog", { name: "¿Salir de la cotización?" });
@@ -285,7 +285,7 @@ describe("QuoteBuilderDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
+    await user.type(screen.getByRole("textbox", { name: "Placas" }), "A");
 
     const overlay = document.querySelector("[data-dialog-overlay]");
     expect(overlay).not.toBeNull();
@@ -302,7 +302,7 @@ describe("QuoteBuilderDialog", () => {
     render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
-    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "A");
+    await user.type(screen.getByRole("textbox", { name: "Placas" }), "A");
     await user.keyboard("{Escape}");
 
     expect(screen.getByRole("dialog", { name: "¿Salir de la cotización?" })).toBeInTheDocument();
@@ -327,7 +327,7 @@ describe("QuoteBuilderDialog", () => {
     render(<QuoteBuilderDialog customers={customers} createAction={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Nueva cotización" }));
-    await user.type(screen.getByRole("textbox", { name: "Placas (opcional)" }), "ABC123");
+    await user.type(screen.getByRole("textbox", { name: "Placas" }), "ABC123");
     await user.click(screen.getByRole("button", { name: "Cerrar" }));
     await user.click(screen.getByRole("button", { name: "Guardar y salir" }));
 
@@ -335,7 +335,7 @@ describe("QuoteBuilderDialog", () => {
     await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
     await user.click(trigger);
     await screen.findByRole("dialog", { name: "Nueva cotización" });
-    expect(screen.getByLabelText("Placas (opcional)")).toHaveValue("ABC123");
+    expect(screen.getByLabelText("Placas")).toHaveValue("ABC123");
   });
 
   it("discards state and starts fresh when reopened", async () => {
@@ -353,9 +353,9 @@ describe("QuoteBuilderDialog", () => {
     await screen.findByRole("dialog", { name: "Nueva cotización" });
     expect(screen.getByRole("button", { name: "Paso 1: Cliente y unidad" })).toHaveAttribute("aria-current", "step");
     expect(screen.getByLabelText("Cliente")).not.toHaveValue("Acme");
-    expect(screen.getByLabelText("Placas (opcional)")).toHaveValue("");
-    expect(screen.getByLabelText("Marca (opcional)")).toHaveValue("");
-    expect(screen.getByLabelText("Modelo (opcional)")).toHaveValue("");
+    expect(screen.getByLabelText("Placas")).toHaveValue("");
+    expect(screen.getByLabelText("Marca")).toHaveValue("");
+    expect(screen.getByLabelText("Modelo")).toHaveValue("");
     expect(screen.getByLabelText("Descripción", { selector: "input" })).toHaveValue("");
     expect(screen.getByLabelText("Cantidad")).toHaveValue("1");
     expect(screen.getByLabelText("Precio unitario")).toHaveValue(null);
@@ -412,7 +412,7 @@ describe("QuoteBuilderDialog", () => {
 
     expect(screen.getByRole("dialog", { name: "Editar cotización C-001" })).toBeInTheDocument();
     expect(screen.getByLabelText("Cliente")).toHaveValue("Acme");
-    expect(screen.getByLabelText("Placas (opcional)")).toHaveValue("ABC123");
+    expect(screen.getByLabelText("Placas")).toHaveValue("ABC123");
   });
 
   it("submits edits, preserves them on failure, and resets after success", async () => {

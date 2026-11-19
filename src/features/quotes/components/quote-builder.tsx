@@ -116,6 +116,7 @@ export function QuoteBuilder({
   );
   // Read once on mount: the builder only mounts while its dialog is open, so this runs on the client.
   const [draft] = React.useState(() => (draftKey ? loadQuoteDraft(draftKey) : null));
+  const [isDraftSaved, setIsDraftSaved] = React.useState(false);
   const originalSelectedCustomer = customers.find((customer) => customer.id === initialData?.customerId);
   const initialSelectedCustomer = draft?.customer ?? originalSelectedCustomer;
   const [isCustomerListOpen, setIsCustomerListOpen] = React.useState(false);
@@ -168,6 +169,9 @@ export function QuoteBuilder({
     operationalDate,
     sections,
   } = builderState;
+  const [unitDetailsOpen, setUnitDetailsOpen] = React.useState(() =>
+    Boolean(vehicle.economicNumber || vehicle.year),
+  );
   const onCustomerSearchResults = React.useCallback((results: CustomerOption[]) => {
     setActiveCustomerIndex(results.length ? 0 : -1);
   }, []);
@@ -228,6 +232,7 @@ export function QuoteBuilder({
     if (draftKey && !actionState.success) {
       if (isDirty) saveQuoteDraft(draftKey, { state: builderState, customer: customerOptions.find((option) => option.id === builderState.customerId) ?? null });
       else clearQuoteDraft(draftKey);
+      setIsDraftSaved(isDirty);
     }
   }, [actionState.success, customerOptions, draftKey, builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, initialOperation, isUnifiedDirect, masterId, operation, paymentDueDate]);
 
@@ -634,6 +639,24 @@ export function QuoteBuilder({
   const clientReady = !(isSale && !customerId) && getStepError("client", clientStateArgs) === null;
   const priceReady = getStepError("items", clientStateArgs, true) === null;
   const unitLine = formatUnitIdentity({ economicNumber: vehicle.economicNumber, plates: vehicle.plate, model: vehicle.model });
+  const savedVehicles = selectedCustomer?.vehicles ?? [];
+  const matchedVehicle = savedVehicles.find(
+    (saved) => (saved.plate ?? "") === vehicle.plate && (saved.economicNumber ?? "") === vehicle.economicNumber,
+  );
+  function selectSavedVehicle(id: string) {
+    const saved = savedVehicles.find((candidate) => candidate.id === id);
+    const values = {
+      plate: saved?.plate ?? "",
+      economicNumber: saved?.economicNumber ?? "",
+      brand: saved?.brand ?? "",
+      model: saved?.model ?? "",
+      year: saved?.year ? String(saved.year) : "",
+    };
+    for (const [field, value] of Object.entries(values)) {
+      dispatch({ type: "setVehicleField", field: field as keyof typeof values, value });
+    }
+    if (saved?.brand || saved?.model || saved?.year || saved?.economicNumber) setUnitDetailsOpen(true);
+  }
   const customerName = selectedCustomer ? selectedCustomer.commercialName || selectedCustomer.name : null;
   const driverName = selectedCustomer?.contacts?.find((contact) => contact.id === customerContactId)?.name ?? null;
   const stepSummaries: Record<Step, string> = {
@@ -641,20 +664,20 @@ export function QuoteBuilder({
     items: conceptCount === 0
       ? "Sin conceptos"
       : `${conceptCount} ${conceptCount === 1 ? "concepto" : "conceptos"} · ${sectionCount} ${sectionCount === 1 ? "sección" : "secciones"}`,
-    notes: resolveQuoteTitle(title, sections),
+    notes: title.trim() || "Internas y para el cliente",
     preview: "Vista previa del documento",
   };
   const stepCompleted: Record<Step, boolean> = {
     client: clientReady,
     items: priceReady,
-    notes: getStepError("notes", clientStateArgs) === null,
+    notes: step === "preview" && getStepError("notes", clientStateArgs) === null,
     preview: false,
   };
   const stepperContent = fullScreen
     ? <QuoteBuilderProgress current={step} onChange={setStep} summaries={stepSummaries} completed={stepCompleted} />
     : <QuoteBuilderStepper current={step} onChange={setStep} />;
   const subtitleContent = fullScreen
-    ? <p className="truncate text-xs text-[var(--color-text-muted)]">{`Paso ${currentStepIndex + 1} de ${steps.length} · ${flowStepLabels[step]}`}</p>
+    ? <p className="truncate text-xs text-[var(--color-text-muted)]">{`Paso ${currentStepIndex + 1} de ${steps.length} · ${flowStepLabels[step]}${isDraftSaved ? " · Borrador guardado" : ""}`}</p>
     : null;
   const nextStep = steps[currentStepIndex + 1];
   const submitButton = (
@@ -993,13 +1016,15 @@ export function QuoteBuilder({
               ) : null}
               {createCustomerAction ? (
                 <div className="grid gap-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onClick={() => setShowCreateCustomer(true)}
-                    className="justify-self-start rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-link)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
+                    className="-ml-3 justify-self-start gap-2 text-[var(--color-link)]"
                   >
-                    + Crear cliente nuevo
-                  </button>
+                    <Icon name="plus-circle" className="size-4" aria-hidden="true" />
+                    Crear cliente nuevo
+                  </Button>
                   {createCustomerMessage ? (
                     <p className="text-sm text-[var(--color-status-success-fg)]" role="status">
                       {createCustomerMessage}
@@ -1149,11 +1174,32 @@ export function QuoteBuilder({
               </div>
             ) : null}
 
-            {!isSaleNote ? <div className="grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
-              <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
-              <div className="grid gap-3 sm:grid-cols-2">
+            {!isSaleNote ? <div className="grid gap-3 border-t border-[var(--color-border-light)] pt-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <p className="text-sm font-medium text-[var(--color-text-main)]">Vehículo</p>
+                <p className="text-xs text-[var(--color-text-muted)]">Opcional · con placas, o marca y modelo, basta</p>
+              </div>
+              <div className="grid gap-3">
+                {savedVehicles.length ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="savedVehicle">Unidad guardada</Label>
+                    <Select value={matchedVehicle?.id ?? "new"} onValueChange={selectSavedVehicle}>
+                      <SelectTrigger id="savedVehicle">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {savedVehicles.map((saved) => (
+                          <SelectItem key={saved.id} value={saved.id}>
+                            {formatUnitIdentity({ economicNumber: saved.economicNumber, plates: saved.plate, model: [saved.brand, saved.model].filter(Boolean).join(" ") }) ?? "Unidad sin datos"}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="new">Otra unidad</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
                 <div className="grid gap-2">
-                  <Label htmlFor="plate">Placas (opcional)</Label>
+                  <Label htmlFor="plate">Placas</Label>
                   <Input
                     id="plate"
                     name="plate"
@@ -1163,8 +1209,42 @@ export function QuoteBuilder({
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "plate", value: event.target.value })}
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <Label htmlFor="economicNumber">ECO (opcional)</Label>
+                  <Label htmlFor="brand">Marca</Label>
+                  <Input
+                    id="brand"
+                    name="brand"
+                    placeholder="Ej. Ford"
+                    value={vehicle.brand}
+                    onChange={(event) => dispatch({ type: "setVehicleField", field: "brand", value: event.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="model">Modelo</Label>
+                  <Input
+                    id="model"
+                    name="model"
+                    placeholder="Ej. F-350"
+                    value={vehicle.model}
+                    onChange={(event) => dispatch({ type: "setVehicleField", field: "model", value: event.target.value })}
+                  />
+                </div>
+                </div>
+                <details
+                  open={unitDetailsOpen}
+                  onToggle={(event) => setUnitDetailsOpen(event.currentTarget.open)}
+                  className="group grid gap-3"
+                >
+                  <summary className="flex min-h-[var(--tap-min-height)] cursor-pointer list-none items-center gap-2 rounded-[var(--radius-md)] text-sm font-medium text-[var(--color-link)] [&::-webkit-details-marker]:hidden">
+                    <Icon name="plus-circle" className="size-4 shrink-0 group-open:hidden" aria-hidden="true" />
+                    <Icon name="chevron-up" className="hidden size-4 shrink-0 group-open:block" aria-hidden="true" />
+                    <span>Más datos de la unidad</span>
+                    <span className="ml-auto text-xs font-normal text-[var(--color-text-muted)]">ECO y año</span>
+                  </summary>
+                  <div className="grid gap-3 grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="economicNumber">ECO</Label>
                   <Input
                     id="economicNumber"
                     name="economicNumber"
@@ -1175,27 +1255,7 @@ export function QuoteBuilder({
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="brand">Marca (opcional)</Label>
-                  <Input
-                    id="brand"
-                    name="brand"
-                    placeholder="Ej. Ford"
-                    value={vehicle.brand}
-                    onChange={(event) => dispatch({ type: "setVehicleField", field: "brand", value: event.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="model">Modelo (opcional)</Label>
-                  <Input
-                    id="model"
-                    name="model"
-                    placeholder="Ej. F-350"
-                    value={vehicle.model}
-                    onChange={(event) => dispatch({ type: "setVehicleField", field: "model", value: event.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="year">Año (opcional)</Label>
+                  <Label htmlFor="year">Año</Label>
                   <Input
                     id="year"
                     name="year"
@@ -1207,6 +1267,8 @@ export function QuoteBuilder({
                     onChange={(event) => dispatch({ type: "setVehicleField", field: "year", value: event.target.value })}
                   />
                 </div>
+                  </div>
+                </details>
               </div>
             </div> : null}
           </section>

@@ -193,7 +193,7 @@ export function QuoteBuilderItemsStep({
             {sections.map((section, sectionIndex) => (
               <SortableSection key={`section-${sectionIndex}`} id={`section-${sectionIndex}`}>
                 <div
-                  className="grid min-w-0 gap-3 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)]"
+                  className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)]"
                   data-testid={`section-${sectionIndex}`}
                 >
                   <div className="flex items-center gap-2 border-b border-[var(--color-border-light)] pb-3">
@@ -246,7 +246,7 @@ export function QuoteBuilderItemsStep({
 
       {summaryInShell ? null : (
       <aside data-testid="quote-summary-column" className="grid min-w-0 content-start gap-3 lg:sticky lg:top-0">
-        <div className="grid gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
+        <div className="grid min-w-0 gap-4 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-4">
           <div className="grid gap-3">
             <h4 className="font-semibold text-[var(--color-text-main)]">Totales</h4>
             <input type="hidden" name="taxEnabled" value={taxEnabled ? "on" : "off"} />

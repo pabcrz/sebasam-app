@@ -579,10 +579,10 @@ describe("Payroll UI Components", () => {
 
     const reportDocument = document.getElementById("weekly-payroll-summary-document")!;
     const logo = within(reportDocument).getByAltText("Logo de SEBASAM");
-    expect(logo.getAttribute("src")).toContain(encodeURIComponent("/logo-white-short.png"));
+    expect(logo.getAttribute("src")).toContain(encodeURIComponent("/logo-ink-short.png"));
     expect(logo).toHaveAttribute("width", "32");
     expect(logo).toHaveAttribute("height", "32");
-    expect(logo).toHaveClass("object-contain", "invert");
+    expect(logo).toHaveClass("object-contain");
     expect(logo.closest("header")?.textContent).toContain("Resumen semanal de nómina");
   });
 

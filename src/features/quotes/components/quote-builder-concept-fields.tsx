@@ -102,7 +102,7 @@ export function ConceptTypeChips({
 }: { model: ConceptRowModel; allowedItemTypes: QuoteItemType[] } & Pick<ConceptRowHandlers, "dispatch">) {
   const { item, sectionIndex, itemIndex, displayIndex } = model;
   return (
-    <ChipRow label={`Tipo del concepto ${displayIndex + 1}`}>
+    <ChipRow label={`Tipo del concepto ${displayIndex + 1}`} className="flex-wrap overflow-visible">
       {allowedItemTypes.map((type) => (
         <Chip
           key={type}
@@ -420,77 +420,24 @@ export type ConceptAddChipsProps = {
   dispatch: ConceptRowHandlers["dispatch"];
 };
 
-/** Dashed chips that append a concept of a type to a section. The rest of the types open a menu below the row. */
+/** Dashed chips that append a concept of each allowed type to a section. */
 export function ConceptAddChips({ sectionIndex, allowedItemTypes, dispatch }: ConceptAddChipsProps) {
-  const [moreOpen, setMoreOpen] = React.useState(false);
-  const containerRef = React.useRef<HTMLDivElement>(null);
   const sectionLabel = sectionIndex + 1;
-  const addTypes = allowedItemTypes.filter((type) => addChipNames[type] !== undefined);
-  const overflowTypes = allowedItemTypes.filter((type) => addChipNames[type] === undefined);
-
-  React.useEffect(() => {
-    if (!moreOpen) return;
-
-    function handleClickOutside(e: PointerEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setMoreOpen(false);
-    }
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") setMoreOpen(false);
-    }
-
-    document.addEventListener("pointerdown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("pointerdown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [moreOpen]);
 
   return (
-    <div ref={containerRef} className="grid min-w-0 gap-2">
-      <ChipRow label={`Agregar concepto a sección ${sectionLabel}`}>
-        {addTypes.map((type) => (
+    <ChipRow label={`Agregar concepto a sección ${sectionLabel}`} className="flex-wrap overflow-visible">
+      {allowedItemTypes.map((type) => {
+        const name = addChipNames[type] ?? itemTypeLabels[type];
+        return (
           <ChipAdd
             key={type}
-            aria-label={`Agregar ${addChipNames[type]} a la sección ${sectionLabel}`}
+            aria-label={`Agregar ${name} a la sección ${sectionLabel}`}
             onClick={() => dispatch({ type: "addItem", sectionIndex, itemType: type })}
           >
-            {addChipNames[type]}
+            {name}
           </ChipAdd>
-        ))}
-        {overflowTypes.length > 0 ? (
-          <ChipAdd
-            aria-label="Más tipos de concepto"
-            aria-haspopup="menu"
-            aria-expanded={moreOpen}
-            onClick={() => setMoreOpen((open) => !open)}
-          >
-            Más
-          </ChipAdd>
-        ) : null}
-      </ChipRow>
-      {moreOpen ? (
-        <div
-          role="menu"
-          aria-label="Otros tipos de concepto"
-          className="grid justify-items-start gap-1 rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-1"
-        >
-          {overflowTypes.map((type) => (
-            <button
-              key={type}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                dispatch({ type: "addItem", sectionIndex, itemType: type });
-                setMoreOpen(false);
-              }}
-              className="flex min-h-9 w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 text-left text-sm text-[var(--color-text-main)] hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
-            >
-              + {itemTypeLabels[type]}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
+        );
+      })}
+    </ChipRow>
   );
 }
