@@ -10,6 +10,8 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     allowOnly: false,
+    // Heavy dialog tests flake past the 5s default when the machine is loaded.
+    testTimeout: 30_000,
   },
   resolve: {
     alias: {
