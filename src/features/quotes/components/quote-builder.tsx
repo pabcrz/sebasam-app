@@ -1018,9 +1018,9 @@ export function QuoteBuilder({
                 <div className="grid gap-2">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => setShowCreateCustomer(true)}
-                    className="w-full justify-center gap-2 border-[var(--color-primary)] text-[var(--color-primary)] sm:w-auto sm:justify-self-start"
+                    className="-ml-3 justify-self-start gap-2 text-[var(--color-primary)]"
                   >
                     <Icon name="plus-circle" className="size-4" aria-hidden="true" />
                     Crear cliente nuevo
@@ -1236,7 +1236,7 @@ export function QuoteBuilder({
                   onToggle={(event) => setUnitDetailsOpen(event.currentTarget.open)}
                   className="group grid gap-3"
                 >
-                  <summary className="flex min-h-[var(--tap-min-height)] cursor-pointer list-none items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-primary)] px-3 text-sm font-medium text-[var(--color-primary)] [&::-webkit-details-marker]:hidden">
+                  <summary className="flex min-h-[var(--tap-min-height)] cursor-pointer list-none items-center gap-2 rounded-[var(--radius-md)] text-sm font-medium text-[var(--color-primary)] [&::-webkit-details-marker]:hidden">
                     <Icon name="plus-circle" className="size-4 shrink-0 group-open:hidden" aria-hidden="true" />
                     <Icon name="chevron-up" className="hidden size-4 shrink-0 group-open:block" aria-hidden="true" />
                     <span>Más datos de la unidad</span>
