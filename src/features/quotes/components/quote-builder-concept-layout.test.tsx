@@ -46,6 +46,13 @@ it("keeps desktop concept type legible inside the 140px column", async () => {
 });
 
 describe("quote builder concept layout (mobile)", () => {
+  it("keeps each section card in a single bounded column so wide content cannot push past the card", async () => {
+    const user = userEvent.setup();
+    await openItemsStep(user);
+
+    expect(screen.getByTestId("section-0")).toHaveClass("grid-cols-[minmax(0,1fr)]");
+  });
+
   it("wraps the concept types in the editor instead of scrolling", async () => {
     const user = userEvent.setup();
     await openItemsStep(user);
