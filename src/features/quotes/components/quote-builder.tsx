@@ -116,6 +116,7 @@ export function QuoteBuilder({
   );
   // Read once on mount: the builder only mounts while its dialog is open, so this runs on the client.
   const [draft] = React.useState(() => (draftKey ? loadQuoteDraft(draftKey) : null));
+  const [isDraftSaved, setIsDraftSaved] = React.useState(false);
   const originalSelectedCustomer = customers.find((customer) => customer.id === initialData?.customerId);
   const initialSelectedCustomer = draft?.customer ?? originalSelectedCustomer;
   const [isCustomerListOpen, setIsCustomerListOpen] = React.useState(false);
@@ -231,6 +232,7 @@ export function QuoteBuilder({
     if (draftKey && !actionState.success) {
       if (isDirty) saveQuoteDraft(draftKey, { state: builderState, customer: customerOptions.find((option) => option.id === builderState.customerId) ?? null });
       else clearQuoteDraft(draftKey);
+      setIsDraftSaved(isDirty);
     }
   }, [actionState.success, customerOptions, draftKey, builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, initialOperation, isUnifiedDirect, masterId, operation, paymentDueDate]);
 
@@ -675,7 +677,7 @@ export function QuoteBuilder({
     ? <QuoteBuilderProgress current={step} onChange={setStep} summaries={stepSummaries} completed={stepCompleted} />
     : <QuoteBuilderStepper current={step} onChange={setStep} />;
   const subtitleContent = fullScreen
-    ? <p className="truncate text-xs text-[var(--color-text-muted)]">{`Paso ${currentStepIndex + 1} de ${steps.length} · ${flowStepLabels[step]}`}</p>
+    ? <p className="truncate text-xs text-[var(--color-text-muted)]">{`Paso ${currentStepIndex + 1} de ${steps.length} · ${flowStepLabels[step]}${isDraftSaved ? " · Borrador guardado" : ""}`}</p>
     : null;
   const nextStep = steps[currentStepIndex + 1];
   const submitButton = (
