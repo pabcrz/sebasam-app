@@ -88,6 +88,9 @@ function NavLink({ item, active, variant, expanded = false, onNavStart }: NavLin
         >
           <Icon name={icon} className="h-[22px] w-[22px]" aria-hidden="true" />
         </span>
+        <span className={`w-full truncate text-center text-[0.6875rem] leading-none ${active ? "font-semibold text-[var(--color-text-main)]" : "font-medium text-[var(--color-text-muted)]"}`}>
+          {label}
+        </span>
       </Link>
     );
   }
@@ -99,14 +102,18 @@ function NavLink({ item, active, variant, expanded = false, onNavStart }: NavLin
         onClick={handleClick}
         title={label}
         aria-current={current}
-        className={`flex h-9 w-full items-center gap-3 overflow-hidden whitespace-nowrap rounded-[var(--radius-sm)] pl-[9px] pr-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] ${
+        className={`flex w-full overflow-hidden rounded-[var(--radius-sm)] text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] ${
+          expanded
+            ? "h-9 items-center gap-3 whitespace-nowrap pl-[9px] pr-2"
+            : "min-h-12 flex-col items-center justify-center gap-1 px-0.5 py-1.5"
+        } ${
           active
             ? "bg-[image:var(--gradient-primary)] font-semibold text-white"
             : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)]"
         } ${pendingClass}`}
       >
         <Icon name={icon} className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-        <span className={`transition-opacity duration-150 ${expanded ? "opacity-100" : "opacity-0"}`}>{label}</span>
+        <span className={expanded ? "" : "line-clamp-2 w-full break-words text-center text-[0.625rem] leading-3"}>{label}</span>
       </Link>
     );
   }
@@ -190,13 +197,13 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
     <AdminFullScreenFlowContext.Provider value={setFullScreenFlowActive}>
     <div className={`flex min-h-dvh bg-[var(--background)] ${isFullScreenFlowActive ? "" : "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"} print:min-h-0 print:bg-transparent print:pb-0 print:block print:w-full`}>
       {isFullScreenFlowActive ? null : (
-      <aside className="sticky top-0 z-50 hidden h-dvh w-16 shrink-0 md:flex print:hidden">
+      <aside className="sticky top-0 z-50 hidden h-dvh w-20 shrink-0 md:flex print:hidden">
         {/* Expands over the content: the aside keeps 64px, so the content never moves. */}
         <div
           data-admin-rail
           data-expanded={isRailExpanded ? "true" : "false"}
-          className={`absolute inset-y-0 left-0 flex flex-col overflow-x-hidden overflow-y-auto border-r border-[var(--color-border-light)] bg-[var(--color-surface)] px-3.5 py-4 text-[var(--color-text-main)] transition-[width,box-shadow] duration-200 ease-out ${
-            isRailExpanded ? "w-[220px] shadow-lg" : "w-16"
+          className={`absolute inset-y-0 left-0 flex flex-col overflow-x-hidden overflow-y-auto border-r border-[var(--color-border-light)] bg-[var(--color-surface)] py-4 text-[var(--color-text-main)] transition-[width,box-shadow] duration-200 ease-out ${
+            isRailExpanded ? "w-[220px] px-3.5 shadow-lg" : "w-20 px-1.5"
           }`}
         >
           <button
@@ -205,7 +212,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
             aria-expanded={isRailExpanded}
             aria-label={isRailExpanded ? "Contraer menú" : "Expandir menú"}
             title={isRailExpanded ? "Contraer menú" : "Expandir menú"}
-            className="mb-2 flex h-10 w-full shrink-0 items-center gap-3 rounded-[var(--radius-sm)] pl-0.5 text-left hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+            className={`mb-2 flex h-10 w-full shrink-0 items-center gap-3 rounded-[var(--radius-sm)] text-left hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)] ${isRailExpanded ? "pl-0.5" : "justify-center"}`}
           >
             <Image
               src="/logo-white-short.png"
@@ -412,6 +419,9 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
               }`}
             >
               <Icon name={isMoreOpen ? "close" : "more"} className="h-[22px] w-[22px]" aria-hidden="true" />
+            </span>
+            <span className="w-full truncate text-center text-[0.6875rem] font-medium leading-none text-[var(--color-text-muted)]">
+              {isMoreOpen ? "Cerrar" : "Más"}
             </span>
           </button>
         </div>
