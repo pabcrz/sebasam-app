@@ -20,8 +20,8 @@ describe("operational work-order filters", () => {
 
   it("searches one text across folio, driver, plates and ECO, in live records and in snapshots", () => {
     const matches = JSON.stringify(quoteSearchMatches("Mariachi"));
-    for (const field of ["number", "folio", "customerContact", "contactSnapshot", "plate", "economicNumber", "vehicleSnapshot"]) expect(matches).toContain(field);
-    expect(matches.match(/Mariachi/g)).toHaveLength(8);
+    for (const field of ["number", "folio", "customer", "customerSnapshot", "customerContact", "contactSnapshot", "plate", "economicNumber", "vehicleSnapshot"]) expect(matches).toContain(field);
+    expect(matches.match(/Mariachi/g)).toHaveLength(12);
     expect(operationalQuoteWhere(parseCommonOperationalFilters({ number: "Mariachi" }))).toEqual({ AND: [{ OR: quoteSearchMatches("Mariachi") }] });
   });
 });

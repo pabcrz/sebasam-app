@@ -65,6 +65,8 @@ export function quoteSearchMatches(value: string): Prisma.QuoteWhereInput[] {
   return [
     { number: contains },
     { folio: contains },
+    { customer: { is: { OR: [{ name: contains }, { commercialName: contains }, { legalName: contains }] } } },
+    { customerSnapshot: inSnapshot("name") },
     { customerContact: { is: { name: contains } } },
     { contactSnapshot: inSnapshot("name") },
     { vehicle: { is: { plate: contains } } },

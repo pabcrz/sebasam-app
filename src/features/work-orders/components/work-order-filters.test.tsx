@@ -37,7 +37,7 @@ describe("WorkOrderFilters", () => {
   it("keeps the folio in the search field and every other criterion as a removable chip", () => {
     render(view(criteria));
 
-    expect(screen.getByRole("searchbox", { name: "Buscar por folio, chofer, placas o ECO" })).toHaveValue("OT-42");
+    expect(screen.getByRole("searchbox", { name: "Buscar por folio, cliente, chofer, placas o ECO" })).toHaveValue("OT-42");
     for (const summary of ["Búsqueda: OT-42", "Concepto: aceite", "Cliente: Taller de prueba", "Placas: ABC-123", "ECO: ECO-42", "Ejecución: Pendiente de asignación", "Responsable: Maestro de prueba", "Fecha operativa desde: 2026-08-01", "Fecha operativa hasta: 2026-08-31", "Programación desde: 2026-09-01", "Programación hasta: 2026-09-30"]) {
       expect(screen.getByRole("button", { name: `Quitar filtro: ${summary}` })).toBeInTheDocument();
     }
@@ -46,7 +46,7 @@ describe("WorkOrderFilters", () => {
   it("submits the search field as the only folio criterion, keeping the rest and resetting pagination", async () => {
     render(view(criteria));
 
-    const search = screen.getByRole("searchbox", { name: "Buscar por folio, chofer, placas o ECO" });
+    const search = screen.getByRole("searchbox", { name: "Buscar por folio, cliente, chofer, placas o ECO" });
     await userEvent.click(search);
     fireEvent.change(search, { target: { value: "OT-77" } });
     await userEvent.keyboard("{Enter}");

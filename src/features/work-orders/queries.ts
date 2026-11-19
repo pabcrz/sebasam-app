@@ -219,6 +219,8 @@ function noteSearchFilters(input: Partial<CommonOperationalFilters>, dateColumn:
   if (input.number) {
     const value = pattern(input.number);
     conditions.push(Prisma.sql`(${reference} ILIKE ${value} OR ${folio} ILIKE ${value} OR pn."referenceNumber" ILIKE ${value} OR q.number ILIKE ${value} OR q.folio ILIKE ${value}
+      OR (q."customerSnapshot"->>'name') ILIKE ${value}
+      OR EXISTS (SELECT 1 FROM "Customer" cu WHERE cu.id = q."customerId" AND (cu.name ILIKE ${value} OR cu."commercialName" ILIKE ${value} OR cu."legalName" ILIKE ${value}))
       OR (q."contactSnapshot"->>'name') ILIKE ${value} OR EXISTS (SELECT 1 FROM "CustomerContact" cc WHERE cc.id = q."customerContactId" AND cc.name ILIKE ${value})
       OR (q."vehicleSnapshot"->>'plate') ILIKE ${value} OR (q."vehicleSnapshot"->>'economicNumber') ILIKE ${value}
       OR EXISTS (SELECT 1 FROM "Vehicle" v WHERE v.id = q."vehicleId" AND (v.plate ILIKE ${value} OR v."economicNumber" ILIKE ${value})))`);

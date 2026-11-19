@@ -94,8 +94,8 @@ function NotasSearchField({ initialValue, disabled, onSearch }: { initialValue: 
           setValue(next);
           if (next === "") onSearch("");
         }}
-        placeholder="Buscar por folio, chofer, placas o ECO"
-        aria-label="Buscar por folio, chofer, placas o ECO"
+        placeholder="Buscar por folio, cliente, chofer, placas o ECO"
+        aria-label="Buscar por folio, cliente, chofer, placas o ECO"
         enterKeyHint="search"
       />
     </form>
@@ -197,7 +197,7 @@ function NotasFiltersContent({
   const activeChips: Array<{ id: NotasFilterChipId; label: string }> = operationalState ? [
     ...(commonTextFields)
       .filter(([key]) => operationalState[key])
-      .map(([key, label]) => ({ id: key, label: `${label}: ${operationalState[key]}` })),
+      .map(([key, label]) => ({ id: key, label: `${key === "number" ? "Búsqueda" : label}: ${operationalState[key]}` })),
     ...(customerId ? [{ id: "customerId" as const, label: `Cliente: ${initialSelectedCustomer?.commercialName || initialSelectedCustomer?.name || customerId}` }] : []),
     ...(operationalState.dateFrom ? [{ id: "dateFrom" as const, label: `Finalización/emisión desde: ${dateValue(operationalState.dateFrom)}` }] : []),
     ...(operationalState.dateTo ? [{ id: "dateTo" as const, label: `Finalización/emisión hasta: ${dateValue(operationalState.dateTo)}` }] : []),

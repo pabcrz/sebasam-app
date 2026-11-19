@@ -118,8 +118,8 @@ function WorkOrderSearchField({ initialValue, onSearch }: { initialValue: string
           setValue(next);
           if (next === "") onSearch("");
         }}
-        placeholder="Buscar por folio, chofer, placas o ECO"
-        aria-label="Buscar por folio, chofer, placas o ECO"
+        placeholder="Buscar por folio, cliente, chofer, placas o ECO"
+        aria-label="Buscar por folio, cliente, chofer, placas o ECO"
         enterKeyHint="search"
       />
     </form>

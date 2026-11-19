@@ -557,6 +557,7 @@ describe("additive operational query filters", () => {
       const q = raw as { strings: string[]; values: unknown[] };
       const sql = q.strings.join("?");
       expect(sql).toContain('"CustomerContact"');
+      expect(sql).toContain('"Customer" cu');
       expect(sql).toContain("contactSnapshot");
       expect(q.values).toContain("%Mariachi%");
     }
