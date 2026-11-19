@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 export const BRAND_LOGO_SCREEN_SRC = "/logo-white-short.png";
-// Navy, trimmed version of the same mark (wider than tall), so paper never depends on a CSS invert filter.
+// Black, trimmed version of the same mark (wider than tall), so paper never depends on a CSS invert filter.
 export const BRAND_LOGO_PAPER_SRC = "/logo-ink-short.png";
 
 type BrandLogoProps = {
@@ -34,6 +34,7 @@ export function BrandLogo({ src, alt, size, className = "", priority = false }: 
           aria-hidden="true"
           width={size}
           height={size}
+          loading="eager"
           className="hidden object-contain object-left print:block print:h-10 print:w-14"
         />
       ) : null}
