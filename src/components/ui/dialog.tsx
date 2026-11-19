@@ -136,49 +136,21 @@ export function useDialogPlatformDismiss(
   React.useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
 
-    // 1. Modern CloseWatcher API (Chrome 120+, Android Chrome/WebView)
-    type Watcher = { onclose?: () => void; destroy: () => void };
-    const CloseWatcherConstructor = (window as unknown as { CloseWatcher?: new () => Watcher }).CloseWatcher;
-    if (typeof CloseWatcherConstructor === "function") {
-      let watcher: Watcher | null = null;
-      // A watcher fires once. If the dialog stays open after Escape (for example a discard
-      // confirmation), arm a new one so the next back press is still intercepted.
-      const arm = () => {
-        watcher = new CloseWatcherConstructor();
-        watcher.onclose = () => {
-          watcher?.destroy();
-          watcher = null;
-          dispatchEscape(contentRef.current);
-          if (contentRef.current?.isConnected) {
-            try {
-              arm();
-            } catch {
-              // Back press falls through to history navigation
-            }
-          }
-        };
-      };
-      try {
-        arm();
-        return () => {
-          watcher?.destroy();
-          watcher = null;
-        };
-      } catch {
-        // Fall back to history if CloseWatcher creation fails
-      }
-    }
-
-    // 2. History API fallback for browsers without CloseWatcher (Safari, Firefox, older browsers)
+    // History entry instead of CloseWatcher: Chrome groups watchers created without a fresh tap,
+    // so every second back press skipped the dialog. An entry we own is predictable.
     const historyKey = `__dialog_${Math.random().toString(36).slice(2, 9)}`;
     const hasEntry = () => (window.history.state as Record<string, unknown> | null)?.[historyKey] === true;
     let pushed = false;
 
-    try {
+    const pushEntry = () => {
       const currentState = (window.history.state as Record<string, unknown> | null) ?? {};
       window.history.pushState({ ...currentState, [historyKey]: true, [OWN_ENTRY_KEY]: historyKey }, "");
       pushed = true;
       activeDialogEntries.add(historyKey);
+    };
+
+    try {
+      pushEntry();
       installStaleEntrySkipper();
     } catch {
       return;
@@ -190,7 +162,18 @@ export function useDialogPlatformDismiss(
     const handlePopState = () => {
       if (!pushed || hasEntry()) return;
       pushed = false;
-      dispatchEscape(contentRef.current);
+      const content = contentRef.current;
+      dispatchEscape(content);
+      // The dialog may stay open (a quote step back, a discard confirmation): take a new entry
+      // so the next back press is still ours.
+      window.setTimeout(() => {
+        if (!content?.isConnected || pushed) return;
+        try {
+          pushEntry();
+        } catch {
+          // Back press falls through to history navigation
+        }
+      }, 0);
     };
 
     window.addEventListener("popstate", handlePopState);

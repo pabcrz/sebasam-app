@@ -167,40 +167,6 @@ describe("DialogContent", () => {
       vi.restoreAllMocks();
     });
 
-    it("closes the dialog when CloseWatcher emits onclose", async () => {
-      const destroyMock = vi.fn();
-      let watcherInstance: { onclose?: () => void; destroy: typeof destroyMock } | null = null;
-      class MockCloseWatcher {
-        onclose?: () => void;
-        destroy = destroyMock;
-      }
-      function MockCloseWatcherConstructor() {
-        const instance = new MockCloseWatcher();
-        watcherInstance = instance;
-        return instance;
-      }
-
-      vi.stubGlobal("CloseWatcher", MockCloseWatcherConstructor);
-
-      const user = userEvent.setup();
-      render(<SimpleTestDialog />);
-
-      await user.click(screen.getByRole("button", { name: "Open simple dialog" }));
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(watcherInstance).not.toBeNull();
-
-      await React.act(async () => {
-        watcherInstance?.onclose?.();
-      });
-
-      await waitFor(() => {
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      });
-      await waitFor(() => {
-        expect(destroyMock).toHaveBeenCalled();
-      });
-    });
-
     it("closes the dialog and does not trigger extra history.back when the back press pops its entry (fallback mode)", async () => {
       const pushStateSpy = vi.spyOn(window.history, "pushState");
       const backSpy = vi.spyOn(window.history, "back");
@@ -300,14 +266,7 @@ describe("DialogContent", () => {
       expect(screen.queryByText("Inner")).not.toBeInTheDocument();
     });
 
-    it("re-arms the CloseWatcher when the dialog stays open after a back press", async () => {
-      const watchers: Array<{ onclose?: () => void; destroy: () => void }> = [];
-      function MockCloseWatcher(this: { onclose?: () => void; destroy: () => void }) {
-        this.destroy = vi.fn();
-        watchers.push(this);
-      }
-      vi.stubGlobal("CloseWatcher", MockCloseWatcher);
-
+    it("takes a new history entry when the dialog stays open after a back press", async () => {
       function StubbornDialog() {
         return (
           <Dialog open onOpenChange={() => {}}>
@@ -317,14 +276,16 @@ describe("DialogContent", () => {
           </Dialog>
         );
       }
+      const pushStateSpy = vi.spyOn(window.history, "pushState");
       render(<StubbornDialog />);
-      expect(watchers).toHaveLength(1);
+      expect(pushStateSpy).toHaveBeenCalledTimes(1);
 
       await React.act(async () => {
-        watchers[0].onclose?.();
+        window.history.back();
+        await new Promise((resolve) => setTimeout(resolve, 50));
       });
 
-      expect(watchers).toHaveLength(2);
+      expect(pushStateSpy).toHaveBeenCalledTimes(2);
     });
 
     it("pops the pushed history state when dialog is closed via UI close button (fallback mode)", async () => {
