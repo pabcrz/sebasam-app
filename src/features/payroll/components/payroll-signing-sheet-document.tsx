@@ -41,11 +41,11 @@ export function PayrollSigningSheetDocument({
         <div className="flex items-center gap-3.5">
           <div className="relative h-11 w-11 shrink-0 flex items-center justify-center">
             <Image
-              src="/logo-white-short.png"
+              src="/logo-ink-short.png"
               alt="Logo de SEBASAM"
               width={44}
               height={44}
-              className="object-contain invert"
+              className="object-contain"
               priority
             />
           </div>

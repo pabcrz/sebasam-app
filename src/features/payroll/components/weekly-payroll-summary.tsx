@@ -33,11 +33,11 @@ export function WeeklyPayrollSummary({ report }: { report: WeeklyPayrollReport }
       <article id="weekly-payroll-summary-document" className="hidden overflow-x-auto bg-white p-4 text-slate-900 print:block">
         <header className="mb-1 flex items-center gap-2">
           <Image
-            src="/logo-white-short.png"
+            src="/logo-ink-short.png"
             alt="Logo de SEBASAM"
             width={32}
             height={32}
-            className="object-contain invert"
+            className="object-contain"
             priority
           />
           <h2 className="text-lg font-bold">Resumen semanal de nómina</h2>

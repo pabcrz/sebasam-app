@@ -159,11 +159,11 @@ export function PayrollWorkerEnvelopeModal({
               <div className="flex items-center gap-2">
                 <div className="relative h-9 w-9 shrink-0 flex items-center justify-center print:h-10 print:w-10">
                   <Image
-                    src="/logo-white-short.png"
+                    src="/logo-ink-short.png"
                     alt="Logo de SEBASAM"
                     width={32}
                     height={32}
-                    className="object-contain invert"
+                    className="object-contain"
                     priority
                   />
                 </div>
