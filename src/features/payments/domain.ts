@@ -259,13 +259,24 @@ export async function getCustomerBalanceSummary(
       : Promise.resolve({ _sum: { amountCents: 0 } }),
   ]);
 
+  return computeCustomerBalance(charges, captures._sum.amountCents ?? 0, applications._sum.amountCents ?? 0);
+}
+
+type BalanceCharge = Parameters<typeof getEffectiveSettlementTotals>[0] & {
+  settlementAgreement: Parameters<typeof getEffectiveSettlementTotals>[1];
+};
+
+/** The single balance rule, shared by the per-customer and the batch paths. */
+function computeCustomerBalance(
+  charges: BalanceCharge[],
+  totalPaidCents: number,
+  totalAppliedCents: number,
+): CustomerBalanceSummary {
   const nominalContractedCents = charges.reduce((total, quote) => total + (quote.totalCents ?? 0), 0);
   const totalContractedCents = charges.reduce(
     (total, quote) => total + getEffectiveSettlementTotals(quote, quote.settlementAgreement).totalCents,
     0,
   );
-  const totalPaidCents = captures._sum.amountCents ?? 0;
-  const totalAppliedCents = applications._sum.amountCents ?? 0;
   const availableCreditCents = Math.max(0, totalPaidCents - totalAppliedCents);
   const pendingBalanceCents = Math.max(0, totalContractedCents - totalAppliedCents);
 
@@ -276,6 +287,70 @@ export async function getCustomerBalanceSummary(
     pendingBalanceCents,
     availableCreditCents,
   };
+}
+
+/** Same result as getCustomerBalanceSummary per customer, in 3 queries however many customers. */
+export async function getCustomersBalanceSummaries(
+  client: Pick<Prisma.TransactionClient, "quote" | "payment" | "paymentApplication">,
+  customerIds: string[],
+): Promise<Map<string, CustomerBalanceSummary>> {
+  const result = new Map<string, CustomerBalanceSummary>();
+  if (customerIds.length === 0) return result;
+
+  const [charges, captures, applications] = await Promise.all([
+    client.quote.findMany({
+      where: {
+        customerId: { in: customerIds },
+        status: QuoteStatus.APPROVED,
+        workOrder: { status: WorkOrderStatus.COMPLETED },
+      },
+      select: {
+        customerId: true,
+        subtotalCents: true,
+        discountCents: true,
+        taxCents: true,
+        totalCents: true,
+        taxEnabled: true,
+        items: { select: { quantity: true, unitPriceCents: true } },
+        settlementAgreement: true,
+      },
+    }),
+    client.payment.groupBy({
+      by: ["customerId"],
+      where: { customerId: { in: customerIds }, status: PaymentStatus.PAID, reversedAt: null },
+      _sum: { amountCents: true },
+    }),
+    // groupBy cannot group by a relation field, so sum the (few) rows here.
+    client.paymentApplication.findMany({
+      where: {
+        payment: { customerId: { in: customerIds }, status: PaymentStatus.PAID, reversedAt: null },
+        reversedAt: null,
+      },
+      select: { amountCents: true, payment: { select: { customerId: true } } },
+    }),
+  ]);
+
+  const chargesByCustomer = new Map<string, BalanceCharge[]>();
+  for (const quote of charges) {
+    if (!quote.customerId) continue;
+    const list = chargesByCustomer.get(quote.customerId) ?? [];
+    list.push(quote);
+    chargesByCustomer.set(quote.customerId, list);
+  }
+  const paidByCustomer = new Map(captures.map((row) => [row.customerId, row._sum.amountCents ?? 0]));
+  const appliedByCustomer = new Map<string, number>();
+  for (const application of applications) {
+    const id = application.payment.customerId;
+    appliedByCustomer.set(id, (appliedByCustomer.get(id) ?? 0) + application.amountCents);
+  }
+
+  for (const id of customerIds) {
+    result.set(
+      id,
+      computeCustomerBalance(chargesByCustomer.get(id) ?? [], paidByCustomer.get(id) ?? 0, appliedByCustomer.get(id) ?? 0),
+    );
+  }
+  return result;
 }
 
 function validatePaymentInput(input: RecordPaymentInput) {
