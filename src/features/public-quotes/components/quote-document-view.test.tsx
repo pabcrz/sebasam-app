@@ -83,7 +83,6 @@ const baseQuote = {
   workOrder: null,
   folio: null,
   issuedAt: null,
-  administrative: false,
   description: null,
   discountCents: BigInt(0),
   subtotalCents: BigInt(120000),

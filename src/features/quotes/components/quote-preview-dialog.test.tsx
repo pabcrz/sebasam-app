@@ -26,7 +26,6 @@ function createMockQuote(overrides: MockQuoteInput = {}): QuoteListSummary {
     taxEnabled: true,
     validUntil: new Date("2026-12-31T00:00:00.000Z"),
     approvedAt: null,
-    administrative: true,
     operationalDate: new Date("2026-07-01T00:00:00.000Z"),
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -103,7 +102,6 @@ describe("QuotePreviewDialog", () => {
     expect(screen.getByText("Cotización C-001")).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByText("Constructora del Norte")).toBeInTheDocument();
-    expect(screen.getByText("Cotización administrativa")).toBeInTheDocument();
     expect(screen.getAllByText("Cambio de aceite")[0]).toBeInTheDocument();
     expect(screen.getByTestId("quote-subtotal")).toHaveTextContent("$100.00");
     expect(screen.getByTestId("quote-tax")).toHaveTextContent("$16.00");

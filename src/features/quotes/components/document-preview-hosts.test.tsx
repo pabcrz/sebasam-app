@@ -8,7 +8,6 @@ const quote = {
   number: "C-001",
   title: "Servicio general",
   description: "- Cambio de hojas\n- Revisión de bujes",
-  administrative: false,
   status: "APPROVED",
   subtotalCents: 10000,
   discountCents: 0,

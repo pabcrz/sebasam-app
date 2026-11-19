@@ -27,7 +27,7 @@ import {
   resolveQuotePreviewCustomerPhone,
 } from "@/features/quotes/lib/quote-snapshot-display";
 
-export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehicleSnapshot" | "title" | "description" | "administrative" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & DocumentDateSource & {
+export type QuotePreviewSummary = Pick<QuoteListSummary, "id" | "number" | "vehicleSnapshot" | "title" | "description" | "subtotalCents" | "discountCents" | "taxCents" | "totalCents" | "paidCents" | "remainingCents" | "validUntil"> & DocumentDateSource & {
   createdAt?: Date | null;
   status?: QuoteListSummary["status"];
   customer: (Pick<NonNullable<QuoteListSummary["customer"]>, "name"> & {
@@ -128,7 +128,6 @@ export function toQuotePreviewCardProps(quote: QuotePreviewSummary): QuotePrevie
     },
     title: quote.title,
     description: quote.description ?? "",
-    administrative: quote.administrative,
     sections,
     subtotalCents: quote.subtotalCents == null ? null : Number(quote.subtotalCents),
     discountCents: Number(quote.discountCents),

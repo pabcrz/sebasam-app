@@ -57,7 +57,6 @@ export function toDocumentPreviewProps(
   return {
     typeLabel: options.typeLabel ?? (card.isNote ? "Nota" : "Cotización"),
     statusLabel: options.statusLabel ?? null,
-    administrative: card.administrative,
     customer: { name: card.customerName, phone: card.customerPhone ?? null },
     driverName: isDriver ? card.contactName ?? null : null,
     unitLine: formatUnitIdentity({

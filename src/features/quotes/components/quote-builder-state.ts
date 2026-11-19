@@ -17,7 +17,6 @@ export type QuoteBuilderState = {
   vehicle: { plate: string; brand: string; model: string; year: string; economicNumber: string };
   title: string;
   description: string;
-  administrative: boolean;
   taxEnabled: boolean;
   discount: string;
   operationalDate: string;
@@ -32,7 +31,6 @@ export type QuoteBuilderAction =
   | { type: "setVehicleField"; field: keyof QuoteBuilderState["vehicle"]; value: string }
   | { type: "setTitle"; title: string }
   | { type: "setDescription"; description: string }
-  | { type: "setAdministrative"; administrative: boolean }
   | { type: "setTaxEnabled"; taxEnabled: boolean }
   | { type: "setDiscount"; discount: string }
   | { type: "setOperationalDate"; operationalDate: string }
@@ -80,7 +78,6 @@ export function initializeQuoteBuilderState(
     },
     title: initialData?.title ?? "",
     description: initialData?.description ?? "",
-    administrative: initialData?.administrative ?? false,
     taxEnabled: initialData?.taxEnabled ?? true,
     discount: initialData?.discountCents ? String(initialData.discountCents / 100) : "",
     operationalDate: initialData?.operationalDate ?? defaultOperationalDate,
@@ -123,8 +120,6 @@ export function quoteBuilderReducer(
       return { ...state, title: action.title };
     case "setDescription":
       return { ...state, description: action.description };
-    case "setAdministrative":
-      return { ...state, administrative: action.administrative };
     case "setTaxEnabled":
       return { ...state, taxEnabled: action.taxEnabled };
     case "setDiscount":

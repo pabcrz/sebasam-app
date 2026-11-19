@@ -204,7 +204,6 @@ function correctionInput() {
     vehicle: { plate: "", brand: "", model: "", color: "", year: "" },
     title: "Corrected service",
     description: "Corrected description",
-    administrative: true,
     taxEnabled: false,
     discountCents: 0,
     sections: [

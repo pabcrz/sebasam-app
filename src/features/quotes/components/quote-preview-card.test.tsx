@@ -9,7 +9,6 @@ describe("QuotePreviewCard", () => {
     vehicle: { plate: "ABC-1234", brand: "Freightliner", model: "Cascadia", year: "2020" },
     title: "Cotización C-0826-001 — Muelles y tensor",
     description: "Abrazaderas de eje: $600 (no incluidas en costo final)",
-    administrative: false,
     sections: [
       {
         id: "sec-1",

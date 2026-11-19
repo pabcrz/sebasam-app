@@ -30,7 +30,7 @@ function makeQuote(status: QuoteStatus = QuoteStatus.SENT, workOrderStatus?: Wor
     status,
     title: "Servicio general",
     description: "Servicio completo",
-    administrative: false, deletedAt: null,
+    deletedAt: null,
     subtotalCents: 100_00,
     discountCents: 0,
     taxCents: 16_00,

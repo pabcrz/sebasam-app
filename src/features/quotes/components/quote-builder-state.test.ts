@@ -12,7 +12,6 @@ const initialData = {
   vehicle: { plate: "ABC-123", brand: "Ford", model: "Transit", year: "2024" },
   title: "Existing quote",
   description: "Notes",
-  administrative: false,
   taxEnabled: true,
   discountCents: 1000,
   operationalDate: "2026-09-01",

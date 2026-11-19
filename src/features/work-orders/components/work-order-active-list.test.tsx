@@ -29,7 +29,6 @@ function createQuote() {
     title: "Servicio de prueba",
     description: "Revisión completa",
     vehicleSnapshot: null,
-    administrative: true,
     subtotalCents: 10000,
     discountCents: 0,
     taxCents: 1600,
