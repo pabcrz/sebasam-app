@@ -77,7 +77,7 @@ describe("QuotesPage", () => {
     expect(header.lastElementChild?.lastElementChild).toHaveTextContent("Nueva cotización");
     expect(screen.getAllByRole("button", { name: "Nueva cotización" })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Más acciones de la página" })).not.toBeInTheDocument();
-    expect(screen.getByRole("searchbox", { name: "Buscar por folio, cliente, chofer, placas o ECO" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Buscar por folio, cliente o unidad" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^filtros/i })).toBeInTheDocument();
   });
 

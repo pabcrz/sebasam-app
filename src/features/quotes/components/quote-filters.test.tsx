@@ -70,7 +70,7 @@ describe("QuoteFilters status and search", () => {
   it("searches the folio on Enter while keeping every other criterion and resetting pagination", async () => {
     const user = userEvent.setup();
     renderFilters({ hasWorkOrder: false, dateFrom: new Date("2026-01-01T00:00:00Z"), dateTo: new Date("2026-01-31T00:00:00Z"), page: 3 });
-    await user.type(screen.getByRole("searchbox", { name: "Buscar por folio, cliente, chofer, placas o ECO" }), " C-001 {Enter}");
+    await user.type(screen.getByRole("searchbox", { name: "Buscar por folio, cliente o unidad" }), " C-001 {Enter}");
     expect(push).toHaveBeenCalledExactlyOnceWith("/admin/quotes?number=C-001&dateFrom=2026-01-01&dateTo=2026-01-31&hasWorkOrder=false");
   });
 
@@ -83,7 +83,7 @@ describe("QuoteFilters status and search", () => {
 
   it("keeps the search value in sync with the folio in the URL", () => {
     renderFilters({ number: "C-001" });
-    expect(screen.getByRole("searchbox", { name: "Buscar por folio, cliente, chofer, placas o ECO" })).toHaveValue("C-001");
+    expect(screen.getByRole("searchbox", { name: "Buscar por folio, cliente o unidad" })).toHaveValue("C-001");
   });
 });
 
