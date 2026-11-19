@@ -59,7 +59,7 @@ export function MobileConceptRow({
         <div
           ref={(node) => onRowRef(rowId, node)}
           data-testid={`concept-row-${displayIndex}`}
-          className={`grid ${isExpanded ? "rounded-[var(--radius-sm)] border-l-4 border-[var(--color-amount)] bg-[var(--color-surface-muted)] pl-1" : "bg-[var(--color-surface)]"}${animated ? " motion-safe:animate-fade-in motion-safe:animate-duration-200" : ""}`}
+          className={`grid ${isExpanded ? "rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] px-2" : "bg-[var(--color-surface)]"}${animated ? " motion-safe:animate-fade-in motion-safe:animate-duration-200" : ""}`}
         >
           <div className="flex items-center gap-1">
             <DragHandle
@@ -99,7 +99,7 @@ export function MobileConceptRow({
             </button>
           </div>
 
-          <div id={editorId} hidden={!isExpanded} className="grid gap-3 py-2 pb-4 pr-1">
+          <div id={editorId} hidden={!isExpanded} className="grid gap-3 py-2 pb-4">
             <input type="hidden" name={`sections.${sectionIndex}.items.${itemIndex}.type`} value={item.type} />
             <ConceptTypeChips model={model} allowedItemTypes={allowedItemTypes} dispatch={dispatch} />
             <ConceptDescriptionField model={model} mode="stacked" {...handlers} />

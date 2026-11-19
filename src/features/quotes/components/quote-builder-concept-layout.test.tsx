@@ -46,13 +46,12 @@ it("keeps desktop concept type legible inside the 140px column", async () => {
 });
 
 describe("quote builder concept layout (mobile)", () => {
-  it("shows the concept types as one horizontally scrolling chip row in the editor", async () => {
+  it("wraps the concept types in the editor instead of scrolling", async () => {
     const user = userEvent.setup();
     await openItemsStep(user);
 
     const types = screen.getByRole("group", { name: "Tipo del concepto 1" });
-    expect(types).toHaveClass("flex-nowrap", "overflow-x-auto");
-    expect(types).not.toHaveClass("flex-wrap");
+    expect(types).toHaveClass("flex-wrap", "overflow-visible");
     expect(within(types).getByRole("button", { name: "Mano de obra" })).toHaveAttribute("aria-pressed", "true");
 
     await user.click(within(types).getByRole("button", { name: "Material" }));
@@ -301,18 +300,19 @@ describe("quote builder concept hierarchy (mobile, visual batch 3)", () => {
     expect(within(section).getByTestId("section-subtotal-0")).toHaveTextContent("$100.00");
   });
 
-  it("tints the open concept with the muted surface, back to surface when closed, and drops the editor's left indent", async () => {
+  it("frames the open concept with the soft background and a border, back to surface when closed", async () => {
     const user = userEvent.setup();
     await openItemsStep(user);
 
     const row = screen.getByTestId("concept-row-0");
-    expect(row).toHaveClass("bg-[var(--color-surface-muted)]");
+    expect(row).toHaveClass("bg-[var(--color-bg-soft)]", "border");
+    expect(row).not.toHaveClass("border-l-4");
 
     const editor = document.getElementById(screen.getByTestId("concept-summary-0").getAttribute("aria-controls") ?? "");
     expect(editor).not.toHaveClass("pl-[52px]");
 
     await user.click(screen.getByRole("button", { name: "Listo" }));
     expect(row).toHaveClass("bg-[var(--color-surface)]");
-    expect(row).not.toHaveClass("bg-[var(--color-surface-muted)]");
+    expect(row).not.toHaveClass("bg-[var(--color-bg-soft)]");
   });
 });
