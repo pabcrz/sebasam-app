@@ -98,7 +98,7 @@ describe("quote filter chips", () => {
   it("names every legacy criterion as a removable chip and never names the status, which the tabs show", () => {
     const state = parseOperationalQuoteParams({ number: "C-001", customerId: "cust-1", plate: "ABC-123", economicNumber: "ECO-42", concept: "aceite", kind: "SALE", hasWorkOrder: "false", dateFrom: "2026-11-01", dateTo: "2026-11-30", status: "DRAFT", showArchived: "true" });
     expect(getQuoteFilterChips(state, customers, today)).toEqual([
-      { id: "number", label: "Folio: C-001" },
+      { id: "number", label: "Búsqueda: C-001" },
       { id: "dates", label: "Fecha: Este mes" },
       { id: "hasWorkOrder", label: "Sin orden de trabajo" },
       { id: "kind", label: "Tipo: Venta" },

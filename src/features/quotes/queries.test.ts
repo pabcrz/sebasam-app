@@ -1,12 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { listArchivedEligibleQuotes, listPaginatedQuotes, listQuotes, listQuotesByIds, listRecoverableTrashedQuotes } from "./queries";
+import { countQuotes, listArchivedEligibleQuotes, listPaginatedQuotes, listQuotes, listQuotesByIds, listRecoverableTrashedQuotes } from "./queries";
 import { getQuotePaidTotals } from "@/features/payments/queries";
 import { parseOperationalQuoteParams, quotesHref } from "./quote-filter-model";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    quote: { findMany: vi.fn(), findUnique: vi.fn() },
+    quote: { findMany: vi.fn(), findUnique: vi.fn(), count: vi.fn() },
   },
 }));
 
@@ -517,4 +517,24 @@ it("normalizes unsafe operational page offsets without changing legacy paginatio
   const result = await listPaginatedQuotes({ page: "9007199254740992" }, { operationalFilters: true });
   expect(result.page).toBe(1);
   expect(vi.mocked(prisma.quote.findMany).mock.lastCall![0]).toMatchObject({ skip: 0, take: 21 });
+});
+
+describe("countQuotes", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("counts with the same predicates as the list, including the driver in the unified search", async () => {
+    (prisma.quote.count as ReturnType<typeof vi.fn>).mockResolvedValue(7);
+    (prisma.quote.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (getQuotePaidTotals as ReturnType<typeof vi.fn>).mockResolvedValue(new Map());
+    const options = { operationalQueue: "quotes", operationalFilters: true } as const;
+    const input = { number: "Mariachi", kind: "WORK" };
+
+    await expect(countQuotes(input, options)).resolves.toBe(7);
+    await listPaginatedQuotes(input, options);
+
+    const counted = (prisma.quote.count as ReturnType<typeof vi.fn>).mock.calls[0][0].where;
+    expect(counted).toEqual((prisma.quote.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0].where);
+    expect(JSON.stringify(counted)).toContain("customerContact");
+    expect(JSON.stringify(counted)).toContain("contactSnapshot");
+  });
 });

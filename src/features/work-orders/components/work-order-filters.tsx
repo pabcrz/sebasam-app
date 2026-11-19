@@ -30,6 +30,8 @@ type Props = {
   };
   customers: { id: string; name: string }[];
   workers: { id: string; displayName: string }[];
+  /** Counts the results of the staged filters so "Ver resultados" can say how many; null when they are invalid. */
+  countResultsAction?: (input: Record<string, unknown>) => Promise<number | null>;
 };
 
 type DateKey = "dateFrom" | "dateTo" | "scheduledFrom" | "scheduledTo";
@@ -116,15 +118,15 @@ function WorkOrderSearchField({ initialValue, onSearch }: { initialValue: string
           setValue(next);
           if (next === "") onSearch("");
         }}
-        placeholder="Buscar por folio"
-        aria-label="Buscar por folio"
+        placeholder="Buscar por folio, cliente, chofer, placas o ECO"
+        aria-label="Buscar por folio, cliente, chofer, placas o ECO"
         enterKeyHint="search"
       />
     </form>
   );
 }
 
-export function WorkOrderFilters({ filters, customers, workers, rejectedRange, tabs }: Props) {
+export function WorkOrderFilters({ filters, customers, workers, rejectedRange, tabs, countResultsAction }: Props) {
   const router = useRouter();
   const effective = parseWorkOrderParams(filters);
   const [open, setOpen] = React.useState(Boolean(rejectedRange));
@@ -132,7 +134,7 @@ export function WorkOrderFilters({ filters, customers, workers, rejectedRange, t
   const [draft, setDraft] = React.useState<WorkOrderFilterDraft>(() => draftFrom(effective, rejectedRange));
 
   const chips: ActiveFilterChip[] = [];
-  for (const [key, label] of [["number", "Folio"], ["concept", "Concepto"], ["plate", "Placas"], ["economicNumber", "ECO"]] as const) {
+  for (const [key, label] of [["number", "Búsqueda"], ["concept", "Concepto"], ["plate", "Placas"], ["economicNumber", "ECO"]] as const) {
     if (effective[key]) chips.push({ id: key, label: `${label}: ${effective[key]}` });
   }
   if (effective.customerId) chips.push({ id: "customerId", label: `Cliente: ${customers.find((c) => c.id === effective.customerId)?.name ?? effective.customerId}` });
@@ -159,8 +161,8 @@ export function WorkOrderFilters({ filters, customers, workers, rejectedRange, t
     }
   }
 
-  function applyDraft(): boolean {
-    return navigate({
+  function draftChanges(): ChangeState {
+    return {
       concept: draft.concept.trim() || undefined,
       plate: draft.plate.trim() || undefined,
       economicNumber: draft.economicNumber.trim() || undefined,
@@ -171,8 +173,26 @@ export function WorkOrderFilters({ filters, customers, workers, rejectedRange, t
       dateTo: draft.dateTo || undefined,
       scheduledFrom: draft.scheduledFrom || undefined,
       scheduledTo: draft.scheduledTo || undefined,
-    });
+    };
   }
+
+  function applyDraft(): boolean {
+    return navigate(draftChanges());
+  }
+
+  const [resultCount, setResultCount] = React.useState<number | undefined>();
+  React.useEffect(() => {
+    if (!open || !countResultsAction) return;
+    let stale = false;
+    const timeout = window.setTimeout(() => {
+      countResultsAction({ ...effective, ...draftChanges(), page: 1 })
+        .then((count) => { if (!stale) setResultCount(count ?? undefined); })
+        .catch(() => { if (!stale) setResultCount(undefined); });
+    }, 300);
+    return () => { stale = true; window.clearTimeout(timeout); };
+    // The draft is the only input that changes while the sheet is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, draft, countResultsAction]);
 
   function clearAll() {
     setError("");
@@ -212,6 +232,7 @@ export function WorkOrderFilters({ filters, customers, workers, rejectedRange, t
         open={open}
         onOpenChange={setOpen}
         onClear={() => setDraft(draftFrom(parseWorkOrderParams({}), undefined))}
+        resultCount={resultCount}
         onApply={applyDraft}
       >
         {error ? <p id="work-range-error" role="alert" className="text-sm text-[var(--color-status-danger)]">{error}</p> : null}
