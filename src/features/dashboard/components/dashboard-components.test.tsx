@@ -138,6 +138,14 @@ describe("NextWorkCard", () => {
     expect(screen.getByRole("link", { name: "Asignar" })).toHaveAttribute("href", "/admin/quotes?status=APPROVED");
   });
 
+  it("renders the provided actionable card instead of the static fallback", () => {
+    render(<NextWorkCard nextWork={nextWork} actionableCard={<div data-testid="actionable-card" />} />);
+
+    expect(screen.getByRole("heading", { name: "Siguiente trabajo" })).toBeInTheDocument();
+    expect(screen.getByTestId("actionable-card")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Asignar" })).not.toBeInTheDocument();
+  });
+
   it("titles the section in the primary colour with a wrench icon", () => {
     render(<NextWorkCard nextWork={nextWork} />);
 

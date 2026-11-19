@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { UserRole } from "@/generated/prisma/client";
 
 import { Card, CardContent, CardHeader, CardTitle, SectionLabel } from "@/components/ui";
@@ -31,6 +32,8 @@ interface DashboardViewProps {
   }>;
   searchCustomersAction?: (input: unknown) => Promise<CustomerOption[]>;
   role: UserRole;
+  /** Actionable quote card for "Siguiente trabajo"; falls back to a static card when omitted. */
+  nextWorkCard?: ReactNode;
   /** Reading time for the greeting and date; defaults to the current instant. */
   now?: Date;
 }
@@ -85,6 +88,7 @@ export function DashboardView({
   createCustomerForQuoteAction,
   searchCustomersAction,
   role,
+  nextWorkCard,
   now = new Date(),
 }: DashboardViewProps) {
   const isPatron = role === "ADMIN";
@@ -119,7 +123,7 @@ export function DashboardView({
       {/* Main Operational Stack: work first, finance and reports after */}
       <div className="space-y-6">
         {/* 1. Next job: the oldest approved quote waiting for a work order */}
-        {snapshot.nextWork ? <NextWorkCard nextWork={snapshot.nextWork} /> : null}
+        {snapshot.nextWork ? <NextWorkCard nextWork={snapshot.nextWork} actionableCard={nextWorkCard} /> : null}
 
         {/* 2 and 3. One list: today's operation first, then commercial follow-up, divided by rules */}
         <section
