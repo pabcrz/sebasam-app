@@ -193,7 +193,7 @@ export function QuoteBuilderItemsStep({
             {sections.map((section, sectionIndex) => (
               <SortableSection key={`section-${sectionIndex}`} id={`section-${sectionIndex}`}>
                 <div
-                  className="grid min-w-0 gap-3 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)]"
+                  className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)]"
                   data-testid={`section-${sectionIndex}`}
                 >
                   <div className="flex items-center gap-2 border-b border-[var(--color-border-light)] pb-3">
