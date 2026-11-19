@@ -162,7 +162,7 @@ describe("QuoteBuilder", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "+ Crear cliente nuevo" }));
+    await user.click(screen.getByRole("button", { name: "Crear cliente nuevo" }));
     expect(screen.getByLabelText("Teléfono")).toHaveAttribute("type", "tel");
     expect(screen.getByLabelText("Teléfono")).toHaveAttribute("inputmode", "tel");
     expect(screen.getByLabelText("Teléfono")).toHaveAttribute("maxlength", "20");
@@ -568,7 +568,7 @@ describe("QuoteBuilder", () => {
 
     await user.type(screen.getByRole("combobox", { name: /cliente/i }), "pendiente");
     await waitFor(() => expect(searchCustomersAction).toHaveBeenCalledOnce());
-    await user.click(screen.getByRole("button", { name: "+ Crear cliente nuevo" }));
+    await user.click(screen.getByRole("button", { name: "Crear cliente nuevo" }));
     await user.type(screen.getByLabelText("Nombre"), "Cliente recién creado");
     await user.click(screen.getByRole("button", { name: "Guardar y seleccionar" }));
 
@@ -641,7 +641,7 @@ describe("QuoteBuilder", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "+ Crear cliente nuevo" }));
+    await user.click(screen.getByRole("button", { name: "Crear cliente nuevo" }));
     await user.type(screen.getByLabelText("Nombre"), "Cliente existente");
     await user.click(screen.getByRole("button", { name: "Guardar y seleccionar" }));
 
@@ -709,7 +709,7 @@ describe("QuoteBuilder", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "+ Crear cliente nuevo" }));
+    await user.click(screen.getByRole("button", { name: "Crear cliente nuevo" }));
     await user.type(screen.getByLabelText("Nombre"), "Grúas del Centro");
     await user.click(screen.getByRole("button", { name: "Guardar y seleccionar" }));
 
@@ -1816,14 +1816,14 @@ describe("quote builder client step and totals (visual batch 3)", () => {
     expect(screen.getByTestId("customer-search-icon")).toBeInTheDocument();
   });
 
-  it("offers only a '+ Crear cliente nuevo' link that opens a sheet with Cancelar and Guardar y seleccionar", async () => {
+  it("offers only a 'Crear cliente nuevo' button that opens a sheet with Cancelar and Guardar y seleccionar", async () => {
     const user = userEvent.setup();
     render(<QuoteBuilder customers={customers} createAction={vi.fn()} createCustomerAction={vi.fn()} />);
 
     expect(screen.queryByText("¿No encuentras el cliente?")).not.toBeInTheDocument();
     expect(screen.queryByText("Créalo sin salir de la cotización.")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "+ Crear cliente nuevo" }));
+    await user.click(screen.getByRole("button", { name: "Crear cliente nuevo" }));
     const sheet = screen.getByRole("dialog", { name: "Crear cliente nuevo" });
     expect(within(sheet).getByLabelText("Nombre")).toBeInTheDocument();
     expect(within(sheet).getByRole("button", { name: "Cancelar" })).toBeInTheDocument();

@@ -1016,13 +1016,15 @@ export function QuoteBuilder({
               ) : null}
               {createCustomerAction ? (
                 <div className="grid gap-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={() => setShowCreateCustomer(true)}
-                    className="justify-self-start rounded-[var(--radius-sm)] text-sm font-medium text-[var(--color-link)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
+                    className="w-full justify-center gap-2 border-[var(--color-primary)] text-[var(--color-primary)] sm:w-auto sm:justify-self-start"
                   >
-                    + Crear cliente nuevo
-                  </button>
+                    <Icon name="plus-circle" className="size-4" aria-hidden="true" />
+                    Crear cliente nuevo
+                  </Button>
                   {createCustomerMessage ? (
                     <p className="text-sm text-[var(--color-status-success-fg)]" role="status">
                       {createCustomerMessage}
@@ -1209,9 +1211,11 @@ export function QuoteBuilder({
                   onToggle={(event) => setUnitDetailsOpen(event.currentTarget.open)}
                   className="group grid gap-3"
                 >
-                  <summary className="flex min-h-[var(--tap-min-height)] cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-[var(--color-primary)] [&::-webkit-details-marker]:hidden">
-                    Más datos de la unidad
-                    <span className="text-xs font-normal text-[var(--color-text-muted)]">ECO, marca, modelo, año</span>
+                  <summary className="flex min-h-[var(--tap-min-height)] cursor-pointer list-none items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-primary)] px-3 text-sm font-medium text-[var(--color-primary)] [&::-webkit-details-marker]:hidden">
+                    <Icon name="plus-circle" className="size-4 shrink-0 group-open:hidden" aria-hidden="true" />
+                    <Icon name="chevron-up" className="hidden size-4 shrink-0 group-open:block" aria-hidden="true" />
+                    <span>Más datos de la unidad</span>
+                    <span className="ml-auto text-xs font-normal text-[var(--color-text-muted)]">ECO, marca, modelo, año</span>
                   </summary>
                   <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
