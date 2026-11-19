@@ -88,7 +88,7 @@ function NavLink({ item, active, variant, expanded = false, onNavStart }: NavLin
         >
           <Icon name={icon} className="h-[22px] w-[22px]" aria-hidden="true" />
         </span>
-        <span className={`w-full truncate text-center text-[0.6875rem] leading-none ${active ? "font-semibold text-[var(--color-text-main)]" : "font-medium text-[var(--color-text-muted)]"}`}>
+        <span className={`w-full truncate text-center text-[0.625rem] leading-none ${active ? "font-semibold text-[var(--color-text-main)]" : "font-medium text-[var(--color-text-muted)]"}`}>
           {label}
         </span>
       </Link>
@@ -420,7 +420,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
             >
               <Icon name={isMoreOpen ? "close" : "more"} className="h-[22px] w-[22px]" aria-hidden="true" />
             </span>
-            <span className="w-full truncate text-center text-[0.6875rem] font-medium leading-none text-[var(--color-text-muted)]">
+            <span className="w-full truncate text-center text-[0.625rem] font-medium leading-none text-[var(--color-text-muted)]">
               {isMoreOpen ? "Cerrar" : "Más"}
             </span>
           </button>
