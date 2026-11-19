@@ -114,8 +114,14 @@ apply_pending_migrations() {
   local schema_path="$2"
   local url
 
+  local config_path="$(dirname "$schema_path")/prisma.config.ts"
+  local -a config_args=()
+
+  # Prisma 7 reads migrations.path from prisma.config.ts, so historical copies need their own config.
+  [[ -f "$config_path" ]] && config_args=(--config "$config_path")
+
   url="$(database_url "$database_name")"
-  DATABASE_URL="$url" DIRECT_URL="$url" pnpm exec prisma migrate deploy --schema "$schema_path"
+  DATABASE_URL="$url" DIRECT_URL="$url" pnpm exec prisma migrate deploy --schema "$schema_path" ${config_args[@]+"${config_args[@]}"}
 }
 
 historical_schema_path() {
@@ -175,6 +181,8 @@ prepare_pre_migration_schema() {
       return 1
     fi
   done
+
+  printf 'export default { schema: "%s/schema.prisma", migrations: { path: "%s/migrations" }, datasource: { url: process.env.DIRECT_URL ?? "" } };\n' "$baseline_root" "$baseline_root" > "${baseline_root}/prisma.config.ts"
 
   apply_pending_migrations "$database_name" "${baseline_root}/schema.prisma"
 }
