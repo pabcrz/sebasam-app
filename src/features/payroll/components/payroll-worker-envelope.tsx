@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,8 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatCents } from "@/features/quotes/lib/format";
 import { toPng } from "html-to-image";
+import { PayrollWorkerEnvelopeDocument } from "./payroll-worker-envelope-document";
 import { printElementById } from "../lib/print-element";
 import type { WorkerPayrollSummary } from "../domain";
 import type { ParsedPayrollParams } from "../period";
@@ -40,34 +39,6 @@ export function PayrollWorkerEnvelopeModal({
     printElementById("payroll-worker-envelope-document", `Recibo de Nómina - ${worker.displayName}`);
   };
 
-  const todayStr = new Intl.DateTimeFormat("es-MX", {
-    dateStyle: "medium",
-    timeZone: "America/Mexico_City",
-  }).format(new Date());
-
-  const allLaborItems = worker.workOrders.flatMap((order) => {
-    if (order.isAdvance) {
-      return [
-        {
-          id: order.advanceId ?? `adv-${order.workOrderId}-${order.quoteItemId}`,
-          description: `[Avance] ${order.conceptDescription || "Mano de obra"} (${order.workOrderNumber})`,
-          payrollBaseCents: order.advanceBaseCents ?? order.totalPayrollBaseCents,
-          ratePercent: order.commissionRatePercent ?? 50,
-          commissionCents: order.totalCommissionCents,
-        },
-      ];
-    }
-    return order.items.map((item) => ({
-      id: item.id,
-      description:
-        order.previousAdvancesBaseCents && order.previousAdvancesBaseCents > 0
-          ? `${item.description} (Liq. ${order.workOrderNumber})`
-          : item.description,
-      payrollBaseCents: item.remainingBaseCents ?? item.payrollBaseCents,
-      ratePercent: item.ratePercent,
-      commissionCents: item.commissionCents,
-    }));
-  });
 
   const generateEnvelopePngDataUrl = async (): Promise<string | null> => {
     const node = document.getElementById("payroll-worker-envelope-document");
@@ -148,104 +119,7 @@ export function PayrollWorkerEnvelopeModal({
           </div>
         </DialogHeader>
 
-        {/* Flush Envelope Preview */}
-        <div className="flex min-w-0 max-w-full justify-center py-1">
-          <div
-            id="payroll-worker-envelope-document"
-            className="mx-auto w-[360px] max-w-full rounded-none bg-white p-3 text-slate-900 space-y-3 print:mx-auto print:w-[7.9cm] print:max-w-[7.9cm] print:min-h-[16.5cm] print:space-y-1 print:border-none print:p-0 print:shadow-none print:break-inside-avoid"
-          >
-            {/* Header with Clean Inverted Logo */}
-            <div className="border-b-2 border-slate-900 pb-3 print:pb-3 flex items-center justify-between gap-1.5">
-              <div className="flex items-center gap-2">
-                <div className="relative h-9 w-9 shrink-0 flex items-center justify-center print:h-10 print:w-10">
-                  <Image
-                    src="/logo-ink-short.png"
-                    alt="Logo de SEBASAM"
-                    width={32}
-                    height={32}
-                    className="object-contain"
-                    priority
-                  />
-                </div>
-                <div>
-                  <h2 className="text-sm font-black tracking-tight text-slate-900 leading-none">SEBASAM</h2>
-                  <p className="text-[9px] font-bold text-slate-600 uppercase tracking-wider mt-0.5">RECIBO DE NÓMINA</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-semibold text-slate-600">{todayStr}</p>
-              </div>
-            </div>
-
-            {/* Worker & Period Info */}
-            <div className="bg-slate-50 rounded-md p-3 print:p-3 border border-slate-200 text-xs space-y-1 print:space-y-1 print:break-inside-avoid">
-              <div className="flex items-baseline justify-between gap-1">
-                <span className="text-[10px] uppercase font-bold text-slate-500">Trabajador:</span>
-                <span className="font-black text-slate-900 text-xs truncate">{worker.displayName}</span>
-              </div>
-              <div className="flex items-baseline justify-between gap-1">
-                <span className="text-[10px] uppercase font-bold text-slate-500">Período:</span>
-                <span className="font-semibold text-slate-800 text-[11px] truncate">{period.rangeLabel}</span>
-              </div>
-            </div>
-
-            {/* Compact envelope table - In print: no lines, minimal vertical padding */}
-            <div className="border border-slate-200 rounded-md overflow-hidden print:break-inside-avoid">
-              <table className="w-full table-fixed border-collapse text-left">
-                <thead className="print:table-header-group">
-                  <tr className="bg-slate-100 border-b border-slate-200 text-slate-800 font-bold text-[10px] uppercase tracking-wide">
-                    <th className="py-2 pl-2.5 pr-1 text-left">Mano de Obra</th>
-                    <th className="py-2 px-0.5 text-center w-7 text-[9px] font-bold text-slate-600">%</th>
-                    <th className="py-2 pl-1 pr-2.5 text-right w-16 text-[10px] font-bold text-slate-900">A Cobrar</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 print:divide-y-0">
-                  {allLaborItems.length > 0 ? (
-                    allLaborItems.map((item, idx) => (
-                      <tr key={`${item.id}-${idx}`} className="hover:bg-slate-50/50">
-                        <td className="break-words py-2 pl-2.5 pr-1 text-xs font-semibold leading-tight text-slate-900 print:py-0.5 print:leading-none">
-                          {item.description}
-                        </td>
-                        <td className="py-2 print:py-0.5 print:leading-none px-0.5 text-center text-slate-400 font-normal text-[10px] whitespace-nowrap">
-                          {item.ratePercent}%
-                        </td>
-                        <td className="py-2 print:py-0.5 print:leading-none pl-1 pr-2.5 text-right font-medium text-slate-950 text-xs whitespace-nowrap">
-                          {formatCents(item.commissionCents)}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={3} className="py-4 text-center text-slate-500 text-xs">
-                        Sin conceptos registrados
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Light Totals Summary */}
-            <div className="bg-slate-50 border border-slate-200 rounded-md p-3 print:p-3 flex items-center justify-between print:break-inside-avoid">
-              <div>
-                <span className="text-[9px] uppercase tracking-wider block font-bold text-slate-500">
-                  Mano de Obra Taller:
-                </span>
-                <span className="text-xs font-semibold text-slate-700">
-                  {formatCents(worker.totalPayrollBaseCents)}
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] uppercase tracking-wider block font-bold text-slate-900">
-                  Total a Liquidar:
-                </span>
-                <span className="text-base font-black text-slate-900">
-                  {formatCents(worker.totalCommissionCents)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PayrollWorkerEnvelopeDocument worker={worker} period={period} />
 
         {/* Action Sharing Bar (Single row below receipt, matching width) */}
         <div className="print:hidden w-full max-w-[350px] mx-auto p-2 bg-[var(--color-bg-soft)] rounded-md border border-[var(--color-border-light)] flex flex-wrap items-center justify-between gap-2 text-xs">
