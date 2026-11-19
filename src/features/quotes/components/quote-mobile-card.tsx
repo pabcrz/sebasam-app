@@ -10,7 +10,7 @@ import type { PaymentRequest, QuoteStatus } from "@/generated/prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, EntityCard, EntityCardDataRow, useCardPanel } from "@/components/ui";
 import { formatUnitIdentity } from "@/lib/unit-identity";
-import { formatCents, formatDate, formatOperationalDate } from "@/features/quotes/lib/format";
+import { formatCents, formatDate, formatShortDate } from "@/features/quotes/lib/format";
 import { quoteValidityHint } from "@/features/quotes/lib/validity-hint";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
@@ -285,13 +285,16 @@ export function QuoteListCard({
             ) : quote.operation === "SALE" ? (
               <EntityCardDataRow label="Operación" value="Venta de refacciones" />
             ) : null}
-            <EntityCardDataRow label="Fecha de cotización" value={formatOperationalDate(quote.operationalDate)} />
+            <EntityCardDataRow
+              label={quote.status === "SENT" ? "Enviada" : "Fecha de cotización"}
+              value={formatShortDate(quote.operationalDate, { timeZone: "UTC" })}
+            />
             <EntityCardDataRow
               label="Vigente hasta"
               value={
                 quote.validUntil ? (
                   <>
-                    {formatDate(quote.validUntil)}
+                    {formatShortDate(quote.validUntil, { withYear: quote.validUntil.getFullYear() !== quote.operationalDate.getUTCFullYear() })}
                     {validityHint ? (
                       <>
                         {" · "}
