@@ -338,8 +338,8 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
         <div className="flex flex-col gap-3 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 sm:flex-row print:hidden">
           <Button
             variant="primary"
-            size="default"
-            className="flex-1 focus-visible:!ring-white focus-visible:!ring-offset-2 focus-visible:!ring-offset-[var(--color-primary)]"
+            size="lg"
+            className="h-12 sm:flex-1 focus-visible:!ring-white focus-visible:!ring-offset-2 focus-visible:!ring-offset-[var(--color-primary)]"
             loading={acceptPending}
             disabled={isPending || (quote.sections.length > 0 && selectedSectionIds.length === 0)}
             onClick={handleAccept}
@@ -355,8 +355,8 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
           </Button>
           <Button
             variant="outline"
-            size="default"
-            className="flex-1 focus-visible:!ring-[var(--color-primary)] focus-visible:!ring-offset-2 focus-visible:!ring-offset-[var(--color-surface)]"
+            size="lg"
+            className="h-12 sm:flex-1 focus-visible:!ring-[var(--color-primary)] focus-visible:!ring-offset-2 focus-visible:!ring-offset-[var(--color-surface)]"
             loading={declinePending}
             disabled={isPending}
             onClick={handleDecline}
