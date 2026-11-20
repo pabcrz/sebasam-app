@@ -107,6 +107,8 @@ export function ConceptTypeChips({
         <Chip
           key={type}
           pressed={item.type === type}
+          // The expanded row sits on the soft background, so unchosen chips need their own surface.
+          className={item.type === type ? undefined : "bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border-light)]"}
           onClick={() => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { type } })}
         >
           {itemTypeLabels[type]}
