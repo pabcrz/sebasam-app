@@ -103,6 +103,12 @@ export type QuoteBuilderChromeHosts = {
  */
 export const QuoteFlowCloseContext = React.createContext<(() => void) | null>(null);
 
+/**
+ * Lets the builder claim the platform back / Escape dismissal: the registered handler
+ * returns true when it consumed it by going to the previous step, false to let the shell close.
+ */
+export const QuoteFlowBackContext = React.createContext<React.MutableRefObject<(() => boolean) | null> | null>(null);
+
 export type QuoteBuilderDialogProps = {
   customers: CustomerOption[];
   createAction?: QuoteBuilderProps["createAction"];

@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui";
-import { QuoteFlowCloseContext } from "./quote-builder-contracts";
+import { QuoteFlowBackContext, QuoteFlowCloseContext } from "./quote-builder-contracts";
 
 type QuoteBuilderDialogShellProps = {
   open: boolean;
@@ -90,11 +90,14 @@ export function QuoteBuilderDialogShell({
     onOpenChange(false);
   }, [dirty, onOpenChange, pending]);
 
+  const backHandlerRef = React.useRef<(() => boolean) | null>(null);
+
   const handleOpenChange = React.useCallback((nextOpen: boolean) => {
     if (nextOpen) {
       onOpenChange(true);
       return;
     }
+    if (backHandlerRef.current?.()) return;
     requestClose();
   }, [onOpenChange, requestClose]);
 
@@ -120,6 +123,7 @@ export function QuoteBuilderDialogShell({
 
   return (
     <QuoteFlowCloseContext.Provider value={requestClose}>
+    <QuoteFlowBackContext.Provider value={backHandlerRef}>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent
@@ -180,6 +184,7 @@ export function QuoteBuilderDialogShell({
         <ConfirmDialog open={confirmDiscardOpen} onOpenChange={handleConfirmDiscardOpenChange} title={discardTitle} description={discardDescription} confirmLabel={discardConfirmLabel} cancelLabel={discardCancelLabel} variant="danger" onConfirm={handleDiscard} />
       )}
     </Dialog>
+    </QuoteFlowBackContext.Provider>
     </QuoteFlowCloseContext.Provider>
   );
 }

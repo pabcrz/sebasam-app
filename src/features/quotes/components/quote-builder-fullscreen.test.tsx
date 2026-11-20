@@ -90,6 +90,19 @@ describe("quote builder full-screen flow", () => {
     expect(screen.getByRole("button", { name: "Paso 1: Cliente y unidad" })).toHaveAttribute("aria-current", "step");
   });
 
+  it("steps back through the flow on platform back before closing it", async () => {
+    const user = userEvent.setup();
+    renderFlow();
+    await openFlow(user);
+    await fillClientStep(user);
+    await user.click(screen.getByRole("button", { name: "Conceptos →" }));
+    expect(screen.getByRole("button", { name: "Paso 2: Conceptos" })).toHaveAttribute("aria-current", "step");
+
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("button", { name: "Paso 1: Cliente y unidad" })).toHaveAttribute("aria-current", "step");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
   it("shows the step context and the next-step action in the bottom bar", async () => {
     const user = userEvent.setup();
     renderFlow();

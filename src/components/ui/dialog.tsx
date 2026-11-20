@@ -114,6 +114,21 @@ function dispatchEscape(target: HTMLElement | null) {
   }
 }
 
+const OWN_ENTRY_KEY = "__dialogOwn";
+const activeDialogEntries = new Set<string>();
+let staleEntrySkipperInstalled = false;
+
+// A dialog closed by a navigation (router.push) leaves its history entry behind. When back
+// lands on such an orphan entry, hop over it so one press still moves one screen.
+function installStaleEntrySkipper() {
+  if (staleEntrySkipperInstalled) return;
+  staleEntrySkipperInstalled = true;
+  window.addEventListener("popstate", () => {
+    const own = (window.history.state as Record<string, unknown> | null)?.[OWN_ENTRY_KEY];
+    if (typeof own === "string" && activeDialogEntries.size === 0) window.history.back();
+  });
+}
+
 export function useDialogPlatformDismiss(
   contentRef: React.RefObject<HTMLElement | null>,
   enabled: boolean = true,
@@ -121,61 +136,54 @@ export function useDialogPlatformDismiss(
   React.useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
 
-    // 1. Modern CloseWatcher API (Chrome 120+, Android Chrome/WebView)
-    if (
-      "CloseWatcher" in window &&
-      typeof (window as unknown as { CloseWatcher: new () => { onclose?: () => void; destroy: () => void } }).CloseWatcher === "function"
-    ) {
-      let watcher: { onclose?: () => void; destroy: () => void } | null = null;
-      try {
-        const CloseWatcherConstructor = (
-          window as unknown as { CloseWatcher: new () => { onclose?: () => void; destroy: () => void } }
-        ).CloseWatcher;
-        watcher = new CloseWatcherConstructor();
-        watcher.onclose = () => {
-          if (watcher) {
-            watcher.destroy();
-            watcher = null;
-          }
-          dispatchEscape(contentRef.current);
-        };
-      } catch {
-        // Fall back to history if CloseWatcher creation fails
-      }
-
-      if (watcher) {
-        return () => {
-          if (watcher) {
-            watcher.destroy();
-            watcher = null;
-          }
-        };
-      }
-    }
-
-    // 2. History API fallback for browsers without CloseWatcher (Safari, Firefox, older browsers)
+    // History entry instead of CloseWatcher: Chrome groups watchers created without a fresh tap,
+    // so every second back press skipped the dialog. An entry we own is predictable.
     const historyKey = `__dialog_${Math.random().toString(36).slice(2, 9)}`;
-    let closedByPopState = false;
+    const hasEntry = () => (window.history.state as Record<string, unknown> | null)?.[historyKey] === true;
     let pushed = false;
 
-    try {
+    const pushEntry = () => {
       const currentState = (window.history.state as Record<string, unknown> | null) ?? {};
-      window.history.pushState({ ...currentState, [historyKey]: true }, "");
+      window.history.pushState({ ...currentState, [historyKey]: true, [OWN_ENTRY_KEY]: historyKey }, "");
       pushed = true;
+      activeDialogEntries.add(historyKey);
+    };
+
+    try {
+      pushEntry();
+      installStaleEntrySkipper();
     } catch {
       return;
     }
 
+    // Every popstate reaches every open dialog. Only the one whose own entry was popped
+    // (its key is gone from history.state) may close; otherwise closing an inner dialog
+    // would also close the outer one.
     const handlePopState = () => {
-      closedByPopState = true;
-      dispatchEscape(contentRef.current);
+      if (!pushed || hasEntry()) return;
+      pushed = false;
+      const content = contentRef.current;
+      dispatchEscape(content);
+      // The dialog may stay open (a quote step back, a discard confirmation): take a new entry
+      // so the next back press is still ours.
+      window.setTimeout(() => {
+        if (!content?.isConnected || pushed) return;
+        try {
+          pushEntry();
+        } catch {
+          // Back press falls through to history navigation
+        }
+      }, 0);
     };
 
     window.addEventListener("popstate", handlePopState);
 
     return () => {
       window.removeEventListener("popstate", handlePopState);
-      if (pushed && !closedByPopState) {
+      activeDialogEntries.delete(historyKey);
+      // Pop our entry only while it is still the current one; after a navigation
+      // (router.push) back() would undo that navigation instead.
+      if (pushed && hasEntry()) {
         try {
           window.history.back();
         } catch {

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -23,6 +22,7 @@ import { BankDataCard } from "@/features/public-payment/components/bank-data-car
 import { ApplyCreditDialog } from "@/features/payments/components/apply-credit-dialog";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
+import { BackLink } from "@/components/layout/back-link";
 import { customerStatementHref, type StatementPeriodUnit, type StatementView } from "../customer-statement";
 
 type CustomerStatementViewProps = {
@@ -129,7 +129,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
   const statementHref = customerStatementHref(customer.id, { view, period, anchor });
 
   const go = (state: { view?: StatementView; period?: StatementPeriodUnit; anchor?: string }) => {
-    router.push(customerStatementHref(customer.id, state), { scroll: false });
+    router.replace(customerStatementHref(customer.id, state), { scroll: false });
   };
   const noteCounts = getStatementNoteCounts(notes);
   const visibleNotes = filterStatementNotes(notes, noteFilter);
@@ -168,10 +168,10 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
       {/* Screen navigation & header */}
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Button asChild variant="ghost" size="sm" className="w-fit px-3.5">
-          <Link href={`/admin/customers/${customer.id}`}>
+          <BackLink href={`/admin/customers/${customer.id}`}>
             <Icon name="arrow-left" className="h-4 w-4" aria-hidden="true" />
             Regresar al cliente
-          </Link>
+          </BackLink>
         </Button>
 
         <div className="flex flex-wrap items-center gap-2">

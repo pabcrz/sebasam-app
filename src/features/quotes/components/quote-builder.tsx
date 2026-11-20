@@ -63,6 +63,7 @@ import {
 } from "./quote-builder-state";
 import toast from "react-hot-toast";
 import { clearQuoteDraft, loadQuoteDraft, saveQuoteDraft } from "./quote-builder-draft";
+import { QuoteFlowBackContext } from "./quote-builder-contracts";
 import type {
   CustomerOption,
   QuoteBuilderChromeHosts,
@@ -544,6 +545,20 @@ export function QuoteBuilder({
       setStep(steps[prevIndex]);
     }
   }
+
+  // Platform back / Escape steps back through the flow before the shell may close it.
+  const backHandlerRef = React.useContext(QuoteFlowBackContext);
+  React.useEffect(() => {
+    if (!backHandlerRef) return;
+    backHandlerRef.current = () => {
+      if (currentStepIndex <= 0) return false;
+      goToPrevious();
+      return true;
+    };
+    return () => {
+      backHandlerRef.current = null;
+    };
+  });
 
   function validateFinalSubmit() {
     const itemError = sections

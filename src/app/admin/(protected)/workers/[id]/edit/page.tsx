@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { BackLink } from "@/components/layout/back-link";
 import { Icon } from "@/components/ui/icon";
 import { notFound } from "next/navigation";
 import { AdminPageHeader } from "@/components/admin-page-header";
@@ -34,10 +34,10 @@ export default async function EditWorkerPage({ params, searchParams }: EditWorke
   return (
     <section className="mx-auto grid w-full max-w-3xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <Button asChild variant="ghost" className="w-fit">
-        <Link href="/admin/workers">
+        <BackLink href="/admin/workers">
           <Icon name="arrow-left" className="h-4 w-4" aria-hidden="true" />
           Regresar a trabajadores
-        </Link>
+        </BackLink>
       </Button>
 
       <AdminPageHeader icon="workers" title={worker.displayName} description="Actualiza los datos del perfil operativo." variant="expanded" />

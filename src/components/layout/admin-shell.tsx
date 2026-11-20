@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTrackPreviousPath } from "@/components/layout/back-link";
 import { Icon } from "@/components/ui/icon";
 import { logoutAdmin } from "@/features/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -162,6 +163,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
   const profileMenuRef = React.useRef<HTMLDetailsElement>(null);
   const mobileNavRef = React.useRef<HTMLElement>(null);
   const pathname = usePathname();
+  useTrackPreviousPath();
 
   React.useEffect(() => {
     const closeProfileMenuOnOutsideClick = (event: MouseEvent) => {
