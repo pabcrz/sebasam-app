@@ -427,7 +427,7 @@ export function DialogMobileHeader({ className, children, ...props }: React.HTML
       className={cn("relative shrink-0 border-b border-[var(--color-border-subtle)] text-left", className)}
       {...props}
     >
-      <div className="flex h-[52px] items-center gap-2 px-4 sm:px-6">
+      <div className="flex h-[52px] items-center gap-2 px-4 sm:px-6 [[data-dialog-variant=sheet]_&]:lg:h-[calc(var(--tap-min-height)+1.5rem)]">
         {items.filter(isBack)}
         <div className="flex min-w-0 flex-1 items-center">{titles}</div>
         {closes.length > 0 ? closes : <DialogMobileClose />}
