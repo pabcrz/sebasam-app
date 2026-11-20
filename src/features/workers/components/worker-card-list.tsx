@@ -28,7 +28,7 @@ const kindLabels = {
 
 function workloadLabel(activeJobs: number) {
   if (activeJobs === 0) return "Sin trabajos";
-  return `${activeJobs} trabajo${activeJobs === 1 ? "" : "s"} activo${activeJobs === 1 ? "" : "s"}`;
+  return `trabajo${activeJobs === 1 ? "" : "s"} activo${activeJobs === 1 ? "" : "s"}`;
 }
 
 /** One whole-row button per worker; the workload sits on the right. Tapping a row opens its edit sheet. */
@@ -48,7 +48,10 @@ export function WorkerCardList({ workers, updateAction, setActiveAction, deleteA
             onOpen={() => setEditingId(worker.id)}
             decision={
               activeJobs === undefined ? null : (
-                <span className="text-sm tabular-nums text-[var(--color-text-muted)]">{workloadLabel(activeJobs)}</span>
+                <span className="grid justify-items-end text-xs text-[var(--color-text-muted)]">
+                  {activeJobs === 0 ? null : <span className="text-base font-semibold tabular-nums text-[var(--color-text-main)]">{activeJobs}</span>}
+                  <span>{workloadLabel(activeJobs)}</span>
+                </span>
               )
             }
           >

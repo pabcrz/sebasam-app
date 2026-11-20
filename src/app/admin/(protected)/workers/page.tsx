@@ -74,7 +74,7 @@ export default async function WorkersPage({ searchParams }: WorkersPageProps) {
         title="Trabajadores"
         subtitle={`${counts.ACTIVE} ${counts.ACTIVE === 1 ? "activo" : "activos"}`}
         primaryAction={
-          <WorkerCreateDialog action={createWorkerFromForm} triggerVariant="primary" triggerSize="lg" />
+          <WorkerCreateDialog action={createWorkerFromForm} triggerVariant="primary" triggerSize="lg" triggerLabel="Nuevo" triggerAriaLabel="Crear trabajador" />
         }
       />
 

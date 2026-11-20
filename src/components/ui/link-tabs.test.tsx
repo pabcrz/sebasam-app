@@ -25,7 +25,7 @@ describe("LinkTabs", () => {
     expect(completed).toHaveTextContent("9");
   });
 
-  it("draws the current tab with the brand gradient underline and the others muted", () => {
+  it("draws the current tab as a tonal pill and the others muted", () => {
     render(
       <LinkTabs
         label="Secciones"
@@ -36,7 +36,7 @@ describe("LinkTabs", () => {
       />,
     );
 
-    expect(screen.getByRole("link", { name: "Activos" }).className).toMatch(/after:bg-\[image:var\(--gradient-primary\)\]/);
+    expect(screen.getByRole("link", { name: "Activos" }).className).toMatch(/bg-\[var\(--color-tonal-bg\)\]/);
     expect(screen.getByRole("link", { name: "Completados" }).className).toMatch(/text-\[var\(--color-text-muted\)\]/);
   });
 });

@@ -111,8 +111,8 @@ export function CustomerCardList({ customers, query = "", onDeleteBatch }: Custo
           onValueChange={(value) => setFilter(value as CustomerListFilter)}
         />
         {customers.length > 0 && !isSelectionMode ? (
-          <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectionMode(true)}>
-            Seleccionar
+          <Button type="button" variant="outline" size="icon" aria-label="Seleccionar" title="Seleccionar" onClick={() => setIsSelectionMode(true)}>
+            <Icon name="list-checks" className="h-4 w-4" aria-hidden="true" />
           </Button>
         ) : null}
       </div>
