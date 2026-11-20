@@ -30,6 +30,16 @@ El comando crea un directorio fechado con estos archivos verificados como no vac
 
 Las credenciales se pasan a `pg_dump` por variables `PG*`, no por argumentos; no se escriben en el manifiesto ni en los logs. Si un dump falla, el directorio parcial se elimina.
 
+## Restaurar un respaldo
+
+Restaura siempre en un Postgres limpio donde tengas permisos de superusuario (por ejemplo uno local); `--disable-triggers` del dump de datos lo requiere, y el rol `postgres` de Supabase no lo es.
+
+1. Crea los roles y la extensión que el esquema da por existentes: `CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role; CREATE EXTENSION vector WITH SCHEMA public;` (el esquema usa `pgvector`).
+2. `psql -f public-schema.sql` y después `psql -f public-data.sql`. El aviso `schema "public" already exists` es esperado.
+3. Compara conteos por tabla contra el origen.
+
+Verificado el 2026-11-20 con `postgresql@17` y `pgvector` 0.8.6 locales: 34 tablas con conteos idénticos a la base de origen.
+
 ## Límites del respaldo
 
 El respaldo cubre únicamente `public`. Supabase Auth y Storage administrados **no están incluidos** y requieren una exportación separada con el procedimiento autorizado para cada servicio. No uses `db:migrate:deploy`, migraciones de desarrollo ni un reset como sustituto de restauración.
