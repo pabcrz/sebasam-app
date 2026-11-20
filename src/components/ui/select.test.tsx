@@ -74,4 +74,29 @@ describe("Select", () => {
     const formData = new FormData(form);
     expect(formData.get("customerId")).toBe("cust-2");
   });
+
+  it("closes an open list when its trigger is tapped on touch, without reopening it", async () => {
+    const user = userEvent.setup();
+    render(
+      <Select defaultValue="a">
+        <SelectTrigger aria-label="Opción">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="a">A</SelectItem>
+          <SelectItem value="b">B</SelectItem>
+        </SelectContent>
+      </Select>,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: "Opción" });
+    await user.click(trigger);
+    expect(await screen.findByRole("listbox")).toBeInTheDocument();
+
+    fireEvent.pointerDown(trigger, { pointerType: "touch" });
+    fireEvent.pointerUp(trigger, { pointerType: "touch" });
+    fireEvent.click(trigger);
+
+    await waitFor(() => expect(screen.queryByRole("listbox")).not.toBeInTheDocument());
+  });
 });

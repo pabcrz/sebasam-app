@@ -14,10 +14,24 @@ export type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof SelectPri
 export const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   SelectTriggerProps
->(({ className, children, ...props }, ref) => {
+>(({ className, children, onPointerDownCapture, onClick, ...props }, ref) => {
+  // On touch, the tap that closes an open list (pointerdown outside) is followed by a click on
+  // the trigger that would reopen it. Remember it was open and swallow that click.
+  const wasOpenOnPointerDown = React.useRef(false);
+
   return (
     <SelectPrimitive.Trigger
       ref={ref}
+      onPointerDownCapture={(event) => {
+        onPointerDownCapture?.(event);
+        wasOpenOnPointerDown.current = event.currentTarget.getAttribute("aria-expanded") === "true";
+      }}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!wasOpenOnPointerDown.current) return;
+        wasOpenOnPointerDown.current = false;
+        event.preventDefault();
+      }}
       className={cn(
         "flex h-[var(--tap-min-height)] w-full items-center justify-between gap-[var(--space-sm)] rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-[var(--space-sm)] py-[var(--space-sm)] text-base text-[var(--color-text-main)] shadow-[var(--shadow-control)] transition-[border-color,box-shadow,background-color] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
         className,
