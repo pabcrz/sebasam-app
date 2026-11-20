@@ -297,7 +297,7 @@ export function QuotePreviewCard({
 
         <div className="mt-auto flex flex-col gap-2.5 sm:gap-4 print:mt-auto print:gap-2 print:break-inside-avoid print:overflow-visible">
           {description ? (
-            <div className={`${minimalPreview ? "py-1" : `rounded-[var(--radius-sm)] ${borderlessDocument ? "" : "border border-[var(--color-border-subtle)]"} bg-[var(--color-surface-muted)] p-2.5 sm:p-3`} print:border-gray-200 print:bg-white text-xs sm:text-sm text-[var(--color-text-muted)] print:text-gray-600 print:break-inside-avoid`}>
+            <div className={`${minimalPreview ? "py-1" : `rounded-[var(--radius-sm)] ${borderlessDocument ? "" : "border border-[var(--color-border-subtle)]"} bg-[var(--color-surface-muted)] p-2.5 sm:p-3`} print:border-gray-200 print:bg-white text-xs sm:text-sm text-[var(--color-text-muted)] print:text-gray-600 print:text-[11px] print:leading-tight print:break-inside-avoid`}>
               <p className="font-semibold text-[10px] uppercase tracking-wider mb-0.5 sm:mb-1">Notas / Observaciones</p>
               <p className="whitespace-pre-wrap" data-testid="preview-notes-text">{description}</p>
             </div>
