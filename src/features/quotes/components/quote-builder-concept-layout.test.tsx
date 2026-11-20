@@ -53,12 +53,12 @@ describe("quote builder concept layout (mobile)", () => {
     expect(screen.getByTestId("section-0")).toHaveClass("grid-cols-[minmax(0,1fr)]");
   });
 
-  it("wraps the concept types in the editor instead of scrolling", async () => {
+  it("lays the concept types out as an even two-column grid instead of scrolling", async () => {
     const user = userEvent.setup();
     await openItemsStep(user);
 
     const types = screen.getByRole("group", { name: "Tipo del concepto 1" });
-    expect(types).toHaveClass("flex-wrap", "overflow-visible");
+    expect(types).toHaveClass("grid", "grid-cols-2", "overflow-visible");
     expect(within(types).getByRole("button", { name: "Mano de obra" })).toHaveAttribute("aria-pressed", "true");
 
     await user.click(within(types).getByRole("button", { name: "Material" }));

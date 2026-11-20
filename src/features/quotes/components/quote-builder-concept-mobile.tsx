@@ -85,9 +85,12 @@ export function MobileConceptRow({
                     ) : null}
                     <span>
                       {itemTypeLabels[item.type]}
-                      {isExpanded && model.unitPriceCents !== null && item.quantity.trim() !== ""
-                        ? ` · ${item.quantity} × ${formatCents(model.unitPriceCents)}`
-                        : ""}
+                      {isExpanded && model.unitPriceCents !== null && item.quantity.trim() !== "" ? (
+                        <>
+                          {" · "}
+                          <span className="whitespace-nowrap">{`${item.quantity} × ${formatCents(model.unitPriceCents)}`}</span>
+                        </>
+                      ) : null}
                     </span>
                     {countsForPayroll ? (
                       <span className="font-semibold text-[var(--color-status-success-fg)]">Nómina</span>
