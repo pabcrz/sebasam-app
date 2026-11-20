@@ -125,7 +125,6 @@ function ActiveWorkOrderCard({
         customer={identity.displayName}
         unit={unitIdentityOf(wo)}
         driver={identity.operatorName ?? null}
-        driverIcon="driver"
         keyData={
           <div className="grid gap-1">
             <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] px-3 py-2">

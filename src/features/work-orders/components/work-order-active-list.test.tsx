@@ -300,12 +300,13 @@ describe("Trabajos card", () => {
     expect(within(card).getByTestId("entity-card-amount")).toHaveTextContent("$15,288.80");
   });
 
-  it("shows the unit with the car icon and the driver with the person icon", () => {
+  it("shows the customer with the person icon, the unit with the truck and the driver with the steering wheel", () => {
     const card = renderTrabajo();
 
     expect(within(card).getByTestId("entity-card-unit").querySelector("svg")?.innerHTML).toBe(glyphOf("unit"));
     expect(within(card).getByTestId("entity-card-driver")).toHaveTextContent("Juan Pérez");
-    expect(within(card).getByTestId("entity-card-driver").querySelector("svg")?.innerHTML).toBe(glyphOf("driver"));
+    expect(within(card).getByTestId("entity-card-driver").querySelector("svg")?.innerHTML).toBe(glyphOf("driver-wheel"));
+    expect(within(card).getByTestId("entity-card-customer").querySelector("svg")?.innerHTML).toBe(glyphOf("user"));
   });
 
   it("sets Asignado a in a muted gray block", () => {
