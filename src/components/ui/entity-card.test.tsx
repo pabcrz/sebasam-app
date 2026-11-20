@@ -122,6 +122,8 @@ describe("EntityCard", () => {
 
     const card = screen.getByRole("group", { name: "Abrir C-001" });
     expect(card).toHaveClass("shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)]", "p-4");
+    // Hover must not swap the ring out: the selected card keeps it with the pointer over it.
+    expect(card).toHaveClass("hover:shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)]");
     expect(card).not.toHaveClass("border-2");
     expect(card.className).not.toMatch(/(^|\s)border(-|\s|$)/);
     expect(card).toHaveAttribute("aria-current", "true");

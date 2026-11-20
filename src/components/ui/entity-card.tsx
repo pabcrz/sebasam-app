@@ -107,7 +107,8 @@ export function EntityCard({
         "flex w-full min-w-0 flex-col rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-card)] transition-shadow duration-[var(--motion-fast)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
         onOpen && "cursor-pointer",
         variant === "featured" && "shadow-[var(--shadow-card-hover)]",
-        selected && "shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)]",
+        // The hover shadow would replace this one, so the selected mark repeats it for hover and stays visible with the pointer over the card.
+        selected && "shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)] hover:shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)]",
         className,
       )}
     >
