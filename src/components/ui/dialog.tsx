@@ -115,6 +115,7 @@ function dispatchEscape(target: HTMLElement | null) {
 }
 
 const OWN_ENTRY_KEY = "__dialogOwn";
+const DIALOG_KEY_PREFIX = "__dialog_";
 const activeDialogEntries = new Set<string>();
 let staleEntrySkipperInstalled = false;
 
@@ -138,12 +139,15 @@ export function useDialogPlatformDismiss(
 
     // History entry instead of CloseWatcher: Chrome groups watchers created without a fresh tap,
     // so every second back press skipped the dialog. An entry we own is predictable.
-    const historyKey = `__dialog_${Math.random().toString(36).slice(2, 9)}`;
+    const historyKey = `${DIALOG_KEY_PREFIX}${Math.random().toString(36).slice(2, 9)}`;
     const hasEntry = () => (window.history.state as Record<string, unknown> | null)?.[historyKey] === true;
     let pushed = false;
 
     const pushEntry = () => {
-      const currentState = (window.history.state as Record<string, unknown> | null) ?? {};
+      // Keep Next's own state, but not the keys of earlier dialogs: each entry carries only its dialog's key.
+      const currentState = Object.fromEntries(
+        Object.entries((window.history.state as Record<string, unknown> | null) ?? {}).filter(([key]) => !key.startsWith(DIALOG_KEY_PREFIX)),
+      );
       window.history.pushState({ ...currentState, [historyKey]: true, [OWN_ENTRY_KEY]: historyKey }, "");
       pushed = true;
       activeDialogEntries.add(historyKey);
@@ -184,11 +188,17 @@ export function useDialogPlatformDismiss(
       // Pop our entry only while it is still the current one; after a navigation
       // (router.push) back() would undo that navigation instead.
       if (pushed && hasEntry()) {
-        try {
-          window.history.back();
-        } catch {
-          // Ignore history errors during unmount
-        }
+        // Deferred: when another dialog opens in the same moment (one card's panel replacing another's),
+        // its popstate would arrive after the new dialog's own entry and dismiss it. If one is active
+        // by then, leave this orphan entry for the stale-entry skipper instead.
+        window.setTimeout(() => {
+          if (activeDialogEntries.size > 0 || !hasEntry()) return;
+          try {
+            window.history.back();
+          } catch {
+            // Ignore history errors during unmount
+          }
+        }, 0);
       }
     };
   }, [contentRef, enabled]);
