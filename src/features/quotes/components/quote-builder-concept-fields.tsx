@@ -102,13 +102,13 @@ export function ConceptTypeChips({
 }: { model: ConceptRowModel; allowedItemTypes: QuoteItemType[] } & Pick<ConceptRowHandlers, "dispatch">) {
   const { item, sectionIndex, itemIndex, displayIndex } = model;
   return (
-    <ChipRow label={`Tipo del concepto ${displayIndex + 1}`} className="flex-wrap overflow-visible">
+    <ChipRow label={`Tipo del concepto ${displayIndex + 1}`} className="grid grid-cols-2 overflow-visible">
       {allowedItemTypes.map((type) => (
         <Chip
           key={type}
           pressed={item.type === type}
           // The expanded row sits on the soft background, so unchosen chips need their own surface.
-          className={item.type === type ? undefined : "bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border-light)]"}
+          className={`w-full justify-center${item.type === type ? "" : " bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border-light)]"}`}
           onClick={() => dispatch({ type: "updateItem", sectionIndex, itemIndex, patch: { type } })}
         >
           {itemTypeLabels[type]}
