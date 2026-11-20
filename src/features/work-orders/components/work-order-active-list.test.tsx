@@ -285,7 +285,7 @@ describe("Trabajos card", () => {
     return screen.getByRole("group", { name: "Ver detalle de cotización C-041126-01" });
   }
 
-  function glyphOf(name: "unit" | "driver") {
+  function glyphOf(name: "unit" | "driver" | "driver-wheel" | "user") {
     const { container, unmount } = render(<Icon name={name} />);
     const glyph = container.querySelector("svg")?.innerHTML;
     unmount();
