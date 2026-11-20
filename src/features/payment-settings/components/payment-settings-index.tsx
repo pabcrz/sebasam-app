@@ -29,7 +29,7 @@ function IndexGroup({ title, children }: { title: string; children: React.ReactN
   return (
     <section className="grid gap-2">
       <SectionLabel>{title}</SectionLabel>
-      <div className="grid gap-2">{children}</div>
+      <div className="divide-y divide-[var(--color-border-subtle)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]">{children}</div>
     </section>
   );
 }
@@ -49,6 +49,7 @@ function IndexRow({
 }) {
   return (
     <ListRow
+      flat
       href={href}
       openLabel={`Abrir ${title}`}
       decision={decision ? <span className="text-sm tabular-nums text-[var(--color-text-muted)]">{decision}</span> : null}

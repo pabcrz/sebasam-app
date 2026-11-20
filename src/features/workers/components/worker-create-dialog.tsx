@@ -24,9 +24,10 @@ type WorkerCreateDialogProps = {
   triggerClassName?: string;
   triggerIconOnly?: boolean;
   triggerAriaLabel?: string;
+  triggerLabel?: string;
 };
 
-export function WorkerCreateDialog({ action, triggerVariant = "primary", triggerSize, triggerClassName, triggerIconOnly = false, triggerAriaLabel }: WorkerCreateDialogProps) {
+export function WorkerCreateDialog({ action, triggerVariant = "primary", triggerSize, triggerClassName, triggerIconOnly = false, triggerAriaLabel, triggerLabel = "Crear trabajador" }: WorkerCreateDialogProps) {
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [isPending, setIsPending] = React.useState(false);
@@ -40,11 +41,11 @@ export function WorkerCreateDialog({ action, triggerVariant = "primary", trigger
           size={triggerSize}
           className={triggerClassName ?? "w-full sm:w-fit"}
           disabled={isPending}
-          title={triggerAriaLabel ?? (triggerIconOnly ? "Crear trabajador" : undefined)}
-          aria-label={triggerAriaLabel ?? (triggerIconOnly ? "Crear trabajador" : undefined)}
+          title={triggerAriaLabel ?? (triggerIconOnly ? triggerLabel : undefined)}
+          aria-label={triggerAriaLabel ?? (triggerIconOnly ? triggerLabel : undefined)}
         >
           <Icon name="user-plus" className={triggerIconOnly ? "h-6 w-6" : "h-4 w-4"} aria-hidden="true" />
-          <span className={triggerIconOnly ? "sr-only" : undefined}>Crear trabajador</span>
+          <span className={triggerIconOnly ? "sr-only" : undefined}>{triggerLabel}</span>
         </Button>
       </DialogTrigger>
       <DialogMobileContent
