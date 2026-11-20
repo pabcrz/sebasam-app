@@ -186,7 +186,8 @@ for (const width of [390, 1440]) {
     await expect(dialog).toBeHidden();
     const expected = { mode: "week", anchor: "2026-08-05", payment: "partial", kind: "WORK", assignee: "workshop", customerId: "cust-1", overdue: "overdue", number: "N-99", concept: "frenos", plate: "DEF-999", economicNumber: "ECO-99", dateFrom: "2026-08-02", dateTo: "2026-08-30", showArchived: "true", showCancelled: "true" };
     expect(Object.fromEntries(new URL(page.url()).searchParams)).toEqual(expected);
-    for (const summary of ["Folio: N-99", "Concepto: frenos", "Placas: DEF-999", "ECO: ECO-99", "Finalización/emisión desde: 2026-08-02", "Finalización/emisión hasta: 2026-08-30", "Mostrar archivadas", "Mostrar canceladas"]) {
+    await expect(page.getByRole("searchbox", { name: /Buscar por folio/ })).toHaveValue("N-99");
+    for (const summary of ["Concepto: frenos", "Placas: DEF-999", "ECO: ECO-99", "Finalización/emisión desde: 2026-08-02", "Finalización/emisión hasta: 2026-08-30", "Mostrar archivadas", "Mostrar canceladas"]) {
       await expect(page.getByText(summary, { exact: true })).toBeVisible();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);

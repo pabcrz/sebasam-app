@@ -17,7 +17,7 @@ for (const width of [390, 1440]) {
     // The folio is the page search; it applies on Enter and the sheet starts from the new URL.
     await page.getByRole("searchbox", { name: "Buscar por folio" }).fill("OT-42");
     await page.keyboard.press("Enter");
-    await expect(page.getByText("Folio: OT-42", { exact: true })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: /Buscar por folio/ })).toHaveValue("OT-42");
     await page.getByRole("button", { name: /^Filtros/ }).click();
     await page.getByLabel("Cliente", { exact: true }).click();
     await page.getByRole("option", { name: "Taller de prueba", exact: true }).click();
@@ -46,7 +46,8 @@ for (const width of [390, 1440]) {
       number: "OT-42", concept: "aceite", customerId: "fixture-customer", plate: "ABC-123", economicNumber: "ECO-42",
       dateFrom: "2026-08-01", dateTo: "2026-08-31", execution: "PLANNED", assignee: "workshop", scheduledFrom: "2026-09-01", scheduledTo: "2026-09-30",
     });
-    for (const text of ["Folio: OT-42", "Concepto: aceite", "Cliente: Taller de prueba", "Placas: ABC-123", "ECO: ECO-42", "Ejecución: Pendiente de asignación", "Responsable: Taller especial", "Fecha operativa desde: 2026-08-01", "Fecha operativa hasta: 2026-08-31", "Programación desde: 2026-09-01", "Programación hasta: 2026-09-30"]) {
+    await expect(page.getByRole("searchbox", { name: /Buscar por folio/ })).toHaveValue("OT-42");
+    for (const text of ["Concepto: aceite", "Cliente: Taller de prueba", "Placas: ABC-123", "ECO: ECO-42", "Ejecución: Pendiente de asignación", "Responsable: Taller especial", "Fecha operativa desde: 2026-08-01", "Fecha operativa hasta: 2026-08-31", "Programación desde: 2026-09-01", "Programación hasta: 2026-09-30"]) {
       await expect(page.getByText(text, { exact: true })).toBeVisible();
     }
     const before = page.url();
