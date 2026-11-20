@@ -661,7 +661,6 @@ describe("QuoteBuilder", () => {
           vehicle: { plate: "", brand: "", model: "", year: "" },
           title: "Cotización existente",
           description: "",
-          administrative: false,
           taxEnabled: true,
           discountCents: 0,
           sections: [{ name: "", items: [] }],
@@ -683,7 +682,6 @@ describe("QuoteBuilder", () => {
           vehicle: { plate: "", brand: "", model: "", year: "" },
           title: "Cotización existente",
           description: "",
-          administrative: false,
           taxEnabled: true,
           discountCents: 0,
           operationalDate: "2026-07-14",
@@ -809,7 +807,6 @@ describe("QuoteBuilder", () => {
           vehicle: { plate: "ABC-123", brand: "Ford", model: "F-150", year: "2022" },
           title: "Afinación original",
           description: "Notas originales",
-          administrative: false,
           taxEnabled: true,
           discountCents: 0,
           sections: [{ name: "", items: [{ type: "LABOR", description: "Afinación", quantity: "1", unitPrice: "1200" }] }],
@@ -1488,7 +1485,6 @@ describe("QuoteBuilder", () => {
           vehicle: { plate: "", brand: "", model: "", year: "" },
           title: "Concepto compacto",
           description: "",
-          administrative: false,
           taxEnabled: true,
           discountCents: 0,
           sections: [{ name: "", items: [{ type: "LABOR", description: "cambio de aceite", quantity: "1", unitPrice: "850" }] }],
@@ -1547,7 +1543,7 @@ describe("QuoteBuilder", () => {
     expect(quantityInput.parentElement).toHaveClass("min-w-0");
     expect(unitPriceInput.parentElement).toHaveClass("min-w-0");
     expect(screen.getByLabelText("Precio unitario")).toHaveAccessibleDescription("Importe en pesos mexicanos.");
-    expect(screen.getAllByText("Importe")[0]).toBeInTheDocument();
+    expect(screen.queryByText("Importe")).not.toBeInTheDocument();
     expect(screen.getByTestId("currency-prefix-0")).toHaveTextContent("$");
     expect(screen.getByTestId("concept-total-0")).toHaveTextContent("$850.00");
     expect(quantityPriceRow.parentElement).not.toHaveTextContent("1 × $850.00");

@@ -63,6 +63,7 @@ import {
 } from "./quote-builder-state";
 import toast from "react-hot-toast";
 import { clearQuoteDraft, loadQuoteDraft, saveQuoteDraft } from "./quote-builder-draft";
+import { QuoteFlowBackContext } from "./quote-builder-contracts";
 import type {
   CustomerOption,
   QuoteBuilderChromeHosts,
@@ -116,7 +117,6 @@ export function QuoteBuilder({
   );
   // Read once on mount: the builder only mounts while its dialog is open, so this runs on the client.
   const [draft] = React.useState(() => (draftKey ? loadQuoteDraft(draftKey) : null));
-  const [isDraftSaved, setIsDraftSaved] = React.useState(false);
   const originalSelectedCustomer = customers.find((customer) => customer.id === initialData?.customerId);
   const initialSelectedCustomer = draft?.customer ?? originalSelectedCustomer;
   const [isCustomerListOpen, setIsCustomerListOpen] = React.useState(false);
@@ -163,7 +163,6 @@ export function QuoteBuilder({
     vehicle,
     title,
     description,
-    administrative,
     taxEnabled,
     discount,
     operationalDate,
@@ -223,18 +222,18 @@ export function QuoteBuilder({
     if (actionState.success) onSuccess?.();
   }, [actionState.success, onSuccess]);
 
+  const isDirectDirty = isUnifiedDirect ? Boolean(masterId || paymentDueDate) : false;
+  const isDirty = serializeQuoteBuilderSnapshot(builderState, customerSearch, [newCustomerName, newCustomerEmail, newCustomerPhone]) !== initialFormState || isDirectDirty || operation !== initialOperation;
+  const isDraftSaved = Boolean(draftKey) && !actionState.success && isDirty;
+
   React.useEffect(() => {
-    const current = serializeQuoteBuilderSnapshot(builderState, customerSearch, [newCustomerName, newCustomerEmail, newCustomerPhone]);
-    const isDirectDirty = isUnifiedDirect ? Boolean(masterId || paymentDueDate) : false;
-    const isDirty = current !== initialFormState || isDirectDirty || operation !== initialOperation;
     onDirtyChange?.(isDirty);
     // After a successful save the dialog clears the draft; do not write it back.
     if (draftKey && !actionState.success) {
       if (isDirty) saveQuoteDraft(draftKey, { state: builderState, customer: customerOptions.find((option) => option.id === builderState.customerId) ?? null });
       else clearQuoteDraft(draftKey);
-      setIsDraftSaved(isDirty);
     }
-  }, [actionState.success, customerOptions, draftKey, builderState, customerSearch, newCustomerEmail, newCustomerName, newCustomerPhone, onDirtyChange, initialFormState, initialOperation, isUnifiedDirect, masterId, operation, paymentDueDate]);
+  }, [actionState.success, customerOptions, draftKey, builderState, isDirty, onDirtyChange]);
 
   function changeOperation(next: "WORK" | "SALE") {
     if (next === operation) return;
@@ -546,6 +545,20 @@ export function QuoteBuilder({
       setStep(steps[prevIndex]);
     }
   }
+
+  // Platform back / Escape steps back through the flow before the shell may close it.
+  const backHandlerRef = React.useContext(QuoteFlowBackContext);
+  React.useEffect(() => {
+    if (!backHandlerRef) return;
+    backHandlerRef.current = () => {
+      if (currentStepIndex <= 0) return false;
+      goToPrevious();
+      return true;
+    };
+    return () => {
+      backHandlerRef.current = null;
+    };
+  });
 
   function validateFinalSubmit() {
     const itemError = sections
@@ -1368,6 +1381,9 @@ export function QuoteBuilder({
                 onChange={(event) => dispatch({ type: "setDescription", description: event.target.value })}
                 placeholder={isSaleNote || mode === "direct-note" ? "Detalles adicionales de la nota..." : mode === "direct-work-order" || mode === "direct" ? "Detalles adicionales del trabajo..." : "Detalles adicionales de la cotización..."}
               />
+              <span className="text-xs text-[var(--color-text-muted)]">
+                Cada renglón que empieza con «-» se muestra como lista en el documento.
+              </span>
             </div>
           </section>
 
@@ -1397,7 +1413,6 @@ export function QuoteBuilder({
                 vehicle,
                 title: resolveQuoteTitle(title, sections),
                 description,
-                administrative,
                 sections,
                 subtotalCents,
                 discountCents,

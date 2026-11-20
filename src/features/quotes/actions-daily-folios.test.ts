@@ -142,7 +142,6 @@ describe("Daily folios lifecycle integration", () => {
       customerId: "cust-1",
       sections: [],
       items: [],
-      administrative: false,
       taxEnabled: true,
       subtotalCents: 1000,
       discountCents: 0,

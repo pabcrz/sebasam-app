@@ -54,7 +54,6 @@ describe("WorkOrderPrintPage", () => {
         title: "Servicio general",
         customer: { name: "Cliente Demo", phone: null, email: null },
         vehicle: null,
-        administrative: true,
         items: [],
         subtotalCents: 0,
         discountCents: 0,
@@ -78,7 +77,6 @@ describe("WorkOrderPrintPage", () => {
     expect(screen.getByTestId("note-due-date")).toHaveTextContent("21 de agosto");
     expect(screen.queryByText("Nombre heredado")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Servicio general" })).toBeInTheDocument();
-    expect(screen.getByText("Nota administrativa")).toBeInTheDocument();
     expect(screen.getByAltText("Logo de SEBASAM")).toHaveAttribute("src", expect.stringContaining("logo-white-short.png"));
     expect(screen.getByText("Servicio y Refacciones para Suspensiones de Aire y Muelles")).toHaveClass("font-mono", "print:text-[10px]");
     expect(screen.getByText("Batalla de Casa Blanca")).not.toHaveAttribute("href");

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 
-import { Badge } from "@/components/ui";
 import { Icon } from "@/components/ui/icon";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { formatQuantity, SectionFormValue } from "./quote-builder-shared";
@@ -20,7 +19,6 @@ export interface QuotePreviewCardProps {
   vehicle: { plate: string; brand: string; model: string; year: string; economicNumber?: string };
   title: string;
   description: string;
-  administrative: boolean;
   sections: SectionFormValue[];
   subtotalCents: number | null;
   discountCents?: number;
@@ -57,7 +55,6 @@ export function QuotePreviewCard({
   vehicle,
   title,
   description,
-  administrative,
   sections,
   subtotalCents,
   discountCents,
@@ -144,7 +141,6 @@ export function QuotePreviewCard({
             </div>
           </section>
         )}
-        {administrative ? <Badge variant="info">{isNote ? "Nota" : "Cotización"} administrativa</Badge> : null}
 
         <section aria-label="Conceptos" className="grid gap-2 print:gap-1.5">
           {title && (

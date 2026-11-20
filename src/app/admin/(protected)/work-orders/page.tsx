@@ -10,12 +10,14 @@ import { WorkOrderActiveList } from "@/features/work-orders/components/work-orde
 import { listCustomers } from "@/features/customers/queries";
 import { listQuotesByIds } from "@/features/quotes/queries";
 import { createOrReuseCustomerForQuote, searchCustomersForQuote } from "@/features/customers/actions";
+import { countWorkOrdersForFilters } from "@/features/work-orders/count-actions";
 import { duplicateQuoteFromForm, getOrCreateSharedQuoteAction, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
 import {
   assignWorkOrderAction,
   completeWorkOrderAction,
   createDirectWorkOrderFromWorkspace,
   rollbackWorkOrderAction,
+  setWorkOrderOnHoldAction,
 } from "@/features/work-orders/actions";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
 
@@ -86,6 +88,7 @@ export default async function WorkOrdersPage({ searchParams }: {
         filters={filters}
         customers={customers}
         workers={masters}
+        countResultsAction={countWorkOrdersForFilters}
         rejectedRange={rejectedRange}
         tabs={(
           <LinkTabs
@@ -126,6 +129,7 @@ export default async function WorkOrdersPage({ searchParams }: {
                 assign: assignWorkOrderAction,
                 complete: completeWorkOrderAction,
                 rollback: rollbackWorkOrderAction,
+                setOnHold: setWorkOrderOnHoldAction,
               }}
             />
           )}

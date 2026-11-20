@@ -44,7 +44,6 @@ function serializeSharedQuoteForClient(quote: SharedQuoteDomainResult): SharedQu
     totalCents: quote.totalCents,
     taxEnabled: quote.taxEnabled,
     validUntil: quote.validUntil,
-    administrative: quote.administrative,
     operationalDate: quote.operationalDate,
     isLocked: quote.isLocked,
     paymentDueDate: quote.paymentDueDate,

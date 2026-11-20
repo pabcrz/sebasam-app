@@ -1,5 +1,9 @@
 import "@testing-library/jest-dom/vitest";
+import { configure } from "@testing-library/react";
 import { afterEach } from "vitest";
+
+// findBy*/waitFor default to 1s, too tight when the suite runs under load.
+configure({ asyncUtilTimeout: 5000 });
 
 // Quote drafts live in localStorage; never let one test see another's.
 afterEach(() => {

@@ -10,7 +10,7 @@ import type { PaymentRequest, QuoteStatus } from "@/generated/prisma/client";
 import type { QuoteListSummary } from "@/features/quotes/queries";
 import { Badge, EntityCard, EntityCardDataRow, useCardPanel } from "@/components/ui";
 import { formatUnitIdentity } from "@/lib/unit-identity";
-import { formatCents, formatDate, formatOperationalDate } from "@/features/quotes/lib/format";
+import { formatCents, formatDate, formatShortDate } from "@/features/quotes/lib/format";
 import { quoteValidityHint } from "@/features/quotes/lib/validity-hint";
 import { isQuoteEditable } from "@/features/quotes/lib/editability";
 import { QuotePreviewDialog } from "./quote-preview-dialog";
@@ -144,8 +144,10 @@ export function QuoteListCard({
   const renderAction = (
     action: QuoteActionId,
     variant: "primary" | "secondary" | "outline" | "tonal" | "danger" = "outline",
-    presentation: "default" | "tile" | "state" = "default",
+    presentation: "default" | "tile" | "state" | "footer" = "default",
   ) => {
+    // The side panel footer keeps one button height whatever the action is; cards use the compact size.
+    const actionSize = presentation === "footer" ? "default" : "sm";
     const disabledActionClassName = "disabled:bg-[var(--color-surface-muted)] disabled:text-[var(--color-text-muted)] disabled:shadow-none disabled:hover:bg-[var(--color-surface-muted)] disabled:hover:text-[var(--color-text-muted)]";
     const tileClassName = presentation === "tile"
       ? `h-[var(--control-sm)] w-[var(--control-sm)] shrink-0 justify-center gap-0 px-0 ${disabledActionClassName}`
@@ -177,7 +179,7 @@ export function QuoteListCard({
             quote={quote}
             quoteNumber={quote.number}
             triggerAriaLabel={`Editar cotización ${quote.number}`}
-            triggerSize="sm"
+            triggerSize={actionSize}
             triggerVariant={variant}
             triggerClassName={tileClassName}
             triggerIconOnly={presentation === "tile"}
@@ -197,7 +199,7 @@ export function QuoteListCard({
           />
         );
       case "authorize":
-        return <QuoteAuthorizeForm action={authorizeAction} quoteNumber={quote.number} sections={quote.sections} variant={variant} size="sm" />;
+        return <QuoteAuthorizeForm action={authorizeAction} quoteNumber={quote.number} sections={quote.sections} variant={variant} size={actionSize} />;
       case "correctDecision":
         return (
           <QuoteCorrectDecisionForm
@@ -206,7 +208,7 @@ export function QuoteListCard({
             quoteNumber={quote.number}
             currentStatus={quote.status as "APPROVED" | "REJECTED"}
             variant={variant}
-            size="sm"
+            size={actionSize}
           />
         );
       case "workOrder":
@@ -222,6 +224,7 @@ export function QuoteListCard({
             workers={workers}
             actions={workOrderActions}
             triggerVariant={variant}
+            triggerSize={actionSize}
             triggerIconOnlyMobile={false}
             triggerClassName={tileClassName}
             alwaysRenderTrigger
@@ -234,7 +237,7 @@ export function QuoteListCard({
       case "duplicate":
         return <QuoteDuplicateForm action={duplicateAction} quoteId={quote.id} />;
       case "cancel":
-        return <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant={variant} size="sm" />;
+        return <QuoteCancelForm action={cancelAction} quoteId={quote.id} quoteNumber={quote.number} variant={variant} size={actionSize} />;
       case "archive":
         return <QuoteLifecycleForm action={archiveAction} mode="archive" quoteNumber={quote.number} />;
       case "restore":
@@ -255,7 +258,7 @@ export function QuoteListCard({
         onOpenChange={(open) => (open ? preview.open("preview") : preview.close("preview"))}
         showTrigger={false}
         folio={displayFolio}
-        footerAction={primary ? renderAction(primary, "primary", "state") : null}
+        footerAction={primary ? renderAction(primary, "primary", "footer") : null}
       />
       <EntityCard
         className="h-full"
@@ -285,13 +288,16 @@ export function QuoteListCard({
             ) : quote.operation === "SALE" ? (
               <EntityCardDataRow label="Operación" value="Venta de refacciones" />
             ) : null}
-            <EntityCardDataRow label="Fecha de cotización" value={formatOperationalDate(quote.operationalDate)} />
+            <EntityCardDataRow
+              label={quote.status === "SENT" ? "Enviada" : "Fecha de cotización"}
+              value={formatShortDate(quote.operationalDate, { timeZone: "UTC" })}
+            />
             <EntityCardDataRow
               label="Vigente hasta"
               value={
                 quote.validUntil ? (
                   <>
-                    {formatDate(quote.validUntil)}
+                    {formatShortDate(quote.validUntil, { withYear: quote.validUntil.getFullYear() !== quote.operationalDate.getUTCFullYear() })}
                     {validityHint ? (
                       <>
                         {" · "}

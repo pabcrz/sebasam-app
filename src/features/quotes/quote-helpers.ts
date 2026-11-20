@@ -72,7 +72,6 @@ export function quoteFormDataToInput(formData: FormData) {
     },
     title: resolveQuoteTitle(String(formData.get("title") ?? ""), sections),
     description: formData.get("description"),
-    administrative: formData.get("administrative"),
     taxEnabled: formData.get("taxEnabled") === "on",
     discountCents: formData.get("discount"),
     operationalDate: formData.get("operationalDate"),

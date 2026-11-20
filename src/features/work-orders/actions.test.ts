@@ -19,6 +19,7 @@ import {
   returnNoteToQuoteAction,
   rollbackWorkOrder,
   rollbackWorkOrderAction,
+  setWorkOrderOnHoldAction,
 } from "./actions";
 import { WorkerUnavailableError } from "./domain";
 
@@ -589,7 +590,6 @@ describe("work order actions", () => {
       vehicle: { plate: "ABC-123", brand: "Toyota", model: "Corolla", year: 2020 },
       title: "Direct Work Order",
       description: "Direct creation",
-      administrative: false,
       taxEnabled: true,
       discountCents: 0,
       operationalDate: "2026-08-31",
@@ -921,7 +921,6 @@ describe("work order actions", () => {
         vehicle: { plate: "ABC-123", brand: "Toyota", model: "Corolla", year: 2020 },
         title: "Direct Note",
         description: "Direct creation",
-        administrative: false,
         taxEnabled: true,
         discountCents: 0,
         operationalDate: "2026-08-31",
@@ -1283,5 +1282,52 @@ describe("work order actions", () => {
         }),
       }));
     });
+  });
+});
+
+describe("setWorkOrderOnHoldAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(requireOperationalRole).mockResolvedValue({ user: { id: "u-1" } as never, profile: { id: "u-1", role: "ADMIN" } as never });
+  });
+
+  it("marks an active work order on hold with a trimmed reason", async () => {
+    vi.mocked(prisma.workOrder.updateMany).mockResolvedValue({ count: 1 });
+    const result = await setWorkOrderOnHoldAction({ workOrderId: "wo-1", onHold: true, reason: "  Refacción  " });
+
+    expect(result).toEqual({ success: true });
+    expect(prisma.workOrder.updateMany).toHaveBeenCalledWith({
+      where: { id: "wo-1", status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] } },
+      data: { onHoldAt: expect.any(Date), onHoldReason: "Refacción" },
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/work-orders");
+    expect(revalidatePath).toHaveBeenCalledWith("/admin");
+  });
+
+  it("stores no reason when it is blank and clears both fields on release", async () => {
+    vi.mocked(prisma.workOrder.updateMany).mockResolvedValue({ count: 1 });
+    await setWorkOrderOnHoldAction({ workOrderId: "wo-1", onHold: true, reason: "   " });
+    expect(vi.mocked(prisma.workOrder.updateMany).mock.calls[0][0]?.data).toMatchObject({ onHoldReason: null });
+
+    await setWorkOrderOnHoldAction({ workOrderId: "wo-1", onHold: false });
+    expect(vi.mocked(prisma.workOrder.updateMany).mock.calls[1][0]?.data).toEqual({ onHoldAt: null, onHoldReason: null });
+  });
+
+  it("refuses work orders that are not active and long reasons", async () => {
+    vi.mocked(prisma.workOrder.updateMany).mockResolvedValue({ count: 0 });
+    expect(await setWorkOrderOnHoldAction({ workOrderId: "wo-1", onHold: true })).toEqual({
+      success: false,
+      error: "Solo los trabajos asignados o en proceso pueden ponerse en espera.",
+    });
+
+    const tooLong = await setWorkOrderOnHoldAction({ workOrderId: "wo-1", onHold: true, reason: "x".repeat(121) });
+    expect(tooLong.success).toBe(false);
+    expect(prisma.workOrder.updateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it("requires an operational role", async () => {
+    vi.mocked(requireOperationalRole).mockRejectedValue(new Error("forbidden"));
+    expect((await setWorkOrderOnHoldAction({ workOrderId: "wo-1", onHold: true })).success).toBe(false);
+    expect(prisma.workOrder.updateMany).not.toHaveBeenCalled();
   });
 });

@@ -138,6 +138,14 @@ describe("NextWorkCard", () => {
     expect(screen.getByRole("link", { name: "Asignar" })).toHaveAttribute("href", "/admin/quotes?status=APPROVED");
   });
 
+  it("renders the provided actionable card instead of the static fallback", () => {
+    render(<NextWorkCard nextWork={nextWork} actionableCard={<div data-testid="actionable-card" />} />);
+
+    expect(screen.getByRole("heading", { name: "Siguiente trabajo" })).toBeInTheDocument();
+    expect(screen.getByTestId("actionable-card")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Asignar" })).not.toBeInTheDocument();
+  });
+
   it("titles the section in the primary colour with a wrench icon", () => {
     render(<NextWorkCard nextWork={nextWork} />);
 
@@ -171,7 +179,7 @@ describe("NextWorkCard", () => {
 });
 
 describe("InboxRowsSection", () => {
-  const queues = { draftQuotesCount: 13, sentQuotesCount: 1, approvedQuotesCount: 2, activeExecutionCount: 1 };
+  const queues = { draftQuotesCount: 13, sentQuotesCount: 1, approvedQuotesCount: 2, activeExecutionCount: 1, stoppedActiveCount: 0 };
 
   it("renders each pending row as a link to its filtered list, in priority order", () => {
     const rows = prioritizeInbox(buildInboxRows(queues, { oldestApprovedAt: null }));
@@ -237,7 +245,7 @@ describe("ReceivablesSection", () => {
 
 describe("DashboardView", () => {
   const sampleSnapshot = {
-    queues: { draftQuotesCount: 12, sentQuotesCount: 7, approvedQuotesCount: 4, activeExecutionCount: 8 },
+    queues: { draftQuotesCount: 12, sentQuotesCount: 7, approvedQuotesCount: 4, activeExecutionCount: 8, stoppedActiveCount: 0 },
     nextWork: {
       quoteId: "quote-oldest",
       number: "C-041126-01",

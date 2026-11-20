@@ -13,7 +13,7 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("next/navigation", () => ({ notFound: notFoundMock }));
+vi.mock("next/navigation", () => ({ notFound: notFoundMock, usePathname: () => "/", useRouter: () => ({ back: vi.fn() }) }));
 vi.mock("@/features/work-orders/queries", () => ({ getWorkOrderById: getWorkOrderByIdMock }));
 vi.mock("@/features/workers/queries", () => ({ listActiveWorkers: listActiveWorkersMock }));
 vi.mock("@/features/customers/queries", () => ({ listCustomers: listCustomersMock }));

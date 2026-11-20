@@ -46,6 +46,7 @@ import {
   executionRecordInputSchema,
   returnNoteToQuoteInputSchema,
   rollbackWorkOrderInputSchema,
+  setWorkOrderOnHoldInputSchema,
   workAssignmentInputSchema,
   workOrderAcceptanceInputSchema,
   workOrderInputSchema,
@@ -483,6 +484,8 @@ export async function completeWorkOrder(input: unknown) {
         status: WorkOrderStatus.COMPLETED,
         completedAt,
         paymentDueDate,
+        onHoldAt: null,
+        onHoldReason: null,
       },
     });
 
@@ -720,6 +723,31 @@ export async function rollbackWorkOrderAction(input: unknown): Promise<ActionRes
   }
 }
 
+/** Marks or clears the "en espera" flag on an active work order; the status itself never changes. */
+export async function setWorkOrderOnHoldAction(input: unknown): Promise<ActionResult> {
+  try {
+    await requireOperationalRole();
+    const data = setWorkOrderOnHoldInputSchema.parse(input);
+    const updated = await prisma.workOrder.updateMany({
+      where: { id: data.workOrderId, status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] } },
+      data: data.onHold
+        ? { onHoldAt: new Date(), onHoldReason: data.reason || null }
+        : { onHoldAt: null, onHoldReason: null },
+    });
+    if (updated.count !== 1) {
+      return { success: false, error: "Solo los trabajos asignados o en proceso pueden ponerse en espera." };
+    }
+    revalidatePath(workOrdersPath);
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { success: false, error: error.issues[0]?.message ?? "Revisa los datos del trabajo." };
+    }
+    return toActionResult(error, "No se pudo actualizar el trabajo.");
+  }
+}
+
 export async function ensureWorkOrderWaitingAction(quoteId: string): Promise<ActionResult> {
   return createAndAssignWorkOrderAction(quoteId, { isSpecial: true });
 }
@@ -838,7 +866,7 @@ export async function createDirectMaterialSale(input: unknown) {
         id: quoteId, customerId: data.customerId, vehicleId: vehicle?.id ?? null,
         customerContactId: data.customerContactId ?? null, customerFiscalProfileId: data.customerFiscalProfileId ?? null,
         vehicleSnapshot, customerSnapshot, contactSnapshot, number: quoteNumber, status: QuoteStatus.APPROVED,
-        approvedAt: effectiveDate, title: data.title, description: nullableOptional(data.description), administrative: data.administrative,
+        approvedAt: effectiveDate, title: data.title, description: nullableOptional(data.description),
         taxEnabled: data.taxEnabled, subtotalCents: totals.subtotalCents, discountCents: totals.discountCents ?? data.discountCents,
         taxCents: totals.taxCents, totalCents: totals.totalCents, operationalDate, validUntil: createQuoteValidUntil(), paymentDueDate: data.paymentDueDate ?? null,
         sections: { create: data.sections.map((section, sortOrder) => ({ name: section.name, isAuthorized: true, sortOrder })) },
@@ -964,7 +992,6 @@ export async function createDirectWorkOrder(input: unknown) {
             approvedAt: effectiveDate,
             title: data.title,
             description: nullableOptional(data.description),
-            administrative: data.administrative,
             taxEnabled: data.taxEnabled,
             subtotalCents: totals.subtotalCents,
             discountCents: totals.discountCents ?? data.discountCents,

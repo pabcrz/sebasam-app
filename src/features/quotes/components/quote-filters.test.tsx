@@ -56,7 +56,7 @@ describe("QuoteFilters status and search", () => {
     const input = parseOperationalQuoteParams({ customerId: "cust-1", number: "C 001", plate: "ABC-123", dateFrom: "2026-01-01", dateTo: "2026-01-31", hasWorkOrder: false, showArchived: true, showCancelled: true });
     expect(screen.getByRole("link", { name: "Enviadas" })).toHaveAttribute("href", quotesHref({ ...input, status: "SENT" }));
     expect(screen.getByRole("link", { name: "Todas" })).toHaveAttribute("href", quotesHref(input));
-    for (const chip of ["Folio: C 001", "Cliente: Constructora del Norte", "Placas: ABC-123", "Fecha: 2026-01-01 – 2026-01-31", "Sin orden de trabajo", "Incluye canceladas", "Incluye archivadas"]) {
+    for (const chip of ["Búsqueda: C 001", "Cliente: Constructora del Norte", "Placas: ABC-123", "Fecha: 2026-01-01 – 2026-01-31", "Sin orden de trabajo", "Incluye canceladas", "Incluye archivadas"]) {
       expect(screen.getByRole("button", { name: `Quitar filtro: ${chip}` })).toBeInTheDocument();
     }
   });
@@ -70,7 +70,7 @@ describe("QuoteFilters status and search", () => {
   it("searches the folio on Enter while keeping every other criterion and resetting pagination", async () => {
     const user = userEvent.setup();
     renderFilters({ hasWorkOrder: false, dateFrom: new Date("2026-01-01T00:00:00Z"), dateTo: new Date("2026-01-31T00:00:00Z"), page: 3 });
-    await user.type(screen.getByRole("searchbox", { name: "Buscar por folio" }), " C-001 {Enter}");
+    await user.type(screen.getByRole("searchbox", { name: "Buscar por folio, cliente o unidad" }), " C-001 {Enter}");
     expect(push).toHaveBeenCalledExactlyOnceWith("/admin/quotes?number=C-001&dateFrom=2026-01-01&dateTo=2026-01-31&hasWorkOrder=false");
   });
 
@@ -83,7 +83,7 @@ describe("QuoteFilters status and search", () => {
 
   it("keeps the search value in sync with the folio in the URL", () => {
     renderFilters({ number: "C-001" });
-    expect(screen.getByRole("searchbox", { name: "Buscar por folio" })).toHaveValue("C-001");
+    expect(screen.getByRole("searchbox", { name: "Buscar por folio, cliente o unidad" })).toHaveValue("C-001");
   });
 });
 
@@ -222,5 +222,19 @@ describe("QuoteFilters count pattern", () => {
     renderFilters({ concept: "aceite", plate: "ABC-123" });
 
     expect(screen.getByRole("button", { name: "Filtros (2)" })).toBeInTheDocument();
+  });
+
+  it("shows how many results the staged filters give on the apply button and recounts as they change", async () => {
+    const user = userEvent.setup();
+    const count = vi.fn().mockResolvedValueOnce(12).mockResolvedValue(1);
+    const filters = { showCancelled: false, showArchived: false } as ReturnType<typeof parseOperationalQuoteParams>;
+    render(<QuoteFilters filters={filters} customers={customers} countResultsAction={count} />);
+
+    const sheet = await openSheet(user);
+    expect(await sheet.findByRole("button", { name: "Ver 12 resultados" })).toBeInTheDocument();
+
+    await user.click(sheet.getByRole("button", { name: "Sin orden" }));
+    expect(await sheet.findByRole("button", { name: "Ver 1 resultado" })).toBeInTheDocument();
+    expect(count).toHaveBeenLastCalledWith(expect.objectContaining({ hasWorkOrder: false, page: 1 }));
   });
 });

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
 import { assertOperationalClosureQuote } from "./operational-validation";
 import { WorkOrderOperationError } from "./domain";
-import { dateBounds, operationalQuoteWhere, parseCommonOperationalFilters, parseWorkOrderParams, normalizeResponsible, parsePage, type CommonOperationalFilters, type OperationalFilterOptions } from "./work-order-filter-model";
+import { dateBounds, operationalQuoteWhere, quoteSearchMatches, parseCommonOperationalFilters, parseWorkOrderParams, normalizeResponsible, parsePage, type CommonOperationalFilters, type OperationalFilterOptions } from "./work-order-filter-model";
 export { listActiveWorkers } from "@/features/workers/queries";
 
 const workOrderInclude = {
@@ -130,20 +130,34 @@ export async function countCompletedWorkOrders() {
   });
 }
 
+function activeWorkOrderWhere(filters: ReturnType<typeof parseWorkOrderParams>) {
+  const quote = operationalQuoteWhere({ ...filters, number: undefined });
+  const contains = (value: string) => ({ contains: value, mode: "insensitive" as const });
+  const where: Prisma.WorkOrderWhereInput = {
+    // "ON_HOLD" is a marker on active jobs, not a status.
+    ...(filters.execution === "ON_HOLD"
+      ? { status: { in: [WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] }, onHoldAt: { not: null } }
+      : { status: filters.execution ?? { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] } }),
+    quote: { ...quote, operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } },
+  };
+  if (filters.number) where.OR = [{ number: contains(filters.number) }, { folio: contains(filters.number) }, { quote: { OR: quoteSearchMatches(filters.number) } }];
+  if (filters.assignee === "workshop") where.isSpecial = true;
+  else if (filters.assignee !== "all") where.assignments = { some: { workerId: filters.assignee, status: { not: AssignmentStatus.CANCELLED }, worker: { workerKind: WorkerKind.MASTER } } };
+  if (filters.scheduledFrom || filters.scheduledTo) where.scheduledFor = dateBounds(filters.scheduledFrom, filters.scheduledTo, true);
+  return where;
+}
+
+/** Active work orders the Trabajos list would show for these filters: the count on "Ver resultados". */
+export async function countFilteredActiveWorkOrders(input: Record<string, unknown> = {}) {
+  await requireOperationalRole();
+  return prisma.workOrder.count({ where: activeWorkOrderWhere(parseWorkOrderParams(input)) });
+}
+
 /** Opt-in bounded Trabajos query; legacy listActiveWorkOrders remains unchanged. */
 export async function listPaginatedActiveWorkOrders(input: Record<string, unknown> = {}) {
   await requireOperationalRole();
   const filters = parseWorkOrderParams(input);
-  const quote = operationalQuoteWhere({ ...filters, number: undefined });
-  const contains = (value: string) => ({ contains: value, mode: "insensitive" as const });
-  const where: Prisma.WorkOrderWhereInput = {
-    status: filters.execution ?? { in: [WorkOrderStatus.PLANNED, WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS] },
-    quote: { ...quote, operation: "WORK", deletedAt: null, status: { notIn: ["REJECTED", "CANCELLED", "ARCHIVED"] } },
-  };
-  if (filters.number) where.OR = [{ number: contains(filters.number) }, { folio: contains(filters.number) }, { quote: { OR: [{ number: contains(filters.number) }, { folio: contains(filters.number) }] } }];
-  if (filters.assignee === "workshop") where.isSpecial = true;
-  else if (filters.assignee !== "all") where.assignments = { some: { workerId: filters.assignee, status: { not: AssignmentStatus.CANCELLED }, worker: { workerKind: WorkerKind.MASTER } } };
-  if (filters.scheduledFrom || filters.scheduledTo) where.scheduledFor = dateBounds(filters.scheduledFrom, filters.scheduledTo, true);
+  const where = activeWorkOrderWhere(filters);
   const workOrders = await prisma.workOrder.findMany({ where, include: workOrderInclude, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (filters.page - 1) * 20, take: 21 });
   return { workOrders: workOrders.slice(0, 20).map(serializeWorkOrder), page: filters.page, hasNextPage: workOrders.length > 20 };
 }
@@ -207,7 +221,12 @@ function noteSearchFilters(input: Partial<CommonOperationalFilters>, dateColumn:
   const pattern = (value: string) => `%${value.replace(/[\\%_]/g, "\\$&")}%`;
   if (input.number) {
     const value = pattern(input.number);
-    conditions.push(Prisma.sql`(${reference} ILIKE ${value} OR ${folio} ILIKE ${value} OR pn."referenceNumber" ILIKE ${value} OR q.number ILIKE ${value} OR q.folio ILIKE ${value})`);
+    conditions.push(Prisma.sql`(${reference} ILIKE ${value} OR ${folio} ILIKE ${value} OR pn."referenceNumber" ILIKE ${value} OR q.number ILIKE ${value} OR q.folio ILIKE ${value}
+      OR (q."customerSnapshot"->>'name') ILIKE ${value}
+      OR EXISTS (SELECT 1 FROM "Customer" cu WHERE cu.id = q."customerId" AND (cu.name ILIKE ${value} OR cu."commercialName" ILIKE ${value} OR cu."legalName" ILIKE ${value}))
+      OR (q."contactSnapshot"->>'name') ILIKE ${value} OR EXISTS (SELECT 1 FROM "CustomerContact" cc WHERE cc.id = q."customerContactId" AND cc.name ILIKE ${value})
+      OR (q."vehicleSnapshot"->>'plate') ILIKE ${value} OR (q."vehicleSnapshot"->>'economicNumber') ILIKE ${value}
+      OR EXISTS (SELECT 1 FROM "Vehicle" v WHERE v.id = q."vehicleId" AND (v.plate ILIKE ${value} OR v."economicNumber" ILIKE ${value})))`);
   }
   if (input.concept) {
     const value = pattern(input.concept);

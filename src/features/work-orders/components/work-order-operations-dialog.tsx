@@ -25,7 +25,7 @@ import {
   SelectValue,
   Sheet,
 } from "@/components/ui";
-import type { ButtonVariant } from "@/components/ui";
+import type { ButtonSize, ButtonVariant } from "@/components/ui";
 
 import { useRouter } from "next/navigation";
 import { WorkOrderAdvanceDialog } from "./work-order-advance-dialog";
@@ -59,6 +59,7 @@ export type WorkOrderActions = {
   assign?: (input: unknown) => Promise<ActionResult>;
   complete?: (input: unknown) => Promise<ActionResult>;
   rollback?: (input: unknown) => Promise<ActionResult>;
+  setOnHold?: (input: unknown) => Promise<ActionResult>;
   ensureWaiting?: () => Promise<ActionResult>;
   start?: (input: unknown) => Promise<ActionResult>;
   recordExecution?: (input: unknown) => Promise<ActionResult>;
@@ -76,6 +77,7 @@ type WorkOrderOperationsDialogProps = {
   actions?: WorkOrderActions;
   triggerIconOnlyMobile?: boolean;
   triggerVariant?: ButtonVariant;
+  triggerSize?: ButtonSize;
   triggerClassName?: string;
   alwaysRenderTrigger?: boolean;
   triggerDisabled?: boolean;
@@ -103,6 +105,7 @@ export function WorkOrderOperationsDialog({
   actions = noopActions,
   triggerIconOnlyMobile = false,
   triggerVariant = "outline",
+  triggerSize = "sm",
   triggerClassName,
   alwaysRenderTrigger = false,
   triggerDisabled = false,
@@ -274,7 +277,7 @@ export function WorkOrderOperationsDialog({
       <Button
         type="button"
         variant={triggerVariant}
-        size="sm"
+        size={triggerSize}
         ref={triggerRef}
         className={triggerClassName ?? (triggerIconOnlyMobile ? "h-10 w-10 px-0 sm:h-9 sm:w-auto sm:px-3" : "w-full")}
         onClick={(event) => {

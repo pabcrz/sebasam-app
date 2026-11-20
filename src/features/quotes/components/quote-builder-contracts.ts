@@ -50,7 +50,6 @@ export type QuoteBuilderInitialData = {
   vehicle: { plate: string; brand: string; model: string; year: string; economicNumber?: string };
   title: string;
   description: string;
-  administrative: boolean;
   taxEnabled: boolean;
   discountCents: number;
   operationalDate?: string;
@@ -103,6 +102,12 @@ export type QuoteBuilderChromeHosts = {
  * which owns the discard guard. Null outside the shell, where ← does nothing.
  */
 export const QuoteFlowCloseContext = React.createContext<(() => void) | null>(null);
+
+/**
+ * Lets the builder claim the platform back / Escape dismissal: the registered handler
+ * returns true when it consumed it by going to the previous step, false to let the shell close.
+ */
+export const QuoteFlowBackContext = React.createContext<React.MutableRefObject<(() => boolean) | null> | null>(null);
 
 export type QuoteBuilderDialogProps = {
   customers: CustomerOption[];

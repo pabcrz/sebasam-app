@@ -13,6 +13,7 @@ import { QuotePreviewDialog } from "@/features/quotes/components/quote-preview-d
 import { ShareQuoteButton } from "@/features/quotes/components/share-quote-button";
 import { QuoteDuplicateForm } from "@/features/quotes/components/quote-duplicate-form";
 import { resolveCustomerDisplayIdentity } from "@/features/quotes/lib/quote-snapshot-display";
+import { WorkOrderHoldControl } from "@/features/work-orders/components/work-order-hold-control";
 import { WorkOrderOperationsDialog } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { WorkOrderActions, WorkerOption } from "@/features/work-orders/components/work-order-operations-dialog";
 import type { CustomerOption } from "@/features/quotes/components/quote-builder";
@@ -78,6 +79,9 @@ function ActiveWorkOrderCard({
   const panel = useCardPanel(wo.id);
   const identity = resolveCustomerDisplayIdentity(wo.quote);
   const helperCount = wo.assignments.filter((a) => a.worker.workerKind === "HELPER").length;
+  const onHold = wo.onHoldAt != null;
+  const statusBadge = onHold ? <Badge variant="warning">En espera</Badge> : <Badge variant="info">En proceso</Badge>;
+  const canHold = wo.status === "ASSIGNED" || wo.status === "IN_PROGRESS";
   const manageActions: WorkOrderActions = {
     ...workOrderActions,
     assign: workOrderActions.assign
@@ -103,7 +107,7 @@ function ActiveWorkOrderCard({
           onOpenChange={(open) => (open ? panel.open("preview") : panel.close("preview"))}
           showTrigger={false}
           folio={wo.number}
-          statusBadge={<Badge variant="info">En proceso</Badge>}
+          statusBadge={statusBadge}
           footerAction={
             <WorkOrderOperationsDialog {...manageDialogProps} triggerVariant="primary" triggerClassName="shrink-0" />
           }
@@ -116,20 +120,30 @@ function ActiveWorkOrderCard({
         selected={panel.selected}
         title={wo.quote.title || identity.displayName || "Sin título"}
         folio={wo.number}
-        status={<Badge variant="info">En proceso</Badge>}
+        status={statusBadge}
         amount={formatCents(wo.quote.totalCents)}
         customer={identity.displayName}
         unit={unitIdentityOf(wo)}
         driver={identity.operatorName ?? null}
-        driverIcon="driver"
         keyData={
-          <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] px-3 py-2">
-            <span>Asignado a</span>
-            <span className="min-w-0 font-medium text-[var(--color-text-main)]">
-              <AssigneeText wo={wo} />
-            </span>
-            {helperCount > 0 ? <span>+ {helperCount} ayudante(s)</span> : null}
-          </p>
+          <div className="grid gap-1">
+            <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--radius-sm)] bg-[var(--color-surface-muted)] px-3 py-2">
+              <span>Asignado a</span>
+              <span className="min-w-0 font-medium text-[var(--color-text-main)]">
+                <AssigneeText wo={wo} />
+              </span>
+              {helperCount > 0 ? <span>+ {helperCount} ayudante(s)</span> : null}
+            </p>
+            {canHold && workOrderActions.setOnHold ? (
+              <WorkOrderHoldControl
+                workOrderId={wo.id}
+                orderNumber={wo.number}
+                onHold={onHold}
+                reason={wo.onHoldReason ?? null}
+                action={workOrderActions.setOnHold}
+              />
+            ) : null}
+          </div>
         }
         editAction={fullQuote && saveAction ? (
           <QuoteBuilderDialog

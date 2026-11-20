@@ -61,7 +61,7 @@ function createMockQuote(overrides: Partial<QuoteListItem> = {}): QuoteListItem 
     lockedById: null,
     lockedReason: null,
     approvedAt: null,
-    administrative: false, deletedAt: null, retentionStartedAt: null,
+    deletedAt: null, retentionStartedAt: null,
     operationalDate: new Date("2026-06-15T00:00:00.000Z"),
     createdAt: new Date("2026-07-01"),
     updatedAt: new Date("2026-07-01"),
@@ -220,7 +220,7 @@ describe("QuoteListCard", () => {
     }));
 
     expect(screen.getByText("Fecha de cotización")).toBeInTheDocument();
-    expect(screen.getByText(/15 de junio de 2026/i)).toBeInTheDocument();
+    expect(screen.getByText("15 jun 2026")).toBeInTheDocument();
     expect(screen.queryByText(/creada el/i)).not.toBeInTheDocument();
   });
 
@@ -602,7 +602,7 @@ describe("QuoteListCard", () => {
     renderCard(createMockQuote());
 
     const keyData = screen.getByTestId("quote-key-data");
-    const rows = within(keyData).getAllByText(/^(Fecha de cotización|Vigente hasta)$/).map((label) => label.parentElement);
+    const rows = within(keyData).getAllByText(/^(Fecha de cotización|Enviada|Vigente hasta)$/).map((label) => label.parentElement);
     expect(rows).toHaveLength(2);
     for (const row of rows) {
       expect(row).toHaveClass("border-t");

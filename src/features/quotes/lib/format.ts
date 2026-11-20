@@ -19,6 +19,17 @@ export function formatOperationalDate(date: Date) {
   }).format(date);
 }
 
+/** "4 nov 2026", or "4 nov" without the year; short enough to stay at full size on a phone card. */
+export function formatShortDate(date: Date, options: { withYear?: boolean; timeZone?: string } = {}) {
+  const { withYear = true, timeZone } = options;
+  return new Intl.DateTimeFormat("es-MX", {
+    day: "numeric",
+    month: "short",
+    ...(withYear ? { year: "numeric" } : {}),
+    ...(timeZone ? { timeZone } : {}),
+  }).format(date).replace(/\./g, "");
+}
+
 type VehicleSnapshotView = {
   plate?: unknown;
   economicNumber?: unknown;

@@ -5,7 +5,39 @@ import { Select as SelectPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { useDialogPointerDownOutsideGuard } from "./dialog";
 
-export const Select = SelectPrimitive.Root;
+// Max delay between a pointer-down that dismissed an open select and the click
+// the browser then fires on the trigger underneath it.
+const OUTSIDE_DISMISS_CLICK_WINDOW_MS = 1000;
+
+type SelectDismissGuard = {
+  markDismissed: () => void;
+  reset: () => void;
+  isRecentlyDismissed: () => boolean;
+};
+
+const SelectDismissGuardContext = React.createContext<SelectDismissGuard | null>(null);
+
+export function Select(props: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  const dismissedAtRef = React.useRef(0);
+  const guard = React.useMemo<SelectDismissGuard>(
+    () => ({
+      markDismissed: () => {
+        dismissedAtRef.current = Date.now();
+      },
+      reset: () => {
+        dismissedAtRef.current = 0;
+      },
+      isRecentlyDismissed: () => Date.now() - dismissedAtRef.current < OUTSIDE_DISMISS_CLICK_WINDOW_MS,
+    }),
+    [],
+  );
+  return (
+    <SelectDismissGuardContext.Provider value={guard}>
+      <SelectPrimitive.Root {...props} />
+    </SelectDismissGuardContext.Provider>
+  );
+}
+
 export const SelectGroup = SelectPrimitive.Group;
 export const SelectValue = SelectPrimitive.Value;
 
@@ -14,10 +46,25 @@ export type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof SelectPri
 export const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   SelectTriggerProps
->(({ className, children, ...props }, ref) => {
+>(({ className, children, onClick, onPointerDown, ...props }, ref) => {
+  const dismissGuard = React.useContext(SelectDismissGuardContext);
+
   return (
     <SelectPrimitive.Trigger
       ref={ref}
+      onPointerDown={(event) => {
+        // A pointer-down that really lands on the trigger is a new intent.
+        dismissGuard?.reset();
+        onPointerDown?.(event);
+      }}
+      onClick={(event) => {
+        onClick?.(event);
+        // Tapping the trigger of an open select dismisses it on pointer-down;
+        // the browser then clicks the trigger, and Radix would reopen it.
+        if (dismissGuard?.isRecentlyDismissed()) {
+          event.preventDefault();
+        }
+      }}
       className={cn(
         "flex h-[var(--tap-min-height)] w-full items-center justify-between gap-[var(--space-sm)] rounded-[var(--radius-sm)] border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-[var(--space-sm)] py-[var(--space-sm)] text-base text-[var(--color-text-main)] shadow-[var(--shadow-control)] transition-[border-color,box-shadow,background-color] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
         className,
@@ -40,6 +87,7 @@ export const SelectContent = React.forwardRef<
   SelectContentProps
 >(({ className, children, position = "popper", onPointerDown, onPointerDownOutside, ...props }, ref) => {
   const dialogPointerDownOutsideGuard = useDialogPointerDownOutsideGuard();
+  const dismissGuard = React.useContext(SelectDismissGuardContext);
 
   return (
     <SelectPrimitive.Portal>
@@ -56,6 +104,7 @@ export const SelectContent = React.forwardRef<
         onPointerDownOutside={(event) => {
           onPointerDownOutside?.(event);
           if (!event.defaultPrevented) {
+            dismissGuard?.markDismissed();
             dialogPointerDownOutsideGuard?.registerPointerDownOutside(event.detail.originalEvent);
           }
         }}

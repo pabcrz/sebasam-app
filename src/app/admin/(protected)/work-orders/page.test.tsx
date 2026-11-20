@@ -16,6 +16,7 @@ vi.mock("@/features/work-orders/actions", () => ({
   assignWorkOrderAction: vi.fn(),
   completeWorkOrderAction: vi.fn(),
   rollbackWorkOrderAction: vi.fn(),
+  setWorkOrderOnHoldAction: vi.fn(),
   createDirectWorkOrderFromWorkspace: vi.fn(),
 }));
 vi.mock("@/features/work-orders/components/work-order-active-list", () => ({ WorkOrderActiveList: vi.fn(() => null) }));
@@ -24,7 +25,7 @@ import { listActiveWorkOrders, listPaginatedActiveWorkOrders, listActiveWorkers 
 import { listQuotesByIds } from "@/features/quotes/queries";
 import { WorkOrderActiveList } from "@/features/work-orders/components/work-order-active-list";
 import { QuoteBuilderDialog } from "@/features/quotes/components/quote-builder-dialog";
-import { assignWorkOrderAction, completeWorkOrderAction, rollbackWorkOrderAction, createDirectWorkOrderFromWorkspace } from "@/features/work-orders/actions";
+import { assignWorkOrderAction, completeWorkOrderAction, rollbackWorkOrderAction, setWorkOrderOnHoldAction, createDirectWorkOrderFromWorkspace } from "@/features/work-orders/actions";
 import { duplicateQuoteFromForm, getOrCreateSharedQuoteAction, updateDraftQuoteFromWorkspace } from "@/features/quotes/actions";
 vi.mock("@/features/quotes/components/quote-builder-dialog", () => ({ QuoteBuilderDialog: vi.fn(({ triggerLabel }) => <button>{triggerLabel}</button>) }));
 const params = {
@@ -99,7 +100,7 @@ describe("WorkOrdersPage", () => {
     const props = vi.mocked(WorkOrderActiveList).mock.calls[0][0];
     expect(props.workOrders).toBe(orders);
     expect(Array.from(props.quoteMap.keys())).toEqual(["active-quote-1"]);
-    expect(props.workOrderActions).toEqual({ assign: assignWorkOrderAction, complete: completeWorkOrderAction, rollback: rollbackWorkOrderAction });
+    expect(props.workOrderActions).toEqual({ assign: assignWorkOrderAction, complete: completeWorkOrderAction, rollback: rollbackWorkOrderAction, setOnHold: setWorkOrderOnHoldAction });
     expect(props.duplicateQuoteAction).toBe(duplicateQuoteFromForm);
     expect(props.shareAction).toBe(getOrCreateSharedQuoteAction);
     expect(props.saveQuoteActions).toHaveLength(3);

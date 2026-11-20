@@ -38,7 +38,6 @@ export type SharedQuoteViewQuote = {
   totalCents: number | null;
   taxEnabled: boolean;
   validUntil: Date;
-  administrative: boolean;
   operationalDate: Date;
   isLocked: boolean;
   paymentDueDate: Date | null;
@@ -268,7 +267,6 @@ export function SharedQuoteView({ quote, token, isNote: isNoteProp, isPrint: isP
         vehicle={vehicle}
         title={quote.title || ""}
         description={quote.description ?? ""}
-        administrative={quote.administrative}
         sections={sections}
         subtotalCents={totals.subtotalCents}
         discountCents={Number(quote.discountCents)}

@@ -7,7 +7,7 @@ import { CustomerStatementView } from "./customer-statement-view";
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: vi.fn(), push: pushMock }),
+  useRouter: () => ({ refresh: vi.fn(), replace: pushMock, push: vi.fn() }),
 }));
 
 vi.mock("@/features/payments/actions", () => ({
@@ -65,7 +65,6 @@ describe("CustomerStatementView", () => {
           number: "COT-001",
           title: "Servicio mayor de frenos",
           description: null,
-          administrative: false,
           vehicleSnapshot: null,
           subtotalCents: 20000,
           discountCents: 0,

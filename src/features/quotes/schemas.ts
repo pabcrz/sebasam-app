@@ -119,7 +119,6 @@ const quoteInputBaseSchema = z.object({
   title: z.string().trim().min(1, "Quote title is required").max(160),
   operation: z.nativeEnum(QuoteOperationKind).default(QuoteOperationKind.WORK),
   description: optionalTrimmedString,
-  administrative: z.boolean().default(false),
   taxEnabled: z.boolean().default(true),
   discountCents: z.number().int().nonnegative().default(0),
   operationalDate: z.preprocess(
@@ -203,7 +202,6 @@ export const quoteFormSectionSchema = quoteSectionBaseSchema.extend({
 });
 
 export const quoteFormInputSchema = quoteInputBaseSchema.extend({
-  administrative: z.coerce.boolean().default(false),
   discountCents: discountCentsFromDollarInput,
   sections: z.array(quoteFormSectionSchema).min(1, "At least one quote section is required").max(10),
 }).superRefine(validateQuoteTotals);
@@ -243,7 +241,6 @@ export const quoteDraftFormItemSchema = quoteItemBaseSchema.omit({ unitPriceCent
 });
 
 export const quoteDraftFormInputSchema = quoteDraftInputBaseSchema.extend({
-  administrative: z.coerce.boolean().default(false),
   discountCents: discountCentsFromDollarInput,
   sections: z.array(quoteSectionBaseSchema.extend({ items: z.array(quoteDraftFormItemSchema) })).min(1, "At least one quote section is required").max(10),
 }).superRefine(validateDraftIdentity);

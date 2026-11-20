@@ -19,7 +19,7 @@ afterEach(() => {
 const customers = [{ id: "1", name: "Acme" }];
 // Full-screen quote flow: the bottom bar names the next step, e.g. "Conceptos →".
 const NEXT_STEP = /→$/;
-const editInitialData = { customerId: "1", vehicle: { plate: "ABC123", brand: "Ford", model: "Transit", year: "2024" }, title: "Servicio", description: "", administrative: false, taxEnabled: true, discountCents: 0, sections: [{ name: "", items: [{ type: "LABOR" as const, description: "Frenos", quantity: "1", unitPrice: "100" }] }] };
+const editInitialData = { customerId: "1", vehicle: { plate: "ABC123", brand: "Ford", model: "Transit", year: "2024" }, title: "Servicio", description: "", taxEnabled: true, discountCents: 0, sections: [{ name: "", items: [{ type: "LABOR" as const, description: "Frenos", quantity: "1", unitPrice: "100" }] }] };
 
 function expectStableDialogLayout(dialog: HTMLElement, overflowing: boolean) {
   const dialogStyle = getComputedStyle(dialog);

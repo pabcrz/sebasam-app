@@ -107,7 +107,8 @@ export function EntityCard({
         "flex w-full min-w-0 flex-col rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-card)] transition-shadow duration-[var(--motion-fast)] hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
         onOpen && "cursor-pointer",
         variant === "featured" && "shadow-[var(--shadow-card-hover)]",
-        selected && "shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)]",
+        // The hover shadow would replace this one, so the selected mark repeats it for hover and stays visible with the pointer over the card.
+        selected && "shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)] hover:shadow-[var(--shadow-card-hover),0_0_0_2px_color-mix(in_srgb,var(--color-amount)_55%,transparent)]",
         className,
       )}
     >
@@ -137,7 +138,10 @@ export function EntityCard({
       </div>
 
       {customer != null ? (
-        <p className="mt-3 truncate text-sm font-medium text-[var(--color-text-main)]">{customer}</p>
+        <p data-testid="entity-card-customer" className="mt-3 flex min-w-0 items-center gap-1.5 text-sm font-medium text-[var(--color-text-main)]">
+          <Icon name="user" className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
+          <span className="min-w-0 truncate">{customer}</span>
+        </p>
       ) : null}
       {unit ? (
         <p data-testid="entity-card-unit" className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-[var(--color-text-muted)]">

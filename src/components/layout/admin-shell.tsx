@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTrackPreviousPath } from "@/components/layout/back-link";
 import { Icon } from "@/components/ui/icon";
 import { logoutAdmin } from "@/features/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -113,7 +114,7 @@ function NavLink({ item, active, variant, expanded = false, onNavStart }: NavLin
         } ${pendingClass}`}
       >
         <Icon name={icon} className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-        <span className={expanded ? "" : "line-clamp-2 w-full break-words text-center text-[0.625rem] leading-3"}>{label}</span>
+        <span className={expanded ? "" : "w-full text-center text-[0.625rem] leading-3 tracking-tight"}>{label}</span>
       </Link>
     );
   }
@@ -162,6 +163,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
   const profileMenuRef = React.useRef<HTMLDetailsElement>(null);
   const mobileNavRef = React.useRef<HTMLElement>(null);
   const pathname = usePathname();
+  useTrackPreviousPath();
 
   React.useEffect(() => {
     const closeProfileMenuOnOutsideClick = (event: MouseEvent) => {
@@ -203,7 +205,7 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
           data-admin-rail
           data-expanded={isRailExpanded ? "true" : "false"}
           className={`absolute inset-y-0 left-0 flex flex-col overflow-x-hidden overflow-y-auto border-r border-[var(--color-border-light)] bg-[var(--color-surface)] py-4 text-[var(--color-text-main)] transition-[width,box-shadow] duration-200 ease-out ${
-            isRailExpanded ? "w-[220px] px-3.5 shadow-lg" : "w-20 px-1.5"
+            isRailExpanded ? "w-[220px] px-3.5 shadow-lg" : "w-20 px-1"
           }`}
         >
           <button

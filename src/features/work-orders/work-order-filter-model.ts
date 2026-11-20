@@ -55,10 +55,31 @@ export function commonFilterParams(filters: CommonOperationalFilters) {
 }
 
 /** Shared relational criteria; SQL Notes adapters mirror these before aggregation. */
+/**
+ * The unified search box: one text matches the quote number or folio, the driver
+ * (the quote's contact), or the unit's plates or ECO, in the live record or its snapshot.
+ */
+export function quoteSearchMatches(value: string): Prisma.QuoteWhereInput[] {
+  const contains = { contains: value, mode: "insensitive" as const };
+  const inSnapshot = (key: string) => ({ path: [key], string_contains: value, mode: "insensitive" as const });
+  return [
+    { number: contains },
+    { folio: contains },
+    { customer: { is: { OR: [{ name: contains }, { commercialName: contains }, { legalName: contains }] } } },
+    { customerSnapshot: inSnapshot("name") },
+    { customerContact: { is: { name: contains } } },
+    { contactSnapshot: inSnapshot("name") },
+    { vehicle: { is: { plate: contains } } },
+    { vehicleSnapshot: inSnapshot("plate") },
+    { vehicle: { is: { economicNumber: contains } } },
+    { vehicleSnapshot: inSnapshot("economicNumber") },
+  ];
+}
+
 export function operationalQuoteWhere(filters: CommonOperationalFilters): Prisma.QuoteWhereInput {
   const and: Prisma.QuoteWhereInput[] = [];
   const contains = (value: string) => ({ contains: value, mode: "insensitive" as const });
-  if (filters.number) and.push({ OR: [{ number: contains(filters.number) }, { folio: contains(filters.number) }] });
+  if (filters.number) and.push({ OR: quoteSearchMatches(filters.number) });
   if (filters.concept) and.push({ OR: [{ title: contains(filters.concept) }, { description: contains(filters.concept) }, { items: { some: { description: contains(filters.concept) } } }] });
   for (const key of ["plate", "economicNumber"] as const) {
     const value = filters[key];
@@ -77,7 +98,7 @@ export function parseWorkOrderParams(input: FilterParams) {
   const scheduled = parseCommonOperationalFilters({ dateFrom: input.scheduledFrom });
   const scheduledTo = parseCommonOperationalFilters({ dateTo: input.scheduledTo }).dateTo;
   if (scheduled.dateFrom && scheduledTo && scheduled.dateFrom > scheduledTo) throw new RangeError("scheduledFrom must not be after scheduledTo.");
-  const execution: "PLANNED" | "ASSIGNED" | "IN_PROGRESS" | undefined = input.execution === "PLANNED" || input.execution === "ASSIGNED" || input.execution === "IN_PROGRESS" ? input.execution : undefined;
+  const execution: "PLANNED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | undefined = input.execution === "PLANNED" || input.execution === "ASSIGNED" || input.execution === "IN_PROGRESS" || input.execution === "ON_HOLD" ? input.execution : undefined;
   return { ...common, execution, assignee: normalizeResponsible(input.assignee), scheduledFrom: scheduled.dateFrom, scheduledTo, page: parsePage(input.page) };
 }
 

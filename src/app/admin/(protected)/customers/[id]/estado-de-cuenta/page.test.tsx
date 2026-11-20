@@ -89,7 +89,6 @@ describe("CustomerStatementView", () => {
           number: "COT-001",
           title: "Cotización 1",
           description: null,
-          administrative: false,
           vehicleSnapshot: null,
           subtotalCents: 150000,
           discountCents: 0,

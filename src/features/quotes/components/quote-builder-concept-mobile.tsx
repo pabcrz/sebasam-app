@@ -59,7 +59,7 @@ export function MobileConceptRow({
         <div
           ref={(node) => onRowRef(rowId, node)}
           data-testid={`concept-row-${displayIndex}`}
-          className={`grid ${isExpanded ? "rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] px-2" : "bg-[var(--color-surface)]"}${animated ? " motion-safe:animate-fade-in motion-safe:animate-duration-200" : ""}`}
+          className={`grid ${isExpanded ? "rounded-[var(--radius-md)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)] px-3" : "bg-[var(--color-surface)]"}${animated ? " motion-safe:animate-fade-in motion-safe:animate-duration-200" : ""}`}
         >
           <div className="flex items-center gap-1">
             <DragHandle
@@ -79,20 +79,32 @@ export function MobileConceptRow({
                   {isEmptyConcept ? "Nuevo concepto" : formatConceptSummaryDescription(item.description) || "Concepto sin descripción"}
                 </span>
                 {isEmptyConcept ? null : (
-                  <span className={`${isExpanded ? "hidden" : "flex"} flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)]`}>
-                    {pendingSummary ? (
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)]">
+                    {pendingSummary && !isExpanded ? (
                       <span className="font-medium text-[var(--color-status-danger-fg)]">{pendingSummary}</span>
                     ) : null}
-                    <span>{itemTypeLabels[item.type]}</span>
+                    <span>
+                      {itemTypeLabels[item.type]}
+                      {isExpanded && model.unitPriceCents !== null && item.quantity.trim() !== "" ? (
+                        <>
+                          {" · "}
+                          <span className="whitespace-nowrap">{`${item.quantity} × ${formatCents(model.unitPriceCents)}`}</span>
+                        </>
+                      ) : null}
+                    </span>
                     {countsForPayroll ? (
                       <span className="font-semibold text-[var(--color-status-success-fg)]">Nómina</span>
                     ) : null}
                   </span>
                 )}
               </span>
-              <span className="shrink-0 text-sm font-semibold tabular-nums text-[var(--color-text-main)]">
+              <output
+                className="shrink-0 text-sm font-semibold tabular-nums text-[var(--color-text-main)]"
+                data-testid={`concept-total-${displayIndex}`}
+                aria-label={`Importe del concepto ${displayIndex + 1}`}
+              >
                 {isEmptyConcept ? formatCents(0) : lineTotalCents === null ? "Pendiente" : formatCents(lineTotalCents)}
-              </span>
+              </output>
               <span className="shrink-0 text-[var(--color-text-muted)]" aria-hidden="true">
                 <Icon name={isExpanded ? "chevron-up" : "chevron-down"} className="h-4 w-4" />
               </span>
@@ -111,13 +123,7 @@ export function MobileConceptRow({
               <ConceptUnitPriceField model={model} mode="stacked" dispatch={dispatch} />
             </div>
             <ConceptPayrollField model={model} mode="stacked" dispatch={dispatch} />
-            <div className="flex items-center justify-between text-sm text-[var(--color-text-muted)]">
-              <span>Importe</span>
-              <output className="font-medium tabular-nums" data-testid={`concept-total-${displayIndex}`} aria-label={`Importe del concepto ${displayIndex + 1}`}>
-                {lineTotalCents === null ? "Pendiente" : formatCents(lineTotalCents)}
-              </output>
-            </div>
-            <div className="flex flex-wrap items-center gap-1 border-t border-[var(--color-border-light)] pt-2">
+            <div className="flex flex-wrap items-center gap-1 pt-1">
               <Button
                 type="button"
                 variant="ghost"

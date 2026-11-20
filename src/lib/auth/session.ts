@@ -193,6 +193,16 @@ export async function requireSuperAdmin(): Promise<CurrentProfile> {
   return requireRole(["SUPER_ADMIN"]);
 }
 
+/** Page variant: a signed-in user without the role goes back to the panel instead of a server error. */
+export async function requireSuperAdminForPage(): Promise<CurrentProfile> {
+  try {
+    return await requireSuperAdmin();
+  } catch (error) {
+    if (error instanceof UnauthorizedRoleError) redirect("/admin");
+    throw error;
+  }
+}
+
 export async function requireOperationalRole(): Promise<CurrentProfile> {
   return requireRole(["SUPER_ADMIN", "ADMIN", "ADMIN_ASSISTANT"]);
 }

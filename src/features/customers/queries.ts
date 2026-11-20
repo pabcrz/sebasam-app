@@ -1,7 +1,7 @@
 import { LedgerEntryType, LedgerMovementType, PaymentMethod, WorkOrderStatus, type Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireOperationalRole } from "@/lib/auth/session";
-import { getCustomerBalanceSummary } from "@/features/payments/domain";
+import { getCustomerBalanceSummary, getCustomersBalanceSummaries } from "@/features/payments/domain";
 import { customerSearchSchema } from "./schemas";
 
 export type CustomerAccountStatement = {
@@ -155,16 +155,19 @@ export async function listCustomers(input: unknown = {}) {
 export async function listCustomerRows(input: unknown = {}) {
   const customers = await listCustomers(input);
 
-  return Promise.all(
-    customers.map(async (customer) => {
-      const balance = await getCustomerBalanceSummary(prisma, customer.id);
-      return {
-        ...customer,
-        pendingBalanceCents: balance.pendingBalanceCents,
-        availableCreditCents: balance.availableCreditCents,
-      };
-    }),
+  const balances = await getCustomersBalanceSummaries(
+    prisma,
+    customers.map((customer) => customer.id),
   );
+
+  return customers.map((customer) => {
+    const balance = balances.get(customer.id)!;
+    return {
+      ...customer,
+      pendingBalanceCents: balance.pendingBalanceCents,
+      availableCreditCents: balance.availableCreditCents,
+    };
+  });
 }
 
 export async function getCustomerById(customerId: string) {

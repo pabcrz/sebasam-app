@@ -35,6 +35,12 @@ export const completeWorkOrderInputSchema = z.object({
   workOrderId: z.string().min(1),
 });
 
+export const setWorkOrderOnHoldInputSchema = z.object({
+  workOrderId: z.string().min(1),
+  onHold: z.boolean(),
+  reason: z.string().trim().max(120, "El motivo no puede pasar de 120 caracteres.").optional(),
+});
+
 export const rollbackWorkOrderInputSchema = z.object({
   workOrderId: z.string().min(1),
   targetQuoteStatus: z.enum(["SENT", "DRAFT"]),

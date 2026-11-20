@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import { BackLink } from "@/components/layout/back-link";
 import { Icon } from "@/components/ui/icon";
 import { AdminPageHeader } from "@/components/admin-page-header";
 import { getWorkOrderById } from "@/features/work-orders/queries";
@@ -61,13 +61,13 @@ export default async function WorkOrderDetailPage({ params }: WorkOrderDetailPag
   return (
     <section className="mx-auto grid w-full max-w-4xl gap-4 px-4 py-6 md:gap-6 md:px-6 md:py-10">
       <div>
-        <Link
+        <BackLink
           href="/admin/work-orders"
           className="inline-flex items-center gap-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
         >
           <Icon name="arrow-left" className="h-4 w-4" />
           Volver a Trabajos
-        </Link>
+        </BackLink>
       </div>
 
       <AdminPageHeader icon="clipboard" title={quote.customer?.name ?? "Sin cliente"} description={`Orden de Trabajo ${workOrder.number}`} variant="expanded" actions={<Badge variant={workOrder.status === "COMPLETED" ? "success" : "info"} className="w-fit">{workOrder.status === "COMPLETED" ? "Completada" : "En proceso"}</Badge>} />
