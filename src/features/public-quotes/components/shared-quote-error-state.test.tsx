@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SharedQuoteErrorState, type SharedQuoteErrorType } from "./shared-quote-error-state";
+
+vi.mock("@/components/errors/truck-stage", () => ({
+  TruckStage: () => <div role="img" aria-label="Camión de carga con una llanta trasera salida" />,
+}));
 
 const errorCases: Array<{ type: SharedQuoteErrorType; title: string; message: string }> = [
   {
@@ -27,12 +31,12 @@ describe("SharedQuoteErrorState", () => {
     const logo = screen.getByRole("img", { name: "Logo de SEBASAM" });
 
     expect(logo).toHaveAttribute("src", expect.stringContaining("logo-white-short.png"));
-    expect(screen.getByRole("heading", { name: "SEBASAM" })).toBeInTheDocument();
+    expect(screen.getByText("SEBASAM")).toBeInTheDocument();
     expect(screen.getByText("Servicio y Refacciones para Suspensiones de Aire y Muelles")).toHaveClass(
       "font-mono",
       "text-[10px]",
       "uppercase",
-      "text-[var(--color-on-navy-tint)]",
+      "text-[var(--color-text-muted-fg)]",
     );
   });
 
@@ -43,7 +47,7 @@ describe("SharedQuoteErrorState", () => {
     expect(screen.getByText(message)).toBeInTheDocument();
     expect(screen.getByLabelText("404")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Logo de SEBASAM" })).toHaveAttribute("src", expect.stringContaining("logo-white-short.png"));
-    expect(screen.getByRole("heading", { name: "SEBASAM" })).toBeInTheDocument();
+    expect(screen.getByText("SEBASAM")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ver información y contacto" })).toHaveAttribute(
       "href",
       "https://sebasam.online/info",
