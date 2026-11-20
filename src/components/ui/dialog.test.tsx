@@ -298,8 +298,70 @@ describe("DialogContent", () => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
 
       unmount();
+      await waitFor(() => expect(backSpy).toHaveBeenCalledTimes(1));
+    });
 
-      expect(backSpy).toHaveBeenCalledTimes(1);
+    it("does not pop history for a closing dialog when another one is already open (leaves the orphan entry to the skipper)", async () => {
+      const backSpy = vi.spyOn(window.history, "back").mockImplementation(() => {});
+      function Swap() {
+        const [first, setFirst] = React.useState(true);
+        return (
+          <>
+            <button type="button" onClick={() => setFirst(false)}>Swap</button>
+            <Dialog open={first}><DialogContent><DialogTitle>Primero</DialogTitle></DialogContent></Dialog>
+            <Dialog open={!first}><DialogContent><DialogTitle>Segundo</DialogTitle></DialogContent></Dialog>
+          </>
+        );
+      }
+      render(<Swap />);
+      await React.act(async () => {
+        screen.getByRole("button", { name: "Swap", hidden: true }).click();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      expect(screen.getByRole("dialog", { name: "Segundo" })).toBeInTheDocument();
+      expect(backSpy).not.toHaveBeenCalled();
+    });
+
+    it("keeps a dialog open when another one closes in the same moment (its history.back must not dismiss the new one)", async () => {
+      function Swap() {
+        const [first, setFirst] = React.useState(true);
+        const [second, setSecond] = React.useState(false);
+        return (
+          <>
+            <button type="button" onClick={() => { setFirst(false); setSecond(true); }}>Swap</button>
+            <Dialog open={first} onOpenChange={setFirst}>
+              <DialogContent><DialogTitle>Primero</DialogTitle></DialogContent>
+            </Dialog>
+            <Dialog open={second} onOpenChange={setSecond}>
+              <DialogContent><DialogTitle>Segundo</DialogTitle></DialogContent>
+            </Dialog>
+          </>
+        );
+      }
+      render(<Swap />);
+      expect(screen.getByRole("dialog", { name: "Primero" })).toBeInTheDocument();
+
+      await React.act(async () => {
+        screen.getByRole("button", { name: "Swap", hidden: true }).click();
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      expect(screen.getByRole("dialog", { name: "Segundo" })).toBeInTheDocument();
+    });
+
+    it("does not pile up history keys from earlier dialogs in the new entry's state", async () => {
+      const user = userEvent.setup();
+      render(<SimpleTestDialog />);
+      for (let i = 0; i < 3; i += 1) {
+        await user.click(screen.getByRole("button", { name: "Open simple dialog" }));
+        await user.click(screen.getByRole("button", { name: "Close simple dialog" }));
+        await React.act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
+      }
+      await user.click(screen.getByRole("button", { name: "Open simple dialog" }));
+
+      const keys = Object.keys((window.history.state as Record<string, unknown> | null) ?? {}).filter((key) => key.startsWith("__dialog_"));
+      expect(keys).toHaveLength(1);
     });
 
     it("does not push history state or register dismiss when disablePlatformDismiss is true", async () => {
