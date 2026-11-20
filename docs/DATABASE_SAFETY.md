@@ -13,7 +13,7 @@ El guard falla antes de invocar Prisma si falta `DATABASE_URL` o `DIRECT_URL`, s
 
 ## Respaldo local
 
-Ejecutalo manualmente desde una máquina con el proyecto Supabase vinculado y con un destino absoluto, por ejemplo una USB montada:
+Ejecutalo manualmente desde una máquina con el cliente de PostgreSQL (`pg_dump`, versión igual o mayor a la del servidor), `DIRECT_URL` en el entorno o en `.env` y un destino absoluto, por ejemplo una USB montada. No requiere Docker ni la CLI de Supabase. Si tu `pg_dump` por defecto es de una versión anterior, apunta `PG_DUMP` al binario correcto (por ejemplo `PG_DUMP=/opt/homebrew/opt/postgresql@17/bin/pg_dump`):
 
 ```bash
 pnpm db:backup:public -- --destination /Volumes/SEBASAM-BACKUPS
@@ -23,12 +23,22 @@ El comando crea un directorio fechado con estos archivos verificados como no vac
 
 | Archivo | Contenido |
 |---|---|
-| `public-schema.sql` | Esquema `public` mediante `supabase db dump --linked`. |
-| `public-data.sql` | Datos de `public` mediante `supabase db dump --linked --data-only`. |
+| `public-schema.sql` | Esquema `public` mediante `pg_dump --schema-only`. |
+| `public-data.sql` | Datos de `public` mediante `pg_dump --data-only --disable-triggers` (hay tablas con claves foráneas circulares). |
 | `manifest.json` | Alcance, archivos y hashes generados. |
 | `SHA256SUMS` | Checksums SHA-256 de los dumps SQL. |
 
-No se escriben URLs ni credenciales en el comando, el manifiesto o los logs del wrapper.
+Las credenciales se pasan a `pg_dump` por variables `PG*`, no por argumentos; no se escriben en el manifiesto ni en los logs. Si un dump falla, el directorio parcial se elimina.
+
+## Restaurar un respaldo
+
+Restaura siempre en un Postgres limpio donde tengas permisos de superusuario (por ejemplo uno local); `--disable-triggers` del dump de datos lo requiere, y el rol `postgres` de Supabase no lo es.
+
+1. Crea los roles y la extensión que el esquema da por existentes: `CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role; CREATE EXTENSION vector WITH SCHEMA public;` (el esquema usa `pgvector`).
+2. `psql -f public-schema.sql` y después `psql -f public-data.sql`. El aviso `schema "public" already exists` es esperado.
+3. Compara conteos por tabla contra el origen.
+
+Verificado el 2026-11-20 con `postgresql@17` y `pgvector` 0.8.6 locales: 34 tablas con conteos idénticos a la base de origen.
 
 ## Límites del respaldo
 
