@@ -45,11 +45,11 @@ export function WeeklyPayrollSummary({ report }: { report: WeeklyPayrollReport }
         <p className="mb-4 text-sm">{report.rangeLabel} · {mode === "normal" ? "Normal" : "Ajustada"}</p>
         <table className="w-full border-collapse text-left text-xs">
           <thead><tr>
-            <th className="border-b border-slate-300 px-2 py-2 font-semibold">Fecha</th><th className="border-b border-slate-300 px-2 py-2 font-semibold">Trabajo / concepto</th>
-            <th className="border-b border-slate-300 px-2 py-2 font-semibold">Importe</th>
-            {report.workers.map((worker) => <th key={worker.workerId} className="border-b border-slate-300 px-2 py-2 font-semibold">{worker.displayName}</th>)}
+            <th className="border-b-2 border-slate-900 px-2 py-2 font-semibold">Fecha</th><th className="border-b-2 border-slate-900 px-2 py-2 font-semibold">Trabajo / concepto</th>
+            <th className="border-b-2 border-slate-900 px-2 py-2 font-semibold">Importe</th>
+            {report.workers.map((worker) => <th key={worker.workerId} className="border-b-2 border-slate-900 px-2 py-2 font-semibold">{worker.displayName}</th>)}
           </tr></thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-slate-400">
             {presentation.rows.map((row, index) => <tr key={`${row.workOrderNumber}-${index}`}>
               <td className="px-2 py-2">{new Intl.DateTimeFormat("es-MX").format(new Date(row.completedAt))}</td>
               <td className="px-2 py-2">{row.workOrderNumber} · {row.description}</td>
@@ -69,10 +69,10 @@ export function WeeklyPayrollSummary({ report }: { report: WeeklyPayrollReport }
         {(report.fixedPayHelpers?.length ?? 0) > 0 && <section className="mt-6">
           <h3 className="mb-2 font-bold">Ayudantes generales · sueldo fijo semanal</h3>
           <table className="w-full border-collapse text-left text-xs">
-            <thead><tr><th className="border-b border-slate-300 px-2 py-2 font-semibold">Ayudante</th><th className="border-b border-slate-300 px-2 py-2 font-semibold">Sueldo semanal</th>
-              <th className="border-b border-slate-300 px-2 py-2 font-semibold">Faltas</th><th className="border-b border-slate-300 px-2 py-2 font-semibold">Descuento</th>
-              <th className="border-b border-slate-300 px-2 py-2 font-semibold">Comisión manual</th><th className="border-b border-slate-300 px-2 py-2 font-semibold">Total a liquidar</th></tr></thead>
-            <tbody className="divide-y divide-slate-200">{report.fixedPayHelpers!.map((helper) => <tr key={helper.workerId}>
+            <thead><tr><th className="border-b-2 border-slate-900 px-2 py-2 font-semibold">Ayudante</th><th className="border-b-2 border-slate-900 px-2 py-2 font-semibold">Sueldo semanal</th>
+              <th className="border-b-2 border-slate-900 px-2 py-2 font-semibold">Faltas</th><th className="border-b-2 border-slate-900 px-2 py-2 font-semibold">Descuento</th>
+              <th className="border-b-2 border-slate-900 px-2 py-2 font-semibold">Comisión manual</th><th className="border-b-2 border-slate-900 px-2 py-2 font-semibold">Total a liquidar</th></tr></thead>
+            <tbody className="divide-y divide-slate-400">{report.fixedPayHelpers!.map((helper) => <tr key={helper.workerId}>
               <td className="px-2 py-2">{helper.displayName}</td><td className="px-2 py-2">{formatCents(helper.weeklyRateCents)}</td>
               <td className="px-2 py-2">{helper.absenceDays}</td><td className="px-2 py-2">{formatCents(helper.absenceDeductionCents)}</td>
               <td className="px-2 py-2">{formatCents(helper.manualCommissionCents)}</td><td className="px-2 py-2">{formatCents(helper.totalPayableCents)}</td>
