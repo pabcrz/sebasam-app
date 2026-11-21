@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Icon } from "@/components/ui/icon";
-import { StatTile, Tabs } from "@/components/ui";
+import { SectionLabel, StatTile, Tabs } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import type { DashboardPeriodKey, PeriodMetrics } from "../types";
 
@@ -37,19 +36,12 @@ export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
         onValueChange={(value) => setSelectedPeriod(value as DashboardPeriodKey)}
         header={
           <div>
-            <div className="flex items-center gap-2">
-              <Icon name="trend-up" className="h-5 w-5 text-[var(--color-primary)]" aria-hidden="true" />
-              <h2 id="kpis-heading" className="text-lg font-semibold text-[var(--color-text-main)]">
-                Resumen del período
-              </h2>
-            </div>
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              Período: <span className="font-medium text-[var(--color-text-main)]">{activeMetrics.rangeLabel}</span>
-            </p>
+            <SectionLabel id="kpis-heading">Resumen</SectionLabel>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{activeMetrics.rangeLabel}</p>
           </div>
         }
-        headerClassName="sticky top-0 z-10 flex flex-col gap-3 bg-[var(--background)]/95 backdrop-blur-xs py-2 pb-3 sm:flex-row sm:items-center sm:justify-between"
-        tabListClassName="self-start sm:self-auto"
+        headerClassName="flex items-start justify-between gap-3 pb-3"
+        tabListClassName="shrink-0"
         panelContainerClassName="pt-2"
       />
     </section>
@@ -59,27 +51,27 @@ export function KpiPeriodMetrics({ kpis }: KpiPeriodMetricsProps) {
 function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3">
         <StatTile
-          label="Trabajos Finalizados"
+          label="Trabajos finalizados"
           value={metrics.completedWorkOrdersCount}
           numericRole="count"
           description="Órdenes completadas"
         />
         <StatTile
-          label="Mano de Obra"
+          label="Mano de obra"
           value={formatCents(metrics.completedLaborBilledCents)}
           numericRole="currency"
           description="Facturada finalizada"
         />
         <StatTile
-          label="Materiales y Refacciones"
+          label="Materiales y refacciones"
           value={formatCents(metrics.completedMaterialsBilledCents)}
           numericRole="currency"
           description="Materiales y repuestos"
         />
         <StatTile
-          label="Cobros Recibidos"
+          label="Cobros recibidos"
           value={formatCents(metrics.collectedPaymentsTotalCents)}
           numericRole="currency"
           tone="success"
@@ -93,9 +85,7 @@ function PeriodMetricCards({ metrics }: { metrics: PeriodMetrics }) {
           }
         />
       </div>
-      <p className="mt-3 text-right text-[11px] text-[var(--color-text-muted)] italic">
-        * Los cobros se agrupan según su fecha de registro en el sistema.
-      </p>
+      <p className="mt-2 text-xs text-[var(--color-text-muted)]">Los cobros cuentan por su fecha de registro.</p>
     </>
   );
 }
