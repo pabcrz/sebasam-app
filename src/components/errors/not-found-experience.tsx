@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { BrandHeader } from "@/components/brand-header";
 import { BackButton } from "./back-button";
 import { TruckStage } from "./truck-stage";
 
@@ -30,23 +30,7 @@ export function NotFoundExperience({
   return (
     <main className="flex min-h-dvh w-full justify-center bg-[var(--color-bg-soft)] pb-[max(var(--space-lg),env(safe-area-inset-bottom))] pl-[max(var(--space-md),env(safe-area-inset-left))] pr-[max(var(--space-md),env(safe-area-inset-right))] pt-[max(var(--space-md),env(safe-area-inset-top))]">
       <div className="flex w-full max-w-[960px] flex-col gap-[var(--space-md)] md:gap-[var(--space-lg)]">
-        <header className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-primary)]">
-            <Image
-              src="/logo-white-short.png"
-              alt="Logo de SEBASAM"
-              width={28}
-              height={28}
-              className="h-7 w-7 object-contain"
-            />
-          </span>
-          <div className="min-w-0">
-            <p className="text-lg font-extrabold leading-none tracking-tight text-[var(--color-text-main)]">SEBASAM</p>
-            <p className="mt-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted-fg)]">
-              Servicio y Refacciones para Suspensiones de Aire y Muelles
-            </p>
-          </div>
-        </header>
+        <BrandHeader />
         <div className="flex flex-1 flex-col justify-center gap-[var(--space-lg)] md:grid md:grid-cols-2 md:items-center md:gap-[var(--space-2xl)]">
           <div className="flex flex-col items-center gap-[var(--space-sm)] md:order-2">
             <TruckStage className="max-w-[420px] md:max-w-none" />
