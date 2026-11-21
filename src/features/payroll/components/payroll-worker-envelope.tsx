@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toPng } from "html-to-image";
+import { downloadElementPng, shareElementPng } from "@/lib/share-image";
 import { PayrollWorkerEnvelopeDocument } from "./payroll-worker-envelope-document";
 import { printElementById } from "../lib/print-element";
 import type { WorkerPayrollSummary } from "../domain";
@@ -40,32 +40,12 @@ export function PayrollWorkerEnvelopeModal({
   };
 
 
-  const generateEnvelopePngDataUrl = async (): Promise<string | null> => {
-    const node = document.getElementById("payroll-worker-envelope-document");
-    if (!node) return null;
-
-    return await toPng(node, {
-      backgroundColor: "#ffffff",
-      pixelRatio: 2,
-      cacheBust: true,
-      style: {
-        margin: "0",
-        transform: "none",
-      },
-    });
-  };
+  const fileName = `recibo-nomina-${worker.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
 
   const handleDownloadImage = async () => {
     setIsGeneratingImage(true);
     try {
-      const dataUrl = await generateEnvelopePngDataUrl();
-      if (!dataUrl) return;
-
-      const link = document.createElement("a");
-      const safeName = worker.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      link.download = `recibo-nomina-${safeName}.png`;
-      link.href = dataUrl;
-      link.click();
+      await downloadElementPng("payroll-worker-envelope-document", fileName);
     } catch (err) {
       console.error("Error exportando imagen de sobre:", err);
     } finally {
@@ -77,33 +57,9 @@ export function PayrollWorkerEnvelopeModal({
     setIsSharingWhatsApp(true);
     setShareStatus(null);
     try {
-      const dataUrl = await generateEnvelopePngDataUrl();
-      if (!dataUrl) throw new Error("No se pudo generar la imagen del recibo.");
-
-      const safeName = worker.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], `recibo-nomina-${safeName}.png`, { type: "image/png" });
-
-      if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Recibo de Nómina - ${worker.displayName}`,
-        });
-        return;
-      }
-
-      const link = document.createElement("a");
-      link.download = file.name;
-      link.href = dataUrl;
-      link.click();
-      setShareStatus("Imagen descargada. Adjuntala manualmente en WhatsApp.");
-    } catch (err) {
-      if ((err as Error)?.name !== "AbortError") {
-        console.error("Error al compartir imagen por WhatsApp:", err);
-        setShareStatus("No se pudo compartir la imagen. Descargala e intentá adjuntarla manualmente.");
-      }
+      setShareStatus(
+        await shareElementPng("payroll-worker-envelope-document", fileName, `Recibo de Nómina - ${worker.displayName}`),
+      );
     } finally {
       setIsSharingWhatsApp(false);
     }
