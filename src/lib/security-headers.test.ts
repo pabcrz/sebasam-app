@@ -37,6 +37,16 @@ describe("buildContentSecurityPolicy", () => {
     expect(buildContentSecurityPolicy(base)).not.toContain("vercel.live");
     expect(buildContentSecurityPolicy({ ...base, isPreview: true })).toContain("https://vercel.live");
   });
+
+  it("never mixes 'none' with other sources, which browsers ignore", () => {
+    for (const isPreview of [false, true]) {
+      const csp = buildContentSecurityPolicy({ ...base, isPreview });
+      for (const rule of csp.split("; ")) {
+        if (rule.includes("'none'")) expect(rule.split(" ")).toHaveLength(2);
+      }
+    }
+    expect(directive(buildContentSecurityPolicy({ ...base, isPreview: true }), "frame-src")).toBe("frame-src https://vercel.live");
+  });
 });
 
 describe("getInlineScriptHashes", () => {
