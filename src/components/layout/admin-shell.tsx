@@ -83,13 +83,13 @@ function NavLink({ item, active, variant, expanded = false, onNavStart }: NavLin
         <span
           className={`flex h-[34px] w-14 items-center justify-center rounded-[17px] transition-colors duration-150 ${
             active
-              ? "bg-[image:var(--gradient-primary)] text-white"
+              ? "bg-[var(--color-tonal-bg)] text-[var(--color-tonal-fg)]"
               : "text-[var(--color-text-muted)] group-hover:bg-[var(--color-bg-soft)] group-hover:text-[var(--color-text-main)]"
           }`}
         >
           <Icon name={icon} className="h-[22px] w-[22px]" aria-hidden="true" />
         </span>
-        <span className={`w-full truncate text-center text-[0.625rem] leading-none ${active ? "font-semibold text-[var(--color-text-main)]" : "font-medium text-[var(--color-text-muted)]"}`}>
+        <span className={`w-full truncate text-center text-[0.6875rem] leading-none ${active ? "font-semibold text-[var(--color-tonal-fg)]" : "font-medium text-[var(--color-text-muted)]"}`}>
           {label}
         </span>
       </Link>
@@ -109,7 +109,7 @@ function NavLink({ item, active, variant, expanded = false, onNavStart }: NavLin
             : "min-h-12 flex-col items-center justify-center gap-1 px-0.5 py-1.5"
         } ${
           active
-            ? "bg-[image:var(--gradient-primary)] font-semibold text-white"
+            ? "bg-[var(--color-tonal-bg)] font-semibold text-[var(--color-tonal-fg)]"
             : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-soft)] hover:text-[var(--color-text-main)]"
         } ${pendingClass}`}
       >
@@ -416,13 +416,17 @@ export function AdminShell({ displayName, role, children }: AdminShellProps) {
             <span
               className={`flex h-[34px] w-14 items-center justify-center rounded-[17px] transition-colors duration-150 ${
                 moreIsCurrent && !isMoreOpen
-                  ? "bg-[image:var(--gradient-primary)] text-white"
+                  ? "bg-[var(--color-tonal-bg)] text-[var(--color-tonal-fg)]"
                   : "text-[var(--color-text-muted)] group-hover:bg-[var(--color-bg-soft)] group-hover:text-[var(--color-text-main)]"
               }`}
             >
               <Icon name={isMoreOpen ? "close" : "more"} className="h-[22px] w-[22px]" aria-hidden="true" />
             </span>
-            <span className="w-full truncate text-center text-[0.625rem] font-medium leading-none text-[var(--color-text-muted)]">
+            <span
+              className={`w-full truncate text-center text-[0.6875rem] leading-none ${
+                moreIsCurrent && !isMoreOpen ? "font-semibold text-[var(--color-tonal-fg)]" : "font-medium text-[var(--color-text-muted)]"
+              }`}
+            >
               {isMoreOpen ? "Cerrar" : "Más"}
             </span>
           </button>
