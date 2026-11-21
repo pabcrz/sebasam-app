@@ -36,7 +36,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
 
   return (
     <main className="flex min-h-dvh w-full items-center justify-center px-4 py-12 md:px-6">
-      <div className="flex w-full items-center justify-center md:max-w-[960px] md:justify-between md:gap-[var(--space-2xl)]">
+      <div className="flex w-full items-center justify-center md:max-w-[960px] md:flex-row-reverse md:justify-between md:gap-[var(--space-2xl)]">
         <Card className="w-full md:max-w-100">
           <CardHeader>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
