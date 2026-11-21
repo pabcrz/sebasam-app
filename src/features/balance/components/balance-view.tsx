@@ -6,6 +6,7 @@ import type { PeriodView } from "@/lib/period-format";
 import { formatCents } from "@/features/quotes/lib/format";
 import { ReceivablesSection } from "@/features/dashboard/components/receivables-section";
 import type { IncomeBalance } from "../queries";
+import { SettledIncomeComparison } from "./settled-income-comparison";
 
 type BalanceViewProps = {
   balance: IncomeBalance;
@@ -62,6 +63,8 @@ export function BalanceView({ balance, period, anchor, rangeLabel, today }: Bala
         />
         <ReceivablesSection customers={receivables.customers} limit={Infinity} />
       </section>
+
+      <SettledIncomeComparison periods={balance.periods} />
     </div>
   );
 }
