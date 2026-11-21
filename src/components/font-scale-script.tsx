@@ -1,19 +1,6 @@
 "use client";
 
-const fontScaleScript = `
-  (function () {
-    try {
-      var scale = localStorage.getItem('sebasam-font-scale');
-      if (scale === 'large') {
-        document.documentElement.setAttribute('data-font-scale', 'large');
-      } else {
-        document.documentElement.removeAttribute('data-font-scale');
-      }
-    } catch (_) {
-      // localStorage inaccessible
-    }
-  })();
-`;
+import { fontScaleScript } from "@/lib/inline-scripts";
 
 export function FontScaleScript() {
   return (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertLocalPrismaUrls, assertNonEmptyFiles, readBackupDestination } from "./database-safety";
+import { assertLocalPrismaUrls, assertNonEmptyFiles, pgConnectionEnv, readBackupDestination } from "./database-safety";
 
 const localUrl = "postgresql://user:password@localhost:5432/sebasam";
 
@@ -35,6 +35,10 @@ describe("backup validation", () => {
     expect(readBackupDestination(["--destination=/Volumes/USB/SEBASAM"])).toBe("/Volumes/USB/SEBASAM");
   });
 
+  it("accepts the pnpm \"--\" separator before the options", () => {
+    expect(readBackupDestination(["--", "--destination", "/Volumes/USB"])).toBe("/Volumes/USB");
+  });
+
   it("accepts only non-empty required output files", () => {
     const files = ["public-schema.sql", "public-data.sql", "manifest.json", "SHA256SUMS"];
     expect(() => assertNonEmptyFiles(files, () => 1)).not.toThrow();
@@ -44,5 +48,24 @@ describe("backup validation", () => {
     expect(() => assertNonEmptyFiles(files, () => {
       throw new Error("not found");
     })).toThrow("public-schema.sql");
+  });
+});
+
+describe("pgConnectionEnv", () => {
+  it("maps the URL to PG* variables without leaking it", () => {
+    expect(pgConnectionEnv("postgresql://postgres.abc:p%40ss@db.project.supabase.co:6543/postgres?sslmode=require")).toEqual({
+      PGHOST: "db.project.supabase.co",
+      PGPORT: "6543",
+      PGUSER: "postgres.abc",
+      PGPASSWORD: "p@ss",
+      PGDATABASE: "postgres",
+      PGSSLMODE: "require",
+    });
+  });
+
+  it("requires a PostgreSQL URL", () => {
+    expect(() => pgConnectionEnv(undefined)).toThrow("DIRECT_URL is required");
+    expect(() => pgConnectionEnv("mysql://u:p@host/db")).toThrow("not a valid PostgreSQL URL");
+    expect(() => pgConnectionEnv("nope")).toThrow("not a valid PostgreSQL URL");
   });
 });

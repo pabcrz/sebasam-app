@@ -16,14 +16,14 @@ export type LinkTabsProps = {
 };
 
 /**
- * Section tabs that navigate: underlined like Tabs, with the current one in bold
- * under the brand gradient. Filtering stays with SegmentedControl.
+ * Section tabs that navigate: pills inside a soft container, the current one tonal.
+ * Same look as SegmentedControl; filtering stays there.
  */
 export function LinkTabs({ label, items, className }: LinkTabsProps) {
   return (
     <nav
       aria-label={label}
-      className={cn("no-scrollbar flex min-w-0 max-w-full overflow-x-auto border-b border-[var(--color-border-light)]", className)}
+      className={cn("no-scrollbar inline-flex max-w-full overflow-x-auto rounded-[var(--radius-lg)] bg-[var(--color-bg-soft)]", className)}
     >
       {items.map((item) => (
         <Link
@@ -31,10 +31,10 @@ export function LinkTabs({ label, items, className }: LinkTabsProps) {
           href={item.href}
           aria-current={item.current ? "page" : undefined}
           className={cn(
-            "relative inline-flex min-h-[var(--tap-min-height)] shrink-0 items-center gap-1.5 px-3 text-sm transition-colors duration-[var(--motion-fast)] after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:rounded-full after:content-[''] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
+            "relative inline-flex h-[var(--control-md)] shrink-0 items-center gap-1.5 self-stretch rounded-[var(--radius-md)] px-3 text-sm font-medium transition-[background-color,color] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]",
             item.current
-              ? "font-semibold text-[var(--color-text-main)] after:bg-[image:var(--gradient-primary)]"
-              : "font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]",
+              ? "bg-[var(--color-tonal-bg)] text-[var(--color-tonal-fg)] hover:bg-[var(--color-tonal-bg-hover)]"
+              : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]",
           )}
         >
           {item.label}

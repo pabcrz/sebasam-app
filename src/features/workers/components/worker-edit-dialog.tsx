@@ -78,7 +78,8 @@ export function WorkerEditDialog({
             </form>
           )}
 
-          <DialogDangerZone>
+          <DialogDangerZone className="rounded-[var(--radius-md)] border border-[var(--color-status-danger-border)] p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-status-danger-fg)]">Zona de riesgo</p>
             {worker.isActive ? (
               <div className="grid gap-2">
                 <p className="text-sm text-[var(--color-text-muted)]">

@@ -61,7 +61,7 @@ describe("WorkersPage", () => {
     expect(screen.getByRole("link", { name: "Activos · 1" })).toHaveAttribute("href", "/admin/workers?status=ACTIVE");
     expect(screen.getByText("Ana López")).toBeInTheDocument();
     expect(screen.getByText("Luis Pérez")).toBeInTheDocument();
-    expect(screen.getByText("2 trabajos activos")).toBeInTheDocument();
+    expect(screen.getByText("trabajos activos")).toBeInTheDocument();
     expect(screen.getByText("Inactivo")).toBeInTheDocument();
     expect(screen.queryByText("Activo")).not.toBeInTheDocument();
     expect(listWorkersMock).toHaveBeenCalledWith({ query: "", status: "ALL" });

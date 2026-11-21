@@ -1,8 +1,9 @@
+import "dotenv/config";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { assertNonEmptyFiles, readBackupDestination } from "../src/lib/database-safety";
+import { assertNonEmptyFiles, pgConnectionEnv, readBackupDestination } from "../src/lib/database-safety";
 
 function fileSize(file: string) {
   const stat = statSync(file);
@@ -13,13 +14,15 @@ function sha256(file: string) {
   return createHash("sha256").update(readFileSync(file)).digest("hex");
 }
 
-function runDump(file: string, dataOnly = false) {
-  const args = ["db", "dump", "--linked", "--schema", "public", "--file", file];
-  if (dataOnly) args.push("--data-only");
+function runDump(file: string, connection: Record<string, string>, dataOnly = false) {
+  const args = ["--schema=public", "--no-owner", "--no-privileges", `--file=${file}`, ...(dataOnly ? ["--data-only", "--disable-triggers"] : ["--schema-only"])];
 
-  const result = spawnSync("supabase", args, { stdio: "inherit" });
-  if (result.error || result.status !== 0) {
-    throw new Error("Supabase public backup failed.");
+  const result = spawnSync(process.env.PG_DUMP ?? "pg_dump", args, { stdio: ["ignore", "inherit", "inherit"], env: { ...process.env, ...connection } });
+  if (result.error) {
+    throw new Error("pg_dump is not available. Install the PostgreSQL client (version >= the server's) or set PG_DUMP to its path.");
+  }
+  if (result.status !== 0) {
+    throw new Error("Public backup failed.");
   }
 }
 
@@ -32,10 +35,18 @@ function main() {
   const manifest = join(output, "manifest.json");
   const checksums = join(output, "SHA256SUMS");
 
+  const connection = pgConnectionEnv(process.env.DIRECT_URL);
+
   mkdirSync(output, { recursive: false });
-  runDump(schema);
-  runDump(data, true);
-  assertNonEmptyFiles([schema, data], fileSize);
+  try {
+    runDump(schema, connection);
+    runDump(data, connection, true);
+    assertNonEmptyFiles([schema, data], fileSize);
+  } catch (error) {
+    // Never leave a partial or empty backup that looks usable.
+    rmSync(output, { recursive: true, force: true });
+    throw error;
+  }
 
   const hashes = {
     "public-schema.sql": sha256(schema),

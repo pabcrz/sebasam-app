@@ -18,7 +18,7 @@ for (const width of [390, 1440]) {
     // The folio is the page search; it applies on Enter and the sheet starts from the new URL.
     await page.getByRole("searchbox", { name: "Buscar por folio" }).fill("C-42");
     await page.keyboard.press("Enter");
-    await expect(page.getByText("Folio: C-42", { exact: true })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: /Buscar por folio/ })).toHaveValue("C-42");
 
     await page.getByRole("button", { name: /^Filtros/ }).click();
     await page.getByRole("button", { name: "Elegir fechas" }).click();

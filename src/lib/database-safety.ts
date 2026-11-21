@@ -33,6 +33,8 @@ export function readBackupDestination(args: string[]) {
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
+    // pnpm forwards the "--" in `pnpm run script -- --flag`; it is a separator, not an argument.
+    if (argument === "--") continue;
     const value =
       argument === "--destination"
         ? args[++index]
@@ -65,4 +67,29 @@ export function assertNonEmptyFiles(files: readonly string[], getSize: (file: st
       throw new Error(`Backup output is missing or empty: ${basename(file)}.`);
     }
   }
+}
+
+/** Splits a PostgreSQL URL into PG* variables so pg_dump never receives credentials in its arguments. */
+export function pgConnectionEnv(url: string | undefined) {
+  if (!url) throw new Error("DIRECT_URL is required for the public backup.");
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("DIRECT_URL is not a valid PostgreSQL URL.");
+  }
+  if (parsed.protocol !== "postgresql:" && parsed.protocol !== "postgres:") {
+    throw new Error("DIRECT_URL is not a valid PostgreSQL URL.");
+  }
+
+  const env: Record<string, string> = {
+    PGHOST: parsed.hostname.replace(/^\[|\]$/g, ""),
+    PGPORT: parsed.port || "5432",
+    PGUSER: decodeURIComponent(parsed.username),
+    PGPASSWORD: decodeURIComponent(parsed.password),
+    PGDATABASE: decodeURIComponent(parsed.pathname.replace(/^\//, "")) || "postgres",
+  };
+  const sslmode = parsed.searchParams.get("sslmode");
+  if (sslmode) env.PGSSLMODE = sslmode;
+  return env;
 }

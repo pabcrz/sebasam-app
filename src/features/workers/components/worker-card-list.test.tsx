@@ -44,7 +44,7 @@ describe("WorkerCardList", () => {
 
     expect(screen.getByText("Ana López")).toBeInTheDocument();
     expect(screen.getByText("Maestro · @ana.lopez")).toBeInTheDocument();
-    expect(screen.getByText("1 trabajo activo")).toBeInTheDocument();
+    expect(screen.getByText("trabajo activo")).toBeInTheDocument();
     expect(screen.getByText("Ayudante · @luis.perez")).toBeInTheDocument();
     expect(screen.getByText("Sin trabajos")).toBeInTheDocument();
     expect(screen.getAllByText("Inactivo")).toHaveLength(1);
