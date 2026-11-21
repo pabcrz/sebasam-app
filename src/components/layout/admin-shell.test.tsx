@@ -291,7 +291,7 @@ describe("AdminShell", () => {
     expect(current[0]).toHaveAttribute("href", "/admin/customers");
   });
 
-  it("styles the Más sheet with tonal active rows, borderless gray icons and 11px group titles, keeping the gradient in the bar only", () => {
+  it("styles the Más sheet with tonal active rows, borderless gray icons and 11px group titles", () => {
     mockPathname = "/admin/customers";
     render(
       <AdminShell displayName="Patron User" role="ADMIN">
@@ -383,7 +383,7 @@ describe("AdminShell", () => {
     );
   });
 
-  it("gives the desktop sidebar a single active item with the brand gradient", () => {
+  it("gives the desktop sidebar a single flat tonal active item, with no gradient", () => {
     mockPathname = "/admin/quotes/new";
     render(
       <AdminShell displayName="Admin User" role="ADMIN">
@@ -395,8 +395,25 @@ describe("AdminShell", () => {
     const current = desktopNav.querySelectorAll('[aria-current="page"]');
     expect(current).toHaveLength(1);
     expect(current[0]).toHaveAttribute("href", "/admin/quotes");
-    expect(current[0].className).toContain("bg-[image:var(--gradient-primary)]");
-    expect(current[0].className).toContain("text-white");
+    expect(current[0]).toHaveClass("bg-[var(--color-tonal-bg)]", "text-[var(--color-tonal-fg)]");
+    expect(current[0].className).not.toContain("gradient");
+  });
+
+  it("marks the active mobile bar item with a flat tonal pill and tonal label, with no gradient", () => {
+    mockPathname = "/admin/work-orders";
+    render(
+      <AdminShell displayName="Admin User" role="SUPER_ADMIN">
+        <div>Content</div>
+      </AdminShell>,
+    );
+
+    const mobileNav = screen.getByRole("navigation", { name: "Navegación móvil" });
+    const current = within(mobileNav).getByRole("link", { name: "Trabajos" });
+    expect(current).toHaveAttribute("aria-current", "page");
+    const [pill, label] = Array.from(current.children) as HTMLElement[];
+    expect(pill).toHaveClass("bg-[var(--color-tonal-bg)]", "text-[var(--color-tonal-fg)]");
+    expect(label).toHaveClass("text-[var(--color-tonal-fg)]", "font-semibold");
+    expect(mobileNav.innerHTML).not.toContain("gradient");
   });
 
   it("does not render static Operaciones subtitle under sidebar brand mark", () => {

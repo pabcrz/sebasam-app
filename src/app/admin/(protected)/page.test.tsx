@@ -102,14 +102,10 @@ describe("AdminHomePage", () => {
     expect(activeExecutionRow).toHaveAttribute("href", "/admin/work-orders");
     expect(within(activeExecutionRow).getByText("2")).toHaveAttribute("data-numeric-role", "count");
     expect(screen.getByText("Cuentas por cobrar")).toBeInTheDocument();
-    expect(screen.getByText("Resumen del período")).toBeInTheDocument();
-    expect(screen.getByText("Nómina Semanal (Estimada)")).toBeInTheDocument();
-    expect(screen.getByText("Cálculo estimado")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Resumen" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nómina estimada" })).toBeInTheDocument();
     expect(screen.getByText("Enviar cotizaciones borrador")).toBeInTheDocument();
     expect(screen.getByText("Completar trabajos activos")).toBeInTheDocument();
-    expect(screen.getByText("Clientes")).toBeInTheDocument();
-    expect(screen.getByText("Nómina")).toBeInTheDocument();
-    expect(screen.getByText("Trabajadores")).toBeInTheDocument();
-    expect(screen.queryByText("Notas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Módulos del Sistema")).not.toBeInTheDocument();
   });
 });
