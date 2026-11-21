@@ -160,7 +160,7 @@ export function EntityCard({
         <div className="mt-3 text-xs text-[var(--color-text-muted)]">{keyData}</div>
       ) : null}
 
-      <div data-testid="entity-card-footer" className="mt-auto flex flex-nowrap items-center justify-between gap-2 pt-4">
+      <div data-testid="entity-card-footer" className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-4">
         {[editAction, printAction, shareAction, overflowAction].some((node) => node != null) ? (
           <div data-testid="entity-card-tools" className="flex shrink-0 items-center gap-2">
             {editAction}
@@ -170,7 +170,7 @@ export function EntityCard({
           </div>
         ) : null}
         {stateAction != null ? (
-          <div data-testid="entity-card-state" className="flex min-w-0 flex-1 justify-end">
+          <div data-testid="entity-card-state" className="flex min-w-max flex-1 justify-end">
             {stateAction}
           </div>
         ) : null}
