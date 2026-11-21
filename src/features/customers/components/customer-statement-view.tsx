@@ -17,13 +17,23 @@ import {
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog, type QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
-import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
-import { BankDataCard } from "@/features/public-payment/components/bank-data-card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { downloadElementPng, shareElementPng } from "@/lib/share-image";
 import { ApplyCreditDialog } from "@/features/payments/components/apply-credit-dialog";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
 import { BackLink } from "@/components/layout/back-link";
-import { customerStatementHref, type StatementPeriodUnit, type StatementView } from "../customer-statement";
+import {
+  customerStatementHref,
+  formatStatementFilename,
+  type StatementPeriodUnit,
+  type StatementView,
+} from "../customer-statement";
+import {
+  CUSTOMER_STATEMENT_DOCUMENT_ID,
+  CustomerStatementDocument,
+  getStatementSummaryRows,
+} from "./customer-statement-document";
 
 type CustomerStatementViewProps = {
   statement: CustomerDetailedStatement;
@@ -105,27 +115,18 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
     anchor,
     rangeLabel,
     availableCreditCents,
-    availableCreditAtCutoffCents,
     summary,
     notes,
-    paymentActivity,
     business,
   } = statement;
-  const printTotalCents = notes.reduce((total, note) => total + note.totalCents, 0);
-  const printPaidCents = notes.reduce((total, note) => total + note.paidCentsAtCutoff, 0);
-  const printRemainingCents = notes.reduce(
-    (total, note) => total + Math.max(0, note.totalCents - note.paidCentsAtCutoff),
-    0,
-  );
+  const [shareOpen, setShareOpen] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
+  const [shareStatus, setShareStatus] = React.useState<string | null>(null);
 
   const displayName = customer.commercialName || customer.name;
   const legalSubtitle = customer.commercialName
     ? customer.legalName || customer.name
     : customer.legalName || undefined;
-  const printCustomerSubtitle = [
-    legalSubtitle ? `Razón social: ${legalSubtitle}` : null,
-    customer.rfc ? `RFC: ${customer.rfc}` : null,
-  ].filter(Boolean).join(" · ") || undefined;
   const statementHref = customerStatementHref(customer.id, { view, period, anchor });
 
   const go = (state: { view?: StatementView; period?: StatementPeriodUnit; anchor?: string }) => {
@@ -162,6 +163,29 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
     window.print();
   };
 
+  const imageFileName = `${formatStatementFilename(displayName, emissionDate)}.png`;
+
+  const handleDownloadImage = async () => {
+    setIsExporting(true);
+    try {
+      await downloadElementPng(CUSTOMER_STATEMENT_DOCUMENT_ID, imageFileName);
+    } catch (err) {
+      console.error("Error exportando imagen del estado de cuenta:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleShareImage = async () => {
+    setIsExporting(true);
+    setShareStatus(null);
+    try {
+      setShareStatus(await shareElementPng(CUSTOMER_STATEMENT_DOCUMENT_ID, imageFileName, `Estado de cuenta - ${displayName}`));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="mx-auto w-full print:w-full">
       <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-6 md:px-6 md:py-8 print:hidden">
@@ -185,6 +209,16 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
           >
             <Icon name="print" className="h-4 w-4" aria-hidden="true" />
             <span>Imprimir / PDF</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShareOpen(true)}
+            className="flex items-center gap-1.5 px-3.5"
+          >
+            <Icon name="share" className="h-4 w-4" aria-hidden="true" />
+            <span>Compartir imagen</span>
           </Button>
         </div>
       </div>
@@ -258,21 +292,9 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
 
       {/* Financial Summary: tinted tiles, the explanation sits behind ⓘ */}
       <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4 print:grid-cols-4 print:break-inside-avoid">
-        {view === "history" ? (
-          <>
-            <StatTile label="Saldo inicial" value={formatCents(summary.initialBalanceCents)} info="Antes del inicio del período" />
-            <StatTile label="Cargos del período" value={`+${formatCents(summary.periodChargesCents)}`} info="Notas completadas en el rango" />
-            <StatTile label="Abonos del período" value={`-${formatCents(summary.periodPaymentsCents)}`} tone="success" info="Pagos aplicados en el rango" />
-            <StatTile label="Saldo final" value={formatCents(summary.finalBalanceCents)} info="Saldo total a la fecha" />
-          </>
-        ) : (
-          <>
-            <StatTile label="Total facturado" value={formatCents(summary.periodChargesCents)} info="Notas vivas pendientes" />
-            <StatTile label="Total abonado" value={formatCents(summary.periodPaymentsCents)} tone="success" info="Abonos aplicados a la fecha" />
-            <StatTile label="Saldo pendiente" value={formatCents(summary.finalBalanceCents)} tone="warning" info="Saldo neto por cobrar" />
-            <StatTile label="Saldo vencido" value={formatCents(summary.overdueBalanceCents)} tone="danger" info="Superó fecha límite en CDMX" />
-          </>
-        )}
+        {getStatementSummaryRows(view, summary).map((row) => (
+          <StatTile key={row.label} label={row.label} value={row.value} tone={row.tone} info={row.info} />
+        ))}
       </div>
 
       {/* Available Credit Banner */}
@@ -548,97 +570,28 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
       </div>
 
       <section data-testid="customer-statement-print" className="hidden print:block">
-        <PublicQuoteShell
-          business={{
-            businessName: business.name,
-            fullName: business.fullName,
-            phone: business.contactPhone,
-            whatsapp: business.contactWhatsapp,
-          }}
-          location={{ address: business.address }}
-          documentType="Estado de cuenta"
-          documentNumber={rangeLabel}
-          date={emissionDate}
-          customerName={displayName}
-          customerSubtitle={printCustomerSubtitle}
-        >
-        <div className="space-y-5">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-gray-400 text-left">
-              <th className="py-2 pr-3">Concepto</th>
-              <th className="py-2 pr-3">Estado</th>
-              <th className="py-2 pr-3 text-right">Abono</th>
-              <th className="py-2 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {notes.map((note) => (
-              <tr key={note.id} className="border-b border-gray-200">
-                <td className="py-2 pr-3">{note.concepts}</td>
-                <td className="py-2 pr-3">
-                  {note.paidCentsAtCutoff >= note.totalCents ? "Pagada" : "Pendiente"}
-                </td>
-                <td className="py-2 pr-3 text-right tabular-nums">{formatCents(note.paidCentsAtCutoff)}</td>
-                <td className="py-2 text-right tabular-nums">{formatCents(note.totalCents)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <dl className="ml-auto grid w-fit grid-cols-[auto_auto] gap-x-8 gap-y-1 text-right text-sm">
-          <dt>Total de notas</dt>
-          <dd className="font-semibold tabular-nums">{formatCents(printTotalCents)}</dd>
-          <dt>Abonado al {formatDate(emissionDate)}</dt>
-          <dd className="font-semibold tabular-nums">{formatCents(printPaidCents)}</dd>
-          <dt className="font-bold">Saldo restante</dt>
-          <dd className="font-bold tabular-nums">{formatCents(printRemainingCents)}</dd>
-        </dl>
-
-        <section
-          aria-labelledby="customer-statement-payment-history-title"
-          data-testid="customer-statement-payment-history"
-          className="space-y-2 border-t border-gray-300 pt-4"
-        >
-          <h2 id="customer-statement-payment-history-title" className="text-sm font-bold">
-            Historial de abonos y saldo a favor
-          </h2>
-          {paymentActivity.length > 0 ? (
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-gray-300 text-left">
-                  <th className="py-1.5 pr-3">Fecha</th>
-                  <th className="py-1.5 pr-3">Movimiento</th>
-                  <th className="py-1.5 text-right">Importe</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentActivity.map((activity, index) => (
-                  <tr key={`${activity.type}-${activity.date.toISOString()}-${index}`} data-testid="customer-statement-payment-event">
-                    <td className="py-1.5 pr-3">{formatDate(activity.date)}</td>
-                    <td className="py-1.5 pr-3">
-                      {activity.type === "application"
-                        ? `Abono aplicado · Nota ${activity.noteNumber}`
-                        : "Saldo a favor generado"}
-                    </td>
-                    <td className="py-1.5 text-right tabular-nums">
-                      {formatCents(activity.type === "application" ? activity.amountCents : activity.availableCents)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-xs text-gray-600">No hay abonos ni saldo a favor disponible a la fecha de emisión.</p>
-          )}
-          <p className="text-right text-sm font-semibold">
-            Saldo a favor disponible al {formatDate(emissionDate)}: {formatCents(availableCreditAtCutoffCents)}
-          </p>
-        </section>
-        <div className="-mx-4"><BankDataCard bankAccounts={business.bankAccounts} isPrint /></div>
-        </div>
-        </PublicQuoteShell>
+        <CustomerStatementDocument statement={statement} />
       </section>
+
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl max-h-[92vh] gap-3 overflow-y-auto p-2 sm:p-3 print:hidden">
+          <DialogHeader>
+            <DialogTitle>Estado de cuenta - {displayName}</DialogTitle>
+          </DialogHeader>
+          <CustomerStatementDocument statement={statement} id={CUSTOMER_STATEMENT_DOCUMENT_ID} />
+          <DialogFooter className="flex-row flex-wrap items-center justify-end gap-2">
+            {shareStatus ? <p className="basis-full text-xs text-[var(--color-text-muted)]">{shareStatus}</p> : null}
+            <Button type="button" variant="outline" size="sm" onClick={handleDownloadImage} disabled={isExporting} className="gap-1.5">
+              <Icon name="download" className="h-4 w-4" aria-hidden="true" />
+              Descargar imagen
+            </Button>
+            <Button type="button" variant="primary" size="sm" onClick={handleShareImage} disabled={isExporting} className="gap-1.5">
+              <Icon name="message-circle" className="h-4 w-4" aria-hidden="true" />
+              Enviar por WhatsApp
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { formatDocumentPdfFilename } from "@/features/quotes/lib/pdf-filename";
+
 const TIME_ZONE = "America/Mexico_City";
 
 export type StatementView = "pending" | "history";
@@ -209,4 +211,11 @@ export function customerStatementHref(
 
   const queryString = params.toString();
   return `/admin/customers/${customerId}/estado-de-cuenta${queryString ? `?${queryString}` : ""}`;
+}
+
+/** Same `{Cliente}-{Folio}` naming as the note PDFs; the statement folio carries the Mexico City emission date. */
+export function formatStatementFilename(customerName: string, emissionDate: Date): string {
+  const { year, month, day } = parseCalendarDate(undefined, emissionDate);
+  const date = `${String(day).padStart(2, "0")}${String(month).padStart(2, "0")}${year}`;
+  return formatDocumentPdfFilename({ customerName, folio: `EstadoDeCuenta-${date}` });
 }

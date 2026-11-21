@@ -101,9 +101,10 @@ describe("CustomerStatementView", () => {
     expect(screen.getByRole("heading", { name: "Transportes del Norte S.A." })).toBeInTheDocument();
     expect(within(screen.getByTestId("customer-statement-print")).getByText("Transportes del Norte S.A.")).toBeInTheDocument();
     expect(screen.getAllByText(/RFC: TDN010101ABC/i)[0]).toBeInTheDocument();
-    expect(screen.getAllByText("OT-001")).toHaveLength(2);
-    expect(screen.getAllByText("Servicio mayor de frenos")).toHaveLength(3);
-    expect(screen.getAllByText("Kenworth T680")).toHaveLength(2);
+    // Mobile card, desktop row and the printed document.
+    expect(screen.getAllByText("OT-001")).toHaveLength(3);
+    expect(screen.getAllByText("Servicio mayor de frenos")).toHaveLength(2);
+    expect(screen.getAllByText("Kenworth T680")).toHaveLength(3);
   });
 
   it("renders available credit banner and apply credit button when credit is available", () => {
@@ -368,21 +369,54 @@ describe("CustomerStatementView", () => {
     expect(printButton).toHaveClass("relative");
   });
 
-  it("renders a concise print projection with pending status and reconciled note amounts", () => {
+  it("prints each note with folio, dates, vehicle, amounts, balance and full status", () => {
     render(<CustomerStatementView statement={baseStatement} />);
 
     const printProjection = screen.getByTestId("customer-statement-print");
     expect(printProjection).toHaveClass("hidden", "print:block");
-    expect(within(printProjection).getByText("Servicio mayor de frenos")).toBeInTheDocument();
-    expect(within(printProjection).getByText("Pendiente")).toBeInTheDocument();
-    expect(within(printProjection).getByText("Abono")).toBeInTheDocument();
-    expect(within(printProjection).getByText("Total")).toBeInTheDocument();
-    expect(within(printProjection).getAllByText("$0.00")).toHaveLength(2);
-    expect(within(printProjection).getAllByText("$200.00")).toHaveLength(3);
+    for (const header of ["Folio", "Emitida", "Vence", "Vehículo", "Total", "Abonado", "Saldo", "Estado"]) {
+      expect(within(printProjection).getByRole("columnheader", { name: header })).toBeInTheDocument();
+    }
+    const row = within(printProjection).getByText("OT-001").closest("tr");
+    expect(row).toHaveTextContent("1 de agosto de 2026");
+    expect(row).toHaveTextContent("20 de agosto de 2026");
+    expect(row).toHaveTextContent("Kenworth T680");
+    expect(row).toHaveTextContent("Vencida");
     expect(within(printProjection).getByText("Total de notas")).toBeInTheDocument();
     expect(within(printProjection).getByText("Abonado al 15 de agosto de 2026")).toBeInTheDocument();
     expect(within(printProjection).getByText("Saldo restante")).toBeInTheDocument();
-    expect(within(printProjection).queryByText(/Folio|Vehículo|Acciones|Vencida/)).not.toBeInTheDocument();
+    expect(within(printProjection).queryByText(/Acciones/)).not.toBeInTheDocument();
+  });
+
+  it("prints the same period summary the screen shows", () => {
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    const summary = screen.getByTestId("customer-statement-print").querySelector('dl[aria-label="Resumen del período"]');
+    expect(summary).toHaveTextContent("Total facturado$200.00");
+    expect(summary).toHaveTextContent("Saldo vencido$0.00");
+  });
+
+  it("prints the customer's RFC, phone and address", () => {
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    expect(screen.getByTestId("customer-statement-print")).toHaveTextContent(
+      "RFC: TDN010101ABC · Tel: 5551234567 · Av. Central 123",
+    );
+  });
+
+  it("previews the same document template before sharing it as an image", async () => {
+    const user = userEvent.setup();
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    await user.click(screen.getByRole("button", { name: "Compartir imagen" }));
+
+    const dialog = screen.getByRole("dialog");
+    const document = dialog.querySelector("#customer-statement-document");
+    expect(document).not.toBeNull();
+    expect(document).toHaveTextContent("OT-001");
+    expect(document).toHaveTextContent("Vencida");
+    expect(within(dialog).getByRole("button", { name: "Descargar imagen" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Enviar por WhatsApp" })).toBeInTheDocument();
   });
 
   it("prints the shared document header and the payment accounts", () => {
@@ -406,7 +440,7 @@ describe("CustomerStatementView", () => {
     expect(within(printProjection).getByTestId("bank-data-print")).toHaveTextContent("0141 8065 5000 1234 56");
   });
 
-  it("keeps partial and overdue notes pending in the customer-facing print projection", () => {
+  it("tells an overdue note apart from a paid one in the printed document", () => {
     const partiallyPaidStatement: CustomerDetailedStatement = {
       ...baseStatement,
       notes: [
@@ -434,14 +468,11 @@ describe("CustomerStatementView", () => {
     render(<CustomerStatementView statement={partiallyPaidStatement} />);
 
     const printProjection = screen.getByTestId("customer-statement-print");
-    expect(within(printProjection).getByText("Pendiente")).toBeInTheDocument();
-    expect(within(printProjection).getByText("Pagada")).toBeInTheDocument();
-    expect(within(printProjection).queryByText("Vencida")).not.toBeInTheDocument();
-    expect(within(printProjection).getByText("$50.00")).toBeInTheDocument();
-    expect(within(printProjection).getByText("$200.00")).toBeInTheDocument();
+    expect(within(printProjection).getByText("OT-001").closest("tr")).toHaveTextContent("$200.00$50.00$150.00Vencida");
+    expect(within(printProjection).getByText("OT-002").closest("tr")).toHaveTextContent("$300.00$300.00$0.00Pagada");
+    expect(within(printProjection).getByText("Vencida")).toHaveClass("text-red-700");
     expect(within(printProjection).getByText("$500.00")).toBeInTheDocument();
     expect(within(printProjection).getByText("$350.00")).toBeInTheDocument();
-    expect(within(printProjection).getByText("$150.00")).toBeInTheDocument();
   });
 
   it("prints dated abono activity and available credit separately from note balances", () => {
@@ -547,8 +578,9 @@ describe("CustomerStatementView", () => {
   it("shows the statement figures as tinted tiles without colored borders", () => {
     const { container } = render(<CustomerStatementView statement={baseStatement} />);
 
-    expect(screen.getByText("Total facturado")).toBeInTheDocument();
-    expect(screen.getByText("Saldo vencido")).toBeInTheDocument();
+    // One tile on screen and one row in the printed summary.
+    expect(screen.getAllByText("Total facturado")).toHaveLength(2);
+    expect(screen.getAllByText("Saldo vencido")).toHaveLength(2);
     expect(container.querySelector(".border-l-4")).toBeNull();
   });
 

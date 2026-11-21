@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   customerStatementHref,
+  formatStatementFilename,
   parseCustomerStatementParams,
 } from "./customer-statement";
 
@@ -69,5 +70,14 @@ describe("Customer statement period parsing", () => {
     expect(
       customerStatementHref("cust-1", { view: "history", period: "week", anchor: "2026-08-12" }),
     ).toBe("/admin/customers/cust-1/estado-de-cuenta?view=history&period=week&anchor=2026-08-12");
+  });
+});
+
+describe("formatStatementFilename", () => {
+  it("names the statement like a note PDF, using the Mexico City emission date", () => {
+    // 05:00 UTC on Aug 13 is still Aug 12 in Mexico City.
+    expect(formatStatementFilename("Transportes Ñandú", new Date("2026-08-13T05:00:00Z"))).toBe(
+      "TransportesNandu-EstadoDeCuenta-12082026",
+    );
   });
 });

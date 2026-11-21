@@ -127,14 +127,15 @@ describe("CustomerStatementView", () => {
     expect(screen.getByText("RFC: TDN900101XYZ")).toBeInTheDocument();
 
     // Notes table
-    expect(screen.getAllByText("OT-001")).toHaveLength(2);
-    expect(screen.getAllByText("Cambiar muelles · Alinear eje")).toHaveLength(3);
-    expect(screen.getAllByText(/ECO: 101 · Kenworth T680/)).toHaveLength(2);
+    // Mobile card, desktop row and the printed document.
+    expect(screen.getAllByText("OT-001")).toHaveLength(3);
+    expect(screen.getAllByText("Cambiar muelles · Alinear eje")).toHaveLength(2);
+    expect(screen.getAllByText(/ECO: 101 · Kenworth T680/)).toHaveLength(3);
     const noteRow = screen.getByTestId("statement-note-OT-001");
     expect(within(noteRow).getByText("$1,500.00")).toBeInTheDocument(); // total
     expect(within(noteRow).getByText("$500.00")).toBeInTheDocument(); // paid
     expect(within(noteRow).getByText("$1,000.00")).toBeInTheDocument(); // remaining
-    expect(screen.getAllByText("Vencida")).toHaveLength(2);
+    expect(screen.getAllByText("Vencida")).toHaveLength(3);
 
     expect(screen.queryByText("BBVA")).not.toBeInTheDocument();
     expect(screen.queryByText(/012180000000000000|1234567890/)).not.toBeInTheDocument();
@@ -230,13 +231,14 @@ describe("CustomerStatementView", () => {
     render(<CustomerStatementView statement={historyStatement} />);
 
     // The label sits in the tile header; the tile itself holds the figure.
-    const initialCard = screen.getByText("Saldo inicial").parentElement?.parentElement;
+    // The screen tile comes first; the printed summary repeats the same figures.
+    const initialCard = screen.getAllByText("Saldo inicial")[0].parentElement?.parentElement;
     expect(within(initialCard!).getByText("$500.00")).toBeInTheDocument();
-    expect(screen.getByText("Cargos del período")).toBeInTheDocument();
-    expect(screen.getByText("+$1,500.00")).toBeInTheDocument();
-    expect(screen.getByText("Abonos del período")).toBeInTheDocument();
-    expect(screen.getByText("-$700.00")).toBeInTheDocument();
-    expect(screen.getByText("Saldo final")).toBeInTheDocument();
-    expect(screen.getByText("$1,300.00")).toBeInTheDocument();
+    expect(screen.getAllByText("Cargos del período")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("+$1,500.00")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Abonos del período")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("-$700.00")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Saldo final")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("$1,300.00")[0]).toBeInTheDocument();
   });
 });

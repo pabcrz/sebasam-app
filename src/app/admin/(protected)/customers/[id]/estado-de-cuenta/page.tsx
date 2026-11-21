@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isAdminRole, requireOperationalRole } from "@/lib/auth/session";
-import { parseCustomerStatementParams } from "@/features/customers/customer-statement";
+import { formatStatementFilename, parseCustomerStatementParams } from "@/features/customers/customer-statement";
 import { getCustomerDetailedStatement } from "@/features/customers/customer-statement-queries";
 import { CustomerStatementView } from "@/features/customers/components/customer-statement-view";
 import { recordPaymentAction } from "@/features/payments/actions";
@@ -21,8 +21,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   }
 
   const name = statement.customer.commercialName || statement.customer.name;
+  // The PDF saved from the print dialog takes this title, like the note PDFs.
   return {
-    title: `Estado de cuenta - ${name}`,
+    title: { absolute: formatStatementFilename(name, statement.emissionDate) },
   };
 }
 
