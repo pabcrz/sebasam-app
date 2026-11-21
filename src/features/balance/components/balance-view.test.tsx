@@ -15,6 +15,7 @@ const balance: IncomeBalance = {
       { customerId: "c-1", customerName: "Transportes del Bajío", pendingBalanceCents: 452000, oldestUnpaidDate: null, isOverdue: true },
     ],
   },
+  periods: [],
 };
 
 function renderView(value: IncomeBalance = balance) {
@@ -48,7 +49,7 @@ describe("BalanceView", () => {
   });
 
   it("shows empty states when nothing was collected and nothing is owed", () => {
-    renderView({ collected: { totalCents: 0, paymentsCount: 0 }, receivables: { totalCents: 0, customers: [] } });
+    renderView({ collected: { totalCents: 0, paymentsCount: 0 }, receivables: { totalCents: 0, customers: [] }, periods: [] });
 
     expect(screen.getByText("Sin pagos registrados en este período")).toBeInTheDocument();
     expect(screen.getByText("No hay saldos pendientes por cobrar")).toBeInTheDocument();

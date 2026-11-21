@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { parseCustomerStatementParams } from "@/features/customers/customer-statement";
 import { getIncomeBalance } from "@/features/balance/queries";
 import { BalanceView } from "@/features/balance/components/balance-view";
+import { buildPeriodBuckets } from "@/features/balance/domain";
 
 export const metadata: Metadata = {
   title: "Balance",
@@ -18,7 +19,7 @@ export default async function BalancePage({ searchParams }: BalancePageProps) {
     { ...(await searchParams), view: "history" },
     now,
   );
-  const balance = await getIncomeBalance({ start, end }, now);
+  const balance = await getIncomeBalance({ start, end }, buildPeriodBuckets(period, anchor), now);
 
   return (
     <section className="mx-auto grid w-full min-w-0 max-w-4xl gap-4 px-4 py-6 pb-28 sm:pb-10 md:px-6 md:py-10">
