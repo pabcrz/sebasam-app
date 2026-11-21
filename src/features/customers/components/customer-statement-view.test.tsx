@@ -10,6 +10,9 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), replace: pushMock, push: vi.fn() }),
 }));
 
+const { toPngMock } = vi.hoisted(() => ({ toPngMock: vi.fn() }));
+vi.mock("html-to-image", () => ({ toPng: toPngMock }));
+
 vi.mock("@/features/payments/actions", () => ({
   applyCustomerCreditAction: vi.fn(),
 }));
@@ -101,9 +104,9 @@ describe("CustomerStatementView", () => {
     expect(screen.getByRole("heading", { name: "Transportes del Norte S.A." })).toBeInTheDocument();
     expect(within(screen.getByTestId("customer-statement-print")).getByText("Transportes del Norte S.A.")).toBeInTheDocument();
     expect(screen.getAllByText(/RFC: TDN010101ABC/i)[0]).toBeInTheDocument();
-    expect(screen.getAllByText("OT-001")).toHaveLength(2);
+    expect(screen.getAllByText("OT-001")).toHaveLength(3);
     expect(screen.getAllByText("Servicio mayor de frenos")).toHaveLength(3);
-    expect(screen.getAllByText("Kenworth T680")).toHaveLength(2);
+    expect(screen.getAllByText("Kenworth T680")).toHaveLength(3);
   });
 
   it("renders available credit banner and apply credit button when credit is available", () => {
@@ -368,21 +371,58 @@ describe("CustomerStatementView", () => {
     expect(printButton).toHaveClass("relative");
   });
 
-  it("renders a concise print projection with pending status and reconciled note amounts", () => {
+  it("renders the statement document with folio, dates, vehicle, balance and full status per note", () => {
     render(<CustomerStatementView statement={baseStatement} />);
 
-    const printProjection = screen.getByTestId("customer-statement-print");
-    expect(printProjection).toHaveClass("hidden", "print:block");
-    expect(within(printProjection).getByText("Servicio mayor de frenos")).toBeInTheDocument();
-    expect(within(printProjection).getByText("Pendiente")).toBeInTheDocument();
-    expect(within(printProjection).getByText("Abono")).toBeInTheDocument();
-    expect(within(printProjection).getByText("Total")).toBeInTheDocument();
-    expect(within(printProjection).getAllByText("$0.00")).toHaveLength(2);
-    expect(within(printProjection).getAllByText("$200.00")).toHaveLength(3);
-    expect(within(printProjection).getByText("Total de notas")).toBeInTheDocument();
-    expect(within(printProjection).getByText("Abonado al 15 de agosto de 2026")).toBeInTheDocument();
-    expect(within(printProjection).getByText("Saldo restante")).toBeInTheDocument();
-    expect(within(printProjection).queryByText(/Folio|Vehículo|Acciones|Vencida/)).not.toBeInTheDocument();
+    const doc = screen.getByTestId("customer-statement-print");
+    expect(doc).toHaveClass("print:static");
+    expect(doc).not.toHaveClass("hidden");
+    for (const header of ["Folio", "Emitida", "Vence", "Concepto", "Total", "Abonado", "Saldo", "Estado"]) {
+      expect(within(doc).getByRole("columnheader", { name: header, hidden: true })).toBeInTheDocument();
+    }
+    expect(within(doc).getByText("OT-001")).toBeInTheDocument();
+    expect(within(doc).getByText("Kenworth T680")).toBeInTheDocument();
+    expect(within(doc).getByText("Vencida")).toBeInTheDocument();
+    expect(within(doc).getByText("Total de notas")).toBeInTheDocument();
+    expect(within(doc).getByText("Abonado al 15 de agosto de 2026")).toBeInTheDocument();
+    expect(within(doc).getByText("Saldo restante")).toBeInTheDocument();
+  });
+
+  it("rasterizes the statement document and falls back to download when sharing files is unsupported", async () => {
+    const user = userEvent.setup();
+    toPngMock.mockResolvedValue("data:image/png;base64,AAAA");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ blob: async () => new Blob(["x"], { type: "image/png" }) }));
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    await user.click(screen.getByRole("button", { name: /compartir estado de cuenta como imagen/i }));
+
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    expect(toPngMock.mock.calls[0][0]).toBe(document.getElementById("customer-statement-document"));
+    expect(await screen.findByRole("status")).toHaveTextContent("Imagen descargada");
+    vi.unstubAllGlobals();
+    click.mockRestore();
+  });
+
+  it("includes the period summary and the customer's phone and address in the document", () => {
+    render(
+      <CustomerStatementView
+        statement={{
+          ...baseStatement,
+          view: "history",
+          summary: { initialBalanceCents: 10000, periodChargesCents: 20000, periodPaymentsCents: 5000, finalBalanceCents: 25000, overdueBalanceCents: 0 },
+        }}
+      />,
+    );
+
+    const doc = screen.getByTestId("customer-statement-print");
+    const summary = within(doc).getByTestId("customer-statement-summary");
+    for (const label of ["Saldo inicial", "Cargos del período", "Abonos del período", "Saldo final"]) {
+      expect(within(summary).getByText(label)).toBeInTheDocument();
+    }
+    expect(within(summary).getByText("$250.00")).toBeInTheDocument();
+    expect(doc).toHaveTextContent("Tel: 5551234567");
+    expect(doc).toHaveTextContent("Av. Central 123");
   });
 
   it("prints the shared document header and the payment accounts", () => {
@@ -406,7 +446,7 @@ describe("CustomerStatementView", () => {
     expect(within(printProjection).getByTestId("bank-data-print")).toHaveTextContent("0141 8065 5000 1234 56");
   });
 
-  it("keeps partial and overdue notes pending in the customer-facing print projection", () => {
+  it("distinguishes overdue from paid notes in the document", () => {
     const partiallyPaidStatement: CustomerDetailedStatement = {
       ...baseStatement,
       notes: [
@@ -434,14 +474,12 @@ describe("CustomerStatementView", () => {
     render(<CustomerStatementView statement={partiallyPaidStatement} />);
 
     const printProjection = screen.getByTestId("customer-statement-print");
-    expect(within(printProjection).getByText("Pendiente")).toBeInTheDocument();
-    expect(within(printProjection).getByText("Pagada")).toBeInTheDocument();
-    expect(within(printProjection).queryByText("Vencida")).not.toBeInTheDocument();
-    expect(within(printProjection).getByText("$50.00")).toBeInTheDocument();
-    expect(within(printProjection).getByText("$200.00")).toBeInTheDocument();
+    const rowCells = (folio: string) =>
+      Array.from(within(printProjection).getByText(folio).closest("tr")!.querySelectorAll("td")).map((td) => td.textContent);
+    expect(rowCells("OT-001")).toEqual(expect.arrayContaining(["$200.00", "$50.00", "$150.00", "Vencida"]));
+    expect(rowCells("OT-002")).toEqual(expect.arrayContaining(["$300.00", "$0.00", "Pagada"]));
     expect(within(printProjection).getByText("$500.00")).toBeInTheDocument();
     expect(within(printProjection).getByText("$350.00")).toBeInTheDocument();
-    expect(within(printProjection).getByText("$150.00")).toBeInTheDocument();
   });
 
   it("prints dated abono activity and available credit separately from note balances", () => {
@@ -547,8 +585,8 @@ describe("CustomerStatementView", () => {
   it("shows the statement figures as tinted tiles without colored borders", () => {
     const { container } = render(<CustomerStatementView statement={baseStatement} />);
 
-    expect(screen.getByText("Total facturado")).toBeInTheDocument();
-    expect(screen.getByText("Saldo vencido")).toBeInTheDocument();
+    expect(screen.getAllByText("Total facturado")).toHaveLength(2);
+    expect(screen.getAllByText("Saldo vencido")).toHaveLength(2);
     expect(container.querySelector(".border-l-4")).toBeNull();
   });
 
