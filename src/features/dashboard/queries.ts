@@ -82,6 +82,31 @@ export function aggregateReceivablesByCustomer(
   });
 }
 
+/** Completed work orders with their live payment applications: the source of every receivables figure. */
+export function findReceivableWorkOrders() {
+  return prisma.workOrder.findMany({
+    where: {
+      status: WorkOrderStatus.COMPLETED,
+      quote: { customerId: { not: null } },
+    },
+    include: {
+      quote: {
+        include: {
+          customer: { select: { id: true, name: true } },
+          settlementAgreement: true,
+        },
+      },
+      paymentApplications: {
+        where: {
+          reversedAt: null,
+          payment: { status: PaymentStatus.PAID, reversedAt: null },
+        },
+        select: { amountCents: true },
+      },
+    },
+  });
+}
+
 /** Quotes stored before a vehicle row existed keep their unit in the snapshot JSON. */
 function vehicleFromSnapshot(snapshot: unknown): NextWorkVehicle | null {
   if (!snapshot || typeof snapshot !== "object") return null;
@@ -138,27 +163,7 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
         onHoldAt: { not: null },
       },
     }),
-    prisma.workOrder.findMany({
-      where: {
-        status: WorkOrderStatus.COMPLETED,
-        quote: { customerId: { not: null } },
-      },
-      include: {
-        quote: {
-          include: {
-            customer: { select: { id: true, name: true } },
-            settlementAgreement: true,
-          },
-        },
-        paymentApplications: {
-          where: {
-            reversedAt: null,
-            payment: { status: PaymentStatus.PAID, reversedAt: null },
-          },
-          select: { amountCents: true },
-        },
-      },
-    }),
+    findReceivableWorkOrders(),
     prisma.quote.findFirst({
       where: approvedUnassignedWhere,
       orderBy: [{ approvedAt: "asc" }, { createdAt: "asc" }, { id: "asc" }],

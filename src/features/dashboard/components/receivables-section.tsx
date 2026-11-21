@@ -6,12 +6,14 @@ import type { ReceivableCustomer } from "../types";
 
 interface ReceivablesSectionProps {
   customers: ReceivableCustomer[];
+  /** Rows shown before the "Ver más" link; Balance lists every customer. */
+  limit?: number;
 }
 
 const VISIBLE_LIMIT = 5;
 
-export function ReceivablesSection({ customers }: ReceivablesSectionProps) {
-  const visible = customers.slice(0, VISIBLE_LIMIT);
+export function ReceivablesSection({ customers, limit = VISIBLE_LIMIT }: ReceivablesSectionProps) {
+  const visible = customers.slice(0, limit);
   const hiddenCount = customers.length - visible.length;
 
   return (

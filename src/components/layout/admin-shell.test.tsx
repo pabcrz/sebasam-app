@@ -97,6 +97,7 @@ describe("AdminShell", () => {
     ["/admin/work-orders", "/admin/work-orders", "Trabajos"],
     ["/admin/notas", "/admin/notas", "Notas"],
     ["/admin/nomina", "/admin/nomina", "Nómina"],
+    ["/admin/balance", "/admin/balance", "Balance"],
     ["/admin/historical", "/admin/historical", "Carga de histórico"],
     ["/asistente", "/asistente", "Asistente"],
   ])("marks only the matching desktop item as current for %s", (pathname, href, label) => {
@@ -254,6 +255,7 @@ describe("AdminShell", () => {
     expect(within(operacion).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
       "/admin/customers",
       "/admin/nomina",
+      "/admin/balance",
     ]);
   });
 
@@ -480,6 +482,7 @@ describe("AdminShell", () => {
       "/admin/notas",
       "/admin/customers",
       "/admin/nomina",
+      "/admin/balance",
     ]);
   });
 
