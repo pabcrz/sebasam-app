@@ -17,8 +17,8 @@ import {
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { QuotePreviewDialog, type QuotePreviewSummary } from "@/features/quotes/components/quote-preview-dialog";
 import { PrintActionButton } from "@/features/quotes/components/print-action-button";
-import { PublicQuoteShell } from "@/features/public-quotes/components/public-quote-shell";
-import { BankDataCard } from "@/features/public-payment/components/bank-data-card";
+import { CustomerStatementDocument } from "./customer-statement-document";
+import { CustomerStatementImageDialog } from "./customer-statement-image-dialog";
 import { ApplyCreditDialog } from "@/features/payments/components/apply-credit-dialog";
 import { CashPaymentDialog } from "@/features/payments/components/cash-payment-dialog";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
@@ -94,6 +94,7 @@ function ClabeCopyButton({ bankName, clabe }: { bankName: string; clabe: string 
 
 export function CustomerStatementView({ statement, recordPaymentAction }: CustomerStatementViewProps) {
   const [selectedQuote, setSelectedQuote] = React.useState<QuotePreviewSummary | null>(null);
+  const [imageOpen, setImageOpen] = React.useState(false);
   const [noteFilter, setNoteFilter] = React.useState<StatementNoteFilter>("all");
   const router = useRouter();
 
@@ -105,27 +106,14 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
     anchor,
     rangeLabel,
     availableCreditCents,
-    availableCreditAtCutoffCents,
     summary,
     notes,
-    paymentActivity,
     business,
   } = statement;
-  const printTotalCents = notes.reduce((total, note) => total + note.totalCents, 0);
-  const printPaidCents = notes.reduce((total, note) => total + note.paidCentsAtCutoff, 0);
-  const printRemainingCents = notes.reduce(
-    (total, note) => total + Math.max(0, note.totalCents - note.paidCentsAtCutoff),
-    0,
-  );
-
   const displayName = customer.commercialName || customer.name;
   const legalSubtitle = customer.commercialName
     ? customer.legalName || customer.name
     : customer.legalName || undefined;
-  const printCustomerSubtitle = [
-    legalSubtitle ? `Razón social: ${legalSubtitle}` : null,
-    customer.rfc ? `RFC: ${customer.rfc}` : null,
-  ].filter(Boolean).join(" · ") || undefined;
   const statementHref = customerStatementHref(customer.id, { view, period, anchor });
 
   const go = (state: { view?: StatementView; period?: StatementPeriodUnit; anchor?: string }) => {
@@ -185,6 +173,17 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
           >
             <Icon name="print" className="h-4 w-4" aria-hidden="true" />
             <span>Imprimir / PDF</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setImageOpen(true)}
+            aria-label="Exportar estado de cuenta como imagen"
+            className="flex items-center gap-1.5 px-3.5"
+          >
+            <Icon name="download" className="h-4 w-4" aria-hidden="true" />
+            <span>Imagen</span>
           </Button>
         </div>
       </div>
@@ -534,6 +533,10 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
         </section>
       ) : null}
 
+      {imageOpen ? (
+        <CustomerStatementImageDialog statement={statement} open={imageOpen} onOpenChange={setImageOpen} />
+      ) : null}
+
       {/* Interactive Note Preview Modal */}
       {selectedQuote ? (
         <QuotePreviewDialog
@@ -548,96 +551,7 @@ export function CustomerStatementView({ statement, recordPaymentAction }: Custom
       </div>
 
       <section data-testid="customer-statement-print" className="hidden print:block">
-        <PublicQuoteShell
-          business={{
-            businessName: business.name,
-            fullName: business.fullName,
-            phone: business.contactPhone,
-            whatsapp: business.contactWhatsapp,
-          }}
-          location={{ address: business.address }}
-          documentType="Estado de cuenta"
-          documentNumber={rangeLabel}
-          date={emissionDate}
-          customerName={displayName}
-          customerSubtitle={printCustomerSubtitle}
-        >
-        <div className="space-y-5">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-gray-400 text-left">
-              <th className="py-2 pr-3">Concepto</th>
-              <th className="py-2 pr-3">Estado</th>
-              <th className="py-2 pr-3 text-right">Abono</th>
-              <th className="py-2 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {notes.map((note) => (
-              <tr key={note.id} className="border-b border-gray-200">
-                <td className="py-2 pr-3">{note.concepts}</td>
-                <td className="py-2 pr-3">
-                  {note.paidCentsAtCutoff >= note.totalCents ? "Pagada" : "Pendiente"}
-                </td>
-                <td className="py-2 pr-3 text-right tabular-nums">{formatCents(note.paidCentsAtCutoff)}</td>
-                <td className="py-2 text-right tabular-nums">{formatCents(note.totalCents)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <dl className="ml-auto grid w-fit grid-cols-[auto_auto] gap-x-8 gap-y-1 text-right text-sm">
-          <dt>Total de notas</dt>
-          <dd className="font-semibold tabular-nums">{formatCents(printTotalCents)}</dd>
-          <dt>Abonado al {formatDate(emissionDate)}</dt>
-          <dd className="font-semibold tabular-nums">{formatCents(printPaidCents)}</dd>
-          <dt className="font-bold">Saldo restante</dt>
-          <dd className="font-bold tabular-nums">{formatCents(printRemainingCents)}</dd>
-        </dl>
-
-        <section
-          aria-labelledby="customer-statement-payment-history-title"
-          data-testid="customer-statement-payment-history"
-          className="space-y-2 border-t border-gray-300 pt-4"
-        >
-          <h2 id="customer-statement-payment-history-title" className="text-sm font-bold">
-            Historial de abonos y saldo a favor
-          </h2>
-          {paymentActivity.length > 0 ? (
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-gray-300 text-left">
-                  <th className="py-1.5 pr-3">Fecha</th>
-                  <th className="py-1.5 pr-3">Movimiento</th>
-                  <th className="py-1.5 text-right">Importe</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentActivity.map((activity, index) => (
-                  <tr key={`${activity.type}-${activity.date.toISOString()}-${index}`} data-testid="customer-statement-payment-event">
-                    <td className="py-1.5 pr-3">{formatDate(activity.date)}</td>
-                    <td className="py-1.5 pr-3">
-                      {activity.type === "application"
-                        ? `Abono aplicado · Nota ${activity.noteNumber}`
-                        : "Saldo a favor generado"}
-                    </td>
-                    <td className="py-1.5 text-right tabular-nums">
-                      {formatCents(activity.type === "application" ? activity.amountCents : activity.availableCents)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-xs text-gray-600">No hay abonos ni saldo a favor disponible a la fecha de emisión.</p>
-          )}
-          <p className="text-right text-sm font-semibold">
-            Saldo a favor disponible al {formatDate(emissionDate)}: {formatCents(availableCreditAtCutoffCents)}
-          </p>
-        </section>
-        <div className="-mx-4"><BankDataCard bankAccounts={business.bankAccounts} isPrint /></div>
-        </div>
-        </PublicQuoteShell>
+        <CustomerStatementDocument statement={statement} />
       </section>
     </div>
   );
