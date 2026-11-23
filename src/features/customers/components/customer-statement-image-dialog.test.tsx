@@ -41,7 +41,7 @@ describe("CustomerStatementImageDialog", () => {
     expect(node.id).toBe("customer-statement-image-document");
     expect(node).toHaveTextContent("Estado de cuenta");
     const link = click.mock.instances[0] as unknown as HTMLAnchorElement;
-    expect(link.download).toBe("estado-de-cuenta-transportes-del-norte.png");
+    expect(link.download).toBe("TransportesdelNorte-EstadoDeCuenta-15082026.png");
     click.mockRestore();
   });
 

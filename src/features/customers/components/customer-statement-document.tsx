@@ -1,5 +1,5 @@
 import * as React from "react";
-import Image from "next/image";
+import { PublicDocumentHeader } from "@/features/public-branding/public-document-header";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { BankDataCard } from "@/features/public-payment/components/bank-data-card";
 import type { PaymentStateLabel } from "@/features/work-orders/payment-state";
@@ -30,11 +30,13 @@ export function CustomerStatementDocument({ statement, id }: CustomerStatementDo
   const { customer, business, notes, summary, view, rangeLabel, emissionDate, paymentActivity, availableCreditAtCutoffCents } = statement;
   const displayName = customer.commercialName || customer.name;
   const legalName = customer.commercialName ? customer.legalName || customer.name : customer.legalName;
-  const businessContact = [
-    business.contactPhone ? `Tel. ${business.contactPhone}` : null,
-    business.contactWhatsapp ? `WhatsApp ${business.contactWhatsapp}` : null,
-  ].filter(Boolean).join(" · ");
-  const customerContact = [customer.phone ? `Tel. ${customer.phone}` : null, customer.email].filter(Boolean).join(" · ");
+  const customerSubtitle = [
+    legalName ? `Razón social: ${legalName}` : null,
+    customer.rfc ? `RFC: ${customer.rfc}` : null,
+    customer.phone ? `Tel. ${customer.phone}` : null,
+    customer.email,
+    customer.address,
+  ].filter(Boolean).join(" · ") || undefined;
 
   const totalCents = notes.reduce((sum, note) => sum + note.totalCents, 0);
   const paidCents = notes.reduce((sum, note) => sum + note.paidCentsAtCutoff, 0);
@@ -56,35 +58,25 @@ export function CustomerStatementDocument({ statement, id }: CustomerStatementDo
         ];
 
   return (
-    <article id={id} data-testid="customer-statement-document" className="w-full bg-white p-6 text-[12px] leading-snug text-black print:p-0">
-      <header className="flex items-start justify-between gap-6 border-b border-gray-300 pb-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#004AAD]">
-            <Image src="/logo-white-short.png" alt={`Logo de ${business.name}`} width={30} height={30} className="h-[30px] w-[30px] object-contain" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-base font-extrabold leading-none tracking-tight">{business.name}</p>
-            {business.fullName ? <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-600">{business.fullName}</p> : null}
-            {business.address ? <p className="mt-1 text-[11px] text-gray-600">{business.address}</p> : null}
-            {businessContact ? <p className="text-[11px] text-gray-600">{businessContact}</p> : null}
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-xs font-bold uppercase tracking-wider">Estado de cuenta</p>
-          <p className="mt-0.5 text-[11px] text-gray-600">{rangeLabel}</p>
-          <p className="text-[11px] text-gray-600">Emitido el {formatDate(emissionDate)}</p>
-        </div>
-      </header>
+    <article id={id} data-testid="customer-statement-document" className="w-full bg-white text-[12px] leading-snug text-black">
+      <PublicDocumentHeader
+        business={{
+          businessName: business.name,
+          fullName: business.fullName,
+          phone: business.contactPhone,
+          whatsapp: business.contactWhatsapp,
+        }}
+        logoSrc="/logo-white-short.png"
+        location={{ address: business.address }}
+        documentType="Estado de cuenta"
+        documentNumber={rangeLabel}
+        date={emissionDate}
+        customerName={displayName}
+        customerSubtitle={customerSubtitle}
+        quoteLayout
+      />
 
-      <section aria-label="Cliente" className="mt-3 grid gap-0.5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Cliente</p>
-        <p className="text-sm font-extrabold">{displayName}</p>
-        {legalName ? <p className="text-gray-600">Razón social: {legalName}</p> : null}
-        {customer.rfc ? <p className="font-mono text-gray-600">RFC: {customer.rfc}</p> : null}
-        {customerContact ? <p className="text-gray-600">{customerContact}</p> : null}
-        {customer.address ? <p className="text-gray-600">{customer.address}</p> : null}
-      </section>
-
+      <div className="p-6 print:px-0 print:pb-0">
       <dl data-testid="customer-statement-summary" className="mt-4 grid grid-cols-4 gap-2">
         {summaryCells.map((cell) => (
           <div key={cell.label} className="rounded-md border border-gray-300 px-2.5 py-2">
@@ -184,6 +176,7 @@ export function CustomerStatementDocument({ statement, id }: CustomerStatementDo
 
       <div className="-mx-4 mt-3 text-black">
         <BankDataCard bankAccounts={business.bankAccounts} isPrint />
+      </div>
       </div>
     </article>
   );

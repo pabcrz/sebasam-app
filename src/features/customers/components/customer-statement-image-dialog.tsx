@@ -5,13 +5,10 @@ import { toPng } from "html-to-image";
 import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui";
 import { Icon } from "@/components/ui/icon";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
+import { formatDocumentPdfFilename, formatUtcDateDDMMAAAA } from "@/features/quotes/lib/pdf-filename";
 import { CustomerStatementDocument } from "./customer-statement-document";
 
 const DOCUMENT_ID = "customer-statement-image-document";
-
-function slug(text: string) {
-  return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
 
 type CustomerStatementImageDialogProps = {
   statement: CustomerDetailedStatement;
@@ -24,7 +21,10 @@ export function CustomerStatementImageDialog({ statement, open, onOpenChange }: 
   const [busy, setBusy] = React.useState<"download" | "share" | null>(null);
   const [status, setStatus] = React.useState<string | null>(null);
   const customerName = statement.customer.commercialName || statement.customer.name;
-  const fileName = `estado-de-cuenta-${slug(customerName) || "cliente"}.png`;
+  const fileName = `${formatDocumentPdfFilename({
+    customerName,
+    folio: `EstadoDeCuenta-${formatUtcDateDDMMAAAA(statement.emissionDate)}`,
+  })}.png`;
 
   async function renderPng() {
     const node = document.getElementById(DOCUMENT_ID);

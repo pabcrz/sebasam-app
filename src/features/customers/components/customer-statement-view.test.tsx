@@ -430,7 +430,15 @@ describe("CustomerStatementView", () => {
     expect(summary.getByText("$250.00")).toBeInTheDocument();
     const print = within(screen.getByTestId("customer-statement-print"));
     expect(print.getByText(/Tel\. 5551234567/)).toBeInTheDocument();
-    expect(print.getByText("Av. Industria 5")).toBeInTheDocument();
+    expect(print.getByText(/Av\. Industria 5/)).toBeInTheDocument();
+  });
+
+  it("uses the shared document header, the same one notes and quotes print", () => {
+    render(<CustomerStatementView statement={baseStatement} />);
+
+    const print = within(screen.getByTestId("customer-statement-print"));
+    expect(print.getByRole("banner")).toHaveTextContent("Estado de cuenta");
+    expect(print.getByRole("banner")).toHaveTextContent("Cartera pendiente");
   });
 
   it("prints the shared document header and the payment accounts", () => {
