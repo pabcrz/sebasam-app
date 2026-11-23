@@ -254,6 +254,7 @@ describe("AdminShell", () => {
     expect(within(operacion).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
       "/admin/customers",
       "/admin/nomina",
+      "/admin/balance",
     ]);
   });
 
@@ -480,6 +481,7 @@ describe("AdminShell", () => {
       "/admin/notas",
       "/admin/customers",
       "/admin/nomina",
+      "/admin/balance",
     ]);
   });
 

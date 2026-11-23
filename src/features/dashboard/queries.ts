@@ -65,6 +65,7 @@ export function aggregateReceivablesByCustomer(
       customerId: customer.id,
       customerName: customer.name,
       pendingBalanceCents: (existing?.pendingBalanceCents ?? 0) + pendingBalanceCents,
+      overdueBalanceCents: (existing?.overdueBalanceCents ?? 0) + (isOverdue ? pendingBalanceCents : 0),
       oldestUnpaidDate: !existing?.oldestUnpaidDate || (oldestUnpaidDate && oldestUnpaidDate < existing.oldestUnpaidDate)
         ? oldestUnpaidDate
         : existing.oldestUnpaidDate,
@@ -79,6 +80,43 @@ export function aggregateReceivablesByCustomer(
     if (leftTime !== rightTime) return leftTime - rightTime;
     if (left.pendingBalanceCents !== right.pendingBalanceCents) return right.pendingBalanceCents - left.pendingBalanceCents;
     return left.customerName.localeCompare(right.customerName, "es-MX");
+  });
+}
+
+/** Money actually received in a period: payments marked PAID, grouped by capture date. */
+export function sumCollectedPayments(range: { startDate: Date; endDate: Date }) {
+  return prisma.payment.aggregate({
+    _count: { _all: true },
+    _sum: { amountCents: true },
+    where: {
+      status: PaymentStatus.PAID,
+      createdAt: { gte: range.startDate, lt: range.endDate },
+    },
+  });
+}
+
+/** Completed notes of a customer with their active payment applications: the source of every receivable figure. */
+export function listReceivableWorkOrders() {
+  return prisma.workOrder.findMany({
+    where: {
+      status: WorkOrderStatus.COMPLETED,
+      quote: { customerId: { not: null } },
+    },
+    include: {
+      quote: {
+        include: {
+          customer: { select: { id: true, name: true } },
+          settlementAgreement: true,
+        },
+      },
+      paymentApplications: {
+        where: {
+          reversedAt: null,
+          payment: { status: PaymentStatus.PAID, reversedAt: null },
+        },
+        select: { amountCents: true },
+      },
+    },
   });
 }
 
@@ -138,27 +176,7 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
         onHoldAt: { not: null },
       },
     }),
-    prisma.workOrder.findMany({
-      where: {
-        status: WorkOrderStatus.COMPLETED,
-        quote: { customerId: { not: null } },
-      },
-      include: {
-        quote: {
-          include: {
-            customer: { select: { id: true, name: true } },
-            settlementAgreement: true,
-          },
-        },
-        paymentApplications: {
-          where: {
-            reversedAt: null,
-            payment: { status: PaymentStatus.PAID, reversedAt: null },
-          },
-          select: { amountCents: true },
-        },
-      },
-    }),
+    listReceivableWorkOrders(),
     prisma.quote.findFirst({
       where: approvedUnassignedWhere,
       orderBy: [{ approvedAt: "asc" }, { createdAt: "asc" }, { id: "asc" }],
@@ -186,30 +204,9 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
 
   // 2. Payments Collected per Period (grouped by createdAt for status=PAID)
   const [weekPayments, monthPayments, yearPayments] = await Promise.all([
-    prisma.payment.aggregate({
-      _count: { _all: true },
-      _sum: { amountCents: true },
-      where: {
-        status: PaymentStatus.PAID,
-        createdAt: { gte: ranges.week.startDate, lt: ranges.week.endDate },
-      },
-    }),
-    prisma.payment.aggregate({
-      _count: { _all: true },
-      _sum: { amountCents: true },
-      where: {
-        status: PaymentStatus.PAID,
-        createdAt: { gte: ranges.month.startDate, lt: ranges.month.endDate },
-      },
-    }),
-    prisma.payment.aggregate({
-      _count: { _all: true },
-      _sum: { amountCents: true },
-      where: {
-        status: PaymentStatus.PAID,
-        createdAt: { gte: ranges.year.startDate, lt: ranges.year.endDate },
-      },
-    }),
+    sumCollectedPayments(ranges.week),
+    sumCollectedPayments(ranges.month),
+    sumCollectedPayments(ranges.year),
   ]);
 
   // 3. Completed Work Orders per Period

@@ -35,6 +35,8 @@ export interface ReceivableCustomer {
   customerId: string;
   customerName: string;
   pendingBalanceCents: number;
+  /** Part of the pending balance that is past its due date. */
+  overdueBalanceCents: number;
   oldestUnpaidDate: Date | null;
   isOverdue: boolean;
 }

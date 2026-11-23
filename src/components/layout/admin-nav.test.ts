@@ -25,7 +25,7 @@ describe("getAdminNav", () => {
     const nav = getAdminNav("ADMIN");
 
     expect(nav.sheet.map((group) => group.title)).toEqual(["Operación"]);
-    expect(nav.sheet[0].items.map((item) => item.href)).toEqual(["/admin/customers", "/admin/nomina"]);
+    expect(nav.sheet[0].items.map((item) => item.href)).toEqual(["/admin/customers", "/admin/nomina", "/admin/balance"]);
   });
 
   it("adds workers, tools and administration to the Más sheet for SUPER_ADMIN", () => {
@@ -33,7 +33,7 @@ describe("getAdminNav", () => {
 
     expect(nav.sheet.map((group) => group.title)).toEqual(["Operación", "Herramientas", "Administración"]);
     expect(nav.sheet.map((group) => group.items.map((item) => item.href))).toEqual([
-      ["/admin/customers", "/admin/workers", "/admin/nomina"],
+      ["/admin/customers", "/admin/workers", "/admin/nomina", "/admin/balance"],
       ["/admin/historical", "/asistente"],
       ["/admin/configuracion-pago", "/admin/users"],
     ]);
@@ -49,6 +49,7 @@ describe("getAdminNav", () => {
       "/admin/notas",
       "/admin/customers",
       "/admin/nomina",
+      "/admin/balance",
     ]);
   });
 

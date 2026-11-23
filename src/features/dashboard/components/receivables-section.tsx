@@ -6,17 +6,21 @@ import type { ReceivableCustomer } from "../types";
 
 interface ReceivablesSectionProps {
   customers: ReceivableCustomer[];
+  /** How many customers to list; the rest link to Clientes. */
+  limit?: number;
+  /** Balance shows its own heading above the totals. */
+  showHeading?: boolean;
 }
 
 const VISIBLE_LIMIT = 5;
 
-export function ReceivablesSection({ customers }: ReceivablesSectionProps) {
-  const visible = customers.slice(0, VISIBLE_LIMIT);
+export function ReceivablesSection({ customers, limit = VISIBLE_LIMIT, showHeading = true }: ReceivablesSectionProps) {
+  const visible = customers.slice(0, limit);
   const hiddenCount = customers.length - visible.length;
 
   return (
-    <section aria-labelledby="receivables-heading" className="grid gap-3">
-      <SectionLabel id="receivables-heading">Cuentas por cobrar</SectionLabel>
+    <section aria-labelledby={showHeading ? "receivables-heading" : undefined} aria-label={showHeading ? undefined : "Detalle de cuentas por cobrar"} className="grid gap-3">
+      {showHeading ? <SectionLabel id="receivables-heading">Cuentas por cobrar</SectionLabel> : null}
 
       {customers.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-surface)] p-6 text-center shadow-[var(--shadow-card)]">
@@ -37,6 +41,9 @@ export function ReceivablesSection({ customers }: ReceivablesSectionProps) {
                 </p>
                 <p className={customer.isOverdue ? "text-xs font-semibold text-[var(--color-status-danger)]" : "text-xs text-[var(--color-text-muted)]"}>
                   {customer.isOverdue ? "Saldo vencido" : "Saldo pendiente"}
+                  {customer.isOverdue && customer.overdueBalanceCents < customer.pendingBalanceCents
+                    ? ` · ${formatCents(customer.overdueBalanceCents)} vencido`
+                    : null}
                 </p>
               </div>
               <div className="flex items-center gap-3">

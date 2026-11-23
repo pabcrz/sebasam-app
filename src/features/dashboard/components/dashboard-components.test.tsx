@@ -229,7 +229,7 @@ describe("InboxRowsSection", () => {
 
 describe("ReceivablesSection", () => {
   it("links each customer balance to its account statement and identifies overdue debt", () => {
-    render(<ReceivablesSection customers={[{ customerId: "customer-1", customerName: "Transportes Norte", pendingBalanceCents: 12_500, oldestUnpaidDate: new Date("2026-08-10"), isOverdue: true }]} />);
+    render(<ReceivablesSection customers={[{ customerId: "customer-1", customerName: "Transportes Norte", pendingBalanceCents: 12_500, overdueBalanceCents: 12_500, oldestUnpaidDate: new Date("2026-08-10"), isOverdue: true }]} />);
     expect(screen.getByRole("heading", { name: "Cuentas por cobrar" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /transportes norte/i })).toHaveAttribute("href", "/admin/customers/customer-1/estado-de-cuenta");
     expect(screen.getByText("Saldo vencido")).toBeInTheDocument();
@@ -242,6 +242,7 @@ describe("ReceivablesSection", () => {
       customerId: `customer-${index}`,
       customerName: `Cliente ${index}`,
       pendingBalanceCents: 10_000,
+      overdueBalanceCents: 0,
       oldestUnpaidDate: null,
       isOverdue: false,
     }));

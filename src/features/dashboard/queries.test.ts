@@ -62,6 +62,18 @@ describe("aggregateReceivablesByCustomer", () => {
     ]);
   });
 
+  it("separates the overdue part of a customer's pending balance from the part still within its term", () => {
+    const note = (paymentDueDate: string, totalCents: number) => ({
+      completedAt: new Date("2026-08-01T18:00:00.000Z"), paymentDueDate: new Date(paymentDueDate),
+      quote: { customer: { id: "customer-a", name: "Árbol Transporte" }, paymentDueDate: null, subtotalCents: totalCents, taxCents: 0, totalCents, settlementAgreement: null },
+      paymentApplications: [],
+    });
+
+    expect(aggregateReceivablesByCustomer([note("2026-08-05T18:00:00.000Z", 30_000), note("2026-09-30T18:00:00.000Z", 20_000)], fixedNow)).toEqual([
+      expect.objectContaining({ pendingBalanceCents: 50_000, overdueBalanceCents: 30_000, isOverdue: true }),
+    ]);
+  });
+
   it("orders overdue customers by oldest due date, then pending balance and customer name", () => {
     const note = (customerId: string, customerName: string, paymentDueDate: string, totalCents: number) => ({
       completedAt: new Date("2026-08-01T18:00:00.000Z"), paymentDueDate: new Date(paymentDueDate),
