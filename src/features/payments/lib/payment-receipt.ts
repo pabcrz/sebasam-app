@@ -23,16 +23,16 @@ export function paymentMethodLabel(method: string) {
   return METHOD_LABELS[method] ?? method;
 }
 
+/** Short caption for the receipt image: the image already carries the detail, so this only introduces it. */
 export function buildPaymentReceiptMessage(data: PaymentReceiptData) {
   const settled = data.remainingCents <= 0 && !data.isReversed;
-  return [
-    `Hola, comparto el recibo de pago de ${data.customerName ?? "Cliente"}. Nota: ${data.title}, folio ${data.folio}.`,
-    `Total: ${formatCents(data.totalCents)}.`,
-    `Abono #${data.sequence ?? 1}: ${formatCents(data.paymentCents)} (${paymentMethodLabel(data.method)}).`,
-    data.paymentDate ? `Fecha y hora: ${formatReceiptDate(data.paymentDate)}.` : null,
-    data.isReversed ? "Estado: Pago revertido." : settled ? "Estado: Nota liquidada." : "Estado: Pago registrado.",
-    `Saldo pendiente: ${formatCents(data.remainingCents)}.`,
-  ].filter(Boolean).join(" ");
+  const amount = formatCents(data.paymentCents);
+  if (data.isReversed) {
+    return `Hola, te aviso que se revirtió el abono de ${amount} a la nota ${data.folio}. Saldo pendiente: ${formatCents(data.remainingCents)}.`;
+  }
+  return `Hola, te comparto el recibo de tu abono de ${amount} a la nota ${data.folio}. ${
+    settled ? "Tu nota quedó liquidada." : `Saldo pendiente: ${formatCents(data.remainingCents)}.`
+  }`;
 }
 
 export function formatReceiptDate(date: Date | string) {
@@ -40,8 +40,12 @@ export function formatReceiptDate(date: Date | string) {
 }
 
 export function drawPaymentReceipt(canvas: HTMLCanvasElement, data: PaymentReceiptData) {
+  // Every row is 65px apart; the footer and panel follow the last row so there is no empty gap.
+  const rowCount = data.isReversed ? 4 : 3;
+  const footerY = 250 + (rowCount - 1) * 65 + 90;
+  const panelBottom = footerY + 40;
   canvas.width = 900;
-  canvas.height = 700;
+  canvas.height = panelBottom + 30;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("No se pudo preparar la imagen del recibo.");
 
@@ -51,7 +55,7 @@ export function drawPaymentReceipt(canvas: HTMLCanvasElement, data: PaymentRecei
   context.strokeStyle = "#d9dee7";
   context.lineWidth = 2;
   context.beginPath();
-  context.roundRect(30, 30, 840, 640, 24);
+  context.roundRect(30, 30, 840, panelBottom - 30, 24);
   context.fill();
   context.stroke();
 
@@ -68,7 +72,7 @@ export function drawPaymentReceipt(canvas: HTMLCanvasElement, data: PaymentRecei
   const rows = [
     ["Total", formatCents(data.totalCents)],
     [`Abono #${data.sequence ?? 1}`, `${formatCents(data.paymentCents)} · ${paymentMethodLabel(data.method)}`],
-    ["Estado", data.isReversed ? "Pago revertido" : data.remainingCents <= 0 ? "Nota liquidada" : "Pago registrado · Pago parcial"],
+    ...(data.isReversed ? [["Estado", "Pago revertido"]] : []),
     ["Saldo restante", formatCents(data.remainingCents)],
   ];
 
@@ -87,7 +91,7 @@ export function drawPaymentReceipt(canvas: HTMLCanvasElement, data: PaymentRecei
   context.textAlign = "left";
   context.fillStyle = "#6b7280";
   context.font = "18px Arial, sans-serif";
-  context.fillText("Emitido por SEBASAM · No es un comprobante bancario", 70, 650);
+  context.fillText("Emitido por SEBASAM · No es un comprobante bancario", 70, footerY);
 }
 
 export function createPaymentReceiptImage(data: PaymentReceiptData) {
