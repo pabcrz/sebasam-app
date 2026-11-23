@@ -2,6 +2,7 @@ import * as React from "react";
 import Image from "next/image";
 import { formatCents, formatDate } from "@/features/quotes/lib/format";
 import { BankDataCard } from "@/features/public-payment/components/bank-data-card";
+import type { PaymentStateLabel } from "@/features/work-orders/payment-state";
 import type { CustomerDetailedStatement } from "../customer-statement-queries";
 
 type CustomerStatementDocumentProps = {
@@ -11,6 +12,15 @@ type CustomerStatementDocumentProps = {
 };
 
 type Cell = { label: string; value: string; strong?: boolean };
+
+/**
+ * The customer sees three states. Internal handling (partial payment, agreed term,
+ * pending authorization, no due date) is "Pendiente"; the paid part is in "Abonado".
+ */
+export function customerFacingStatus(label: PaymentStateLabel): "Pagada" | "Vencida" | "Pendiente" {
+  if (label === "Pagada" || label === "Vencida") return label;
+  return "Pendiente";
+}
 
 /**
  * The statement as a document: the same markup is printed (PDF) and exported as an
@@ -111,7 +121,7 @@ export function CustomerStatementDocument({ statement, id }: CustomerStatementDo
               <td className="py-1.5 pr-2 text-right tabular-nums">{formatCents(note.totalCents)}</td>
               <td className="py-1.5 pr-2 text-right tabular-nums">{formatCents(note.paidCentsAtCutoff)}</td>
               <td className="py-1.5 pr-2 text-right font-semibold tabular-nums">{formatCents(Math.max(0, note.totalCents - note.paidCentsAtCutoff))}</td>
-              <td className={`py-1.5 font-semibold ${note.paymentState.label === "Vencida" ? "text-red-700" : ""}`}>{note.paymentState.label}</td>
+              <td className={`py-1.5 font-semibold ${customerFacingStatus(note.paymentState.label) === "Vencida" ? "text-red-700" : ""}`}>{customerFacingStatus(note.paymentState.label)}</td>
             </tr>
           ))}
           {notes.length === 0 ? (

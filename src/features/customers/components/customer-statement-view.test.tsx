@@ -387,6 +387,29 @@ describe("CustomerStatementView", () => {
     expect(within(printProjection).getByText("Saldo restante")).toBeInTheDocument();
   });
 
+  it.each([
+    ["Pagada", "Pagada"],
+    ["Vencida", "Vencida"],
+    ["Pago parcial", "Pendiente"],
+    ["Sin pago", "Pendiente"],
+    ["Sin fecha de vencimiento", "Pendiente"],
+    ["Plazo pactado", "Pendiente"],
+    ["Pend. autorización", "Pendiente"],
+  ] as const)("shows the internal state %s to the customer as %s", (internal, shown) => {
+    render(
+      <CustomerStatementView
+        statement={{
+          ...baseStatement,
+          notes: [{ ...baseStatement.notes[0], paymentState: { label: internal, balanceCents: 20000, variant: "default" } }],
+        }}
+      />,
+    );
+
+    const print = within(screen.getByTestId("customer-statement-print"));
+    expect(print.getByText(shown)).toBeInTheDocument();
+    if (internal !== shown) expect(print.queryByText(internal)).not.toBeInTheDocument();
+  });
+
   it("prints the period summary and the customer contact data", () => {
     render(
       <CustomerStatementView
