@@ -5,10 +5,10 @@ Pantalla `/admin/balance`. Tiene tres secciones y cada rol ve las suyas:
 | Sección | Quién la ve |
 |---|---|
 | **Cobros y saldos** | Todos los roles operativos |
-| **Gastos** (registrar, editar, eliminar) | SUPER_ADMIN y ADMIN |
+| **Gastos** (registrar, editar, eliminar) | SUPER_ADMIN, ADMIN y ADMIN_ASSISTANT |
 | **Utilidad** y **Asignar** | Solo SUPER_ADMIN (el dueño) |
 
-Quien captura gastos (ADMIN) solo registra hechos: fecha, monto, categoría, proveedor, comprobante y nota. **No ve ni elige cómo se reparte** un gasto entre las cuentas, ni ve la utilidad.
+Quien captura gastos (ADMIN o ADMIN_ASSISTANT) solo registra hechos: fecha, monto, categoría, proveedor, comprobante y nota. **No ve ni elige cómo se reparte** un gasto entre las cuentas, ni ve la utilidad.
 
 ## Cobros y saldos
 

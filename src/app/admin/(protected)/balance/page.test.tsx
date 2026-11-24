@@ -28,7 +28,7 @@ vi.mock("@/features/balance/expenses/queries", () => ({ listExpensesForMonth: li
 vi.mock("@/features/balance/expenses/actions", () => ({ createExpenseFromForm: vi.fn(), updateExpenseFromForm: vi.fn(), deleteExpenseFromForm: vi.fn(), assignExpenseShareFromForm: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({
   requireProfileForPage: vi.fn(async () => ({ profile: { role: role.current } })),
-  isAdminRole: (value: string) => value === "ADMIN" || value === "SUPER_ADMIN",
+  canRegisterExpenses: (value: string) => ["ADMIN", "ADMIN_ASSISTANT", "SUPER_ADMIN"].includes(value),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }) }));
 
@@ -119,8 +119,18 @@ describe("BalancePage", () => {
     expect(getProfitSnapshotMock).not.toHaveBeenCalled();
   });
 
-  it("gives other operational roles only cobrado and por cobrar, whatever the address says", async () => {
+  it("lets the assistant register expenses but never see profit or the split", async () => {
     role.current = "ADMIN_ASSISTANT";
+
+    render(await BalancePage(params({ tab: "utilidad" })));
+
+    expect(screen.getByRole("link", { name: "Gastos" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Utilidad" })).not.toBeInTheDocument();
+    expect(getProfitSnapshotMock).not.toHaveBeenCalled();
+  });
+
+  it("gives other operational roles only cobrado and por cobrar, whatever the address says", async () => {
+    role.current = "WORKER";
 
     render(await BalancePage(params({ tab: "gastos" })));
 

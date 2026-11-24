@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireExpenseRole } from "@/lib/auth/session";
 import { parseMonthPeriod, type MonthPeriod } from "../profit-queries";
 
 export interface ExpenseRow {
@@ -15,7 +15,7 @@ export interface ExpenseRow {
 }
 
 export async function listExpensesForMonth(month: string | undefined, now = new Date()): Promise<{ period: MonthPeriod; expenses: ExpenseRow[] }> {
-  await requireAdmin();
+  await requireExpenseRole();
   const period = parseMonthPeriod(month, now);
   const expenses = await prisma.expense.findMany({
     where: { deletedAt: null, spentAt: { gte: period.dateStart, lt: period.dateEnd } },

@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, requireSuperAdmin } from "@/lib/auth/session";
+import { requireExpenseRole, requireSuperAdmin } from "@/lib/auth/session";
 
 const redirectMock = vi.hoisted(() => vi.fn((url: string) => { throw new Error(`redirect:${url}`); }));
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({
-  requireAdmin: vi.fn().mockResolvedValue({ profile: { id: "user-1", role: "ADMIN" } }),
+  requireExpenseRole: vi.fn().mockResolvedValue({ profile: { id: "user-1", role: "ADMIN" } }),
   requireSuperAdmin: vi.fn().mockResolvedValue({ profile: { id: "owner-1", role: "SUPER_ADMIN" } }),
 }));
 vi.mock("@/lib/prisma", () => ({ prisma: { expense: { create: vi.fn(), updateMany: vi.fn(), findFirst: vi.fn() } } }));
@@ -43,7 +43,7 @@ describe("expense actions", () => {
   it("creates an expense for the admin, with the date at UTC midnight, and returns to the same month", async () => {
     const target = await redirectTarget(() => createExpenseFromForm(form()));
 
-    expect(requireAdmin).toHaveBeenCalled();
+    expect(requireExpenseRole).toHaveBeenCalled();
     expect(prisma.expense.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ amountCents: 150_050, category: "FUEL_TRANSPORT", invoiceStatus: "INVOICED", partsSharePercent: 50, supplier: "Gasolinera", paymentMethod: "CASH", createdById: "user-1", spentAt: new Date("2026-11-20T00:00:00.000Z") }),
     });
@@ -63,7 +63,7 @@ describe("expense actions", () => {
   });
 
   it("does not run for a user who is not admin", async () => {
-    vi.mocked(requireAdmin).mockRejectedValueOnce(new Error("forbidden"));
+    vi.mocked(requireExpenseRole).mockRejectedValueOnce(new Error("forbidden"));
 
     await expect(createExpenseFromForm(form())).rejects.toThrow("forbidden");
     expect(prisma.expense.create).not.toHaveBeenCalled();

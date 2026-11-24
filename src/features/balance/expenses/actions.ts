@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, requireSuperAdmin } from "@/lib/auth/session";
+import { requireExpenseRole, requireSuperAdmin } from "@/lib/auth/session";
 import { defaultPartsShareFor } from "./categories";
 import { expenseInputSchema, partsShareSchema, pesosTextToCents } from "./schemas";
 
@@ -33,7 +33,7 @@ function expensesHref(formData: FormData, flag: string) {
 }
 
 export async function createExpenseFromForm(formData: FormData) {
-  const { profile } = await requireAdmin();
+  const { profile } = await requireExpenseRole();
 
   const parsed = expenseInputSchema.safeParse(expenseFormToInput(formData));
   if (!parsed.success) redirect(expensesHref(formData, "error=invalid"));
@@ -53,7 +53,7 @@ export async function createExpenseFromForm(formData: FormData) {
 }
 
 export async function updateExpenseFromForm(expenseId: string, formData: FormData) {
-  await requireAdmin();
+  await requireExpenseRole();
 
   const parsed = expenseInputSchema.safeParse(expenseFormToInput(formData));
   if (!parsed.success) redirect(expensesHref(formData, "error=invalid"));
@@ -99,7 +99,7 @@ export async function assignExpenseShareFromForm(expenseId: string, formData: Fo
 
 /** Soft delete: the row stays for audit but no longer counts anywhere. */
 export async function deleteExpenseFromForm(expenseId: string, formData: FormData) {
-  await requireAdmin();
+  await requireExpenseRole();
 
   await prisma.expense.updateMany({ where: { id: expenseId, deletedAt: null }, data: { deletedAt: new Date() } });
 

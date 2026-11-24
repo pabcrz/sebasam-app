@@ -8,7 +8,7 @@ import { assignExpenseShareFromForm, createExpenseFromForm, deleteExpenseFromFor
 import { listExpensesForMonth } from "@/features/balance/expenses/queries";
 import { getBalanceSnapshot } from "@/features/balance/queries";
 import { getProfitSnapshot } from "@/features/balance/profit-queries";
-import { isAdminRole, requireProfileForPage } from "@/lib/auth/session";
+import { canRegisterExpenses, requireProfileForPage } from "@/lib/auth/session";
 
 const OWNER_ROLE = "SUPER_ADMIN";
 
@@ -40,8 +40,8 @@ const NOTICES: Array<[string, { tone: "success" | "danger"; text: string }]> = [
 export default async function BalancePage({ searchParams }: BalancePageProps) {
   const params = (await searchParams) ?? {};
   const { profile } = await requireProfileForPage();
-  // Whoever registers expenses (ADMIN) never sees profit or how expenses are split: those are the owner's.
-  const canSeeExpenses = isAdminRole(profile.role);
+  // Whoever registers expenses (ADMIN, ADMIN_ASSISTANT) never sees profit or how expenses are split: those are the owner's.
+  const canSeeExpenses = canRegisterExpenses(profile.role);
   const canSeeProfit = profile.role === OWNER_ROLE;
 
   const requestedTab = first(params.tab);
