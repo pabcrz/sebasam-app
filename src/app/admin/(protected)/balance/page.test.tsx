@@ -24,8 +24,11 @@ const listExpensesMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/balance/queries", () => ({ getBalanceSnapshot: getBalanceSnapshotMock }));
 vi.mock("@/features/balance/profit-queries", () => ({ getProfitSnapshot: getProfitSnapshotMock }));
-vi.mock("@/features/balance/expenses/queries", () => ({ listExpensesForMonth: listExpensesMock }));
-vi.mock("@/features/balance/expenses/actions", () => ({ createExpenseFromForm: vi.fn(), updateExpenseFromForm: vi.fn(), deleteExpenseFromForm: vi.fn(), assignExpenseShareFromForm: vi.fn() }));
+vi.mock("@/features/balance/expenses/queries", () => ({
+  listExpensesForMonth: listExpensesMock,
+  listExpensesForAssignment: vi.fn(async () => ({ expenses: (await listExpensesMock()).expenses.map((expense: object) => ({ ...expense, links: [] })), notes: [] })),
+}));
+vi.mock("@/features/balance/expenses/actions", () => ({ createExpenseFromForm: vi.fn(), updateExpenseFromForm: vi.fn(), deleteExpenseFromForm: vi.fn(), assignExpenseShareFromForm: vi.fn(), linkExpenseToNoteFromForm: vi.fn(), unlinkExpenseFromNoteFromForm: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({
   requireProfileForPage: vi.fn(async () => ({ profile: { role: role.current } })),
   canRegisterExpenses: (value: string) => ["ADMIN", "ADMIN_ASSISTANT", "SUPER_ADMIN"].includes(value),
@@ -40,7 +43,7 @@ describe("BalancePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     role.current = "SUPER_ADMIN";
-    getProfitSnapshotMock.mockResolvedValue({ period, summary: buildProfitSummary({ income: { laborCents: 0, partsCents: 0, otherCents: 0 }, cashCollectedCents: 0, payrollCents: 0, expenses: [] }) });
+    getProfitSnapshotMock.mockResolvedValue({ period, jobs: [], summary: buildProfitSummary({ income: { laborCents: 0, partsCents: 0, otherCents: 0 }, cashCollectedCents: 0, payrollCents: 0, expenses: [] }) });
     listExpensesMock.mockResolvedValue({ period, expenses: [] });
   });
 

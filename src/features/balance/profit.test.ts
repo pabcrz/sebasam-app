@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildProfitSummary, noteIncomeByAccount, noteSettlement, splitExpense, type SettlableNote } from "./profit";
+import { buildProfitSummary, recognizeExpenses, jobMargins, noteIncomeByAccount, noteSettlement, splitExpense, type SettlableNote } from "./profit";
 
 function note(overrides: Partial<SettlableNote["quote"]> = {}, applications: Array<[number, string]> = []): SettlableNote {
   return {
@@ -139,5 +139,64 @@ describe("buildProfitSummary", () => {
     const { labor } = buildProfitSummary({ ...input, income: { laborCents: 10_000, partsCents: 0, otherCents: 0 } });
     expect(labor.remainingCents).toBeLessThan(0);
     expect(labor.coveragePercent).toBeLessThan(100);
+  });
+});
+
+describe("recognizeExpenses", () => {
+  const inMonth = (date: Date) => date.getUTCMonth() === 10;
+  const base = { invoiceStatus: "INVOICED" as const, partsSharePercent: 100 };
+
+  it("counts an uncharged purchase on its payment date, and only there", () => {
+    const expense = { ...base, spentAt: new Date("2026-11-05T00:00:00Z"), amountCents: 10_000, allocations: [] };
+    expect(recognizeExpenses([expense], new Set(), inMonth)).toEqual([{ ...base, amountCents: 10_000 }]);
+    expect(recognizeExpenses([{ ...expense, spentAt: new Date("2026-10-30T00:00:00Z") }], new Set(), inMonth)).toEqual([]);
+  });
+
+  it("moves the charged piece to the month its note settles and leaves the rest on the payment date", () => {
+    const expense = {
+      ...base,
+      spentAt: new Date("2026-10-30T00:00:00Z"),
+      amountCents: 10_000,
+      allocations: [{ payableNoteId: "n1", amountCents: 6_000 }],
+    };
+    // November: n1 settles here, so only the charged 6,000 counts (the payment was in October).
+    expect(recognizeExpenses([expense], new Set(["n1"]), inMonth)).toEqual([{ ...base, amountCents: 6_000 }]);
+    // October: the 4,000 not charged counts; the charged piece waits for its note.
+    expect(recognizeExpenses([expense], new Set(), (d) => d.getUTCMonth() === 9)).toEqual([{ ...base, amountCents: 4_000 }]);
+  });
+
+  it("never counts the same cents twice across months", () => {
+    const expense = { ...base, spentAt: new Date("2026-10-30T00:00:00Z"), amountCents: 10_000, allocations: [{ payableNoteId: "n1", amountCents: 10_000 }] };
+    const october = recognizeExpenses([expense], new Set(), (d) => d.getUTCMonth() === 9);
+    const november = recognizeExpenses([expense], new Set(["n1"]), inMonth);
+    expect(october).toEqual([]);
+    expect(november.reduce((sum, piece) => sum + piece.amountCents, 0)).toBe(10_000);
+  });
+});
+
+describe("jobMargins", () => {
+  const expense = (amountCents: number, partsSharePercent: number, allocations: Array<[string, number]>) => ({
+    amountCents, partsSharePercent, invoiceStatus: "INVOICED" as const, spentAt: new Date("2026-10-30T00:00:00Z"),
+    allocations: allocations.map(([payableNoteId, cents]) => ({ payableNoteId, amountCents: cents })),
+  });
+
+  it("subtracts the parts cost charged to each note from what it sold in parts, worst margin first", () => {
+    const jobs = jobMargins(
+      [{ id: "a", partsIncomeCents: 100_000 }, { id: "b", partsIncomeCents: 50_000 }],
+      [expense(80_000, 100, [["a", 60_000], ["b", 20_000]]), expense(10_000, 50, [["b", 10_000]])],
+    );
+    expect(jobs.map((job) => job.noteId)).toEqual(["b", "a"]);
+    expect(jobs[0]).toMatchObject({ partsCostCents: 25_000, marginCents: 25_000, marginPercent: 50 });
+    expect(jobs[1]).toMatchObject({ partsCostCents: 60_000, marginCents: 40_000, marginPercent: 40 });
+  });
+
+  it("flags a loss and gives no percentage to a note that sold no parts", () => {
+    const [worst, loss] = jobMargins([{ id: "a", partsIncomeCents: 10_000 }, { id: "b", partsIncomeCents: 0 }], [expense(30_000, 100, [["a", 30_000], ["b", 5_000]])]);
+    expect(worst).toMatchObject({ noteId: "a", marginCents: -20_000, marginPercent: -200 });
+    expect(loss).toMatchObject({ noteId: "b", marginCents: -5_000, marginPercent: null });
+  });
+
+  it("leaves out notes with neither parts income nor cost", () => {
+    expect(jobMargins([{ id: "a", partsIncomeCents: 0 }], [])).toEqual([]);
   });
 });
