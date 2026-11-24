@@ -10,8 +10,6 @@ export interface ProfitExpense {
 export interface IncomeByAccount {
   laborCents: number;
   partsCents: number;
-  /** Items typed OTHER: shown only in the general view, outside both accounts. */
-  otherCents: number;
 }
 
 /** Splits an expense between the two accounts; the two parts always add up to the amount. */
@@ -62,7 +60,8 @@ export function noteSettlement(note: SettlableNote) {
 
 /**
  * The note's base (without tax, after discounts or agreements) split by item category.
- * LABOR -> labor, MATERIAL and REFACCIONES -> parts, OTHER -> other. The three parts add up to the base.
+ * LABOR and OTHER -> labor (OTHER always goes to the payroll side; paying a mechanic from it is a manual decision),
+ * MATERIAL and REFACCIONES -> parts. The two parts add up to the base.
  */
 export function noteIncomeByAccount(note: SettlableNote): IncomeByAccount {
   const { totals } = noteSettlement(note);
@@ -71,21 +70,19 @@ export function noteIncomeByAccount(note: SettlableNote): IncomeByAccount {
 
   let labor = 0;
   let parts = 0;
-  let other = 0;
   for (const item of items) {
     const amount = itemAmountCents(item);
     if (item.type === QuoteItemType.LABOR) labor += amount;
     else if (item.type === QuoteItemType.MATERIAL || item.type === QuoteItemType.REFACCIONES) parts += amount;
-    else other += amount;
+    else labor += amount; // LABOR and OTHER
   }
 
-  const sum = labor + parts + other;
+  const sum = labor + parts;
   const base = totals.subtotalCents;
-  if (sum <= 0) return { laborCents: 0, partsCents: 0, otherCents: base };
+  if (sum <= 0) return { laborCents: base, partsCents: 0 };
 
   const laborCents = Math.round((base * labor) / sum);
-  const partsCents = Math.round((base * parts) / sum);
-  return { laborCents, partsCents, otherCents: base - laborCents - partsCents };
+  return { laborCents, partsCents: base - laborCents };
 }
 
 export interface RecognizableExpense extends ProfitExpense {
@@ -185,7 +182,7 @@ export interface ProfitSummary {
     expensesCents: number;
     expensesByInvoice: InvoiceSplit;
     spentCents: number;
-    /** = labor.remaining + parts.remaining + other income. */
+    /** = labor.remaining + parts.remaining */
     remainingCents: number;
   };
 }
@@ -219,7 +216,7 @@ export function buildProfitSummary(input: {
 
   const laborRemaining = input.income.laborCents - input.payrollCents - laborSplit.totalCents;
   const partsRemaining = input.income.partsCents - partsSplit.totalCents;
-  const totalIncome = input.income.laborCents + input.income.partsCents + input.income.otherCents;
+  const totalIncome = input.income.laborCents + input.income.partsCents;
   const laborCost = input.payrollCents + laborSplit.totalCents;
 
   return {
@@ -263,11 +260,11 @@ export interface MonthFigures {
 }
 
 export interface ComparedMonth extends MonthFigures {
-  /** The income of the chosen series: all, labor or parts. «Otros» only counts in "todas". */
+  /** The income of the chosen series: all, labor or parts. */
   valueCents: number;
   /** Against the median of the months that had income; null when the month had none or there is too little history. */
   level: ComparisonLevel | null;
-  /** Labor ÷ (labor + parts), «Otros» left out; null when both are zero. */
+  /** Labor ÷ (labor + parts); null when both are zero. */
   laborSharePercent: number | null;
 }
 
@@ -278,7 +275,7 @@ const MIN_MONTHS_WITH_INCOME = 3;
 function seriesValue(income: IncomeByAccount, series: ComparisonSeries) {
   if (series === "mano-de-obra") return income.laborCents;
   if (series === "refacciones") return income.partsCents;
-  return income.laborCents + income.partsCents + income.otherCents;
+  return income.laborCents + income.partsCents;
 }
 
 /** Describes each month against the others. A plain description of the past: no score, no forecast. */

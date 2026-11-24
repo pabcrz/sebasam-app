@@ -4,7 +4,7 @@ import type { ComparisonSnapshot } from "../profit-queries";
 import { ComparisonView } from "./comparison-view";
 
 const period = { month: "2026-11", label: "Noviembre de 2026", prevMonth: "2026-10", nextMonth: "2026-12", isCurrent: true, start: new Date(), end: new Date(), dateStart: new Date(), dateEnd: new Date() };
-const row = (month: string, label: string, valueCents: number, level: ComparisonSnapshot["months"][number]["level"], share: number | null) => ({ month, label, income: { laborCents: 0, partsCents: 0, otherCents: 0 }, expensesCents: 10_000, valueCents, level, laborSharePercent: share });
+const row = (month: string, label: string, valueCents: number, level: ComparisonSnapshot["months"][number]["level"], share: number | null) => ({ month, label, income: { laborCents: 0, partsCents: 0 }, expensesCents: 10_000, valueCents, level, laborSharePercent: share });
 
 const snapshot: ComparisonSnapshot = {
   period, series: "todas", medianCents: 200_000, totals: { incomeCents: 600_000, expensesCents: 30_000 },

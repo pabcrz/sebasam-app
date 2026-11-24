@@ -51,14 +51,14 @@ describe("noteSettlement", () => {
 });
 
 describe("noteIncomeByAccount", () => {
-  it("maps LABOR to labor, MATERIAL and REFACCIONES to parts, OTHER to other, without tax", () => {
-    expect(noteIncomeByAccount(note())).toEqual({ laborCents: 30_000, partsCents: 60_000, otherCents: 10_000 });
+  it("maps LABOR and OTHER to labor, MATERIAL and REFACCIONES to parts, without tax", () => {
+    expect(noteIncomeByAccount(note())).toEqual({ laborCents: 40_000, partsCents: 60_000 });
   });
 
   it("spreads a discount or agreement across the categories and still adds up to the base", () => {
     const agreement = { id: "a", status: "ACTIVE", settlementBaseCents: 50_001, settlementTaxCents: 0, settlementTotalCents: 50_001 } as never;
     const income = noteIncomeByAccount(note({ settlementAgreement: agreement }));
-    expect(income.laborCents + income.partsCents + income.otherCents).toBe(50_001);
+    expect(income.laborCents + income.partsCents).toBe(50_001);
     expect(income.partsCents).toBeGreaterThan(income.laborCents);
   });
 
@@ -71,17 +71,17 @@ describe("noteIncomeByAccount", () => {
       sections: [{ id: "s-ok" }],
       subtotalCents: 40_000, taxCents: 6_400, totalCents: 46_400,
     });
-    expect(noteIncomeByAccount(withSection)).toEqual({ laborCents: 40_000, partsCents: 0, otherCents: 0 });
+    expect(noteIncomeByAccount(withSection)).toEqual({ laborCents: 40_000, partsCents: 0 });
   });
 
-  it("puts a note with no priced items entirely in other so nothing is lost", () => {
-    expect(noteIncomeByAccount(note({ items: [], subtotalCents: 7_000, taxCents: 0, totalCents: 7_000 }))).toEqual({ laborCents: 0, partsCents: 0, otherCents: 7_000 });
+  it("puts a note with no priced items entirely in labor so nothing is lost", () => {
+    expect(noteIncomeByAccount(note({ items: [], subtotalCents: 7_000, taxCents: 0, totalCents: 7_000 }))).toEqual({ laborCents: 7_000, partsCents: 0 });
   });
 });
 
 describe("buildProfitSummary", () => {
   const input = {
-    income: { laborCents: 100_000, partsCents: 60_000, otherCents: 5_000 },
+    income: { laborCents: 100_000, partsCents: 60_000 },
     cashCollectedCents: 150_000,
     payrollCents: 40_000,
     expenses: [
@@ -109,9 +109,9 @@ describe("buildProfitSummary", () => {
 
   it("makes the three views reconcile exactly", () => {
     const summary = buildProfitSummary(input);
-    expect(summary.general.incomeCents).toBe(165_000);
+    expect(summary.general.incomeCents).toBe(160_000);
     expect(summary.general.spentCents).toBe(40_000 + 63_000);
-    expect(summary.general.remainingCents).toBe(summary.labor.remainingCents + summary.parts.remainingCents + summary.income.otherCents);
+    expect(summary.general.remainingCents).toBe(summary.labor.remainingCents + summary.parts.remainingCents);
     expect(summary.general.expensesCents).toBe(summary.labor.expensesCents + summary.parts.expensesCents);
   });
 
@@ -130,13 +130,13 @@ describe("buildProfitSummary", () => {
   });
 
   it("handles an empty month without errors or a coverage figure", () => {
-    const summary = buildProfitSummary({ income: { laborCents: 0, partsCents: 0, otherCents: 0 }, cashCollectedCents: 0, payrollCents: 0, expenses: [] });
+    const summary = buildProfitSummary({ income: { laborCents: 0, partsCents: 0 }, cashCollectedCents: 0, payrollCents: 0, expenses: [] });
     expect(summary.labor.coveragePercent).toBeNull();
     expect(summary.general).toMatchObject({ incomeCents: 0, spentCents: 0, remainingCents: 0 });
   });
 
   it("shows a negative remaining when labor does not cover its costs", () => {
-    const { labor } = buildProfitSummary({ ...input, income: { laborCents: 10_000, partsCents: 0, otherCents: 0 } });
+    const { labor } = buildProfitSummary({ ...input, income: { laborCents: 10_000, partsCents: 0 } });
     expect(labor.remainingCents).toBeLessThan(0);
     expect(labor.coveragePercent).toBeLessThan(100);
   });
@@ -202,7 +202,7 @@ describe("jobMargins", () => {
 });
 
 describe("compareMonths", () => {
-  const month = (name: string, labor: number, parts: number, other = 0) => ({ month: name, label: name, income: { laborCents: labor, partsCents: parts, otherCents: other }, expensesCents: 0 });
+  const month = (name: string, labor: number, parts: number) => ({ month: name, label: name, income: { laborCents: labor, partsCents: parts }, expensesCents: 0 });
   const levels = (months: ReturnType<typeof compareMonths>["months"]) => months.map((m) => m.level);
 
   it("sets each month against the median of the months that had income: strong above +15 %, weak below -15 %, typical between", () => {
@@ -224,12 +224,12 @@ describe("compareMonths", () => {
     expect(levels(months)).toEqual([null, null]);
   });
 
-  it("measures the chosen series, and keeps «Otros» out of refacciones and out of the labor share", () => {
-    const months = [month("a", 600, 300, 100), month("b", 600, 300, 100), month("c", 600, 300, 100)];
+  it("measures the chosen series and the labor share", () => {
+    const months = [month("a", 700, 300), month("b", 700, 300), month("c", 700, 300)];
     expect(compareMonths(months, "todas").months[0].valueCents).toBe(1_000);
-    expect(compareMonths(months, "mano-de-obra").months[0].valueCents).toBe(600);
+    expect(compareMonths(months, "mano-de-obra").months[0].valueCents).toBe(700);
     expect(compareMonths(months, "refacciones").months[0].valueCents).toBe(300);
-    expect(compareMonths(months, "todas").months[0].laborSharePercent).toBe(67);
-    expect(compareMonths([month("z", 0, 0, 500)], "todas").months[0].laborSharePercent).toBeNull();
+    expect(compareMonths(months, "todas").months[0].laborSharePercent).toBe(70);
+    expect(compareMonths([month("z", 0, 0)], "todas").months[0].laborSharePercent).toBeNull();
   });
 });

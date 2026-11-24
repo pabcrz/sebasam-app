@@ -47,7 +47,7 @@ describe("BalancePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     role.current = "SUPER_ADMIN";
-    getProfitSnapshotMock.mockResolvedValue({ period, jobs: [], summary: buildProfitSummary({ income: { laborCents: 0, partsCents: 0, otherCents: 0 }, cashCollectedCents: 0, payrollCents: 0, expenses: [] }) });
+    getProfitSnapshotMock.mockResolvedValue({ period, jobs: [], summary: buildProfitSummary({ income: { laborCents: 0, partsCents: 0 }, cashCollectedCents: 0, payrollCents: 0, expenses: [] }) });
     listExpensesMock.mockResolvedValue({ period, expenses: [] });
   });
 
@@ -87,7 +87,7 @@ describe("BalancePage", () => {
   });
 
   it("shows the owner the 12-month comparison for the chosen series", async () => {
-    getComparisonMock.mockResolvedValue({ period, series: "refacciones", medianCents: null, totals: { incomeCents: 0, expensesCents: 0 }, months: [{ month: "2026-11", label: "noviembre 2026", income: { laborCents: 0, partsCents: 0, otherCents: 0 }, expensesCents: 0, valueCents: 0, level: null, laborSharePercent: null }] });
+    getComparisonMock.mockResolvedValue({ period, series: "refacciones", medianCents: null, totals: { incomeCents: 0, expensesCents: 0 }, months: [{ month: "2026-11", label: "noviembre 2026", income: { laborCents: 0, partsCents: 0 }, expensesCents: 0, valueCents: 0, level: null, laborSharePercent: null }] });
 
     render(await BalancePage(params({ tab: "utilidad", view: "comparar", serie: "refacciones", month: "2026-11" })));
 

@@ -87,7 +87,6 @@ export function ProfitView({ snapshot, view, hrefFor, allocation, comparison }: 
             rows={[
               { label: "Queda de mano de obra", cents: labor.remainingCents },
               { label: "Queda de refacciones y materiales", cents: parts.remainingCents },
-              ...(income.otherCents > 0 ? [{ label: "Otros ingresos", cents: income.otherCents, hint: "Partidas de tipo «Otro»; fuera de ambas cuentas" }] : []),
               { label: "Queda en total", cents: general.remainingCents, strong: true },
             ]}
           />
@@ -96,7 +95,6 @@ export function ProfitView({ snapshot, view, hrefFor, allocation, comparison }: 
             rows={[
               { label: "Entró por mano de obra", cents: income.laborCents },
               { label: "Entró por refacciones y materiales", cents: income.partsCents },
-              ...(income.otherCents > 0 ? [{ label: "Entró por otros", cents: income.otherCents }] : []),
               { label: "Comisiones de nómina", cents: general.payrollCents, hint: "Calculadas por el sistema de nómina" },
               { label: "Gastos y compras registrados", cents: general.expensesCents, split: general.expensesByInvoice },
             ]}

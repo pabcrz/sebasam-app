@@ -12,7 +12,7 @@ Quien captura gastos (ADMIN o ADMIN_ASSISTANT) solo registra hechos: fecha, mont
 
 ## Cobros y saldos
 
-- **Cobrado:** pagos `PAID` registrados esta semana, este mes y este año.
+- **Cobrado:** pagos `PAID` registrados esta semana, este mes y este año. Un pago revertido ya no cuenta.
 - **Por cobrar:** saldo pendiente de notas completadas. No es dinero cobrado y nunca se suma a lo cobrado.
 
 ## Gastos
@@ -75,7 +75,7 @@ Tres vistas que **cuadran entre sí**: queda general = queda de mano de obra + q
 
 ### De dónde sale cada cifra
 
-- **Ingresos:** una nota (`PayableNote` emitida, de trabajo o de venta) cuenta **solo cuando queda totalmente liquidada**, en el mes (hora de CDMX) del abono que la cubre por completo, aunque tuviera abonos anteriores. Se reconoce su base sin IVA, ya con descuentos o acuerdos, repartida entre categorías según sus partidas: `LABOR` es mano de obra; `MATERIAL` y `REFACCIONES`, refacciones y materiales; `OTHER` solo aparece en la vista General. Las secciones no autorizadas no cuentan.
+- **Ingresos:** una nota (`PayableNote` emitida, de trabajo o de venta) cuenta **solo cuando queda totalmente liquidada**, en el mes (hora de CDMX) del abono que la cubre por completo, aunque tuviera abonos anteriores. Se reconoce su base sin IVA, ya con descuentos o acuerdos, repartida entre categorías según sus partidas: `LABOR` es mano de obra; `MATERIAL` y `REFACCIONES`, refacciones y materiales; `OTHER` siempre cuenta del lado de mano de obra (nómina) y nunca de refacciones: pagarle a un mecánico con eso es una decisión manual. Las secciones no autorizadas no cuentan.
 - **Nómina:** el cálculo de nómina mensual existente (`totalPayableCents`, o las comisiones si no hay total). No se captura.
 - **Gastos:** por fecha de pago, en el mes que se pagaron. La parte de una compra que el dueño **liga a una nota** (Utilidad → Asignar) cuenta en cambio en el mes en que esa nota se liquida, junto con lo que cobró; la parte sin ligar sigue por fecha de pago. Lo ligado a notas de una compra no puede pasar de su monto, y cada centavo cuenta una sola vez.
 - **Utilidad por trabajo** (vista Refacciones): por nota liquidada en el mes, refacciones cobradas − costo de refacciones ligado (la parte de refacciones de cada pieza), con su margen en %. Una nota sin compras ligadas aparece con margen completo.
@@ -87,7 +87,7 @@ Tres vistas que **cuadran entre sí**: queda general = queda de mano de obra + q
 
 - Reglas de reconocimiento iguales a las del mes: una nota cuenta completa en el mes en que queda totalmente liquidada; una compra ligada a una nota cuenta con ella. Meses de calendario en hora de la Ciudad de México.
 - «Frente al resto» compara con la **mediana** de los meses que tuvieron cobros: **más fuerte** si la supera por más de 15 %, **más débil** si queda más de 15 % abajo, **típico** en medio. Con menos de 3 meses con cobros no se clasifica. Es una descripción del pasado: sin puntuaciones ni pronósticos.
-- **Otros (partidas «Otro»):** cuentan solo en «Todas»; nunca se mezclan con refacciones ni con mano de obra, y quedan fuera del % de mano de obra (mano de obra entre mano de obra más refacciones).
+- **Otros (partidas «Otro»):** cuentan como mano de obra, nunca como refacciones.
 - Los gastos de esta vista **no incluyen nómina**; la nómina sigue en las vistas del mes.
 - Fuera por ahora: filtro por **semana** (falta definir con el negocio qué día empieza la semana) y la **CxC mensual histórica** (no hay saldo inicial verificado ni historial completo; la CxC de hoy está en Cobros y saldos).
 
