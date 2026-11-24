@@ -78,6 +78,14 @@ describe("ExpensesView", () => {
     expect(screen.queryByTestId("recurring-section")).not.toBeInTheDocument();
   });
 
+  it("offers the month's CSV only when there is something to export", () => {
+    const { rerender } = render(<ExpensesView period={period} expenses={expenses} today="2026-11-23" hrefFor={hrefFor} actions={actions} />);
+    expect(screen.getByRole("link", { name: "Descargar CSV" })).toHaveAttribute("href", "/admin/balance/gastos.csv?month=2026-11");
+
+    rerender(<ExpensesView period={period} expenses={[]} today="2026-11-23" hrefFor={hrefFor} actions={actions} />);
+    expect(screen.queryByRole("link", { name: "Descargar CSV" })).not.toBeInTheDocument();
+  });
+
   it("shows the result notices with the right role", () => {
     const { rerender } = render(<ExpensesView period={period} expenses={[]} today="2026-11-23" hrefFor={hrefFor} actions={actions} notice={{ tone: "success", text: "Gasto registrado." }} />);
     expect(screen.getByRole("status")).toHaveTextContent("Gasto registrado.");
