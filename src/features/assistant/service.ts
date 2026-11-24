@@ -19,6 +19,7 @@ import {
   type CompletedWorkMatchSource,
 } from "@/features/completed-work-knowledge/repository";
 import { formatCents } from "@/features/quotes/lib/format";
+import { mexicoCityCalendarDate } from "@/features/quotes/lib/operational-date";
 
 export interface AssistantFilters {
   brand: string | null;
@@ -234,8 +235,15 @@ function mapFiltersToCompletedAggregateInput(
     filterModel: filters.model,
     filterDescription: filters.description,
     filterMaster: filters.master,
-    dateFrom: filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00.000Z`) : null,
-    dateTo: filters.dateTo ? new Date(`${filters.dateTo}T23:59:59.999Z`) : null,
+    ...completedDateBounds(filters),
+  };
+}
+
+/** Mexico City has no DST since 2022, so the offset is a fixed -06:00. */
+function completedDateBounds(filters: AssistantFilters): { dateFrom: Date | null; dateTo: Date | null } {
+  return {
+    dateFrom: filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00.000-06:00`) : null,
+    dateTo: filters.dateTo ? new Date(`${filters.dateTo}T23:59:59.999-06:00`) : null,
   };
 }
 
@@ -263,7 +271,10 @@ export async function answerHistoricalQuestion(question: string): Promise<Assist
   }
 
   const filters = parseAssistantFilters(
-    await provider.generateText({ system: EXTRACTION_SYSTEM_PROMPT, user: question }),
+    await provider.generateText({
+      system: `${EXTRACTION_SYSTEM_PROMPT}\nHoy es ${mexicoCityCalendarDate()} (America/Mexico_City). Resuelve fechas relativas ("el mes pasado", "hace un año") a dateFrom/dateTo tomando ese día como referencia.`,
+      user: question,
+    }),
   );
 
   const aggregationPromise = filters.wantsStats
@@ -277,7 +288,7 @@ export async function answerHistoricalQuestion(question: string): Promise<Assist
   const [[historicalSources, completedSources], aggregateResults] = await Promise.all([
     Promise.all([
       matchHistoricalItems({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model }),
-      matchCompletedWork({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model }),
+      matchCompletedWork({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model, ...completedDateBounds(filters) }),
     ]),
     aggregationPromise,
   ]);

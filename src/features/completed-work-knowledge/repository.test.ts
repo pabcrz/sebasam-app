@@ -24,6 +24,20 @@ function item(overrides: Record<string, unknown> = {}) {
 describe("completed-work repository", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it("filters matches by completion date range", async () => {
+    prisma.$queryRaw.mockResolvedValue([]);
+    const dateFrom = new Date("2026-10-01T06:00:00.000Z");
+    const dateTo = new Date("2026-11-01T05:59:59.999Z");
+
+    await matchCompletedWork({ embedding: new Array(1536).fill(0), dateFrom, dateTo });
+
+    const query = prisma.$queryRaw.mock.calls[0][0] as { strings: readonly string[]; values: unknown[] };
+    expect(query.strings.join(" ")).toContain('work_order."completedAt" >=');
+    expect(query.strings.join(" ")).toContain('work_order."completedAt" <=');
+    expect(query.values).toContain(dateFrom);
+    expect(query.values).toContain(dateTo);
+  });
+
   it("maps snapshot-only vehicles and Mexico City completion dates from the mocked pgvector query", async () => {
     prisma.$queryRaw.mockResolvedValue([{
       item_id: "item-1", work_order_id: "order-1", work_order_number: "OT-01",

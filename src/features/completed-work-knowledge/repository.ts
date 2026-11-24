@@ -74,6 +74,8 @@ export interface MatchCompletedWorkInput {
   filterType?: QuoteItemType | null;
   filterBrand?: string | null;
   filterModel?: string | null;
+  dateFrom?: Date | null;
+  dateTo?: Date | null;
 }
 
 /** Reads indexed vectors and live operational values; no mutable values are projected. */
@@ -117,6 +119,8 @@ export async function matchCompletedWork(
       AND (${input.filterType ?? null}::"QuoteItemType" IS NULL OR item."type" = ${input.filterType ?? null}::"QuoteItemType")
       AND (${input.filterBrand ?? null}::text IS NULL OR COALESCE(vehicle."brand", quote."vehicleSnapshot" ->> 'brand') ILIKE '%' || ${input.filterBrand ?? null} || '%')
       AND (${input.filterModel ?? null}::text IS NULL OR COALESCE(vehicle."model", quote."vehicleSnapshot" ->> 'model') ILIKE '%' || ${input.filterModel ?? null} || '%')
+      AND (${input.dateFrom ?? null}::timestamptz IS NULL OR work_order."completedAt" >= ${input.dateFrom ?? null}::timestamptz)
+      AND (${input.dateTo ?? null}::timestamptz IS NULL OR work_order."completedAt" <= ${input.dateTo ?? null}::timestamptz)
       AND 1 - (source."embedding" <=> CAST(${vectorLiteral(input.embedding)} AS vector(1536))) >= ${input.threshold ?? 0.4}
     ORDER BY source."embedding" <=> CAST(${vectorLiteral(input.embedding)} AS vector(1536)), source."id"
     LIMIT ${input.count ?? 5}

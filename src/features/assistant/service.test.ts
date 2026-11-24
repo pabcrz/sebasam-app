@@ -182,6 +182,22 @@ describe("assistant orchestration", () => {
     expect(matchCompletedWork).toHaveBeenCalledTimes(1);
   });
 
+  it("tells the extractor today's date and filters completed work by Mexico City day bounds", async () => {
+    providerMock.generateText
+      .mockReset()
+      .mockResolvedValueOnce('{"wantsStats": true, "dateFrom": "2026-10-01", "dateTo": "2026-10-31"}')
+      .mockResolvedValueOnce("ok");
+    await answerHistoricalQuestion("¿Cuánto cobré el mes pasado?");
+
+    expect(providerMock.generateText.mock.calls[0][0].system).toMatch(/Hoy es \d{4}-\d{2}-\d{2} \(America\/Mexico_City\)/);
+    const bounds = {
+      dateFrom: new Date("2026-10-01T06:00:00.000Z"),
+      dateTo: new Date("2026-11-01T05:59:59.999Z"),
+    };
+    expect(matchCompletedWork).toHaveBeenCalledWith(expect.objectContaining(bounds));
+    expect(aggregateCompletedWork).toHaveBeenCalledWith(expect.objectContaining(bounds));
+  });
+
   it("returns a config error instead of throwing when the API key is missing", async () => {
     createGeminiProvider.mockImplementation(() => {
       throw new Error("GEMINI_API_KEY no está configurada.");
