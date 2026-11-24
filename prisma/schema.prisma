@@ -313,6 +313,7 @@ model Quote {
   lockedBy              UserProfile?                @relation("QuoteLockedBy", fields: [lockedById], references: [id], onDelete: SetNull)
   sections              QuoteSection[]
   items                 QuoteItem[]
+  priceReferenceSources QuotePriceReferenceSource[]
   workOrder             WorkOrder?
   paymentRequests       PaymentRequest[]
   payments              Payment[]
@@ -413,6 +414,7 @@ model QuoteItem {
   quote                         Quote                          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   section                       QuoteSection?                  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   completedWorkKnowledgeSources CompletedWorkKnowledgeSource[]
+  priceReferenceSources         QuotePriceReferenceSource[]
   laborAdvances                 WorkOrderLaborAdvance[]
 
   @@index([sectionId])
@@ -476,6 +478,30 @@ model CompletedWorkKnowledgeSource {
   @@unique([workOrderId, quoteItemId])
   @@index([workOrderId, indexState])
   @@map("completed_work_knowledge_sources")
+}
+
+/// Semantic projection of quote concepts used only as price references (issue #489).
+/// Prices, totals and eligibility are read from the live quote, never copied here.
+model QuotePriceReferenceSource {
+  id               String                       @id @default(cuid())
+  quoteId          String
+  quoteItemId      String                       @unique
+  contextText      String
+  contextHash      String
+  embedding        Unsupported("vector(1536)")?
+  indexState       KnowledgeIndexState          @default(PENDING)
+  indexingAttempts Int                          @default(0)
+  lastIndexError   String?
+  lastAttemptedAt  DateTime?
+  indexedAt        DateTime?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+
+  quote     Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quoteItem QuoteItem @relation(fields: [quoteItemId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId, indexState])
+  @@map("quote_price_reference_sources")
 }
 
 model WorkAssignment {

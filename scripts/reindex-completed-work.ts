@@ -1,9 +1,11 @@
 /**
- * Indexes completed work orders for the assistant (backfill and retry of failures).
+ * Indexes completed work orders and quote price references for the assistant
+ * (backfill and retry of failures).
  *
  * Usage: pnpm assistant:reindex
  */
 import { reindexCompletedWorkKnowledge } from "../src/features/completed-work-knowledge/service";
+import { reindexQuotePriceReferences } from "../src/features/quote-price-reference/service";
 import { createGeminiProvider, ProviderError } from "../src/features/historical/provider";
 
 async function main() {
@@ -23,7 +25,9 @@ async function main() {
 
   const result = await reindexCompletedWorkKnowledge(provider);
   console.log(`Órdenes: ${result.orders} · indexados: ${result.indexed} · fallidos: ${result.failed} · omitidos: ${result.skipped}`);
-  process.exit(result.failed > 0 ? 1 : 0);
+  const quotes = await reindexQuotePriceReferences(provider);
+  console.log(`Cotizaciones: ${quotes.quotes} · indexados: ${quotes.indexed} · fallidos: ${quotes.failed} · omitidos: ${quotes.skipped}`);
+  process.exit(result.failed + quotes.failed > 0 ? 1 : 0);
 }
 
 main().catch((error) => {

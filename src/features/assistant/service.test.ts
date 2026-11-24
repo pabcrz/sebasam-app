@@ -14,13 +14,15 @@ const { createGeminiProvider, ProviderErrorStub } = vi.hoisted(() => ({
   },
 }));
 
-const { aggregateHistoricalItems, matchHistoricalItems, aggregateCompletedWork, matchCompletedWork, listCompletedWorkVocabulary } = vi.hoisted(() => ({
+const { aggregateHistoricalItems, matchHistoricalItems, aggregateCompletedWork, matchCompletedWork, listCompletedWorkVocabulary, matchQuotePriceReferences } = vi.hoisted(() => ({
   aggregateHistoricalItems: vi.fn(),
   matchHistoricalItems: vi.fn(),
   aggregateCompletedWork: vi.fn(),
   matchCompletedWork: vi.fn(),
   listCompletedWorkVocabulary: vi.fn(),
+  matchQuotePriceReferences: vi.fn(),
 }));
+vi.mock("@/features/quote-price-reference/repository", () => ({ matchQuotePriceReferences }));
 vi.mock("@/features/completed-work-knowledge/repository", () => ({ aggregateCompletedWork, matchCompletedWork, listCompletedWorkVocabulary }));
 
 vi.mock("@/features/historical/provider", () => ({ createGeminiProvider, ProviderError: ProviderErrorStub }));
@@ -85,6 +87,7 @@ beforeEach(() => {
   matchHistoricalItems.mockResolvedValue([sampleSource]);
   matchCompletedWork.mockResolvedValue([completedSource]);
   listCompletedWorkVocabulary.mockResolvedValue([]);
+  matchQuotePriceReferences.mockResolvedValue([]);
   aggregateCompletedWork.mockResolvedValue({ itemCount: 1, workCount: 1, totalGeneratedIncomeCents: 3200, totalGeneratedCommissionCents: 500 });
 });
 
@@ -217,6 +220,22 @@ describe("assistant orchestration", () => {
     const result = await answerHistoricalQuestion("¿Cuánto cobramos?");
     expect(result.envError).toBeNull();
     expect(providerMock.generateText.mock.calls[0][0].system).not.toContain("Conceptos reales");
+  });
+
+  it("includes quote price references as quoted prices that never count as income", async () => {
+    matchQuotePriceReferences.mockResolvedValue([{
+      provenance: "quote-reference", itemId: "q-item", quoteId: "q1", quoteNumber: "C-001", quoteStatus: "SENT",
+      quotedOn: "2026-11-02", brand: "Nissan", model: "NP300", plate: null, type: QuoteItemType.LABOR,
+      description: "Bajar muelles", quantity: 1, unitPriceCents: 50000, itemTotalCents: 50000, similarity: 0.7,
+    }]);
+    const result = await answerHistoricalQuestion("¿Cuánto cotizamos por bajar muelles?");
+
+    expect(result.sources.map((source) => source.provenance)).toContain("quote-reference");
+    const prompts = providerMock.generateText.mock.calls[1][0];
+    expect(prompts.user).toContain("Referencia de precio (cotización C-001");
+    expect(prompts.user).toContain("No es trabajo realizado ni dinero cobrado.");
+    expect(prompts.system).toContain("COTIZADO");
+    expect(result.aggregation?.completedWork.totalGeneratedIncomeCents).toBe(3200);
   });
 
   it("returns a config error instead of throwing when the API key is missing", async () => {

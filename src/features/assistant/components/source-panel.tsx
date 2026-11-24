@@ -19,6 +19,25 @@ interface SourcePanelProps {
 export function SourcePanel({ source }: SourcePanelProps) {
   const [open, setOpen] = React.useState(false);
 
+  if (source.provenance === "quote-reference") {
+    const vehicle = [source.brand, source.model].filter(Boolean).join(" ") || "Sin unidad";
+    return (
+      <div className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-bg-soft)]">
+        <Button type="button" variant="ghost" size="sm" className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+          <span className="min-w-0 flex-1 truncate text-sm"><span className="font-semibold text-[var(--color-text-main)]">Referencia de precio</span><span className="text-[var(--color-text-muted)]"> — {source.description}</span></span>
+          <span className="text-[var(--color-text-muted)]" aria-hidden="true">{open ? <Icon name="chevron-down" className="h-4 w-4" /> : <Icon name="chevron-right" className="h-4 w-4" />}</span>
+        </Button>
+        {open ? <dl className="space-y-1.5 border-t border-[var(--color-border-light)] px-3 py-3 text-sm">
+          <div className="flex justify-between gap-3"><dt className="text-[var(--color-text-muted)]">Cotización</dt><dd className="text-right font-medium">{source.quoteNumber}</dd></div>
+          <div className="flex justify-between gap-3"><dt className="text-[var(--color-text-muted)]">Fecha cotizada</dt><dd className="text-right font-medium">{source.quotedOn}</dd></div>
+          <div className="flex justify-between gap-3"><dt className="text-[var(--color-text-muted)]">Unidad</dt><dd className="text-right font-medium">{vehicle}{source.plate ? ` (${source.plate})` : ""}</dd></div>
+          <div className="flex justify-between gap-3"><dt className="text-[var(--color-text-muted)]">Precio cotizado</dt><dd className="text-right font-medium">{formatCents(source.itemTotalCents)}</dd></div>
+          <p className="text-xs text-[var(--color-text-muted)]">Es un precio cotizado, no trabajo realizado ni dinero cobrado.</p>
+        </dl> : null}
+      </div>
+    );
+  }
+
   if (source.provenance === "completed-work") {
     const vehicle = [source.brand, source.model].filter(Boolean).join(" ") || "Sin unidad";
     return (
