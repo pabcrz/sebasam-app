@@ -978,3 +978,42 @@ model PayrollWeekControl {
   closedBy     UserProfile?        @relation("WeekClosedBy", fields: [closedById], references: [id])
   reopenedBy   UserProfile?        @relation("WeekReopenedBy", fields: [reopenedById], references: [id])
 }
+
+enum ExpenseCategory {
+  RENT
+  ELECTRICITY
+  WATER
+  PHONE_INTERNET
+  PARTS_PURCHASE
+  MATERIALS_PURCHASE
+  TOOLS_EQUIPMENT
+  FUEL_TRANSPORT
+  TAXES_FEES
+  OTHER
+}
+
+enum ExpenseInvoiceStatus {
+  INVOICED
+  NOT_INVOICED
+}
+
+/// A business expense. `invoiceStatus` is independent of `category`: the same category can be paid with or without an invoice.
+/// `partsSharePercent` is the part (0-100) charged to the parts-and-materials account; the rest goes to labor.
+model Expense {
+  id                String               @id @default(cuid())
+  spentAt           DateTime             @db.Date
+  amountCents       Int
+  category          ExpenseCategory
+  invoiceStatus     ExpenseInvoiceStatus
+  partsSharePercent Int                  @default(0)
+  supplier          String?
+  paymentMethod     String?
+  notes             String?
+  createdById       String?              @db.Uuid
+  deletedAt         DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([spentAt])
+  @@index([deletedAt, spentAt])
+}

@@ -10,12 +10,12 @@ function paymentsLabel(count: number) {
 }
 
 /** Two separate sections: what came in (Cobrado) and what is still owed (Por cobrar). */
-export function BalanceView({ snapshot }: { snapshot: BalanceSnapshot }) {
+export function BalanceView({ snapshot, showHeader = true }: { snapshot: BalanceSnapshot; showHeader?: boolean }) {
   const { collected, receivables } = snapshot;
 
   return (
     <div className="grid gap-6">
-      <PageHeader title="Balance" subtitle="Cobrado y por cobrar" />
+      {showHeader ? <PageHeader title="Balance" subtitle="Cobrado y por cobrar" /> : null}
 
       <section aria-labelledby="balance-collected-heading" data-testid="balance-collected" className="grid gap-3">
         <div>
