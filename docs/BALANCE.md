@@ -33,6 +33,12 @@ Los gastos se eliminan de forma lógica (`deletedAt`); la fila se conserva pero 
 
 El catálogo de proveedores **aprende solo**: cada vez que se registra o edita un gasto con proveedor, el catálogo guarda el comprobante y la categoría que se usaron con él, y el gasto queda ligado a ese proveedor (coincidencia exacta del nombre). Al capturar un gasto nuevo, el campo Proveedor autocompleta con el catálogo y, si el nombre ya existe, propone su categoría y su comprobante habituales; quien captura puede cambiarlos. Al aplicar la migración, los proveedores que ya estaban escritos en gastos se pasan al catálogo con los datos de su gasto más reciente.
 
+### Exportar a CSV
+
+En Gastos, **Descargar CSV** baja los gastos del mes mostrado (`/admin/balance/gastos.csv?month=YYYY-MM`) con fecha, categoría, proveedor, comprobante, método de pago, monto en pesos y nota, del más antiguo al más reciente. Lo pueden bajar quienes registran gastos. No calcula impuestos.
+
+Las columnas son una **primera propuesta nuestra**: todavía no se han revisado con un contador. Cuando se platique con uno, se ajustan a lo que realmente pida.
+
 ### Gastos que se repiten
 
 Al registrar un gasto nuevo se puede marcar **Repetir cada mes** (renta, luz, agua, teléfono). Eso crea una plantilla con la categoría, el monto, el comprobante, el proveedor y el método de pago, fechada el mismo día del mes (máximo el 28, para que exista en todos los meses). El gasto con el que se creó queda ligado a la plantilla, así que ese mes no se propone otra vez.

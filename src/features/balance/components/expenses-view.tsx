@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import { EXPENSE_CATEGORY_LABELS, EXPENSE_INVOICE_LABELS, EXPENSE_PAYMENT_METHODS } from "../expenses/categories";
 import { ExpenseFormDialog } from "../expenses/expense-form-dialog";
@@ -39,7 +40,14 @@ export function ExpensesView({ period, expenses, today, hrefFor, actions, notice
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="expenses-heading" className="sr-only">Gastos</h2>
         <MonthNavigator period={period} hrefFor={hrefFor} />
-        <ExpenseFormDialog action={actions.create} month={period.month} today={today} suppliers={suppliers} />
+        <div className="flex items-center gap-2">
+          {expenses.length > 0 ? (
+            <Button asChild variant="outline" size="lg">
+              <a href={`/admin/balance/gastos.csv?month=${period.month}`} download>Descargar CSV</a>
+            </Button>
+          ) : null}
+          <ExpenseFormDialog action={actions.create} month={period.month} today={today} suppliers={suppliers} />
+        </div>
       </div>
 
       {notice ? (
