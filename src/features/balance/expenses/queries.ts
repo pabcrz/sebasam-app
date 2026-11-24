@@ -12,6 +12,8 @@ export interface ExpenseRow {
   supplier: string | null;
   paymentMethod: string | null;
   notes: string | null;
+  /** True when a receipt photo or PDF is attached. */
+  hasReceipt?: boolean;
 }
 
 export async function listExpensesForMonth(month: string | undefined, now = new Date()): Promise<{ period: MonthPeriod; expenses: ExpenseRow[] }> {
@@ -20,9 +22,9 @@ export async function listExpensesForMonth(month: string | undefined, now = new 
   const expenses = await prisma.expense.findMany({
     where: { deletedAt: null, spentAt: { gte: period.dateStart, lt: period.dateEnd } },
     orderBy: [{ spentAt: "desc" }, { createdAt: "desc" }],
-    select: { id: true, spentAt: true, amountCents: true, category: true, invoiceStatus: true, partsSharePercent: true, supplier: true, paymentMethod: true, notes: true },
+    select: { id: true, spentAt: true, amountCents: true, category: true, invoiceStatus: true, partsSharePercent: true, supplier: true, paymentMethod: true, notes: true, receiptPath: true },
   });
-  return { period, expenses };
+  return { period, expenses: expenses.map(({ receiptPath, ...expense }): ExpenseRow => ({ ...expense, hasReceipt: receiptPath !== null })) };
 }
 
 export interface SupplierOption {

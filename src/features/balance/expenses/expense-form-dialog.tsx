@@ -24,6 +24,7 @@ import {
 } from "@/components/ui";
 import { EXPENSE_CATEGORIES, EXPENSE_INVOICE_LABELS, EXPENSE_PAYMENT_METHODS } from "./categories";
 import type { ExpenseRow, SupplierOption } from "./queries";
+import { uploadReceipt } from "./receipt-upload";
 
 type ExpenseFormDialogProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -48,6 +49,10 @@ export function ExpenseFormDialog({ action, month, today, expense, suppliers = [
   const [category, setCategory] = React.useState<string>(expense?.category ?? "RENT");
   const [invoiceStatus, setInvoiceStatus] = React.useState<string>(expense?.invoiceStatus ?? "NOT_INVOICED");
   const [paymentMethod, setPaymentMethod] = React.useState<string>(expense?.paymentMethod ?? "");
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const [receiptPath, setReceiptPath] = React.useState("");
+  const [reading, setReading] = React.useState(false);
+  const [receiptMessage, setReceiptMessage] = React.useState<{ tone: "info" | "error"; text: string } | null>(null);
   const supplierListId = `${formId}-suppliers`;
   // Picking a known supplier on a new expense proposes its usual category and invoice status; the user can still change both.
   const proposeFromSupplier = (name: string) => {
@@ -55,6 +60,33 @@ export function ExpenseFormDialog({ action, month, today, expense, suppliers = [
     if (expense || !known) return;
     if (known.category) setCategory(known.category);
     setInvoiceStatus(known.usuallyInvoiced ? "INVOICED" : "NOT_INVOICED");
+  };
+  const setField = (name: string, value: string) => {
+    const field = formRef.current?.elements.namedItem(name);
+    if (field instanceof HTMLInputElement) field.value = value;
+  };
+  // The photo is stored and read; what was read only fills the form so the person checks it before saving.
+  const readReceipt = async (file: File) => {
+    setReading(true);
+    setReceiptMessage(null);
+    try {
+      const { receiptPath: path, extracted } = await uploadReceipt(file);
+      setReceiptPath(path);
+      if (!extracted) {
+        setReceiptMessage({ tone: "info", text: "Comprobante guardado. No se pudo leer: captura los datos a mano." });
+        return;
+      }
+      if (extracted.spentAt) setField("spentAt", extracted.spentAt);
+      if (extracted.amount) setField("amount", extracted.amount.toFixed(2));
+      if (extracted.supplier) { setField("supplier", extracted.supplier); proposeFromSupplier(extracted.supplier); }
+      if (extracted.category) setCategory(extracted.category);
+      if (extracted.invoiced !== null) setInvoiceStatus(extracted.invoiced ? "INVOICED" : "NOT_INVOICED");
+      setReceiptMessage({ tone: "info", text: "Revisa lo que se leyó antes de registrar el gasto." });
+    } catch (error) {
+      setReceiptMessage({ tone: "error", text: error instanceof Error ? error.message : "No se pudo subir el comprobante." });
+    } finally {
+      setReading(false);
+    }
   };
   const title = expense ? "Editar gasto" : "Nuevo gasto";
 
@@ -78,8 +110,24 @@ export function ExpenseFormDialog({ action, month, today, expense, suppliers = [
           <DialogDescription>Registra lo que se pagó y si hay factura.</DialogDescription>
         </DialogMobileHeader>
         <DialogMobileBody>
-          <form id={formId} action={action} onSubmit={() => setIsPending(true)} className="grid gap-4" data-testid="expense-form">
+          <form id={formId} ref={formRef} action={action} onSubmit={() => setIsPending(true)} className="grid gap-4" data-testid="expense-form">
             <input type="hidden" name="month" value={month} />
+            <input type="hidden" name="receiptPath" value={receiptPath} />
+            {expense ? null : (
+              <div className="grid gap-2">
+                <Label htmlFor={`${formId}-receipt`}>Foto o PDF del comprobante (opcional)</Label>
+                <input
+                  id={`${formId}-receipt`}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  disabled={isPending || reading}
+                  onChange={(event) => { const file = event.target.files?.[0]; if (file) void readReceipt(file); }}
+                  className="text-sm file:mr-3 file:min-h-[var(--tap-min-height)] file:rounded-[var(--radius-md)] file:border file:border-[var(--color-border-light)] file:bg-[var(--color-surface)] file:px-3"
+                />
+                {reading ? <p role="status" className="text-sm text-[var(--color-text-muted)]">Leyendo el comprobante…</p> : null}
+                {receiptMessage ? <p role={receiptMessage.tone === "error" ? "alert" : "status"} className="text-sm text-[var(--color-text-muted)]">{receiptMessage.text}</p> : null}
+              </div>
+            )}
             <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
               <div className="grid gap-2">
                 <Label htmlFor={`${formId}-date`}>Fecha de pago</Label>
@@ -149,7 +197,7 @@ export function ExpenseFormDialog({ action, month, today, expense, suppliers = [
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={isPending}>Cancelar</Button>
           </DialogClose>
-          <Button type="submit" form={formId} variant="primary" size="lg" loading={isPending} disabled={isPending}>
+          <Button type="submit" form={formId} variant="primary" size="lg" loading={isPending} disabled={isPending || reading}>
             {expense ? "Guardar" : "Registrar gasto"}
           </Button>
         </DialogMobileFooter>

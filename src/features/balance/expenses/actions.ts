@@ -23,6 +23,7 @@ function expenseFormToInput(formData: FormData) {
     supplier: text("supplier") ?? "",
     paymentMethod: text("paymentMethod") || null,
     notes: text("notes") ?? "",
+    receiptPath: text("receiptPath") || null,
   };
 }
 
@@ -109,11 +110,13 @@ export async function updateExpenseFromForm(expenseId: string, formData: FormDat
   const untouched = current.partsSharePercent === defaultPartsShareFor(current.category);
   const partsSharePercent = untouched ? defaultPartsShareFor(parsed.data.category) : current.partsSharePercent;
 
+  // Editing never drops a receipt already attached: the edit form has no upload, so a missing path means "leave it".
+  const { receiptPath, ...fields } = parsed.data;
   await prisma.$transaction(async (tx) => {
     const supplierId = await rememberSupplier(tx, parsed.data.supplier, parsed.data.invoiceStatus, parsed.data.category);
     await tx.expense.updateMany({
       where: { id: expenseId, deletedAt: null },
-      data: { ...parsed.data, partsSharePercent, supplierId, spentAt: new Date(`${parsed.data.spentAt}T00:00:00.000Z`) },
+      data: { ...fields, ...(receiptPath ? { receiptPath } : {}), partsSharePercent, supplierId, spentAt: new Date(`${parsed.data.spentAt}T00:00:00.000Z`) },
     });
   });
 

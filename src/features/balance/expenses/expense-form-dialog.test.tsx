@@ -1,6 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+const upload = vi.hoisted(() => vi.fn());
+vi.mock("./receipt-upload", () => ({ uploadReceipt: upload }));
+
 import { ExpenseFormDialog } from "./expense-form-dialog";
 
 describe("ExpenseFormDialog", () => {
@@ -89,5 +92,36 @@ describe("ExpenseFormDialog", () => {
     render(<ExpenseFormDialog action={vi.fn()} month="2026-11" today="2026-11-23" expense={expense} />);
     await user.click(screen.getByRole("button", { name: /editar gasto/i }));
     expect(screen.queryByRole("checkbox", { name: /repetir cada mes/i })).not.toBeInTheDocument();
+  });
+
+  it("fills the form with what was read from a receipt photo and attaches it, leaving the person to confirm", async () => {
+    const user = userEvent.setup();
+    upload.mockResolvedValue({ receiptPath: "0b9c6a5e-1d2f-4c3b-8a7e-5f4d3c2b1a09.jpg", extracted: { spentAt: "2026-11-19", amount: 850.5, supplier: "Gasolinera", category: "FUEL_TRANSPORT", invoiced: true } });
+    render(<ExpenseFormDialog action={vi.fn()} month="2026-11" today="2026-11-23" />);
+    await user.click(screen.getByRole("button", { name: /nuevo gasto/i }));
+
+    await user.upload(screen.getByLabelText(/foto o pdf del comprobante/i), new File(["x"], "ticket.jpg", { type: "image/jpeg" }));
+
+    expect(await screen.findByText(/revisa lo que se leyó/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Fecha de pago")).toHaveValue("2026-11-19");
+    expect(screen.getByLabelText("Monto (MXN)")).toHaveValue(850.5);
+    expect(screen.getByLabelText("Proveedor (opcional)")).toHaveValue("Gasolinera");
+    expect(screen.getByRole("radio", { name: "Con factura" })).toBeChecked();
+    expect(screen.getByRole("combobox", { name: "Categoría" })).toHaveTextContent("Combustible y traslados");
+    expect(screen.getByTestId("expense-form").querySelector('input[name="receiptPath"]')).toHaveValue("0b9c6a5e-1d2f-4c3b-8a7e-5f4d3c2b1a09.jpg");
+  });
+
+  it("keeps the receipt and asks for manual entry when it could not be read, and shows an upload error", async () => {
+    const user = userEvent.setup();
+    upload.mockResolvedValueOnce({ receiptPath: "0b9c6a5e-1d2f-4c3b-8a7e-5f4d3c2b1a09.jpg", extracted: null });
+    render(<ExpenseFormDialog action={vi.fn()} month="2026-11" today="2026-11-23" />);
+    await user.click(screen.getByRole("button", { name: /nuevo gasto/i }));
+    await user.upload(screen.getByLabelText(/foto o pdf del comprobante/i), new File(["x"], "t.jpg", { type: "image/jpeg" }));
+    expect(await screen.findByText(/captura los datos a mano/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Fecha de pago")).toHaveValue("2026-11-23");
+
+    upload.mockRejectedValueOnce(new Error("El archivo pesa más de 4 MB."));
+    await user.upload(screen.getByLabelText(/foto o pdf del comprobante/i), new File(["x"], "t2.jpg", { type: "image/jpeg" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("más de 4 MB");
   });
 });

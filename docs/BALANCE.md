@@ -33,6 +33,17 @@ Los gastos se eliminan de forma lógica (`deletedAt`); la fila se conserva pero 
 
 El catálogo de proveedores **aprende solo**: cada vez que se registra o edita un gasto con proveedor, el catálogo guarda el comprobante y la categoría que se usaron con él, y el gasto queda ligado a ese proveedor (coincidencia exacta del nombre). Al capturar un gasto nuevo, el campo Proveedor autocompleta con el catálogo y, si el nombre ya existe, propone su categoría y su comprobante habituales; quien captura puede cambiarlos. Al aplicar la migración, los proveedores que ya estaban escritos en gastos se pasan al catálogo con los datos de su gasto más reciente.
 
+### Comprobante con foto o PDF
+
+Al registrar un gasto nuevo se puede subir la **foto o el PDF** del comprobante (factura que te hace el proveedor, ticket o nota). La foto se reduce en el teléfono a 1600 px antes de enviarse; el límite es 4 MB (JPG, PNG, WebP o PDF).
+
+- Se guarda en un bucket privado de Supabase Storage (`expense-receipts`, se crea solo la primera vez). Nunca es público: se abre con un enlace firmado de un minuto.
+- Un modelo de visión (Gemini, el mismo `GEMINI_API_KEY` del asistente; opcional `GEMINI_VISION_MODEL`) lee fecha, total, proveedor, categoría y si es factura. Eso solo **llena el formulario**: la persona revisa y registra. Nada se guarda como gasto sin su confirmación.
+- Si no se puede leer (sin llave, error o foto borrosa), el comprobante se conserva y se captura a mano.
+- El comprobante lo ven solo el dueño y el administrador (**Ver comprobante** en la lista de gastos). La asistente puede subirlo pero no abrirlo.
+- Editar un gasto nunca quita el comprobante ya adjunto. Si se sube una foto y se cancela el formulario, el archivo queda guardado sin gasto (no se limpia solo todavía).
+- La foto se envía a Google para leerla.
+
 ### Exportar a CSV
 
 En Gastos, **Descargar CSV** baja los gastos del mes mostrado (`/admin/balance/gastos.csv?month=YYYY-MM`) con fecha, categoría, proveedor, comprobante, método de pago, monto en pesos y nota, del más antiguo al más reciente. Lo pueden bajar quienes registran gastos. No calcula impuestos.

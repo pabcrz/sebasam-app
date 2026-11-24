@@ -26,12 +26,14 @@ type ExpensesViewProps = {
   notice?: { tone: "success" | "danger"; text: string } | null;
   /** Only the owner sees how an expense is split between the two accounts. */
   showAllocation?: boolean;
+  /** Only the owner and the patron can open a receipt. */
+  canViewReceipts?: boolean;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", timeZone: "UTC" });
 const methodLabels = Object.fromEntries(EXPENSE_PAYMENT_METHODS.map((method) => [method.value, method.label]));
 
-export function ExpensesView({ period, expenses, today, hrefFor, actions, notice, showAllocation = false, suppliers = [], recurring = { templates: [], pending: [] } }: ExpensesViewProps) {
+export function ExpensesView({ period, expenses, today, hrefFor, actions, notice, showAllocation = false, canViewReceipts = false, suppliers = [], recurring = { templates: [], pending: [] } }: ExpensesViewProps) {
   const invoiced = expenses.filter((expense) => expense.invoiceStatus === "INVOICED").reduce((sum, expense) => sum + expense.amountCents, 0);
   const total = expenses.reduce((sum, expense) => sum + expense.amountCents, 0);
 
@@ -100,6 +102,9 @@ export function ExpensesView({ period, expenses, today, hrefFor, actions, notice
                     expense.notes,
                   ].filter(Boolean).join(" · ")}
                 </p>
+                {canViewReceipts && expense.hasReceipt ? (
+                  <a href={`/admin/balance/comprobante/${expense.id}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-[var(--color-primary)] underline">Ver comprobante</a>
+                ) : null}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="text-sm font-bold tabular-nums text-[var(--color-text-main)]">{formatCents(expense.amountCents)}</span>
