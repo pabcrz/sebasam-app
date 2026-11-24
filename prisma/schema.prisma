@@ -1000,24 +1000,71 @@ enum ExpenseInvoiceStatus {
 /// A business expense. `invoiceStatus` is independent of `category`: the same category can be paid with or without an invoice.
 /// `partsSharePercent` is the part (0-100) charged to the parts-and-materials account; the rest goes to labor.
 model Expense {
-  id                String               @id @default(cuid())
-  spentAt           DateTime             @db.Date
-  amountCents       Int
-  category          ExpenseCategory
-  invoiceStatus     ExpenseInvoiceStatus
-  partsSharePercent Int                  @default(0)
-  supplier          String?
-  paymentMethod     String?
-  notes             String?
-  createdById       String?              @db.Uuid
-  deletedAt         DateTime?
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  id                 String               @id @default(cuid())
+  spentAt            DateTime             @db.Date
+  amountCents        Int
+  category           ExpenseCategory
+  invoiceStatus      ExpenseInvoiceStatus
+  partsSharePercent  Int                  @default(0)
+  supplier           String?
+  paymentMethod      String?
+  notes              String?
+  createdById        String?              @db.Uuid
+  supplierId         String?
+  recurringExpenseId String?
+  deletedAt          DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
-  allocations ExpenseAllocation[]
+  allocations      ExpenseAllocation[]
+  supplierRecord   ExpenseSupplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  recurringExpense RecurringExpense?   @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
 
   @@index([spentAt])
   @@index([deletedAt, spentAt])
+  @@index([recurringExpenseId, spentAt])
+}
+
+/// Supplier catalog. It learns from each registered expense: the last invoice status and category used with that supplier.
+model ExpenseSupplier {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  usuallyInvoiced Boolean          @default(false)
+  category        ExpenseCategory?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  expenses Expense[]
+}
+
+/// Monthly template (rent, electricity...). Each month it shows up as a pending proposal that someone confirms, adjusts or skips.
+model RecurringExpense {
+  id            String               @id @default(cuid())
+  category      ExpenseCategory
+  amountCents   Int
+  invoiceStatus ExpenseInvoiceStatus
+  supplier      String?
+  paymentMethod String?
+  /// Day of the month the payment is dated (1-28, so it exists in every month).
+  dayOfMonth    Int
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  expenses Expense[]
+  skips    RecurringExpenseSkip[]
+}
+
+/// A month in which a template was deliberately not paid, so it stops showing as pending.
+model RecurringExpenseSkip {
+  recurringExpenseId String
+  /// "YYYY-MM"
+  month              String
+  createdAt          DateTime @default(now())
+
+  recurringExpense RecurringExpense @relation(fields: [recurringExpenseId], references: [id], onDelete: Cascade)
+
+  @@id([recurringExpenseId, month])
 }
 
 /// Part of a purchase charged to one note: its cost counts in the month that note is settled.

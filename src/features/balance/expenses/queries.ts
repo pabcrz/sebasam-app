@@ -25,6 +25,39 @@ export async function listExpensesForMonth(month: string | undefined, now = new 
   return { period, expenses };
 }
 
+export interface SupplierOption {
+  name: string;
+  usuallyInvoiced: boolean;
+  category: string | null;
+}
+
+/** The supplier catalog, to autocomplete the form and propose its category and invoice status. */
+export async function listSuppliers(): Promise<SupplierOption[]> {
+  await requireExpenseRole();
+  return prisma.expenseSupplier.findMany({ orderBy: { name: "asc" }, select: { name: true, usuallyInvoiced: true, category: true } });
+}
+
+export interface RecurringRow {
+  id: string;
+  category: string;
+  amountCents: number;
+  invoiceStatus: "INVOICED" | "NOT_INVOICED";
+  supplier: string | null;
+  dayOfMonth: number;
+}
+
+const mexicoMonth = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit" }).format(date).slice(0, 7);
+
+/** Active templates and, of those, the ones still waiting for a decision in the month shown. Nothing is proposed for a future month or from before the template existed. */
+export async function listRecurringForMonth(period: MonthPeriod, now = new Date()): Promise<{ templates: RecurringRow[]; pending: RecurringRow[] }> {
+  await requireExpenseRole();
+  const select = { id: true, category: true, amountCents: true, invoiceStatus: true, supplier: true, dayOfMonth: true, createdAt: true, skips: { where: { month: period.month }, select: { month: true } }, expenses: { where: { deletedAt: null, spentAt: { gte: period.dateStart, lt: period.dateEnd } }, select: { id: true } } } as const;
+  const rows = await prisma.recurringExpense.findMany({ where: { active: true }, orderBy: [{ dayOfMonth: "asc" }, { createdAt: "asc" }], select });
+  const proposable = period.month <= mexicoMonth(now);
+  const templates = rows.map(({ skips, expenses, createdAt, ...row }) => ({ row: row as RecurringRow, open: proposable && mexicoMonth(createdAt) <= period.month && skips.length === 0 && expenses.length === 0 }));
+  return { templates: templates.map((template) => template.row), pending: templates.filter((template) => template.open).map((template) => template.row) };
+}
+
 export interface ExpenseLink {
   payableNoteId: string;
   referenceNumber: string;

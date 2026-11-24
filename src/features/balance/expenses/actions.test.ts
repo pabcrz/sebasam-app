@@ -10,19 +10,23 @@ vi.mock("@/lib/auth/session", () => ({
   requireSuperAdmin: vi.fn().mockResolvedValue({ profile: { id: "owner-1", role: "SUPER_ADMIN" } }),
 }));
 const tx = vi.hoisted(() => ({
-  expense: { findFirst: vi.fn() },
+  expense: { findFirst: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+  expenseSupplier: { upsert: vi.fn() },
+  recurringExpense: { create: vi.fn(), findFirst: vi.fn() },
   payableNote: { findFirst: vi.fn() },
   expenseAllocation: { upsert: vi.fn() },
 }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    expense: { create: vi.fn(), updateMany: vi.fn(), findFirst: vi.fn() },
+    expense: { findFirst: vi.fn(), updateMany: vi.fn() },
     expenseAllocation: { deleteMany: vi.fn() },
+    recurringExpense: { updateMany: vi.fn() },
+    recurringExpenseSkip: { upsert: vi.fn() },
     $transaction: vi.fn(async (run: (client: typeof tx) => unknown) => run(tx)),
   },
 }));
 
-import { assignExpenseShareFromForm, createExpenseFromForm, deleteExpenseFromForm, linkExpenseToNoteFromForm, unlinkExpenseFromNoteFromForm, updateExpenseFromForm } from "./actions";
+import { assignExpenseShareFromForm, confirmRecurringExpenseFromForm, createExpenseFromForm, skipRecurringExpenseFromForm, stopRecurringExpenseFromForm, deleteExpenseFromForm, linkExpenseToNoteFromForm, unlinkExpenseFromNoteFromForm, updateExpenseFromForm } from "./actions";
 
 function form(overrides: Record<string, string> = {}) {
   const data = new FormData();
@@ -39,23 +43,26 @@ async function redirectTarget(run: () => Promise<unknown>) {
 describe("expense actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    tx.expense.updateMany.mockResolvedValue({ count: 1 });
     vi.mocked(prisma.expense.updateMany).mockResolvedValue({ count: 1 });
+    tx.expenseSupplier.upsert.mockResolvedValue({ id: "sup-1" });
+    tx.recurringExpense.create.mockResolvedValue({ id: "rec-1" });
     vi.mocked(prisma.expense.findFirst).mockResolvedValue({ category: "FUEL_TRANSPORT", partsSharePercent: 50 } as never);
   });
 
   it("creates an expense whose split is the category's proposal, whatever the form says", async () => {
     await redirectTarget(() => createExpenseFromForm(form({ category: "PARTS_PURCHASE", partsSharePercent: "0" })));
-    expect(prisma.expense.create).toHaveBeenLastCalledWith({ data: expect.objectContaining({ category: "PARTS_PURCHASE", partsSharePercent: 100 }) });
+    expect(tx.expense.create).toHaveBeenLastCalledWith({ data: expect.objectContaining({ category: "PARTS_PURCHASE", partsSharePercent: 100 }) });
 
     await redirectTarget(() => createExpenseFromForm(form({ category: "RENT", partsSharePercent: "100" })));
-    expect(prisma.expense.create).toHaveBeenLastCalledWith({ data: expect.objectContaining({ category: "RENT", partsSharePercent: 0 }) });
+    expect(tx.expense.create).toHaveBeenLastCalledWith({ data: expect.objectContaining({ category: "RENT", partsSharePercent: 0 }) });
   });
 
   it("creates an expense for the admin, with the date at UTC midnight, and returns to the same month", async () => {
     const target = await redirectTarget(() => createExpenseFromForm(form()));
 
     expect(requireExpenseRole).toHaveBeenCalled();
-    expect(prisma.expense.create).toHaveBeenCalledWith({
+    expect(tx.expense.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ amountCents: 150_050, category: "FUEL_TRANSPORT", invoiceStatus: "INVOICED", partsSharePercent: 50, supplier: "Gasolinera", paymentMethod: "CASH", createdById: "user-1", spentAt: new Date("2026-11-20T00:00:00.000Z") }),
     });
     expect(target).toBe("/admin/balance?tab=gastos&month=2026-11&created=1");
@@ -65,7 +72,7 @@ describe("expense actions", () => {
     for (const bad of [{ amount: "abc" }, { amount: "0" }, { spentAt: "2026-13-01" }, { category: "VACATIONS" }] as Array<Record<string, string>>) {
       expect(await redirectTarget(() => createExpenseFromForm(form(bad)))).toBe("/admin/balance?tab=gastos&month=2026-11&error=invalid");
     }
-    expect(prisma.expense.create).not.toHaveBeenCalled();
+    expect(tx.expense.create).not.toHaveBeenCalled();
   });
 
   it("ignores a month that is not YYYY-MM instead of building a link from it", async () => {
@@ -77,13 +84,13 @@ describe("expense actions", () => {
     vi.mocked(requireExpenseRole).mockRejectedValueOnce(new Error("forbidden"));
 
     await expect(createExpenseFromForm(form())).rejects.toThrow("forbidden");
-    expect(prisma.expense.create).not.toHaveBeenCalled();
+    expect(tx.expense.create).not.toHaveBeenCalled();
   });
 
   it("updates a live expense and reports one that no longer exists", async () => {
     expect(await redirectTarget(() => updateExpenseFromForm("e-1", form()))).toBe("/admin/balance?tab=gastos&month=2026-11&updated=1");
     expect(prisma.expense.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "e-1", deletedAt: null } }));
-    expect(prisma.expense.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "e-1", deletedAt: null } }));
+    expect(tx.expense.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "e-1", deletedAt: null } }));
 
     vi.mocked(prisma.expense.findFirst).mockResolvedValueOnce(null);
     expect(await redirectTarget(() => updateExpenseFromForm("gone", form()))).toBe("/admin/balance?tab=gastos&month=2026-11&error=notfound");
@@ -93,11 +100,11 @@ describe("expense actions", () => {
     vi.mocked(prisma.expense.findFirst).mockResolvedValue({ category: "FUEL_TRANSPORT", partsSharePercent: 80 } as never);
 
     await redirectTarget(() => updateExpenseFromForm("e-1", form({ category: "FUEL_TRANSPORT", amount: "2000" })));
-    expect(prisma.expense.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ amountCents: 200_000, partsSharePercent: 80 }) }));
+    expect(tx.expense.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ amountCents: 200_000, partsSharePercent: 80 }) }));
 
     // Even if the category changes, a share the owner customized stays.
     await redirectTarget(() => updateExpenseFromForm("e-1", form({ category: "RENT" })));
-    expect(prisma.expense.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ partsSharePercent: 80 }) }));
+    expect(tx.expense.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ partsSharePercent: 80 }) }));
   });
 
   it("lets an untouched share follow a change of category", async () => {
@@ -105,7 +112,7 @@ describe("expense actions", () => {
 
     await redirectTarget(() => updateExpenseFromForm("e-1", form({ category: "PARTS_PURCHASE" })));
 
-    expect(prisma.expense.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ category: "PARTS_PURCHASE", partsSharePercent: 100 }) }));
+    expect(tx.expense.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ category: "PARTS_PURCHASE", partsSharePercent: 100 }) }));
   });
 
   it("lets only the owner assign the split of an expense", async () => {
@@ -195,6 +202,68 @@ describe("expense actions", () => {
 
       vi.mocked(requireSuperAdmin).mockRejectedValueOnce(new Error("forbidden"));
       await expect(unlinkExpenseFromNoteFromForm("e-1", "n1", form())).rejects.toThrow("forbidden");
+    });
+  });
+
+  it("remembers the supplier in the catalog with the invoice status and category used, and ties the expense to it", async () => {
+    await redirectTarget(() => createExpenseFromForm(form({ supplier: "Refaccionaria Uno", category: "PARTS_PURCHASE", invoiceStatus: "INVOICED" })));
+    expect(tx.expenseSupplier.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { name: "Refaccionaria Uno" }, update: { usuallyInvoiced: true, category: "PARTS_PURCHASE" } }));
+    expect(tx.expense.create).toHaveBeenCalledWith({ data: expect.objectContaining({ supplierId: "sup-1", recurringExpenseId: null }) });
+
+    tx.expenseSupplier.upsert.mockClear();
+    await redirectTarget(() => createExpenseFromForm(form({ supplier: "" })));
+    expect(tx.expenseSupplier.upsert).not.toHaveBeenCalled();
+  });
+
+  it("creates a monthly template when asked to repeat, dated on the expense's day (28 at most), and ties the expense to it", async () => {
+    await redirectTarget(() => createExpenseFromForm(form({ spentAt: "2026-11-30", category: "RENT", repeat: "on" })));
+    expect(tx.recurringExpense.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ category: "RENT", amountCents: 150_050, dayOfMonth: 28 }) }));
+    expect(tx.expense.create).toHaveBeenCalledWith({ data: expect.objectContaining({ recurringExpenseId: "rec-1" }) });
+
+    tx.recurringExpense.create.mockClear();
+    await redirectTarget(() => createExpenseFromForm(form()));
+    expect(tx.recurringExpense.create).not.toHaveBeenCalled();
+  });
+
+  describe("recurring expenses", () => {
+    const template = { id: "rec-1", category: "ELECTRICITY", amountCents: 80_000, invoiceStatus: "INVOICED", supplier: "CFE", paymentMethod: "TRANSFER", dayOfMonth: 10 };
+
+    it("confirms the month's proposal with the adjusted amount, dated on its day, and registers it once", async () => {
+      tx.recurringExpense.findFirst.mockResolvedValue(template);
+      tx.expense.findFirst.mockResolvedValue(null);
+
+      expect(await redirectTarget(() => confirmRecurringExpenseFromForm("rec-1", form({ amount: "912.30" })))).toBe("/admin/balance?tab=gastos&month=2026-11&created=1");
+      expect(tx.expense.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ amountCents: 91_230, category: "ELECTRICITY", supplier: "CFE", recurringExpenseId: "rec-1", partsSharePercent: 0, createdById: "user-1", spentAt: new Date("2026-11-10T00:00:00.000Z") }),
+      });
+
+      tx.expense.create.mockClear();
+      tx.expense.findFirst.mockResolvedValue({ id: "already" });
+      await redirectTarget(() => confirmRecurringExpenseFromForm("rec-1", form({ amount: "912.30" })));
+      expect(tx.expense.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects a bad amount or month, and a template that no longer exists", async () => {
+      for (const bad of [{ amount: "abc" }, { amount: "0" }, { month: "nope" }] as Array<Record<string, string>>) {
+        expect((await redirectTarget(() => confirmRecurringExpenseFromForm("rec-1", form(bad))))).toContain("error=invalid");
+      }
+      tx.recurringExpense.findFirst.mockResolvedValue(null);
+      expect(await redirectTarget(() => confirmRecurringExpenseFromForm("gone", form({ amount: "10" })))).toContain("error=notfound");
+      expect(tx.expense.create).not.toHaveBeenCalled();
+    });
+
+    it("skips a month once and stops a template without touching what was registered", async () => {
+      expect(await redirectTarget(() => skipRecurringExpenseFromForm("rec-1", form()))).toBe("/admin/balance?tab=gastos&month=2026-11&skipped=1");
+      expect(prisma.recurringExpenseSkip.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: { recurringExpenseId: "rec-1", month: "2026-11" } }));
+
+      expect(await redirectTarget(() => stopRecurringExpenseFromForm("rec-1", form()))).toBe("/admin/balance?tab=gastos&month=2026-11&stopped=1");
+      expect(prisma.recurringExpense.updateMany).toHaveBeenCalledWith({ where: { id: "rec-1" }, data: { active: false } });
+    });
+
+    it("does not run for a user who cannot register expenses", async () => {
+      vi.mocked(requireExpenseRole).mockRejectedValueOnce(new Error("forbidden"));
+      await expect(confirmRecurringExpenseFromForm("rec-1", form({ amount: "10" }))).rejects.toThrow("forbidden");
+      expect(tx.expense.create).not.toHaveBeenCalled();
     });
   });
 });

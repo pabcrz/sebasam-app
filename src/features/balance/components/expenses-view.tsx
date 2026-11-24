@@ -2,9 +2,10 @@ import { formatCents } from "@/features/quotes/lib/format";
 import { EXPENSE_CATEGORY_LABELS, EXPENSE_INVOICE_LABELS, EXPENSE_PAYMENT_METHODS } from "../expenses/categories";
 import { ExpenseFormDialog } from "../expenses/expense-form-dialog";
 import { ExpenseRowActions } from "../expenses/expense-row-actions";
-import type { ExpenseRow } from "../expenses/queries";
+import type { ExpenseRow, RecurringRow, SupplierOption } from "../expenses/queries";
 import type { MonthPeriod } from "../profit-queries";
 import { MonthNavigator } from "./month-navigator";
+import { RecurringExpensesSection } from "./recurring-expenses-section";
 
 type ExpensesViewProps = {
   period: MonthPeriod;
@@ -15,7 +16,12 @@ type ExpensesViewProps = {
     create: (formData: FormData) => void | Promise<void>;
     update: (expenseId: string, formData: FormData) => void | Promise<void>;
     remove: (expenseId: string, formData: FormData) => void | Promise<void>;
+    confirmRecurring: (recurringId: string, formData: FormData) => void | Promise<void>;
+    skipRecurring: (recurringId: string, formData: FormData) => void | Promise<void>;
+    stopRecurring: (recurringId: string, formData: FormData) => void | Promise<void>;
   };
+  suppliers?: SupplierOption[];
+  recurring?: { templates: RecurringRow[]; pending: RecurringRow[] };
   notice?: { tone: "success" | "danger"; text: string } | null;
   /** Only the owner sees how an expense is split between the two accounts. */
   showAllocation?: boolean;
@@ -24,7 +30,7 @@ type ExpensesViewProps = {
 const dateFormatter = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", timeZone: "UTC" });
 const methodLabels = Object.fromEntries(EXPENSE_PAYMENT_METHODS.map((method) => [method.value, method.label]));
 
-export function ExpensesView({ period, expenses, today, hrefFor, actions, notice, showAllocation = false }: ExpensesViewProps) {
+export function ExpensesView({ period, expenses, today, hrefFor, actions, notice, showAllocation = false, suppliers = [], recurring = { templates: [], pending: [] } }: ExpensesViewProps) {
   const invoiced = expenses.filter((expense) => expense.invoiceStatus === "INVOICED").reduce((sum, expense) => sum + expense.amountCents, 0);
   const total = expenses.reduce((sum, expense) => sum + expense.amountCents, 0);
 
@@ -33,7 +39,7 @@ export function ExpensesView({ period, expenses, today, hrefFor, actions, notice
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="expenses-heading" className="sr-only">Gastos</h2>
         <MonthNavigator period={period} hrefFor={hrefFor} />
-        <ExpenseFormDialog action={actions.create} month={period.month} today={today} />
+        <ExpenseFormDialog action={actions.create} month={period.month} today={today} suppliers={suppliers} />
       </div>
 
       {notice ? (
@@ -41,6 +47,13 @@ export function ExpensesView({ period, expenses, today, hrefFor, actions, notice
           {notice.text}
         </p>
       ) : null}
+
+      <RecurringExpensesSection
+        month={period.month}
+        templates={recurring.templates}
+        pending={recurring.pending}
+        actions={{ confirm: actions.confirmRecurring, skip: actions.skipRecurring, stop: actions.stopRecurring }}
+      />
 
       <dl className="grid grid-cols-3 gap-3 text-sm" data-testid="expenses-totals">
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-light)] bg-[var(--color-surface)] p-3">
@@ -88,6 +101,7 @@ export function ExpensesView({ period, expenses, today, hrefFor, actions, notice
                   today={today}
                   updateAction={actions.update.bind(null, expense.id)}
                   deleteAction={actions.remove.bind(null, expense.id)}
+                  suppliers={suppliers}
                 />
               </div>
             </li>

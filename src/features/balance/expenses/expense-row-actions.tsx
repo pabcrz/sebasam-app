@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui";
 import { ExpenseFormDialog } from "./expense-form-dialog";
-import type { ExpenseRow } from "./queries";
+import type { ExpenseRow, SupplierOption } from "./queries";
 
 type ExpenseRowActionsProps = {
   expense: ExpenseRow;
@@ -11,10 +11,11 @@ type ExpenseRowActionsProps = {
   today: string;
   updateAction: (formData: FormData) => void | Promise<void>;
   deleteAction: (formData: FormData) => void | Promise<void>;
+  suppliers?: SupplierOption[];
 };
 
 /** Edit sheet plus a two-step delete, so one stray tap never removes a payment record. */
-export function ExpenseRowActions({ expense, month, today, updateAction, deleteAction }: ExpenseRowActionsProps) {
+export function ExpenseRowActions({ expense, month, today, updateAction, deleteAction, suppliers }: ExpenseRowActionsProps) {
   const [confirming, setConfirming] = React.useState(false);
 
   return (
@@ -27,7 +28,7 @@ export function ExpenseRowActions({ expense, month, today, updateAction, deleteA
         </form>
       ) : (
         <>
-          <ExpenseFormDialog action={updateAction} month={month} today={today} expense={expense} />
+          <ExpenseFormDialog action={updateAction} month={month} today={today} expense={expense} suppliers={suppliers} />
           <Button type="button" variant="ghost" size="sm" onClick={() => setConfirming(true)} aria-label="Eliminar gasto">
             Eliminar
           </Button>

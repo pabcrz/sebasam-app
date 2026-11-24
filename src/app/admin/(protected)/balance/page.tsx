@@ -4,8 +4,8 @@ import { BalanceView } from "@/features/balance/components/balance-view";
 import { ExpenseAllocationView } from "@/features/balance/components/expense-allocation-view";
 import { ExpensesView } from "@/features/balance/components/expenses-view";
 import { ProfitView, type ProfitViewKey } from "@/features/balance/components/profit-view";
-import { assignExpenseShareFromForm, createExpenseFromForm, deleteExpenseFromForm, linkExpenseToNoteFromForm, unlinkExpenseFromNoteFromForm, updateExpenseFromForm } from "@/features/balance/expenses/actions";
-import { listExpensesForAssignment, listExpensesForMonth } from "@/features/balance/expenses/queries";
+import { assignExpenseShareFromForm, confirmRecurringExpenseFromForm, createExpenseFromForm, deleteExpenseFromForm, skipRecurringExpenseFromForm, stopRecurringExpenseFromForm, linkExpenseToNoteFromForm, unlinkExpenseFromNoteFromForm, updateExpenseFromForm } from "@/features/balance/expenses/actions";
+import { listExpensesForAssignment, listExpensesForMonth, listRecurringForMonth, listSuppliers } from "@/features/balance/expenses/queries";
 import { getBalanceSnapshot } from "@/features/balance/queries";
 import { getProfitSnapshot } from "@/features/balance/profit-queries";
 import { canRegisterExpenses, requireProfileForPage } from "@/lib/auth/session";
@@ -33,6 +33,8 @@ const NOTICES: Array<[string, { tone: "success" | "danger"; text: string }]> = [
   ["created", { tone: "success", text: "Gasto registrado." }],
   ["updated", { tone: "success", text: "Gasto actualizado." }],
   ["deleted", { tone: "success", text: "Gasto eliminado." }],
+  ["skipped", { tone: "success", text: "Omitido este mes." }],
+  ["stopped", { tone: "success", text: "Ya no se repite." }],
   ["assigned", { tone: "success", text: "Reparto guardado." }],
   ["error", { tone: "danger", text: "Revisa los datos e intenta de nuevo. Lo ligado a notas no puede pasar del monto de la compra." }],
 ];
@@ -98,6 +100,7 @@ export default async function BalancePage({ searchParams }: BalancePageProps) {
     );
   } else if (tab === "gastos") {
     const { period, expenses } = await listExpensesForMonth(month);
+    const [suppliers, recurring] = await Promise.all([listSuppliers(), listRecurringForMonth(period)]);
     const notice = NOTICES.find(([key]) => first(params[key]))?.[1] ?? null;
     content = (
       <ExpensesView
@@ -105,7 +108,9 @@ export default async function BalancePage({ searchParams }: BalancePageProps) {
         expenses={expenses}
         today={new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date())}
         hrefFor={(target) => hrefFor({ tab: "gastos", month: target })}
-        actions={{ create: createExpenseFromForm, update: updateExpenseFromForm, remove: deleteExpenseFromForm }}
+        actions={{ create: createExpenseFromForm, update: updateExpenseFromForm, remove: deleteExpenseFromForm, confirmRecurring: confirmRecurringExpenseFromForm, skipRecurring: skipRecurringExpenseFromForm, stopRecurring: stopRecurringExpenseFromForm }}
+        suppliers={suppliers}
+        recurring={recurring}
         notice={notice}
         showAllocation={canSeeProfit}
       />
