@@ -35,7 +35,7 @@ El catálogo de proveedores **aprende solo**: cada vez que se registra o edita u
 
 ### Porcentajes por categoría
 
-En **Configuración → Porcentajes de gastos** (solo el dueño) se cambia el porcentaje que cada categoría propone para refacciones (por ejemplo, el 50 % de combustible). Solo aplica a gastos **nuevos** y a los que se confirman desde una plantilla; los ya registrados conservan su reparto, que se ajusta en Utilidad → Asignar. Una categoría vuelta al valor por defecto deja de guardarse como excepción. Editar un gasto sigue la categoría nueva solo si su reparto seguía siendo la propuesta de la categoría anterior.
+En **Configuración → Porcentajes de gastos** (solo el dueño) se cambia el porcentaje que cada categoría propone para refacciones (por ejemplo, el 50 % de combustible). Solo aplica a gastos **nuevos** y a los que se confirman desde una plantilla; los ya registrados conservan su reparto, que se ajusta en Utilidad → Asignar. Una categoría vuelta al valor por defecto deja de guardarse como excepción. Editar un gasto sigue la categoría nueva mientras su reparto sea solo la propuesta de la categoría; en cuanto el dueño lo asigna a mano (`partsShareAssigned`), editar no lo toca.
 
 ### Comprobante con foto o PDF
 

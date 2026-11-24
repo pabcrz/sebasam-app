@@ -102,13 +102,12 @@ export async function updateExpenseFromForm(expenseId: string, formData: FormDat
 
   const current = await prisma.expense.findFirst({
     where: { id: expenseId, deletedAt: null },
-    select: { category: true, partsSharePercent: true },
+    select: { category: true, partsSharePercent: true, partsShareAssigned: true },
   });
   if (!current) redirect(expensesHref(formData, "error=notfound"));
 
-  // Editing never touches an assignment the owner made. Only a share that is still the old category's proposal follows a change of category.
-  const untouched = current.partsSharePercent === (await categoryShareFor(prisma, current.category));
-  const partsSharePercent = untouched ? await categoryShareFor(prisma, parsed.data.category) : current.partsSharePercent;
+  // Editing never touches an assignment the owner made. A share that is still only the category's proposal follows the (new) category.
+  const partsSharePercent = current.partsShareAssigned ? current.partsSharePercent : await categoryShareFor(prisma, parsed.data.category);
 
   // Editing never drops a receipt already attached: the edit form has no upload, so a missing path means "leave it".
   const { receiptPath, ...fields } = parsed.data;
@@ -135,7 +134,7 @@ export async function assignExpenseShareFromForm(expenseId: string, formData: Fo
   const parsed = partsShareSchema.safeParse(typeof rawShare === "string" && rawShare.trim() !== "" ? Number(rawShare) : Number.NaN);
   if (!parsed.success) redirect(back("error=invalid"));
 
-  const result = await prisma.expense.updateMany({ where: { id: expenseId, deletedAt: null }, data: { partsSharePercent: parsed.data } });
+  const result = await prisma.expense.updateMany({ where: { id: expenseId, deletedAt: null }, data: { partsSharePercent: parsed.data, partsShareAssigned: true } });
   if (result.count === 0) redirect(back("error=notfound"));
 
   revalidatePath(balancePath);

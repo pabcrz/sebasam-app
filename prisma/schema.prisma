@@ -1006,6 +1006,8 @@ model Expense {
   category           ExpenseCategory
   invoiceStatus      ExpenseInvoiceStatus
   partsSharePercent  Int                  @default(0)
+  /// True once the owner set the split by hand; until then it is only the category's proposal and follows a change of category.
+  partsShareAssigned Boolean              @default(false)
   supplier           String?
   paymentMethod      String?
   notes              String?
