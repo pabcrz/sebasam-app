@@ -5,12 +5,13 @@ import type { ProfitSnapshot } from "../profit-queries";
 import type { InvoiceSplit } from "../profit";
 import { MonthNavigator } from "./month-navigator";
 
-export type ProfitViewKey = "general" | "mano-de-obra" | "refacciones" | "asignar";
+export type ProfitViewKey = "general" | "mano-de-obra" | "refacciones" | "comparar" | "asignar";
 
 const VIEW_OPTIONS: Array<{ value: ProfitViewKey; label: string }> = [
   { value: "general", label: "General" },
   { value: "mano-de-obra", label: "Mano de obra" },
   { value: "refacciones", label: "Refacciones" },
+  { value: "comparar", label: "Comparar" },
   { value: "asignar", label: "Asignar" },
 ];
 
@@ -21,6 +22,8 @@ type ProfitViewProps = {
   hrefFor: (change: { month?: string | null; view?: ProfitViewKey }) => string;
   /** The "Asignar" view: how each expense is split between the two accounts. */
   allocation?: ReactNode;
+  /** The "Comparar" view: the last 12 months side by side. */
+  comparison?: ReactNode;
 };
 
 type Row = { label: string; cents: number; strong?: boolean; hint?: string; split?: InvoiceSplit };
@@ -53,7 +56,7 @@ function FigureTable({ title, rows }: { title: string; rows: Row[] }) {
   );
 }
 
-export function ProfitView({ snapshot, view, hrefFor, allocation }: ProfitViewProps) {
+export function ProfitView({ snapshot, view, hrefFor, allocation, comparison }: ProfitViewProps) {
   const { period, summary } = snapshot;
   const { general, labor, parts, income } = summary;
 
@@ -70,6 +73,7 @@ export function ProfitView({ snapshot, view, hrefFor, allocation }: ProfitViewPr
       </div>
 
       {view === "asignar" ? allocation : null}
+      {view === "comparar" ? comparison : null}
 
       {view === "general" ? (
         <div className="grid gap-4" data-testid="profit-general">
@@ -167,10 +171,10 @@ export function ProfitView({ snapshot, view, hrefFor, allocation }: ProfitViewPr
         </div>
       ) : null}
 
-      <div className="grid gap-1 text-xs text-[var(--color-text-muted)]" data-testid="profit-notes">
+      {view === "comparar" ? null : <div className="grid gap-1 text-xs text-[var(--color-text-muted)]" data-testid="profit-notes">
         <p>Cobrado en efectivo en {period.label}: <span className="font-semibold tabular-nums">{formatCents(summary.cashCollectedCents)}</span>. Puede diferir de «Entró» porque una nota cuenta cuando queda totalmente liquidada, y sus abonos pueden haber llegado en otros meses.</p>
         <p>Ingresos y gastos pueden caer en meses distintos (por ejemplo, una refacción comprada un mes y liquidada al siguiente). Una compra ligada a una nota cuenta en el mes en que esa nota se liquida; la que no se liga cuenta el día que se pagó.</p>
-      </div>
+      </div>}
     </section>
   );
 }

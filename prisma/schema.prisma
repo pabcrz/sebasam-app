@@ -1027,6 +1027,13 @@ model Expense {
   @@index([recurringExpenseId, spentAt])
 }
 
+/// Owner's override of the share (0-100) a category charges to the parts account when an expense is registered. No row means the code's default.
+model ExpenseCategoryShare {
+  category          ExpenseCategory @id
+  partsSharePercent Int
+  updatedAt         DateTime        @updatedAt
+}
+
 /// Supplier catalog. It learns from each registered expense: the last invoice status and category used with that supplier.
 model ExpenseSupplier {
   id              String           @id @default(cuid())

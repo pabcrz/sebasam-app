@@ -4,7 +4,7 @@ import { requireSuperAdmin } from "@/lib/auth/session";
 import { sumCollectedPayments } from "@/features/dashboard/queries";
 import { getWeeklyPayroll } from "@/features/payroll/queries";
 import { parsePayrollParams, type ParsedPayrollParams } from "@/features/payroll/period";
-import { buildProfitSummary, jobMargins, noteIncomeByAccount, noteSettlement, recognizeExpenses, type IncomeByAccount, type JobMargin, type ProfitSummary } from "./profit";
+import { buildProfitSummary, compareMonths, jobMargins, noteIncomeByAccount, noteSettlement, recognizeExpenses, type ComparedMonth, type ComparisonSeries, type IncomeByAccount, type JobMargin, type ProfitSummary } from "./profit";
 
 export interface MonthPeriod {
   /** "YYYY-MM" of the month shown. */
@@ -43,13 +43,15 @@ const ACTIVE_APPLICATION = { reversedAt: null, payment: { status: PaymentStatus.
 
 export interface SettledNote {
   id: string;
+  /** When the last payment completed it. */
+  settledAt: Date;
   referenceNumber: string;
   title: string;
   income: IncomeByAccount;
 }
 
 /** Notes fully settled in the month, with their income split by item category. */
-async function getSettledNotes(period: MonthPeriod): Promise<SettledNote[]> {
+async function getSettledNotes(period: { start: Date; end: Date }): Promise<SettledNote[]> {
   const notes = await prisma.payableNote.findMany({
     where: {
       status: PayableNoteStatus.ISSUED,
@@ -84,7 +86,7 @@ async function getSettledNotes(period: MonthPeriod): Promise<SettledNote[]> {
     const { settledAt } = noteSettlement(settlable);
     if (!settledAt || settledAt < period.start || settledAt >= period.end) continue;
 
-    settled.push({ id: note.id, referenceNumber: note.referenceNumber, title: note.title, income: noteIncomeByAccount(settlable) });
+    settled.push({ id: note.id, settledAt, referenceNumber: note.referenceNumber, title: note.title, income: noteIncomeByAccount(settlable) });
   }
   return settled;
 }
@@ -157,5 +159,53 @@ export async function getProfitSnapshot(month: string | undefined, now = new Dat
       payrollCents: payroll.totalPayableCents ?? payroll.totalCommissionCents,
       expenses: recognizeExpenses(expenses, settledNoteIds, (spentAt) => spentAt >= period.dateStart && spentAt < period.dateEnd),
     }),
+  };
+}
+
+export interface ComparisonSnapshot {
+  period: MonthPeriod;
+  series: ComparisonSeries;
+  /** The 12 months ending at the one shown, oldest first. */
+  months: ComparedMonth[];
+  medianCents: number | null;
+  totals: { incomeCents: number; expensesCents: number };
+}
+
+const COMPARED_MONTHS = 12;
+
+/** Month by month for the last 12 months, with the same recognition rules as the monthly view: a note counts in the month it is fully settled; a purchase charged to a note counts with that note. Payroll is not included. */
+export async function getMonthlyComparison(month: string | undefined, series: ComparisonSeries, now = new Date()): Promise<ComparisonSnapshot> {
+  await requireSuperAdmin();
+  const period = parseMonthPeriod(month, now);
+
+  const periods = [period];
+  while (periods.length < COMPARED_MONTHS) periods.unshift(parseMonthPeriod(periods[0].prevMonth, now));
+  const range = { start: periods[0].start, end: period.end };
+
+  const settledNotes = await getSettledNotes(range);
+  const expenses = await prisma.expense.findMany({
+    where: {
+      deletedAt: null,
+      OR: [{ spentAt: { gte: periods[0].dateStart, lt: period.dateEnd } }, { allocations: { some: { payableNoteId: { in: settledNotes.map((note) => note.id) } } } }],
+    },
+    select: { spentAt: true, amountCents: true, invoiceStatus: true, partsSharePercent: true, allocations: { select: { payableNoteId: true, amountCents: true } } },
+  });
+
+  const figures = periods.map((monthPeriod) => {
+    const inMonth = settledNotes.filter((note) => note.settledAt >= monthPeriod.start && note.settledAt < monthPeriod.end);
+    const recognized = recognizeExpenses(expenses, new Set(inMonth.map((note) => note.id)), (spentAt) => spentAt >= monthPeriod.dateStart && spentAt < monthPeriod.dateEnd);
+    return { month: monthPeriod.month, label: monthPeriod.label, income: sumIncome(inMonth), expensesCents: recognized.reduce((sum, piece) => sum + piece.amountCents, 0) };
+  });
+
+  const compared = compareMonths(figures, series);
+  return {
+    period,
+    series,
+    months: compared.months,
+    medianCents: compared.medianCents,
+    totals: {
+      incomeCents: figures.reduce((sum, figure) => sum + figure.income.laborCents + figure.income.partsCents + figure.income.otherCents, 0),
+      expensesCents: figures.reduce((sum, figure) => sum + figure.expensesCents, 0),
+    },
   };
 }

@@ -11,6 +11,8 @@ export interface PaymentSettingsIndexProps {
   activeWorkerCount: number;
   userCount: number;
   canManageUsers: boolean;
+  /** Owner only: the expense percentages that feed the profit split. */
+  canManageExpenseShares?: boolean;
 }
 
 function useMounted() {
@@ -71,6 +73,7 @@ export function PaymentSettingsIndex({
   activeWorkerCount,
   userCount,
   canManageUsers,
+  canManageExpenseShares = false,
 }: PaymentSettingsIndexProps) {
   const { resolvedTheme } = useThemeContext();
   const { fontScale } = useFontScaleContext();
@@ -121,6 +124,12 @@ export function PaymentSettingsIndex({
           decision={plural(settings.bankAccounts.length, "cuenta", "cuentas")}
         />
       </IndexGroup>
+
+      {canManageExpenseShares ? (
+        <IndexGroup title="Balance">
+          <IndexRow title="Porcentajes de gastos" href="/admin/configuracion-pago/porcentajes-gastos" value="Qué parte de cada gasto va a refacciones" />
+        </IndexGroup>
+      ) : null}
 
       <IndexGroup title="Equipo y acceso">
         <IndexRow

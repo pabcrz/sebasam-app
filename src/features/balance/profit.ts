@@ -250,3 +250,53 @@ export function buildProfitSummary(input: {
     },
   };
 }
+
+export type ComparisonSeries = "todas" | "mano-de-obra" | "refacciones";
+export type ComparisonLevel = "fuerte" | "debil" | "tipico";
+
+export interface MonthFigures {
+  month: string;
+  label: string;
+  income: IncomeByAccount;
+  /** Expenses recognized in the month (before payroll). */
+  expensesCents: number;
+}
+
+export interface ComparedMonth extends MonthFigures {
+  /** The income of the chosen series: all, labor or parts. «Otros» only counts in "todas". */
+  valueCents: number;
+  /** Against the median of the months that had income; null when the month had none or there is too little history. */
+  level: ComparisonLevel | null;
+  /** Labor ÷ (labor + parts), «Otros» left out; null when both are zero. */
+  laborSharePercent: number | null;
+}
+
+/** A month is "fuerte" above the median by this much and "débil" below it by the same; in between it is "típico". */
+export const COMPARISON_BAND = 0.15;
+const MIN_MONTHS_WITH_INCOME = 3;
+
+function seriesValue(income: IncomeByAccount, series: ComparisonSeries) {
+  if (series === "mano-de-obra") return income.laborCents;
+  if (series === "refacciones") return income.partsCents;
+  return income.laborCents + income.partsCents + income.otherCents;
+}
+
+/** Describes each month against the others. A plain description of the past: no score, no forecast. */
+export function compareMonths(months: MonthFigures[], series: ComparisonSeries): { months: ComparedMonth[]; medianCents: number | null } {
+  const values = months.map((month) => seriesValue(month.income, series));
+  const withIncome = values.filter((value) => value > 0).sort((a, b) => a - b);
+  const enough = withIncome.length >= MIN_MONTHS_WITH_INCOME;
+  const middle = Math.floor(withIncome.length / 2);
+  const medianCents = !enough ? null : withIncome.length % 2 === 1 ? withIncome[middle] : Math.round((withIncome[middle - 1] + withIncome[middle]) / 2);
+
+  return {
+    medianCents,
+    months: months.map((month, index) => {
+      const valueCents = values[index];
+      const level: ComparisonLevel | null =
+        medianCents === null || valueCents <= 0 ? null : valueCents > medianCents * (1 + COMPARISON_BAND) ? "fuerte" : valueCents < medianCents * (1 - COMPARISON_BAND) ? "debil" : "tipico";
+      const labourAndParts = month.income.laborCents + month.income.partsCents;
+      return { ...month, valueCents, level, laborSharePercent: labourAndParts > 0 ? Math.round((month.income.laborCents / labourAndParts) * 100) : null };
+    }),
+  };
+}
