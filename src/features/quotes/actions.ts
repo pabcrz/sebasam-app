@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import {
   LedgerEntryType,
@@ -14,6 +15,7 @@ import {
   WorkOrderStatus,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { synchronizeQuotePriceReferences } from "@/features/quote-price-reference/service";
 import { requireOperationalRole, requireAdmin } from "@/lib/auth/session";
 import { measureServerTiming, recordServerTiming } from "@/lib/server-timing";
 import { findOrCreateVehicle } from "@/features/vehicles/actions";
@@ -82,7 +84,7 @@ async function createQuoteAuthorized(input: unknown) {
   const validUntil = createQuoteValidUntil();
   const operationalDate = normalizeOperationalDate(data.operationalDate);
 
-  return withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
+  const created = await withQuoteNumberRetry(() => prisma.$transaction(async (tx) => {
     const quoteId = randomUUID();
     const quoteNumber = await nextQuoteNumber(tx);
     const { folio: quoteFolio, issuedAt: quoteIssuedAt } = await allocateDailyDocumentFolio(tx, "C");
@@ -167,6 +169,23 @@ async function createQuoteAuthorized(input: unknown) {
 
     return createdQuote;
   }));
+  scheduleQuotePriceReference(created.id);
+  return created;
+}
+
+/** Indexes the quote as a price reference after commit; failures never reach the quote flow. */
+function scheduleQuotePriceReference(quoteId: string) {
+  try {
+    after(async () => {
+      try {
+        await synchronizeQuotePriceReferences(quoteId);
+      } catch (error) {
+        console.error("Quote price reference synchronization failed", { quoteId, error });
+      }
+    });
+  } catch (error) {
+    console.error("Quote price reference scheduling failed", { quoteId, error });
+  }
 }
 
 export async function createQuote(input: unknown) {
@@ -229,7 +248,7 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
 
   const totals = draftTotals(data);
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const quote = await tx.quote.findUnique({
       where: { id: quoteId },
       include: { items: true, workOrder: true },
@@ -334,6 +353,8 @@ export async function updateDraftQuote(quoteId: string, input: unknown) {
 
     return updatedQuote;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  scheduleQuotePriceReference(quoteId);
+  return updated;
 }
 
 export async function updateDraftQuoteFromForm(

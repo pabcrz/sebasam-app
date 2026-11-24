@@ -19,6 +19,10 @@ import {
   type CompletedWorkMatchSource,
   listCompletedWorkVocabulary,
 } from "@/features/completed-work-knowledge/repository";
+import {
+  matchQuotePriceReferences,
+  type QuotePriceReferenceSource,
+} from "@/features/quote-price-reference/repository";
 import { formatCents } from "@/features/quotes/lib/format";
 import { mexicoCityCalendarDate } from "@/features/quotes/lib/operational-date";
 
@@ -41,7 +45,10 @@ export interface AssistantAnswer {
   envError: string | null;
 }
 
-export type AssistantSource = (HistoricalMatchSource & { provenance: "historical" }) | CompletedWorkMatchSource;
+export type AssistantSource =
+  | (HistoricalMatchSource & { provenance: "historical" })
+  | CompletedWorkMatchSource
+  | QuotePriceReferenceSource;
 
 export interface AssistantAggregations {
   historical: HistoricalAggregateRow[];
@@ -140,8 +147,8 @@ Reglas de contenido:
 2. La comisión SIEMPRE es "generada"/"comisionó" (cálculo), NUNCA "recibió" ni "cobró" — la comisión generada no es dinero pagado.
 3. La base "taller" es la base de nómina, no el precio al cliente; la diferencia entre importe al cliente y base taller no es ganancia ni margen. No la reportes como tal.
 4. Si la pregunta pide estadísticas y no hay agregación, respondé con lo que haya y aclará qué falta.
-5. Las fuentes semánticas pueden ser historial importado o trabajo completado. NUNCA presentes una suma de la lista semántica como total: solo las secciones de agregación exacta son totales.
-6. Para trabajo completado, ingreso y comisión siempre son "generados"; NUNCA los describas como cobrados, recaudados o pagados. No respondas sobre referencias de precios de cotizaciones.
+5. Las fuentes semánticas pueden ser historial importado, trabajo completado o referencia de precio de cotización. NUNCA presentes una suma de la lista semántica como total: solo las secciones de agregación exacta son totales.
+6. Para trabajo completado, ingreso y comisión siempre son "generados"; NUNCA los describas como cobrados, recaudados o pagados. Una referencia de precio de cotización es un precio COTIZADO: preséntala siempre como "cotizado" y como referencia, nunca como trabajo realizado, cobrado, ingreso ni comisión, y nunca la sumes a totales.
 7. Si te piden mano de obra y refacciones, usa SOLO el "Desglose de toda la orden" de cada fuente de trabajo completado; no los calcules sumando conceptos y aclara que el desglose es de la orden completa, no solo del concepto.
 `.trim();
 
@@ -207,6 +214,11 @@ function buildAnswerUserPrompt(
   } else {
     parts.push(`Fuentes semánticas (${sources.length}, no son una agregación):\n${sources.map((source, index) => source.provenance === "historical"
       ? sourceToPromptBlock(source, index + 1)
+      : source.provenance === "quote-reference"
+        ? [`[${index + 1}] Referencia de precio (cotización ${source.quoteNumber}, ${source.quoteStatus}) · fecha ${source.quotedOn} · ${[source.brand, source.model].filter(Boolean).join(" ") || "sin unidad"}${source.plate ? ` (${source.plate})` : ""}`,
+          `    Concepto cotizado: ${source.description} (${source.type}) · cantidad ${source.quantity} · importe cotizado ${formatCents(source.itemTotalCents)} [capturado]`,
+          "    No es trabajo realizado ni dinero cobrado.",
+        ].join("\n")
       : [`[${index + 1}] Trabajo completado ${source.workOrderNumber} · fecha ${source.completedAt} · ${[source.brand, source.model].filter(Boolean).join(" ") || "sin unidad"}${source.plate ? ` (${source.plate})` : ""} · responsable ${source.responsibleWorker}`,
         `    Concepto actual: ${source.description} (${source.type}) · importe ${formatCents(source.itemTotalCents)}`,
         `    Ingreso generado por la orden (cotización actual): ${formatCents(source.currentQuoteTotalCents)} [derivado]`,
@@ -292,16 +304,18 @@ export async function answerHistoricalQuestion(question: string): Promise<Assist
     : null;
 
   const embedding = await provider.embedText(question);
-  const [[historicalSources, completedSources], aggregateResults] = await Promise.all([
+  const [[historicalSources, completedSources, quoteSources], aggregateResults] = await Promise.all([
     Promise.all([
       matchHistoricalItems({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model }),
       matchCompletedWork({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model, keyword: filters.description, ...completedDateBounds(filters) }),
+      matchQuotePriceReferences({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model, keyword: filters.description, ...completedDateBounds(filters) }),
     ]),
     aggregationPromise,
   ]);
   const sources: AssistantSource[] = [
     ...historicalSources.map((source) => ({ ...source, provenance: "historical" as const })),
     ...completedSources,
+    ...quoteSources,
   ].sort((left, right) => right.similarity - left.similarity).slice(0, 5);
   const aggregation = aggregateResults
     ? { historical: aggregateResults[0], completedWork: aggregateResults[1] }
