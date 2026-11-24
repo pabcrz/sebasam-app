@@ -29,6 +29,21 @@ El reparto nunca pierde centavos: la parte de refacciones se redondea y la de ma
 
 Los gastos se eliminan de forma lógica (`deletedAt`); la fila se conserva pero deja de contar.
 
+### Proveedores
+
+El catálogo de proveedores **aprende solo**: cada vez que se registra o edita un gasto con proveedor, el catálogo guarda el comprobante y la categoría que se usaron con él, y el gasto queda ligado a ese proveedor (coincidencia exacta del nombre). Al capturar un gasto nuevo, el campo Proveedor autocompleta con el catálogo y, si el nombre ya existe, propone su categoría y su comprobante habituales; quien captura puede cambiarlos. Al aplicar la migración, los proveedores que ya estaban escritos en gastos se pasan al catálogo con los datos de su gasto más reciente.
+
+### Gastos que se repiten
+
+Al registrar un gasto nuevo se puede marcar **Repetir cada mes** (renta, luz, agua, teléfono). Eso crea una plantilla con la categoría, el monto, el comprobante, el proveedor y el método de pago, fechada el mismo día del mes (máximo el 28, para que exista en todos los meses). El gasto con el que se creó queda ligado a la plantilla, así que ese mes no se propone otra vez.
+
+- Cada mes, la plantilla aparece como **pendiente** en Gastos hasta que alguien la **confirma** (con el monto ajustado, porque la luz cambia) o la **omite** ese mes. **Nada se registra solo.**
+- Confirmar es idempotente: si el mes ya tiene un gasto de esa plantilla, no se duplica.
+- No se proponen meses futuros ni meses anteriores a la creación de la plantilla.
+- **Dejar de repetir** desactiva la plantilla; los gastos ya registrados se quedan.
+- Un gasto confirmado es un gasto normal: cuenta por fecha de pago y el dueño puede repartirlo o ligarlo a notas como cualquier otro.
+- Pueden administrarlas quienes registran gastos (dueño, administrador y asistente administrativa).
+
 ## Utilidad (por mes)
 
 Tres vistas que **cuadran entre sí**: queda general = queda de mano de obra + queda de refacciones + otros ingresos.

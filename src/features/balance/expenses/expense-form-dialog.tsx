@@ -23,7 +23,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { EXPENSE_CATEGORIES, EXPENSE_INVOICE_LABELS, EXPENSE_PAYMENT_METHODS } from "./categories";
-import type { ExpenseRow } from "./queries";
+import type { ExpenseRow, SupplierOption } from "./queries";
 
 type ExpenseFormDialogProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -32,6 +32,8 @@ type ExpenseFormDialogProps = {
   /** Today's date as "YYYY-MM-DD" (Mexico City), the default date of a new expense. */
   today: string;
   expense?: ExpenseRow;
+  /** Catalog used to autocomplete the supplier. */
+  suppliers?: SupplierOption[];
 };
 
 function pesosText(cents: number) {
@@ -39,13 +41,21 @@ function pesosText(cents: number) {
 }
 
 /** Sheet with the expense form; creates a new expense or edits `expense`. */
-export function ExpenseFormDialog({ action, month, today, expense }: ExpenseFormDialogProps) {
+export function ExpenseFormDialog({ action, month, today, expense, suppliers = [] }: ExpenseFormDialogProps) {
   const formId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [isPending, setIsPending] = React.useState(false);
   const [category, setCategory] = React.useState<string>(expense?.category ?? "RENT");
   const [invoiceStatus, setInvoiceStatus] = React.useState<string>(expense?.invoiceStatus ?? "NOT_INVOICED");
   const [paymentMethod, setPaymentMethod] = React.useState<string>(expense?.paymentMethod ?? "");
+  const supplierListId = `${formId}-suppliers`;
+  // Picking a known supplier on a new expense proposes its usual category and invoice status; the user can still change both.
+  const proposeFromSupplier = (name: string) => {
+    const known = suppliers.find((supplier) => supplier.name === name);
+    if (expense || !known) return;
+    if (known.category) setCategory(known.category);
+    setInvoiceStatus(known.usuallyInvoiced ? "INVOICED" : "NOT_INVOICED");
+  };
   const title = expense ? "Editar gasto" : "Nuevo gasto";
 
   return (
@@ -106,7 +116,8 @@ export function ExpenseFormDialog({ action, month, today, expense }: ExpenseForm
             <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
               <div className="grid gap-2">
                 <Label htmlFor={`${formId}-supplier`}>Proveedor (opcional)</Label>
-                <Input id={`${formId}-supplier`} name="supplier" maxLength={120} defaultValue={expense?.supplier ?? ""} disabled={isPending} />
+                <Input id={`${formId}-supplier`} name="supplier" list={supplierListId} maxLength={120} defaultValue={expense?.supplier ?? ""} onChange={(event) => proposeFromSupplier(event.target.value)} disabled={isPending} />
+                <datalist id={supplierListId}>{suppliers.map((supplier) => <option key={supplier.name} value={supplier.name} />)}</datalist>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor={`${formId}-method`}>Método de pago (opcional)</Label>
@@ -120,6 +131,13 @@ export function ExpenseFormDialog({ action, month, today, expense }: ExpenseForm
                 <input type="hidden" name="paymentMethod" value={paymentMethod} />
               </div>
             </div>
+
+            {expense ? null : (
+              <label className="flex min-h-[var(--tap-min-height)] items-center gap-3 text-sm text-[var(--color-text-main)]">
+                <input type="checkbox" name="repeat" className="h-4 w-4" disabled={isPending} />
+                Repetir cada mes (renta, luz, teléfono…)
+              </label>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor={`${formId}-notes`}>Nota (opcional)</Label>

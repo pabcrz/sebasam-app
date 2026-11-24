@@ -26,9 +26,11 @@ vi.mock("@/features/balance/queries", () => ({ getBalanceSnapshot: getBalanceSna
 vi.mock("@/features/balance/profit-queries", () => ({ getProfitSnapshot: getProfitSnapshotMock }));
 vi.mock("@/features/balance/expenses/queries", () => ({
   listExpensesForMonth: listExpensesMock,
+  listSuppliers: vi.fn(async () => []),
+  listRecurringForMonth: vi.fn(async () => ({ templates: [], pending: [] })),
   listExpensesForAssignment: vi.fn(async () => ({ expenses: (await listExpensesMock()).expenses.map((expense: object) => ({ ...expense, links: [] })), notes: [] })),
 }));
-vi.mock("@/features/balance/expenses/actions", () => ({ createExpenseFromForm: vi.fn(), updateExpenseFromForm: vi.fn(), deleteExpenseFromForm: vi.fn(), assignExpenseShareFromForm: vi.fn(), linkExpenseToNoteFromForm: vi.fn(), unlinkExpenseFromNoteFromForm: vi.fn() }));
+vi.mock("@/features/balance/expenses/actions", () => ({ createExpenseFromForm: vi.fn(), updateExpenseFromForm: vi.fn(), deleteExpenseFromForm: vi.fn(), assignExpenseShareFromForm: vi.fn(), linkExpenseToNoteFromForm: vi.fn(), unlinkExpenseFromNoteFromForm: vi.fn(), confirmRecurringExpenseFromForm: vi.fn(), skipRecurringExpenseFromForm: vi.fn(), stopRecurringExpenseFromForm: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({
   requireProfileForPage: vi.fn(async () => ({ profile: { role: role.current } })),
   canRegisterExpenses: (value: string) => ["ADMIN", "ADMIN_ASSISTANT", "SUPER_ADMIN"].includes(value),

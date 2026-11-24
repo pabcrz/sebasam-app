@@ -64,4 +64,30 @@ describe("ExpenseFormDialog", () => {
     expect(screen.getByLabelText("Proveedor (opcional)")).toHaveValue("Gasolinera");
     expect(screen.queryByLabelText(/porcentaje/i)).not.toBeInTheDocument();
   });
+
+  it("proposes the usual category and invoice status of a known supplier, only on a new expense", async () => {
+    const user = userEvent.setup();
+    const suppliers = [{ name: "Refaccionaria Uno", usuallyInvoiced: true, category: "PARTS_PURCHASE" }];
+    render(<ExpenseFormDialog action={vi.fn()} month="2026-11" today="2026-11-23" suppliers={suppliers} />);
+    await user.click(screen.getByRole("button", { name: /nuevo gasto/i }));
+
+    expect(screen.getByTestId("expense-form").querySelector("datalist option")).toHaveAttribute("value", "Refaccionaria Uno");
+    await user.type(screen.getByLabelText("Proveedor (opcional)"), "Refaccionaria Uno");
+
+    expect(screen.getByRole("radio", { name: "Con factura" })).toBeChecked();
+    expect(screen.getByRole("combobox", { name: "Categoría" })).toHaveTextContent("Refacciones compradas");
+  });
+
+  it("offers to repeat a new expense every month, and not when editing one", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<ExpenseFormDialog action={vi.fn()} month="2026-11" today="2026-11-23" />);
+    await user.click(screen.getByRole("button", { name: /nuevo gasto/i }));
+    expect(screen.getByRole("checkbox", { name: /repetir cada mes/i })).not.toBeChecked();
+    unmount();
+
+    const expense = { id: "e1", spentAt: new Date("2026-11-20T00:00:00Z"), amountCents: 500_000, category: "RENT", invoiceStatus: "NOT_INVOICED" as const, partsSharePercent: 0, supplier: null, paymentMethod: null, notes: null };
+    render(<ExpenseFormDialog action={vi.fn()} month="2026-11" today="2026-11-23" expense={expense} />);
+    await user.click(screen.getByRole("button", { name: /editar gasto/i }));
+    expect(screen.queryByRole("checkbox", { name: /repetir cada mes/i })).not.toBeInTheDocument();
+  });
 });
