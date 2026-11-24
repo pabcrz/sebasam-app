@@ -4,7 +4,7 @@ import { requireSuperAdmin } from "@/lib/auth/session";
 import { sumCollectedPayments } from "@/features/dashboard/queries";
 import { getWeeklyPayroll } from "@/features/payroll/queries";
 import { parsePayrollParams, type ParsedPayrollParams } from "@/features/payroll/period";
-import { buildProfitSummary, noteIncomeByAccount, noteSettlement, type IncomeByAccount, type ProfitSummary } from "./profit";
+import { buildProfitSummary, jobMargins, noteIncomeByAccount, noteSettlement, recognizeExpenses, type IncomeByAccount, type JobMargin, type ProfitSummary } from "./profit";
 
 export interface MonthPeriod {
   /** "YYYY-MM" of the month shown. */
@@ -41,8 +41,15 @@ export function parseMonthPeriod(month: string | undefined, now = new Date()): M
 
 const ACTIVE_APPLICATION = { reversedAt: null, payment: { status: PaymentStatus.PAID, reversedAt: null } } as const;
 
-/** Income of the month: every issued note that became fully settled in it, split by item category. */
-async function getSettledIncome(period: MonthPeriod): Promise<IncomeByAccount> {
+export interface SettledNote {
+  id: string;
+  referenceNumber: string;
+  title: string;
+  income: IncomeByAccount;
+}
+
+/** Notes fully settled in the month, with their income split by item category. */
+async function getSettledNotes(period: MonthPeriod): Promise<SettledNote[]> {
   const notes = await prisma.payableNote.findMany({
     where: {
       status: PayableNoteStatus.ISSUED,
@@ -51,6 +58,9 @@ async function getSettledIncome(period: MonthPeriod): Promise<IncomeByAccount> {
       paymentApplications: { some: { ...ACTIVE_APPLICATION, createdAt: { gte: period.start } } },
     },
     select: {
+      id: true,
+      referenceNumber: true,
+      title: true,
       quote: {
         select: {
           subtotalCents: true,
@@ -67,14 +77,21 @@ async function getSettledIncome(period: MonthPeriod): Promise<IncomeByAccount> {
     },
   });
 
-  const income: IncomeByAccount = { laborCents: 0, partsCents: 0, otherCents: 0 };
+  const settled: SettledNote[] = [];
   for (const note of notes) {
     if (!note.quote) continue;
     const settlable = { quote: note.quote, paymentApplications: note.paymentApplications } as Parameters<typeof noteSettlement>[0];
     const { settledAt } = noteSettlement(settlable);
     if (!settledAt || settledAt < period.start || settledAt >= period.end) continue;
 
-    const byAccount = noteIncomeByAccount(settlable);
+    settled.push({ id: note.id, referenceNumber: note.referenceNumber, title: note.title, income: noteIncomeByAccount(settlable) });
+  }
+  return settled;
+}
+
+function sumIncome(notes: SettledNote[]): IncomeByAccount {
+  const income: IncomeByAccount = { laborCents: 0, partsCents: 0, otherCents: 0 };
+  for (const { income: byAccount } of notes) {
     income.laborCents += byAccount.laborCents;
     income.partsCents += byAccount.partsCents;
     income.otherCents += byAccount.otherCents;
@@ -82,9 +99,16 @@ async function getSettledIncome(period: MonthPeriod): Promise<IncomeByAccount> {
   return income;
 }
 
+export interface JobProfit extends JobMargin {
+  referenceNumber: string;
+  title: string;
+}
+
 export interface ProfitSnapshot {
   period: MonthPeriod;
   summary: ProfitSummary;
+  /** Notes settled in the month with their refacciones margin, worst first. */
+  jobs: JobProfit[];
 }
 
 export async function getProfitSnapshot(month: string | undefined, now = new Date()): Promise<ProfitSnapshot> {
@@ -92,23 +116,46 @@ export async function getProfitSnapshot(month: string | undefined, now = new Dat
   await requireSuperAdmin();
   const period = parseMonthPeriod(month, now);
 
-  const [income, collected, payroll, expenses] = await Promise.all([
-    getSettledIncome(period),
+  const [settledNotes, collected, payroll] = await Promise.all([
+    getSettledNotes(period),
     sumCollectedPayments({ startDate: period.start, endDate: period.end }),
     getWeeklyPayroll({ mode: "monthly", anchor: `${period.month}-01` }),
-    prisma.expense.findMany({
-      where: { deletedAt: null, spentAt: { gte: period.dateStart, lt: period.dateEnd } },
-      select: { amountCents: true, invoiceStatus: true, partsSharePercent: true },
-    }),
   ]);
+
+  const settledNoteIds = new Set(settledNotes.map((note) => note.id));
+  const expenses = await prisma.expense.findMany({
+    where: {
+      deletedAt: null,
+      OR: [
+        { spentAt: { gte: period.dateStart, lt: period.dateEnd } },
+        // A purchase from another month still counts here when it was charged to a note settled in this one.
+        { allocations: { some: { payableNoteId: { in: [...settledNoteIds] } } } },
+      ],
+    },
+    select: {
+      spentAt: true,
+      amountCents: true,
+      invoiceStatus: true,
+      partsSharePercent: true,
+      allocations: { select: { payableNoteId: true, amountCents: true } },
+    },
+  });
+
+  const labels = new Map(settledNotes.map((note) => [note.id, note]));
+  const jobs = jobMargins(settledNotes.map((note) => ({ id: note.id, partsIncomeCents: note.income.partsCents })), expenses).map((job) => ({
+    ...job,
+    referenceNumber: labels.get(job.noteId)?.referenceNumber ?? "",
+    title: labels.get(job.noteId)?.title ?? "",
+  }));
 
   return {
     period,
+    jobs,
     summary: buildProfitSummary({
-      income,
+      income: sumIncome(settledNotes),
       cashCollectedCents: collected._sum.amountCents ?? 0,
       payrollCents: payroll.totalPayableCents ?? payroll.totalCommissionCents,
-      expenses,
+      expenses: recognizeExpenses(expenses, settledNoteIds, (spentAt) => spentAt >= period.dateStart && spentAt < period.dateEnd),
     }),
   };
 }

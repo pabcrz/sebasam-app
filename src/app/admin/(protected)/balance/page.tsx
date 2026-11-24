@@ -4,8 +4,8 @@ import { BalanceView } from "@/features/balance/components/balance-view";
 import { ExpenseAllocationView } from "@/features/balance/components/expense-allocation-view";
 import { ExpensesView } from "@/features/balance/components/expenses-view";
 import { ProfitView, type ProfitViewKey } from "@/features/balance/components/profit-view";
-import { assignExpenseShareFromForm, createExpenseFromForm, deleteExpenseFromForm, updateExpenseFromForm } from "@/features/balance/expenses/actions";
-import { listExpensesForMonth } from "@/features/balance/expenses/queries";
+import { assignExpenseShareFromForm, createExpenseFromForm, deleteExpenseFromForm, linkExpenseToNoteFromForm, unlinkExpenseFromNoteFromForm, updateExpenseFromForm } from "@/features/balance/expenses/actions";
+import { listExpensesForAssignment, listExpensesForMonth } from "@/features/balance/expenses/queries";
 import { getBalanceSnapshot } from "@/features/balance/queries";
 import { getProfitSnapshot } from "@/features/balance/profit-queries";
 import { canRegisterExpenses, requireProfileForPage } from "@/lib/auth/session";
@@ -34,7 +34,7 @@ const NOTICES: Array<[string, { tone: "success" | "danger"; text: string }]> = [
   ["updated", { tone: "success", text: "Gasto actualizado." }],
   ["deleted", { tone: "success", text: "Gasto eliminado." }],
   ["assigned", { tone: "success", text: "Reparto guardado." }],
-  ["error", { tone: "danger", text: "Revisa los datos del gasto e intenta de nuevo." }],
+  ["error", { tone: "danger", text: "Revisa los datos e intenta de nuevo. Lo ligado a notas no puede pasar del monto de la compra." }],
 ];
 
 export default async function BalancePage({ searchParams }: BalancePageProps) {
@@ -85,7 +85,7 @@ export default async function BalancePage({ searchParams }: BalancePageProps) {
           {notice ? (
             <p role={notice.tone === "danger" ? "alert" : "status"} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-4 py-3 text-sm">{notice.text}</p>
           ) : null}
-          <ExpenseAllocationView expenses={(await listExpensesForMonth(month)).expenses} month={snapshot.period.month} assign={assignExpenseShareFromForm} />
+          <ExpenseAllocationView {...(await listExpensesForAssignment(month))} month={snapshot.period.month} assign={assignExpenseShareFromForm} link={linkExpenseToNoteFromForm} unlink={unlinkExpenseFromNoteFromForm} />
         </div>
       ) : null;
     content = (

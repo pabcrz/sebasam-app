@@ -141,12 +141,35 @@ export function ProfitView({ snapshot, view, hrefFor, allocation }: ProfitViewPr
               { label: "Utilidad libre", cents: parts.remainingCents, strong: true },
             ]}
           />
+          <section aria-labelledby="jobs-heading" data-testid="profit-jobs" className="grid gap-2">
+            <h3 id="jobs-heading" className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Utilidad por trabajo</h3>
+            {snapshot.jobs.length === 0 ? (
+              <p className="rounded-[var(--radius-md)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-text-muted)] shadow-[var(--shadow-card)]">
+                Ninguna nota liquidada este mes vendió refacciones o tiene compras ligadas.
+              </p>
+            ) : (
+              <ul className="divide-y divide-[var(--color-border-light)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]">
+                {snapshot.jobs.map((job) => (
+                  <li key={job.noteId} data-testid="job-row" className="grid gap-0.5 p-3 text-sm">
+                    <p className="truncate font-semibold">{job.referenceNumber} · {job.title}</p>
+                    <p className="text-xs tabular-nums text-[var(--color-text-muted)]">
+                      Cobró {formatCents(job.partsIncomeCents)} · Costó {formatCents(job.partsCostCents)} ·{" "}
+                      <span className={job.marginCents < 0 ? "font-semibold text-[var(--color-danger)]" : "font-semibold"}>
+                        Margen {formatCents(job.marginCents)}{job.marginPercent === null ? "" : ` (${job.marginPercent} %)`}
+                      </span>
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-xs text-[var(--color-text-muted)]">El costo solo incluye las compras que ligaste a la nota en Asignar. Una nota sin compras ligadas aparece con margen completo.</p>
+          </section>
         </div>
       ) : null}
 
       <div className="grid gap-1 text-xs text-[var(--color-text-muted)]" data-testid="profit-notes">
         <p>Cobrado en efectivo en {period.label}: <span className="font-semibold tabular-nums">{formatCents(summary.cashCollectedCents)}</span>. Puede diferir de «Entró» porque una nota cuenta cuando queda totalmente liquidada, y sus abonos pueden haber llegado en otros meses.</p>
-        <p>Ingresos y gastos pueden caer en meses distintos (por ejemplo, una refacción comprada un mes y liquidada al siguiente). Es una aproximación: la utilidad exacta por trabajo requiere ligar cada compra a su nota.</p>
+        <p>Ingresos y gastos pueden caer en meses distintos (por ejemplo, una refacción comprada un mes y liquidada al siguiente). Una compra ligada a una nota cuenta en el mes en que esa nota se liquida; la que no se liga cuenta el día que se pagó.</p>
       </div>
     </section>
   );

@@ -9,9 +9,20 @@ vi.mock("@/lib/auth/session", () => ({
   requireExpenseRole: vi.fn().mockResolvedValue({ profile: { id: "user-1", role: "ADMIN" } }),
   requireSuperAdmin: vi.fn().mockResolvedValue({ profile: { id: "owner-1", role: "SUPER_ADMIN" } }),
 }));
-vi.mock("@/lib/prisma", () => ({ prisma: { expense: { create: vi.fn(), updateMany: vi.fn(), findFirst: vi.fn() } } }));
+const tx = vi.hoisted(() => ({
+  expense: { findFirst: vi.fn() },
+  payableNote: { findFirst: vi.fn() },
+  expenseAllocation: { upsert: vi.fn() },
+}));
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    expense: { create: vi.fn(), updateMany: vi.fn(), findFirst: vi.fn() },
+    expenseAllocation: { deleteMany: vi.fn() },
+    $transaction: vi.fn(async (run: (client: typeof tx) => unknown) => run(tx)),
+  },
+}));
 
-import { assignExpenseShareFromForm, createExpenseFromForm, deleteExpenseFromForm, updateExpenseFromForm } from "./actions";
+import { assignExpenseShareFromForm, createExpenseFromForm, deleteExpenseFromForm, linkExpenseToNoteFromForm, unlinkExpenseFromNoteFromForm, updateExpenseFromForm } from "./actions";
 
 function form(overrides: Record<string, string> = {}) {
   const data = new FormData();
@@ -125,5 +136,65 @@ describe("expense actions", () => {
 
     expect(prisma.expense.updateMany).toHaveBeenCalledWith({ where: { id: "e-1", deletedAt: null }, data: { deletedAt: expect.any(Date) } });
     expect(target).toBe("/admin/balance?tab=gastos&month=2026-11&deleted=1");
+  });
+
+  describe("charging a purchase to notes", () => {
+    const assigned = "/admin/balance?tab=utilidad&view=asignar&month=2026-11";
+    const expense = (charged: Array<[string, number]> = []) => ({ amountCents: 100_000, allocations: charged.map(([payableNoteId, amountCents]) => ({ payableNoteId, amountCents })) });
+
+    beforeEach(() => {
+      tx.expense.findFirst.mockResolvedValue(expense());
+      tx.payableNote.findFirst.mockResolvedValue({ id: "n1" });
+    });
+
+    it("links a piece of the purchase to an issued note, for the owner only", async () => {
+      const target = await redirectTarget(() => linkExpenseToNoteFromForm("e-1", form({ payableNoteId: "n1", amount: "600" })));
+
+      expect(requireSuperAdmin).toHaveBeenCalled();
+      expect(tx.expenseAllocation.upsert).toHaveBeenCalledWith({
+        where: { expenseId_payableNoteId: { expenseId: "e-1", payableNoteId: "n1" } },
+        create: { expenseId: "e-1", payableNoteId: "n1", amountCents: 60_000 },
+        update: { amountCents: 60_000 },
+      });
+      expect(target).toBe(`${assigned}&assigned=1`);
+
+      vi.mocked(requireSuperAdmin).mockRejectedValueOnce(new Error("forbidden"));
+      await expect(linkExpenseToNoteFromForm("e-1", form({ payableNoteId: "n1", amount: "600" }))).rejects.toThrow("forbidden");
+    });
+
+    it("never lets the linked pieces add up to more than the purchase", async () => {
+      tx.expense.findFirst.mockResolvedValue(expense([["n2", 70_000]]));
+
+      expect(await redirectTarget(() => linkExpenseToNoteFromForm("e-1", form({ payableNoteId: "n1", amount: "400" })))).toBe(`${assigned}&error=exceeds`);
+      expect(tx.expenseAllocation.upsert).not.toHaveBeenCalled();
+    });
+
+    it("lets the owner change the piece already linked to the same note", async () => {
+      tx.expense.findFirst.mockResolvedValue(expense([["n1", 90_000]]));
+
+      expect(await redirectTarget(() => linkExpenseToNoteFromForm("e-1", form({ payableNoteId: "n1", amount: "1000" })))).toBe(`${assigned}&assigned=1`);
+      expect(tx.expenseAllocation.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: { amountCents: 100_000 } }));
+    });
+
+    it("rejects a missing note or expense and a blank, zero or invalid amount", async () => {
+      tx.payableNote.findFirst.mockResolvedValue(null);
+      expect(await redirectTarget(() => linkExpenseToNoteFromForm("e-1", form({ payableNoteId: "draft", amount: "100" })))).toBe(`${assigned}&error=notfound`);
+
+      tx.payableNote.findFirst.mockResolvedValue({ id: "n1" });
+      for (const amount of ["", "0", "abc"]) {
+        expect(await redirectTarget(() => linkExpenseToNoteFromForm("e-1", form({ payableNoteId: "n1", amount })))).toBe(`${assigned}&error=invalid`);
+      }
+      expect(tx.expenseAllocation.upsert).not.toHaveBeenCalled();
+    });
+
+    it("unlinks a note, for the owner only", async () => {
+      const target = await redirectTarget(() => unlinkExpenseFromNoteFromForm("e-1", "n1", form()));
+
+      expect(prisma.expenseAllocation.deleteMany).toHaveBeenCalledWith({ where: { expenseId: "e-1", payableNoteId: "n1" } });
+      expect(target).toBe(`${assigned}&assigned=1`);
+
+      vi.mocked(requireSuperAdmin).mockRejectedValueOnce(new Error("forbidden"));
+      await expect(unlinkExpenseFromNoteFromForm("e-1", "n1", form())).rejects.toThrow("forbidden");
+    });
   });
 });

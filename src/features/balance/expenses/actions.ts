@@ -32,6 +32,13 @@ function expensesHref(formData: FormData, flag: string) {
   return `${balancePath}?tab=gastos${valid ? `&month=${month}` : ""}&${flag}`;
 }
 
+/** Back to the owner's Asignar view of the month being looked at. */
+function assignHref(formData: FormData, flag: string) {
+  const month = formData.get("month");
+  const valid = typeof month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
+  return `${balancePath}?tab=utilidad&view=asignar${valid ? `&month=${month}` : ""}&${flag}`;
+}
+
 export async function createExpenseFromForm(formData: FormData) {
   const { profile } = await requireExpenseRole();
 
@@ -81,9 +88,7 @@ export async function updateExpenseFromForm(expenseId: string, formData: FormDat
 export async function assignExpenseShareFromForm(expenseId: string, formData: FormData) {
   await requireSuperAdmin();
 
-  const month = formData.get("month");
-  const valid = typeof month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
-  const back = (flag: string) => `${balancePath}?tab=utilidad&view=asignar${valid ? `&month=${month}` : ""}&${flag}`;
+  const back = (flag: string) => assignHref(formData, flag);
 
   const rawShare = formData.get("partsSharePercent");
   // A blank field must not become 0 (all to labor) by accident.
@@ -105,4 +110,40 @@ export async function deleteExpenseFromForm(expenseId: string, formData: FormDat
 
   revalidatePath(balancePath);
   redirect(expensesHref(formData, "deleted=1"));
+}
+
+/** Owner only: charge part of a purchase to a note, so its cost counts in the month that note settles. */
+export async function linkExpenseToNoteFromForm(expenseId: string, formData: FormData) {
+  await requireSuperAdmin();
+  const back = (flag: string) => assignHref(formData, flag);
+
+  const noteId = formData.get("payableNoteId");
+  const rawAmount = formData.get("amount");
+  const amountCents = pesosTextToCents(rawAmount);
+  if (typeof noteId !== "string" || noteId === "" || !Number.isInteger(amountCents) || amountCents <= 0) redirect(back("error=invalid"));
+
+  const result = await prisma.$transaction(async (tx) => {
+    const expense = await tx.expense.findFirst({ where: { id: expenseId, deletedAt: null }, select: { amountCents: true, allocations: { select: { payableNoteId: true, amountCents: true } } } });
+    const note = await tx.payableNote.findFirst({ where: { id: noteId, status: "ISSUED" }, select: { id: true } });
+    if (!expense || !note) return "notfound" as const;
+    // Replacing the piece already charged to this note is allowed; the total can never pass the purchase.
+    const others = expense.allocations.filter((allocation) => allocation.payableNoteId !== noteId).reduce((sum, allocation) => sum + allocation.amountCents, 0);
+    if (others + amountCents > expense.amountCents) return "exceeds" as const;
+    await tx.expenseAllocation.upsert({
+      where: { expenseId_payableNoteId: { expenseId, payableNoteId: noteId } },
+      create: { expenseId, payableNoteId: noteId, amountCents },
+      update: { amountCents },
+    });
+    return "ok" as const;
+  });
+
+  revalidatePath(balancePath);
+  redirect(back(result === "ok" ? "assigned=1" : `error=${result}`));
+}
+
+export async function unlinkExpenseFromNoteFromForm(expenseId: string, payableNoteId: string, formData: FormData) {
+  await requireSuperAdmin();
+  await prisma.expenseAllocation.deleteMany({ where: { expenseId, payableNoteId } });
+  revalidatePath(balancePath);
+  redirect(assignHref(formData, "assigned=1"));
 }

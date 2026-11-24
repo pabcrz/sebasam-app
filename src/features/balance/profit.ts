@@ -88,6 +88,73 @@ export function noteIncomeByAccount(note: SettlableNote): IncomeByAccount {
   return { laborCents, partsCents, otherCents: base - laborCents - partsCents };
 }
 
+export interface RecognizableExpense extends ProfitExpense {
+  spentAt: Date;
+  /** Pieces charged to a note: [noteId, cents]. */
+  allocations: Array<{ payableNoteId: string; amountCents: number }>;
+}
+
+/**
+ * Pieces of expense that count in a month. A piece charged to a note counts when that note settles
+ * (same month as its income); whatever is not charged counts on the day it was paid.
+ * `settledNoteIds` are the notes settled in the month; `spentInMonth` tells if the payment date falls in it.
+ */
+export function recognizeExpenses(
+  expenses: RecognizableExpense[],
+  settledNoteIds: Set<string>,
+  spentInMonth: (spentAt: Date) => boolean,
+): ProfitExpense[] {
+  const pieces: ProfitExpense[] = [];
+  for (const expense of expenses) {
+    const charged = expense.allocations.reduce((sum, allocation) => sum + allocation.amountCents, 0);
+    const base = { invoiceStatus: expense.invoiceStatus, partsSharePercent: expense.partsSharePercent };
+    const uncharged = expense.amountCents - charged;
+    if (uncharged > 0 && spentInMonth(expense.spentAt)) pieces.push({ ...base, amountCents: uncharged });
+    for (const allocation of expense.allocations) {
+      if (settledNoteIds.has(allocation.payableNoteId)) pieces.push({ ...base, amountCents: allocation.amountCents });
+    }
+  }
+  return pieces;
+}
+
+export interface JobMargin {
+  noteId: string;
+  partsIncomeCents: number;
+  /** Refacciones y materiales cost charged to the note (the parts share of each purchase piece). */
+  partsCostCents: number;
+  marginCents: number;
+  /** margin ÷ parts income; null when the note sold no parts. */
+  marginPercent: number | null;
+}
+
+/** Parts income against the parts cost charged to each settled note, worst margin first. */
+export function jobMargins(
+  notes: Array<{ id: string; partsIncomeCents: number }>,
+  expenses: RecognizableExpense[],
+): JobMargin[] {
+  const cost = new Map<string, number>();
+  for (const expense of expenses) {
+    for (const allocation of expense.allocations) {
+      const parts = splitExpense(allocation.amountCents, expense.partsSharePercent).partsCents;
+      cost.set(allocation.payableNoteId, (cost.get(allocation.payableNoteId) ?? 0) + parts);
+    }
+  }
+  return notes
+    .map((note) => {
+      const partsCostCents = cost.get(note.id) ?? 0;
+      const marginCents = note.partsIncomeCents - partsCostCents;
+      return {
+        noteId: note.id,
+        partsIncomeCents: note.partsIncomeCents,
+        partsCostCents,
+        marginCents,
+        marginPercent: note.partsIncomeCents > 0 ? Math.round((marginCents / note.partsIncomeCents) * 100) : null,
+      };
+    })
+    .filter((job) => job.partsIncomeCents > 0 || job.partsCostCents > 0)
+    .sort((a, b) => a.marginCents - b.marginCents);
+}
+
 export interface InvoiceSplit {
   invoicedCents: number;
   notInvoicedCents: number;

@@ -41,10 +41,11 @@ Tres vistas que **cuadran entre sí**: queda general = queda de mano de obra + q
 
 - **Ingresos:** una nota (`PayableNote` emitida, de trabajo o de venta) cuenta **solo cuando queda totalmente liquidada**, en el mes (hora de CDMX) del abono que la cubre por completo, aunque tuviera abonos anteriores. Se reconoce su base sin IVA, ya con descuentos o acuerdos, repartida entre categorías según sus partidas: `LABOR` es mano de obra; `MATERIAL` y `REFACCIONES`, refacciones y materiales; `OTHER` solo aparece en la vista General. Las secciones no autorizadas no cuentan.
 - **Nómina:** el cálculo de nómina mensual existente (`totalPayableCents`, o las comisiones si no hay total). No se captura.
-- **Gastos:** por fecha de pago, en el mes que se pagaron.
+- **Gastos:** por fecha de pago, en el mes que se pagaron. La parte de una compra que el dueño **liga a una nota** (Utilidad → Asignar) cuenta en cambio en el mes en que esa nota se liquida, junto con lo que cobró; la parte sin ligar sigue por fecha de pago. Lo ligado a notas de una compra no puede pasar de su monto, y cada centavo cuenta una sola vez.
+- **Utilidad por trabajo** (vista Refacciones): por nota liquidada en el mes, refacciones cobradas − costo de refacciones ligado (la parte de refacciones de cada pieza), con su margen en %. Una nota sin compras ligadas aparece con margen completo.
 - **Cobrado en efectivo:** referencia aparte; puede diferir de los ingresos porque los abonos de una nota pueden llegar en otros meses.
 
 ### Límites conocidos
 
-- Ingresos y gastos pueden caer en meses distintos (se compra una refacción un mes y la nota se liquida el siguiente). Es una aproximación; la utilidad exacta por trabajo requiere ligar cada compra a su nota.
+- Ingresos y gastos pueden caer en meses distintos (se compra una refacción un mes y la nota se liquida el siguiente). Ligar la compra a su nota (arriba) lo corrige; lo que no se liga sigue siendo una aproximación.
 - La app **no calcula impuestos** ni da asesoría fiscal. «Con factura» describe un hecho (hay comprobante), no si el gasto es deducible.
