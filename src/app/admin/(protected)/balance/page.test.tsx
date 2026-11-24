@@ -20,10 +20,11 @@ const getBalanceSnapshotMock = vi.hoisted(() =>
   }),
 );
 const getProfitSnapshotMock = vi.hoisted(() => vi.fn());
+const getComparisonMock = vi.hoisted(() => vi.fn());
 const listExpensesMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/balance/queries", () => ({ getBalanceSnapshot: getBalanceSnapshotMock }));
-vi.mock("@/features/balance/profit-queries", () => ({ getProfitSnapshot: getProfitSnapshotMock }));
+vi.mock("@/features/balance/profit-queries", () => ({ getProfitSnapshot: getProfitSnapshotMock, getMonthlyComparison: getComparisonMock }));
 vi.mock("@/features/balance/expenses/queries", () => ({
   listExpensesForMonth: listExpensesMock,
   listSuppliers: vi.fn(async () => []),
@@ -83,6 +84,22 @@ describe("BalancePage", () => {
 
     render(await BalancePage(params({ tab: "utilidad", view: "inventado" })));
     expect(screen.getByTestId("profit-general")).toBeInTheDocument();
+  });
+
+  it("shows the owner the 12-month comparison for the chosen series", async () => {
+    getComparisonMock.mockResolvedValue({ period, series: "refacciones", medianCents: null, totals: { incomeCents: 0, expensesCents: 0 }, months: [{ month: "2026-11", label: "noviembre 2026", income: { laborCents: 0, partsCents: 0, otherCents: 0 }, expensesCents: 0, valueCents: 0, level: null, laborSharePercent: null }] });
+
+    render(await BalancePage(params({ tab: "utilidad", view: "comparar", serie: "refacciones", month: "2026-11" })));
+
+    expect(getComparisonMock).toHaveBeenCalledWith("2026-11", "refacciones");
+    expect(screen.getByTestId("profit-comparison")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Comparar" })).toBeInTheDocument();
+  });
+
+  it("falls back to all series when the one asked for does not exist", async () => {
+    getComparisonMock.mockResolvedValue({ period, series: "todas", medianCents: null, totals: { incomeCents: 0, expensesCents: 0 }, months: [] });
+    render(await BalancePage(params({ tab: "utilidad", view: "comparar", serie: "inventada" })));
+    expect(getComparisonMock).toHaveBeenCalledWith(undefined, "todas");
   });
 
   it("lets the owner assign how each expense is split between the two accounts", async () => {

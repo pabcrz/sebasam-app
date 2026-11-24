@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import type { ExpenseCategory, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireExpenseRole, requireSuperAdmin } from "@/lib/auth/session";
-import { defaultPartsShareFor } from "./categories";
+import { categoryShareFor } from "./category-shares";
 import { expenseInputSchema, partsShareSchema, pesosTextToCents } from "./schemas";
 
 const balancePath = "/admin/balance";
@@ -81,7 +81,7 @@ export async function createExpenseFromForm(formData: FormData) {
     await tx.expense.create({
       data: {
         ...parsed.data,
-        partsSharePercent: defaultPartsShareFor(parsed.data.category),
+        partsSharePercent: await categoryShareFor(tx, parsed.data.category),
         spentAt: new Date(`${parsed.data.spentAt}T00:00:00.000Z`),
         createdById: profile.id,
         supplierId,
@@ -102,13 +102,12 @@ export async function updateExpenseFromForm(expenseId: string, formData: FormDat
 
   const current = await prisma.expense.findFirst({
     where: { id: expenseId, deletedAt: null },
-    select: { category: true, partsSharePercent: true },
+    select: { category: true, partsSharePercent: true, partsShareAssigned: true },
   });
   if (!current) redirect(expensesHref(formData, "error=notfound"));
 
-  // Editing never touches an assignment the owner made. Only a share that is still the old category's proposal follows a change of category.
-  const untouched = current.partsSharePercent === defaultPartsShareFor(current.category);
-  const partsSharePercent = untouched ? defaultPartsShareFor(parsed.data.category) : current.partsSharePercent;
+  // Editing never touches an assignment the owner made. A share that is still only the category's proposal follows the (new) category.
+  const partsSharePercent = current.partsShareAssigned ? current.partsSharePercent : await categoryShareFor(prisma, parsed.data.category);
 
   // Editing never drops a receipt already attached: the edit form has no upload, so a missing path means "leave it".
   const { receiptPath, ...fields } = parsed.data;
@@ -135,7 +134,7 @@ export async function assignExpenseShareFromForm(expenseId: string, formData: Fo
   const parsed = partsShareSchema.safeParse(typeof rawShare === "string" && rawShare.trim() !== "" ? Number(rawShare) : Number.NaN);
   if (!parsed.success) redirect(back("error=invalid"));
 
-  const result = await prisma.expense.updateMany({ where: { id: expenseId, deletedAt: null }, data: { partsSharePercent: parsed.data } });
+  const result = await prisma.expense.updateMany({ where: { id: expenseId, deletedAt: null }, data: { partsSharePercent: parsed.data, partsShareAssigned: true } });
   if (result.count === 0) redirect(back("error=notfound"));
 
   revalidatePath(balancePath);
@@ -213,7 +212,7 @@ export async function confirmRecurringExpenseFromForm(recurringId: string, formD
         invoiceStatus: template.invoiceStatus,
         supplier: template.supplier,
         paymentMethod: template.paymentMethod,
-        partsSharePercent: defaultPartsShareFor(template.category),
+        partsSharePercent: await categoryShareFor(tx, template.category),
         createdById: profile.id,
         supplierId,
         recurringExpenseId: recurringId,

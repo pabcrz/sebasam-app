@@ -1006,6 +1006,8 @@ model Expense {
   category           ExpenseCategory
   invoiceStatus      ExpenseInvoiceStatus
   partsSharePercent  Int                  @default(0)
+  /// True once the owner set the split by hand; until then it is only the category's proposal and follows a change of category.
+  partsShareAssigned Boolean              @default(false)
   supplier           String?
   paymentMethod      String?
   notes              String?
@@ -1025,6 +1027,13 @@ model Expense {
   @@index([spentAt])
   @@index([deletedAt, spentAt])
   @@index([recurringExpenseId, spentAt])
+}
+
+/// Owner's override of the share (0-100) a category charges to the parts account when an expense is registered. No row means the code's default.
+model ExpenseCategoryShare {
+  category          ExpenseCategory @id
+  partsSharePercent Int
+  updatedAt         DateTime        @updatedAt
 }
 
 /// Supplier catalog. It learns from each registered expense: the last invoice status and category used with that supplier.

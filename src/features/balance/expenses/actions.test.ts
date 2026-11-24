@@ -12,6 +12,7 @@ vi.mock("@/lib/auth/session", () => ({
 const tx = vi.hoisted(() => ({
   expense: { findFirst: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
   expenseSupplier: { upsert: vi.fn() },
+  expenseCategoryShare: { findUnique: vi.fn() },
   recurringExpense: { create: vi.fn(), findFirst: vi.fn() },
   payableNote: { findFirst: vi.fn() },
   expenseAllocation: { upsert: vi.fn() },
@@ -19,6 +20,7 @@ const tx = vi.hoisted(() => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     expense: { findFirst: vi.fn(), updateMany: vi.fn() },
+    expenseCategoryShare: { findUnique: vi.fn() },
     expenseAllocation: { deleteMany: vi.fn() },
     recurringExpense: { updateMany: vi.fn() },
     recurringExpenseSkip: { upsert: vi.fn() },
@@ -46,6 +48,8 @@ describe("expense actions", () => {
     tx.expense.updateMany.mockResolvedValue({ count: 1 });
     vi.mocked(prisma.expense.updateMany).mockResolvedValue({ count: 1 });
     tx.expenseSupplier.upsert.mockResolvedValue({ id: "sup-1" });
+    tx.expenseCategoryShare.findUnique.mockResolvedValue(null);
+    vi.mocked(prisma.expenseCategoryShare.findUnique).mockResolvedValue(null);
     tx.recurringExpense.create.mockResolvedValue({ id: "rec-1" });
     vi.mocked(prisma.expense.findFirst).mockResolvedValue({ category: "FUEL_TRANSPORT", partsSharePercent: 50 } as never);
   });
@@ -97,7 +101,7 @@ describe("expense actions", () => {
   });
 
   it("keeps the owner's assignment when the registrar edits an expense", async () => {
-    vi.mocked(prisma.expense.findFirst).mockResolvedValue({ category: "FUEL_TRANSPORT", partsSharePercent: 80 } as never);
+    vi.mocked(prisma.expense.findFirst).mockResolvedValue({ category: "FUEL_TRANSPORT", partsSharePercent: 80, partsShareAssigned: true } as never);
 
     await redirectTarget(() => updateExpenseFromForm("e-1", form({ category: "FUEL_TRANSPORT", amount: "2000" })));
     expect(tx.expense.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ amountCents: 200_000, partsSharePercent: 80 }) }));
@@ -108,18 +112,28 @@ describe("expense actions", () => {
   });
 
   it("lets an untouched share follow a change of category", async () => {
-    vi.mocked(prisma.expense.findFirst).mockResolvedValue({ category: "RENT", partsSharePercent: 0 } as never);
+    vi.mocked(prisma.expense.findFirst).mockResolvedValue({ category: "RENT", partsSharePercent: 0, partsShareAssigned: false } as never);
 
     await redirectTarget(() => updateExpenseFromForm("e-1", form({ category: "PARTS_PURCHASE" })));
 
     expect(tx.expense.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ category: "PARTS_PURCHASE", partsSharePercent: 100 }) }));
   });
 
+  it("lets a proposal follow the category even after the configured percentage changed since it was registered", async () => {
+    // Registered at 50 % (old Combustible setting); Configuración now says 30 %; the registrar moves it to Renta.
+    vi.mocked(prisma.expense.findFirst).mockResolvedValue({ category: "FUEL_TRANSPORT", partsSharePercent: 50, partsShareAssigned: false } as never);
+    vi.mocked(prisma.expenseCategoryShare.findUnique).mockImplementation((async ({ where }: { where: { category: string } }) => (where.category === "FUEL_TRANSPORT" ? { partsSharePercent: 30 } : null)) as never);
+
+    await redirectTarget(() => updateExpenseFromForm("e-1", form({ category: "RENT" })));
+
+    expect(tx.expense.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ category: "RENT", partsSharePercent: 0 }) }));
+  });
+
   it("lets only the owner assign the split of an expense", async () => {
     const target = await redirectTarget(() => assignExpenseShareFromForm("e-1", form({ partsSharePercent: "30" })));
 
     expect(requireSuperAdmin).toHaveBeenCalled();
-    expect(prisma.expense.updateMany).toHaveBeenCalledWith({ where: { id: "e-1", deletedAt: null }, data: { partsSharePercent: 30 } });
+    expect(prisma.expense.updateMany).toHaveBeenCalledWith({ where: { id: "e-1", deletedAt: null }, data: { partsSharePercent: 30, partsShareAssigned: true } });
     expect(target).toBe("/admin/balance?tab=utilidad&view=asignar&month=2026-11&assigned=1");
 
     vi.mocked(requireSuperAdmin).mockRejectedValueOnce(new Error("forbidden"));
@@ -283,5 +297,16 @@ describe("expense actions", () => {
       await redirectTarget(() => updateExpenseFromForm("e-1", form()));
       expect(tx.expense.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.not.objectContaining({ receiptPath: expect.anything() }) }));
     });
+  });
+
+  it("uses the share the owner configured for the category, for a new expense and for a confirmed recurring one", async () => {
+    tx.expenseCategoryShare.findUnique.mockResolvedValue({ partsSharePercent: 30 });
+    await redirectTarget(() => createExpenseFromForm(form({ category: "FUEL_TRANSPORT" })));
+    expect(tx.expense.create).toHaveBeenLastCalledWith({ data: expect.objectContaining({ partsSharePercent: 30 }) });
+
+    tx.recurringExpense.findFirst.mockResolvedValue({ id: "r", category: "FUEL_TRANSPORT", invoiceStatus: "NOT_INVOICED", supplier: null, paymentMethod: null, dayOfMonth: 5 });
+    tx.expense.findFirst.mockResolvedValue(null);
+    await redirectTarget(() => confirmRecurringExpenseFromForm("r", form({ amount: "100" })));
+    expect(tx.expense.create).toHaveBeenLastCalledWith({ data: expect.objectContaining({ partsSharePercent: 30 }) });
   });
 });

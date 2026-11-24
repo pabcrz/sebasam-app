@@ -135,6 +135,16 @@ describe("PaymentSettingsIndex", () => {
     expect(screen.getByRole("link", { name: "Abrir Trabajadores" })).toBeInTheDocument();
   });
 
+  it("links the expense percentages only for the owner", () => {
+    renderIndex({ canManageExpenseShares: true });
+    expect(screen.getByRole("link", { name: "Abrir Porcentajes de gastos" })).toHaveAttribute("href", "/admin/configuracion-pago/porcentajes-gastos");
+  });
+
+  it("does not show the expense percentages to anyone else", () => {
+    renderIndex();
+    expect(screen.queryByRole("link", { name: "Abrir Porcentajes de gastos" })).not.toBeInTheDocument();
+  });
+
   it("shows the appearance currently stored on this device", async () => {
     localStorage.setItem("sebasam-theme", "dark");
     localStorage.setItem("sebasam-font-scale", "large");

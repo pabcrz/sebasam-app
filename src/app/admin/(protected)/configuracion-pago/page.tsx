@@ -30,6 +30,7 @@ export default async function PaymentSettingsPage() {
         activeWorkerCount={activeWorkers.length}
         userCount={users.length}
         canManageUsers={canManageUsers}
+        canManageExpenseShares={canManageUsers}
       />
     </section>
   );

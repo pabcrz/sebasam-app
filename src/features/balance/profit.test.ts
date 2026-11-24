@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildProfitSummary, recognizeExpenses, jobMargins, noteIncomeByAccount, noteSettlement, splitExpense, type SettlableNote } from "./profit";
+import { buildProfitSummary, compareMonths, recognizeExpenses, jobMargins, noteIncomeByAccount, noteSettlement, splitExpense, type SettlableNote } from "./profit";
 
 function note(overrides: Partial<SettlableNote["quote"]> = {}, applications: Array<[number, string]> = []): SettlableNote {
   return {
@@ -198,5 +198,38 @@ describe("jobMargins", () => {
 
   it("leaves out notes with neither parts income nor cost", () => {
     expect(jobMargins([{ id: "a", partsIncomeCents: 0 }], [])).toEqual([]);
+  });
+});
+
+describe("compareMonths", () => {
+  const month = (name: string, labor: number, parts: number, other = 0) => ({ month: name, label: name, income: { laborCents: labor, partsCents: parts, otherCents: other }, expensesCents: 0 });
+  const levels = (months: ReturnType<typeof compareMonths>["months"]) => months.map((m) => m.level);
+
+  it("sets each month against the median of the months that had income: strong above +15 %, weak below -15 %, typical between", () => {
+    const { months, medianCents } = compareMonths([month("a", 100, 0), month("b", 100, 0), month("c", 100, 0), month("d", 116, 0), month("e", 114, 0), month("f", 80, 0), month("g", 86, 0)], "mano-de-obra");
+
+    expect(medianCents).toBe(100);
+    expect(levels(months)).toEqual(["tipico", "tipico", "tipico", "fuerte", "tipico", "debil", "tipico"]);
+  });
+
+  it("ignores months without income in the median, and leaves them unclassified", () => {
+    const { months, medianCents } = compareMonths([month("a", 0, 0), month("b", 100, 0), month("c", 200, 0), month("d", 300, 0)], "todas");
+    expect(medianCents).toBe(200);
+    expect(levels(months)).toEqual([null, "debil", "tipico", "fuerte"]);
+  });
+
+  it("does not classify anything with fewer than three months of income", () => {
+    const { months, medianCents } = compareMonths([month("a", 100, 0), month("b", 500, 0)], "todas");
+    expect(medianCents).toBeNull();
+    expect(levels(months)).toEqual([null, null]);
+  });
+
+  it("measures the chosen series, and keeps «Otros» out of refacciones and out of the labor share", () => {
+    const months = [month("a", 600, 300, 100), month("b", 600, 300, 100), month("c", 600, 300, 100)];
+    expect(compareMonths(months, "todas").months[0].valueCents).toBe(1_000);
+    expect(compareMonths(months, "mano-de-obra").months[0].valueCents).toBe(600);
+    expect(compareMonths(months, "refacciones").months[0].valueCents).toBe(300);
+    expect(compareMonths(months, "todas").months[0].laborSharePercent).toBe(67);
+    expect(compareMonths([month("z", 0, 0, 500)], "todas").months[0].laborSharePercent).toBeNull();
   });
 });

@@ -33,6 +33,10 @@ Los gastos se eliminan de forma lógica (`deletedAt`); la fila se conserva pero 
 
 El catálogo de proveedores **aprende solo**: cada vez que se registra o edita un gasto con proveedor, el catálogo guarda el comprobante y la categoría que se usaron con él, y el gasto queda ligado a ese proveedor (coincidencia exacta del nombre). Al capturar un gasto nuevo, el campo Proveedor autocompleta con el catálogo y, si el nombre ya existe, propone su categoría y su comprobante habituales; quien captura puede cambiarlos. Al aplicar la migración, los proveedores que ya estaban escritos en gastos se pasan al catálogo con los datos de su gasto más reciente.
 
+### Porcentajes por categoría
+
+En **Configuración → Porcentajes de gastos** (solo el dueño) se cambia el porcentaje que cada categoría propone para refacciones (por ejemplo, el 50 % de combustible). Solo aplica a gastos **nuevos** y a los que se confirman desde una plantilla; los ya registrados conservan su reparto, que se ajusta en Utilidad → Asignar. Una categoría vuelta al valor por defecto deja de guardarse como excepción. Editar un gasto sigue la categoría nueva mientras su reparto sea solo la propuesta de la categoría; en cuanto el dueño lo asigna a mano (`partsShareAssigned`), editar no lo toca.
+
 ### Comprobante con foto o PDF
 
 Al registrar un gasto nuevo se puede subir la **foto o el PDF** del comprobante (factura que te hace el proveedor, ticket o nota). La foto se reduce en el teléfono a 1600 px antes de enviarse; el límite es 4 MB (JPG, PNG, WebP o PDF).
@@ -76,6 +80,16 @@ Tres vistas que **cuadran entre sí**: queda general = queda de mano de obra + q
 - **Gastos:** por fecha de pago, en el mes que se pagaron. La parte de una compra que el dueño **liga a una nota** (Utilidad → Asignar) cuenta en cambio en el mes en que esa nota se liquida, junto con lo que cobró; la parte sin ligar sigue por fecha de pago. Lo ligado a notas de una compra no puede pasar de su monto, y cada centavo cuenta una sola vez.
 - **Utilidad por trabajo** (vista Refacciones): por nota liquidada en el mes, refacciones cobradas − costo de refacciones ligado (la parte de refacciones de cada pieza), con su margen en %. Una nota sin compras ligadas aparece con margen completo.
 - **Cobrado en efectivo:** referencia aparte; puede diferir de los ingresos porque los abonos de una nota pueden llegar en otros meses.
+
+### Comparar meses
+
+**Utilidad → Comparar** muestra los últimos 12 meses (hasta el mes elegido), con filtro **Todas / Mano de obra / Refacciones**: lo que entró, el % de mano de obra, los gastos y cómo se ve cada mes frente al resto.
+
+- Reglas de reconocimiento iguales a las del mes: una nota cuenta completa en el mes en que queda totalmente liquidada; una compra ligada a una nota cuenta con ella. Meses de calendario en hora de la Ciudad de México.
+- «Frente al resto» compara con la **mediana** de los meses que tuvieron cobros: **más fuerte** si la supera por más de 15 %, **más débil** si queda más de 15 % abajo, **típico** en medio. Con menos de 3 meses con cobros no se clasifica. Es una descripción del pasado: sin puntuaciones ni pronósticos.
+- **Otros (partidas «Otro»):** cuentan solo en «Todas»; nunca se mezclan con refacciones ni con mano de obra, y quedan fuera del % de mano de obra (mano de obra entre mano de obra más refacciones).
+- Los gastos de esta vista **no incluyen nómina**; la nómina sigue en las vistas del mes.
+- Fuera por ahora: filtro por **semana** (falta definir con el negocio qué día empieza la semana) y la **CxC mensual histórica** (no hay saldo inicial verificado ni historial completo; la CxC de hoy está en Cobros y saldos).
 
 ### Límites conocidos
 
