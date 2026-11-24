@@ -56,10 +56,10 @@ describe("KpiPeriodMetrics", () => {
     // Default: Week
     expect(screen.getByText("17–22 de ago de 2026")).toBeInTheDocument();
     expect(within(weekPanel).getByText("5")).toHaveAttribute("data-numeric-role", "count");
-    expect(within(weekPanel).getByText("Materiales y Refacciones")).toBeInTheDocument();
+    expect(within(weekPanel).getByText("Materiales y refacciones")).toBeInTheDocument();
     expect(within(weekPanel).getByText(/\$1,?500\.00/)).toHaveAttribute("data-numeric-role", "currency");
     expect(within(weekPanel).getByText(/\$1,?500\.00/)).toHaveClass("text-xl", "sm:text-2xl", "tabular-nums");
-    expect(weekPanel.querySelector(".grid")).toHaveClass("grid-cols-1", "sm:grid-cols-2");
+    expect(weekPanel.querySelector(".grid")).toHaveClass("grid-cols-2");
     expect(week).toHaveAttribute("aria-selected", "true");
     expect(week).toHaveAttribute("aria-controls");
     expect(weekPanel).toHaveAttribute("aria-labelledby", week.id);
@@ -84,7 +84,7 @@ describe("KpiPeriodMetrics", () => {
 });
 
 describe("PayrollEstimateCard", () => {
-  it("renders payroll estimate with calculated disclaimer badge", () => {
+  it("renders the weekly estimate as a plain panel with its amount, workers and payroll link", () => {
     render(
       <PayrollEstimateCard
         payroll={{
@@ -99,18 +99,13 @@ describe("PayrollEstimateCard", () => {
       />
     );
 
-    expect(screen.getByText("Nómina Semanal (Estimada)")).toBeInTheDocument();
-    const title = screen.getByRole("heading", { name: "Nómina Semanal (Estimada)" });
-    const header = title.parentElement?.parentElement;
-    expect(header).toHaveClass("flex-col", "items-start");
-    expect(title.parentElement).toHaveClass("flex", "items-center");
-    expect(title.parentElement?.querySelector("svg")).toHaveClass("shrink-0");
-    expect(screen.getByText("Cálculo estimado")).toHaveClass("text-xs", "font-normal");
-    expect(screen.getByText("4").parentElement).toHaveTextContent("4 trabajadores activos");
+    expect(screen.getByRole("heading", { name: "Nómina estimada" })).toBeInTheDocument();
+    expect(screen.queryByText("Cálculo estimado")).not.toBeInTheDocument();
+    expect(screen.getByText("4").parentElement).toHaveTextContent("Comisiones de 17–22 de ago de 2026 · 4 trabajadores activos");
     expect(screen.getByText("$750.00")).toHaveAttribute("data-numeric-role", "currency");
     expect(screen.getByText("$750.00")).toHaveClass("text-xl", "sm:text-2xl", "tabular-nums");
     expect(screen.getByText("4")).toHaveAttribute("data-numeric-role", "supporting-count");
-    expect(screen.getByRole("link", { name: /ver liquidación/i })).toHaveAttribute("href", "/admin/nomina");
+    expect(screen.getByRole("link", { name: /ver nómina/i })).toHaveAttribute("href", "/admin/nomina");
   });
 });
 
@@ -234,12 +229,28 @@ describe("InboxRowsSection", () => {
 
 describe("ReceivablesSection", () => {
   it("links each customer balance to its account statement and identifies overdue debt", () => {
-    render(<ReceivablesSection customers={[{ customerId: "customer-1", customerName: "Transportes Norte", pendingBalanceCents: 12_500, oldestUnpaidDate: new Date("2026-08-10"), isOverdue: true }]} />);
-    expect(screen.getByText("Finanzas")).toBeInTheDocument();
+    render(<ReceivablesSection customers={[{ customerId: "customer-1", customerName: "Transportes Norte", pendingBalanceCents: 12_500, overdueBalanceCents: 12_500, oldestUnpaidDate: new Date("2026-08-10"), isOverdue: true }]} />);
     expect(screen.getByRole("heading", { name: "Cuentas por cobrar" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /transportes norte/i })).toHaveAttribute("href", "/admin/customers/customer-1/estado-de-cuenta");
     expect(screen.getByText("Saldo vencido")).toBeInTheDocument();
     expect(screen.getByText("$125.00")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /más en clientes/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the five first balances and links the rest to Clientes", () => {
+    const customers = Array.from({ length: 7 }, (_, index) => ({
+      customerId: `customer-${index}`,
+      customerName: `Cliente ${index}`,
+      pendingBalanceCents: 10_000,
+      overdueBalanceCents: 0,
+      oldestUnpaidDate: null,
+      isOverdue: false,
+    }));
+    render(<ReceivablesSection customers={customers} />);
+
+    expect(screen.getAllByRole("link", { name: /^cliente \d/i })).toHaveLength(5);
+    expect(screen.queryByText("Cliente 5")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver 2 más en Clientes" })).toHaveAttribute("href", "/admin/customers");
   });
 });
 
@@ -319,12 +330,10 @@ describe("DashboardView", () => {
     expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /nuevo cliente/i })).not.toBeInTheDocument();
     expect(screen.getByText("Cuentas por cobrar")).toBeInTheDocument();
-    expect(screen.getByText("Resumen del período")).toBeInTheDocument();
-    expect(screen.getByText("Módulos del Sistema")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "Clientes" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "Nómina" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "Trabajadores" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 3, name: "Notas" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Resumen" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nómina estimada" })).toBeInTheDocument();
+    // The nav already lists every module; the home does not repeat it.
+    expect(screen.queryByText("Módulos del Sistema")).not.toBeInTheDocument();
     expect(screen.queryByTestId("admin-page-header")).not.toBeInTheDocument();
   });
 
@@ -372,30 +381,10 @@ describe("DashboardView", () => {
     );
 
     expect(screen.getByRole("button", { name: /nueva cotización/i })).toBeInTheDocument();
-    expect(screen.getByText("Módulos del Sistema")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "Clientes" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "Cotizaciones" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "Trabajos" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "Notas" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Pendientes" })).toBeInTheDocument();
+    expect(screen.queryByText("Módulos del Sistema")).not.toBeInTheDocument();
     expect(screen.queryByText("Cuentas por cobrar")).not.toBeInTheDocument();
-    expect(screen.queryByText("Resumen del período")).not.toBeInTheDocument();
-    expect(screen.queryByText("Nómina Semanal (Estimada)")).not.toBeInTheDocument();
-    const quickLinks = screen.getAllByRole("link");
-    expect(quickLinks.find((link) => link.getAttribute("href") === "/admin/customers")).toHaveAttribute(
-      "href",
-      "/admin/customers",
-    );
-    expect(quickLinks.find((link) => link.getAttribute("href") === "/admin/quotes")).toHaveAttribute(
-      "href",
-      "/admin/quotes",
-    );
-    expect(quickLinks.find((link) => link.getAttribute("href") === "/admin/work-orders")).toHaveAttribute(
-      "href",
-      "/admin/work-orders",
-    );
-    expect(quickLinks.find((link) => link.getAttribute("href") === "/admin/notas")).toHaveAttribute(
-      "href",
-      "/admin/notas",
-    );
+    expect(screen.queryByText("Resumen")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nómina estimada")).not.toBeInTheDocument();
   });
 });

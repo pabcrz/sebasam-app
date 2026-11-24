@@ -6,20 +6,21 @@ import type { ReceivableCustomer } from "../types";
 
 interface ReceivablesSectionProps {
   customers: ReceivableCustomer[];
+  /** How many customers to list; the rest link to Clientes. */
+  limit?: number;
+  /** Balance shows its own heading above the totals. */
+  showHeading?: boolean;
 }
 
-export function ReceivablesSection({ customers }: ReceivablesSectionProps) {
+const VISIBLE_LIMIT = 5;
+
+export function ReceivablesSection({ customers, limit = VISIBLE_LIMIT, showHeading = true }: ReceivablesSectionProps) {
+  const visible = customers.slice(0, limit);
+  const hiddenCount = customers.length - visible.length;
+
   return (
-    <section aria-labelledby="receivables-heading">
-      <div className="mb-3 flex items-center gap-2">
-        <Icon name="money" className="h-4 w-4 text-[var(--color-primary)]" aria-hidden="true" />
-        <div>
-          <SectionLabel>Finanzas</SectionLabel>
-          <h2 id="receivables-heading" className="text-base font-semibold text-[var(--color-text-main)]">
-            Cuentas por cobrar
-          </h2>
-        </div>
-      </div>
+    <section aria-labelledby={showHeading ? "receivables-heading" : undefined} aria-label={showHeading ? undefined : "Detalle de cuentas por cobrar"} className="grid gap-3">
+      {showHeading ? <SectionLabel id="receivables-heading">Cuentas por cobrar</SectionLabel> : null}
 
       {customers.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-surface)] p-6 text-center shadow-[var(--shadow-card)]">
@@ -28,7 +29,7 @@ export function ReceivablesSection({ customers }: ReceivablesSectionProps) {
         </div>
       ) : (
         <div className="divide-y divide-[var(--color-border-light)] overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]">
-          {customers.map((customer) => (
+          {visible.map((customer) => (
             <Link
               key={customer.customerId}
               href={`/admin/customers/${customer.customerId}/estado-de-cuenta`}
@@ -40,6 +41,9 @@ export function ReceivablesSection({ customers }: ReceivablesSectionProps) {
                 </p>
                 <p className={customer.isOverdue ? "text-xs font-semibold text-[var(--color-status-danger)]" : "text-xs text-[var(--color-text-muted)]"}>
                   {customer.isOverdue ? "Saldo vencido" : "Saldo pendiente"}
+                  {customer.isOverdue && customer.overdueBalanceCents < customer.pendingBalanceCents
+                    ? ` · ${formatCents(customer.overdueBalanceCents)} vencido`
+                    : null}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -50,6 +54,14 @@ export function ReceivablesSection({ customers }: ReceivablesSectionProps) {
               </div>
             </Link>
           ))}
+          {hiddenCount > 0 ? (
+            <Link
+              href="/admin/customers"
+              className="flex min-h-[var(--tap-min-height)] items-center justify-center p-3 text-sm font-medium text-[var(--color-link)] hover:bg-[var(--color-bg-soft)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]"
+            >
+              {`Ver ${hiddenCount} más en Clientes`}
+            </Link>
+          ) : null}
         </div>
       )}
     </section>

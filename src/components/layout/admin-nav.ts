@@ -59,6 +59,14 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
   },
   { href: "/admin/nomina", label: "Nómina", icon: "cash", group: "operacion", patron: true },
   {
+    href: "/admin/balance",
+    label: "Balance",
+    icon: "trend-up",
+    group: "operacion",
+    description: "Cobrado y por cobrar",
+    patron: true,
+  },
+  {
     href: "/admin/historical",
     label: "Carga de histórico",
     icon: "history",

@@ -43,6 +43,13 @@ export class UnauthorizedRoleError extends Error {
 
 const ADMIN_ROLES: UserRole[] = ["SUPER_ADMIN", "ADMIN"];
 
+/** Who may register expenses: the owner, the patron and the assistant. Profit and the split stay owner-only. */
+const EXPENSE_ROLES: UserRole[] = ["SUPER_ADMIN", "ADMIN", "ADMIN_ASSISTANT"];
+
+export function canRegisterExpenses(role: UserRole | null | undefined): boolean {
+  return role !== null && role !== undefined && EXPENSE_ROLES.includes(role);
+}
+
 export function isAdminRole(role: UserRole | null | undefined): boolean {
   return role !== null && role !== undefined && ADMIN_ROLES.includes(role);
 }
@@ -187,6 +194,10 @@ export async function requireRole(allowedRoles: UserRole[]): Promise<CurrentProf
 
 export async function requireAdmin(): Promise<CurrentProfile> {
   return requireRole(ADMIN_ROLES);
+}
+
+export async function requireExpenseRole(): Promise<CurrentProfile> {
+  return requireRole(EXPENSE_ROLES);
 }
 
 export async function requireSuperAdmin(): Promise<CurrentProfile> {

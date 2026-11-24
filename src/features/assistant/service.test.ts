@@ -14,13 +14,16 @@ const { createGeminiProvider, ProviderErrorStub } = vi.hoisted(() => ({
   },
 }));
 
-const { aggregateHistoricalItems, matchHistoricalItems, aggregateCompletedWork, matchCompletedWork } = vi.hoisted(() => ({
+const { aggregateHistoricalItems, matchHistoricalItems, aggregateCompletedWork, matchCompletedWork, listCompletedWorkVocabulary, matchQuotePriceReferences } = vi.hoisted(() => ({
   aggregateHistoricalItems: vi.fn(),
   matchHistoricalItems: vi.fn(),
   aggregateCompletedWork: vi.fn(),
   matchCompletedWork: vi.fn(),
+  listCompletedWorkVocabulary: vi.fn(),
+  matchQuotePriceReferences: vi.fn(),
 }));
-vi.mock("@/features/completed-work-knowledge/repository", () => ({ aggregateCompletedWork, matchCompletedWork }));
+vi.mock("@/features/quote-price-reference/repository", () => ({ matchQuotePriceReferences }));
+vi.mock("@/features/completed-work-knowledge/repository", () => ({ aggregateCompletedWork, matchCompletedWork, listCompletedWorkVocabulary }));
 
 vi.mock("@/features/historical/provider", () => ({ createGeminiProvider, ProviderError: ProviderErrorStub }));
 vi.mock("@/features/historical/repository", () => ({
@@ -55,7 +58,7 @@ const completedSource: CompletedWorkMatchSource = {
   provenance: "completed-work", itemId: "completed-item", workOrderId: "completed-order", workOrderNumber: "OT-01",
   completedAt: "2026-09-02", brand: "Nissan", model: "NP300", plate: "ABC123", responsibleWorker: "Ana",
   type: QuoteItemType.LABOR, description: "Replace bushings", quantity: 1, itemTotalCents: 1000,
-  currentQuoteTotalCents: 3200, generatedCommissionCents: 500, similarity: 0.95,
+  currentQuoteTotalCents: 3200, orderLaborCents: 2000, orderPartsCents: 1200, generatedCommissionCents: 500, similarity: 0.95,
 };
 
 const providerMock = {
@@ -83,6 +86,8 @@ beforeEach(() => {
   ]);
   matchHistoricalItems.mockResolvedValue([sampleSource]);
   matchCompletedWork.mockResolvedValue([completedSource]);
+  listCompletedWorkVocabulary.mockResolvedValue([]);
+  matchQuotePriceReferences.mockResolvedValue([]);
   aggregateCompletedWork.mockResolvedValue({ itemCount: 1, workCount: 1, totalGeneratedIncomeCents: 3200, totalGeneratedCommissionCents: 500 });
 });
 
@@ -182,6 +187,57 @@ describe("assistant orchestration", () => {
     expect(matchCompletedWork).toHaveBeenCalledTimes(1);
   });
 
+  it("tells the extractor today's date and filters completed work by Mexico City day bounds", async () => {
+    providerMock.generateText
+      .mockReset()
+      .mockResolvedValueOnce('{"wantsStats": true, "dateFrom": "2026-10-01", "dateTo": "2026-10-31"}')
+      .mockResolvedValueOnce("ok");
+    await answerHistoricalQuestion("¿Cuánto cobré el mes pasado?");
+
+    expect(providerMock.generateText.mock.calls[0][0].system).toMatch(/Hoy es \d{4}-\d{2}-\d{2} \(America\/Mexico_City\)/);
+    const bounds = {
+      dateFrom: new Date("2026-10-01T06:00:00.000Z"),
+      dateTo: new Date("2026-11-01T05:59:59.999Z"),
+    };
+    expect(matchCompletedWork).toHaveBeenCalledWith(expect.objectContaining(bounds));
+    expect(aggregateCompletedWork).toHaveBeenCalledWith(expect.objectContaining(bounds));
+  });
+
+  it("feeds the extractor the vocabulary written in the notes and searches the extracted keyword", async () => {
+    listCompletedWorkVocabulary.mockResolvedValue(["bajar muelle", "cambio de aleta de tiburón"]);
+    providerMock.generateText
+      .mockReset()
+      .mockResolvedValueOnce('{"wantsStats": true, "description": "muelle"}')
+      .mockResolvedValueOnce("ok");
+    await answerHistoricalQuestion("¿Cuánto cobré por bajar unas muelles?");
+
+    expect(providerMock.generateText.mock.calls[0][0].system).toContain("bajar muelle; cambio de aleta de tiburón");
+    expect(matchCompletedWork).toHaveBeenCalledWith(expect.objectContaining({ keyword: "muelle" }));
+  });
+
+  it("still answers when the vocabulary cannot be read", async () => {
+    listCompletedWorkVocabulary.mockRejectedValue(new Error("db down"));
+    const result = await answerHistoricalQuestion("¿Cuánto cobramos?");
+    expect(result.envError).toBeNull();
+    expect(providerMock.generateText.mock.calls[0][0].system).not.toContain("Conceptos reales");
+  });
+
+  it("includes quote price references as quoted prices that never count as income", async () => {
+    matchQuotePriceReferences.mockResolvedValue([{
+      provenance: "quote-reference", itemId: "q-item", quoteId: "q1", quoteNumber: "C-001", quoteStatus: "SENT",
+      quotedOn: "2026-11-02", brand: "Nissan", model: "NP300", plate: null, type: QuoteItemType.LABOR,
+      description: "Bajar muelles", quantity: 1, unitPriceCents: 50000, itemTotalCents: 50000, similarity: 0.7,
+    }]);
+    const result = await answerHistoricalQuestion("¿Cuánto cotizamos por bajar muelles?");
+
+    expect(result.sources.map((source) => source.provenance)).toContain("quote-reference");
+    const prompts = providerMock.generateText.mock.calls[1][0];
+    expect(prompts.user).toContain("Referencia de precio (cotización C-001");
+    expect(prompts.user).toContain("No es trabajo realizado ni dinero cobrado.");
+    expect(prompts.system).toContain("COTIZADO");
+    expect(result.aggregation?.completedWork.totalGeneratedIncomeCents).toBe(3200);
+  });
+
   it("returns a config error instead of throwing when the API key is missing", async () => {
     createGeminiProvider.mockImplementation(() => {
       throw new Error("GEMINI_API_KEY no está configurada.");
@@ -196,6 +252,7 @@ describe("assistant orchestration", () => {
     await answerHistoricalQuestion("¿Cuánto cuesta cada tornillo?");
     const userPrompt = providerMock.generateText.mock.calls[1][0].user as string;
     expect(userPrompt).toContain("4 tornillos");
+    expect(userPrompt).toMatch(/Desglose de toda la orden: mano de obra \$20\.00, refacciones y materiales \$12\.00/);
     expect(userPrompt).toContain("Línea original: 4 ×");
     expect(userPrompt).toContain("Unitario derivado");
     expect(userPrompt).toContain("[capturado]");

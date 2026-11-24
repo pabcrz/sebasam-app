@@ -62,6 +62,18 @@ describe("aggregateReceivablesByCustomer", () => {
     ]);
   });
 
+  it("separates the overdue part of a customer's pending balance from the part still within its term", () => {
+    const note = (paymentDueDate: string, totalCents: number) => ({
+      completedAt: new Date("2026-08-01T18:00:00.000Z"), paymentDueDate: new Date(paymentDueDate),
+      quote: { customer: { id: "customer-a", name: "Árbol Transporte" }, paymentDueDate: null, subtotalCents: totalCents, taxCents: 0, totalCents, settlementAgreement: null },
+      paymentApplications: [],
+    });
+
+    expect(aggregateReceivablesByCustomer([note("2026-08-05T18:00:00.000Z", 30_000), note("2026-09-30T18:00:00.000Z", 20_000)], fixedNow)).toEqual([
+      expect.objectContaining({ pendingBalanceCents: 50_000, overdueBalanceCents: 30_000, isOverdue: true }),
+    ]);
+  });
+
   it("orders overdue customers by oldest due date, then pending balance and customer name", () => {
     const note = (customerId: string, customerName: string, paymentDueDate: string, totalCents: number) => ({
       completedAt: new Date("2026-08-01T18:00:00.000Z"), paymentDueDate: new Date(paymentDueDate),
@@ -217,6 +229,21 @@ describe("getOperationalDashboardSnapshot", () => {
       expect.objectContaining({ customerId: "customer-credit", pendingBalanceCents: 50_000 }),
     ]);
     expect(snapshot).not.toHaveProperty("availableCreditCents");
+  });
+
+  it("leaves reversed payments out of what was collected", async () => {
+    await getOperationalDashboardSnapshot(fixedNow);
+
+    expect(prisma.payment.aggregate).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: PaymentStatus.PAID, reversedAt: null }) }));
+  });
+
+  it("bills MATERIAL and REFACCIONES as materials and leaves OTHER out", async () => {
+    const item = (id: string, type: QuoteItemType, totalCents: number) => ({ id, type, description: id, quantity: 1, unitPriceCents: totalCents, totalCents });
+    vi.mocked(prisma.workOrder.findMany).mockResolvedValue([{ id: "wo-1", number: "OT-1", status: WorkOrderStatus.COMPLETED, completedAt: fixedNow, isSpecial: false, specialAssigneeName: null, quote: { id: "q-1", number: "COT-1", customer: null, vehicle: null, items: [item("m", QuoteItemType.MATERIAL, 100), item("r", QuoteItemType.REFACCIONES, 200), item("o", QuoteItemType.OTHER, 400), item("l", QuoteItemType.LABOR, 800)], sections: [] }, assignments: [] }] as never);
+
+    const snapshot = await getOperationalDashboardSnapshot(fixedNow);
+
+    expect(snapshot.kpis.month.completedMaterialsBilledCents).toBe(300);
   });
 
   it("counts active jobs marked en espera for the amber inbox row", async () => {
