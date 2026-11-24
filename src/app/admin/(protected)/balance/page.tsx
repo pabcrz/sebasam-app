@@ -8,7 +8,7 @@ import { assignExpenseShareFromForm, confirmRecurringExpenseFromForm, createExpe
 import { listExpensesForAssignment, listExpensesForMonth, listRecurringForMonth, listSuppliers } from "@/features/balance/expenses/queries";
 import { getBalanceSnapshot } from "@/features/balance/queries";
 import { getProfitSnapshot } from "@/features/balance/profit-queries";
-import { canRegisterExpenses, requireProfileForPage } from "@/lib/auth/session";
+import { canRegisterExpenses, isAdminRole, requireProfileForPage } from "@/lib/auth/session";
 
 const OWNER_ROLE = "SUPER_ADMIN";
 
@@ -113,6 +113,7 @@ export default async function BalancePage({ searchParams }: BalancePageProps) {
         recurring={recurring}
         notice={notice}
         showAllocation={canSeeProfit}
+        canViewReceipts={isAdminRole(profile.role)}
       />
     );
   } else {

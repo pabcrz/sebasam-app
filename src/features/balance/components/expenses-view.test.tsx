@@ -86,6 +86,17 @@ describe("ExpensesView", () => {
     expect(screen.queryByRole("link", { name: "Descargar CSV" })).not.toBeInTheDocument();
   });
 
+  it("links an expense's receipt only for who may open it", () => {
+    const withReceipt = [{ ...expenses[0], hasReceipt: true }, expenses[1]];
+    const { rerender } = render(<ExpensesView period={period} expenses={withReceipt} today="2026-11-23" hrefFor={hrefFor} actions={actions} canViewReceipts />);
+    const links = screen.getAllByRole("link", { name: "Ver comprobante" });
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute("href", "/admin/balance/comprobante/e1");
+
+    rerender(<ExpensesView period={period} expenses={withReceipt} today="2026-11-23" hrefFor={hrefFor} actions={actions} />);
+    expect(screen.queryByRole("link", { name: "Ver comprobante" })).not.toBeInTheDocument();
+  });
+
   it("shows the result notices with the right role", () => {
     const { rerender } = render(<ExpensesView period={period} expenses={[]} today="2026-11-23" hrefFor={hrefFor} actions={actions} notice={{ tone: "success", text: "Gasto registrado." }} />);
     expect(screen.getByRole("status")).toHaveTextContent("Gasto registrado.");

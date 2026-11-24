@@ -1012,6 +1012,8 @@ model Expense {
   createdById        String?              @db.Uuid
   supplierId         String?
   recurringExpenseId String?
+  /// Private Storage object of the receipt or invoice photo/PDF; only owner and patron can open it.
+  receiptPath        String?
   deletedAt          DateTime?
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt

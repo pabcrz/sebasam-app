@@ -266,4 +266,22 @@ describe("expense actions", () => {
       expect(tx.expense.create).not.toHaveBeenCalled();
     });
   });
+
+  describe("receipt", () => {
+    const receiptPath = "0b9c6a5e-1d2f-4c3b-8a7e-5f4d3c2b1a09.jpg";
+
+    it("attaches the uploaded receipt to a new expense, and ignores a path the upload route did not generate", async () => {
+      await redirectTarget(() => createExpenseFromForm(form({ receiptPath })));
+      expect(tx.expense.create).toHaveBeenLastCalledWith({ data: expect.objectContaining({ receiptPath }) });
+
+      tx.expense.create.mockClear();
+      expect(await redirectTarget(() => createExpenseFromForm(form({ receiptPath: "../../secret.pdf" })))).toContain("error=invalid");
+      expect(tx.expense.create).not.toHaveBeenCalled();
+    });
+
+    it("never drops the receipt of an expense when it is edited without one", async () => {
+      await redirectTarget(() => updateExpenseFromForm("e-1", form()));
+      expect(tx.expense.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.not.objectContaining({ receiptPath: expect.anything() }) }));
+    });
+  });
 });

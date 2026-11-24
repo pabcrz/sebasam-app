@@ -9,6 +9,9 @@ const calendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida").
 const optionalText = (max: number) =>
   z.string().trim().max(max).transform((value) => (value === "" ? null : value)).nullable().optional().default(null);
 
+/** Only a path the upload route generated is accepted from a form, so nobody can point an expense at another object. */
+const receiptPath = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|pdf)$/).nullable().optional().default(null);
+
 export const expenseInputSchema = z.object({
   spentAt: calendarDate,
   amountCents: z.number().int("Monto inválido").min(1, "El monto debe ser mayor que cero").max(1_000_000_00),
@@ -20,6 +23,7 @@ export const expenseInputSchema = z.object({
   supplier: optionalText(120),
   paymentMethod: z.enum(["CASH", "TRANSFER", "CARD"]).nullable().optional().default(null),
   notes: optionalText(500),
+  receiptPath,
 });
 
 export type ExpenseInput = z.infer<typeof expenseInputSchema>;

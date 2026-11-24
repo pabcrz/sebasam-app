@@ -34,6 +34,7 @@ vi.mock("@/features/balance/expenses/actions", () => ({ createExpenseFromForm: v
 vi.mock("@/lib/auth/session", () => ({
   requireProfileForPage: vi.fn(async () => ({ profile: { role: role.current } })),
   canRegisterExpenses: (value: string) => ["ADMIN", "ADMIN_ASSISTANT", "SUPER_ADMIN"].includes(value),
+  isAdminRole: (value: string) => ["ADMIN", "SUPER_ADMIN"].includes(value),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }) }));
 
