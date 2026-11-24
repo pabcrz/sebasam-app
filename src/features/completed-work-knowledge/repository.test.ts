@@ -10,6 +10,7 @@ vi.mock("@/lib/prisma", () => ({ prisma }));
 import {
   aggregateCompletedWork,
   aggregateCompletedWorkOrders,
+  listCompletedWorkVocabulary,
   matchCompletedWork,
 } from "./repository";
 
@@ -23,6 +24,20 @@ function item(overrides: Record<string, unknown> = {}) {
 
 describe("completed-work repository", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("matches the keyword literally in the concept, even without an indexed embedding", async () => {
+    prisma.$queryRaw.mockResolvedValue([]);
+    await matchCompletedWork({ embedding: new Array(1536).fill(0), keyword: " muelle " });
+
+    const query = prisma.$queryRaw.mock.calls[0][0] as { strings: readonly string[]; values: unknown[] };
+    expect(query.strings.join(" ")).toContain('item."description" ILIKE');
+    expect(query.values).toContain("muelle");
+  });
+
+  it("lists the note vocabulary, most used first", async () => {
+    prisma.$queryRaw.mockResolvedValue([{ description: "bajar muelle" }, { description: "aleta de tiburón" }]);
+    await expect(listCompletedWorkVocabulary(10)).resolves.toEqual(["bajar muelle", "aleta de tiburón"]);
+  });
 
   it("filters matches by completion date range", async () => {
     prisma.$queryRaw.mockResolvedValue([]);

@@ -82,12 +82,16 @@ export interface MatchCompletedWorkInput {
   filterModel?: string | null;
   dateFrom?: Date | null;
   dateTo?: Date | null;
+  /** Word or phrase that must literally appear in the concept; such rows are returned even without a close embedding. */
+  keyword?: string | null;
 }
 
 /** Reads indexed vectors and live operational values; no mutable values are projected. */
 export async function matchCompletedWork(
   input: MatchCompletedWorkInput,
 ): Promise<CompletedWorkMatchSource[]> {
+  const keyword = input.keyword?.trim() || null;
+  const keywordHit = Prisma.sql`(${keyword}::text IS NOT NULL AND item."description" ILIKE '%' || ${keyword} || '%')`;
   const rows = await prisma.$queryRaw<Record<string, unknown>[]>(Prisma.sql`
     SELECT
       item."id" AS item_id, work_order."id" AS work_order_id, work_order."number" AS work_order_number,
@@ -104,7 +108,8 @@ export async function matchCompletedWork(
       item."customPayrollBaseCents" AS custom_payroll_base_cents, item."customRatePercent" AS custom_rate_percent,
       quote."totalCents" AS quote_total_cents,
       totals.labor_cents AS order_labor_cents, totals.parts_cents AS order_parts_cents,
-      1 - (source."embedding" <=> CAST(${vectorLiteral(input.embedding)} AS vector(1536))) AS similarity
+      CASE WHEN ${keywordHit} THEN 1
+        ELSE 1 - (source."embedding" <=> CAST(${vectorLiteral(input.embedding)} AS vector(1536))) END AS similarity
     FROM "completed_work_knowledge_sources" source
     JOIN "WorkOrder" work_order ON work_order."id" = source."workOrderId"
     JOIN "Quote" quote ON quote."id" = work_order."quoteId"
@@ -127,8 +132,7 @@ export async function matchCompletedWork(
       ORDER BY assignment."assignedAt"
       LIMIT 1
     ) master ON true
-    WHERE source."indexState" = CAST(${KnowledgeIndexState.INDEXED} AS "KnowledgeIndexState")
-      AND source."embedding" IS NOT NULL
+    WHERE source."indexState" <> CAST(${KnowledgeIndexState.INELIGIBLE} AS "KnowledgeIndexState")
       AND work_order."status" = CAST(${WorkOrderStatus.COMPLETED} AS "WorkOrderStatus")
       AND work_order."completedAt" IS NOT NULL
       AND (${input.filterType ?? null}::"QuoteItemType" IS NULL OR item."type" = ${input.filterType ?? null}::"QuoteItemType")
@@ -136,8 +140,16 @@ export async function matchCompletedWork(
       AND (${input.filterModel ?? null}::text IS NULL OR COALESCE(vehicle."model", quote."vehicleSnapshot" ->> 'model') ILIKE '%' || ${input.filterModel ?? null} || '%')
       AND (${input.dateFrom ?? null}::timestamptz IS NULL OR work_order."completedAt" >= ${input.dateFrom ?? null}::timestamptz)
       AND (${input.dateTo ?? null}::timestamptz IS NULL OR work_order."completedAt" <= ${input.dateTo ?? null}::timestamptz)
-      AND 1 - (source."embedding" <=> CAST(${vectorLiteral(input.embedding)} AS vector(1536))) >= ${input.threshold ?? 0.4}
-    ORDER BY source."embedding" <=> CAST(${vectorLiteral(input.embedding)} AS vector(1536)), source."id"
+      AND (
+        ${keywordHit}
+        OR (
+          source."indexState" = CAST(${KnowledgeIndexState.INDEXED} AS "KnowledgeIndexState")
+          AND source."embedding" IS NOT NULL
+          AND 1 - (source."embedding" <=> CAST(${vectorLiteral(input.embedding)} AS vector(1536))) >= ${input.threshold ?? 0.4}
+        )
+      )
+    ORDER BY CASE WHEN ${keywordHit} THEN 0 ELSE 1 END,
+      source."embedding" <=> CAST(${vectorLiteral(input.embedding)} AS vector(1536)) NULLS LAST, source."id"
     LIMIT ${input.count ?? 5}
   `);
   return rows.map(mapCompletedWorkMatchRow);
@@ -236,4 +248,21 @@ export async function aggregateCompletedWork(
     },
   });
   return aggregateCompletedWorkOrders(orders);
+}
+
+/**
+ * Vocabulary actually written in completed notes (most used concepts first). It is
+ * derived on demand from the notes, so a new note feeds it with no extra table.
+ */
+export async function listCompletedWorkVocabulary(limit = 200): Promise<string[]> {
+  const rows = await prisma.$queryRaw<{ description: string }[]>(Prisma.sql`
+    SELECT LOWER(BTRIM(item."description")) AS description
+    FROM "completed_work_knowledge_sources" source
+    JOIN "QuoteItem" item ON item."id" = source."quoteItemId"
+    WHERE source."indexState" <> CAST(${KnowledgeIndexState.INELIGIBLE} AS "KnowledgeIndexState")
+    GROUP BY 1
+    ORDER BY COUNT(*) DESC, 1
+    LIMIT ${limit}
+  `);
+  return rows.map((row) => row.description);
 }

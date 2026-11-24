@@ -14,13 +14,14 @@ const { createGeminiProvider, ProviderErrorStub } = vi.hoisted(() => ({
   },
 }));
 
-const { aggregateHistoricalItems, matchHistoricalItems, aggregateCompletedWork, matchCompletedWork } = vi.hoisted(() => ({
+const { aggregateHistoricalItems, matchHistoricalItems, aggregateCompletedWork, matchCompletedWork, listCompletedWorkVocabulary } = vi.hoisted(() => ({
   aggregateHistoricalItems: vi.fn(),
   matchHistoricalItems: vi.fn(),
   aggregateCompletedWork: vi.fn(),
   matchCompletedWork: vi.fn(),
+  listCompletedWorkVocabulary: vi.fn(),
 }));
-vi.mock("@/features/completed-work-knowledge/repository", () => ({ aggregateCompletedWork, matchCompletedWork }));
+vi.mock("@/features/completed-work-knowledge/repository", () => ({ aggregateCompletedWork, matchCompletedWork, listCompletedWorkVocabulary }));
 
 vi.mock("@/features/historical/provider", () => ({ createGeminiProvider, ProviderError: ProviderErrorStub }));
 vi.mock("@/features/historical/repository", () => ({
@@ -83,6 +84,7 @@ beforeEach(() => {
   ]);
   matchHistoricalItems.mockResolvedValue([sampleSource]);
   matchCompletedWork.mockResolvedValue([completedSource]);
+  listCompletedWorkVocabulary.mockResolvedValue([]);
   aggregateCompletedWork.mockResolvedValue({ itemCount: 1, workCount: 1, totalGeneratedIncomeCents: 3200, totalGeneratedCommissionCents: 500 });
 });
 
@@ -196,6 +198,25 @@ describe("assistant orchestration", () => {
     };
     expect(matchCompletedWork).toHaveBeenCalledWith(expect.objectContaining(bounds));
     expect(aggregateCompletedWork).toHaveBeenCalledWith(expect.objectContaining(bounds));
+  });
+
+  it("feeds the extractor the vocabulary written in the notes and searches the extracted keyword", async () => {
+    listCompletedWorkVocabulary.mockResolvedValue(["bajar muelle", "cambio de aleta de tiburón"]);
+    providerMock.generateText
+      .mockReset()
+      .mockResolvedValueOnce('{"wantsStats": true, "description": "muelle"}')
+      .mockResolvedValueOnce("ok");
+    await answerHistoricalQuestion("¿Cuánto cobré por bajar unas muelles?");
+
+    expect(providerMock.generateText.mock.calls[0][0].system).toContain("bajar muelle; cambio de aleta de tiburón");
+    expect(matchCompletedWork).toHaveBeenCalledWith(expect.objectContaining({ keyword: "muelle" }));
+  });
+
+  it("still answers when the vocabulary cannot be read", async () => {
+    listCompletedWorkVocabulary.mockRejectedValue(new Error("db down"));
+    const result = await answerHistoricalQuestion("¿Cuánto cobramos?");
+    expect(result.envError).toBeNull();
+    expect(providerMock.generateText.mock.calls[0][0].system).not.toContain("Conceptos reales");
   });
 
   it("returns a config error instead of throwing when the API key is missing", async () => {

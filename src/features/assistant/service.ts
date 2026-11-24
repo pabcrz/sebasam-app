@@ -17,6 +17,7 @@ import {
   type AggregateCompletedWorkInput,
   type CompletedWorkAggregate,
   type CompletedWorkMatchSource,
+  listCompletedWorkVocabulary,
 } from "@/features/completed-work-knowledge/repository";
 import { formatCents } from "@/features/quotes/lib/format";
 import { mexicoCityCalendarDate } from "@/features/quotes/lib/operational-date";
@@ -272,9 +273,13 @@ export async function answerHistoricalQuestion(question: string): Promise<Assist
     };
   }
 
+  const vocabulary = await listCompletedWorkVocabulary().catch(() => []);
+  const vocabularyHint = vocabulary.length > 0
+    ? `\nConceptos reales escritos en las notas: ${vocabulary.join("; ")}.\nEn "description" usa UNA palabra clave corta (singular, sin acentos si dudas) tomada de ese vocabulario que corresponda a lo que pregunta el usuario; si nada coincide, usa la palabra del usuario.`
+    : "";
   const filters = parseAssistantFilters(
     await provider.generateText({
-      system: `${EXTRACTION_SYSTEM_PROMPT}\nHoy es ${mexicoCityCalendarDate()} (America/Mexico_City). Resuelve fechas relativas ("el mes pasado", "hace un año") a dateFrom/dateTo tomando ese día como referencia.`,
+      system: `${EXTRACTION_SYSTEM_PROMPT}${vocabularyHint}\nHoy es ${mexicoCityCalendarDate()} (America/Mexico_City). Resuelve fechas relativas ("el mes pasado", "hace un año") a dateFrom/dateTo tomando ese día como referencia.`,
       user: question,
     }),
   );
@@ -290,7 +295,7 @@ export async function answerHistoricalQuestion(question: string): Promise<Assist
   const [[historicalSources, completedSources], aggregateResults] = await Promise.all([
     Promise.all([
       matchHistoricalItems({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model }),
-      matchCompletedWork({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model, ...completedDateBounds(filters) }),
+      matchCompletedWork({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model, keyword: filters.description, ...completedDateBounds(filters) }),
     ]),
     aggregationPromise,
   ]);
