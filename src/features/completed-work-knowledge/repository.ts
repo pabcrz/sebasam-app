@@ -31,6 +31,10 @@ export interface CompletedWorkMatchSource {
   quantity: number;
   itemTotalCents: number | null;
   currentQuoteTotalCents: number | null;
+  /** Customer amount of the whole order's labor items (LABOR). */
+  orderLaborCents: number;
+  /** Customer amount of the whole order's parts items (MATERIAL, REFACCIONES, OTHER). */
+  orderPartsCents: number;
   generatedCommissionCents: number;
   similarity: number;
 }
@@ -62,6 +66,8 @@ export function mapCompletedWorkMatchRow(row: Record<string, unknown>): Complete
     quantity: toNumber(row.quantity),
     itemTotalCents: row.item_total_cents == null ? null : toNumber(row.item_total_cents),
     currentQuoteTotalCents: row.quote_total_cents == null ? null : toNumber(row.quote_total_cents),
+    orderLaborCents: toNumber(row.order_labor_cents),
+    orderPartsCents: toNumber(row.order_parts_cents),
     generatedCommissionCents: payroll?.commissionCents ?? 0,
     similarity: toNumber(row.similarity),
   };
@@ -97,12 +103,21 @@ export async function matchCompletedWork(
       item."totalCents" AS item_total_cents, item."includeInPayroll" AS include_in_payroll,
       item."customPayrollBaseCents" AS custom_payroll_base_cents, item."customRatePercent" AS custom_rate_percent,
       quote."totalCents" AS quote_total_cents,
+      totals.labor_cents AS order_labor_cents, totals.parts_cents AS order_parts_cents,
       1 - (source."embedding" <=> CAST(${vectorLiteral(input.embedding)} AS vector(1536))) AS similarity
     FROM "completed_work_knowledge_sources" source
     JOIN "WorkOrder" work_order ON work_order."id" = source."workOrderId"
     JOIN "Quote" quote ON quote."id" = work_order."quoteId"
     JOIN "QuoteItem" item ON item."id" = source."quoteItemId" AND item."quoteId" = work_order."quoteId"
     LEFT JOIN "Vehicle" vehicle ON vehicle."id" = quote."vehicleId"
+    CROSS JOIN LATERAL (
+      SELECT
+        COALESCE(SUM(line."totalCents") FILTER (WHERE line."type" = 'LABOR'), 0) AS labor_cents,
+        COALESCE(SUM(line."totalCents") FILTER (WHERE line."type" <> 'LABOR'), 0) AS parts_cents
+      FROM "QuoteItem" line
+      LEFT JOIN "QuoteSection" section ON section."id" = line."sectionId"
+      WHERE line."quoteId" = quote."id" AND (line."sectionId" IS NULL OR section."isAuthorized")
+    ) totals
     LEFT JOIN LATERAL (
       SELECT profile."displayName"
       FROM "WorkAssignment" assignment

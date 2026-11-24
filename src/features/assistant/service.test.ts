@@ -55,7 +55,7 @@ const completedSource: CompletedWorkMatchSource = {
   provenance: "completed-work", itemId: "completed-item", workOrderId: "completed-order", workOrderNumber: "OT-01",
   completedAt: "2026-09-02", brand: "Nissan", model: "NP300", plate: "ABC123", responsibleWorker: "Ana",
   type: QuoteItemType.LABOR, description: "Replace bushings", quantity: 1, itemTotalCents: 1000,
-  currentQuoteTotalCents: 3200, generatedCommissionCents: 500, similarity: 0.95,
+  currentQuoteTotalCents: 3200, orderLaborCents: 2000, orderPartsCents: 1200, generatedCommissionCents: 500, similarity: 0.95,
 };
 
 const providerMock = {
@@ -212,6 +212,7 @@ describe("assistant orchestration", () => {
     await answerHistoricalQuestion("¿Cuánto cuesta cada tornillo?");
     const userPrompt = providerMock.generateText.mock.calls[1][0].user as string;
     expect(userPrompt).toContain("4 tornillos");
+    expect(userPrompt).toMatch(/Desglose de toda la orden: mano de obra \$20\.00, refacciones y materiales \$12\.00/);
     expect(userPrompt).toContain("Línea original: 4 ×");
     expect(userPrompt).toContain("Unitario derivado");
     expect(userPrompt).toContain("[capturado]");

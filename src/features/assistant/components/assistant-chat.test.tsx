@@ -32,7 +32,7 @@ const source: HistoricalMatchSource = {
 const completedSource: CompletedWorkMatchSource = {
   provenance: "completed-work", itemId: "item-2", workOrderId: "order-2", workOrderNumber: "OT-02", completedAt: "2026-09-02",
   brand: "Nissan", model: "NP300", plate: "ABC123", responsibleWorker: "Ana", type: QuoteItemType.LABOR,
-  description: "Cambiar bujes", quantity: 1, itemTotalCents: 1000, currentQuoteTotalCents: 3200, generatedCommissionCents: 500, similarity: 0.95,
+  description: "Cambiar bujes", quantity: 1, itemTotalCents: 1000, currentQuoteTotalCents: 3200, orderLaborCents: 2000, orderPartsCents: 1200, generatedCommissionCents: 500, similarity: 0.95,
 };
 
 const fetchMock = vi.fn();

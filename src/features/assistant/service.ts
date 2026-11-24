@@ -141,6 +141,7 @@ Reglas de contenido:
 4. Si la pregunta pide estadísticas y no hay agregación, respondé con lo que haya y aclará qué falta.
 5. Las fuentes semánticas pueden ser historial importado o trabajo completado. NUNCA presentes una suma de la lista semántica como total: solo las secciones de agregación exacta son totales.
 6. Para trabajo completado, ingreso y comisión siempre son "generados"; NUNCA los describas como cobrados, recaudados o pagados. No respondas sobre referencias de precios de cotizaciones.
+7. Si te piden mano de obra y refacciones, usa SOLO el "Desglose de toda la orden" de cada fuente de trabajo completado; no los calcules sumando conceptos y aclara que el desglose es de la orden completa, no solo del concepto.
 `.trim();
 
 function sourceToPromptBlock(source: HistoricalMatchSource, index: number): string {
@@ -208,6 +209,7 @@ function buildAnswerUserPrompt(
       : [`[${index + 1}] Trabajo completado ${source.workOrderNumber} · fecha ${source.completedAt} · ${[source.brand, source.model].filter(Boolean).join(" ") || "sin unidad"}${source.plate ? ` (${source.plate})` : ""} · responsable ${source.responsibleWorker}`,
         `    Concepto actual: ${source.description} (${source.type}) · importe ${formatCents(source.itemTotalCents)}`,
         `    Ingreso generado por la orden (cotización actual): ${formatCents(source.currentQuoteTotalCents)} [derivado]`,
+        `    Desglose de toda la orden: mano de obra ${formatCents(source.orderLaborCents)}, refacciones y materiales ${formatCents(source.orderPartsCents)} [derivado]`,
         `    Comisión generada: ${formatCents(source.generatedCommissionCents)} [derivado]`,
       ].join("\n")).join("\n")}`);
   }

@@ -43,7 +43,7 @@ describe("completed-work repository", () => {
       item_id: "item-1", work_order_id: "order-1", work_order_number: "OT-01",
       completed_at: new Date("2026-09-01T02:00:00.000Z"), brand: "Nissan", model: "NP300", plate: "ABC123",
       responsible_worker: "Ana", item_type: "LABOR", description: "Replace bushings", quantity: "1.00",
-      item_total_cents: 1000, quote_total_cents: 3200, include_in_payroll: false, similarity: 0.9,
+      item_total_cents: 1000, quote_total_cents: 3200, order_labor_cents: "2000", order_parts_cents: "1200", include_in_payroll: false, similarity: 0.9,
     }]);
 
     const embedding = Array.from({ length: 1536 }, (_, index) => index / 1536);
@@ -56,7 +56,7 @@ describe("completed-work repository", () => {
 
     expect(source).toMatchObject({
       provenance: "completed-work", workOrderNumber: "OT-01", completedAt: "2026-08-31",
-      brand: "Nissan", model: "NP300", plate: "ABC123", currentQuoteTotalCents: 3200,
+      brand: "Nissan", model: "NP300", plate: "ABC123", currentQuoteTotalCents: 3200, orderLaborCents: 2000, orderPartsCents: 1200,
       responsibleWorker: "Ana", generatedCommissionCents: 500,
     });
     const query = prisma.$queryRaw.mock.calls[0][0] as { strings: readonly string[]; values: unknown[] };
@@ -69,6 +69,8 @@ describe("completed-work repository", () => {
     expect(text).toContain('work_order."completedAt" IS NOT NULL');
     expect(text).toContain('item."quoteId" = work_order."quoteId"');
     expect(text).toContain('AS vector(1536)');
+    expect(text).toContain('"QuoteSection" section');
+    expect(text).toContain('order_labor_cents');
     expect(query.values.filter((value) => value === vector)).toHaveLength(3);
     expect(text).toContain('COALESCE(vehicle."brand", quote."vehicleSnapshot" ->> \'brand\')');
     expect(text).toContain('COALESCE(vehicle."model", quote."vehicleSnapshot" ->> \'model\')');
