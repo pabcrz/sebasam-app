@@ -15,7 +15,7 @@ function snapshot(overrides: Parameters<typeof buildProfitSummary>[0]): ProfitSn
 }
 
 const base = {
-  income: { laborCents: 100_000, partsCents: 60_000, otherCents: 5_000 },
+  income: { laborCents: 100_000, partsCents: 60_000 },
   cashCollectedCents: 150_000,
   payrollCents: 40_000,
   expenses: [
@@ -36,13 +36,12 @@ describe("ProfitView", () => {
     render(<ProfitView snapshot={snapshot(base)} view="general" hrefFor={hrefFor} />);
 
     const general = within(screen.getByTestId("profit-general"));
-    expect(tile(general.getByText("Entró"))).toHaveTextContent("$1,650.00");
+    expect(tile(general.getByText("Entró"))).toHaveTextContent("$1,600.00");
     expect(tile(general.getByText("Se gastó"))).toHaveTextContent("$1,030.00");
-    expect(tile(general.getByText("Queda"))).toHaveTextContent("$620.00");
+    expect(tile(general.getByText("Queda"))).toHaveTextContent("$570.00");
     expect(general.getByText("Queda de mano de obra")).toBeInTheDocument();
     expect(general.getByText("Queda de refacciones y materiales")).toBeInTheDocument();
-    expect(general.getByText("Otros ingresos")).toBeInTheDocument();
-    expect(general.getByText("Queda en total").closest("tr")).toHaveTextContent("$620.00");
+    expect(general.getByText("Queda en total").closest("tr")).toHaveTextContent("$570.00");
   });
 
   it("separates expenses with and without invoice inside the detail", () => {
@@ -52,7 +51,7 @@ describe("ProfitView", () => {
   });
 
   it("shows the labor account with its coverage when it sustains itself", () => {
-    render(<ProfitView snapshot={snapshot({ ...base, income: { laborCents: 200_000, partsCents: 0, otherCents: 0 } })} view="mano-de-obra" hrefFor={hrefFor} />);
+    render(<ProfitView snapshot={snapshot({ ...base, income: { laborCents: 200_000, partsCents: 0 } })} view="mano-de-obra" hrefFor={hrefFor} />);
 
     expect(screen.getByTestId("labor-coverage")).toHaveTextContent(/cubre 294 % .* se sostiene sola/);
   });
@@ -61,7 +60,7 @@ describe("ProfitView", () => {
     render(<ProfitView snapshot={snapshot(base)} view="mano-de-obra" hrefFor={hrefFor} />);
 
     expect(screen.getByTestId("labor-coverage")).toHaveTextContent(/cubre 147 % .*se sostiene sola/);
-    const poor = snapshot({ ...base, income: { laborCents: 30_000, partsCents: 60_000, otherCents: 0 } });
+    const poor = snapshot({ ...base, income: { laborCents: 30_000, partsCents: 60_000 } });
     render(<ProfitView snapshot={poor} view="mano-de-obra" hrefFor={hrefFor} />);
     expect(screen.getAllByTestId("labor-coverage")[1]).toHaveTextContent(/cubre 44 % .* Faltan \$380\.00/);
   });
@@ -95,7 +94,7 @@ describe("ProfitView", () => {
   });
 
   it("renders an empty month without errors", () => {
-    const empty = snapshot({ income: { laborCents: 0, partsCents: 0, otherCents: 0 }, cashCollectedCents: 0, payrollCents: 0, expenses: [] });
+    const empty = snapshot({ income: { laborCents: 0, partsCents: 0 }, cashCollectedCents: 0, payrollCents: 0, expenses: [] });
     render(<ProfitView snapshot={empty} view="mano-de-obra" hrefFor={hrefFor} />);
 
     expect(screen.getByTestId("labor-coverage")).toHaveTextContent("No hay costos de mano de obra en el mes.");

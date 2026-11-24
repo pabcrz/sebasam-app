@@ -90,6 +90,7 @@ export function sumCollectedPayments(range: { startDate: Date; endDate: Date }) 
     _sum: { amountCents: true },
     where: {
       status: PaymentStatus.PAID,
+      reversedAt: null,
       createdAt: { gte: range.startDate, lt: range.endDate },
     },
   });
@@ -313,7 +314,7 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
     for (const item of wo.quote.items) {
       if (
         item.type === QuoteItemType.MATERIAL ||
-        item.type === QuoteItemType.OTHER
+        item.type === QuoteItemType.REFACCIONES
       ) {
         itemMap.set(item.id, {
           id: item.id,
@@ -330,7 +331,7 @@ export async function getOperationalDashboardSnapshot(now = new Date()): Promise
         for (const item of section.items) {
           if (
             item.type === QuoteItemType.MATERIAL ||
-            item.type === QuoteItemType.OTHER
+            item.type === QuoteItemType.REFACCIONES
           ) {
             itemMap.set(item.id, {
               id: item.id,

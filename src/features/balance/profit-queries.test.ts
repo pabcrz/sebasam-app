@@ -67,7 +67,7 @@ describe("getProfitSnapshot", () => {
   it("recognizes a note only in the month it is fully settled, with its whole total by category", async () => {
     const { summary } = await getProfitSnapshot("2026-11", now);
 
-    expect(summary.income).toMatchObject({ laborCents: 60_000, partsCents: 40_000, otherCents: 0, totalCents: 100_000 });
+    expect(summary.income).toMatchObject({ laborCents: 60_000, partsCents: 40_000, totalCents: 100_000 });
   });
 
   it("builds both accounts from the calculated payroll and the month's expenses, and the views reconcile", async () => {
@@ -147,10 +147,10 @@ describe("getMonthlyComparison", () => {
     expect(snapshot.months[0].month).toBe("2025-12");
     expect(snapshot.months[11].month).toBe("2026-11");
     const byMonth = Object.fromEntries(snapshot.months.map((m) => [m.month, m]));
-    expect(byMonth["2026-11"].income).toEqual({ laborCents: 60_000, partsCents: 40_000, otherCents: 0 });
-    expect(byMonth["2026-10"].income).toEqual({ laborCents: 100_000, partsCents: 0, otherCents: 0 });
+    expect(byMonth["2026-11"].income).toEqual({ laborCents: 60_000, partsCents: 40_000 });
+    expect(byMonth["2026-10"].income).toEqual({ laborCents: 100_000, partsCents: 0 });
     // The September payment alone did not settle the first note, and the open one never counts.
-    expect(byMonth["2026-09"].income).toEqual({ laborCents: 0, partsCents: 0, otherCents: 0 });
+    expect(byMonth["2026-09"].income).toEqual({ laborCents: 0, partsCents: 0 });
     expect(byMonth["2026-11"].expensesCents).toBe(20_000);
     expect(byMonth["2026-10"].expensesCents).toBe(5_000);
     expect(snapshot.totals).toEqual({ incomeCents: 200_000, expensesCents: 25_000 });

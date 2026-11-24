@@ -66,7 +66,7 @@ export function ComparisonView({ snapshot, hrefFor }: ComparisonViewProps) {
         ) : (
           <p>«Frente al resto» compara cada mes con la mediana de los meses que tuvieron cobros ({formatCents(medianCents)}): más fuerte si la supera por más de {band} %, más débil si queda más de {band} % abajo y típico en medio. Es una descripción del pasado, no una calificación ni un pronóstico.</p>
         )}
-        <p>«Entró» son notas totalmente liquidadas en el mes, sin IVA, con el total de la nota en el mes en que se liquida aunque hubiera abonos antes. «% mano de obra» es mano de obra entre mano de obra más refacciones; las partidas «Otro» no se mezclan con refacciones: cuentan solo en «Todas».</p>
+        <p>«Entró» son notas totalmente liquidadas en el mes, sin IVA, con el total de la nota en el mes en que se liquida aunque hubiera abonos antes. «% mano de obra» es mano de obra entre mano de obra más refacciones; las partidas «Otro» cuentan como mano de obra.</p>
         <p>Los gastos no incluyen nómina. Los meses son calendario de la Ciudad de México. No se muestra la cuenta por cobrar de meses pasados porque no hay saldo inicial verificado: la de hoy está en Cobros y saldos.</p>
       </div>
     </section>

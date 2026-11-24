@@ -231,6 +231,21 @@ describe("getOperationalDashboardSnapshot", () => {
     expect(snapshot).not.toHaveProperty("availableCreditCents");
   });
 
+  it("leaves reversed payments out of what was collected", async () => {
+    await getOperationalDashboardSnapshot(fixedNow);
+
+    expect(prisma.payment.aggregate).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: PaymentStatus.PAID, reversedAt: null }) }));
+  });
+
+  it("bills MATERIAL and REFACCIONES as materials and leaves OTHER out", async () => {
+    const item = (id: string, type: QuoteItemType, totalCents: number) => ({ id, type, description: id, quantity: 1, unitPriceCents: totalCents, totalCents });
+    vi.mocked(prisma.workOrder.findMany).mockResolvedValue([{ id: "wo-1", number: "OT-1", status: WorkOrderStatus.COMPLETED, completedAt: fixedNow, isSpecial: false, specialAssigneeName: null, quote: { id: "q-1", number: "COT-1", customer: null, vehicle: null, items: [item("m", QuoteItemType.MATERIAL, 100), item("r", QuoteItemType.REFACCIONES, 200), item("o", QuoteItemType.OTHER, 400), item("l", QuoteItemType.LABOR, 800)], sections: [] }, assignments: [] }] as never);
+
+    const snapshot = await getOperationalDashboardSnapshot(fixedNow);
+
+    expect(snapshot.kpis.month.completedMaterialsBilledCents).toBe(300);
+  });
+
   it("counts active jobs marked en espera for the amber inbox row", async () => {
     vi.mocked(prisma.workOrder.count).mockResolvedValueOnce(5).mockResolvedValueOnce(2);
 

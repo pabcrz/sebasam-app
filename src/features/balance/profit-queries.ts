@@ -92,11 +92,10 @@ async function getSettledNotes(period: { start: Date; end: Date }): Promise<Sett
 }
 
 function sumIncome(notes: SettledNote[]): IncomeByAccount {
-  const income: IncomeByAccount = { laborCents: 0, partsCents: 0, otherCents: 0 };
+  const income: IncomeByAccount = { laborCents: 0, partsCents: 0 };
   for (const { income: byAccount } of notes) {
     income.laborCents += byAccount.laborCents;
     income.partsCents += byAccount.partsCents;
-    income.otherCents += byAccount.otherCents;
   }
   return income;
 }
@@ -204,7 +203,7 @@ export async function getMonthlyComparison(month: string | undefined, series: Co
     months: compared.months,
     medianCents: compared.medianCents,
     totals: {
-      incomeCents: figures.reduce((sum, figure) => sum + figure.income.laborCents + figure.income.partsCents + figure.income.otherCents, 0),
+      incomeCents: figures.reduce((sum, figure) => sum + figure.income.laborCents + figure.income.partsCents, 0),
       expensesCents: figures.reduce((sum, figure) => sum + figure.expensesCents, 0),
     },
   };
