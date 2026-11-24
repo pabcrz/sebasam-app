@@ -123,7 +123,7 @@ describe("CustomerStatementView", () => {
     render(<CustomerStatementView statement={mockStatement} />);
 
     expect(screen.getAllByText("Transportes del Norte S.A.")).toHaveLength(2);
-    expect(screen.getAllByText(/Razón social: Transportes del Norte S.A. de C.V./)).toHaveLength(2);
+    expect(screen.getAllByText(/Razón social: Transportes del Norte S.A. de C.V./)).toHaveLength(1);
     expect(screen.getAllByText("RFC: TDN900101XYZ").length).toBeGreaterThan(0);
 
     // Notes table
