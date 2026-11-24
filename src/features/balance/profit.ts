@@ -88,6 +88,73 @@ export function noteIncomeByAccount(note: SettlableNote): IncomeByAccount {
   return { laborCents, partsCents, otherCents: base - laborCents - partsCents };
 }
 
+export interface RecognizableExpense extends ProfitExpense {
+  spentAt: Date;
+  /** Pieces charged to a note: [noteId, cents]. */
+  allocations: Array<{ payableNoteId: string; amountCents: number }>;
+}
+
+/**
+ * Pieces of expense that count in a month. A piece charged to a note counts when that note settles
+ * (same month as its income); whatever is not charged counts on the day it was paid.
+ * `settledNoteIds` are the notes settled in the month; `spentInMonth` tells if the payment date falls in it.
+ */
+export function recognizeExpenses(
+  expenses: RecognizableExpense[],
+  settledNoteIds: Set<string>,
+  spentInMonth: (spentAt: Date) => boolean,
+): ProfitExpense[] {
+  const pieces: ProfitExpense[] = [];
+  for (const expense of expenses) {
+    const charged = expense.allocations.reduce((sum, allocation) => sum + allocation.amountCents, 0);
+    const base = { invoiceStatus: expense.invoiceStatus, partsSharePercent: expense.partsSharePercent };
+    const uncharged = expense.amountCents - charged;
+    if (uncharged > 0 && spentInMonth(expense.spentAt)) pieces.push({ ...base, amountCents: uncharged });
+    for (const allocation of expense.allocations) {
+      if (settledNoteIds.has(allocation.payableNoteId)) pieces.push({ ...base, amountCents: allocation.amountCents });
+    }
+  }
+  return pieces;
+}
+
+export interface JobMargin {
+  noteId: string;
+  partsIncomeCents: number;
+  /** Refacciones y materiales cost charged to the note (the parts share of each purchase piece). */
+  partsCostCents: number;
+  marginCents: number;
+  /** margin ÷ parts income; null when the note sold no parts. */
+  marginPercent: number | null;
+}
+
+/** Parts income against the parts cost charged to each settled note, worst margin first. */
+export function jobMargins(
+  notes: Array<{ id: string; partsIncomeCents: number }>,
+  expenses: RecognizableExpense[],
+): JobMargin[] {
+  const cost = new Map<string, number>();
+  for (const expense of expenses) {
+    for (const allocation of expense.allocations) {
+      const parts = splitExpense(allocation.amountCents, expense.partsSharePercent).partsCents;
+      cost.set(allocation.payableNoteId, (cost.get(allocation.payableNoteId) ?? 0) + parts);
+    }
+  }
+  return notes
+    .map((note) => {
+      const partsCostCents = cost.get(note.id) ?? 0;
+      const marginCents = note.partsIncomeCents - partsCostCents;
+      return {
+        noteId: note.id,
+        partsIncomeCents: note.partsIncomeCents,
+        partsCostCents,
+        marginCents,
+        marginPercent: note.partsIncomeCents > 0 ? Math.round((marginCents / note.partsIncomeCents) * 100) : null,
+      };
+    })
+    .filter((job) => job.partsIncomeCents > 0 || job.partsCostCents > 0)
+    .sort((a, b) => a.marginCents - b.marginCents);
+}
+
 export interface InvoiceSplit {
   invoicedCents: number;
   notInvoicedCents: number;
@@ -181,5 +248,55 @@ export function buildProfitSummary(input: {
       spentCents: input.payrollCents + generalSplit.totalCents,
       remainingCents: totalIncome - input.payrollCents - generalSplit.totalCents,
     },
+  };
+}
+
+export type ComparisonSeries = "todas" | "mano-de-obra" | "refacciones";
+export type ComparisonLevel = "fuerte" | "debil" | "tipico";
+
+export interface MonthFigures {
+  month: string;
+  label: string;
+  income: IncomeByAccount;
+  /** Expenses recognized in the month (before payroll). */
+  expensesCents: number;
+}
+
+export interface ComparedMonth extends MonthFigures {
+  /** The income of the chosen series: all, labor or parts. «Otros» only counts in "todas". */
+  valueCents: number;
+  /** Against the median of the months that had income; null when the month had none or there is too little history. */
+  level: ComparisonLevel | null;
+  /** Labor ÷ (labor + parts), «Otros» left out; null when both are zero. */
+  laborSharePercent: number | null;
+}
+
+/** A month is "fuerte" above the median by this much and "débil" below it by the same; in between it is "típico". */
+export const COMPARISON_BAND = 0.15;
+const MIN_MONTHS_WITH_INCOME = 3;
+
+function seriesValue(income: IncomeByAccount, series: ComparisonSeries) {
+  if (series === "mano-de-obra") return income.laborCents;
+  if (series === "refacciones") return income.partsCents;
+  return income.laborCents + income.partsCents + income.otherCents;
+}
+
+/** Describes each month against the others. A plain description of the past: no score, no forecast. */
+export function compareMonths(months: MonthFigures[], series: ComparisonSeries): { months: ComparedMonth[]; medianCents: number | null } {
+  const values = months.map((month) => seriesValue(month.income, series));
+  const withIncome = values.filter((value) => value > 0).sort((a, b) => a - b);
+  const enough = withIncome.length >= MIN_MONTHS_WITH_INCOME;
+  const middle = Math.floor(withIncome.length / 2);
+  const medianCents = !enough ? null : withIncome.length % 2 === 1 ? withIncome[middle] : Math.round((withIncome[middle - 1] + withIncome[middle]) / 2);
+
+  return {
+    medianCents,
+    months: months.map((month, index) => {
+      const valueCents = values[index];
+      const level: ComparisonLevel | null =
+        medianCents === null || valueCents <= 0 ? null : valueCents > medianCents * (1 + COMPARISON_BAND) ? "fuerte" : valueCents < medianCents * (1 - COMPARISON_BAND) ? "debil" : "tipico";
+      const labourAndParts = month.income.laborCents + month.income.partsCents;
+      return { ...month, valueCents, level, laborSharePercent: labourAndParts > 0 ? Math.round((month.income.laborCents / labourAndParts) * 100) : null };
+    }),
   };
 }

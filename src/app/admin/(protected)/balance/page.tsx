@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import { PageHeader, SegmentedControl } from "@/components/ui";
 import { BalanceView } from "@/features/balance/components/balance-view";
 import { ExpenseAllocationView } from "@/features/balance/components/expense-allocation-view";
+import { ComparisonView } from "@/features/balance/components/comparison-view";
 import { ExpensesView } from "@/features/balance/components/expenses-view";
 import { ProfitView, type ProfitViewKey } from "@/features/balance/components/profit-view";
-import { assignExpenseShareFromForm, createExpenseFromForm, deleteExpenseFromForm, updateExpenseFromForm } from "@/features/balance/expenses/actions";
-import { listExpensesForMonth } from "@/features/balance/expenses/queries";
+import { assignExpenseShareFromForm, confirmRecurringExpenseFromForm, createExpenseFromForm, deleteExpenseFromForm, skipRecurringExpenseFromForm, stopRecurringExpenseFromForm, linkExpenseToNoteFromForm, unlinkExpenseFromNoteFromForm, updateExpenseFromForm } from "@/features/balance/expenses/actions";
+import { listExpensesForAssignment, listExpensesForMonth, listRecurringForMonth, listSuppliers } from "@/features/balance/expenses/queries";
 import { getBalanceSnapshot } from "@/features/balance/queries";
-import { getProfitSnapshot } from "@/features/balance/profit-queries";
-import { canRegisterExpenses, requireProfileForPage } from "@/lib/auth/session";
+import { getMonthlyComparison, getProfitSnapshot } from "@/features/balance/profit-queries";
+import type { ComparisonSeries } from "@/features/balance/profit";
+import { canRegisterExpenses, isAdminRole, requireProfileForPage } from "@/lib/auth/session";
 
 const OWNER_ROLE = "SUPER_ADMIN";
 
@@ -23,7 +25,8 @@ type BalancePageProps = {
 
 const TABS = ["cobros", "utilidad", "gastos"] as const;
 type Tab = (typeof TABS)[number];
-const VIEWS: ProfitViewKey[] = ["general", "mano-de-obra", "refacciones", "asignar"];
+const VIEWS: ProfitViewKey[] = ["general", "mano-de-obra", "refacciones", "comparar", "asignar"];
+const SERIES: ComparisonSeries[] = ["todas", "mano-de-obra", "refacciones"];
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -33,8 +36,10 @@ const NOTICES: Array<[string, { tone: "success" | "danger"; text: string }]> = [
   ["created", { tone: "success", text: "Gasto registrado." }],
   ["updated", { tone: "success", text: "Gasto actualizado." }],
   ["deleted", { tone: "success", text: "Gasto eliminado." }],
+  ["skipped", { tone: "success", text: "Omitido este mes." }],
+  ["stopped", { tone: "success", text: "Ya no se repite." }],
   ["assigned", { tone: "success", text: "Reparto guardado." }],
-  ["error", { tone: "danger", text: "Revisa los datos del gasto e intenta de nuevo." }],
+  ["error", { tone: "danger", text: "Revisa los datos e intenta de nuevo. Lo ligado a notas no puede pasar del monto de la compra." }],
 ];
 
 export default async function BalancePage({ searchParams }: BalancePageProps) {
@@ -51,7 +56,10 @@ export default async function BalancePage({ searchParams }: BalancePageProps) {
   const requestedView = first(params.view);
   const view: ProfitViewKey = VIEWS.includes(requestedView as ProfitViewKey) ? (requestedView as ProfitViewKey) : "general";
 
-  const hrefFor = (target: { tab?: Tab; month?: string | null; view?: ProfitViewKey }) => {
+  const requestedSeries = first(params.serie);
+  const series: ComparisonSeries = SERIES.includes(requestedSeries as ComparisonSeries) ? (requestedSeries as ComparisonSeries) : "todas";
+
+  const hrefFor = (target: { tab?: Tab; month?: string | null; view?: ProfitViewKey; serie?: ComparisonSeries }) => {
     const query = new URLSearchParams();
     const nextTab = target.tab ?? tab;
     if (nextTab !== "cobros") query.set("tab", nextTab);
@@ -59,6 +67,8 @@ export default async function BalancePage({ searchParams }: BalancePageProps) {
     if (nextMonth) query.set("month", nextMonth);
     const nextView = target.view ?? view;
     if (nextTab === "utilidad" && nextView !== "general") query.set("view", nextView);
+    const nextSeries = target.serie ?? series;
+    if (nextTab === "utilidad" && nextView === "comparar" && nextSeries !== "todas") query.set("serie", nextSeries);
     const text = query.toString();
     return `/admin/balance${text ? `?${text}` : ""}`;
   };
@@ -85,19 +95,22 @@ export default async function BalancePage({ searchParams }: BalancePageProps) {
           {notice ? (
             <p role={notice.tone === "danger" ? "alert" : "status"} className="rounded-[var(--radius-sm)] border border-[var(--color-border-light)] bg-[var(--color-surface)] px-4 py-3 text-sm">{notice.text}</p>
           ) : null}
-          <ExpenseAllocationView expenses={(await listExpensesForMonth(month)).expenses} month={snapshot.period.month} assign={assignExpenseShareFromForm} />
+          <ExpenseAllocationView {...(await listExpensesForAssignment(month))} month={snapshot.period.month} assign={assignExpenseShareFromForm} link={linkExpenseToNoteFromForm} unlink={unlinkExpenseFromNoteFromForm} />
         </div>
       ) : null;
+    const comparison = view === "comparar" ? <ComparisonView snapshot={await getMonthlyComparison(month, series)} hrefFor={(serie) => hrefFor({ tab: "utilidad", view: "comparar", serie })} /> : null;
     content = (
       <ProfitView
         snapshot={snapshot}
         view={view}
         allocation={allocation}
+        comparison={comparison}
         hrefFor={(change) => hrefFor({ tab: "utilidad", month: change.month, view: change.view })}
       />
     );
   } else if (tab === "gastos") {
     const { period, expenses } = await listExpensesForMonth(month);
+    const [suppliers, recurring] = await Promise.all([listSuppliers(), listRecurringForMonth(period)]);
     const notice = NOTICES.find(([key]) => first(params[key]))?.[1] ?? null;
     content = (
       <ExpensesView
@@ -105,9 +118,12 @@ export default async function BalancePage({ searchParams }: BalancePageProps) {
         expenses={expenses}
         today={new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date())}
         hrefFor={(target) => hrefFor({ tab: "gastos", month: target })}
-        actions={{ create: createExpenseFromForm, update: updateExpenseFromForm, remove: deleteExpenseFromForm }}
+        actions={{ create: createExpenseFromForm, update: updateExpenseFromForm, remove: deleteExpenseFromForm, confirmRecurring: confirmRecurringExpenseFromForm, skipRecurring: skipRecurringExpenseFromForm, stopRecurring: stopRecurringExpenseFromForm }}
+        suppliers={suppliers}
+        recurring={recurring}
         notice={notice}
         showAllocation={canSeeProfit}
+        canViewReceipts={isAdminRole(profile.role)}
       />
     );
   } else {

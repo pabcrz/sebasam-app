@@ -20,15 +20,22 @@ const getBalanceSnapshotMock = vi.hoisted(() =>
   }),
 );
 const getProfitSnapshotMock = vi.hoisted(() => vi.fn());
+const getComparisonMock = vi.hoisted(() => vi.fn());
 const listExpensesMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/balance/queries", () => ({ getBalanceSnapshot: getBalanceSnapshotMock }));
-vi.mock("@/features/balance/profit-queries", () => ({ getProfitSnapshot: getProfitSnapshotMock }));
-vi.mock("@/features/balance/expenses/queries", () => ({ listExpensesForMonth: listExpensesMock }));
-vi.mock("@/features/balance/expenses/actions", () => ({ createExpenseFromForm: vi.fn(), updateExpenseFromForm: vi.fn(), deleteExpenseFromForm: vi.fn(), assignExpenseShareFromForm: vi.fn() }));
+vi.mock("@/features/balance/profit-queries", () => ({ getProfitSnapshot: getProfitSnapshotMock, getMonthlyComparison: getComparisonMock }));
+vi.mock("@/features/balance/expenses/queries", () => ({
+  listExpensesForMonth: listExpensesMock,
+  listSuppliers: vi.fn(async () => []),
+  listRecurringForMonth: vi.fn(async () => ({ templates: [], pending: [] })),
+  listExpensesForAssignment: vi.fn(async () => ({ expenses: (await listExpensesMock()).expenses.map((expense: object) => ({ ...expense, links: [] })), notes: [] })),
+}));
+vi.mock("@/features/balance/expenses/actions", () => ({ createExpenseFromForm: vi.fn(), updateExpenseFromForm: vi.fn(), deleteExpenseFromForm: vi.fn(), assignExpenseShareFromForm: vi.fn(), linkExpenseToNoteFromForm: vi.fn(), unlinkExpenseFromNoteFromForm: vi.fn(), confirmRecurringExpenseFromForm: vi.fn(), skipRecurringExpenseFromForm: vi.fn(), stopRecurringExpenseFromForm: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({
   requireProfileForPage: vi.fn(async () => ({ profile: { role: role.current } })),
   canRegisterExpenses: (value: string) => ["ADMIN", "ADMIN_ASSISTANT", "SUPER_ADMIN"].includes(value),
+  isAdminRole: (value: string) => ["ADMIN", "SUPER_ADMIN"].includes(value),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }) }));
 
@@ -40,7 +47,7 @@ describe("BalancePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     role.current = "SUPER_ADMIN";
-    getProfitSnapshotMock.mockResolvedValue({ period, summary: buildProfitSummary({ income: { laborCents: 0, partsCents: 0, otherCents: 0 }, cashCollectedCents: 0, payrollCents: 0, expenses: [] }) });
+    getProfitSnapshotMock.mockResolvedValue({ period, jobs: [], summary: buildProfitSummary({ income: { laborCents: 0, partsCents: 0, otherCents: 0 }, cashCollectedCents: 0, payrollCents: 0, expenses: [] }) });
     listExpensesMock.mockResolvedValue({ period, expenses: [] });
   });
 
@@ -77,6 +84,22 @@ describe("BalancePage", () => {
 
     render(await BalancePage(params({ tab: "utilidad", view: "inventado" })));
     expect(screen.getByTestId("profit-general")).toBeInTheDocument();
+  });
+
+  it("shows the owner the 12-month comparison for the chosen series", async () => {
+    getComparisonMock.mockResolvedValue({ period, series: "refacciones", medianCents: null, totals: { incomeCents: 0, expensesCents: 0 }, months: [{ month: "2026-11", label: "noviembre 2026", income: { laborCents: 0, partsCents: 0, otherCents: 0 }, expensesCents: 0, valueCents: 0, level: null, laborSharePercent: null }] });
+
+    render(await BalancePage(params({ tab: "utilidad", view: "comparar", serie: "refacciones", month: "2026-11" })));
+
+    expect(getComparisonMock).toHaveBeenCalledWith("2026-11", "refacciones");
+    expect(screen.getByTestId("profit-comparison")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Comparar" })).toBeInTheDocument();
+  });
+
+  it("falls back to all series when the one asked for does not exist", async () => {
+    getComparisonMock.mockResolvedValue({ period, series: "todas", medianCents: null, totals: { incomeCents: 0, expensesCents: 0 }, months: [] });
+    render(await BalancePage(params({ tab: "utilidad", view: "comparar", serie: "inventada" })));
+    expect(getComparisonMock).toHaveBeenCalledWith(undefined, "todas");
   });
 
   it("lets the owner assign how each expense is split between the two accounts", async () => {

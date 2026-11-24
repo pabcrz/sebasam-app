@@ -9,7 +9,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: { payableNote: { findMany: vi.fn() }, expense: { findMany: vi.fn() }, payment: { aggregate: vi.fn() } },
 }));
 
-import { getProfitSnapshot, parseMonthPeriod } from "./profit-queries";
+import { getMonthlyComparison, getProfitSnapshot, parseMonthPeriod } from "./profit-queries";
 
 const now = new Date("2026-11-23T18:00:00.000Z");
 
@@ -51,8 +51,8 @@ describe("getProfitSnapshot", () => {
     vi.mocked(getWeeklyPayroll).mockResolvedValue({ totalPayableCents: 40_000, totalCommissionCents: 30_000 } as never);
     vi.mocked(prisma.payment.aggregate).mockResolvedValue({ _count: { _all: 3 }, _sum: { amountCents: 250_000 } } as never);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([
-      { amountCents: 20_000, invoiceStatus: "NOT_INVOICED", partsSharePercent: 0 },
-      { amountCents: 10_000, invoiceStatus: "INVOICED", partsSharePercent: 50 },
+      { spentAt: new Date("2026-11-10T00:00:00.000Z"), allocations: [], amountCents: 20_000, invoiceStatus: "NOT_INVOICED", partsSharePercent: 0 },
+      { spentAt: new Date("2026-11-12T00:00:00.000Z"), allocations: [], amountCents: 10_000, invoiceStatus: "INVOICED", partsSharePercent: 50 },
     ] as never);
     vi.mocked(prisma.payableNote.findMany).mockResolvedValue([
       // Settled in November by the second payment, even though the first one came in September.
@@ -88,7 +88,13 @@ describe("getProfitSnapshot", () => {
     expect(requireSuperAdmin).toHaveBeenCalled();
     expect(getWeeklyPayroll).toHaveBeenCalledWith({ mode: "monthly", anchor: "2026-11-01" });
     expect(prisma.expense.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { deletedAt: null, spentAt: { gte: new Date("2026-11-01T00:00:00.000Z"), lt: new Date("2026-12-01T00:00:00.000Z") } },
+      where: {
+        deletedAt: null,
+        OR: [
+          { spentAt: { gte: new Date("2026-11-01T00:00:00.000Z"), lt: new Date("2026-12-01T00:00:00.000Z") } },
+          { allocations: { some: { payableNoteId: { in: expect.any(Array) } } } },
+        ],
+      },
     }));
     expect(prisma.payment.aggregate).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ createdAt: { gte: new Date("2026-11-01T06:00:00.000Z"), lt: new Date("2026-12-01T06:00:00.000Z") } }),
@@ -117,5 +123,43 @@ describe("getProfitSnapshot", () => {
 
     expect(summary.general).toMatchObject({ incomeCents: 0, spentCents: 0, remainingCents: 0 });
     expect(summary.labor.coveragePercent).toBeNull();
+  });
+});
+
+describe("getMonthlyComparison", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.expense.findMany).mockResolvedValue([
+      { spentAt: new Date("2026-11-10T00:00:00.000Z"), allocations: [], amountCents: 20_000, invoiceStatus: "NOT_INVOICED", partsSharePercent: 0 },
+      { spentAt: new Date("2026-10-20T00:00:00.000Z"), allocations: [], amountCents: 5_000, invoiceStatus: "NOT_INVOICED", partsSharePercent: 0 },
+    ] as never);
+    vi.mocked(prisma.payableNote.findMany).mockResolvedValue([
+      note([["LABOR", 60_000], ["REFACCIONES", 40_000]], 100_000, [[50_000, "2026-09-10T18:00:00Z"], [66_000, "2026-11-05T18:00:00Z"]]),
+      note([["LABOR", 100_000]], 100_000, [[116_000, "2026-10-15T18:00:00Z"]]),
+      note([["REFACCIONES", 100_000]], 100_000, [[50_000, "2026-11-10T18:00:00Z"]]),
+    ] as never);
+  });
+
+  it("gives the last 12 months oldest first, each note in the month it was fully settled", async () => {
+    const snapshot = await getMonthlyComparison("2026-11", "todas", now);
+
+    expect(snapshot.months).toHaveLength(12);
+    expect(snapshot.months[0].month).toBe("2025-12");
+    expect(snapshot.months[11].month).toBe("2026-11");
+    const byMonth = Object.fromEntries(snapshot.months.map((m) => [m.month, m]));
+    expect(byMonth["2026-11"].income).toEqual({ laborCents: 60_000, partsCents: 40_000, otherCents: 0 });
+    expect(byMonth["2026-10"].income).toEqual({ laborCents: 100_000, partsCents: 0, otherCents: 0 });
+    // The September payment alone did not settle the first note, and the open one never counts.
+    expect(byMonth["2026-09"].income).toEqual({ laborCents: 0, partsCents: 0, otherCents: 0 });
+    expect(byMonth["2026-11"].expensesCents).toBe(20_000);
+    expect(byMonth["2026-10"].expensesCents).toBe(5_000);
+    expect(snapshot.totals).toEqual({ incomeCents: 200_000, expensesCents: 25_000 });
+  });
+
+  it("is the owner's alone and reads notes and expenses once for the whole range", async () => {
+    await getMonthlyComparison("2026-11", "mano-de-obra", now);
+    expect(requireSuperAdmin).toHaveBeenCalled();
+    expect(prisma.payableNote.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.expense.findMany).toHaveBeenCalledTimes(1);
   });
 });

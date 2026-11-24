@@ -11,7 +11,7 @@ const period = {
 };
 
 function snapshot(overrides: Parameters<typeof buildProfitSummary>[0]): ProfitSnapshot {
-  return { period, summary: buildProfitSummary(overrides) };
+  return { period, jobs: [], summary: buildProfitSummary(overrides) };
 }
 
 const base = {
