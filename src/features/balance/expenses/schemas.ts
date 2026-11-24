@@ -17,13 +17,15 @@ export const expenseInputSchema = z.object({
     "MATERIALS_PURCHASE", "TOOLS_EQUIPMENT", "FUEL_TRANSPORT", "TAXES_FEES", "OTHER",
   ]),
   invoiceStatus: z.enum(["INVOICED", "NOT_INVOICED"]),
-  partsSharePercent: z.number().int().min(0).max(100),
   supplier: optionalText(120),
   paymentMethod: z.enum(["CASH", "TRANSFER", "CARD"]).nullable().optional().default(null),
   notes: optionalText(500),
 });
 
 export type ExpenseInput = z.infer<typeof expenseInputSchema>;
+
+/** The owner's assignment of an expense between the two accounts (0-100 to parts). */
+export const partsShareSchema = z.number().int("Porcentaje inválido").min(0).max(100);
 
 /** "1234.50" -> 123450. NaN when the text is not a positive amount with up to two decimals. */
 export function pesosTextToCents(value: FormDataEntryValue | null) {

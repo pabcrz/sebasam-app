@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildProfitSummary } from "@/features/balance/profit";
 
-const role = vi.hoisted(() => ({ current: "ADMIN" }));
+const role = vi.hoisted(() => ({ current: "SUPER_ADMIN" }));
 const period = {
   month: "2026-11", label: "Noviembre de 2026", prevMonth: "2026-10", nextMonth: "2026-12", isCurrent: true,
   start: new Date(), end: new Date(), dateStart: new Date(), dateEnd: new Date(),
@@ -25,7 +25,7 @@ const listExpensesMock = vi.hoisted(() => vi.fn());
 vi.mock("@/features/balance/queries", () => ({ getBalanceSnapshot: getBalanceSnapshotMock }));
 vi.mock("@/features/balance/profit-queries", () => ({ getProfitSnapshot: getProfitSnapshotMock }));
 vi.mock("@/features/balance/expenses/queries", () => ({ listExpensesForMonth: listExpensesMock }));
-vi.mock("@/features/balance/expenses/actions", () => ({ createExpenseFromForm: vi.fn(), updateExpenseFromForm: vi.fn(), deleteExpenseFromForm: vi.fn() }));
+vi.mock("@/features/balance/expenses/actions", () => ({ createExpenseFromForm: vi.fn(), updateExpenseFromForm: vi.fn(), deleteExpenseFromForm: vi.fn(), assignExpenseShareFromForm: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({
   requireProfileForPage: vi.fn(async () => ({ profile: { role: role.current } })),
   isAdminRole: (value: string) => value === "ADMIN" || value === "SUPER_ADMIN",
@@ -39,12 +39,12 @@ const params = (query: Record<string, string> = {}) => ({ searchParams: Promise.
 describe("BalancePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    role.current = "ADMIN";
+    role.current = "SUPER_ADMIN";
     getProfitSnapshotMock.mockResolvedValue({ period, summary: buildProfitSummary({ income: { laborCents: 0, partsCents: 0, otherCents: 0 }, cashCollectedCents: 0, payrollCents: 0, expenses: [] }) });
     listExpensesMock.mockResolvedValue({ period, expenses: [] });
   });
 
-  it("shows cobrado and por cobrar by default, with the three sections for an admin", async () => {
+  it("shows cobrado and por cobrar by default, with the three sections for the owner", async () => {
     render(await BalancePage(params()));
 
     expect(screen.getByRole("heading", { level: 1, name: "Balance" })).toBeInTheDocument();
@@ -77,6 +77,46 @@ describe("BalancePage", () => {
 
     render(await BalancePage(params({ tab: "utilidad", view: "inventado" })));
     expect(screen.getByTestId("profit-general")).toBeInTheDocument();
+  });
+
+  it("lets the owner assign how each expense is split between the two accounts", async () => {
+    listExpensesMock.mockResolvedValue({
+      period,
+      expenses: [{ id: "e1", spentAt: new Date("2026-11-20T00:00:00Z"), amountCents: 100_000, category: "FUEL_TRANSPORT", invoiceStatus: "INVOICED", partsSharePercent: 50, supplier: null, paymentMethod: null, notes: null }],
+    });
+
+    render(await BalancePage(params({ tab: "utilidad", view: "asignar", month: "2026-11" })));
+
+    expect(screen.getByTestId("allocation-view")).toBeInTheDocument();
+    expect(screen.getByTestId("allocation-split")).toHaveTextContent("Refacciones $500.00 · Mano de obra $500.00");
+    expect(screen.getByRole("link", { name: "Asignar" })).toBeInTheDocument();
+  });
+
+  it("gives the ADMIN who registers expenses cobros and gastos, but never profit or the split", async () => {
+    role.current = "ADMIN";
+    listExpensesMock.mockResolvedValue({
+      period,
+      expenses: [{ id: "e1", spentAt: new Date("2026-11-20T00:00:00Z"), amountCents: 100_000, category: "FUEL_TRANSPORT", invoiceStatus: "INVOICED", partsSharePercent: 50, supplier: null, paymentMethod: null, notes: null }],
+    });
+
+    render(await BalancePage(params({ tab: "gastos" })));
+
+    expect(screen.getByRole("link", { name: "Cobros y saldos" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Gastos" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Utilidad" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("expenses-view")).toBeInTheDocument();
+    expect(screen.getByTestId("expense-row")).not.toHaveTextContent("refacciones");
+    expect(screen.queryByTestId("allocation-view")).not.toBeInTheDocument();
+  });
+
+  it("sends an ADMIN who asks for the profit or the assignment to cobros, without querying them", async () => {
+    role.current = "ADMIN";
+
+    render(await BalancePage(params({ tab: "utilidad", view: "asignar" })));
+
+    expect(screen.getByRole("heading", { name: "Cobrado" })).toBeInTheDocument();
+    expect(screen.queryByTestId("profit-view")).not.toBeInTheDocument();
+    expect(getProfitSnapshotMock).not.toHaveBeenCalled();
   });
 
   it("gives other operational roles only cobrado and por cobrar, whatever the address says", async () => {

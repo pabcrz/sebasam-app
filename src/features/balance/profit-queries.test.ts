@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireSuperAdmin } from "@/lib/auth/session";
 import { getWeeklyPayroll } from "@/features/payroll/queries";
 
-vi.mock("@/lib/auth/session", () => ({ requireAdmin: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ requireSuperAdmin: vi.fn() }));
 vi.mock("@/features/payroll/queries", () => ({ getWeeklyPayroll: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
   prisma: { payableNote: { findMany: vi.fn() }, expense: { findMany: vi.fn() }, payment: { aggregate: vi.fn() } },
@@ -82,10 +82,10 @@ describe("getProfitSnapshot", () => {
     expect(summary.cashCollectedCents).toBe(250_000);
   });
 
-  it("asks only for the month's data and requires an admin", async () => {
+  it("asks only for the month's data and requires the owner", async () => {
     await getProfitSnapshot("2026-11", now);
 
-    expect(requireAdmin).toHaveBeenCalled();
+    expect(requireSuperAdmin).toHaveBeenCalled();
     expect(getWeeklyPayroll).toHaveBeenCalledWith({ mode: "monthly", anchor: "2026-11-01" });
     expect(prisma.expense.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { deletedAt: null, spentAt: { gte: new Date("2026-11-01T00:00:00.000Z"), lt: new Date("2026-12-01T00:00:00.000Z") } },
@@ -95,8 +95,8 @@ describe("getProfitSnapshot", () => {
     }));
   });
 
-  it("does not let a non-admin through", async () => {
-    vi.mocked(requireAdmin).mockRejectedValueOnce(new Error("forbidden"));
+  it("does not let a non-owner through, not even an ADMIN", async () => {
+    vi.mocked(requireSuperAdmin).mockRejectedValueOnce(new Error("forbidden"));
     await expect(getProfitSnapshot("2026-11", now)).rejects.toThrow("forbidden");
     expect(prisma.expense.findMany).not.toHaveBeenCalled();
   });

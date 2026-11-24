@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { defaultPartsShareFor } from "./categories";
-import { expenseInputSchema, pesosTextToCents } from "./schemas";
+import { expenseInputSchema, partsShareSchema, pesosTextToCents } from "./schemas";
 
-const valid = { spentAt: "2026-11-20", amountCents: 150_000, category: "FUEL_TRANSPORT", invoiceStatus: "INVOICED", partsSharePercent: 50 };
+const valid = { spentAt: "2026-11-20", amountCents: 150_000, category: "FUEL_TRANSPORT", invoiceStatus: "INVOICED" };
 
 describe("expenseInputSchema", () => {
   it("accepts a minimal expense and normalizes the optional fields to null", () => {
@@ -17,12 +17,22 @@ describe("expenseInputSchema", () => {
     ["a fractional amount of cents", { amountCents: 10.5 }],
     ["an unknown category", { category: "VACATIONS" }],
     ["an unknown invoice status", { invoiceStatus: "MAYBE" }],
-    ["a share below 0", { partsSharePercent: -1 }],
-    ["a share above 100", { partsSharePercent: 101 }],
     ["a payment method that does not exist", { paymentMethod: "CRYPTO" }],
   ])("rejects %s", (_name, override) => {
     expect(expenseInputSchema.safeParse({ ...valid, ...override }).success).toBe(false);
   });
+});
+
+describe("expense form data", () => {
+  it("does not carry an assignment: whoever registers cannot set how the expense is split", () => {
+    const parsed = expenseInputSchema.parse({ ...valid, partsSharePercent: 100 });
+    expect(parsed).not.toHaveProperty("partsSharePercent");
+  });
+});
+
+describe("partsShareSchema", () => {
+  it.each([0, 1, 50, 100])("accepts %s", (value) => expect(partsShareSchema.safeParse(value).success).toBe(true));
+  it.each([-1, 101, 12.5, Number.NaN])("rejects %s", (value) => expect(partsShareSchema.safeParse(value).success).toBe(false));
 });
 
 describe("pesosTextToCents", () => {

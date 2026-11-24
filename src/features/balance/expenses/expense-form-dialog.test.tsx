@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ExpenseFormDialog } from "./expense-form-dialog";
 
 describe("ExpenseFormDialog", () => {
-  it("opens a new-expense form with today's date, Renta and no invoice, all to labor", async () => {
+  it("opens a new-expense form with today's date, Renta and no invoice", async () => {
     const user = userEvent.setup();
     render(<ExpenseFormDialog action={vi.fn()} month="2026-11" today="2026-11-23" />);
 
@@ -13,23 +13,24 @@ describe("ExpenseFormDialog", () => {
     const form = screen.getByTestId("expense-form");
     expect(screen.getByRole("dialog", { name: "Nuevo gasto" })).toBeInTheDocument();
     expect(screen.getByLabelText("Fecha de pago")).toHaveValue("2026-11-23");
-    expect(screen.getByLabelText("Porcentaje a refacciones")).toHaveValue(0);
     expect(screen.getByRole("radio", { name: "Sin factura" })).toBeChecked();
     expect(form.querySelector('input[name="month"]')).toHaveValue("2026-11");
   });
 
-  it("proposes the category's share when the category changes", async () => {
+  it("never shows how the expense is split between the two accounts", async () => {
     const user = userEvent.setup();
     render(<ExpenseFormDialog action={vi.fn()} month="2026-11" today="2026-11-23" />);
     await user.click(screen.getByRole("button", { name: /nuevo gasto/i }));
 
-    await user.click(screen.getByRole("combobox", { name: "Categoría" }));
-    await user.click(screen.getByRole("option", { name: "Combustible y traslados" }));
-    expect(screen.getByLabelText("Porcentaje a refacciones")).toHaveValue(50);
+    const form = screen.getByTestId("expense-form");
+    expect(screen.queryByLabelText(/porcentaje/i)).not.toBeInTheDocument();
+    expect(form.querySelector('[name="partsSharePercent"]')).toBeNull();
+    expect(screen.queryByText(/a refacciones|a mano de obra|reparto|cuenta/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/mano de obra/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("combobox", { name: "Categoría" }));
-    await user.click(screen.getByRole("option", { name: "Refacciones compradas" }));
-    expect(screen.getByLabelText("Porcentaje a refacciones")).toHaveValue(100);
+    await user.click(screen.getByRole("option", { name: "Combustible y traslados" }));
+    expect(screen.queryByLabelText(/porcentaje/i)).not.toBeInTheDocument();
   });
 
   it("lets the user switch between with and without invoice", async () => {
@@ -60,7 +61,7 @@ describe("ExpenseFormDialog", () => {
     expect(screen.getByLabelText("Fecha de pago")).toHaveValue("2026-11-18");
     expect(screen.getByLabelText("Monto (MXN)")).toHaveValue(1234.5);
     expect(screen.getByRole("radio", { name: "Con factura" })).toBeChecked();
-    expect(screen.getByLabelText("Porcentaje a refacciones")).toHaveValue(50);
     expect(screen.getByLabelText("Proveedor (opcional)")).toHaveValue("Gasolinera");
+    expect(screen.queryByLabelText(/porcentaje/i)).not.toBeInTheDocument();
   });
 });

@@ -17,12 +17,14 @@ type ExpensesViewProps = {
     remove: (expenseId: string, formData: FormData) => void | Promise<void>;
   };
   notice?: { tone: "success" | "danger"; text: string } | null;
+  /** Only the owner sees how an expense is split between the two accounts. */
+  showAllocation?: boolean;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", timeZone: "UTC" });
 const methodLabels = Object.fromEntries(EXPENSE_PAYMENT_METHODS.map((method) => [method.value, method.label]));
 
-export function ExpensesView({ period, expenses, today, hrefFor, actions, notice }: ExpensesViewProps) {
+export function ExpensesView({ period, expenses, today, hrefFor, actions, notice, showAllocation = false }: ExpensesViewProps) {
   const invoiced = expenses.filter((expense) => expense.invoiceStatus === "INVOICED").reduce((sum, expense) => sum + expense.amountCents, 0);
   const total = expenses.reduce((sum, expense) => sum + expense.amountCents, 0);
 
@@ -73,7 +75,7 @@ export function ExpensesView({ period, expenses, today, hrefFor, actions, notice
                     dateFormatter.format(expense.spentAt),
                     expense.supplier,
                     expense.paymentMethod ? methodLabels[expense.paymentMethod] : null,
-                    expense.partsSharePercent > 0 ? `${expense.partsSharePercent} % a refacciones` : null,
+                    showAllocation && expense.partsSharePercent > 0 ? `${expense.partsSharePercent} % a refacciones` : null,
                     expense.notes,
                   ].filter(Boolean).join(" · ")}
                 </p>

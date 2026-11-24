@@ -31,7 +31,13 @@ describe("ExpensesView", () => {
     expect(rows[0]).toHaveTextContent("$5,000.00");
     expect(rows[1]).toHaveTextContent("Combustible y traslados");
     expect(rows[1]).toHaveTextContent("Con factura");
-    expect(rows[1]).toHaveTextContent("50 % a refacciones");
+    expect(rows[1]).not.toHaveTextContent("refacciones");
+  });
+
+  it("shows the split of each expense only to the owner", () => {
+    render(<ExpensesView period={period} expenses={expenses} today="2026-11-23" hrefFor={hrefFor} actions={actions} showAllocation />);
+
+    expect(screen.getAllByTestId("expense-row")[1]).toHaveTextContent("50 % a refacciones");
   });
 
   it("totals the month and splits it into with and without invoice", () => {

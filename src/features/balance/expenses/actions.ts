@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/session";
-import { expenseInputSchema, pesosTextToCents } from "./schemas";
+import { requireAdmin, requireSuperAdmin } from "@/lib/auth/session";
+import { defaultPartsShareFor } from "./categories";
+import { expenseInputSchema, partsShareSchema, pesosTextToCents } from "./schemas";
 
 const balancePath = "/admin/balance";
 
@@ -18,7 +19,6 @@ function expenseFormToInput(formData: FormData) {
     amountCents: pesosTextToCents(formData.get("amount")),
     category: text("category"),
     invoiceStatus: text("invoiceStatus"),
-    partsSharePercent: Number(text("partsSharePercent")),
     supplier: text("supplier") ?? "",
     paymentMethod: text("paymentMethod") || null,
     notes: text("notes") ?? "",
@@ -38,8 +38,14 @@ export async function createExpenseFromForm(formData: FormData) {
   const parsed = expenseInputSchema.safeParse(expenseFormToInput(formData));
   if (!parsed.success) redirect(expensesHref(formData, "error=invalid"));
 
+  // Whoever registers does not choose how the expense is split: the category proposes it and the owner assigns it later.
   await prisma.expense.create({
-    data: { ...parsed.data, spentAt: new Date(`${parsed.data.spentAt}T00:00:00.000Z`), createdById: profile.id },
+    data: {
+      ...parsed.data,
+      partsSharePercent: defaultPartsShareFor(parsed.data.category),
+      spentAt: new Date(`${parsed.data.spentAt}T00:00:00.000Z`),
+      createdById: profile.id,
+    },
   });
 
   revalidatePath(balancePath);
@@ -52,14 +58,43 @@ export async function updateExpenseFromForm(expenseId: string, formData: FormDat
   const parsed = expenseInputSchema.safeParse(expenseFormToInput(formData));
   if (!parsed.success) redirect(expensesHref(formData, "error=invalid"));
 
-  const result = await prisma.expense.updateMany({
+  const current = await prisma.expense.findFirst({
     where: { id: expenseId, deletedAt: null },
-    data: { ...parsed.data, spentAt: new Date(`${parsed.data.spentAt}T00:00:00.000Z`) },
+    select: { category: true, partsSharePercent: true },
   });
-  if (result.count === 0) redirect(expensesHref(formData, "error=notfound"));
+  if (!current) redirect(expensesHref(formData, "error=notfound"));
+
+  // Editing never touches an assignment the owner made. Only a share that is still the old category's proposal follows a change of category.
+  const untouched = current.partsSharePercent === defaultPartsShareFor(current.category);
+  const partsSharePercent = untouched ? defaultPartsShareFor(parsed.data.category) : current.partsSharePercent;
+
+  await prisma.expense.updateMany({
+    where: { id: expenseId, deletedAt: null },
+    data: { ...parsed.data, partsSharePercent, spentAt: new Date(`${parsed.data.spentAt}T00:00:00.000Z`) },
+  });
 
   revalidatePath(balancePath);
   redirect(expensesHref(formData, "updated=1"));
+}
+
+/** Owner only: how much of an expense is charged to refacciones y materiales; the rest goes to mano de obra. */
+export async function assignExpenseShareFromForm(expenseId: string, formData: FormData) {
+  await requireSuperAdmin();
+
+  const month = formData.get("month");
+  const valid = typeof month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
+  const back = (flag: string) => `${balancePath}?tab=utilidad&view=asignar${valid ? `&month=${month}` : ""}&${flag}`;
+
+  const rawShare = formData.get("partsSharePercent");
+  // A blank field must not become 0 (all to labor) by accident.
+  const parsed = partsShareSchema.safeParse(typeof rawShare === "string" && rawShare.trim() !== "" ? Number(rawShare) : Number.NaN);
+  if (!parsed.success) redirect(back("error=invalid"));
+
+  const result = await prisma.expense.updateMany({ where: { id: expenseId, deletedAt: null }, data: { partsSharePercent: parsed.data } });
+  if (result.count === 0) redirect(back("error=notfound"));
+
+  revalidatePath(balancePath);
+  redirect(back("assigned=1"));
 }
 
 /** Soft delete: the row stays for audit but no longer counts anywhere. */

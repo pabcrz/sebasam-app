@@ -22,7 +22,7 @@ import {
   Sheet,
   Textarea,
 } from "@/components/ui";
-import { defaultPartsShareFor, EXPENSE_CATEGORIES, EXPENSE_INVOICE_LABELS, EXPENSE_PAYMENT_METHODS } from "./categories";
+import { EXPENSE_CATEGORIES, EXPENSE_INVOICE_LABELS, EXPENSE_PAYMENT_METHODS } from "./categories";
 import type { ExpenseRow } from "./queries";
 
 type ExpenseFormDialogProps = {
@@ -45,15 +45,8 @@ export function ExpenseFormDialog({ action, month, today, expense }: ExpenseForm
   const [isPending, setIsPending] = React.useState(false);
   const [category, setCategory] = React.useState<string>(expense?.category ?? "RENT");
   const [invoiceStatus, setInvoiceStatus] = React.useState<string>(expense?.invoiceStatus ?? "NOT_INVOICED");
-  const [partsShare, setPartsShare] = React.useState<string>(String(expense?.partsSharePercent ?? defaultPartsShareFor("RENT")));
   const [paymentMethod, setPaymentMethod] = React.useState<string>(expense?.paymentMethod ?? "");
   const title = expense ? "Editar gasto" : "Nuevo gasto";
-
-  function changeCategory(next: string) {
-    setCategory(next);
-    // A new expense proposes the category's share; an existing one keeps what was saved unless the category changes.
-    setPartsShare(String(defaultPartsShareFor(next as never)));
-  }
 
   return (
     <Sheet open={open} onOpenChange={(next) => { if (!isPending) setOpen(next); }}>
@@ -72,7 +65,7 @@ export function ExpenseFormDialog({ action, month, today, expense }: ExpenseForm
       <DialogMobileContent variant="sheet">
         <DialogMobileHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>Registra lo que se pagó. La factura y el reparto entre cuentas se eligen por cada gasto.</DialogDescription>
+          <DialogDescription>Registra lo que se pagó y si hay factura.</DialogDescription>
         </DialogMobileHeader>
         <DialogMobileBody>
           <form id={formId} action={action} onSubmit={() => setIsPending(true)} className="grid gap-4" data-testid="expense-form">
@@ -90,7 +83,7 @@ export function ExpenseFormDialog({ action, month, today, expense }: ExpenseForm
 
             <div className="grid gap-2">
               <Label htmlFor={`${formId}-category`}>Categoría</Label>
-              <Select name="category" value={category} onValueChange={changeCategory} disabled={isPending}>
+              <Select name="category" value={category} onValueChange={setCategory} disabled={isPending}>
                 <SelectTrigger id={`${formId}-category`}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {EXPENSE_CATEGORIES.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
@@ -109,12 +102,6 @@ export function ExpenseFormDialog({ action, month, today, expense }: ExpenseForm
                 ))}
               </div>
             </fieldset>
-
-            <div className="grid gap-2">
-              <Label htmlFor={`${formId}-share`}>Porcentaje a refacciones</Label>
-              <Input id={`${formId}-share`} name="partsSharePercent" type="number" inputMode="numeric" min="0" max="100" step="1" required value={partsShare} onChange={(event) => setPartsShare(event.target.value)} disabled={isPending} />
-              <p className="text-xs text-[var(--color-text-muted)]">El resto se carga a mano de obra. 0 = todo a mano de obra, 100 = todo a refacciones y materiales.</p>
-            </div>
 
             <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
               <div className="grid gap-2">

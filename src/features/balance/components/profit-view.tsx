@@ -1,15 +1,17 @@
+import type { ReactNode } from "react";
 import { SegmentedControl, StatTile } from "@/components/ui";
 import { formatCents } from "@/features/quotes/lib/format";
 import type { ProfitSnapshot } from "../profit-queries";
 import type { InvoiceSplit } from "../profit";
 import { MonthNavigator } from "./month-navigator";
 
-export type ProfitViewKey = "general" | "mano-de-obra" | "refacciones";
+export type ProfitViewKey = "general" | "mano-de-obra" | "refacciones" | "asignar";
 
 const VIEW_OPTIONS: Array<{ value: ProfitViewKey; label: string }> = [
   { value: "general", label: "General" },
   { value: "mano-de-obra", label: "Mano de obra" },
   { value: "refacciones", label: "Refacciones" },
+  { value: "asignar", label: "Asignar" },
 ];
 
 type ProfitViewProps = {
@@ -17,6 +19,8 @@ type ProfitViewProps = {
   view: ProfitViewKey;
   /** Link for another month and/or view, keeping the rest. */
   hrefFor: (change: { month?: string | null; view?: ProfitViewKey }) => string;
+  /** The "Asignar" view: how each expense is split between the two accounts. */
+  allocation?: ReactNode;
 };
 
 type Row = { label: string; cents: number; strong?: boolean; hint?: string; split?: InvoiceSplit };
@@ -49,7 +53,7 @@ function FigureTable({ title, rows }: { title: string; rows: Row[] }) {
   );
 }
 
-export function ProfitView({ snapshot, view, hrefFor }: ProfitViewProps) {
+export function ProfitView({ snapshot, view, hrefFor, allocation }: ProfitViewProps) {
   const { period, summary } = snapshot;
   const { general, labor, parts, income } = summary;
 
@@ -64,6 +68,8 @@ export function ProfitView({ snapshot, view, hrefFor }: ProfitViewProps) {
           options={VIEW_OPTIONS.map((option) => ({ ...option, href: hrefFor({ view: option.value }) }))}
         />
       </div>
+
+      {view === "asignar" ? allocation : null}
 
       {view === "general" ? (
         <div className="grid gap-4" data-testid="profit-general">

@@ -1,6 +1,14 @@
 # Balance: cobros, utilidad y gastos
 
-Pantalla `/admin/balance`. Tiene tres secciones: **Cobros y saldos** (todos los roles operativos) y **Utilidad** y **Gastos** (solo SUPER_ADMIN y ADMIN).
+Pantalla `/admin/balance`. Tiene tres secciones y cada rol ve las suyas:
+
+| Sección | Quién la ve |
+|---|---|
+| **Cobros y saldos** | Todos los roles operativos |
+| **Gastos** (registrar, editar, eliminar) | SUPER_ADMIN y ADMIN |
+| **Utilidad** y **Asignar** | Solo SUPER_ADMIN (el dueño) |
+
+Quien captura gastos (ADMIN) solo registra hechos: fecha, monto, categoría, proveedor, comprobante y nota. **No ve ni elige cómo se reparte** un gasto entre las cuentas, ni ve la utilidad.
 
 ## Cobros y saldos
 
@@ -9,7 +17,7 @@ Pantalla `/admin/balance`. Tiene tres secciones: **Cobros y saldos** (todos los 
 
 ## Gastos
 
-Cada gasto lleva fecha, monto, categoría y **comprobante** (con factura / sin factura). El comprobante es un eje aparte: no depende de la categoría. Cada gasto lleva también un **porcentaje a refacciones** (0–100); el resto se carga a mano de obra. La categoría propone el porcentaje:
+Cada gasto lleva fecha, monto, categoría y **comprobante** (con factura / sin factura). El comprobante es un eje aparte: no depende de la categoría. Cada gasto lleva también un **porcentaje a refacciones** (0–100); el resto se carga a mano de obra. Al registrarse, el porcentaje es el que propone la categoría; el dueño lo ajusta después, gasto por gasto, en **Utilidad → Asignar**. Editar un gasto no cambia un reparto que el dueño ya asignó (solo sigue a la categoría si nunca se tocó).
 
 | Categoría | % a refacciones |
 |---|---|

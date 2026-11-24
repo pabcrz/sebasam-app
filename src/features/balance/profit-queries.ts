@@ -1,6 +1,6 @@
 import { PaymentStatus, PayableNoteStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireSuperAdmin } from "@/lib/auth/session";
 import { sumCollectedPayments } from "@/features/dashboard/queries";
 import { getWeeklyPayroll } from "@/features/payroll/queries";
 import { parsePayrollParams, type ParsedPayrollParams } from "@/features/payroll/period";
@@ -88,7 +88,8 @@ export interface ProfitSnapshot {
 }
 
 export async function getProfitSnapshot(month: string | undefined, now = new Date()): Promise<ProfitSnapshot> {
-  await requireAdmin();
+  // Profit and how expenses are split are the owner's numbers.
+  await requireSuperAdmin();
   const period = parseMonthPeriod(month, now);
 
   const [income, collected, payroll, expenses] = await Promise.all([
