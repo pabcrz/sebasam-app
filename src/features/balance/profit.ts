@@ -182,7 +182,7 @@ export interface ProfitSummary {
     expensesCents: number;
     expensesByInvoice: InvoiceSplit;
     spentCents: number;
-    /** = labor.remaining + parts.remaining . */
+    /** = labor.remaining + parts.remaining */
     remainingCents: number;
   };
 }
