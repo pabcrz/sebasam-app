@@ -29,15 +29,6 @@ export function customerFacingStatus(label: PaymentStateLabel): "Pagada" | "Venc
 export function CustomerStatementDocument({ statement, id }: CustomerStatementDocumentProps) {
   const { customer, business, notes, summary, view, rangeLabel, emissionDate, paymentActivity, availableCreditAtCutoffCents } = statement;
   const displayName = customer.commercialName || customer.name;
-  const legalName = customer.commercialName ? customer.legalName || customer.name : customer.legalName;
-  const customerSubtitle = [
-    legalName ? `Razón social: ${legalName}` : null,
-    customer.rfc ? `RFC: ${customer.rfc}` : null,
-    customer.phone ? `Tel. ${customer.phone}` : null,
-    customer.email,
-    customer.address,
-  ].filter(Boolean).join(" · ") || undefined;
-
   const totalCents = notes.reduce((sum, note) => sum + note.totalCents, 0);
   const paidCents = notes.reduce((sum, note) => sum + note.paidCentsAtCutoff, 0);
   const remainingCents = notes.reduce((sum, note) => sum + Math.max(0, note.totalCents - note.paidCentsAtCutoff), 0);
@@ -58,7 +49,7 @@ export function CustomerStatementDocument({ statement, id }: CustomerStatementDo
         ];
 
   return (
-    <article id={id} data-testid="customer-statement-document" className="w-full bg-white text-[12px] leading-snug text-black">
+    <article id={id} data-testid="customer-statement-document" className="w-full bg-white text-[12px] leading-snug text-black print:px-[14mm]">
       <PublicDocumentHeader
         business={{
           businessName: business.name,
@@ -72,7 +63,6 @@ export function CustomerStatementDocument({ statement, id }: CustomerStatementDo
         documentNumber={rangeLabel}
         date={emissionDate}
         customerName={displayName}
-        customerSubtitle={customerSubtitle}
         quoteLayout
       />
 

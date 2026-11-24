@@ -410,14 +410,13 @@ describe("CustomerStatementView", () => {
     if (internal !== shown) expect(print.queryByText(internal)).not.toBeInTheDocument();
   });
 
-  it("prints the period summary and the customer contact data", () => {
+  it("prints the period summary", () => {
     render(
       <CustomerStatementView
         statement={{
           ...baseStatement,
           view: "history",
           summary: { initialBalanceCents: 10000, periodChargesCents: 20000, periodPaymentsCents: 5000, finalBalanceCents: 25000, overdueBalanceCents: 0 },
-          customer: { ...baseStatement.customer, phone: "5551234567", address: "Av. Industria 5" },
         }}
       />,
     );
@@ -428,9 +427,20 @@ describe("CustomerStatementView", () => {
     expect(summary.getByText("+$200.00")).toBeInTheDocument();
     expect(summary.getByText("-$50.00")).toBeInTheDocument();
     expect(summary.getByText("$250.00")).toBeInTheDocument();
-    const print = within(screen.getByTestId("customer-statement-print"));
-    expect(print.getByText(/Tel\. 5551234567/)).toBeInTheDocument();
-    expect(print.getByText(/Av\. Industria 5/)).toBeInTheDocument();
+  });
+
+  it("shows only the customer name in the document, not tax or contact data", () => {
+    render(
+      <CustomerStatementView
+        statement={{ ...baseStatement, customer: { ...baseStatement.customer, phone: "5551234567", address: "Av. Industria 5" } }}
+      />,
+    );
+
+    const print = screen.getByTestId("customer-statement-print");
+    expect(print).toHaveTextContent("Transportes del Norte S.A.");
+    for (const hidden of ["RFC", "TDN010101ABC", "Razón social", "5551234567", "Av. Industria 5", "contacto@tdn.com"]) {
+      expect(print).not.toHaveTextContent(hidden);
+    }
   });
 
   it("uses the shared document header, the same one notes and quotes print", () => {
