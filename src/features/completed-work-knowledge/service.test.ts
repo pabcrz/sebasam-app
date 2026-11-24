@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { prisma } = vi.hoisted(() => ({
   prisma: {
-    workOrder: { findUnique: vi.fn() },
+    workOrder: { findUnique: vi.fn(), findMany: vi.fn() },
     completedWorkKnowledgeSource: { updateMany: vi.fn() },
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
@@ -15,6 +15,7 @@ vi.mock("@/lib/prisma", () => ({ prisma }));
 import {
   buildCompletedWorkKnowledgeContext,
   ineligibleCompletedWorkKnowledge,
+  reindexCompletedWorkKnowledge,
   synchronizeCompletedWorkKnowledge,
 } from "./service";
 
@@ -89,6 +90,22 @@ describe("completed work knowledge synchronization", () => {
     expect(retried).toEqual({ indexed: 0, failed: 0, skipped: 1 });
     expect(provider.embedText).not.toHaveBeenCalled();
     expect(prisma.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it("reindexes completed orders that are missing or not fully indexed and totals the results", async () => {
+    vi.mocked(prisma.workOrder.findMany).mockResolvedValue([{ id: "work-order-1" }, { id: "work-order-2" }] as never);
+    mockRawResults(
+      [{ id: "source-1", indexState: KnowledgeIndexState.FAILED, contextHash: "ctx" }],
+      [{ id: "source-1" }],
+      [{ id: "source-2", indexState: KnowledgeIndexState.INDEXED, contextHash: "ctx" }],
+    );
+
+    const result = await reindexCompletedWorkKnowledge(provider);
+
+    expect(result).toEqual({ orders: 2, indexed: 1, failed: 0, skipped: 1 });
+    const where = vi.mocked(prisma.workOrder.findMany).mock.calls[0]![0]!.where!;
+    expect(where.status).toBe(WorkOrderStatus.COMPLETED);
+    expect(where.OR).toHaveLength(2);
   });
 
   it("marks every source ineligible after a rollback", async () => {

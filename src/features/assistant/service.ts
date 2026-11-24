@@ -17,8 +17,10 @@ import {
   type AggregateCompletedWorkInput,
   type CompletedWorkAggregate,
   type CompletedWorkMatchSource,
+  listCompletedWorkVocabulary,
 } from "@/features/completed-work-knowledge/repository";
 import { formatCents } from "@/features/quotes/lib/format";
+import { mexicoCityCalendarDate } from "@/features/quotes/lib/operational-date";
 
 export interface AssistantFilters {
   brand: string | null;
@@ -140,6 +142,7 @@ Reglas de contenido:
 4. Si la pregunta pide estadísticas y no hay agregación, respondé con lo que haya y aclará qué falta.
 5. Las fuentes semánticas pueden ser historial importado o trabajo completado. NUNCA presentes una suma de la lista semántica como total: solo las secciones de agregación exacta son totales.
 6. Para trabajo completado, ingreso y comisión siempre son "generados"; NUNCA los describas como cobrados, recaudados o pagados. No respondas sobre referencias de precios de cotizaciones.
+7. Si te piden mano de obra y refacciones, usa SOLO el "Desglose de toda la orden" de cada fuente de trabajo completado; no los calcules sumando conceptos y aclara que el desglose es de la orden completa, no solo del concepto.
 `.trim();
 
 function sourceToPromptBlock(source: HistoricalMatchSource, index: number): string {
@@ -207,6 +210,7 @@ function buildAnswerUserPrompt(
       : [`[${index + 1}] Trabajo completado ${source.workOrderNumber} · fecha ${source.completedAt} · ${[source.brand, source.model].filter(Boolean).join(" ") || "sin unidad"}${source.plate ? ` (${source.plate})` : ""} · responsable ${source.responsibleWorker}`,
         `    Concepto actual: ${source.description} (${source.type}) · importe ${formatCents(source.itemTotalCents)}`,
         `    Ingreso generado por la orden (cotización actual): ${formatCents(source.currentQuoteTotalCents)} [derivado]`,
+        `    Desglose de toda la orden: mano de obra ${formatCents(source.orderLaborCents)}, refacciones y materiales ${formatCents(source.orderPartsCents)} [derivado]`,
         `    Comisión generada: ${formatCents(source.generatedCommissionCents)} [derivado]`,
       ].join("\n")).join("\n")}`);
   }
@@ -234,8 +238,15 @@ function mapFiltersToCompletedAggregateInput(
     filterModel: filters.model,
     filterDescription: filters.description,
     filterMaster: filters.master,
-    dateFrom: filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00.000Z`) : null,
-    dateTo: filters.dateTo ? new Date(`${filters.dateTo}T23:59:59.999Z`) : null,
+    ...completedDateBounds(filters),
+  };
+}
+
+/** Mexico City has no DST since 2022, so the offset is a fixed -06:00. */
+function completedDateBounds(filters: AssistantFilters): { dateFrom: Date | null; dateTo: Date | null } {
+  return {
+    dateFrom: filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00.000-06:00`) : null,
+    dateTo: filters.dateTo ? new Date(`${filters.dateTo}T23:59:59.999-06:00`) : null,
   };
 }
 
@@ -262,8 +273,15 @@ export async function answerHistoricalQuestion(question: string): Promise<Assist
     };
   }
 
+  const vocabulary = await listCompletedWorkVocabulary().catch(() => []);
+  const vocabularyHint = vocabulary.length > 0
+    ? `\nConceptos reales escritos en las notas: ${vocabulary.join("; ")}.\nEn "description" usa UNA palabra clave corta (singular, sin acentos si dudas) tomada de ese vocabulario que corresponda a lo que pregunta el usuario; si nada coincide, usa la palabra del usuario.`
+    : "";
   const filters = parseAssistantFilters(
-    await provider.generateText({ system: EXTRACTION_SYSTEM_PROMPT, user: question }),
+    await provider.generateText({
+      system: `${EXTRACTION_SYSTEM_PROMPT}${vocabularyHint}\nHoy es ${mexicoCityCalendarDate()} (America/Mexico_City). Resuelve fechas relativas ("el mes pasado", "hace un año") a dateFrom/dateTo tomando ese día como referencia.`,
+      user: question,
+    }),
   );
 
   const aggregationPromise = filters.wantsStats
@@ -277,7 +295,7 @@ export async function answerHistoricalQuestion(question: string): Promise<Assist
   const [[historicalSources, completedSources], aggregateResults] = await Promise.all([
     Promise.all([
       matchHistoricalItems({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model }),
-      matchCompletedWork({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model }),
+      matchCompletedWork({ embedding, threshold: 0.4, count: 5, filterType: filters.type, filterBrand: filters.brand, filterModel: filters.model, keyword: filters.description, ...completedDateBounds(filters) }),
     ]),
     aggregationPromise,
   ]);

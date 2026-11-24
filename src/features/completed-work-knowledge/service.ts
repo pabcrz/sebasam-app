@@ -305,3 +305,32 @@ export async function synchronizeCompletedWorkKnowledge(
 
   return { indexed, failed, skipped };
 }
+
+/**
+ * Indexes every completed work order that has no projection yet or still has
+ * PENDING/FAILED/stale INDEXING rows. Safe to repeat: synchronization is idempotent.
+ */
+export async function reindexCompletedWorkKnowledge(
+  provider?: EmbeddingProvider,
+): Promise<{ orders: number; indexed: number; failed: number; skipped: number }> {
+  const orders = await prisma.workOrder.findMany({
+    where: {
+      status: WorkOrderStatus.COMPLETED,
+      completedAt: { not: null },
+      OR: [
+        { completedWorkKnowledgeSources: { none: {} } },
+        { completedWorkKnowledgeSources: { some: { indexState: { in: [KnowledgeIndexState.PENDING, KnowledgeIndexState.FAILED, KnowledgeIndexState.INDEXING] } } } },
+      ],
+    },
+    select: { id: true },
+    orderBy: { completedAt: "asc" },
+  });
+  const totals = { orders: orders.length, indexed: 0, failed: 0, skipped: 0 };
+  for (const order of orders) {
+    const result = await synchronizeCompletedWorkKnowledge(order.id, provider);
+    totals.indexed += result.indexed;
+    totals.failed += result.failed;
+    totals.skipped += result.skipped;
+  }
+  return totals;
+}
