@@ -57,7 +57,7 @@ export function CustomerUnitsPanel({ vehicles }: CustomerUnitsPanelProps) {
                   {unitIdentity(unit) ?? "Unidad registrada"}
                 </p>
                 {unit.economicNumber && unit.plate ? (
-                  <p className="truncate text-xs text-[var(--color-text-muted)]">Placas {unit.plate}</p>
+                  <p className="truncate text-xs text-[var(--color-text-muted)]">Placas {unit.plate?.toUpperCase()}</p>
                 ) : null}
               </div>
               {unit.inWorkshop ? <Badge variant="info">En taller</Badge> : null}

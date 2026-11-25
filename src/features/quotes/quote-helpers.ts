@@ -63,7 +63,7 @@ export function quoteFormDataToInput(formData: FormData) {
     customerContactId: formData.get("customerContactId"),
     customerFiscalProfileId: formData.get("customerFiscalProfileId"),
     vehicle: {
-      plate: formData.get("plate"),
+      plate: String(formData.get("plate") ?? "").toUpperCase(),
       economicNumber: formData.get("economicNumber"),
       brand: formData.get("brand"),
       model: formData.get("model"),
