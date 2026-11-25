@@ -31,7 +31,7 @@ export function PublicDocumentHeader({ business, logoSrc, documentType, document
   const mapsUrl = getPublicMapsUrl(location?.mapsUrl);
   const values = [
     unitData?.vehicleDescription?.trim() ? { label: "", value: unitData.vehicleDescription.trim() } : null,
-    unitData?.plate?.trim() ? { label: "Placas", value: unitData.plate.trim() } : null,
+    unitData?.plate?.trim() ? { label: "Placas", value: unitData.plate.trim().toUpperCase() } : null,
     unitData?.economicNumber?.trim() ? { label: "Eco", value: unitData.economicNumber.trim() } : null,
     unitData?.operatorName?.trim() ? { label: "Chofer", value: unitData.operatorName.trim() } : null,
   ].filter(Boolean) as Array<{ label: string; value: string }>;

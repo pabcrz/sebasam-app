@@ -16,7 +16,7 @@ function clean(value: string | null | undefined) {
  */
 export function formatUnitIdentity({ economicNumber, plates, model }: UnitIdentityInput): string | null {
   const eco = clean(economicNumber);
-  const plate = clean(plates);
+  const plate = clean(plates)?.toUpperCase() ?? null;
   const unitModel = clean(model);
   const unit = eco ? `ECO ${eco}` : plate;
 

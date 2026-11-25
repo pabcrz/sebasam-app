@@ -164,7 +164,7 @@ export function ImportReviewStep({
                 <Input
                   id={`${work.key}-plate`}
                   value={work.plate}
-                  onChange={(event) => updateWork(workIndex, { plate: event.target.value })}
+                  onChange={(event) => updateWork(workIndex, { plate: event.target.value.toUpperCase() })}
                 />
               </div>
               <div className="space-y-2">
