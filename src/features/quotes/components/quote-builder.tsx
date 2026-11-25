@@ -1219,7 +1219,7 @@ export function QuoteBuilder({
                     maxLength={10}
                     placeholder="Ej. ABC-123"
                     value={vehicle.plate}
-                    onChange={(event) => dispatch({ type: "setVehicleField", field: "plate", value: event.target.value })}
+                    onChange={(event) => dispatch({ type: "setVehicleField", field: "plate", value: event.target.value.toUpperCase() })}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
